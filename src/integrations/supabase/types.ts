@@ -3225,6 +3225,162 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          application_batch_email: boolean
+          application_batch_in_app: boolean
+          application_batch_push: boolean
+          daily_digest_email: boolean
+          daily_digest_in_app: boolean
+          daily_digest_push: boolean
+          interview_event_email: boolean
+          interview_event_in_app: boolean
+          interview_event_push: boolean
+          mention_email: boolean
+          mention_in_app: boolean
+          mention_push: boolean
+          offer_event_email: boolean
+          offer_event_in_app: boolean
+          offer_event_push: boolean
+          posting_status_email: boolean
+          posting_status_in_app: boolean
+          posting_status_push: boolean
+          quiet_hours_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          quiet_hours_tz: string | null
+          scorecard_submitted_email: boolean
+          scorecard_submitted_in_app: boolean
+          scorecard_submitted_push: boolean
+          sound_on_mention: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_batch_email?: boolean
+          application_batch_in_app?: boolean
+          application_batch_push?: boolean
+          daily_digest_email?: boolean
+          daily_digest_in_app?: boolean
+          daily_digest_push?: boolean
+          interview_event_email?: boolean
+          interview_event_in_app?: boolean
+          interview_event_push?: boolean
+          mention_email?: boolean
+          mention_in_app?: boolean
+          mention_push?: boolean
+          offer_event_email?: boolean
+          offer_event_in_app?: boolean
+          offer_event_push?: boolean
+          posting_status_email?: boolean
+          posting_status_in_app?: boolean
+          posting_status_push?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          quiet_hours_tz?: string | null
+          scorecard_submitted_email?: boolean
+          scorecard_submitted_in_app?: boolean
+          scorecard_submitted_push?: boolean
+          sound_on_mention?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_batch_email?: boolean
+          application_batch_in_app?: boolean
+          application_batch_push?: boolean
+          daily_digest_email?: boolean
+          daily_digest_in_app?: boolean
+          daily_digest_push?: boolean
+          interview_event_email?: boolean
+          interview_event_in_app?: boolean
+          interview_event_push?: boolean
+          mention_email?: boolean
+          mention_in_app?: boolean
+          mention_push?: boolean
+          offer_event_email?: boolean
+          offer_event_in_app?: boolean
+          offer_event_push?: boolean
+          posting_status_email?: boolean
+          posting_status_in_app?: boolean
+          posting_status_push?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          quiet_hours_tz?: string | null
+          scorecard_submitted_email?: boolean
+          scorecard_submitted_in_app?: boolean
+          scorecard_submitted_push?: boolean
+          sound_on_mention?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          actor_avatar_url: string | null
+          actor_name: string | null
+          actor_user_id: string | null
+          candidate_id: string | null
+          category: Database["public"]["Enums"]["notification_category"]
+          created_at: string
+          entity_id: string | null
+          entity_kind: string | null
+          id: string
+          job_id: string | null
+          metadata: Json
+          preview: string | null
+          read_at: string | null
+          subtitle: string | null
+          tenant_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          actor_avatar_url?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          candidate_id?: string | null
+          category: Database["public"]["Enums"]["notification_category"]
+          created_at?: string
+          entity_id?: string | null
+          entity_kind?: string | null
+          id?: string
+          job_id?: string | null
+          metadata?: Json
+          preview?: string | null
+          read_at?: string | null
+          subtitle?: string | null
+          tenant_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          actor_avatar_url?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          candidate_id?: string | null
+          category?: Database["public"]["Enums"]["notification_category"]
+          created_at?: string
+          entity_id?: string | null
+          entity_kind?: string | null
+          id?: string
+          job_id?: string | null
+          metadata?: Json
+          preview?: string | null
+          read_at?: string | null
+          subtitle?: string | null
+          tenant_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       offer_approval_chain_steps: {
         Row: {
           approver_user_id: string
@@ -4196,6 +4352,36 @@ export type Database = {
           timezone?: string | null
           title?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []
@@ -6290,6 +6476,26 @@ export type Database = {
         }
         Returns: string
       }
+      emit_notification: {
+        Args: {
+          _action_url: string
+          _actor_avatar_url: string
+          _actor_name: string
+          _actor_user_id: string
+          _candidate_id: string
+          _category: Database["public"]["Enums"]["notification_category"]
+          _entity_id: string
+          _entity_kind: string
+          _job_id: string
+          _metadata: Json
+          _preview: string
+          _subtitle: string
+          _tenant_id: string
+          _title: string
+          _user_id: string
+        }
+        Returns: string
+      }
       encrypt_refresh_token: { Args: { token: string }; Returns: string }
       ensure_default_deal_stages: { Args: never; Returns: undefined }
       execute_candidate_sync: { Args: never; Returns: undefined }
@@ -6458,6 +6664,7 @@ export type Database = {
         Returns: undefined
       }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
+      is_in_quiet_hours: { Args: { _user_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_public_email_domain: { Args: { domain: string }; Returns: boolean }
@@ -6715,6 +6922,14 @@ export type Database = {
         | "temporary"
       job_status: "draft" | "open" | "closed" | "archived"
       job_work_mode: "remote" | "hybrid" | "onsite"
+      notification_category:
+        | "mention"
+        | "application_batch"
+        | "scorecard_submitted"
+        | "interview_event"
+        | "offer_event"
+        | "posting_status"
+        | "daily_digest"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -6984,6 +7199,15 @@ export const Constants = {
       ],
       job_status: ["draft", "open", "closed", "archived"],
       job_work_mode: ["remote", "hybrid", "onsite"],
+      notification_category: [
+        "mention",
+        "application_batch",
+        "scorecard_submitted",
+        "interview_event",
+        "offer_event",
+        "posting_status",
+        "daily_digest",
+      ],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
       payment_period_enum: [
