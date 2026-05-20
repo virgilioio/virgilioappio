@@ -300,39 +300,13 @@ export default function Find() {
 
                 <div className="flex-1 min-h-0 overflow-hidden">
                   {mode === 'new' && (
-                    <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 h-full">
-                      <div className={`w-full max-w-3xl mx-auto transition-all duration-500 ease-out ${isGenerating ? 'space-y-0' : 'space-y-8'}`}>
-                        <div className={`text-center transition-all duration-500 ease-out ${isGenerating ? 'py-8' : 'space-y-3'}`}>
-                          {isGenerating ? (
-                            <GioThinkingHeader />
-                          ) : (
-                            <div className="animate-fade-in">
-                              <div className="inline-flex items-center justify-center mb-4">
-                                <img
-                                  src={gioAvatar}
-                                  alt="Gio AI Assistant"
-                                  className="h-16 w-16 rounded-full transition-all duration-500"
-                                />
-                              </div>
-                              <h1 className="text-xl md:text-2xl font-poppins font-bold text-foreground" style={{ letterSpacing: '-0.06em' }}>
-                                What role are you hiring right now<span className="text-primary">?</span>
-                              </h1>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className={`transition-all duration-500 ease-out ${
-                          isGenerating
-                            ? 'opacity-0 scale-95 max-h-0 overflow-hidden pointer-events-none'
-                            : 'opacity-100 scale-100 max-h-[1000px]'
-                        }`}>
-                          <AIJobAssistant
-                            onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
-                            onGeneratingChange={setIsGenerating}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    <FindEmptyState
+                      isGenerating={isGenerating}
+                      onGeneratingChange={setIsGenerating}
+                      onProjectCreated={(newProjectId) => navigate(`/find/${newProjectId}`)}
+                      recentProjects={sourcingProjects?.slice(0, 4) ?? []}
+                      onSelectProject={(id) => navigate(`/find/${id}`)}
+                    />
                   )}
 
                   {mode === 'project' && projectId && (
