@@ -158,7 +158,7 @@ function sanitizeJobSpec(spec: any, promptText: string): any {
   return sanitized
 }
 
-export function AIJobAssistant({ onProjectCreated, onGeneratingChange }: AIJobAssistantProps = {}) {
+export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant = 'default' }: AIJobAssistantProps = {}) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
