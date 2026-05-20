@@ -16,6 +16,7 @@ export interface CandidateFilters {
   jobs: string[]
   stages: string[]
   rejectedAtStages: string[]
+  tagIds: string[]
   experienceMin: number | null
   experienceMax: number | null
   salaryMin: number | null
