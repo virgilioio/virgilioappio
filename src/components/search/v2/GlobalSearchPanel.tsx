@@ -177,13 +177,13 @@ export function GlobalSearchPanel({
       r.push({
         key: 'cmd-add-candidate', glyph: 'command', icon: Plus,
         title: 'Add candidate',
-        rightMeta: <span className="font-mono">\u2318N</span>,
+        rightMeta: <span className="font-mono">⌘N</span>,
         onSelect: () => { navigate('/candidates?new=1'); onClose() },
       })
       r.push({
         key: 'cmd-create-job', glyph: 'command', icon: Plus,
         title: 'Create job',
-        rightMeta: <span className="font-mono">\u2318J</span>,
+        rightMeta: <span className="font-mono">⌘J</span>,
         onSelect: () => { navigate('/jobs?new=1'); onClose() },
       })
       return r
@@ -331,7 +331,7 @@ export function GlobalSearchPanel({
         >
           <Search className="h-3.5 w-3.5 text-virgilio-muted" />
           See all <strong className="font-semibold">{totalAll}</strong> results for
-          <span className="font-medium">\u201C{trimmed}\u201D</span>
+          <span className="font-medium">“{trimmed}”</span>
           <ArrowRight className="h-3 w-3 ml-auto text-virgilio-muted" />
         </button>
       )}
@@ -393,7 +393,7 @@ export function GlobalSearchPanel({
           <div className="px-4 py-12 text-center">
             {hasQuery ? (
               <>
-                <p className="font-poppins font-semibold text-[14px] text-foreground">No results for \u201C{trimmed}\u201D</p>
+                <p className="font-poppins font-semibold text-[14px] text-foreground">No results for “{trimmed}”</p>
                 <p className="font-inter text-[12px] text-virgilio-muted mt-1">
                   Check spelling, broaden your scope, or ask Gio in plain English.
                 </p>
@@ -423,7 +423,7 @@ export function GlobalSearchPanel({
         ))}
 
         {isLoading && !askMode && (
-          <div className="px-4 py-3 text-[12px] font-inter text-virgilio-muted">Searching\u2026</div>
+          <div className="px-4 py-3 text-[12px] font-inter text-virgilio-muted">Searching…</div>
         )}
       </div>
 
