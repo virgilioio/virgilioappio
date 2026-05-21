@@ -1,79 +1,60 @@
-# Results view — tighten to match the screenshot
+# Sourcing project — linked-to-job state
 
-Five targeted fixes on the sourcing results screen. Frontend only.
+Mirror the screenshot for projects that **are** linked to a job. Three focused changes:
 
-## 1. Results header bar (above the table)
+## 1. Replace yellow banner with a green "Linked to job" strip
 
-Replace the current `SourcingProjectHeader` strip with the row from the screenshot:
+New component `src/components/sourcing/LinkedJobStrip.tsx`:
 
-```text
-[ Saved-search selector ▾ ]   ………………………………   [● Auto-refreshing]  [↻ Refresh now]  [↗ Share]  [⋯]
-   Sr. Product Designer (NYC + Remote)
-   107 candidates · refreshed 2 min ago
+- Slim single-line bar (32–36px), `bg-emerald-50` + `ring-1 ring-emerald-200/60`, rounded-lg.
+- Left: link icon in an emerald tile + label
+  `Linked to job <Job title> · <Department> · collected candidates drop into the Sourced stage automatically.`
+  (Job title is bold; the trailing sentence is `text-text-secondary`.)
+- Right: two ghost buttons — `Open job` (↗ icon, navigates to `/jobs/:id`) and `Unlink` (chain-break icon, calls `onUnlink`).
+- Pulls job title + department from `project.jobs` (already selected in `useSourcingProject`). Falls back to "this job" if missing.
+
+`CandidatesTab.tsx` change (inside the banner zone):
+```tsx
+{isLinked ? (
+  <LinkedJobStrip
+    jobId={project.job_id!}
+    jobTitle={project.jobs?.title}
+    department={project.jobs?.department_name /* or organizations.name */}
+    onUnlink={() => onLinkToJob?.('')} // see §1a
+  />
+) : (
+  onLinkToJob && <LinkToJobBanner onLinkToJob={onLinkToJob} currentJobId={project.job_id} />
+)}
 ```
 
-- Left: a `<Select>`-style combobox showing the current saved search name + meta line underneath; opens the saved-search picker.
-- Right cluster: `auto-refresh` status pill (green dot + "Auto-refreshing"), `Refresh now` ghost button with `RefreshCw` icon, `Share` ghost button with `Share2` icon, then the existing ellipsis menu.
-- Single row, 56px tall, hairline border underneath. Sits directly above the banner zone.
+### 1a. Unlink wiring
 
-## 2. Bulk select bar — fix unreadable text
+`SourcingProjectView.handleLinkToJob` already updates `sourcing_projects.job_id`. Extend it to accept empty string / null and run an `UPDATE … SET job_id = null`, then toast "Project unlinked". No new hook needed.
 
-In `CandidatesBulkBar` (the black `#0d0d09` bar), the `X selected · Select all 107` block is rendering in default body color. Force the on-dark palette:
+## 2. Verify bulk-select column + black bulk bar
 
-- Count label: `text-white font-medium`
-- `Select all 107`: `text-white/80 hover:text-white underline`
-- Separator dots: `text-white/30`
-- `Clear` link: `text-white/60 hover:text-white`
+Both already exist in `SourcingCandidateTable.tsx`. QA pass only:
 
-Pattern is already proven in `BulkActionBar` (`src/components/candidates/list/BulkActionBar.tsx`) — mirror that exactly.
+- Confirm the checkbox column header + per-row checkbox render at all densities.
+- Confirm the dark bulk bar shows `X selected · Select all N` in white (previous fix), with `Collect`, `Save for later`, `Not a fit`, and a close `×`. No code change unless something regressed.
 
-## 3. AI summary banner — match the screenshot
+## 3. Preview vs Collected card polish
 
-Rework `ResultsRunSummary` so it reads as one tight line, not a generic alert:
+Already differentiated via `isCollectedApollo` / `isApolloPreview`. Tighten to match screenshot:
 
-```text
-[✨]  107 preview candidates · 28 strong fit · 47 good · 32 possible · 2 already collected            › Why these results?
-      Sourced from LinkedIn (86), Apollo (21), Internal (12). Top match: Priya Iyer · 94 fit.
-```
+- **Preview rows**: show a small "🔒 lock" before the email and render the email value as a redacted bar (`bg-text-tertiary/15 rounded w-32 h-3 inline-block`). Primary action button is `Reach out` only (no "Add to job"), matching the locked state. Badge stays `Preview`.
+- **Collected rows**: full email/phone visible, primary action `Add to job` (already wired, label already conditional on `jobId`). Badge stays `Collected`, plus the existing `In Sourced` status pill when applicable.
 
-Changes vs. current:
-- Lilac sparkle tile (28px, rounded-full, `bg-virgilio-purple/15`), matching the screenshot's left glyph.
-- Tighter typography: 13px primary line, 12px secondary line, both single-line with truncation.
-- Inline color emphasis on the numbers only (strong/good/possible/collected), no badges.
-- "Why these results?" sits on the far right as a quiet chevron link (always visible, not optional).
-- Container: white card with `border border-virgilio-purple/20`, no gradient wash.
-
-## 4. Tabs — restore the four content tabs
-
-The tabs row above the table currently shows `All / Strong fit / Good / Possible / Collected / Saved` (a fit filter). That belongs on the toolbar above the rows. The actual tab strip should be:
-
-```text
-Candidates 107   Saved 4   Archived   ………………………………………   ✨ Chat with Gio
-```
-
-Restore the four-tab strip in `SourcingProjectView` (already wired) and remove the fit-segment buttons from the same row. The fit segments stay only inside `CandidatesToolbar` as the inline filter chips ("All 107 · Strong fit 28 · Good · Possible · New · Saved").
-
-## 5. Pagination — "Load 25 more" button
-
-Replace the current full-list render with a client-side page size of 25:
-
-- `SourcingCandidateTable` keeps a `visibleCount` state, default 25, step +25.
-- Renders `candidates.slice(0, visibleCount)`.
-- Below the last row, if `visibleCount < total`, show a centered `Button variant="secondary" iconRight={ChevronDown}` labeled `Load 25 more`.
-- The toolbar's `Showing 1–25 of 107` label reads from the same `visibleCount`.
-- Selection state keys by candidate id so loaded-but-unselected rows are unaffected.
+These are presentational tweaks inside the existing row renderer — no new components.
 
 ## Files touched
 
-- `src/components/sourcing/SourcingProjectHeader.tsx` — rebuild header row (saved-search selector, status pill, refresh, share, ellipsis).
-- `src/components/sourcing/CandidatesBulkBar.tsx` — fix on-dark text colors.
-- `src/components/sourcing/ResultsRunSummary.tsx` — restyle banner per spec.
-- `src/components/sourcing/SourcingProjectView.tsx` — keep four-tab strip, drop fit segments from this row.
-- `src/components/sourcing/CandidatesToolbar.tsx` — keep fit chips here only.
-- `src/components/sourcing/SourcingCandidateTable.tsx` — add `visibleCount` paging + `Load 25 more` footer; surface count to toolbar.
+- `src/components/sourcing/LinkedJobStrip.tsx` (new)
+- `src/components/sourcing/CandidatesTab.tsx` (swap banner based on `isLinked`)
+- `src/components/sourcing/SourcingProjectView.tsx` (allow unlink in `handleLinkToJob`)
+- `src/components/sourcing/SourcingCandidateTable.tsx` (preview lock/redact + action gating)
 
 ## Out of scope
 
-- No backend, no query, no scoring changes.
-- Saved/Archived/Chat tabs' internals stay as-is.
-- The Find page chrome (sidebar, top page header) stays as-is.
+- No backend, RLS, or scoring changes.
+- No edits to the results header, AI summary banner, tabs, toolbar, or pagination (shipped in prior turn).
