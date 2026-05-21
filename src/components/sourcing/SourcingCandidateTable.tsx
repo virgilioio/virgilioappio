@@ -979,8 +979,9 @@ export function SourcingCandidateTable({
                                 <Mail className="h-3 w-3" />{candidate.email}
                               </span>
                             ) : isApollo && candidate.has_email ? (
-                              <span className="inline-flex items-center gap-1 italic">
-                                <Mail className="h-3 w-3" />Email available
+                              <span className="inline-flex items-center gap-1.5 text-text-tertiary">
+                                <Lock className="h-3 w-3" />
+                                <span className="inline-block h-2.5 w-28 rounded-sm bg-[repeating-linear-gradient(90deg,hsl(var(--muted-foreground)/0.25)_0_3px,transparent_3px_6px)]" aria-label="Email locked — collect to reveal" />
                               </span>
                             ) : null}
                             {((isInternal || isPdl) && candidate.phone) ? (
@@ -988,8 +989,9 @@ export function SourcingCandidateTable({
                                 <Phone className="h-3 w-3" />{candidate.phone}
                               </span>
                             ) : isApollo && candidate.has_phone ? (
-                              <span className="inline-flex items-center gap-1 italic">
-                                <Phone className="h-3 w-3" />Phone available
+                              <span className="inline-flex items-center gap-1.5 text-text-tertiary">
+                                <Lock className="h-3 w-3" />
+                                <span className="inline-block h-2.5 w-20 rounded-sm bg-[repeating-linear-gradient(90deg,hsl(var(--muted-foreground)/0.25)_0_3px,transparent_3px_6px)]" aria-label="Phone locked — collect to reveal" />
                               </span>
                             ) : null}
                           </div>
