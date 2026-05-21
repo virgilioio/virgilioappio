@@ -267,24 +267,30 @@ export function SourcingProjectView({
     }
   }
 
-  const linkProjectToJob = async (jobId: string) => {
+  const linkProjectToJob = async (jobId: string | null) => {
     const { error } = await supabase
       .from('sourcing_projects')
       .update({ job_id: jobId })
       .eq('id', project!.id)
     
     if (error) {
-      toast.error('Failed to link job', { description: error.message })
+      toast.error(jobId ? 'Failed to link job' : 'Failed to unlink job', { description: error.message })
       return false
     }
-    toast.success('Project linked to job')
+    toast.success(jobId ? 'Project linked to job' : 'Project unlinked')
     refetchProject()
     return true
   }
 
   const handleLinkToJob = async (jobId: string) => {
     if (!project) return
-    
+
+    // Empty string => unlink
+    if (!jobId) {
+      await linkProjectToJob(null)
+      return
+    }
+
     if (savedCandidates && savedCandidates.length > 0) {
       setPendingJobId(jobId)
       setShowAddToPipelineDialog(true)

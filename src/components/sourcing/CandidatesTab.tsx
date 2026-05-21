@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { SourcingProject, SearchCriteria } from '@/types/sourcing'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { LinkToJobBanner } from './LinkToJobBanner'
+import { LinkedJobStrip } from './LinkedJobStrip'
 import { ResultsRunSummary } from './ResultsRunSummary'
 
 interface Candidate {
@@ -95,8 +96,17 @@ export function CandidatesTab({
       {/* Banner zone — only when results exist and not loading */}
       {!isLoading && candidates.length > 0 && (
         <div className="px-4 pt-4 space-y-2 shrink-0">
-          {!isLinked && onLinkToJob && (
-            <LinkToJobBanner onLinkToJob={onLinkToJob} currentJobId={project.job_id} />
+          {isLinked ? (
+            <LinkedJobStrip
+              jobId={(jobId || project.job_id)!}
+              jobTitle={project.jobs?.title}
+              department={project.jobs?.organizations?.name}
+              onUnlink={() => onLinkToJob?.('')}
+            />
+          ) : (
+            onLinkToJob && (
+              <LinkToJobBanner onLinkToJob={onLinkToJob} currentJobId={project.job_id} />
+            )
           )}
           <ResultsRunSummary
             totalCount={summary.total}
