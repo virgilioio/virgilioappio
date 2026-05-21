@@ -1,60 +1,24 @@
-# Sourcing project — linked-to-job state
+# Fix booking failures: patch `tg_notify_interview_event`
 
-Mirror the screenshot for projects that **are** linked to a job. Three focused changes:
+## Problem
+Every public booking attempt for ALEJANDRO CARRILLO REAL (and any other candidate) fails in `create-booking` with:
 
-## 1. Replace yellow banner with a green "Linked to job" strip
-
-New component `src/components/sourcing/LinkedJobStrip.tsx`:
-
-- Slim single-line bar (32–36px), `bg-emerald-50` + `ring-1 ring-emerald-200/60`, rounded-lg.
-- Left: link icon in an emerald tile + label
-  `Linked to job <Job title> · <Department> · collected candidates drop into the Sourced stage automatically.`
-  (Job title is bold; the trailing sentence is `text-text-secondary`.)
-- Right: two ghost buttons — `Open job` (↗ icon, navigates to `/jobs/:id`) and `Unlink` (chain-break icon, calls `onUnlink`).
-- Pulls job title + department from `project.jobs` (already selected in `useSourcingProject`). Falls back to "this job" if missing.
-
-`CandidatesTab.tsx` change (inside the banner zone):
-```tsx
-{isLinked ? (
-  <LinkedJobStrip
-    jobId={project.job_id!}
-    jobTitle={project.jobs?.title}
-    department={project.jobs?.department_name /* or organizations.name */}
-    onUnlink={() => onLinkToJob?.('')} // see §1a
-  />
-) : (
-  onLinkToJob && <LinkToJobBanner onLinkToJob={onLinkToJob} currentJobId={project.job_id} />
-)}
+```
+column c.first_name does not exist
 ```
 
-### 1a. Unlink wiring
+The error is raised by the `tg_notify_interview_event` trigger on `scheduled_bookings`. It queries `public.candidates` with `c.first_name` and `c.last_name`, but that table only has a `candidate_name` column. The INSERT is rolled back, so no booking is ever persisted.
 
-`SourcingProjectView.handleLinkToJob` already updates `sourcing_projects.job_id`. Extend it to accept empty string / null and run an `UPDATE … SET job_id = null`, then toast "Project unlinked". No new hook needed.
+A second latent bug in the same function: it queries `public.profiles` using `user_id = NEW.candidate_id`, but candidate IDs aren't auth user IDs. That branch silently returns NULL today, so it's not blocking — but it should be removed.
 
-## 2. Verify bulk-select column + black bulk bar
+## Fix
+One migration that replaces `tg_notify_interview_event` with a corrected version:
 
-Both already exist in `SourcingCandidateTable.tsx`. QA pass only:
+- Resolve candidate name from `public.candidates.candidate_name` (fallback to `NEW.candidate_name`).
+- Drop the bogus `profiles` lookup by `candidate_id`; derive `actor_name` from the candidate name and leave `actor_avatar` NULL.
+- Keep every other branch (event_kind detection, `emit_notification` call, payload) identical.
 
-- Confirm the checkbox column header + per-row checkbox render at all densities.
-- Confirm the dark bulk bar shows `X selected · Select all N` in white (previous fix), with `Collect`, `Save for later`, `Not a fit`, and a close `×`. No code change unless something regressed.
+No code changes, no RLS changes, no edge function changes — strictly a DB function patch.
 
-## 3. Preview vs Collected card polish
-
-Already differentiated via `isCollectedApollo` / `isApolloPreview`. Tighten to match screenshot:
-
-- **Preview rows**: show a small "🔒 lock" before the email and render the email value as a redacted bar (`bg-text-tertiary/15 rounded w-32 h-3 inline-block`). Primary action button is `Reach out` only (no "Add to job"), matching the locked state. Badge stays `Preview`.
-- **Collected rows**: full email/phone visible, primary action `Add to job` (already wired, label already conditional on `jobId`). Badge stays `Collected`, plus the existing `In Sourced` status pill when applicable.
-
-These are presentational tweaks inside the existing row renderer — no new components.
-
-## Files touched
-
-- `src/components/sourcing/LinkedJobStrip.tsx` (new)
-- `src/components/sourcing/CandidatesTab.tsx` (swap banner based on `isLinked`)
-- `src/components/sourcing/SourcingProjectView.tsx` (allow unlink in `handleLinkToJob`)
-- `src/components/sourcing/SourcingCandidateTable.tsx` (preview lock/redact + action gating)
-
-## Out of scope
-
-- No backend, RLS, or scoring changes.
-- No edits to the results header, AI summary banner, tabs, toolbar, or pagination (shipped in prior turn).
+## Verification
+After the migration, ALEJANDRO should be able to complete the booking from the public link. We'll confirm by re-checking `create-booking` edge logs for a clean run and that a row appears in `scheduled_bookings`.
