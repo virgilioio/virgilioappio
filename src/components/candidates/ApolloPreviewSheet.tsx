@@ -9,7 +9,7 @@ import {
   Mail, Phone, Lock, Briefcase, Wrench, MapPin, Building2,
   CheckCircle2, ExternalLink, Check, Info, Globe, Users, DollarSign,
   IdCard, Clock, Hash, Database, RefreshCw, TrendingUp,
-  GraduationCap, Copy,
+  GraduationCap, Copy, Sparkles, Linkedin,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
