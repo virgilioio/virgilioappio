@@ -697,7 +697,7 @@ export function ApolloPreviewSheet({
         <GroupLabel>Always returned on enrichment</GroupLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <AvailabilityFieldCard icon={IdCard} label="Real last name" available={true} />
-          <AvailabilityFieldCard icon={LinkedInFilled} label="LinkedIn URL" available={true} />
+          <AvailabilityFieldCard icon={Linkedin} label="LinkedIn URL" available={true} />
           <AvailabilityFieldCard icon={Briefcase} label="Full work history + descriptions" sublabel="Every role · titles, dates, summaries" available={true} />
           <AvailabilityFieldCard icon={Wrench} label="Seniority + departments" sublabel="Normalized levels & function tags" available={true} />
         </div>
