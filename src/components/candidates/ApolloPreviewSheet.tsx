@@ -715,30 +715,24 @@ export function ApolloPreviewSheet({
     ? Math.max(0, (creditsData.collect_credits_limit - creditsData.collect_credits_used) + (creditsData.bonus_credits_available ?? 0))
     : null
   const PreCollectFooter = (
-    <div className="border-t border-border bg-surface-primary px-5 py-3 flex items-center justify-between gap-4 flex-shrink-0">
-      <div className="flex items-start gap-2.5 min-w-0">
-        <div className="h-8 w-8 rounded-md bg-virgilio-purple/10 flex items-center justify-center flex-shrink-0">
-          <Lock className="h-3.5 w-3.5 text-virgilio-purple" />
-        </div>
-        <div className="min-w-0">
-          <div className="text-[13px] font-poppins font-medium text-text-primary leading-tight">
-            Collect to reveal the {collectableCount} fields above.
-          </div>
-          <div className="text-[11.5px] text-text-tertiary mt-0.5">
-            Uses <span className="font-medium text-text-secondary">1 credit</span>
-            {remainingCredits !== null && (
-              <> · {remainingCredits} remaining this month</>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Button variant="ghost" size="sm" onClick={handleNavigateNext} disabled={!hasNext}>
+    <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4 flex-shrink-0">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" onClick={handleNavigateNext} disabled={!hasNext} type="button">
           Skip
         </Button>
+        <p className="hidden sm:block text-[12px] text-text-tertiary">
+          Uses <span className="text-text-primary font-medium">1 credit</span>
+          {remainingCredits !== null && (
+            <> · {remainingCredits} remaining this month</>
+          )}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" type="button" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
         <Button
-          variant="purple"
-          size="sm"
+          type="button"
           onClick={triggerCollect}
           disabled={isCollecting || isCollectDisabled}
           loading={isCollecting}
