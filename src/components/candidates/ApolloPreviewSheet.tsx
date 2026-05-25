@@ -136,21 +136,27 @@ function KnownFieldRow({
   )
 }
 
-function MatchChip({ kind }: { kind: 'match' | 'partial' | 'inferred' | 'miss' }) {
-  const config = {
-    match:    { label: 'Match',    cls: 'bg-green-50 text-green-700 border-green-200' },
-    partial:  { label: 'Partial',  cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-    inferred: { label: 'Inferred', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-    miss:     { label: 'No match', cls: 'bg-surface-secondary text-text-tertiary border-border' },
-  }[kind]
-  return (
-    <span className={cn(
-      "inline-flex items-center px-2 h-[22px] rounded-md border text-[11px] font-medium font-poppins",
-      config.cls
-    )}>
-      {config.label}
-    </span>
-  )
+type MatchKind = 'match' | 'partial' | 'inferred' | 'miss'
+
+function MatchBadge({ kind }: { kind: MatchKind }) {
+  switch (kind) {
+    case 'match':
+      return <Badge tone="green" dot>Match</Badge>
+    case 'partial':
+      return <Badge tone="yellow" dot>Partial</Badge>
+    case 'inferred':
+      return <Badge tone="lilac" dot>Inferred</Badge>
+    case 'miss':
+    default:
+      return <Badge tone="neutral" dot>No match</Badge>
+  }
+}
+
+const MATCH_ICON_TONE: Record<MatchKind, string> = {
+  match: 'text-pastel-green-foreground',
+  partial: 'text-pastel-yellow-foreground',
+  inferred: 'text-badge-lilac-foreground',
+  miss: 'text-text-tertiary',
 }
 
 function MatchRow({
@@ -162,36 +168,28 @@ function MatchRow({
   icon: React.ElementType
   label: string
   value: React.ReactNode
-  kind: 'match' | 'partial' | 'inferred' | 'miss'
+  kind: MatchKind
 }) {
   return (
     <div className="flex items-start justify-between gap-3 py-2.5">
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
-        <Icon className="h-3.5 w-3.5 text-text-tertiary mt-0.5 flex-shrink-0" strokeWidth={2} />
+        <Icon className={cn("h-3.5 w-3.5 mt-0.5 flex-shrink-0", MATCH_ICON_TONE[kind])} strokeWidth={2} />
         <div className="min-w-0">
           <div className="text-[11px] text-text-tertiary uppercase tracking-[0.06em] font-medium">{label}</div>
           <div className="text-[13px] text-text-primary mt-0.5 leading-snug">{value}</div>
         </div>
       </div>
       <div className="flex-shrink-0 pt-0.5">
-        <MatchChip kind={kind} />
+        <MatchBadge kind={kind} />
       </div>
     </div>
   )
 }
 
-function KeywordChip({ label, matched }: { label: string; matched: boolean }) {
-  return (
-    <span className={cn(
-      "inline-flex items-center gap-1.5 px-2.5 h-[26px] rounded-full text-[12px] font-poppins font-medium border",
-      matched
-        ? "bg-green-50 text-green-700 border-green-200"
-        : "bg-transparent text-text-tertiary border-border"
-    )}>
-      {matched && <Check className="h-3 w-3" strokeWidth={2.5} />}
-      {label}
-    </span>
-  )
+function KeywordBadge({ label, matched }: { label: string; matched: boolean }) {
+  return matched
+    ? <Badge tone="green" icon={Check}>{label}</Badge>
+    : <Badge tone="neutral" bordered>{label}</Badge>
 }
 
 function AvailabilityFieldCard({
@@ -208,8 +206,13 @@ function AvailabilityFieldCard({
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-primary px-3 py-2.5">
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="h-7 w-7 rounded-md bg-surface-secondary flex items-center justify-center flex-shrink-0">
-          <Icon className="h-3.5 w-3.5 text-text-secondary" strokeWidth={2} />
+        <div className={cn(
+          "h-7 w-7 rounded-md flex items-center justify-center flex-shrink-0",
+          available
+            ? "bg-pastel-green text-pastel-green-foreground"
+            : "bg-muted text-text-tertiary"
+        )}>
+          <Icon className="h-3.5 w-3.5" strokeWidth={2} />
         </div>
         <div className="min-w-0">
           <div className="text-[12.5px] font-poppins font-medium text-text-primary truncate leading-tight">{label}</div>
@@ -218,15 +221,9 @@ function AvailabilityFieldCard({
           )}
         </div>
       </div>
-      <span className={cn(
-        "inline-flex items-center gap-1 px-1.5 h-[20px] rounded text-[10.5px] font-medium font-poppins flex-shrink-0",
-        available
-          ? "bg-green-50 text-green-700"
-          : "bg-surface-secondary text-text-tertiary"
-      )}>
-        {available && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
-        {available ? 'Available' : 'Not in record'}
-      </span>
+      {available
+        ? <Badge tone="green" dot size="xs">Available</Badge>
+        : <Badge tone="neutral" size="xs">Not in record</Badge>}
     </div>
   )
 }
