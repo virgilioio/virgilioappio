@@ -713,7 +713,9 @@ export function ApolloPreviewSheet({
   )
 
   const collectableCount = 12
-  const remainingCredits = credits?.credits_remaining ?? null
+  const remainingCredits = creditsData
+    ? Math.max(0, (creditsData.collect_credits_limit - creditsData.collect_credits_used) + (creditsData.bonus_credits_available ?? 0))
+    : null
   const PreCollectFooter = (
     <div className="border-t border-border bg-surface-primary px-5 py-3 flex items-center justify-between gap-4 flex-shrink-0">
       <div className="flex items-start gap-2.5 min-w-0">
@@ -742,7 +744,7 @@ export function ApolloPreviewSheet({
           onClick={triggerCollect}
           disabled={isCollecting || isCollectDisabled}
           loading={isCollecting}
-          icon={<Lock className="h-3.5 w-3.5" />}
+          icon={Lock}
         >
           Collect · 1 credit
         </Button>
