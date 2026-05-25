@@ -304,7 +304,7 @@ export function ApolloPreviewSheet({
   const { isCollectDisabled } = useSourcingCreditWarnings()
   const { shortlistCandidate, markNotAFit, isUpdating, currentApolloId } = useCandidatePreviewStatus()
   const { loadHiringPlanInstances } = useJobHiringPlan()
-  const { credits } = useSourcingCredits()
+  const { data: creditsData } = useSourcingCredits()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
