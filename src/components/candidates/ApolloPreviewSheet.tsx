@@ -97,7 +97,7 @@ function CardShell({
     <Card className="rounded-xl border border-border bg-surface-primary shadow-none">
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <div className="flex items-center gap-2">
-          {Icon && <Icon className="h-3.5 w-3.5 text-text-tertiary" strokeWidth={2.2} />}
+          {Icon && <Icon className="h-3.5 w-3.5 text-virgilio-purple" strokeWidth={2.2} />}
           <h3 className="font-poppins font-semibold text-[14px] tracking-[-0.01em] text-text-primary">
             {title}
           </h3>
