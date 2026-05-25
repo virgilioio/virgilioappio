@@ -902,7 +902,7 @@ export function ApolloPreviewSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-[96vw] sm:max-w-2xl h-full p-0" showOverlay={false}>
+        <SheetContent side="right" className="w-[96vw] sm:max-w-4xl h-full p-0" showOverlay={false}>
           <div className="flex h-full flex-col">
             {TopBar}
             {IdentityBlock}
