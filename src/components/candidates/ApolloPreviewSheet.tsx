@@ -363,7 +363,7 @@ export function ApolloPreviewSheet({
     if (!apolloData) {
       return { overall: 50, roleAlignment: 'medium', skillsMatch: 'medium', locationMatch: 'medium', confidence: 0, dataRichness: 0 }
     }
-    return calculateFitScore(apolloData, searchCriteria)
+    return calculateFitScore({ ...apolloData, candidate_name: apolloData.candidate_name || apolloData.full_name || '' }, searchCriteria)
   }, [apolloData, searchCriteria])
 
   const keywordMatches = useMemo(() => {
