@@ -668,7 +668,7 @@ export function ApolloPreviewSheet({
             </div>
             <div className="flex flex-wrap gap-1.5">
               {keywordMatches.items.map((kw, i) => (
-                <KeywordChip key={i} label={kw.label} matched={kw.matched} />
+                <KeywordBadge key={i} label={kw.label} matched={kw.matched} />
               ))}
             </div>
           </div>
