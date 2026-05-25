@@ -1,61 +1,54 @@
-## Redesign the Apollo preview sheet (pre-collect state)
+# Apollo Preview Sheet — polish pass
 
-Replace the current pre-collect view inside `ApolloPreviewSheet.tsx` with the exact structure from the reference. The post-collect view is **not** touched in this task.
+Four targeted fixes inside `src/components/candidates/ApolloPreviewSheet.tsx` (plus one upstream data fix). No logic, no data, no post-collect changes.
 
-### What the new pre-collect view shows
+## 1. "First Name: Unknown" bug
 
-**Header (top bar + identity block)**
-- Existing top bar (prev/next · `N of M · {jobTitle}` · Not a fit · Save for later · ⋯ · close) — kept as-is.
-- Identity block:
-  - Avatar (initial) · `Jordan V***a` (obfuscated last name from Apollo) · `Preview · pre-collect` lock pill
-  - Subline: `Lead Product Designer` at `Plaid`
-  - Meta row: `Source: Apollo` · `Apollo refreshed Xd ago` · `apollo_id 6b3e2f` (mono)
-  - Right side: `KEYWORD FIT` chip with score `86` and `3 of 4 keywords` caption (green when ≥75, amber 50–74, neutral otherwise).
+**Cause:** `SourcingCandidateTable.tsx` line 818 passes the raw `candidate` object as `apolloData`. That object exposes the name on `full_name` (PDL) or `candidate_name` (Apollo). When only `full_name` is set, `apolloData.candidate_name` is `undefined`, so `rawName` falls back to `"Unknown Candidate"` and `firstName` becomes `"Unknown"`.
 
-**Card 1 — "What we know now"** (header right caption: `From Apollo search · 6 fields`)
-- 2-column grid of label/value rows: First name, Last name (`V***a (obfuscated)`), Title, Company, Source (`Apollo`), Refreshed (`5d ago`).
-- Helper line in muted surface below: "**That's it.** Apollo's search endpoint is intentionally lean — last name, exact location, LinkedIn URL, email, phone, employment history, seniority and departments are all gated behind enrichment."
+**Fix:**
+- In `ApolloPreviewSheet.tsx`, widen `rawName` resolution: `enrichedData?.candidate_name || apolloData?.candidate_name || (apolloData as any)?.full_name || 'Unknown Candidate'`.
+- Also widen the prop type on `apolloData` to accept an optional `full_name?: string` so the call sites stay clean.
 
-**Card 2 — "How they match the search"** (header right caption: `Computed locally`)
-- Rows with right-aligned tone chips:
-  - `Role` — "Lead Product Designer (search asks for {target})" · chip `Match` (green) / `Partial` (amber) / `Inferred` (amber)
-  - `Company` — "{company} · industry hint available on enrichment" · `Inferred` chip
-  - `Location` — "City available · exact text hidden until collect" · `Inferred` chip
-- Sub-block: `KEYWORD MATCHES (N OF M)` with one chip per search keyword — green check + label when matched, neutral outline when not.
+## 2. "How they match the search" card — use Gio Badges
 
-**Card 3 — "What you'll get on collect"** (lock icon in title; right caption: `Apollo says: yes / no`)
-- Grouped 2-column grid of "field cards" (icon · label/sublabel · availability pill on the right):
-  - **PERSON**: Verified work email, Direct mobile phone (sublabel "Delivered async via webhook"), Exact city + state, Country
-  - **COMPANY**: Industry, Employee count, Revenue band, Company phone
-  - **ALWAYS RETURNED ON ENRICHMENT**: Real last name, LinkedIn URL, Full work history + descriptions (sublabel "Every role · titles, dates, summaries"), Seniority + departments (sublabel "Normalized levels & function tags")
-- Each card shows a green ✓ `Available` pill, or a muted `Not in record` pill when Apollo's flag is false (driven by `apolloData.has_email`, `has_phone`, `has_location` — others default to `Available` since they're always returned by `bulk_match`).
-- Footer note in an amber-tinted info banner: "Apollo doesn't return education, photo, GitHub or Twitter in this endpoint. Resume, scorecards and Gio signals come once the candidate is in your job's pipeline."
+- Sparkles icon in the `CardShell` header gets a brand tint: `text-virgilio-purple` (replacing `text-text-tertiary`). Same treatment for the `Lock` icon on the "What you'll get on collect" header.
+- Delete the local `MatchChip` component. Render via `<Badge>`:
+  - `match` → `<Badge tone="green" dot>Match</Badge>`
+  - `partial` → `<Badge tone="yellow" dot>Partial</Badge>`
+  - `inferred` → `<Badge tone="yellow" dot>Inferred</Badge>` (lilac if we want to read as "AI-inferred" — pick `lilac` to match badge-tones convention for AI signals)
+  - `miss` → `<Badge tone="neutral" dot>No match</Badge>`
+- Delete the local `KeywordChip`. Render via `<Badge>`:
+  - matched → `<Badge tone="green" icon={Check}>{label}</Badge>`
+  - not matched → `<Badge tone="neutral" bordered>{label}</Badge>` (so unmatched still reads as a chip but neutral)
+- Row icons (Briefcase / Building2 / MapPin) gain subtle tone tinting that mirrors the badge tone (green / yellow / neutral) so the row reads at a glance.
 
-**Sticky footer (existing)**
-- Left: lock icon · "Collect to reveal the 12 fields above." · sub: "Uses 1 credit · {N} remaining this month"
-- Right: `Skip` (ghost) · `Collect · 1 credit` (purple primary). Both wired to existing handlers (`onNavigateNext` / `handleCollectProfile`).
+## 3. "What you'll get on collect" card — colored icons + Gio Badges
 
-### What gets removed from the pre-collect view
+- Replace the gray `bg-surface-secondary` icon square with a tone-tinted square keyed off availability:
+  - available → `bg-pastel-green text-pastel-green-foreground`
+  - not in record → `bg-muted text-text-tertiary`
+- Replace the inline `Available` / `Not in record` pill with `<Badge>`:
+  - available → `<Badge tone="green" dot size="xs">Available</Badge>`
+  - not in record → `<Badge tone="neutral" size="xs">Not in record</Badge>`
+- Keep grid layout, sublabels, group labels, and the amber "Apollo doesn't return…" callout as-is.
 
-- Gio's Take typewriter / mascot block
-- Recommendation banner (`getRecommendation`)
-- Intent match bullets section (`IntentMatchBullet` list)
-- Inferred career snapshot / expandable accordion
-- The standalone fit-score header tile that isn't the keyword-fit chip
-- `MatchLabel` "Strong/Medium/Weak" pills (replaced by the new Match/Inferred chips inside Card 2)
+## 4. Sticky footer — match Create Job wizard
 
-The `previewInference`, `calculateFitScore` and `generateEnrichedGioTake` helpers stay in the file system for now (still used by post-collect / fit chip math) but are no longer rendered in the pre-collect tree. `useCandidatePreviewStatus` (shortlist/not-a-fit) and `handleCollectProfile` keep their current behavior — only the JSX between the header and the sticky footer is rebuilt.
+Mirror `src/components/jobs/JobWizard.tsx` lines 414–462 exactly:
 
-### Files touched
+- Container: `border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4`.
+- Remove the decorative purple Lock tile and the two-line headline.
+- Left cluster:
+  - `<Button variant="ghost" onClick={handleNavigateNext} disabled={!hasNext}>Skip</Button>`
+  - Helper line (hidden on mobile): `text-[12px] text-text-tertiary` reading `Uses 1 credit · {remaining} remaining this month` (only when `remainingCredits !== null`).
+- Right cluster (matches wizard's secondary + primary pairing):
+  - `<Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>`
+  - `<Button onClick={triggerCollect} loading={isCollecting} disabled={isCollecting || isCollectDisabled} icon={Lock}>Collect · 1 credit</Button>`
+  - Primary uses the default Button variant (citron-noir), matching the wizard's CTA and per the Buttons core rule (one primary per surface, no `purple` override here).
 
-- `src/components/candidates/ApolloPreviewSheet.tsx` — rewrite the pre-collect JSX block; keep state, hooks, collection flow, post-collect branch, and props untouched. Add small local subcomponents (`KnownFieldRow`, `MatchRow`, `AvailabilityFieldCard`, `KeywordChip`) inside the file to keep blast radius minimal.
+## Files
 
-### Visual system
+- `src/components/candidates/ApolloPreviewSheet.tsx` — fixes 1–4, delete `MatchChip` and `KeywordChip` locals, simplify `AvailabilityFieldCard`, rewrite `PreCollectFooter`.
 
-All styling uses existing Gio Foundation tokens — Poppins for labels/headings, Inter for body, `Card`, `Badge` (tones: `green` for Match/Available, `yellow` for Inferred, `neutral` for Not in record, `purple` for the lock pill), no new colors. Spacing matches the screenshots (cards: rounded-xl, 1px hairline border, p-5; rows: 12px vertical rhythm).
-
-### Out of scope
-
-- Post-collect view rendering — separate follow-up task.
-- Edge function changes — no backend work; we only consume `apolloData` already passed in.
-- Data shape changes — relying on existing `apolloData` props plus `searchCriteria.title_keywords` for keyword fit calculation (already computed by `calculateFitScore`).
+No backend, no hooks, no post-collect view changes.

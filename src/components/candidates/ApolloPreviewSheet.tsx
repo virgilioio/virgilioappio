@@ -31,7 +31,8 @@ interface ApolloPreviewSheetProps {
   candidateId?: string | null
   apolloId?: string | null
   apolloData?: {
-    candidate_name: string
+    candidate_name?: string
+    full_name?: string
     headline?: string
     location?: string
     current_company?: string
