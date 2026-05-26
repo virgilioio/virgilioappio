@@ -275,7 +275,8 @@ function JobGroup({
 }
 
 // ================================================================
-// Step 2 — Stage + backfill (centered dialog)
+// Step 2 — Stage + backfill. Self-contained, fits inside a popover OR
+// the legacy centered dialog (both surfaces get identical chrome).
 // ================================================================
 function StageStep({
   job,
@@ -318,26 +319,46 @@ function StageStep({
 
   const selectedStage = stages.find(s => s.jhsId === selectedJhsId)
 
+  // Stage swatch palette — distinct color square per row (matches screenshot).
+  const swatchPalette = ['#8B8F9E', '#3B82F6', '#2563EB', '#EC4899', '#F59E0B', '#10B981']
+
   return (
-    <div className="flex flex-col min-h-0 flex-1">
-      <div className="flex items-start gap-3 pb-3 mb-3 border-b border-border">
-        <Button variant="ghost" size="xs" iconOnly icon={ChevronLeft} aria-label="Back to job pick" onClick={onBack} />
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
-          <Building2 className="h-4 w-4" />
-        </div>
-        <div className="flex-1 min-w-0 pt-0.5">
-          <div className="truncate text-[14px] font-medium text-text-primary">{job.title}</div>
-          <div className="mt-0.5 text-[11.5px] text-text-tertiary truncate">
-            {job.organization_name}
-            {job.applicantCount !== undefined && job.applicantCount > 0 && (
-              <> · {job.applicantCount} applicant{job.applicantCount !== 1 ? 's' : ''}</>
-            )}
+    <div className="flex flex-col">
+      {/* Header — square dark back tile + title + meta */}
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to job pick"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex-1 min-w-0 pt-0.5">
+            <div className="truncate text-[15px] font-semibold font-poppins tracking-[-0.02em] text-text-primary leading-snug">
+              {job.title}
+            </div>
+            <div className="mt-0.5 text-[12.5px] text-text-tertiary leading-snug truncate">
+              {[
+                job.organization_name,
+                job.applicantCount && job.applicantCount > 0
+                  ? `${job.applicantCount} applicant${job.applicantCount !== 1 ? 's' : ''}`
+                  : null,
+                job.recruiterName,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary px-1">
+      <div className="h-px bg-border" />
+
+      {/* Default stage section */}
+      <div className="px-4 pt-3 pb-3">
+        <div className="px-1 mb-2 text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary">
           Default stage for new collects
         </div>
         {loading ? (
@@ -349,9 +370,10 @@ function StageStep({
             This job has no pipeline stages configured.
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {stages.map((stage, idx) => {
               const isSelected = selectedJhsId === stage.jhsId
+              const swatch = swatchPalette[idx % swatchPalette.length]
               return (
                 <button
                   key={stage.jhsId}
@@ -364,12 +386,15 @@ function StageStep({
                 >
                   <div className={cn(
                     'h-4 w-4 shrink-0 rounded-full border flex items-center justify-center',
-                    isSelected ? 'border-virgilio-purple bg-virgilio-purple' : 'border-border'
+                    isSelected ? 'border-virgilio-purple' : 'border-border'
                   )}>
-                    {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-background" />}
+                    {isSelected && <div className="h-2 w-2 rounded-full bg-virgilio-purple" />}
                   </div>
-                  <div className="h-3 w-3 rounded-sm bg-foreground/15" />
-                  <div className="flex-1 text-[13px] text-text-primary">{stage.label}</div>
+                  <div
+                    className="h-3 w-3 shrink-0 rounded-sm"
+                    style={{ backgroundColor: swatch }}
+                  />
+                  <div className="flex-1 text-[13.5px] text-text-primary truncate">{stage.label}</div>
                   {idx === 0 && (
                     <Badge tone="lilac" size="xs" shape="pill">Recommended</Badge>
                   )}
@@ -378,44 +403,52 @@ function StageStep({
             })}
           </div>
         )}
+      </div>
 
-        <div className="pt-3 border-t border-border">
-          <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary px-1 mb-2">
-            Backfill
-          </div>
-          <div className="space-y-2 px-1">
-            {savedCount > 0 && (
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <Checkbox
-                  checked={backfill}
-                  onCheckedChange={(v) => setBackfill(v === true)}
-                  className="mt-0.5"
-                />
-                <span className="text-[13px] text-text-primary leading-tight">
-                  Drop <strong>{savedCount}</strong> already-collected candidate{savedCount !== 1 ? 's' : ''} into <strong>{selectedStage?.label || 'this stage'}</strong>
-                </span>
-              </label>
-            )}
+      <div className="h-px bg-border" />
+
+      {/* Backfill */}
+      <div className="px-4 pt-3 pb-3">
+        <div className="px-1 mb-2 text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary">
+          Backfill
+        </div>
+        <div className="space-y-2 px-1">
+          {savedCount > 0 && (
             <label className="flex items-start gap-2.5 cursor-pointer">
               <Checkbox
-                checked={careersLink}
-                onCheckedChange={(v) => setCareersLink(v === true)}
+                checked={backfill}
+                onCheckedChange={(v) => setBackfill(v === true)}
                 className="mt-0.5"
               />
-              <span className="text-[13px] text-text-primary leading-tight">
-                Send {organizationName || 'your'} careers page link to all future collects
+              <span className="text-[13px] text-text-primary leading-snug">
+                Drop <strong>{savedCount} already-collected</strong> candidate{savedCount !== 1 ? 's' : ''} into <strong>{selectedStage?.label || 'this stage'}</strong>
               </span>
             </label>
-          </div>
+          )}
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <Checkbox
+              checked={careersLink}
+              onCheckedChange={(v) => setCareersLink(v === true)}
+              className="mt-0.5"
+            />
+            <span className="text-[13px] text-text-primary leading-snug">
+              Send <strong>{organizationName || 'your'} careers page</strong> link to all future collects
+            </span>
+          </label>
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
+      <div className="h-px bg-border" />
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-3">
         <span className="text-[12px] text-text-tertiary">
-          {backfill && savedCount > 0 ? `${savedCount} will move on link` : 'No backfill'}
+          {backfill && savedCount > 0
+            ? `${savedCount} will move on link`
+            : 'No backfill'}
         </span>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onBack} disabled={isSubmitting}>
+          <Button variant="secondary" size="sm" onClick={onBack} disabled={isSubmitting}>
             Back
           </Button>
           <Button
@@ -430,6 +463,46 @@ function StageStep({
         </div>
       </div>
     </div>
+  )
+}
+
+// ================================================================
+// LinkToJobStagePopoverContent — Step 2 inside the anchored popover.
+// Wraps StageStep and owns the submit lifecycle so the banner can keep
+// both steps inside a single floating surface.
+// ================================================================
+interface StagePopoverContentProps {
+  job: EnrichedJob
+  savedCount: number
+  organizationName?: string
+  onBack: () => void
+  onConfirm: (payload: LinkToJobPayload) => void | Promise<void>
+}
+
+export function LinkToJobStagePopoverContent({
+  job,
+  savedCount,
+  organizationName,
+  onBack,
+  onConfirm,
+}: StagePopoverContentProps) {
+  const [submitting, setSubmitting] = useState(false)
+  return (
+    <StageStep
+      job={job}
+      savedCount={savedCount}
+      organizationName={organizationName}
+      onBack={onBack}
+      isSubmitting={submitting}
+      onConfirm={async (stageJhsId, stageName, backfill, careersLink) => {
+        setSubmitting(true)
+        try {
+          await onConfirm({ jobId: job.id, stageJhsId, stageName, backfill, careersLink })
+        } finally {
+          setSubmitting(false)
+        }
+      }}
+    />
   )
 }
 
