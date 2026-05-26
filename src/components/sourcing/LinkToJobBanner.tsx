@@ -33,6 +33,7 @@ export function LinkToJobBanner({
 }: LinkToJobBannerProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [stageDialogOpen, setStageDialogOpen] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
   const [pickedJob, setPickedJob] = useState<EnrichedJob | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
