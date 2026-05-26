@@ -524,7 +524,7 @@ export function LinkToJobDialog({
               isLoading={isLoading}
               spec={spec}
               onSelect={(job) => { setPickedJob(job); setStep('stage') }}
-              onCreateNew={() => toast({ title: 'Coming soon', description: 'Create job from this dialog is coming soon.' })}
+              onCreateNew={() => { onOpenChange(false); setWizardOpen(true) }}
             />
           ) : pickedJob ? (
             <StageStep
