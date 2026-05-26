@@ -855,158 +855,256 @@ export function ApolloPreviewSheet({
     </div>
   )
 
+  const personalEmails = (enrichedData?.contact_emails || []).filter(
+    e => e?.email && e.email !== enrichedData?.email && (e.type === 'personal' || e.type !== 'work')
+  )
+  const linkedinHandle = enrichedData?.linkedin_url?.replace(/^https?:\/\/(www\.)?linkedin\.com\//i, 'linkedin.com/')
+  const collectedAgo = conciseAgo(enrichedData?.apollo_collected_at)
+  const apolloRefreshedAgo = refreshedLabel
+
   const PostCollectBody = (
-    <div className="flex-1 overflow-y-auto p-6 space-y-5">
-      <Card className="border-green-200 bg-green-50/50">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-green-800">Profile Collected</h4>
-                <p className="text-sm text-green-600">Full details now available</p>
-              </div>
+    <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 bg-surface-secondary/30">
+      {/* Contact strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Work email */}
+        <div className="rounded-xl border border-border bg-surface-primary p-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.08em] font-medium text-text-tertiary">
+              <Mail className="h-3 w-3" /> Work email
             </div>
-            <Button
-              onClick={() => {
-                if (collectedJobId && enrichedData?.candidate_id) {
-                  navigate(`/jobs/${collectedJobId}?candidate=${enrichedData.candidate_id}`)
-                } else if (enrichedData?.candidate_id) {
-                  navigate(`/candidates?openCandidate=${enrichedData.candidate_id}`)
-                }
-              }}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              {collectedJobId ? 'View in Pipeline' : 'View Profile'}
-            </Button>
+            {enrichedData?.email_status === 'verified' && (
+              <Badge tone="green" size="xs" dot>Verified</Badge>
+            )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Accordion type="multiple" defaultValue={['contact', 'experience', 'skills']} className="space-y-3">
-        <AccordionItem value="contact" className="border rounded-lg bg-surface-primary">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-text-secondary" />
-              <span className="font-medium">Contact Information</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="px-4 pb-4 space-y-3">
-              {enrichedData?.email && (
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Mail className="h-4 w-4 text-text-secondary flex-shrink-0" />
-                    <a href={`mailto:${enrichedData.email}`} className="text-sm text-blue-600 hover:underline truncate">
-                      {enrichedData.email}
-                    </a>
-                    <Badge variant="secondary" className="text-xs flex-shrink-0">
-                      <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-                      Verified
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText(enrichedData.email!)
-                      toast({ title: 'Copied', description: 'Email copied to clipboard' })
-                    }}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-text-secondary" />
-                {enrichedData?.phone ? (
-                  <a href={`tel:${enrichedData.phone}`} className="text-sm text-blue-600 hover:underline">
-                    {enrichedData.phone}
-                  </a>
-                ) : phoneCheckStatus === 'checking' ? (
-                  <span className="text-sm text-amber-600 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 bg-amber-500 rounded-full animate-pulse" />
-                    Checking for phone...
-                  </span>
-                ) : apolloData?.has_phone ? (
-                  <span className="text-sm text-text-tertiary">Phone pending - try refreshing</span>
-                ) : (
-                  <span className="text-sm text-text-tertiary">Phone not available</span>
-                )}
+          {enrichedData?.email ? (
+            <>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <a href={`mailto:${enrichedData.email}`} className="text-[13px] text-text-primary hover:underline truncate font-medium">
+                  {enrichedData.email}
+                </a>
+                <button
+                  className="text-text-tertiary hover:text-text-secondary flex-shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(enrichedData.email!)
+                    toast({ title: 'Copied', description: 'Email copied to clipboard' })
+                  }}
+                  aria-label="Copy email"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
               </div>
-              {enrichedData?.linkedin_url && (
-                <div className="flex items-center gap-2">
-                  <LinkedInFilled className="h-4 w-4 text-text-secondary" />
-                  <a href={enrichedData.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate">
-                    {enrichedData.linkedin_url}
-                  </a>
+              {personalEmails.length > 0 && (
+                <div className="text-[11.5px] text-text-tertiary mt-1.5 truncate">
+                  + {personalEmails.length} personal: {personalEmails[0].email}
                 </div>
               )}
-              {enrichedLocation && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-text-secondary" />
-                  <span className="text-sm text-text-primary">{enrichedLocation}</span>
-                </div>
-              )}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
+            </>
+          ) : (
+            <span className="text-[12.5px] text-text-tertiary">Not in record</span>
+          )}
+        </div>
 
-        <AccordionItem value="experience" className="border rounded-lg bg-surface-primary">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-text-secondary" />
-              <span className="font-medium">Work Experience</span>
+        {/* Mobile */}
+        <div className="rounded-xl border border-border bg-surface-primary p-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.08em] font-medium text-text-tertiary">
+              <Phone className="h-3 w-3" /> Mobile
             </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="px-4 pb-4">
-              <p className="text-sm text-text-secondary text-center">
-                View complete work history on the full profile page
-              </p>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
+            {enrichedData?.phone && <Badge tone="green" size="xs" dot>Delivered</Badge>}
+          </div>
+          {enrichedData?.phone ? (
+            <>
+              <a href={`tel:${enrichedData.phone}`} className="text-[13px] text-text-primary hover:underline font-medium">
+                {enrichedData.phone}
+              </a>
+              <div className="text-[11.5px] text-text-tertiary mt-1.5">
+                From Apollo phone webhook{collectedAgo ? ` · ${collectedAgo}` : ''}
+              </div>
+            </>
+          ) : phoneCheckStatus === 'checking' ? (
+            <span className="text-[12.5px] text-amber-600 inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 bg-amber-500 rounded-full animate-pulse" />
+              Checking for phone…
+            </span>
+          ) : (
+            <span className="text-[12.5px] text-text-tertiary">Phone not available</span>
+          )}
+        </div>
 
-        <AccordionItem value="skills" className="border rounded-lg bg-surface-primary">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Wrench className="h-4 w-4 text-text-secondary" />
-              <span className="font-medium">Skills</span>
+        {/* LinkedIn */}
+        <div className="rounded-xl border border-border bg-surface-primary p-4">
+          <div className="inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.08em] font-medium text-text-tertiary mb-2">
+            <LinkedInFilled className="h-3 w-3" /> LinkedIn
+          </div>
+          {enrichedData?.linkedin_url ? (
+            <>
+              <a
+                href={enrichedData.linkedin_url} target="_blank" rel="noopener noreferrer"
+                className="block text-[13px] text-text-primary hover:underline truncate font-medium"
+              >
+                {linkedinHandle || enrichedData.linkedin_url}
+              </a>
+              <div className="text-[11.5px] text-text-tertiary mt-1.5 font-mono truncate">linkedin_url</div>
+            </>
+          ) : (
+            <span className="text-[12.5px] text-text-tertiary">Not in record</span>
+          )}
+        </div>
+      </div>
+
+      {/* Apollo signals */}
+      {(enrichedData?.seniority || (enrichedData?.departments && enrichedData.departments.length > 0) || enrichedData?.email_status) && (
+        <CardShell title="Apollo signals" caption="Normalized by Apollo">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <div className="text-[10.5px] uppercase tracking-[0.08em] font-medium text-text-tertiary mb-2">Seniority</div>
+              {enrichedData?.seniority
+                ? <Badge tone="lilac" size="sm" className="capitalize">{enrichedData.seniority}</Badge>
+                : <span className="text-[12px] text-text-tertiary">—</span>}
             </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="px-4 pb-4">
-              {enrichedData?.skills && enrichedData.skills.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {enrichedData.skills.map((s, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
+            <div>
+              <div className="text-[10.5px] uppercase tracking-[0.08em] font-medium text-text-tertiary mb-2">Departments</div>
+              {enrichedData?.departments && enrichedData.departments.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {enrichedData.departments.map((d, i) => (
+                    <Badge key={i} tone={i % 2 === 0 ? 'blue' : 'purple'} size="sm" className="capitalize">{d}</Badge>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-text-tertiary">No skills extracted</p>
-              )}
+              ) : <span className="text-[12px] text-text-tertiary">—</span>}
             </div>
-          </AccordionContent>
-        </AccordionItem>
+            <div>
+              <div className="text-[10.5px] uppercase tracking-[0.08em] font-medium text-text-tertiary mb-2">Email status</div>
+              {enrichedData?.email_status
+                ? <Badge tone={enrichedData.email_status === 'verified' ? 'green' : 'neutral'} size="sm" dot>{enrichedData.email_status}</Badge>
+                : <span className="text-[12px] text-text-tertiary">—</span>}
+            </div>
+          </div>
+        </CardShell>
+      )}
 
-        <AccordionItem value="education" className="border rounded-lg bg-surface-primary">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4 text-text-secondary" />
-              <span className="font-medium">Education</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="px-4 pb-4">
-              <p className="text-sm text-text-secondary text-center">
-                View education details on the full profile page
-              </p>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      {/* Why Gio thinks this is a fit */}
+      <CardShell title="Why Gio thinks this is a fit" caption="From employment history" icon={Sparkles}>
+        <div className="divide-y divide-border/60">
+          <MatchRow
+            icon={Briefcase}
+            label="Role"
+            value={
+              <>
+                {enrichedData?.role_current || apolloData?.current_role || 'Unknown role'}
+                {(enrichedData?.company_current || apolloData?.current_company) && (
+                  <> at <span className="text-text-primary">{enrichedData?.company_current || apolloData?.current_company}</span></>
+                )}
+              </>
+            }
+            kind={roleMatchKind}
+          />
+          {keywordMatches.total > 0 && (
+            <MatchRow
+              icon={Check}
+              label="Keywords"
+              value={
+                <>
+                  Matches <span className="text-text-primary">{keywordMatches.matched} of {keywordMatches.total}</span> search keywords
+                </>
+              }
+              kind={keywordMatches.matched === keywordMatches.total ? 'match' : keywordMatches.matched > 0 ? 'partial' : 'miss'}
+            />
+          )}
+        </div>
+      </CardShell>
+
+      {/* Matched keywords */}
+      {keywordMatches.total > 0 && (
+        <CardShell title="Matched keywords" caption="Computed locally">
+          <div className="flex flex-wrap gap-1.5">
+            {keywordMatches.items.map((kw, i) => (
+              <KeywordBadge key={i} label={kw.label} matched={kw.matched} />
+            ))}
+          </div>
+          <p className="text-[11.5px] text-text-tertiary italic mt-3">
+            Computed locally against the headline, title and employment-history descriptions.
+          </p>
+        </CardShell>
+      )}
+
+      {/* Employment history */}
+      {enrichedData?.employment_history && enrichedData.employment_history.length > 0 && (
+        <CardShell
+          title="Employment history"
+          caption={`${enrichedData.employment_history.length} role${enrichedData.employment_history.length === 1 ? '' : 's'} · employment_history[]`}
+        >
+          <div className="relative">
+            {enrichedData.employment_history.map((exp, i, arr) => {
+              const initial = (exp.company?.[0] || '?').toUpperCase()
+              const startLabel = formatMonthYear(exp.start_date) || '—'
+              const endLabel = exp.is_current ? 'Present' : (formatMonthYear(exp.end_date) || 'Present')
+              return (
+                <div key={i} className="flex gap-3 relative">
+                  <div className="flex flex-col items-center flex-shrink-0">
+                    <div className="h-8 w-8 rounded-md bg-virgilio-purple/10 text-virgilio-purple flex items-center justify-center font-poppins font-semibold text-[12px]">
+                      {initial}
+                    </div>
+                    {i < arr.length - 1 && <div className="w-px flex-1 bg-border my-1" />}
+                  </div>
+                  <div className="flex-1 min-w-0 pb-5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[13.5px] font-poppins font-semibold text-text-primary">{exp.title || '—'}</span>
+                      {exp.is_current && <Badge tone="green" size="xs" dot>Current</Badge>}
+                    </div>
+                    <div className="text-[12.5px] text-text-secondary mt-0.5">{exp.company}</div>
+                    <div className="text-[11.5px] text-text-tertiary mt-0.5">{startLabel} – {endLabel}</div>
+                    {exp.description && (
+                      <p className="text-[12.5px] text-text-secondary leading-relaxed mt-2">{exp.description}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </CardShell>
+      )}
+
+      {/* Dashed info note */}
+      <div className="rounded-lg border border-dashed border-border bg-surface-primary/40 px-4 py-3 flex items-start gap-3">
+        <Info className="h-4 w-4 text-text-tertiary mt-0.5 flex-shrink-0" />
+        <p className="text-[12.5px] text-text-secondary leading-relaxed">
+          <span className="font-medium text-text-primary">Education, resume, GitHub, Twitter and headshot</span> aren't part of Apollo's enrichment response. They show up once a candidate applies or you upload a resume to their profile.
+        </p>
+      </div>
+    </div>
+  )
+
+  const PostCollectFooter = (
+    <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4 flex-shrink-0">
+      <p className="text-[12px] text-text-tertiary">
+        Collected by you
+        {collectedAgo && <> · {collectedAgo}</>}
+        {apolloRefreshedAgo && <> · Apollo refreshed {apolloRefreshedAgo}</>}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" icon={Bookmark} onClick={handleShortlist} type="button">
+          Save to talent pool
+        </Button>
+        <Button
+          variant="secondary"
+          icon={Mail}
+          type="button"
+          onClick={() => {
+            if (enrichedData?.candidate_id) {
+              navigate(`/candidates?openCandidate=${enrichedData.candidate_id}&action=email`)
+            }
+          }}
+        >
+          Reach out
+        </Button>
+        <Button
+          icon={UserPlus}
+          type="button"
+          onClick={() => setShowJobSelection(true)}
+        >
+          Add to job
+        </Button>
+      </div>
     </div>
   )
 
@@ -1018,10 +1116,11 @@ export function ApolloPreviewSheet({
             {TopBar}
             {IdentityBlock}
             {isCollected ? PostCollectBody : PreCollectBody}
-            {!isCollected && PreCollectFooter}
+            {isCollected ? PostCollectFooter : PreCollectFooter}
           </div>
         </SheetContent>
       </Sheet>
+
 
       <JobSelectionDialog
         open={showJobSelection}
