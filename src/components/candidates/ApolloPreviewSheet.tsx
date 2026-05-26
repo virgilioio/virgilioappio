@@ -53,6 +53,8 @@ interface ApolloPreviewSheetProps {
     has_phone?: boolean
     has_location?: boolean
     last_refreshed_at?: string
+    seniority?: string
+    departments?: string[]
   }
   jobId?: string | null
   projectId?: string | null
@@ -63,6 +65,15 @@ interface ApolloPreviewSheetProps {
   onCandidateCollected?: (candidateId: string) => void
   searchCriteria?: SearchCriteria
   jobTitle?: string | null
+}
+
+interface EmploymentHistoryItem {
+  company: string
+  title: string
+  start_date?: string | null
+  end_date?: string | null
+  is_current?: boolean
+  description?: string | null
 }
 
 interface EnrichedCandidateData {
@@ -76,6 +87,17 @@ interface EnrichedCandidateData {
   location_country?: string
   skills?: string[]
   profile_summary?: string
+  // Apollo signals + post-collect extras
+  headline?: string | null
+  email_status?: string | null
+  seniority?: string | null
+  departments?: string[] | null
+  contact_emails?: Array<{ type?: string; email: string; status?: string | null }> | null
+  contact_phones?: Array<{ type?: string; number: string; raw_number?: string | null }> | null
+  apollo_collected_at?: string | null
+  role_current?: string | null
+  company_current?: string | null
+  employment_history?: EmploymentHistoryItem[]
 }
 
 /* ============================================================================
