@@ -67,9 +67,10 @@ interface PopoverContentProps {
   project?: SourcingProject | null
   onSelect: (job: EnrichedJob) => void
   onClose: () => void
+  onCreateNew?: () => void
 }
 
-export function LinkToJobPopoverContent({ project, onSelect, onClose }: PopoverContentProps) {
+export function LinkToJobPopoverContent({ project, onSelect, onClose, onCreateNew }: PopoverContentProps) {
   const { jobs, isLoading } = useJobsForCandidateAssignment()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
