@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { Link2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { LinkToJobDialog, type LinkToJobPayload } from './LinkToJobDialog'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import {
+  LinkToJobDialog,
+  LinkToJobPopoverContent,
+  type LinkToJobPayload,
+  type EnrichedJob,
+} from './LinkToJobDialog'
 import type { SourcingProject } from '@/types/sourcing'
 
 interface LinkToJobBannerProps {
@@ -14,7 +20,8 @@ interface LinkToJobBannerProps {
 
 /**
  * Yellow link-to-job banner shown when a sourcing project is not linked to a job.
- * Dismissible for the session via the "Continue without" action.
+ * Clicking "Link to job" opens an anchored popover (Step 1 — job picker), which
+ * hands off to a centered dialog (Step 2 — default stage + backfill).
  */
 export function LinkToJobBanner({
   onLinkToJob,
@@ -23,7 +30,9 @@ export function LinkToJobBanner({
   savedCandidatesCount,
   organizationName,
 }: LinkToJobBannerProps) {
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const [stageDialogOpen, setStageDialogOpen] = useState(false)
+  const [pickedJob, setPickedJob] = useState<EnrichedJob | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
   if (dismissed) return null
@@ -43,9 +52,34 @@ export function LinkToJobBanner({
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Button size="sm" variant="primary" icon={Link2} onClick={() => setDialogOpen(true)}>
-            Link to job
-          </Button>
+          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="primary" icon={Link2}>
+                Link to job
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={8}
+              className="w-[460px] p-0"
+              onOpenAutoFocus={(e) => {
+                // let the search input handle autofocus
+                e.preventDefault()
+              }}
+            >
+              <LinkToJobPopoverContent
+                project={project}
+                onClose={() => setPopoverOpen(false)}
+                onSelect={(job) => {
+                  setPickedJob(job)
+                  setPopoverOpen(false)
+                  // give the popover a tick to unmount before opening the dialog
+                  setTimeout(() => setStageDialogOpen(true), 50)
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+
           <Button size="sm" variant="ghost" onClick={() => setDismissed(true)}>
             Continue without
           </Button>
@@ -60,16 +94,26 @@ export function LinkToJobBanner({
         </div>
       </div>
 
+      {/* Step 2 — Stage + backfill, opens after a job is picked in the popover */}
       <LinkToJobDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={stageDialogOpen}
+        onOpenChange={(o) => {
+          setStageDialogOpen(o)
+          if (!o) setPickedJob(null)
+        }}
         currentJobId={currentJobId ?? null}
         project={project}
         savedCandidatesCount={savedCandidatesCount}
         organizationName={organizationName}
+        pickedJob={pickedJob}
+        onBackToPick={() => {
+          setStageDialogOpen(false)
+          setTimeout(() => setPopoverOpen(true), 50)
+        }}
         onConfirm={async (payload) => {
           await onLinkToJob(payload)
-          setDialogOpen(false)
+          setStageDialogOpen(false)
+          setPickedJob(null)
         }}
       />
     </>
