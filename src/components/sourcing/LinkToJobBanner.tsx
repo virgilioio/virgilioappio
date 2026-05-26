@@ -8,6 +8,7 @@ import {
   type LinkToJobPayload,
   type EnrichedJob,
 } from './LinkToJobDialog'
+import { JobWizard } from '@/components/jobs/JobWizard'
 import type { SourcingProject } from '@/types/sourcing'
 
 interface LinkToJobBannerProps {
@@ -32,6 +33,7 @@ export function LinkToJobBanner({
 }: LinkToJobBannerProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [stageDialogOpen, setStageDialogOpen] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
   const [pickedJob, setPickedJob] = useState<EnrichedJob | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
@@ -73,12 +75,16 @@ export function LinkToJobBanner({
                 onSelect={(job) => {
                   setPickedJob(job)
                   setPopoverOpen(false)
-                  // give the popover a tick to unmount before opening the dialog
                   setTimeout(() => setStageDialogOpen(true), 50)
+                }}
+                onCreateNew={() => {
+                  setPopoverOpen(false)
+                  setTimeout(() => setWizardOpen(true), 50)
                 }}
               />
             </PopoverContent>
           </Popover>
+
 
           <Button size="sm" variant="ghost" onClick={() => setDismissed(true)}>
             Continue without
@@ -116,6 +122,8 @@ export function LinkToJobBanner({
           setPickedJob(null)
         }}
       />
+
+      <JobWizard isOpen={wizardOpen} onClose={() => setWizardOpen(false)} />
     </>
   )
 }
