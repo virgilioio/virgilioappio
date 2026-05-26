@@ -383,7 +383,7 @@ export function SourcingProjectView({
         searchCriteria={project.search_criteria}
         sourceBreakdown={matchingResult?.source_breakdown}
         onLinkToJob={handleLinkToJob}
-        onUnlinkJob={() => linkProjectToJob(null)}
+        onUnlinkJob={async () => { await linkProjectToJob(null) }}
         savedCandidatesCount={savedCandidates?.length ?? 0}
         lastLinkResult={lastLinkResult}
       />
