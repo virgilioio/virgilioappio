@@ -196,7 +196,10 @@ export function LinkToJobPopoverContent({ project, onSelect, onClose, onCreateNe
           size="sm"
           icon={Plus}
           className="text-virgilio-purple hover:text-virgilio-purple"
-          onClick={() => toast({ title: 'Coming soon', description: 'Create job from this dialog is coming soon.' })}
+          onClick={() => {
+            if (onCreateNew) { onCreateNew(); return }
+            toast({ title: 'Coming soon', description: 'Create job from this dialog is coming soon.' })
+          }}
         >
           Create new job
         </Button>
