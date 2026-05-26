@@ -18,6 +18,7 @@ import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
 import { cn } from '@/lib/utils'
 import type { SourcingProject } from '@/types/sourcing'
+import { JobWizard } from '@/components/jobs/JobWizard'
 
 export interface LinkToJobPayload {
   jobId: string
