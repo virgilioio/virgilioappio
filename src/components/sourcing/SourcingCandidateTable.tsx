@@ -1163,7 +1163,8 @@ export function SourcingCandidateTable({
 
           const handleCardClick = () => {
             if (isInternal) {
-              setSelectedCandidateId(candidate.candidate_id || candidate.id)
+              const mappedId = candidate.apollo_id ? collectedCandidateIdByApollo.get(candidate.apollo_id) : undefined
+              setSelectedCandidateId(candidate.candidate_id || mappedId || candidate.id)
               setSelectedApolloId(null)
               setSelectedApolloData(null)
               setSelectedPdlData(null)
