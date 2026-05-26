@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Briefcase, Search, Loader2, Link2, ChevronLeft, Plus, Building2, Flame, Check } from 'lucide-react'
+import { Briefcase, Search, Loader2, Link2, ChevronLeft, Plus, Building2, Flame, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -27,17 +27,7 @@ export interface LinkToJobPayload {
   careersLink: boolean
 }
 
-interface LinkToJobDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onConfirm: (payload: LinkToJobPayload) => void | Promise<void>
-  currentJobId?: string | null
-  project?: SourcingProject | null
-  savedCandidatesCount?: number
-  organizationName?: string
-}
-
-type EnrichedJob = JobOption & {
+export type EnrichedJob = JobOption & {
   applicantCount?: number
   recruiterName?: string
   matchScore?: number
@@ -55,9 +45,7 @@ function scoreJob(job: JobOption, spec: any): number {
   const titleOverlap = specTitleTokens.filter(t => jobTitleTokens.has(t)).length
   if (specTitleTokens.length) score += (titleOverlap / specTitleTokens.length) * 70
 
-  // Skills overlap bonus
   if (Array.isArray(spec.skills)) {
-    const skillsSig = spec.skills.join(' ').toLowerCase()
     const titleSig = job.title.toLowerCase()
     const skillHits = spec.skills.filter((s: string) =>
       titleSig.includes(String(s).toLowerCase().slice(0, 8))
@@ -65,7 +53,6 @@ function scoreJob(job: JobOption, spec: any): number {
     score += Math.min(20, skillHits * 5)
   }
 
-  // Department/org alignment
   if (spec.department && job.organization_name.toLowerCase().includes(String(spec.department).toLowerCase())) {
     score += 10
   }
@@ -73,24 +60,23 @@ function scoreJob(job: JobOption, spec: any): number {
   return Math.min(100, Math.round(score))
 }
 
-// --- Step 1: Job picker --------------------------------------------------------
-function JobPickerStep({
-  jobs,
-  isLoading,
-  spec,
-  onSelect,
-  onCreateNew,
-}: {
-  jobs: JobOption[]
-  isLoading: boolean
-  spec: any
+// ================================================================
+// LinkToJobPopoverContent — Step 1 job picker, anchored popover body
+// ================================================================
+interface PopoverContentProps {
+  project?: SourcingProject | null
   onSelect: (job: EnrichedJob) => void
-  onCreateNew: () => void
-}) {
-  const [search, setSearch] = useState('')
-  const [enriched, setEnriched] = useState<Record<string, { applicants: number; recruiter?: string }>>({})
+  onClose: () => void
+}
 
-  // Lightweight applicant counts per job
+export function LinkToJobPopoverContent({ project, onSelect, onClose }: PopoverContentProps) {
+  const { jobs, isLoading } = useJobsForCandidateAssignment()
+  const { toast } = useToast()
+  const [search, setSearch] = useState('')
+  const [enriched, setEnriched] = useState<Record<string, { applicants: number }>>({})
+
+  const spec = project?.job_spec_data ?? null
+
   useEffect(() => {
     if (!jobs.length) return
     const ids = jobs.map(j => j.id)
@@ -101,7 +87,7 @@ function JobPickerStep({
         .select('job_id')
         .in('job_id', ids)
       if (cancelled || !data) return
-      const counts: Record<string, { applicants: number; recruiter?: string }> = {}
+      const counts: Record<string, { applicants: number }> = {}
       for (const row of data as any[]) {
         counts[row.job_id] = { applicants: (counts[row.job_id]?.applicants || 0) + 1 }
       }
@@ -131,23 +117,54 @@ function JobPickerStep({
   const others = filtered.filter(j => !gioIds.has(j.id))
 
   return (
-    <div className="flex flex-col min-h-0 flex-1">
+    <div className="flex flex-col">
+      {/* Sheet-style header */}
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EDE4FF]">
+            <Link2 className="h-4 w-4 text-virgilio-purple" />
+          </div>
+          <div className="flex-1 min-w-0 pt-0.5">
+            <div className="text-[15px] font-semibold font-poppins tracking-[-0.02em] text-text-primary leading-snug">
+              Link this project to a job
+            </div>
+            <div className="mt-0.5 text-[12.5px] text-text-tertiary leading-snug">
+              Future collects will route into the chosen pipeline stage.
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="xs"
+            iconOnly
+            icon={X}
+            aria-label="Close"
+            onClick={onClose}
+          />
+        </div>
+      </div>
+
+      <div className="h-px bg-border" />
+
       {/* Search */}
-      <div className="px-1 pb-3">
+      <div className="px-4 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search jobs…"
-            className="h-9 pl-9 text-[13px]"
+            className="h-9 pl-9 pr-12 text-[13px]"
             autoFocus
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }}
           />
+          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-5 px-1.5 rounded border border-border bg-background text-[10px] font-mono text-text-tertiary">
+            esc
+          </kbd>
         </div>
       </div>
 
       {/* List */}
-      <ScrollArea className="flex-1 min-h-0 max-h-[440px] -mx-1 px-1">
+      <ScrollArea className="max-h-[420px] px-2">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-5 w-5 animate-spin text-text-tertiary" />
@@ -158,7 +175,7 @@ function JobPickerStep({
             <p className="text-[13px]">{search ? 'No matching jobs' : 'No open jobs'}</p>
           </div>
         ) : (
-          <div className="space-y-4 pb-2">
+          <div className="space-y-3 pb-2">
             {gioMatches.length > 0 && (
               <JobGroup label={`Gio thinks these match · ${gioMatches.length}`} jobs={gioMatches} onSelect={onSelect} showMatch />
             )}
@@ -170,9 +187,16 @@ function JobPickerStep({
       </ScrollArea>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-3 mt-1 border-t border-border">
+      <div className="h-px bg-border" />
+      <div className="flex items-center justify-between px-4 py-2.5">
         <span className="text-[12px] text-text-tertiary">Can't find it?</span>
-        <Button variant="ghost" size="sm" icon={Plus} onClick={onCreateNew}>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={Plus}
+          className="text-virgilio-purple hover:text-virgilio-purple"
+          onClick={() => toast({ title: 'Coming soon', description: 'Create job from this dialog is coming soon.' })}
+        >
           Create new job
         </Button>
       </div>
@@ -193,47 +217,61 @@ function JobGroup({
 }) {
   return (
     <div>
-      <div className="px-2 mb-1.5 text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary">
+      <div className="px-2 mb-1 text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary">
         {label}
       </div>
-      <div className="space-y-1">
-        {jobs.map(job => (
-          <button
-            key={job.id}
-            type="button"
-            onClick={() => onSelect(job)}
-            className="group w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-[#F1F0EC] transition-colors flex items-center gap-3"
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-foreground/[0.04] text-text-secondary">
-              <Building2 className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-[13px] font-medium text-text-primary">{job.title}</span>
-                {showMatch && (job.matchScore ?? 0) >= 70 && (
-                  <Badge tone="purple" size="xs" shape="pill">
-                    {job.matchScore}% match
-                  </Badge>
-                )}
-                {showMatch && (job.matchScore ?? 0) >= 85 && (
-                  <Badge tone="orange" size="xs" shape="pill" icon={Flame}>Hot</Badge>
-                )}
+      <div className="space-y-0.5">
+        {jobs.map(job => {
+          const initials = job.organization_name
+            .split(/\s+/)
+            .map(w => w[0])
+            .filter(Boolean)
+            .slice(0, 2)
+            .join('')
+            .toUpperCase()
+          return (
+            <button
+              key={job.id}
+              type="button"
+              onClick={() => onSelect(job)}
+              className="group relative w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-[#F1F0EC] transition-colors flex items-center gap-3"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-foreground/[0.04] text-text-secondary">
+                <Building2 className="h-4 w-4" />
               </div>
-              <div className="mt-0.5 text-[11.5px] text-text-tertiary truncate">
-                {job.organization_name}
-                {job.applicantCount !== undefined && job.applicantCount > 0 && (
-                  <> · {job.applicantCount} applicant{job.applicantCount !== 1 ? 's' : ''}</>
-                )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-[13px] font-semibold font-poppins tracking-[-0.01em] text-text-primary">{job.title}</span>
+                  {showMatch && (job.matchScore ?? 0) >= 70 && (
+                    <Badge tone="purple" size="xs" shape="pill">
+                      {job.matchScore}% match
+                    </Badge>
+                  )}
+                  {showMatch && (job.matchScore ?? 0) >= 85 && (
+                    <Badge tone="orange" size="xs" shape="pill" icon={Flame}>Hot</Badge>
+                  )}
+                </div>
+                <div className="mt-0.5 text-[11.5px] text-text-tertiary truncate">
+                  {job.organization_name}
+                  {job.applicantCount !== undefined && job.applicantCount > 0 && (
+                    <> · <span className="text-text-secondary font-medium">{job.applicantCount}</span> applicant{job.applicantCount !== 1 ? 's' : ''}</>
+                  )}
+                </div>
               </div>
-            </div>
-          </button>
-        ))}
+              <div className="h-7 w-7 shrink-0 rounded-full bg-virgilio-purple/90 text-background flex items-center justify-center text-[10.5px] font-semibold font-poppins">
+                {initials || 'JB'}
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-// --- Step 2: Stage + backfill --------------------------------------------------
+// ================================================================
+// Step 2 — Stage + backfill (centered dialog)
+// ================================================================
 function StageStep({
   job,
   savedCount,
@@ -277,7 +315,6 @@ function StageStep({
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-      {/* Job header */}
       <div className="flex items-start gap-3 pb-3 mb-3 border-b border-border">
         <Button variant="ghost" size="xs" iconOnly icon={ChevronLeft} aria-label="Back to job pick" onClick={onBack} />
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
@@ -294,7 +331,6 @@ function StageStep({
         </div>
       </div>
 
-      {/* Stage list */}
       <div className="space-y-3">
         <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary px-1">
           Default stage for new collects
@@ -338,7 +374,6 @@ function StageStep({
           </div>
         )}
 
-        {/* Backfill */}
         <div className="pt-3 border-t border-border">
           <div className="text-[10px] font-medium uppercase tracking-[0.06em] text-text-tertiary px-1 mb-2">
             Backfill
@@ -370,7 +405,6 @@ function StageStep({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
         <span className="text-[12px] text-text-tertiary">
           {backfill && savedCount > 0 ? `${savedCount} will move on link` : 'No backfill'}
@@ -394,7 +428,25 @@ function StageStep({
   )
 }
 
-// --- Root dialog ---------------------------------------------------------------
+// ================================================================
+// LinkToJobDialog — root dialog. Handles either:
+//   (a) Step 2 only (when `pickedJob` is provided — banner flow), or
+//   (b) Full Step 1 → Step 2 sequence (legacy callers like SourcingProjectActions).
+// ================================================================
+interface LinkToJobDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: (payload: LinkToJobPayload) => void | Promise<void>
+  currentJobId?: string | null
+  project?: SourcingProject | null
+  savedCandidatesCount?: number
+  organizationName?: string
+  /** When provided, the dialog opens directly at Step 2 for that job (banner flow). */
+  pickedJob?: EnrichedJob | null
+  /** Called when the user hits Back from Step 2 (banner flow re-opens its popover). */
+  onBackToPick?: () => void
+}
+
 export function LinkToJobDialog({
   open,
   onOpenChange,
@@ -402,20 +454,26 @@ export function LinkToJobDialog({
   project,
   savedCandidatesCount = 0,
   organizationName,
+  pickedJob: pickedJobProp = null,
+  onBackToPick,
 }: LinkToJobDialogProps) {
   const { jobs, isLoading } = useJobsForCandidateAssignment()
   const { toast } = useToast()
-  const [step, setStep] = useState<'pick' | 'stage'>('pick')
-  const [pickedJob, setPickedJob] = useState<EnrichedJob | null>(null)
+  const externallyPicked = !!pickedJobProp
+  const [step, setStep] = useState<'pick' | 'stage'>(externallyPicked ? 'stage' : 'pick')
+  const [pickedJob, setPickedJob] = useState<EnrichedJob | null>(pickedJobProp)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (!open) {
-      setStep('pick')
-      setPickedJob(null)
+      setStep(externallyPicked ? 'stage' : 'pick')
+      setPickedJob(pickedJobProp)
       setSubmitting(false)
+    } else {
+      setPickedJob(pickedJobProp)
+      setStep(externallyPicked ? 'stage' : 'pick')
     }
-  }, [open])
+  }, [open, pickedJobProp, externallyPicked])
 
   const spec = project?.job_spec_data ?? null
 
@@ -455,7 +513,7 @@ export function LinkToJobDialog({
 
         <div className="flex flex-col min-h-0 pt-2">
           {step === 'pick' ? (
-            <JobPickerStep
+            <LegacyPickerInsideDialog
               jobs={jobs}
               isLoading={isLoading}
               spec={spec}
@@ -467,7 +525,14 @@ export function LinkToJobDialog({
               job={pickedJob}
               savedCount={savedCandidatesCount}
               organizationName={organizationName}
-              onBack={() => setStep('pick')}
+              onBack={() => {
+                if (externallyPicked && onBackToPick) {
+                  onOpenChange(false)
+                  onBackToPick()
+                } else {
+                  setStep('pick')
+                }
+              }}
               onConfirm={handleConfirm}
               isSubmitting={submitting}
             />
@@ -475,5 +540,106 @@ export function LinkToJobDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+// Legacy inline picker for non-banner callers (e.g. SourcingProjectActions "Change linked job").
+function LegacyPickerInsideDialog({
+  jobs,
+  isLoading,
+  spec,
+  onSelect,
+  onCreateNew,
+}: {
+  jobs: JobOption[]
+  isLoading: boolean
+  spec: any
+  onSelect: (job: EnrichedJob) => void
+  onCreateNew: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const [enriched, setEnriched] = useState<Record<string, { applicants: number }>>({})
+
+  useEffect(() => {
+    if (!jobs.length) return
+    const ids = jobs.map(j => j.id)
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('job_candidate_associations')
+        .select('job_id')
+        .in('job_id', ids)
+      if (cancelled || !data) return
+      const counts: Record<string, { applicants: number }> = {}
+      for (const row of data as any[]) {
+        counts[row.job_id] = { applicants: (counts[row.job_id]?.applicants || 0) + 1 }
+      }
+      setEnriched(counts)
+    })()
+    return () => { cancelled = true }
+  }, [jobs])
+
+  const scored: EnrichedJob[] = useMemo(() => jobs.map(j => ({
+    ...j,
+    applicantCount: enriched[j.id]?.applicants ?? 0,
+    matchScore: scoreJob(j, spec),
+  })), [jobs, enriched, spec])
+
+  const filtered = scored.filter(j =>
+    j.title.toLowerCase().includes(search.toLowerCase()) ||
+    j.organization_name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const gioMatches = filtered
+    .filter(j => (j.matchScore ?? 0) >= 70)
+    .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+    .slice(0, 3)
+  const gioIds = new Set(gioMatches.map(j => j.id))
+  const others = filtered.filter(j => !gioIds.has(j.id))
+
+  return (
+    <div className="flex flex-col min-h-0 flex-1">
+      <div className="px-1 pb-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search jobs…"
+            className="h-9 pl-9 text-[13px]"
+            autoFocus
+          />
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1 min-h-0 max-h-[440px] -mx-1 px-1">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-5 w-5 animate-spin text-text-tertiary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-text-tertiary">
+            <Briefcase className="h-8 w-8 mb-2 opacity-50" />
+            <p className="text-[13px]">{search ? 'No matching jobs' : 'No open jobs'}</p>
+          </div>
+        ) : (
+          <div className="space-y-4 pb-2">
+            {gioMatches.length > 0 && (
+              <JobGroup label={`Gio thinks these match · ${gioMatches.length}`} jobs={gioMatches} onSelect={onSelect} showMatch />
+            )}
+            {others.length > 0 && (
+              <JobGroup label={`Other open jobs · ${others.length}`} jobs={others} onSelect={onSelect} />
+            )}
+          </div>
+        )}
+      </ScrollArea>
+
+      <div className="flex items-center justify-between pt-3 mt-1 border-t border-border">
+        <span className="text-[12px] text-text-tertiary">Can't find it?</span>
+        <Button variant="ghost" size="sm" icon={Plus} onClick={onCreateNew}>
+          Create new job
+        </Button>
+      </div>
+    </div>
   )
 }
