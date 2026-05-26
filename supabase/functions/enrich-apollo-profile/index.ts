@@ -558,7 +558,14 @@ serve(async (req) => {
         candidate_id: candidateId,
         already_collected: false,
         email: person.email,
-        phone: phone
+        phone: phone,
+        // Apollo signals passthrough — not persisted as discrete columns, surfaced in UI
+        headline: person.headline,
+        seniority: person.seniority,
+        departments: person.departments,
+        email_status: person.email_status,
+        employment_history: person.employment_history,
+        apollo_collected_at: collectedAtIso,
       });
     }
 
