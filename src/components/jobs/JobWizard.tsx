@@ -309,17 +309,6 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
         className="w-full sm:max-w-[1080px] p-0 bg-[#F6F5F1] border-l border-virgilio-border"
       >
         <div className="flex h-full flex-col">
-          {/* Top bar — close button only; eyebrow + title live inside the content header */}
-          <div className="flex items-start justify-end px-6 pt-5">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close wizard"
-              className="rounded-md p-1.5 text-text-tertiary hover:bg-virgilio-border/40 hover:text-text-primary transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
 
           {/* Header */}
           <div className="px-6 sm:px-10 pt-1 pb-6">
