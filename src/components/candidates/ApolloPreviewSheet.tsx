@@ -276,12 +276,32 @@ function splitName(fullName: string): { first: string; last: string; lastObfusca
   return { first, last, lastObfuscated }
 }
 
-function daysAgoLabel(iso?: string): string | null {
+function daysAgoLabel(iso?: string | null): string | null {
   if (!iso) return null
   const ms = Date.now() - new Date(iso).getTime()
   if (Number.isNaN(ms) || ms < 0) return null
   const days = Math.max(1, Math.round(ms / 86_400_000))
   return `${days}d ago`
+}
+
+function conciseAgo(iso?: string | null): string | null {
+  if (!iso) return null
+  const ms = Date.now() - new Date(iso).getTime()
+  if (Number.isNaN(ms) || ms < 0) return null
+  const mins = Math.round(ms / 60_000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.round(hrs / 24)
+  return `${days}d ago`
+}
+
+function formatMonthYear(iso?: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`.replace(/^(\d{2})\/(\d{4})$/, '$2-$1')
 }
 
 function shortApolloId(id?: string | null): string {
