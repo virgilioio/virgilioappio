@@ -282,7 +282,7 @@ export function SourcingProjectView({
     return true
   }
 
-  const [lastLinkResult, setLastLinkResult] = useState<{ stageJhsId: string | null; stageName: string | null; movedCount: number } | null>(null)
+  
 
   const handleLinkToJob = async (input: any) => {
     if (!project) return
