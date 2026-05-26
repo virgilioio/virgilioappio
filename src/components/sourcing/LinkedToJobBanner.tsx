@@ -86,8 +86,8 @@ export function LinkedToJobBanner({
   return (
     <div className="rounded-lg border border-success/40 bg-success/10 px-4 py-3">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success/25 text-success">
-          <Link2 className="h-3.5 w-3.5" />
+        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/25 text-success">
+          <Link2 className="h-3 w-3" />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -102,28 +102,37 @@ export function LinkedToJobBanner({
             </span>
           </p>
 
-          {/* Pipeline preview */}
+          {/* Pipeline preview strip */}
           {stages.length > 0 && (
-            <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-              {stages.map(s => {
+            <div className="mt-2.5 flex items-center gap-1 flex-wrap">
+              {stages.map((s, i) => {
                 const isDefault = s.jhsId === defaultStageJhsId
+                const showPlus = isDefault && movedCount > 0
                 return (
-                  <div
-                    key={s.jhsId}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10.5px] font-medium uppercase tracking-[0.06em]',
-                      isDefault
-                        ? 'bg-[#EDE4FF] text-virgilio-purple'
-                        : 'bg-background/60 text-text-secondary border border-border'
-                    )}
-                  >
-                    <span>{s.label}</span>
-                    <span className="font-poppins tabular-nums">
-                      {s.count}
-                      {isDefault && movedCount > 0 && (
-                        <span className="ml-0.5 text-virgilio-purple">+{movedCount}</span>
+                  <div key={s.jhsId} className="flex items-center gap-1">
+                    <div
+                      className={cn(
+                        'inline-flex items-center gap-1.5 h-7 rounded-md px-2.5',
+                        isDefault
+                          ? 'bg-[#EDE4FF] text-virgilio-purple'
+                          : 'bg-transparent text-text-secondary border border-border'
                       )}
-                    </span>
+                    >
+                      <span className="text-[10.5px] font-medium uppercase tracking-[0.06em] font-inter">
+                        {s.label}
+                      </span>
+                      <span className="font-poppins text-[13px] tabular-nums leading-none">
+                        {s.count}
+                      </span>
+                      {showPlus && (
+                        <span className="inline-flex items-center h-4 rounded-full bg-virgilio-purple px-1.5 text-[10px] font-medium text-white tabular-nums leading-none">
+                          +{movedCount}
+                        </span>
+                      )}
+                    </div>
+                    {i < stages.length - 1 && (
+                      <span className="text-text-tertiary/60 text-[11px]">→</span>
+                    )}
                   </div>
                 )
               })}
@@ -133,7 +142,7 @@ export function LinkedToJobBanner({
       </div>
 
       {/* Actions */}
-      <div className="mt-3 flex items-center justify-end gap-1.5 pt-2 border-t border-success/30">
+      <div className="mt-2.5 flex items-center justify-end gap-1.5">
         <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/find')}>
           Back to Find
         </Button>
