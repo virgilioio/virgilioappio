@@ -282,7 +282,7 @@ export function SourcingProjectView({
     return true
   }
 
-  const [lastLinkResult, setLastLinkResult] = useState<{ stageJhsId: string | null; stageName: string | null; movedCount: number } | null>(null)
+  
 
   const handleLinkToJob = async (input: any) => {
     if (!project) return
@@ -314,7 +314,7 @@ export function SourcingProjectView({
       await supabase.from('sourcing_projects').update({ send_careers_link: true }).eq('id', project.id)
     }
 
-    setLastLinkResult({ stageJhsId: payload.stageJhsId, stageName: payload.stageName, movedCount: moved })
+    
   }
 
   const handleAddToPipelineConfirm = async (stageId: string) => {
@@ -385,7 +385,6 @@ export function SourcingProjectView({
         onLinkToJob={handleLinkToJob}
         onUnlinkJob={async () => { await linkProjectToJob(null) }}
         savedCandidatesCount={savedCandidates?.length ?? 0}
-        lastLinkResult={lastLinkResult}
       />
 
       {pendingJobId && (
