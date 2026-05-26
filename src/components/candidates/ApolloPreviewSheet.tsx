@@ -434,10 +434,38 @@ export function ApolloPreviewSheet({
       const wasAlreadyCollected = collectedResult?.already_collected
       if (candidateId) {
         setCollectedCandidateId(candidateId)
-        const { data: candidateData } = await supabase.from('candidates')
-          .select('id, candidate_name, linkedin_url, email, phone, location_city, location_state, location_country, skills, profile_summary')
-          .eq('id', candidateId).single()
+        const [{ data: candidateData }, { data: workExp }] = await Promise.all([
+          supabase.from('candidates')
+            .select('id, candidate_name, linkedin_url, email, phone, location_city, location_state, location_country, skills, profile_summary, email_status, bio, contact_emails, contact_phones, role_current, company_current, apollo_collected_at')
+            .eq('id', candidateId).single(),
+          supabase.from('candidate_work_experience')
+            .select('company_name, job_title, start_date, end_date, is_current, description')
+            .eq('candidate_id', candidateId)
+            .order('is_current', { ascending: false })
+            .order('start_date', { ascending: false }),
+        ])
         if (candidateData) {
+          // Prefer fresh Apollo response signals (carry the in-session enrichment),
+          // fall back to persisted fields when missing (already-collected branch).
+          const apolloSignalsHistory: EmploymentHistoryItem[] | undefined =
+            Array.isArray(collectedResult?.employment_history)
+              ? collectedResult.employment_history.map((e: any) => ({
+                  company: e.organization_name || 'Unknown Company',
+                  title: e.title || '',
+                  start_date: e.start_date || null,
+                  end_date: e.end_date || null,
+                  is_current: !!e.current,
+                  description: e.description || null,
+                }))
+              : undefined
+          const dbHistory: EmploymentHistoryItem[] = (workExp || []).map((r: any) => ({
+            company: r.company_name || 'Unknown Company',
+            title: r.job_title || '',
+            start_date: r.start_date,
+            end_date: r.end_date,
+            is_current: !!r.is_current,
+            description: r.description || null,
+          }))
           setEnrichedData({
             candidate_id: candidateData.id,
             candidate_name: candidateData.candidate_name,
@@ -449,6 +477,16 @@ export function ApolloPreviewSheet({
             location_country: candidateData.location_country || undefined,
             skills: candidateData.skills || undefined,
             profile_summary: candidateData.profile_summary || undefined,
+            headline: collectedResult?.headline || candidateData.bio || null,
+            email_status: collectedResult?.email_status || candidateData.email_status || null,
+            seniority: collectedResult?.seniority || null,
+            departments: collectedResult?.departments || null,
+            contact_emails: candidateData.contact_emails || null,
+            contact_phones: candidateData.contact_phones || null,
+            apollo_collected_at: candidateData.apollo_collected_at || collectedResult?.apollo_collected_at || null,
+            role_current: candidateData.role_current || apolloData?.current_role || null,
+            company_current: candidateData.company_current || apolloData?.current_company || null,
+            employment_history: apolloSignalsHistory && apolloSignalsHistory.length > 0 ? apolloSignalsHistory : dbHistory,
           })
           setCollectedJobId(jobIdToUse || null)
         }
