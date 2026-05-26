@@ -501,51 +501,55 @@ export function LinkToJobDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md flex flex-col gap-0">
-        <DialogHeader className="pb-2">
-          <DialogTitle className="flex items-center gap-2 text-[15px]">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground/[0.06]">
-              <Link2 className="h-3.5 w-3.5 text-text-primary" />
-            </div>
-            {step === 'pick' ? 'Link this project to a job' : 'Pick the default stage'}
-          </DialogTitle>
-          <DialogDescription className="text-[12.5px] text-text-tertiary">
-            {step === 'pick'
-              ? 'Future collects will route into the chosen pipeline stage.'
-              : 'Where new collects land. Backfill options also live here.'}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md flex flex-col gap-0">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="flex items-center gap-2 text-[15px]">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground/[0.06]">
+                <Link2 className="h-3.5 w-3.5 text-text-primary" />
+              </div>
+              {step === 'pick' ? 'Link this project to a job' : 'Pick the default stage'}
+            </DialogTitle>
+            <DialogDescription className="text-[12.5px] text-text-tertiary">
+              {step === 'pick'
+                ? 'Future collects will route into the chosen pipeline stage.'
+                : 'Where new collects land. Backfill options also live here.'}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="flex flex-col min-h-0 pt-2">
-          {step === 'pick' ? (
-            <LegacyPickerInsideDialog
-              jobs={jobs}
-              isLoading={isLoading}
-              spec={spec}
-              onSelect={(job) => { setPickedJob(job); setStep('stage') }}
-              onCreateNew={() => { onOpenChange(false); setWizardOpen(true) }}
-            />
-          ) : pickedJob ? (
-            <StageStep
-              job={pickedJob}
-              savedCount={savedCandidatesCount}
-              organizationName={organizationName}
-              onBack={() => {
-                if (externallyPicked && onBackToPick) {
-                  onOpenChange(false)
-                  onBackToPick()
-                } else {
-                  setStep('pick')
-                }
-              }}
-              onConfirm={handleConfirm}
-              isSubmitting={submitting}
-            />
-          ) : null}
-        </div>
-      </DialogContent>
-    </Dialog>
+          <div className="flex flex-col min-h-0 pt-2">
+            {step === 'pick' ? (
+              <LegacyPickerInsideDialog
+                jobs={jobs}
+                isLoading={isLoading}
+                spec={spec}
+                onSelect={(job) => { setPickedJob(job); setStep('stage') }}
+                onCreateNew={() => { onOpenChange(false); setWizardOpen(true) }}
+              />
+            ) : pickedJob ? (
+              <StageStep
+                job={pickedJob}
+                savedCount={savedCandidatesCount}
+                organizationName={organizationName}
+                onBack={() => {
+                  if (externallyPicked && onBackToPick) {
+                    onOpenChange(false)
+                    onBackToPick()
+                  } else {
+                    setStep('pick')
+                  }
+                }}
+                onConfirm={handleConfirm}
+                isSubmitting={submitting}
+              />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <JobWizard isOpen={wizardOpen} onClose={() => setWizardOpen(false)} />
+    </>
   )
 }
 
