@@ -3,8 +3,8 @@ import { Link2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import {
-  LinkToJobDialog,
   LinkToJobPopoverContent,
+  LinkToJobStagePopoverContent,
   type LinkToJobPayload,
   type EnrichedJob,
 } from './LinkToJobDialog'
@@ -21,23 +21,33 @@ interface LinkToJobBannerProps {
 
 /**
  * Yellow link-to-job banner shown when a sourcing project is not linked to a job.
- * Clicking "Link to job" opens an anchored popover (Step 1 — job picker), which
- * hands off to a centered dialog (Step 2 — default stage + backfill).
+ * Clicking "Link to job" opens an anchored popover that hosts BOTH steps:
+ *   Step 1 — job picker
+ *   Step 2 — default stage + backfill
+ * The popover body swaps in place to keep a single multi-step floating surface.
  */
 export function LinkToJobBanner({
   onLinkToJob,
-  currentJobId,
   project,
-  savedCandidatesCount,
+  savedCandidatesCount = 0,
   organizationName,
 }: LinkToJobBannerProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
-  const [stageDialogOpen, setStageDialogOpen] = useState(false)
-  const [wizardOpen, setWizardOpen] = useState(false)
+  const [step, setStep] = useState<'pick' | 'stage'>('pick')
   const [pickedJob, setPickedJob] = useState<EnrichedJob | null>(null)
+  const [wizardOpen, setWizardOpen] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
   if (dismissed) return null
+
+  const handleOpenChange = (o: boolean) => {
+    setPopoverOpen(o)
+    if (!o) {
+      // Reset to step 1 the next time the popover opens.
+      setStep('pick')
+      setPickedJob(null)
+    }
+  }
 
   return (
     <>
@@ -54,7 +64,7 @@ export function LinkToJobBanner({
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <Popover open={popoverOpen} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild>
               <Button size="sm" variant="primary" icon={Link2}>
                 Link to job
@@ -64,27 +74,37 @@ export function LinkToJobBanner({
               align="end"
               sideOffset={8}
               className="w-[460px] p-0"
-              onOpenAutoFocus={(e) => {
-                // let the search input handle autofocus
-                e.preventDefault()
-              }}
+              onOpenAutoFocus={(e) => { e.preventDefault() }}
             >
-              <LinkToJobPopoverContent
-                project={project}
-                onClose={() => setPopoverOpen(false)}
-                onSelect={(job) => {
-                  setPickedJob(job)
-                  setPopoverOpen(false)
-                  setTimeout(() => setStageDialogOpen(true), 50)
-                }}
-                onCreateNew={() => {
-                  setPopoverOpen(false)
-                  setTimeout(() => setWizardOpen(true), 50)
-                }}
-              />
+              {step === 'pick' || !pickedJob ? (
+                <LinkToJobPopoverContent
+                  project={project}
+                  onClose={() => setPopoverOpen(false)}
+                  onSelect={(job) => {
+                    setPickedJob(job)
+                    setStep('stage')
+                  }}
+                  onCreateNew={() => {
+                    setPopoverOpen(false)
+                    setTimeout(() => setWizardOpen(true), 50)
+                  }}
+                />
+              ) : (
+                <LinkToJobStagePopoverContent
+                  job={pickedJob}
+                  savedCount={savedCandidatesCount}
+                  organizationName={organizationName}
+                  onBack={() => setStep('pick')}
+                  onConfirm={async (payload) => {
+                    await onLinkToJob(payload)
+                    setPopoverOpen(false)
+                    setStep('pick')
+                    setPickedJob(null)
+                  }}
+                />
+              )}
             </PopoverContent>
           </Popover>
-
 
           <Button size="sm" variant="ghost" onClick={() => setDismissed(true)}>
             Continue without
@@ -99,29 +119,6 @@ export function LinkToJobBanner({
           />
         </div>
       </div>
-
-      {/* Step 2 — Stage + backfill, opens after a job is picked in the popover */}
-      <LinkToJobDialog
-        open={stageDialogOpen}
-        onOpenChange={(o) => {
-          setStageDialogOpen(o)
-          if (!o) setPickedJob(null)
-        }}
-        currentJobId={currentJobId ?? null}
-        project={project}
-        savedCandidatesCount={savedCandidatesCount}
-        organizationName={organizationName}
-        pickedJob={pickedJob}
-        onBackToPick={() => {
-          setStageDialogOpen(false)
-          setTimeout(() => setPopoverOpen(true), 50)
-        }}
-        onConfirm={async (payload) => {
-          await onLinkToJob(payload)
-          setStageDialogOpen(false)
-          setPickedJob(null)
-        }}
-      />
 
       <JobWizard isOpen={wizardOpen} onClose={() => setWizardOpen(false)} />
     </>
