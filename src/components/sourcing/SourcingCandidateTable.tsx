@@ -95,6 +95,7 @@ interface SourcingCandidateTableProps {
     full_data: number
     preview_only: number
   }
+  onCandidatesChanged?: () => void | Promise<void>
 }
 
 export function SourcingCandidateTable({ 
@@ -103,7 +104,8 @@ export function SourcingCandidateTable({
   jobId,
   projectId,
   searchCriteria,
-  sourceBreakdown
+  sourceBreakdown,
+  onCandidatesChanged
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -130,13 +132,25 @@ export function SourcingCandidateTable({
   const [showJobDialog, setShowJobDialog] = useState(false)
   const [pendingBulkIds, setPendingBulkIds] = useState<string[]>([])
 
+  // Track which candidates are already in pipeline (also referenced below; declared early for filter use)
+  const [addedCandidates, setAddedCandidates] = useState<Set<string>>(new Set())
+  const [loadingCandidates, setLoadingCandidates] = useState<Set<string>>(new Set())
+  const [collectingProfiles, setCollectingProfiles] = useState<Set<string>>(new Set())
+  // Track apollo IDs that have been collected in this session (optimistic state)
+  const [collectedApolloIds, setCollectedApolloIds] = useState<Set<string>>(new Set())
+  // apollo_id -> candidate_id mapping for session-collected rows, so the sheet can open as internal
+  const [collectedCandidateIdByApollo, setCollectedCandidateIdByApollo] = useState<Map<string, string>>(new Map())
+
   // Segment counts (computed from full candidate set, ignoring segment filter)
   const segmentCounts = {
     all: candidates.length,
     strong: candidates.filter(c => c.match_tier === 'excellent').length,
     good: candidates.filter(c => c.match_tier === 'good').length,
     possible: candidates.filter(c => c.match_tier === 'fair' || c.match_tier === 'minimal').length,
-    collected: candidates.filter(c => c.source === 'apollo' && !!c.candidate_id).length,
+    collected: candidates.filter(c =>
+      (c.source === 'apollo' && !!c.candidate_id) ||
+      (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
+    ).length,
   }
 
   // Apply fit segment filter
@@ -145,7 +159,9 @@ export function SourcingCandidateTable({
       case 'strong': return c.match_tier === 'excellent'
       case 'good': return c.match_tier === 'good'
       case 'possible': return c.match_tier === 'fair' || c.match_tier === 'minimal'
-      case 'collected': return c.source === 'apollo' && !!c.candidate_id
+      case 'collected':
+        return (c.source === 'apollo' && !!c.candidate_id) ||
+          (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
       default: return true
     }
   })
@@ -310,17 +326,18 @@ export function SourcingCandidateTable({
     }
   }
 
-  // Track which candidates are already in pipeline
-  const [addedCandidates, setAddedCandidates] = useState<Set<string>>(new Set())
-  const [loadingCandidates, setLoadingCandidates] = useState<Set<string>>(new Set())
-  const [collectingProfiles, setCollectingProfiles] = useState<Set<string>>(new Set())
-  // Track apollo IDs that have been collected in this session
-  const [collectedApolloIds, setCollectedApolloIds] = useState<Set<string>>(new Set())
-
   // Handler for when a candidate is collected from the sheet
   const handleCandidateCollected = (candidateId: string, apolloId: string) => {
     setCollectedApolloIds(prev => new Set(prev).add(apolloId))
     setAddedCandidates(prev => new Set(prev).add(candidateId))
+    if (apolloId && candidateId) {
+      setCollectedCandidateIdByApollo(prev => {
+        const next = new Map(prev)
+        next.set(apolloId, candidateId)
+        return next
+      })
+    }
+    void onCandidatesChanged?.()
   }
 
   // Check existing pipeline candidates
@@ -396,10 +413,20 @@ export function SourcingCandidateTable({
         apolloIds.forEach(id => next.add(id))
         return next
       })
-      
+      // Capture apollo_id -> candidate_id mapping so the sheet can route to internal view immediately
+      if (Array.isArray(data?.results)) {
+        setCollectedCandidateIdByApollo(prev => {
+          const next = new Map(prev)
+          for (const r of data.results) {
+            if (r?.apollo_id && r?.candidate_id) next.set(r.apollo_id, r.candidate_id)
+          }
+          return next
+        })
+      }
+
       clearSelection()
-      // Invalidate queries to refresh data without full page reload
-      queryClient.invalidateQueries({ queryKey: ['sourcing-candidates', projectId] })
+      // Re-run sourcing-search so display_source / candidate_id reflect the new collection
+      void onCandidatesChanged?.()
       queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
     } catch (error: any) {
       toast({
@@ -461,9 +488,18 @@ export function SourcingCandidateTable({
 
       // Immediately mark as collected for instant badge display
       setCollectedApolloIds(prev => new Set(prev).add(apolloId))
+      // Capture candidate_id when returned so the row can open as internal immediately
+      const newCandidateId = (data as any)?.candidate_id || (data as any)?.results?.[0]?.candidate_id
+      if (newCandidateId) {
+        setCollectedCandidateIdByApollo(prev => {
+          const next = new Map(prev)
+          next.set(apolloId, newCandidateId)
+          return next
+        })
+      }
 
-      // Invalidate queries to refresh data without full page reload
-      queryClient.invalidateQueries({ queryKey: ['sourcing-candidates', projectId] })
+      // Re-run sourcing-search so display_source / candidate_id reflect the new collection
+      void onCandidatesChanged?.()
       queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
     } catch (error: any) {
       toast({
@@ -770,7 +806,8 @@ export function SourcingCandidateTable({
                 const isLoading = loadingCandidates.has(candidate.id)
                 const isCollecting = candidate.apollo_id ? collectingProfiles.has(candidate.apollo_id) : false
                 const isPdl = isPdlCandidate(candidate)
-                const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
+                const isSessionCollected = !!candidate.apollo_id && collectedApolloIds.has(candidate.apollo_id)
+                const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id && !isSessionCollected
                 const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
                 // Check if this row is currently open in the preview
@@ -781,7 +818,7 @@ export function SourcingCandidateTable({
                 )
 
                 // Determine candidate type for unified rendering
-                const isInternal = isCollectedApollo(candidate)
+                const isInternal = isCollectedApollo(candidate) || isSessionCollected
                 const isGio = isGioSourced(candidate)
                 const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
                 const location = getLocation(candidate)
@@ -793,7 +830,8 @@ export function SourcingCandidateTable({
                 // Click handler per type
                 const handleRowClick = () => {
                   if (isInternal) {
-                    setSelectedCandidateId(candidate.candidate_id || candidate.id)
+                    const mappedId = candidate.apollo_id ? collectedCandidateIdByApollo.get(candidate.apollo_id) : undefined
+                    setSelectedCandidateId(candidate.candidate_id || mappedId || candidate.id)
                     setSelectedApolloId(null)
                     setSelectedApolloData(null)
                     setSelectedPdlData(null)
@@ -1112,10 +1150,11 @@ export function SourcingCandidateTable({
           const isAdded = addedCandidates.has(candidate.id)
           const isLoading = loadingCandidates.has(candidate.id)
           const isPdl = isPdlCandidate(candidate)
-          const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id
+          const isSessionCollected = !!candidate.apollo_id && collectedApolloIds.has(candidate.apollo_id)
+          const canSelect = !isPdl && candidate.source === 'apollo' && !candidate.candidate_id && candidate.apollo_id && !isSessionCollected
           const isSelected = canSelect && selectedApolloIds.has(candidate.apollo_id!)
 
-          const isInternal = isCollectedApollo(candidate)
+          const isInternal = isCollectedApollo(candidate) || isSessionCollected
           const isGio = isGioSourced(candidate)
           const isApollo = !isInternal && !isGio && candidate.source === 'apollo' && !candidate.candidate_id
           const location = getLocation(candidate)

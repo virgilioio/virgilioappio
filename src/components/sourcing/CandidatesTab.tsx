@@ -49,6 +49,7 @@ interface CandidatesTabProps {
   onLinkToJob?: (payload: LinkToJobPayload) => Promise<void> | void;
   onUnlinkJob?: () => Promise<void> | void;
   savedCandidatesCount?: number;
+  onCandidatesChanged?: () => void | Promise<void>;
 }
 
 export function CandidatesTab({
@@ -62,7 +63,7 @@ export function CandidatesTab({
   onLinkToJob,
   onUnlinkJob,
   savedCandidatesCount = 0,
-  
+  onCandidatesChanged,
 }: CandidatesTabProps) {
   // Run summary stats — derived from candidates
   const summary = useMemo(() => {
@@ -144,6 +145,7 @@ export function CandidatesTab({
           projectId={projectId}
           searchCriteria={searchCriteria || project.search_criteria}
           sourceBreakdown={sourceBreakdown}
+          onCandidatesChanged={onCandidatesChanged}
         />
       </div>
     </div>

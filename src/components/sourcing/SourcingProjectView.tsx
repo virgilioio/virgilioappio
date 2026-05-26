@@ -385,6 +385,7 @@ export function SourcingProjectView({
         onLinkToJob={handleLinkToJob}
         onUnlinkJob={async () => { await linkProjectToJob(null) }}
         savedCandidatesCount={savedCandidates?.length ?? 0}
+        onCandidatesChanged={refetchCandidates}
       />
 
       {pendingJobId && (
