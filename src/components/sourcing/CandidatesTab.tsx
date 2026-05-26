@@ -2,8 +2,10 @@ import { useMemo } from 'react'
 import { SourcingProject, SearchCriteria } from '@/types/sourcing'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { LinkToJobBanner } from './LinkToJobBanner'
+import { LinkedToJobBanner } from './LinkedToJobBanner'
 import { LinkedJobStrip } from './LinkedJobStrip'
 import { ResultsRunSummary } from './ResultsRunSummary'
+import type { LinkToJobPayload } from './LinkToJobDialog'
 
 interface Candidate {
   id: string;
