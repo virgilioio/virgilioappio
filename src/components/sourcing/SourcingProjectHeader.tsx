@@ -306,8 +306,9 @@ export function SourcingProjectHeader({
       <LinkToJobDialog
         open={showLinkJobDialog}
         onOpenChange={setShowLinkJobDialog}
-        onConfirm={handleLinkToJob}
+        onConfirm={async (payload) => { await handleLinkToJob(payload.jobId) }}
         currentJobId={project.job_id}
+        project={project as any}
       />
 
       {/* Create Job from Project Dialog */}

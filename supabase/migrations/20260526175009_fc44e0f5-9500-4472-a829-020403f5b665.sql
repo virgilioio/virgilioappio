@@ -1,0 +1,1 @@
+ALTER TABLE public.sourcing_projects ADD COLUMN IF NOT EXISTS send_careers_link boolean NOT NULL DEFAULT false;

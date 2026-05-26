@@ -282,22 +282,39 @@ export function SourcingProjectView({
     return true
   }
 
-  const handleLinkToJob = async (jobId: string) => {
+  const [lastLinkResult, setLastLinkResult] = useState<{ stageJhsId: string | null; stageName: string | null; movedCount: number } | null>(null)
+
+  const handleLinkToJob = async (input: any) => {
     if (!project) return
-
-    // Empty string => unlink
-    if (!jobId) {
-      await linkProjectToJob(null)
+    // Legacy: string payload (used by header/actions for unlink, signaled by empty string)
+    if (typeof input === 'string') {
+      if (!input) { await linkProjectToJob(null); return }
+      await linkProjectToJob(input)
       return
     }
 
-    if (savedCandidates && savedCandidates.length > 0) {
-      setPendingJobId(jobId)
-      setShowAddToPipelineDialog(true)
-      return
+    const payload = input as { jobId: string; stageJhsId: string | null; stageName: string | null; backfill: boolean; careersLink: boolean }
+    const linked = await linkProjectToJob(payload.jobId)
+    if (!linked) return
+
+    let moved = 0
+    if (payload.backfill && payload.stageJhsId && savedCandidates && savedCandidates.length > 0) {
+      for (const candidate of savedCandidates) {
+        try {
+          await createAssociationAndMove(payload.jobId, candidate.id, payload.stageJhsId)
+          moved++
+        } catch (error) {
+          console.error('Failed to backfill candidate:', error)
+        }
+      }
+      if (moved > 0) toast.success(`Moved ${moved} candidate${moved !== 1 ? 's' : ''} into ${payload.stageName || 'pipeline'}`)
     }
-    
-    await linkProjectToJob(jobId)
+
+    if (payload.careersLink) {
+      await supabase.from('sourcing_projects').update({ send_careers_link: true }).eq('id', project.id)
+    }
+
+    setLastLinkResult({ stageJhsId: payload.stageJhsId, stageName: payload.stageName, movedCount: moved })
   }
 
   const handleAddToPipelineConfirm = async (stageId: string) => {
@@ -366,6 +383,9 @@ export function SourcingProjectView({
         searchCriteria={project.search_criteria}
         sourceBreakdown={matchingResult?.source_breakdown}
         onLinkToJob={handleLinkToJob}
+        onUnlinkJob={async () => { await linkProjectToJob(null) }}
+        savedCandidatesCount={savedCandidates?.length ?? 0}
+        lastLinkResult={lastLinkResult}
       />
 
       {pendingJobId && (

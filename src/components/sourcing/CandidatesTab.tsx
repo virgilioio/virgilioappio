@@ -2,8 +2,10 @@ import { useMemo } from 'react'
 import { SourcingProject, SearchCriteria } from '@/types/sourcing'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { LinkToJobBanner } from './LinkToJobBanner'
+import { LinkedToJobBanner } from './LinkedToJobBanner'
 import { LinkedJobStrip } from './LinkedJobStrip'
 import { ResultsRunSummary } from './ResultsRunSummary'
+import type { LinkToJobPayload } from './LinkToJobDialog'
 
 interface Candidate {
   id: string;
@@ -44,7 +46,14 @@ interface CandidatesTabProps {
     full_data: number;
     preview_only: number;
   };
-  onLinkToJob?: (jobId: string) => Promise<void> | void;
+  onLinkToJob?: (payload: LinkToJobPayload) => Promise<void> | void;
+  onUnlinkJob?: () => Promise<void> | void;
+  savedCandidatesCount?: number;
+  lastLinkResult?: {
+    stageJhsId: string | null;
+    stageName: string | null;
+    movedCount: number;
+  } | null;
 }
 
 export function CandidatesTab({
@@ -56,6 +65,9 @@ export function CandidatesTab({
   searchCriteria,
   sourceBreakdown,
   onLinkToJob,
+  onUnlinkJob,
+  savedCandidatesCount = 0,
+  lastLinkResult,
 }: CandidatesTabProps) {
   // Run summary stats — derived from candidates
   const summary = useMemo(() => {
@@ -97,15 +109,33 @@ export function CandidatesTab({
       {!isLoading && candidates.length > 0 && (
         <div className="px-4 pt-4 space-y-2 shrink-0">
           {isLinked ? (
-            <LinkedJobStrip
-              jobId={(jobId || project.job_id)!}
-              jobTitle={project.jobs?.title}
-              department={project.jobs?.organizations?.name}
-              onUnlink={() => onLinkToJob?.('')}
-            />
+            <>
+              {lastLinkResult && (
+                <LinkedToJobBanner
+                  jobId={(jobId || project.job_id)!}
+                  jobTitle={project.jobs?.title}
+                  movedCount={lastLinkResult.movedCount}
+                  defaultStageJhsId={lastLinkResult.stageJhsId}
+                  defaultStageName={lastLinkResult.stageName}
+                  storageKey={`linked-banner-dismissed:${projectId}`}
+                />
+              )}
+              <LinkedJobStrip
+                jobId={(jobId || project.job_id)!}
+                jobTitle={project.jobs?.title}
+                department={project.jobs?.organizations?.name}
+                onUnlink={() => onUnlinkJob?.()}
+              />
+            </>
           ) : (
             onLinkToJob && (
-              <LinkToJobBanner onLinkToJob={onLinkToJob} currentJobId={project.job_id} />
+              <LinkToJobBanner
+                onLinkToJob={onLinkToJob}
+                currentJobId={project.job_id}
+                project={project}
+                savedCandidatesCount={savedCandidatesCount}
+                organizationName={project.jobs?.organizations?.name}
+              />
             )
           )}
           <ResultsRunSummary

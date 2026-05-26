@@ -181,8 +181,9 @@ export function SourcingProjectActions({
       <LinkToJobDialog
         open={showLinkJobDialog}
         onOpenChange={setShowLinkJobDialog}
-        onConfirm={async (jobId) => { await onLinkToJob(jobId) }}
+        onConfirm={async (payload) => { await onLinkToJob(payload.jobId) }}
         currentJobId={project.job_id}
+        project={project}
       />
 
       <CreateJobFromProjectDialog

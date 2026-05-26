@@ -1,18 +1,28 @@
 import { useState } from 'react'
 import { Link2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { LinkToJobDialog } from './LinkToJobDialog'
+import { LinkToJobDialog, type LinkToJobPayload } from './LinkToJobDialog'
+import type { SourcingProject } from '@/types/sourcing'
 
 interface LinkToJobBannerProps {
-  onLinkToJob: (jobId: string) => Promise<void> | void
+  onLinkToJob: (payload: LinkToJobPayload) => Promise<void> | void
   currentJobId?: string | null
+  project?: SourcingProject | null
+  savedCandidatesCount?: number
+  organizationName?: string
 }
 
 /**
  * Yellow link-to-job banner shown when a sourcing project is not linked to a job.
  * Dismissible for the session via the "Continue without" action.
  */
-export function LinkToJobBanner({ onLinkToJob, currentJobId }: LinkToJobBannerProps) {
+export function LinkToJobBanner({
+  onLinkToJob,
+  currentJobId,
+  project,
+  savedCandidatesCount,
+  organizationName,
+}: LinkToJobBannerProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
@@ -54,8 +64,11 @@ export function LinkToJobBanner({ onLinkToJob, currentJobId }: LinkToJobBannerPr
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         currentJobId={currentJobId ?? null}
-        onConfirm={async (jobId) => {
-          await onLinkToJob(jobId)
+        project={project}
+        savedCandidatesCount={savedCandidatesCount}
+        organizationName={organizationName}
+        onConfirm={async (payload) => {
+          await onLinkToJob(payload)
           setDialogOpen(false)
         }}
       />

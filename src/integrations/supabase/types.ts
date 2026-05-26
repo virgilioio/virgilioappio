@@ -5506,6 +5506,7 @@ export type Database = {
           organization_id: string
           pdl_cache_expires_at: string | null
           search_criteria: Json
+          send_careers_link: boolean
           sourcing_cache_expires_at: string | null
           sourcing_candidate_count: number | null
           status: string
@@ -5530,6 +5531,7 @@ export type Database = {
           organization_id: string
           pdl_cache_expires_at?: string | null
           search_criteria?: Json
+          send_careers_link?: boolean
           sourcing_cache_expires_at?: string | null
           sourcing_candidate_count?: number | null
           status?: string
@@ -5554,6 +5556,7 @@ export type Database = {
           organization_id?: string
           pdl_cache_expires_at?: string | null
           search_criteria?: Json
+          send_careers_link?: boolean
           sourcing_cache_expires_at?: string | null
           sourcing_candidate_count?: number | null
           status?: string
