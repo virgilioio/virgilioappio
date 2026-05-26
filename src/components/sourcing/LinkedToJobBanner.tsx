@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Link2, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Link2, ArrowLeft, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
@@ -86,71 +86,75 @@ export function LinkedToJobBanner({
   return (
     <div className="rounded-lg border border-success/40 bg-success/10 px-4 py-3">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/25 text-success">
-          <Link2 className="h-3 w-3" />
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-success/25 text-success">
+          <Link2 className="h-3.5 w-3.5" />
         </div>
 
         <div className="flex-1 min-w-0">
           <p className="text-[13px] text-text-primary">
-            <span className="font-medium">Linked to {jobTitle || 'job'}.</span>{' '}
-            <span className="text-text-secondary">
-              {movedCount > 0 ? (
-                <>{movedCount} collected candidate{movedCount !== 1 ? 's' : ''} moved into <strong>{stageLabel || 'the default stage'}</strong>. Future collects flow there automatically.</>
-              ) : (
-                <>Future collects flow into <strong>{stageLabel || 'the default stage'}</strong> automatically.</>
-              )}
-            </span>
+            <span className="font-medium">Linked to </span>
+            <span className="font-medium text-virgilio-purple">{jobTitle || 'job'}</span>
           </p>
-
-          {/* Pipeline preview strip */}
-          {stages.length > 0 && (
-            <div className="mt-2.5 flex items-center gap-1 flex-wrap">
-              {stages.map((s, i) => {
-                const isDefault = s.jhsId === defaultStageJhsId
-                const showPlus = isDefault && movedCount > 0
-                return (
-                  <div key={s.jhsId} className="flex items-center gap-1">
-                    <div
-                      className={cn(
-                        'inline-flex items-center gap-1.5 h-7 rounded-md px-2.5',
-                        isDefault
-                          ? 'bg-[#EDE4FF] text-virgilio-purple'
-                          : 'bg-transparent text-text-secondary border border-border'
-                      )}
-                    >
-                      <span className="text-[10.5px] font-medium uppercase tracking-[0.06em] font-inter">
-                        {s.label}
-                      </span>
-                      <span className="font-poppins text-[13px] tabular-nums leading-none">
-                        {s.count}
-                      </span>
-                      {showPlus && (
-                        <span className="inline-flex items-center h-4 rounded-full bg-virgilio-purple px-1.5 text-[10px] font-medium text-white tabular-nums leading-none">
-                          +{movedCount}
-                        </span>
-                      )}
-                    </div>
-                    {i < stages.length - 1 && (
-                      <span className="text-text-tertiary/60 text-[11px]">→</span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          <p className="text-[13px] text-text-secondary mt-0.5">
+            {movedCount > 0 ? (
+              <>{movedCount} collected candidate{movedCount !== 1 ? 's' : ''} moved into <strong className="text-text-primary font-medium">{stageLabel || 'the default stage'}</strong> · future collects flow there automatically.</>
+            ) : (
+              <>Future collects flow into <strong className="text-text-primary font-medium">{stageLabel || 'the default stage'}</strong> automatically.</>
+            )}
+          </p>
         </div>
       </div>
 
+      {/* Pipeline preview cards */}
+      {stages.length > 0 && (
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {stages.map((s) => {
+            const isDefault = s.jhsId === defaultStageJhsId
+            const showPlus = isDefault && movedCount > 0
+            return (
+              <div
+                key={s.jhsId}
+                className={cn(
+                  'rounded-xl px-3 py-2.5 flex flex-col gap-1',
+                  isDefault
+                    ? 'bg-[#EDE4FF] text-virgilio-purple'
+                    : 'bg-[#FAFAF7]'
+                )}
+              >
+                <span
+                  className={cn(
+                    'text-[10.5px] font-medium uppercase tracking-[0.06em] font-inter',
+                    isDefault ? 'text-virgilio-purple' : 'text-text-secondary'
+                  )}
+                >
+                  {s.label}
+                </span>
+                <span
+                  className={cn(
+                    'font-poppins font-semibold text-[22px] tabular-nums leading-none',
+                    isDefault ? 'text-virgilio-purple' : 'text-text-primary'
+                  )}
+                >
+                  {s.count}
+                  {showPlus && <span className="ml-1.5">+{movedCount}</span>}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="mt-2.5 flex items-center justify-end gap-1.5">
-        <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/find')}>
+      <div className="mt-3 flex items-center gap-2">
+        <Button size="sm" variant="primary" icon={TrendingUp} onClick={() => navigate(`/jobs/${jobId}`)}>
+          Open pipeline
+        </Button>
+        <Button variant="secondary" size="sm" icon={ArrowLeft} onClick={() => navigate('/find')}>
           Back to Find
         </Button>
+        <div className="ml-auto" />
         <Button variant="ghost" size="sm" onClick={handleDone}>
           Done
-        </Button>
-        <Button size="sm" iconRight={ArrowRight} onClick={() => navigate(`/jobs/${jobId}`)}>
-          Open pipeline
         </Button>
       </div>
     </div>
