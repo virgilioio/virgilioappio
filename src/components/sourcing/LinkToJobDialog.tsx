@@ -468,6 +468,7 @@ export function LinkToJobDialog({
   const [step, setStep] = useState<'pick' | 'stage'>(externallyPicked ? 'stage' : 'pick')
   const [pickedJob, setPickedJob] = useState<EnrichedJob | null>(pickedJobProp)
   const [submitting, setSubmitting] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
 
   useEffect(() => {
     if (!open) {
