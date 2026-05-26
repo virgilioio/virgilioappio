@@ -1,86 +1,57 @@
-# Apollo Preview Sheet — Collected (post-collect) view
+# Link sourcing project to a job — 4-step flow
 
-Rebuild the post-collect body of `ApolloPreviewSheet.tsx` to mirror the two screenshots. UI work only (one edge-function field passthrough + one extra DB read). No new tables, no business-logic changes.
+The yellow "Not linked to a job" banner already exists (Step 1). We rebuild the dialog it opens into the multi-step flow shown in the screenshots, and add the post-link confirmation (Step 4).
 
-## Backend (1 small change)
+## What changes
 
-`supabase/functions/enrich-apollo-profile/index.ts` — extend each `results[]` item pushed at line 556 so the apollo signals don't get lost after collection:
+### Step 1 — Trigger (no change)
+Existing `LinkToJobBanner` already shows the yellow strip and `Link to job` primary button. Reuse as-is.
 
-```ts
-results.push({
-  apollo_id: person.id,
-  candidate_id: candidateId,
-  already_collected: false,
-  email: person.email,
-  phone,
-  // new — passthrough from Apollo
-  headline: person.headline,
-  seniority: person.seniority,
-  departments: person.departments,
-  email_status: person.email_status,
-  apollo_collected_at: collectedAtIso,
-})
-```
+### Step 2 — Pick the job
+Rewrite `src/components/sourcing/LinkToJobDialog.tsx`:
 
-Mirror the same passthrough for the already-collected branch (read the existing candidate's `email_status`, `bio` for headline; `seniority`/`departments` are not persisted, so default to `null` in that branch). The frontend gracefully omits absent fields.
+- Header: link icon + "Link this project to a job", subtitle "Future collects will route into the chosen pipeline stage."
+- Search input (only "Search jobs…", no `kbd esc` hint — out of scope).
+- **GIO THINKS THESE MATCH** group with up to 3 jobs scored against the project's `job_spec_data`. Each row shows: org icon · job title · `Design · NY · Remote OK` meta · `142 applicants` · `92% match` purple chip · `Hot` orange chip if score ≥ 85.
+- **OTHER OPEN JOBS** group with the remaining open jobs (department, location, applicant count, recruiter avatar).
+- Footer left: `Can't find it?` / right: `+ Create new job` ghost link (opens existing JobWizard — wiring deferred unless trivial; for now it triggers a toast "Create job from dialog coming soon" so we don't expand scope).
+- Selecting a row advances to Step 3 immediately (no separate Confirm).
 
-## Frontend — `src/components/candidates/ApolloPreviewSheet.tsx`
+### Step 3 — Stage + backfill
+New nested view inside the same dialog (no second modal):
 
-### Data layer
-- Extend `EnrichedCandidateData` to add: `headline`, `email_status`, `seniority`, `departments`, `contact_emails`, `contact_phones`, `apollo_collected_at`, `role_current`, `company_current`, `collected_by_name` (optional), and `employment_history: Array<{ company, title, start_date, end_date, is_current, description }>`.
-- In `handleCollectProfile`, after the candidate row select, also:
-  - Read `email_status, bio, contact_emails, contact_phones, role_current, company_current, apollo_collected_at` from `candidates`.
-  - Fire a second select on `candidate_work_experience` ordered by `start_date desc` for the employment timeline.
-  - Pull `headline / seniority / departments` from the edge response (`collectedResult`).
+- Compact job header: dark avatar square · title · `Design · 142 applicants · Maya Reyes` meta · back chevron.
+- **DEFAULT STAGE FOR NEW COLLECTS** — radio list pulled from `useJobHiringPlan(jobId).loadHiringPlanInstances`. First stage gets a `Recommended` lilac chip. Stage row = small color square + name.
+- **BACKFILL** section with two checkboxes:
+  1. `Drop N already-collected candidates into <Stage>` (N = count of rows in `sourcing_preview_candidates` already collected for this project; defaults checked).
+  2. `Send <Org> careers page link to all future collects` (default unchecked, only visible if the org has a published careers page — we'll just always show it; toggle stored on the project link op).
+- Footer: left caption `N will move on link` · right: `Back` + `Link project` primary button.
 
-### `IdentityBlock` — collected variant
-Reuse current block, but when `isCollected`:
-- Show `bio/headline` in italics under the name+chips line.
-- Compose location chip from `city · state · country`.
-- Show inline meta row with `Senior` (seniority) chip and `Design · Product` (departments joined) chip using existing tone tokens.
-- Right-side score card stays (Keyword fit 94 · 4 of 4 keywords) — reuse existing `keywordMatches` + fit logic; it works post-collect too.
+### Step 4 — Linked + flowing
+After successful link, banner location swaps: `LinkToJobBanner` (yellow) is replaced by a new `LinkedToJobBanner` (green) showing:
 
-### New post-collect body (replaces lines 744–897)
-Stack of cards inside `flex-1 overflow-y-auto p-6 space-y-5`:
+- Link icon · `Linked to <Job Title>` headline · `N collected candidates moved into <Stage> · future collects flow there automatically.`
+- Pipeline preview chips: `SOURCED 24 +2` (lilac), `APPLIED 86`, `PHONE 14`, `ONSITE 4`.
+- Actions: `Open pipeline` (primary, navigates to `/jobs/:id`), `Back to Find` (ghost), `Done` (ghost, dismisses banner for the session).
 
-1. **Contact strip** — 3 cards in a `grid grid-cols-3 gap-3`:
-   - `WORK EMAIL` label + `<Badge tone="green" dot>Verified</Badge>` (from `email_status`); body = `email` as link; subline `+ N personal: …` from `contact_emails` minus primary.
-   - `MOBILE` + `<Badge tone="green" dot>Delivered</Badge>` if phone present; body = `phone` link; caption `From Apollo phone webhook · {timeAgo}` using existing relative-time helper.
-   - `LINKEDIN` (no badge); body = `linkedin.com/in/<handle>` link; caption `linkedin_url`.
+Banner auto-dismisses after the user clicks Done or navigates away. Persists across reloads as long as `project.job_id` is set and the user hasn't dismissed (session storage key `linked-banner-dismissed:<projectId>`).
 
-2. **Apollo signals card** (`CardShell` title `Apollo signals`, right caption `Normalized by Apollo`):
-   - 3 columns: `SENIORITY` (lilac badge), `DEPARTMENTS` (multi blue/purple badges), `EMAIL STATUS` (green dot badge `verified`).
+## Files
 
-3. **Why Gio thinks this is a fit** — reuse existing pre-collect card verbatim (already in `PreCollectBody`); render via `keywordMatches` and the existing `MATCH_*` map.
+- **Edit** `src/components/sourcing/LinkToJobDialog.tsx` — full rewrite for 2-step content + Gio match section.
+- **New** `src/components/sourcing/LinkedToJobBanner.tsx` — green confirmation banner.
+- **Edit** `src/components/sourcing/CandidatesTab.tsx` — render `LinkedToJobBanner` when `project.job_id` is set and not yet dismissed; keep yellow banner when unset.
+- **Edit** `src/components/sourcing/LinkToJobBanner.tsx` — extend `onLinkToJob` signature so the dialog can pass `{ jobId, stageJhsId, backfill, careersLink }`. Keep the callback backward-compatible by ignoring extras at call sites that don't need them (the existing wiring in `useJobSourcingProject` / parent only persists `job_id`; we will add a follow-up edge function call for backfill).
 
-4. **Matched keywords** — reuse existing matched-keywords card from `PreCollectBody`.
+## Data + plumbing
 
-5. **Employment history card** (`CardShell` title `Employment history`, right caption `{n} roles · employment_history[]`):
-   - Vertical timeline of rows (avatar square with first letter, title, company, `start_date – end_date | Present`, `Current` green-dot badge when `is_current`, description paragraph).
-   - Connect avatars with a 1px `border-l` rail (already a pattern in the app — match the screenshot's slim grey vertical line).
+- **Match scoring**: client-side score against `sourcing_projects.job_spec_data` (title overlap, skills intersection, location). Tunable threshold (`>=70` → "match", `>=85` → `Hot`). No new backend.
+- **Already-collected count**: `select count from sourcing_preview_candidates where project_id = :id and candidate_id is not null`.
+- **Backfill action**: when `Link project` is clicked with backfill checked, after persisting `job_id` we call existing `usePipelineActions.addCandidateToJob` (or equivalent) for each already-collected `candidate_id`, placing them in the selected `jhsId`. If a candidate is already on the job, skip silently.
+- **Careers-page toggle**: store as `sourcing_projects.send_careers_link` (boolean). Migration adds the column with default false. (Functional plumbing — sending the link on collect — is out of scope; the toggle is recorded only.)
 
-6. **Dashed-info note** (no card chrome — `border border-dashed rounded-lg p-4 flex gap-3`):
-   - `Info` icon, copy: *"Education, resume, GitHub, Twitter and headshot aren't part of Apollo's enrichment response. They show up once a candidate applies or you upload a resume to their profile."*
+## Out of scope
 
-### New post-collect footer
-Replace the current "Profile Collected" green callout with a fixed bottom bar similar to `PreCollectFooter`:
-- Left: `Collected by you · {relTime(apollo_collected_at)} · Apollo refreshed {refreshedLabel}` (text-tertiary, 12.5px).
-- Right buttons (Gio Foundation, in this order):
-  - `<Button variant="secondary" icon={Bookmark}>Save to talent pool</Button>`
-  - `<Button variant="secondary" icon={Mail}>Reach out</Button>` (opens existing email composer hook — reuse `onCandidateCollected`'s downstream)
-  - `<Button variant="primary" icon={UserPlus}>Add to job</Button>` (opens `JobSelectionDialog` for cross-job add; if already added shows toast).
-
-### Render wiring
-At line 906 swap `PostCollectBody` → new component and add `{isCollected && PostCollectFooter}` next to the existing `!isCollected && PreCollectFooter`.
-
-## What's intentionally out of scope
-- No schema migrations. Seniority/departments rely on the in-session enrich response; if a user reopens an already-collected candidate from another session, those two chips simply hide (the rest of the card still renders).
-- "Reach out" wires to the existing email composer entry point already used elsewhere in the codebase; no new email feature.
-- Pre-collect view, footer, and overall sheet width/chrome are unchanged.
-
-## Verification
-1. Run a search, open a fresh Apollo preview → click **Collect**.
-2. Confirm the body switches to the new layout matching screenshots 1 and 2 (contact strip, Apollo signals, Why Gio, Matched keywords, Employment history, dashed note).
-3. Confirm the new footer shows the timestamp line + Save / Reach out / Add to job buttons.
-4. Confirm relative timestamps follow the `Xd` convention (project core rule).
-5. Re-open the same candidate (already-collected branch) — apollo signals card hides its empty columns instead of erroring; everything else still renders from the DB.
+- "Create new job" inline (button is visible but shows a toast; opening JobWizard from inside this dialog is a follow-up).
+- Actually emailing the careers page link on future collects.
+- Reworking `SourcingProjectHeader` / `SourcingProjectActions` (those duplicates of `LinkToJobDialog` still call `onConfirm(jobId)` — they will continue to work because the new dialog still emits a `jobId` plus optional extras).
