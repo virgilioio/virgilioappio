@@ -75,12 +75,16 @@ export function LinkToJobBanner({
                 onSelect={(job) => {
                   setPickedJob(job)
                   setPopoverOpen(false)
-                  // give the popover a tick to unmount before opening the dialog
                   setTimeout(() => setStageDialogOpen(true), 50)
+                }}
+                onCreateNew={() => {
+                  setPopoverOpen(false)
+                  setTimeout(() => setWizardOpen(true), 50)
                 }}
               />
             </PopoverContent>
           </Popover>
+
 
           <Button size="sm" variant="ghost" onClick={() => setDismissed(true)}>
             Continue without
