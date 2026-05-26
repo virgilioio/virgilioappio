@@ -122,6 +122,8 @@ export function LinkToJobBanner({
           setPickedJob(null)
         }}
       />
+
+      <JobWizard isOpen={wizardOpen} onClose={() => setWizardOpen(false)} />
     </>
   )
 }
