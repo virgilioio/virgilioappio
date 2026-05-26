@@ -8,6 +8,7 @@ import {
   type LinkToJobPayload,
   type EnrichedJob,
 } from './LinkToJobDialog'
+import { JobWizard } from '@/components/jobs/JobWizard'
 import type { SourcingProject } from '@/types/sourcing'
 
 interface LinkToJobBannerProps {
