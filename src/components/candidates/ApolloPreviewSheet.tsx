@@ -625,31 +625,65 @@ export function ApolloPreviewSheet({
             </button>
           )}
         </div>
-        {(apolloData?.current_role || apolloData?.current_company) && (
+        {(enrichedData?.role_current || apolloData?.current_role || apolloData?.current_company) && (
           <p className="text-[14px] text-text-secondary mt-1">
-            {apolloData?.current_role}
-            {apolloData?.current_company && (
-              <> at <span className="text-text-primary font-medium">{apolloData.current_company}</span></>
+            {enrichedData?.role_current || apolloData?.current_role}
+            {(enrichedData?.company_current || apolloData?.current_company) && (
+              <> at <span className="text-text-primary font-medium">{enrichedData?.company_current || apolloData?.current_company}</span></>
             )}
           </p>
         )}
-        <div className="flex items-center gap-2 mt-2 text-[11.5px] text-text-tertiary flex-wrap">
-          <span className="inline-flex items-center gap-1"><Database className="h-3 w-3" /> Source: Apollo</span>
-          {refreshedLabel && (
-            <>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3" /> Apollo refreshed {refreshedLabel}</span>
-            </>
-          )}
-          {apolloId && (
-            <>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1"><Hash className="h-3 w-3" /> apollo_id <span className="font-mono">{shortApolloId(apolloId)}</span></span>
-            </>
-          )}
-        </div>
+        {isCollected && enrichedData?.headline && (
+          <p className="italic text-[13px] text-text-secondary mt-1.5 leading-snug">
+            "{enrichedData.headline}"
+          </p>
+        )}
+        {isCollected ? (
+          <div className="flex items-center gap-x-3 gap-y-1.5 mt-2 text-[11.5px] text-text-tertiary flex-wrap">
+            {(enrichedData?.location_city || enrichedData?.location_state || enrichedData?.location_country) && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {[enrichedData?.location_city, enrichedData?.location_state, enrichedData?.location_country].filter(Boolean).join(', ')}
+              </span>
+            )}
+            {enrichedData?.seniority && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" />
+                  <span className="capitalize text-text-secondary">{enrichedData.seniority}</span>
+                </span>
+              </>
+            )}
+            {enrichedData?.departments && enrichedData.departments.length > 0 && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1">
+                  <Wrench className="h-3 w-3" />
+                  <span className="capitalize text-text-secondary">{enrichedData.departments.join(' · ')}</span>
+                </span>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mt-2 text-[11.5px] text-text-tertiary flex-wrap">
+            <span className="inline-flex items-center gap-1"><Database className="h-3 w-3" /> Source: Apollo</span>
+            {refreshedLabel && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1"><RefreshCw className="h-3 w-3" /> Apollo refreshed {refreshedLabel}</span>
+              </>
+            )}
+            {apolloId && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1"><Hash className="h-3 w-3" /> apollo_id <span className="font-mono">{shortApolloId(apolloId)}</span></span>
+              </>
+            )}
+          </div>
+        )}
       </div>
-      {!isCollected && keywordMatches.total > 0 && (
+      {keywordMatches.total > 0 && (
         <div className="flex-shrink-0 text-right border border-border rounded-lg px-3 py-2 bg-surface-secondary/40">
           <div className="text-[9.5px] uppercase tracking-[0.1em] text-text-tertiary font-medium">Keyword fit</div>
           <div className={cn("font-poppins font-semibold text-[26px] leading-none mt-0.5", fitColor)}>
