@@ -256,9 +256,6 @@ export function ShareListModal({ candidateIds, candidateNames, candidates: candi
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-[12px] text-muted-foreground tabular-nums">{step}/4</span>
-                <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
               </div>
             </div>
             <TitleWithDot>
