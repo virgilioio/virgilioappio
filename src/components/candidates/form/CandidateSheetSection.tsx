@@ -38,7 +38,7 @@ export function CandidateSheetSection({
       {bare ? (
         children
       ) : (
-        <div className="rounded-xl ring-1 ring-virgilio-border/60 bg-background p-6 space-y-5">
+        <div className="rounded-xl ring-1 ring-virgilio-border/60 bg-white p-6 space-y-5">
           {children}
         </div>
       )}
