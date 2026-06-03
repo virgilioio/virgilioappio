@@ -213,7 +213,64 @@ export function EnhancedResumeDropzone({
     e.currentTarget.value = ''
   }
 
-  if (variant === 'minimal') {
+  if (variant === 'compact') {
+    return (
+      <div className={`relative ${className}`}>
+        <div
+          className={cn(
+            'flex items-center gap-3 rounded-lg border border-dashed px-3 py-2.5 transition-colors',
+            dragOver
+              ? 'border-virgilio-purple bg-badge-lilac/40'
+              : 'border-virgilio-border hover:border-virgilio-purple/60 bg-white',
+          )}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          aria-busy={isActive}
+          aria-live="polite"
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            onChange={handleFileInputChange}
+            accept={accept}
+          />
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-badge-lilac/70">
+            {isActive ? (
+              <Loader2 className="h-4 w-4 text-virgilio-purple animate-spin" strokeWidth={1.75} />
+            ) : (
+              <FileText className="h-4 w-4 text-virgilio-purple" strokeWidth={1.75} />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-virgilio-text">
+              {isActive
+                ? (isParsing ? 'Analyzing resume…' : isUploading ? 'Uploading…' : 'Processing…')
+                : 'Drop a resume to auto-fill'}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-virgilio-muted">
+              PDF, DOC, DOCX, TXT · up to {maxSizeMb}MB
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            icon={Upload}
+            onClick={() => inputRef.current?.click()}
+            disabled={isActive}
+          >
+            Browse
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+
     return (
       <div className={`relative ${className}`}>
         <div
