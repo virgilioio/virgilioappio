@@ -612,7 +612,8 @@ export function CandidateFormSheet({
   return (
     <Sheet open={isOpen} onOpenChange={handleDismiss}>
       <SheetContent
-        className="sm:max-w-[720px] p-0 flex flex-col h-full bg-background-secondary"
+        side="right"
+        className="w-full sm:max-w-[720px] p-0 flex flex-col h-full bg-[#F6F5F1] border-l border-virgilio-border"
       >
         <SheetHeader className="px-6 pt-6 pb-5 border-b border-virgilio-border/60 bg-background space-y-0">
           <CandidateSheetHeader
