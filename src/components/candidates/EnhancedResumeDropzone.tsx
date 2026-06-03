@@ -9,6 +9,7 @@ import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
 import { getSkillColor } from '@/utils/skillColors'
+import { cn } from '@/lib/utils'
 
 export interface ParsedResumeData {
   name?: string
