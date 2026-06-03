@@ -651,6 +651,7 @@ export function CandidateFormSheet({
                 />
               ) : (
                 <EnhancedResumeDropzone
+                  variant="compact"
                   onUpload={
                     candidate
                       ? (file) => uploadFileForCandidate(candidate.id, file, true)
