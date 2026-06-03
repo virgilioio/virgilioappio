@@ -38,7 +38,7 @@ interface EnhancedResumeDropzoneProps {
   // Two-stage AI parsing mode for new candidates
   useTwoStageAI?: boolean // Use fast AI core extraction (3-5s), background enrichment for rest
   onResumeTextCaptured?: (resumeText: string) => void // Callback for captured resume text (for background enrichment)
-  variant?: 'default' | 'minimal' // 'minimal' = neutral dropzone for public-facing forms (no gradient/sparkles/magic copy)
+  variant?: 'default' | 'minimal' | 'compact' // 'compact' = chip-sized dashed row matching ParsedResumeChip footprint
 }
 
 export function EnhancedResumeDropzone({
