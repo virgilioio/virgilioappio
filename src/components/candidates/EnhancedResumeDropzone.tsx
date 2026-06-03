@@ -270,7 +270,7 @@ export function EnhancedResumeDropzone({
     )
   }
 
-
+  if (variant === 'minimal') {
     return (
       <div className={`relative ${className}`}>
         <div
