@@ -47,6 +47,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 export function CurrentStageCard({
   stageName, stageType, jhsId, candidateId,
+  jobId, associationId, candidateName, candidateEmail, jobTitle,
   enteredStageAt, onSchedule, onReschedule, scorecardsSubmittedCount,
 }: CurrentStageCardProps) {
   const { data: bookings } = useStageBookings(jhsId, candidateId)
