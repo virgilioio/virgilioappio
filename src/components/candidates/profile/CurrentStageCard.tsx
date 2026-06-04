@@ -116,27 +116,41 @@ export function CurrentStageCard({
           )}
         </div>
         {showScheduleButton && (
-          isReschedule ? (
-            <Button
-              variant="secondary"
-              size="md"
-              icon={CalendarClock}
-              onClick={() => onReschedule!(nextBooking!.id as string)}
-              className="shrink-0"
-            >
-              Reschedule
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="md"
-              icon={Calendar}
-              onClick={() => onSchedule?.()}
-              className="shrink-0"
-            >
-              Schedule
-            </Button>
-          )
+          <div className="flex items-center gap-2 shrink-0">
+            {isInterviewStage && (
+              <GenerateBookingLinkButton
+                jobId={jobId}
+                candidateId={candidateId}
+                jhsId={jhsId}
+                associationId={associationId}
+                candidateName={candidateName}
+                candidateEmail={candidateEmail}
+                jobTitle={jobTitle}
+                stageName={stageName}
+                variant="outline"
+                size="sm"
+              />
+            )}
+            {isReschedule ? (
+              <Button
+                variant="secondary"
+                size="md"
+                icon={CalendarClock}
+                onClick={() => onReschedule!(nextBooking!.id as string)}
+              >
+                Reschedule
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="md"
+                icon={Calendar}
+                onClick={() => onSchedule?.()}
+              >
+                Schedule
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
