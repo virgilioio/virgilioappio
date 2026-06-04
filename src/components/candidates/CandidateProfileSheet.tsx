@@ -1227,6 +1227,11 @@ const stageHasAutomation = useMemo(() => {
                               stageType={currentStage.stage.stage_type}
                               jhsId={currentStage.jhsId}
                               candidateId={candidateId!}
+                              jobId={jobId}
+                              associationId={associationId}
+                              candidateName={candidate?.candidate_name || undefined}
+                              candidateEmail={candidate?.email || undefined}
+                              jobTitle={job?.title}
                               enteredStageAt={enteredStageAt}
                               onSchedule={
                                 (currentStage.stage.stage_type === 'screening' || currentStage.stage.stage_type === 'interview')
