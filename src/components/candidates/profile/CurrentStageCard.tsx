@@ -3,12 +3,18 @@ import { Calendar, CalendarClock, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AvatarStack } from '@/components/ui/table-cells'
 import { useStageBookings } from '@/hooks/useStageBookings'
+import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 
 interface CurrentStageCardProps {
   stageName: string
   stageType?: string
   jhsId: string
   candidateId: string
+  jobId: string
+  associationId: string
+  candidateName?: string
+  candidateEmail?: string
+  jobTitle?: string
   enteredStageAt?: string | null
   onSchedule?: () => void
   onReschedule?: (bookingId: string) => void
@@ -41,6 +47,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 export function CurrentStageCard({
   stageName, stageType, jhsId, candidateId,
+  jobId, associationId, candidateName, candidateEmail, jobTitle,
   enteredStageAt, onSchedule, onReschedule, scorecardsSubmittedCount,
 }: CurrentStageCardProps) {
   const { data: bookings } = useStageBookings(jhsId, candidateId)
@@ -109,27 +116,41 @@ export function CurrentStageCard({
           )}
         </div>
         {showScheduleButton && (
-          isReschedule ? (
-            <Button
-              variant="secondary"
-              size="md"
-              icon={CalendarClock}
-              onClick={() => onReschedule!(nextBooking!.id as string)}
-              className="shrink-0"
-            >
-              Reschedule
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="md"
-              icon={Calendar}
-              onClick={() => onSchedule?.()}
-              className="shrink-0"
-            >
-              Schedule
-            </Button>
-          )
+          <div className="flex items-center gap-2 shrink-0">
+            {isInterviewStage && (
+              <GenerateBookingLinkButton
+                jobId={jobId}
+                candidateId={candidateId}
+                jhsId={jhsId}
+                associationId={associationId}
+                candidateName={candidateName}
+                candidateEmail={candidateEmail}
+                jobTitle={jobTitle}
+                stageName={stageName}
+                variant="outline"
+                size="sm"
+              />
+            )}
+            {isReschedule ? (
+              <Button
+                variant="secondary"
+                size="md"
+                icon={CalendarClock}
+                onClick={() => onReschedule!(nextBooking!.id as string)}
+              >
+                Reschedule
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="md"
+                icon={Calendar}
+                onClick={() => onSchedule?.()}
+              >
+                Schedule
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
