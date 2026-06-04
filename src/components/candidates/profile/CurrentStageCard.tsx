@@ -3,12 +3,18 @@ import { Calendar, CalendarClock, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AvatarStack } from '@/components/ui/table-cells'
 import { useStageBookings } from '@/hooks/useStageBookings'
+import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 
 interface CurrentStageCardProps {
   stageName: string
   stageType?: string
   jhsId: string
   candidateId: string
+  jobId: string
+  associationId: string
+  candidateName?: string
+  candidateEmail?: string
+  jobTitle?: string
   enteredStageAt?: string | null
   onSchedule?: () => void
   onReschedule?: (bookingId: string) => void
