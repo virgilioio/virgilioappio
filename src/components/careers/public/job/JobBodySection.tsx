@@ -14,15 +14,16 @@ export function JobBodySection({ title, children }: Props) {
   )
 }
 
-export function JobBulletList({ items }: { items: string[] }) {
+export function JobBulletList({ items, accentColor }: { items: string[]; accentColor?: string }) {
   return (
     <ul className="space-y-2">
       {items.map((item, i) => (
         <li key={i} className="flex gap-2.5">
-          <span className="mt-2 h-1 w-1 rounded-full bg-[#6F3FF5] shrink-0" />
+          <span className="mt-2 h-1 w-1 rounded-full shrink-0" style={{ background: accentColor || '#6F3FF5' }} />
           <span>{item}</span>
         </li>
       ))}
     </ul>
   )
 }
+
