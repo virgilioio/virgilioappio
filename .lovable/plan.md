@@ -1,56 +1,111 @@
-# Fix public job posting & application page
 
-All changes are scoped to `src/pages/PublicJobPosting.tsx` (+ a tiny prop on `JobBodySection` / `JobBulletList` for brand color).
+# Candidate Booking Pages — Visual Refresh
 
-## 1. Job description renders as raw markdown
+Pure aesthetic rework of the three public booking surfaces. **No logic, no data, no routing, no hooks, no edge functions change.** Mockups in `45_General_booking_link.html`, `46_Job_stage_panel_booking.html`, `47_Booking_confirmed.html`.
 
-The posting description is stored as markdown (`## **Title**`, `•` bullets, etc.) but is currently passed straight to `<SafeHtml>`, which only sanitizes HTML — it does not parse markdown. Result: the user sees literal `## **Supervisor de Almacén**` text.
+## Shared chrome (used by all three pages)
 
-**Fix:** convert markdown → HTML before passing to `SafeHtml`. The project already has `markdownToHtml` (`@/utils/markdown`, already imported in this file). Wrap both the role description and the tenant "About" block:
+Replace the current `GoGioLogo`-only header and missing footer with a shared shell:
 
-```tsx
-<SafeHtml content={markdownToHtml(posting.description)} className="prose ..." />
-<SafeHtml content={markdownToHtml(tenantAbout)} className="prose ..." />
-```
+- **Header** (sticky, hairline border, cream bg `#FAF8F2`-ish from mockups, with `bg-white`):
+  - Left: black rounded "G" tile + `Acme Talent` (Poppins bold) / `Scheduling` (muted) — pull workspace/tenant name from the existing `config` props already loaded; fall back to current `GoGioLogo` text style when missing.
+  - Right: green shield icon + "Secure link" · vertical divider · "Powered by **Gio**".
+- **Footer** (centered, muted):
+  - lock icon + "Your details are never shared publicly" · "Privacy" · "Report this link".
 
-## 2. "About <company>" appears after the role description
+Build as two small presentational components: `src/components/booking/PublicBookingHeader.tsx` and `src/components/booking/PublicBookingFooter.tsx`. Used by `PublicBookingPage.tsx` and `BookingConfirmed.tsx`. Use semantic Virgilio tokens (`virgilio-text`, `virgilio-muted`, `virgilio-border`, `virgilio-purple`) — no raw hex.
 
-Currently the overview body renders, in order: About the role → Responsibilities → Qualifications → Nice to have → Benefits → Process → About <company>. The expectation is **About <company> first**, then the role content.
+## 1. `PublicBookingPage.tsx` — General + Job/Stage layouts
 
-**Fix:** move the `{tenantAbout && (...)}` block from after the process list to **before** the "About the role" `JobBodySection` (still inside the `lg:col-span-7` column, above all other sections, with the EEO statement remaining at the bottom).
+Same surface; differs only by props already wired (`bookingContext`, `selectedEventType`, group flag).
 
-## 3. Selected brand color isn't applied
+### Centered intro block (replaces current left-aligned greeting + heading)
+- Top chip (pill, white, hairline border):
+  - General: green dot + `Booking with {Interviewer name}`.
+  - Job/stage: `Scheduling for` + small avatar badge + candidate name (purple).
+- H1 (centered, Poppins, large):
+  - General: `Let's find a time to talk.` (period in `text-virgilio-purple`).
+  - Job/stage: `Hi {first} — let's lock in your {stage|onsite}.` Keep existing copy logic, just restyle and center.
+- Subtitle (muted, centered, max-w prose):
+  - General: `Pick the kind of conversation you'd like, then choose a slot that works for you.`
+  - Job/stage: `Pick any time below — these are the slots where your whole panel is free. We'll send a calendar invite with the video link right away.`
 
-`brand_color` is saved per posting on `job_postings.details.brand_color` (set by the wizard's `PostingBrandingCard`). The public page reads `details` but never uses it. All purple accents on the public page are currently hardcoded `#6F3FF5` (bullets in `JobBulletList`, etc.).
+### Main panel (one rounded card containing the 3-column grid)
+Wrap the existing `lg:grid-cols-[320px_1fr_340px]` grid in a soft outlined panel (`rounded-2xl bg-white border border-virgilio-border shadow-sm p-6 md:p-8`). Drop the per-column `Card`s currently around the calendar and the right column; keep the inner content but unstyled by their old `Card`/`shadow-calendly` wrappers so the panel reads as one surface like the mockups.
 
-**Fix:**
-- Read `brandColor = posting.details?.brand_color || '#6F3FF5'` in `PublicJobPosting`.
-- Pass it down as an optional `accentColor` prop to `JobBulletList` (use it for the bullet dot color) and to `JobProcessList` (step number/badge color).
-- Apply it inline to the existing purple touchpoints in `JobHeader` props: the department chip background, the "Apply for this role" CTA hover, and the small bullet/dot accents. Since `JobHeader` currently hardcodes `#EDE4FF` / `#5b2bd1` / `#0d0d09`, only override the **accent** elements (department chip + the meta-chip icons), leaving the dark CTA button as-is (per existing design). Threaded via a new optional `accentColor` prop on `JobHeader`.
-- Also set the inline accent on the `Reply in < 48 hours` clock-icon bubble in `JobAsideReplyCard` via a new optional `accentColor` prop.
+### Left column
 
-No design tokens are changed — the fallback remains `#6F3FF5` so existing postings without a configured color look identical.
+**General booking** (rework `InterviewerCard.tsx`):
+- Big purple avatar (initials, white text).
+- Name (Poppins bold) + `{role} · {workspace}` muted line (use existing `display_name`/`description`).
+- Meta row: ⭐ `Usually replies fast` · 🌐 `{city}` — render only when corresponding data exists; hide otherwise (no new data fetched).
+- Divider.
+- `CHOOSE A MEETING TYPE` small caps label.
+- Re-skin `EventTypePicker` cards to match: rounded `xl`, hairline border, soft lilac selected state, left icon tile (use event type color), title + duration chip on right, radio dot on far right, description as muted line. Move the `EventTypePicker` out of the `showEventPicker` standalone screen and render it inline in this left column when no `selectedEventType` yet — pure visual move; the existing `setSelectedEventType` handler is reused. When an event type is already selected, render the same card list with the selected one highlighted (does not replace the picker logic, just always-visible).
 
-## 4. Application form is broken / edge-to-edge
+**Job/stage booking** (new component `JobStageSummaryCard.tsx`, replaces current job-context purple banner + interviewer card on this code path):
+- Two pills: `● Onsite · Final round` (purple dot) + `Stage X of Y` (neutral). Pull `stageName` / `jobTitle` from existing `bookingContext`; if stage index/total aren't available, omit the `Stage X of Y` pill.
+- Title: `{Stage display title}` (Poppins bold).
+- Subtitle: `{Job title}` muted.
+- Divider.
+- Icon rows: `DURATION` · `{activeDuration} minutes`; `FORMAT` · `Google Meet · link on confirm`; `TO PREPARE` · `{description}` (only render when description present).
+- Divider.
+- `YOU'LL MEET` caps label + panelists list. Use `groupInterviewerNames` (already loaded for group bookings); each row = colored circular initials avatar + name + role line (role line muted, omit if unknown).
+- Green pill banner: `📅 Reschedule anytime up to 12h before.` — static copy, matches mockup; no new logic.
 
-In the `Application` tab the form content sits directly inside `<TabsContent value="application">` with `grid grid-cols-1 lg:grid-cols-3 gap-12` — there's **no container** wrapping it, so labels and inputs hit the viewport edge (visible in the screenshot: "Resume/CV", "Full Name", "Submit Application" all flush to x=0, and the footer is full-width too).
+### Middle column (Calendar)
 
-The Overview tab does have a wrapper: `<div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid ...">`.
+Rework `MonthCalendar.tsx` cells to match the mockup:
+- Month header: `June 2026` left, two ghost icon buttons (chevron left/right) inside a small rounded outlined group on the right.
+- Weekday header: tiny uppercase muted labels (`MON … SUN`).
+- Day cells: square, no background by default; **available** = soft lilac fill (`bg-virgilio-purple/8`) + small purple dot beneath the number; **selected** = solid near-black square with white number; **unavailable / past** = muted text only.
+- Below grid: legend row `● Available  ● Selected` using a faint lilac and black dot.
+- Drop the Calendly-style horizontal slide of the time-slots panel. Keep both columns simultaneously visible at all sizes (already the case on desktop; just remove the width-collapse transition styling).
 
-**Fix:** wrap the Application tab's grid in the same container so it matches the Overview layout:
+Mobile: keep the existing step flow, just restyle cells/header to match.
 
-```tsx
-<TabsContent value="application">
-  <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-12">
-    ...existing form + aside...
-  </div>
-</TabsContent>
-```
+### Right column (Day + slots)
 
-This single change pulls every field, the section header, the Job Details aside, and the Submit button into the proper centered column with consistent gutters.
+Rework the slots section (used by `TimeSlotsList.tsx` on desktop, currently inline):
+- Header row: `Thursday, June 11` left (Poppins bold), `{N} times` muted right.
+- Timezone `Select` restyled as a rounded outlined pill with a globe icon prefix (re-skin only — same `Select` component and same `candidateTimezone` state).
+- Optional purple notice pill `👥 All 3 panelists free` — only render on group bookings (reuse `isGroupBooking`).
+- Slot buttons stacked vertically, white with hairline border, hover lilac, selected = dark fill + adjacent **Confirm →** purple button to the right (existing `BookingConfirmationForm` confirm pathway). The current selected-then-show-form pattern becomes: when a slot is selected, render the dark slot + an inline `Confirm` button; the existing `BookingConfirmationForm` continues to be the actual confirm UI (kept below the slot list or shown via the same inline form area). Visual only — same handlers `onSlotSelect` / `createBookingMutation.mutateAsync`.
+
+## 2. `BookingConfirmed.tsx`
+
+Replace card-on-grey shell with the new shared header + footer + centered hero, all in `bg-white`/cream:
+- Big soft green circle with check mark (centered).
+- H1 `You're booked, {firstName}.` (period purple) — reuse existing `interviewerName`/`candidate_name`.
+- Muted line `A calendar invite with the video link is on its way to **{candidate_email}**.`
+- **Dark detail card** (rounded `2xl`, near-black bg, white text, soft shadow):
+  - Left date block: `THU` / big `11` / `Jun` stacked, muted.
+  - Right: bold title `{event title} · {stage if any}`, then row with 🕒 time range + EDT and a dot · 🎥 `Google Meet`.
+- **White panel below** (same rounded card grouped visually with the dark one — match mockup's "card-on-card" stack):
+  - `YOUR PANEL` caps label.
+  - Inline chips for each panelist (colored circular initials + name). Use existing booking attendees data already shown in the page; if not available, render only the interviewer.
+  - Button row: dark `📅 Add to calendar` (rewires existing `downloadICS`) · outline `🔄 Reschedule` (links to the same booking URL with reschedule param, only if `state` provides it — otherwise hide) · ghost `Cancel` link far right (only if provided — otherwise hide). No new behavior beyond what state already supplies.
+- Footer line: `Need to bring something up beforehand? **Reply to your confirmation email**.`
+- Reuse the same `PublicBookingFooter`.
+
+Keep the existing fallback "no state" branch but restyled to the same chrome.
+
+Keep the existing confetti effect.
 
 ## Out of scope
 
-- No edits to `EnhancedResumeDropzone`, form submission logic, hooks, or the database schema.
-- No new design tokens. Brand color is applied inline only where the page already uses purple.
-- No changes to the dark `Apply for this role` button (kept ink-black per current design).
+- No changes to `useBookingAvailability`, `useBookingConfig`, `useBookingEventTypes`, `bookingLinkUtils`, edge functions, routes, or any mutation/query.
+- No new fetches; if a field shown in the mockup (city, panelist role, stage X of Y) isn't already loaded, it's simply omitted.
+- No design-token changes; only `virgilio-*` semantic tokens and existing Tailwind utilities.
+
+## Files touched
+
+- `src/pages/PublicBookingPage.tsx` (markup/layout only)
+- `src/pages/BookingConfirmed.tsx` (markup/layout only)
+- `src/components/booking/InterviewerCard.tsx` (restyle, expand props passthrough)
+- `src/components/booking/EventTypePicker.tsx` (restyle, render inline-friendly)
+- `src/components/booking/MonthCalendar.tsx` (cell styles, header, legend)
+- `src/components/booking/TimeSlotsList.tsx` (header row, slot styles, inline Confirm)
+- **New:** `src/components/booking/PublicBookingHeader.tsx`
+- **New:** `src/components/booking/PublicBookingFooter.tsx`
+- **New:** `src/components/booking/JobStageSummaryCard.tsx`
