@@ -404,102 +404,80 @@ export default function PublicBookingPage() {
     setBookingCancelled(true);
   };
 
+  const interviewerFullName = config?.profiles
+    ? `${config.profiles.first_name || ''} ${config.profiles.last_name || ''}`.trim()
+    : config?.display_name || '';
+  const workspaceName = config?.display_name || interviewerFullName || 'Scheduling';
+
   if (isLoading || isResolvingToken) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-background-elevated">
-          <div className="container mx-auto px-4 py-4">
-            <Link to="/">
-              <GoGioLogo />
-            </Link>
-          </div>
-        </header>
+      <div className="min-h-screen bg-[#FAF8F2]">
+        <PublicBookingHeader workspaceName="Scheduling" />
         <main className="container mx-auto px-4 py-8 max-w-6xl">
           <div className="grid md:grid-cols-3 gap-8">
-            <div>
-              <Skeleton className="h-[400px] w-full" />
-            </div>
+            <Skeleton className="h-[400px] w-full" />
             <div className="md:col-span-2">
               <Skeleton className="h-[600px] w-full" />
             </div>
           </div>
         </main>
+        <PublicBookingFooter />
       </div>
     );
   }
 
   if (error || !config) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-background-elevated">
-          <div className="container mx-auto px-4 py-4">
-            <Link to="/">
-              <GoGioLogo />
-            </Link>
+      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+        <PublicBookingHeader workspaceName="Scheduling" />
+        <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
+          <div className="rounded-2xl border border-virgilio-border bg-white p-8 text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
+            <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
+              Booking Link Not Found<span className="text-virgilio-purple">.</span>
+            </h1>
+            <p className="text-virgilio-muted">
+              This booking link is either inactive or doesn't exist. Please check with the person who sent you this link.
+            </p>
           </div>
-        </header>
-        <main className="container mx-auto px-4 py-8 max-w-2xl">
-          <Card>
-            <CardContent className="pt-6 text-center space-y-4">
-              <AlertCircle className="w-16 h-16 text-destructive mx-auto" />
-              <h1 className="text-2xl font-semibold text-text-primary">Booking Link Not Found</h1>
-              <p className="text-text-secondary">
-                This booking link is either inactive or doesn't exist. Please check with the person who sent you this link.
-              </p>
-            </CardContent>
-          </Card>
         </main>
+        <PublicBookingFooter />
       </div>
     );
   }
 
-  // Expired token view
   if (showExpiredView) {
     return (
-      <div className="min-h-screen bg-white">
-        <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
-          <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4">
-            <Link to="/">
-              <GoGioLogo />
-            </Link>
+      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+        <PublicBookingHeader workspaceName={workspaceName} />
+        <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
+          <div className="rounded-2xl border border-virgilio-border bg-white p-8 text-center space-y-4">
+            <ShieldX className="w-12 h-12 text-virgilio-muted mx-auto" />
+            <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
+              This Link Has Expired<span className="text-virgilio-purple">.</span>
+            </h1>
+            <p className="text-virgilio-muted">
+              This booking link is no longer active. If you need to schedule an interview, please contact the person who sent you this link.
+            </p>
           </div>
-        </header>
-        <main className="container mx-auto px-4 md:px-6 lg:px-8 py-16 max-w-lg">
-          <Card className="shadow-calendly border-virgilio-border">
-            <CardContent className="pt-8 pb-8 text-center space-y-4">
-              <ShieldX className="w-16 h-16 text-virgilio-muted mx-auto" />
-              <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
-                This Link Has Expired<span className="text-virgilio-purple">.</span>
-              </h1>
-              <p className="text-virgilio-muted">
-                This booking link is no longer active. If you need to schedule an interview, please contact the person who sent you this link.
-              </p>
-            </CardContent>
-          </Card>
         </main>
+        <PublicBookingFooter />
       </div>
     );
   }
 
-  // Existing booking view (candidate already has a confirmed future booking)
   if (showExistingBookingView && existingBooking && shortToken) {
     return (
-      <div className="min-h-screen bg-white">
-        <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
-          <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4">
-            <Link to="/">
-              <GoGioLogo />
-            </Link>
-          </div>
-        </header>
-        <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
+      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+        <PublicBookingHeader workspaceName={workspaceName} />
+        <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12">
           {bookingContext?.candidateName && (
-            <p className="font-poppins font-bold tracking-page-title text-virgilio-text text-lg md:text-xl mb-2 text-center">
+            <p className="font-poppins font-bold text-virgilio-text text-lg md:text-xl mb-2 text-center">
               Hi, {bookingContext.candidateName.split(' ')[0]}
-              <span className="text-purple-period">!</span> 👋
+              <span className="text-virgilio-purple">!</span> 👋
             </p>
           )}
-          <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-poppins font-bold text-virgilio-text mb-8 text-center tracking-[-0.02em]">
             Your Interview Details<span className="text-virgilio-purple">.</span>
           </h1>
           <ExistingBookingView
@@ -511,276 +489,241 @@ export default function PublicBookingPage() {
             stageName={bookingContext?.stageName}
           />
         </main>
+        <PublicBookingFooter />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
-        <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4">
-          <Link to="/">
-            <GoGioLogo />
-          </Link>
-        </div>
-      </header>
+  const candidateFirst = bookingContext?.candidateName?.split(' ')[0];
+  const isJobStage = !!bookingContext?.jobTitle;
 
-      <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
-        {/* No event types — empty state */}
+  const heading = rescheduleBookingId
+    ? `Reschedule your interview`
+    : isJobStage
+      ? `Hi ${candidateFirst || 'there'} — let's lock in your ${bookingContext?.stageName?.toLowerCase().replace(/·.*$/, '').trim() || 'interview'}`
+      : `Let's find a time to talk`;
+
+  const subtitle = isJobStage
+    ? "Pick any time below — these are the slots where your whole panel is free. We'll send a calendar invite with the video link right away."
+    : "Pick the kind of conversation you'd like, then choose a slot that works for you.";
+
+  const topChip = isJobStage ? (
+    <span className="inline-flex items-center gap-2 h-7 pl-2 pr-3 rounded-full bg-white border border-virgilio-border text-[12.5px] text-virgilio-muted">
+      Scheduling for
+      {bookingContext?.candidateName && (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-5 w-5 rounded-full bg-virgilio-purple text-white text-[10px] font-poppins font-semibold inline-flex items-center justify-center">
+            {bookingContext.candidateName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+          </span>
+          <span className="font-poppins font-semibold text-virgilio-purple">{bookingContext.candidateName}</span>
+        </span>
+      )}
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-2 h-7 px-3 rounded-full bg-white border border-virgilio-border text-[12.5px] text-virgilio-text">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      Booking with <span className="font-poppins font-semibold">{interviewerFullName}</span>
+    </span>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+      <PublicBookingHeader workspaceName={workspaceName} />
+
+      <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14 max-w-[1280px]">
         {showNoEventTypes ? (
           <div className="max-w-lg mx-auto text-center py-16">
-            <Card className="shadow-calendly border-virgilio-border">
-              <CardContent className="pt-8 pb-8 space-y-4">
-                <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
-                <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
-                  No Availability<span className="text-virgilio-purple">.</span>
-                </h1>
-                <p className="text-virgilio-muted">
-                  There are no booking options available at this time. Please check back later or contact the organizer.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="rounded-2xl border border-virgilio-border bg-white p-8 space-y-4">
+              <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
+              <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
+                No Availability<span className="text-virgilio-purple">.</span>
+              </h1>
+              <p className="text-virgilio-muted">
+                There are no booking options available at this time. Please check back later or contact the organizer.
+              </p>
+            </div>
           </div>
-        ) : showEventPicker ? (
-          <EventTypePicker
-            eventTypes={eventTypes}
-            onSelect={(et) => setSelectedEventType(et)}
-            interviewerName={config.profiles
-              ? `${config.profiles.first_name} ${config.profiles.last_name}`
-              : config.display_name}
-          />
         ) : (
-        <>
-        {/* Back to event type picker */}
-        {canGoBackToPicker && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mb-4 text-virgilio-muted hover:text-virgilio-text -ml-2"
-            onClick={() => {
-              setSelectedEventType(null);
-              setSelectedDate(null);
-              setSelectedSlot(null);
-              hasAutoSelectedRef.current = false;
-            }}
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to options
-          </Button>
-        )}
+          <>
+            {canGoBackToPicker && selectedEventType && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mb-4 text-virgilio-muted hover:text-virgilio-text -ml-2"
+                onClick={() => {
+                  setSelectedEventType(null);
+                  setSelectedDate(null);
+                  setSelectedSlot(null);
+                  hasAutoSelectedRef.current = false;
+                }}
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to options
+              </Button>
+            )}
 
-        {/* Personalized greeting for stage booking links */}
-        {bookingContext?.candidateName && !isResolvingToken && (
-          <p className="font-poppins font-bold tracking-page-title text-virgilio-text text-lg md:text-xl mb-2">
-            Hi, {bookingContext.candidateName.split(' ')[0]}
-            <span className="text-purple-period">!</span> 👋
-          </p>
-        )}
-        <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-6">
-          {rescheduleBookingId ? 'Reschedule Your Interview' : 'Select a Date & Time'}<span className="text-virgilio-purple">.</span>
-        </h1>
+            {/* Centered intro block */}
+            <div className="flex flex-col items-center text-center mb-8 md:mb-10">
+              <div className="mb-4">{topChip}</div>
+              <h1 className="font-poppins font-bold text-virgilio-text text-3xl md:text-[44px] leading-[1.1] tracking-[-0.03em] max-w-3xl">
+                {heading}<span className="text-virgilio-purple">.</span>
+              </h1>
+              <p className="text-virgilio-muted mt-3 max-w-2xl text-[14px] md:text-[15px]">
+                {subtitle}
+              </p>
+            </div>
 
-        {/* Group booking — show all interviewer names */}
-        {isGroupBooking && groupInterviewerNames.length > 0 && (
-          <div className="mb-6 flex items-center gap-2 text-virgilio-text">
-            <span className="font-medium">Interview with</span>
-            <span className="text-virgilio-purple font-semibold">
-              {formatNamesList(groupInterviewerNames)}
-            </span>
-          </div>
-        )}
-
-        {/* Selected event type info — hidden for group bookings */}
-        {selectedEventType && !bookingContext?.jobTitle && !isGroupBooking && (
-          <div className="mb-6 flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedEventType.color || '#7c3aed' }} />
-            <span className="font-medium text-virgilio-text">{selectedEventType.title}</span>
-            <span className="text-sm text-virgilio-muted">· {selectedEventType.duration_minutes} min</span>
-          </div>
-        )}
-
-        {/* Reschedule banner */}
-        {rescheduleBookingId && (
-          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800">
-              Select a new date and time below. Your previous interview will be automatically cancelled when you confirm the new time.
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 text-amber-700 hover:text-amber-900 p-0 h-auto"
-              onClick={() => {
-                setRescheduleBookingId(null);
-                // Re-show existing booking view
-                if (existingBooking) {
-                  setBookingCancelled(false);
-                }
-              }}
-            >
-              ← Back to interview details
-            </Button>
-          </div>
-        )}
-
-        {/* Contextual Booking Header - show job/stage info if available */}
-        {bookingContext?.jobTitle && !rescheduleBookingId && (
-          <div className="mb-8 p-4 bg-virgilio-purple/10 border border-virgilio-purple/25 rounded-lg">
-            <div className="flex items-center gap-3">
-              <img src={gioAvatar} alt="Gio" className="h-10 w-10 rounded-full bg-white" />
-              <div>
-                <p className="text-sm text-virgilio-purple">Scheduling interview for</p>
-                <p className="font-medium text-virgilio-text">
-                  {bookingContext.jobTitle}
-                  {bookingContext.stageName && (
-                    <span className="text-virgilio-purple"> · {bookingContext.stageName}</span>
-                  )}
+            {rescheduleBookingId && (
+              <div className="mb-6 max-w-3xl mx-auto p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-sm text-amber-800">
+                  Select a new date and time below. Your previous interview will be automatically cancelled when you confirm the new time.
                 </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-amber-700 hover:text-amber-900 p-0 h-auto"
+                  onClick={() => {
+                    setRescheduleBookingId(null);
+                    if (existingBooking) {
+                      setBookingCancelled(false);
+                    }
+                  }}
+                >
+                  ← Back to interview details
+                </Button>
               </div>
-            </div>
-          </div>
-        )}
-        
-        {isMobile ? (
-          /* ===== MOBILE: Step-based flow ===== */
-          <div className="space-y-4">
-            {/* Compact header with interviewer info */}
-            <div className="flex items-center gap-3 pb-3 border-b border-virgilio-border">
-              {config.profiles?.avatar_url && (
-                <img 
-                  src={config.profiles.avatar_url} 
-                  alt={`${config.profiles.first_name} ${config.profiles.last_name}`}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              )}
-              <div className="min-w-0">
-                <p className="font-semibold text-virgilio-text text-sm truncate">
-                  {config.profiles ? `${config.profiles.first_name} ${config.profiles.last_name}` : config.display_name}
-                </p>
-                <div className="flex items-center gap-1 text-xs text-virgilio-muted">
-                  <Clock className="w-3 h-3" />
-                  <span>{activeDuration} min</span>
-                </div>
-              </div>
-            </div>
+            )}
 
-            {/* Step indicator */}
-            <div className="flex items-center gap-2 text-xs text-virgilio-muted">
-              <span className={mobileStep === 'date' ? 'text-virgilio-purple font-semibold' : ''}>Date</span>
-              <span>→</span>
-              <span className={mobileStep === 'time' ? 'text-virgilio-purple font-semibold' : ''}>Time</span>
-              <span>→</span>
-              <span className={mobileStep === 'confirm' ? 'text-virgilio-purple font-semibold' : ''}>Confirm</span>
-            </div>
-
-            {/* Step 1: Date selection */}
-            {mobileStep === 'date' && (
-              <Card className="shadow-calendly border-virgilio-border">
-                <CardContent className="p-4">
-                  <MonthCalendar
-                    availableDates={availableDates}
-                    selectedDate={selectedDate}
-                    onDateSelect={handleDateSelect}
-                    currentMonth={currentMonth}
-                    onMonthChange={handleMonthChange}
-                    noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
-                  />
-                  {/* Timezone */}
-                  <div className="mt-4 pt-4 border-t border-virgilio-border">
-                    <div className="flex items-center gap-2 text-xs text-virgilio-muted">
-                      <Globe className="h-3 w-3" />
-                      <span>{candidateTimezone.replace(/_/g, ' ')}</span>
-                    </div>
+            {/* Main panel */}
+            <div className="rounded-3xl bg-white border border-virgilio-border shadow-[0_24px_60px_-30px_rgba(13,13,9,0.18)] overflow-hidden">
+              {isMobile ? (
+                /* Mobile: keep step flow but in single column */
+                <div className="p-5 space-y-4">
+                  {/* Step indicator */}
+                  <div className="flex items-center gap-2 text-xs text-virgilio-muted">
+                    <span className={mobileStep === 'date' ? 'text-virgilio-purple font-semibold' : ''}>Date</span>
+                    <span>→</span>
+                    <span className={mobileStep === 'time' ? 'text-virgilio-purple font-semibold' : ''}>Time</span>
+                    <span>→</span>
+                    <span className={mobileStep === 'confirm' ? 'text-virgilio-purple font-semibold' : ''}>Confirm</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Step 2: Time selection */}
-            {mobileStep === 'time' && (
-              <div className="space-y-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-virgilio-muted hover:text-virgilio-text -ml-2 gap-1"
-                  onClick={() => {
-                    setMobileStep('date');
-                    setSelectedDate(null);
-                  }}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to calendar
-                </Button>
-                <Card className="shadow-calendly border-virgilio-border">
-                  <CardContent className="p-4">
-                    <TimeSlotsList
+                  {mobileStep === 'date' && (
+                    <MonthCalendar
+                      availableDates={availableDates}
                       selectedDate={selectedDate}
-                      timeSlots={timeSlotsForSelectedDate}
-                      selectedSlot={selectedSlot}
-                      onSlotSelect={handleSlotSelect}
-                      isLoading={isLoadingAvailability}
+                      onDateSelect={handleDateSelect}
+                      currentMonth={currentMonth}
+                      onMonthChange={handleMonthChange}
+                      noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
                     />
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                  )}
 
-            {/* Step 3: Confirmation */}
-            {mobileStep === 'confirm' && selectedSlot && (
-              <div className="space-y-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-virgilio-muted hover:text-virgilio-text -ml-2 gap-1"
-                  onClick={() => {
-                    setMobileStep('time');
-                    setSelectedSlot(null);
-                  }}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to times
-                </Button>
-                <BookingConfirmationForm
-                  selectedSlot={selectedSlot}
-                  candidateTimezone={candidateTimezone}
-                  onCancel={() => {
-                    setSelectedSlot(null);
-                    setMobileStep('time');
-                  }}
-                  onConfirm={createBookingMutation.mutateAsync}
-                  defaultCandidateName={bookingContext?.candidateName}
-                  defaultCandidateEmail={bookingContext?.candidateEmail}
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          /* ===== DESKTOP: Original 3-column grid ===== */
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_340px] gap-8">
-            {/* Left column - Event summary */}
-            <div className="order-1">
-              {config.profiles && (
-                <InterviewerCard
-                  profile={config.profiles}
-                  config={{
-                    display_name: config.display_name,
-                    description: config.description,
-                    duration_minutes: activeDuration,
-                  }}
-                />
-              )}
-            </div>
+                  {mobileStep === 'time' && (
+                    <div className="space-y-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-virgilio-muted hover:text-virgilio-text -ml-2 gap-1"
+                        onClick={() => {
+                          setMobileStep('date');
+                          setSelectedDate(null);
+                        }}
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to calendar
+                      </Button>
+                      <TimeSlotsList
+                        selectedDate={selectedDate}
+                        timeSlots={timeSlotsForSelectedDate}
+                        selectedSlot={selectedSlot}
+                        onSlotSelect={handleSlotSelect}
+                        isLoading={isLoadingAvailability}
+                      />
+                    </div>
+                  )}
 
-            {/* Middle column - Calendar + inline time slots */}
-            <div className="order-2">
-              <Card className="shadow-calendly border-virgilio-border overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex gap-0">
-                    {/* Calendar side */}
-                    <div className="flex-shrink-0 w-full transition-all duration-300 ease-out"
-                      style={{ 
-                        maxWidth: selectedDate && timeSlotsForSelectedDate.length > 0 ? 'calc(100% - 260px)' : '100%' 
-                      }}
-                    >
+                  {mobileStep === 'confirm' && selectedSlot && (
+                    <div className="space-y-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-virgilio-muted hover:text-virgilio-text -ml-2 gap-1"
+                        onClick={() => {
+                          setMobileStep('time');
+                          setSelectedSlot(null);
+                        }}
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to times
+                      </Button>
+                      <BookingConfirmationForm
+                        selectedSlot={selectedSlot}
+                        candidateTimezone={candidateTimezone}
+                        onCancel={() => {
+                          setSelectedSlot(null);
+                          setMobileStep('time');
+                        }}
+                        onConfirm={createBookingMutation.mutateAsync}
+                        defaultCandidateName={bookingContext?.candidateName}
+                        defaultCandidateEmail={bookingContext?.candidateEmail}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Desktop: 3-column grid */
+                <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_320px]">
+                  {/* Left column */}
+                  <div className="p-6 md:p-8 border-r border-virgilio-border">
+                    {isJobStage ? (
+                      <JobStageSummaryCard
+                        stageName={bookingContext?.stageName}
+                        jobTitle={bookingContext?.jobTitle}
+                        durationMinutes={activeDuration}
+                        description={config.description}
+                        panelists={
+                          isGroupBooking && groupInterviewerNames.length > 0
+                            ? groupInterviewerNames.map((n) => ({ name: n }))
+                            : interviewerFullName
+                              ? [{ name: interviewerFullName }]
+                              : []
+                        }
+                      />
+                    ) : (
+                      <div className="space-y-6">
+                        {config.profiles && (
+                          <InterviewerCard
+                            profile={config.profiles}
+                            config={{
+                              display_name: config.display_name,
+                              description: config.description,
+                              duration_minutes: activeDuration,
+                            }}
+                          />
+                        )}
+
+                        {eventTypes.length > 0 && (
+                          <>
+                            <div className="h-px bg-virgilio-border" />
+                            <EventTypePicker
+                              eventTypes={eventTypes}
+                              selectedId={selectedEventType?.id}
+                              onSelect={(et) => setSelectedEventType(et)}
+                            />
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Middle column - Calendar */}
+                  <div className="p-6 md:p-8 border-r border-virgilio-border">
+                    {!availabilityConfigId ? (
+                      <div className="text-center text-sm text-virgilio-muted py-16">
+                        Choose a meeting type to see availability.
+                      </div>
+                    ) : (
                       <MonthCalendar
                         availableDates={availableDates}
                         selectedDate={selectedDate}
@@ -789,67 +732,77 @@ export default function PublicBookingPage() {
                         onMonthChange={handleMonthChange}
                         noAvailabilityInMonth={!isLoadingAvailability && availableDates.length === 0}
                       />
-                      
-                      {/* Timezone display */}
-                      <div className="mt-6 pt-6 border-t border-virgilio-border">
-                        <div className="flex items-center gap-2 text-sm text-virgilio-muted">
-                          <Globe className="h-4 w-4" />
-                          <span>
-                            Times shown in {candidateTimezone.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Inline time slots (Calendly-style expansion) */}
-                    <div 
-                      className={`
-                        overflow-hidden transition-all duration-300 ease-out border-l border-virgilio-border
-                        ${selectedDate && timeSlotsForSelectedDate.length > 0 
-                          ? 'w-[260px] opacity-100 pl-6' 
-                          : 'w-0 opacity-0 pl-0 border-l-0'}
-                      `}
-                    >
-                      <TimeSlotsList
-                        selectedDate={selectedDate}
-                        timeSlots={timeSlotsForSelectedDate}
-                        selectedSlot={selectedSlot}
-                        onSlotSelect={setSelectedSlot}
-                        isLoading={isLoadingAvailability}
-                      />
-                    </div>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
 
-            {/* Right column - Quick Schedule or Confirmation Form */}
-            <div className="order-3">
-              {!selectedSlot ? (
-                <Card className="shadow-calendly border-virgilio-border">
-                  <CardContent className="p-6">
-                    <QuickSchedulePanel
-                      availableSlots={availabilityData?.available_slots || []}
-                      onQuickSelect={handleQuickSelect}
-                    />
-                  </CardContent>
-                </Card>
-              ) : (
-                <BookingConfirmationForm
-                  selectedSlot={selectedSlot}
-                  candidateTimezone={candidateTimezone}
-                  onCancel={() => setSelectedSlot(null)}
-                  onConfirm={createBookingMutation.mutateAsync}
-                  defaultCandidateName={bookingContext?.candidateName}
-                  defaultCandidateEmail={bookingContext?.candidateEmail}
-                />
+                  {/* Right column - Day header + slots / form */}
+                  <div className="p-6 md:p-8">
+                    {selectedSlot ? (
+                      <BookingConfirmationForm
+                        selectedSlot={selectedSlot}
+                        candidateTimezone={candidateTimezone}
+                        onCancel={() => setSelectedSlot(null)}
+                        onConfirm={createBookingMutation.mutateAsync}
+                        defaultCandidateName={bookingContext?.candidateName}
+                        defaultCandidateEmail={bookingContext?.candidateEmail}
+                      />
+                    ) : (
+                      <div className="space-y-4">
+                        {selectedDate ? (
+                          <div className="flex items-baseline justify-between">
+                            <h4 className="font-poppins font-bold text-virgilio-text text-[16px] tracking-[-0.02em]">
+                              {selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </h4>
+                            <span className="text-[11.5px] text-virgilio-muted">
+                              {timeSlotsForSelectedDate.length} {timeSlotsForSelectedDate.length === 1 ? 'time' : 'times'}
+                            </span>
+                          </div>
+                        ) : (
+                          <h4 className="font-poppins font-bold text-virgilio-text text-[16px] tracking-[-0.02em]">
+                            Pick a date
+                          </h4>
+                        )}
+
+                        {/* Timezone select */}
+                        <Select value={candidateTimezone} onValueChange={setCandidateTimezone}>
+                          <SelectTrigger className="h-9 rounded-lg border-virgilio-border bg-white text-[12.5px]">
+                            <Globe className="h-3.5 w-3.5 text-virgilio-muted mr-1.5" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COMMON_TIMEZONES.map((tz) => (
+                              <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {isGroupBooking && groupInterviewerNames.length > 0 && (
+                          <div className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-virgilio-purple/10 text-virgilio-purple text-[12px] font-medium">
+                            <Users className="h-3 w-3" />
+                            All {groupInterviewerNames.length} panelists free
+                          </div>
+                        )}
+
+                        <TimeSlotsList
+                          selectedDate={selectedDate}
+                          timeSlots={timeSlotsForSelectedDate}
+                          selectedSlot={selectedSlot}
+                          onSlotSelect={setSelectedSlot}
+                          isLoading={isLoadingAvailability}
+                          showHeader={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )}
-        </>
+          </>
         )}
       </main>
+
+      <PublicBookingFooter />
     </div>
   );
 }
+
