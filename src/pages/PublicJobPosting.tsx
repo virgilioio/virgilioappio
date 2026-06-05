@@ -842,7 +842,8 @@ export default function PublicJobPosting() {
           </TabsContent>
 
           <TabsContent value="application">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-12">
+
               <div className="order-2 lg:order-1 lg:col-span-2">
                 <section aria-labelledby="application-form">
                   <div className="space-y-12">
