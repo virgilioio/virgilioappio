@@ -526,6 +526,30 @@ export default function PublicBookingPage() {
     </span>
   );
 
+  // Standalone event-type picker page (general booking link with multiple event types)
+  if (showEventPicker) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+        <PublicBookingHeader workspaceName={workspaceName} />
+        <main className="flex-1 container mx-auto px-4 py-10 md:py-16">
+          <EventTypePicker
+            variant="standalone"
+            eventTypes={eventTypes}
+            selectedId={selectedEventType?.id}
+            onSelect={(et) => setSelectedEventType(et)}
+            interviewerName={interviewerFullName}
+            interviewerFirstName={config?.profiles?.first_name || undefined}
+            interviewerRole={config?.description || null}
+            interviewerAvatarUrl={config?.profiles?.avatar_url || null}
+            workspaceName={workspaceName}
+            timezoneLabel={candidateTimezone}
+          />
+        </main>
+        <PublicBookingFooter />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
       <PublicBookingHeader workspaceName={workspaceName} />
