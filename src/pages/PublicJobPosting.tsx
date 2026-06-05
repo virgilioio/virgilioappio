@@ -266,6 +266,9 @@ export default function PublicJobPosting() {
     }
   }, [posting])
 
+  const brandColor = ((posting?.details as any)?.brand_color as string) || '#6F3FF5'
+
+
   const formatLabel = (val?: string | null) => {
     if (!val) return null
     return val
