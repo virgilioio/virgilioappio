@@ -12,6 +12,7 @@ interface Props {
   onShare: () => void
   onSave: () => void
   saved: boolean
+  accentColor?: string
 }
 
 export function JobHeader({
@@ -25,7 +26,10 @@ export function JobHeader({
   onShare,
   onSave,
   saved,
+  accentColor,
 }: Props) {
+  const accent = accentColor || '#6F3FF5'
+
   return (
     <section className="border-b border-black/5 bg-[#FAF7F2]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-7">
