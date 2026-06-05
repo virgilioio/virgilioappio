@@ -266,6 +266,9 @@ export default function PublicJobPosting() {
     }
   }, [posting])
 
+  const brandColor = ((posting?.details as any)?.brand_color as string) || '#6F3FF5'
+
+
   const formatLabel = (val?: string | null) => {
     if (!val) return null
     return val
@@ -745,7 +748,9 @@ export default function PublicJobPosting() {
         onShare={handleShare}
         onSave={handleSave}
         saved={isSaved}
+        accentColor={brandColor}
       />
+
 
       <main className="flex-1 w-full">
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-8">
@@ -770,10 +775,19 @@ export default function PublicJobPosting() {
           <TabsContent value="overview" className="mt-0">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
               <div className="lg:col-span-7 space-y-10 order-2 lg:order-1">
+                {tenantAbout && (
+                  <JobBodySection title={`About ${organizationName}`}>
+                    <SafeHtml
+                      content={markdownToHtml(tenantAbout)}
+                      className="prose prose-sm max-w-none text-[#3f4451] [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1"
+                    />
+                  </JobBodySection>
+                )}
+
                 {posting.description && (
                   <JobBodySection title="About the role">
                     <SafeHtml
-                      content={posting.description}
+                      content={markdownToHtml(posting.description)}
                       className="prose prose-sm max-w-none text-[#3f4451] [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1"
                     />
                   </JobBodySection>
@@ -781,38 +795,30 @@ export default function PublicJobPosting() {
 
                 {responsibilities.length > 0 && (
                   <JobBodySection title="What you'll do">
-                    <JobBulletList items={responsibilities} />
+                    <JobBulletList items={responsibilities} accentColor={brandColor} />
                   </JobBodySection>
                 )}
                 {qualifications.length > 0 && (
                   <JobBodySection title="You'll thrive if">
-                    <JobBulletList items={qualifications} />
+                    <JobBulletList items={qualifications} accentColor={brandColor} />
                   </JobBodySection>
                 )}
                 {niceToHaves.length > 0 && (
                   <JobBodySection title="Nice to have">
-                    <JobBulletList items={niceToHaves} />
+                    <JobBulletList items={niceToHaves} accentColor={brandColor} />
                   </JobBodySection>
                 )}
                 {benefits.length > 0 && (
                   <JobBodySection title="What we offer">
-                    <JobBulletList items={benefits} />
+                    <JobBulletList items={benefits} accentColor={brandColor} />
                   </JobBodySection>
                 )}
                 {hiringProcess.length > 0 && (
                   <JobBodySection title="The process">
-                    <JobProcessList steps={hiringProcess} />
+                    <JobProcessList steps={hiringProcess} accentColor={brandColor} />
                   </JobBodySection>
                 )}
 
-                {tenantAbout && (
-                  <JobBodySection title={`About ${organizationName}`}>
-                    <SafeHtml
-                      content={tenantAbout}
-                      className="prose prose-sm max-w-none text-[#3f4451] [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3 [&_li]:my-1"
-                    />
-                  </JobBodySection>
-                )}
 
                 <p className="text-[12.5px] text-[#8B8F9E] leading-relaxed border-t border-black/5 pt-6">
                   {eeoStatement ||
@@ -821,7 +827,7 @@ export default function PublicJobPosting() {
               </div>
 
               <aside className="lg:col-span-5 order-1 lg:order-2 space-y-4 lg:sticky lg:top-6 self-start">
-                <JobAsideReplyCard onApply={handleApplyClick} />
+                <JobAsideReplyCard onApply={handleApplyClick} accentColor={brandColor} />
                 <JobAsideSummary rows={summaryRows} />
                 <JobAsideHiringPanel members={hiringPanel} />
                 <JobAsideReferral
@@ -836,7 +842,8 @@ export default function PublicJobPosting() {
           </TabsContent>
 
           <TabsContent value="application">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-12">
+
               <div className="order-2 lg:order-1 lg:col-span-2">
                 <section aria-labelledby="application-form">
                   <div className="space-y-12">

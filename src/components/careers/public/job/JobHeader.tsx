@@ -12,6 +12,7 @@ interface Props {
   onShare: () => void
   onSave: () => void
   saved: boolean
+  accentColor?: string
 }
 
 export function JobHeader({
@@ -25,7 +26,10 @@ export function JobHeader({
   onShare,
   onSave,
   saved,
+  accentColor,
 }: Props) {
+  const accent = accentColor || '#6F3FF5'
+
   return (
     <section className="border-b border-black/5 bg-[#FAF7F2]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-7">
@@ -49,10 +53,14 @@ export function JobHeader({
         {/* badges */}
         <div className="mt-4 flex items-center gap-1.5 flex-wrap">
           {department && (
-            <span className="inline-flex items-center h-[20px] px-2 rounded text-[10px] font-poppins font-semibold tracking-[0.08em] uppercase bg-[#EDE4FF] text-[#5b2bd1]">
+            <span
+              className="inline-flex items-center h-[20px] px-2 rounded text-[10px] font-poppins font-semibold tracking-[0.08em] uppercase"
+              style={{ background: `${accent}26`, color: accent }}
+            >
               {department}
             </span>
           )}
+
           {featured && (
             <span className="inline-flex items-center h-[20px] px-2 rounded text-[10px] font-poppins font-semibold tracking-[0.08em] uppercase bg-[#0d0d09] text-[#FFFCF9]">
               Featured
@@ -89,11 +97,13 @@ export function JobHeader({
                 onClick={onSave}
                 className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-[12.5px] font-poppins font-medium ${
                   saved
-                    ? 'bg-[#EDE4FF] border-[#EDE4FF] text-[#5b2bd1]'
+                    ? ''
                     : 'bg-white border-black/10 text-[#0d0d09] hover:bg-[#FAFAF7]'
                 }`}
+                style={saved ? { background: `${accent}26`, borderColor: `${accent}26`, color: accent } : undefined}
               >
                 <Bookmark className={`h-3.5 w-3.5 ${saved ? 'fill-current' : ''}`} />
+
                 {saved ? 'Saved' : 'Save'}
               </button>
             </div>

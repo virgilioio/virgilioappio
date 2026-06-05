@@ -5,17 +5,22 @@ interface Step {
 
 interface Props {
   steps: Step[]
+  accentColor?: string
 }
 
-export function JobProcessList({ steps }: Props) {
+export function JobProcessList({ steps, accentColor }: Props) {
+  const color = accentColor || '#6F3FF5'
   return (
     <ol className="space-y-4">
       {steps.map((step, i) => (
         <li key={i} className="flex gap-3.5">
           <div
-            className={`h-6 w-6 shrink-0 rounded-full flex items-center justify-center text-[11.5px] font-poppins font-semibold ${
-              i === 0 ? 'bg-[#6F3FF5] text-white' : 'bg-[#F1F0EC] text-[#0d0d09]'
-            }`}
+            className="h-6 w-6 shrink-0 rounded-full flex items-center justify-center text-[11.5px] font-poppins font-semibold"
+            style={
+              i === 0
+                ? { background: color, color: '#fff' }
+                : { background: '#F1F0EC', color: '#0d0d09' }
+            }
           >
             {i + 1}
           </div>
@@ -32,3 +37,4 @@ export function JobProcessList({ steps }: Props) {
     </ol>
   )
 }
+
