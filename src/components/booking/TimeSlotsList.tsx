@@ -1,6 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ArrowRight } from 'lucide-react';
 
 interface TimeSlot {
   start: string;
@@ -13,117 +12,101 @@ interface TimeSlotsListProps {
   selectedSlot: TimeSlot | null;
   onSlotSelect: (slot: TimeSlot) => void;
   isLoading?: boolean;
+  onConfirm?: () => void;
+  showHeader?: boolean;
 }
 
-export function TimeSlotsList({ 
-  selectedDate, 
-  timeSlots, 
-  selectedSlot, 
+export function TimeSlotsList({
+  selectedDate,
+  timeSlots,
+  selectedSlot,
   onSlotSelect,
-  isLoading 
+  isLoading,
+  onConfirm,
+  showHeader = true,
 }: TimeSlotsListProps) {
   if (!selectedDate) {
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+        <p className="text-[13px] text-virgilio-muted">Pick a date to see available times.</p>
+      </div>
+    );
   }
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div 
-            key={i} 
-            className="h-10 bg-virgilio-border/30 animate-pulse rounded-lg" 
-          />
+          <div key={i} className="h-11 bg-virgilio-border/30 animate-pulse rounded-lg" />
         ))}
       </div>
     );
   }
 
-  if (timeSlots.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[400px] text-center px-4">
-        <p className="text-sm font-semibold text-virgilio-text mb-1">
-          No available times
-        </p>
-        <p className="text-xs text-virgilio-muted">
-          Please select another date
-        </p>
-      </div>
-    );
-  }
+  return (
+    <div className="space-y-3">
+      {showHeader && (
+        <div className="flex items-center justify-between">
+          <h4 className="font-poppins font-bold text-virgilio-text text-[15px] tracking-[-0.02em]">
+            {format(selectedDate, 'EEEE, MMMM d')}
+          </h4>
+          <span className="text-[11.5px] text-virgilio-muted">
+            {timeSlots.length} {timeSlots.length === 1 ? 'time' : 'times'}
+          </span>
+        </div>
+      )}
 
-  // Group slots by time of day
-  const morningSlots = timeSlots.filter(slot => {
-    const hour = parseISO(slot.start).getHours();
-    return hour < 12;
-  });
-
-  const afternoonSlots = timeSlots.filter(slot => {
-    const hour = parseISO(slot.start).getHours();
-    return hour >= 12 && hour < 17;
-  });
-
-  const eveningSlots = timeSlots.filter(slot => {
-    const hour = parseISO(slot.start).getHours();
-    return hour >= 17;
-  });
-
-  const renderSlots = (slots: TimeSlot[], label: string) => {
-    if (slots.length === 0) return null;
-    
-    return (
-      <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-virgilio-muted uppercase tracking-wide">
-          {label}
-        </h4>
+      {timeSlots.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <p className="text-[13px] font-medium text-virgilio-text mb-1">No available times</p>
+          <p className="text-[11.5px] text-virgilio-muted">Please select another date</p>
+        </div>
+      ) : (
         <div className="space-y-2">
-          {slots.map((slot, idx) => {
-            const isSelected = selectedSlot && 
-              selectedSlot.start === slot.start && 
-              selectedSlot.end === slot.end;
-            
+          {timeSlots.map((slot, idx) => {
+            const isSelected =
+              selectedSlot && selectedSlot.start === slot.start && selectedSlot.end === slot.end;
+
+            if (isSelected && onConfirm) {
+              return (
+                <div key={idx} className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onSlotSelect(slot)}
+                    className="flex-1 h-11 rounded-lg bg-[#0d0d09] text-white font-poppins font-semibold text-[13px]"
+                  >
+                    {format(parseISO(slot.start), 'h:mm a')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onConfirm}
+                    className="flex-1 h-11 rounded-lg bg-virgilio-purple hover:bg-virgilio-purple/90 text-white font-poppins font-semibold text-[13px] inline-flex items-center justify-center gap-1.5"
+                  >
+                    Confirm <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            }
+
             return (
-              <Button
+              <button
                 key={idx}
-                variant="outline"
+                type="button"
                 onClick={() => onSlotSelect(slot)}
-                className={`
-                  w-full h-10 justify-center text-center font-semibold text-sm
-                  border-virgilio-border rounded-lg
-                  transition-all duration-200 ease-out
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2
-                  ${isSelected 
-                    ? 'bg-virgilio-purple text-white border-virgilio-purple shadow-md' 
-                    : 'bg-white text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm hover:border-virgilio-purple/50'
-                  }
+                className={`w-full h-11 rounded-lg border font-poppins font-semibold text-[13px] transition-all
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30
+                  ${isSelected
+                    ? 'bg-[#0d0d09] text-white border-[#0d0d09]'
+                    : 'bg-white text-virgilio-text border-virgilio-border hover:border-virgilio-purple/40 hover:bg-virgilio-purple/5'}
                 `}
-                aria-label={`Select time slot ${format(parseISO(slot.start), 'h:mm a')}`}
-                aria-pressed={isSelected}
+                aria-pressed={!!isSelected}
               >
                 {format(parseISO(slot.start), 'h:mm a')}
-              </Button>
+              </button>
             );
           })}
         </div>
-      </div>
-    );
-  };
-
-  return (
-    <div>
-      <div className="mb-6 pb-4 border-b border-virgilio-border">
-        <h4 className="text-base font-semibold text-virgilio-text">
-          {format(selectedDate, 'EEEE, MMMM d')}
-        </h4>
-      </div>
-      
-      <ScrollArea className="h-[380px] pr-4">
-        <div className="space-y-6">
-          {renderSlots(morningSlots, 'Morning')}
-          {renderSlots(afternoonSlots, 'Afternoon')}
-          {renderSlots(eveningSlots, 'Evening')}
-        </div>
-      </ScrollArea>
+      )}
     </div>
   );
 }
