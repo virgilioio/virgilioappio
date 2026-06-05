@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CheckCircle2, Calendar, Clock, MapPin, Download, ArrowLeft } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Check, Clock, Video, Download, RefreshCw } from 'lucide-react';
+import { PublicBookingHeader } from '@/components/booking/PublicBookingHeader';
+import { PublicBookingFooter } from '@/components/booking/PublicBookingFooter';
 
 interface BookingState {
   booking: {
@@ -25,90 +24,61 @@ interface BookingState {
   interviewerName: string;
 }
 
+const AVATAR_COLORS = ['#6F3FF5', '#06B6D4', '#F59E0B', '#10B981', '#EC4899'];
+
+function initials(name: string) {
+  return name.split(/\s+/).map((n) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+}
+
 export default function BookingConfirmed() {
   const location = useLocation();
   const state = location.state as BookingState | null;
 
   useEffect(() => {
-    // Confetti effect on mount
-    const duration = 3000;
-    const animationEnd = Date.now() + duration;
-    const colors = ['hsl(var(--primary))', 'hsl(var(--accent))', '#FFD700'];
-
+    // Confetti
+    const duration = 2500;
+    const end = Date.now() + duration;
+    const colors = ['#6F3FF5', '#10B981', '#FFD700'];
     (function frame() {
-      const timeLeft = animationEnd - Date.now();
-      if (timeLeft <= 0) return;
-
-      const particleCount = 2;
-      const angle = Math.random() * 360;
-      const velocity = Math.random() * 5 + 5;
-
-      for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.style.position = 'fixed';
-        particle.style.width = '10px';
-        particle.style.height = '10px';
-        particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        particle.style.borderRadius = '50%';
-        particle.style.pointerEvents = 'none';
-        particle.style.zIndex = '9999';
-        particle.style.left = '50%';
-        particle.style.top = '30%';
-
-        document.body.appendChild(particle);
-
-        const radian = (angle + i * 30) * Math.PI / 180;
-        const vx = Math.cos(radian) * velocity;
-        const vy = Math.sin(radian) * velocity;
-
+      if (Date.now() > end) return;
+      for (let i = 0; i < 2; i++) {
+        const p = document.createElement('div');
+        const angle = Math.random() * 360;
+        const v = Math.random() * 5 + 5;
+        Object.assign(p.style, {
+          position: 'fixed', width: '8px', height: '8px',
+          background: colors[Math.floor(Math.random() * colors.length)],
+          borderRadius: '50%', pointerEvents: 'none', zIndex: '9999',
+          left: '50%', top: '25%',
+        });
+        document.body.appendChild(p);
+        const rad = (angle + i * 30) * Math.PI / 180;
+        const vx = Math.cos(rad) * v;
+        const vy = Math.sin(rad) * v;
         let x = 0, y = 0;
-        const animation = () => {
-          x += vx;
-          y += vy + 0.5;
-          particle.style.transform = `translate(${x}px, ${y}px)`;
-          particle.style.opacity = String(Math.max(0, 1 - y / 200));
-
-          if (y < 200) {
-            requestAnimationFrame(animation);
-          } else {
-            particle.remove();
-          }
+        const tick = () => {
+          x += vx; y += vy + 0.5;
+          p.style.transform = `translate(${x}px, ${y}px)`;
+          p.style.opacity = String(Math.max(0, 1 - y / 200));
+          if (y < 200) requestAnimationFrame(tick); else p.remove();
         };
-        animation();
+        tick();
       }
-
       requestAnimationFrame(frame);
     })();
   }, []);
 
-  // Generic fallback for direct URL visits (no state)
-  if (!state) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-2xl w-full p-8 space-y-6">
-          <div className="flex justify-center">
-            <CheckCircle2 className="w-16 h-16 text-primary animate-in zoom-in duration-500" />
-          </div>
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">Booking Confirmed!</h1>
-            <p className="text-muted-foreground">
-              Your interview has been successfully scheduled. A confirmation email has been sent to your inbox.
-            </p>
-          </div>
-          <div className="text-center text-sm text-muted-foreground border-t pt-4">
-            <p>📧 A calendar invitation has been sent to your email</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  const { booking, config, interviewerName } = state;
-  const startTime = new Date(booking.scheduled_start);
-  const endTime = new Date(booking.scheduled_end);
+  const firstName = state?.booking.candidate_name?.split(' ')[0] || 'there';
+  const startTime = state ? new Date(state.booking.scheduled_start) : null;
+  const endTime = state ? new Date(state.booking.scheduled_end) : null;
+  const tzAbbr = startTime
+    ? new Intl.DateTimeFormat('en-US', { timeZoneName: 'short', timeZone: state?.booking.candidate_timezone }).formatToParts(startTime).find(p => p.type === 'timeZoneName')?.value
+    : '';
 
   const downloadICS = () => {
-    const icsContent = `BEGIN:VCALENDAR
+    if (!state || !startTime || !endTime) return;
+    const { booking, interviewerName } = state;
+    const ics = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//GoGio//Interview Scheduler//EN
 CALSCALE:GREGORIAN
@@ -119,108 +89,143 @@ DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
 DTSTART:${startTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
 DTEND:${endTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
 SUMMARY:Interview with ${interviewerName}
-DESCRIPTION:Scheduled via GoGio
 LOCATION:${booking.meeting_location || ''}
-ATTENDEE;CN=${booking.candidate_name};RSVP=TRUE:mailto:${booking.candidate_email}
-STATUS:CONFIRMED
-SEQUENCE:0
 END:VEVENT
 END:VCALENDAR`;
-
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'interview.ics';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'interview.ics';
+    document.body.appendChild(a); a.click(); a.remove();
     window.URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-2xl w-full p-8 space-y-6">
-        <div className="flex justify-center">
-          <CheckCircle2 className="w-16 h-16 text-primary animate-in zoom-in duration-500" />
-        </div>
-
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Booking Confirmed!</h1>
-          <p className="text-muted-foreground">
-            Your interview has been successfully scheduled. A confirmation email has been sent to {booking.candidate_email}.
+  if (!state || !startTime || !endTime) {
+    return (
+      <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+        <PublicBookingHeader workspaceName="Scheduling" />
+        <main className="flex-1 container mx-auto px-4 py-16 max-w-xl text-center space-y-4">
+          <div className="h-20 w-20 rounded-full bg-emerald-100 mx-auto flex items-center justify-center">
+            <Check className="h-9 w-9 text-emerald-700" strokeWidth={2.5} />
+          </div>
+          <h1 className="font-poppins font-bold text-virgilio-text text-3xl tracking-[-0.02em]">
+            Booking Confirmed<span className="text-virgilio-purple">.</span>
+          </h1>
+          <p className="text-virgilio-muted">
+            Your interview has been scheduled. A calendar invitation is on its way to your inbox.
           </p>
-        </div>
+        </main>
+        <PublicBookingFooter />
+      </div>
+    );
+  }
 
-        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-          <Avatar className="w-12 h-12">
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {interviewerName.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-medium text-foreground">{interviewerName}</p>
-            {config.description && (
-              <p className="text-sm text-muted-foreground">{config.description}</p>
-            )}
+  const panelists = [{ name: state.interviewerName }];
+
+  return (
+    <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
+      <PublicBookingHeader workspaceName={state.config.display_name} />
+
+      <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-16 max-w-2xl">
+        {/* Check circle */}
+        <div className="flex justify-center mb-6">
+          <div className="h-24 w-24 rounded-full bg-emerald-100 flex items-center justify-center">
+            <Check className="h-12 w-12 text-emerald-700" strokeWidth={2.5} />
           </div>
         </div>
 
-        <div className="space-y-3 border-t pt-6">
-          <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
-            <div>
-              <p className="font-medium text-foreground">
-                {format(startTime, 'EEEE, MMMM d, yyyy')}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {format(startTime, 'h:mm a')} - {format(endTime, 'h:mm a')} ({booking.candidate_timezone})
-              </p>
-            </div>
-          </div>
+        <h1 className="font-poppins font-bold text-virgilio-text text-3xl md:text-[40px] leading-[1.1] tracking-[-0.03em] text-center">
+          You're booked, {firstName}<span className="text-virgilio-purple">.</span>
+        </h1>
+        <p className="text-virgilio-muted text-center mt-3 mb-10 max-w-md mx-auto">
+          A calendar invite with the video link is on its way to{' '}
+          <span className="font-poppins font-semibold text-virgilio-text">{state.booking.candidate_email}</span>.
+        </p>
 
-          <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-muted-foreground mt-0.5" />
-            <div>
-              <p className="font-medium text-foreground">{booking.duration_minutes} minutes</p>
-            </div>
-          </div>
-
-          {booking.meeting_location && (
-            <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="font-medium text-foreground break-all">
-                  {booking.meeting_location.startsWith('http') ? (
-                    <a
-                      href={booking.meeting_location}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {booking.meeting_location}
-                    </a>
-                  ) : (
-                    booking.meeting_location
-                  )}
-                </p>
+        {/* Stacked card: dark top + white bottom */}
+        <div className="rounded-2xl overflow-hidden border border-virgilio-border shadow-[0_24px_60px_-30px_rgba(13,13,9,0.18)]">
+          {/* Dark detail */}
+          <div className="bg-[#0d0d09] text-white p-5 md:p-6 flex items-start gap-5">
+            <div className="leading-tight text-center flex-shrink-0">
+              <div className="text-[10.5px] font-poppins font-semibold tracking-[0.08em] text-white/60 uppercase">
+                {format(startTime, 'EEE')}
+              </div>
+              <div className="font-poppins font-bold text-[34px] leading-none mt-1">
+                {format(startTime, 'd')}
+              </div>
+              <div className="text-[11.5px] text-white/60 mt-1">
+                {format(startTime, 'MMM')}
               </div>
             </div>
-          )}
+            <div className="flex-1 min-w-0">
+              <div className="font-poppins font-bold text-[17px] tracking-[-0.01em]">
+                {state.config.display_name}
+              </div>
+              <div className="flex items-center gap-3 mt-2 text-[12.5px] text-white/70 flex-wrap">
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  {format(startTime, 'h:mm')} – {format(endTime, 'h:mm a')} {tzAbbr}
+                </span>
+                <span className="opacity-50">•</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Video className="h-3.5 w-3.5" />
+                  Google Meet
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* White panel */}
+          <div className="bg-white p-5 md:p-6 space-y-5">
+            <div>
+              <div className="text-[10.5px] font-poppins font-semibold tracking-[0.08em] text-virgilio-muted uppercase mb-3">
+                Your panel
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {panelists.map((p, i) => (
+                  <div key={i} className="inline-flex items-center gap-2">
+                    <div
+                      className="h-7 w-7 rounded-full flex items-center justify-center text-white text-[11px] font-poppins font-semibold"
+                      style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                    >
+                      {initials(p.name)}
+                    </div>
+                    <span className="text-[13px] font-poppins font-semibold text-virgilio-text">{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={downloadICS}
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-[#0d0d09] text-white font-poppins font-semibold text-[13px]"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Add to calendar
+              </button>
+              <button
+                disabled
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-white border border-virgilio-border text-virgilio-text font-poppins font-semibold text-[13px] opacity-60 cursor-not-allowed"
+                title="Use your booking link to reschedule"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Reschedule
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-4">
-          <Button onClick={downloadICS} className="flex-1" variant="default">
-            <Download className="w-4 h-4 mr-2" />
-            Download Calendar Invite
-          </Button>
-        </div>
+        <p className="text-center text-[12.5px] text-virgilio-muted mt-8">
+          Need to bring something up beforehand?{' '}
+          <a href={`mailto:${state.booking.candidate_email}`} className="font-poppins font-semibold text-virgilio-text underline underline-offset-2">
+            Reply to your confirmation email
+          </a>
+          .
+        </p>
+      </main>
 
-        <div className="text-center text-sm text-muted-foreground border-t pt-4">
-          <p>📧 A calendar invitation has been sent to your email</p>
-          <p className="mt-1">You can also add it to your calendar using the button above</p>
-        </div>
-      </Card>
+      <PublicBookingFooter />
     </div>
   );
 }
