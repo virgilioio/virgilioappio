@@ -1,33 +1,31 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { GoGioLogo } from '@/components/GoGioLogo';
 import { InterviewerCard } from '@/components/booking/InterviewerCard';
 import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { BookingConfirmationForm } from '@/components/booking/BookingConfirmationForm';
 import { ExistingBookingView, ExistingBookingData } from '@/components/booking/ExistingBookingView';
-import { QuickSchedulePanel } from '@/components/booking/QuickSchedulePanel';
 import { EventTypePicker } from '@/components/booking/EventTypePicker';
+import { JobStageSummaryCard } from '@/components/booking/JobStageSummaryCard';
+import { PublicBookingHeader } from '@/components/booking/PublicBookingHeader';
+import { PublicBookingFooter } from '@/components/booking/PublicBookingFooter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Globe, ShieldX, ArrowLeft, Clock } from 'lucide-react';
-import { startOfMonth, endOfMonth, addMonths, isSameDay, isSameMonth, parseISO, format } from 'date-fns';
+import { AlertCircle, Globe, ShieldX, ArrowLeft, Clock, Users } from 'lucide-react';
+import { startOfMonth, endOfMonth, isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { 
-  parseBookingContextFromUrl, 
-  BookingContext, 
-  hasShortToken, 
-  getShortToken, 
+import {
+  parseBookingContextFromUrl,
+  BookingContext,
+  hasShortToken,
+  getShortToken,
   resolveBookingToken,
-  ExistingBookingInfo,
 } from '@/lib/bookingLinkUtils';
-import gioAvatar from '@/assets/gio-avatar.png';
 
 // Common timezones for the selector
 const COMMON_TIMEZONES = [
