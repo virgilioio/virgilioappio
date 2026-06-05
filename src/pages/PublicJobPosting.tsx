@@ -748,7 +748,9 @@ export default function PublicJobPosting() {
         onShare={handleShare}
         onSave={handleSave}
         saved={isSaved}
+        accentColor={brandColor}
       />
+
 
       <main className="flex-1 w-full">
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-8">
