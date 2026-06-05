@@ -53,10 +53,14 @@ export function JobHeader({
         {/* badges */}
         <div className="mt-4 flex items-center gap-1.5 flex-wrap">
           {department && (
-            <span className="inline-flex items-center h-[20px] px-2 rounded text-[10px] font-poppins font-semibold tracking-[0.08em] uppercase bg-[#EDE4FF] text-[#5b2bd1]">
+            <span
+              className="inline-flex items-center h-[20px] px-2 rounded text-[10px] font-poppins font-semibold tracking-[0.08em] uppercase"
+              style={{ background: `${accent}26`, color: accent }}
+            >
               {department}
             </span>
           )}
+
           {featured && (
             <span className="inline-flex items-center h-[20px] px-2 rounded text-[10px] font-poppins font-semibold tracking-[0.08em] uppercase bg-[#0d0d09] text-[#FFFCF9]">
               Featured
