@@ -66,6 +66,7 @@ export function JobFormSheet({
         currency: job.currency || 'USD',
         status: job.status,
         organization_id: job.organization_id,
+        department_id: (job as any).department_id ?? null,
         skills: job.skills || [],
         internal_title: job.internal_title || undefined,
         job_level: job.job_level || undefined,
@@ -86,7 +87,7 @@ export function JobFormSheet({
   const updateJobData = (patch: Partial<CreateJobData>) =>
     setJobData((prev) => ({ ...prev, ...patch }))
 
-  const isValid = !!jobData.title?.trim() && !!jobData.organization_id
+  const isValid = !!jobData.title?.trim() && !!jobData.organization_id && !!jobData.department_id
 
   const handleSubmit = async () => {
     if (!isValid) return
@@ -121,6 +122,7 @@ export function JobFormSheet({
       include_equity: !!src.include_equity,
       include_signing_bonus: !!src.include_signing_bonus,
       status: src.status || 'draft',
+      department_id: src.department_id ?? null,
     }
     if (!job && src.organization_id) payload.organization_id = src.organization_id
 

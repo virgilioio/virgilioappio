@@ -201,7 +201,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   }
 
   const canProceedStep1 = () =>
-    !!wizardState.jobData.title && !!wizardState.jobData.organization_id
+    !!wizardState.jobData.title && !!wizardState.jobData.organization_id && !!wizardState.jobData.department_id
 
   const handlePostingContinue = async () => {
     setIsSubmitting(true)
