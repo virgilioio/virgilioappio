@@ -2185,6 +2185,56 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_archived: boolean
+          is_system: boolean
+          name: string
+          slug: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          is_system?: boolean
+          name: string
+          slug: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          is_system?: boolean
+          name?: string
+          slug?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           attachments: Json | null
@@ -3211,6 +3261,7 @@ export type Database = {
           currency: string | null
           deleted_at: string | null
           department: string | null
+          department_id: string | null
           description: string | null
           employment_type:
             | Database["public"]["Enums"]["job_employment_type"]
@@ -3249,6 +3300,7 @@ export type Database = {
           currency?: string | null
           deleted_at?: string | null
           department?: string | null
+          department_id?: string | null
           description?: string | null
           employment_type?:
             | Database["public"]["Enums"]["job_employment_type"]
@@ -3287,6 +3339,7 @@ export type Database = {
           currency?: string | null
           deleted_at?: string | null
           department?: string | null
+          department_id?: string | null
           description?: string | null
           employment_type?:
             | Database["public"]["Enums"]["job_employment_type"]
@@ -3318,6 +3371,13 @@ export type Database = {
           work_mode?: Database["public"]["Enums"]["job_work_mode"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_organization_id_fkey"
             columns: ["organization_id"]
@@ -6914,6 +6974,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      is_tenant_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
