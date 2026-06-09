@@ -291,6 +291,10 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
           apply_experience: { send_confirm: sendConfirm, promise_48h: promise48, allow_message: allowMessage, enable_referral: enableReferral },
           seo: { meta_title: metaTitle, meta_description: metaDescription },
+          // Departments are the dividing category on the public careers page.
+          // Denormalize from the parent job so postings stay groupable without an extra join.
+          department: (jobData as any)?.department ?? null,
+          department_id: (jobData as any)?.department_id ?? null,
           compensation: {
             variable_enabled: variableEnabled,
             commission_currency: variableEnabled ? commissionCurrency : null,
