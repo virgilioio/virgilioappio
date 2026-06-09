@@ -239,6 +239,13 @@ export function JobsTable({
               searchable
             />
             <FilterChipPopover
+              label="Department"
+              options={departmentOptions}
+              selectedValues={selectedDepartments}
+              onSelectionChange={setSelectedDepartments}
+              searchable
+            />
+            <FilterChipPopover
               label="Location"
               options={locationOptions}
               selectedValues={selectedLocations}
