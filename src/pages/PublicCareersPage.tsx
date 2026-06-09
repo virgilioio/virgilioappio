@@ -68,8 +68,9 @@ export default function PublicCareersPage() {
 
         const { data: p } = await supabase
           .from('job_postings')
-          .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type')
+          .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type, jobs!inner(status)')
           .eq('is_active', true).eq('tenant_id', s.tenant_id)
+          .eq('jobs.status', 'open')
           .order('created_at', { ascending: false })
         if (p) setPostings(p as RawPosting[])
 
