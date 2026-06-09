@@ -24,6 +24,8 @@ import { OrganizationFormSheet } from '@/components/organizations/OrganizationFo
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
+import { useDepartments } from '@/hooks/useDepartments'
+import { DepartmentFormDialog } from '@/components/settings/DepartmentFormDialog'
 
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
@@ -66,10 +68,12 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
 
 export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   const [isOrgFormOpen, setIsOrgFormOpen] = React.useState(false)
+  const [isDeptFormOpen, setIsDeptFormOpen] = React.useState(false)
   const { data: childOrgs = [], isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
   const { userType, organizationId } = useAuth()
   const permissions = usePermissions()
   const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
+  const { departments, isLoading: isLoadingDepts, getDefault, createDepartment } = useDepartments()
 
   const organizationOptions: SearchableSelectOption[] = React.useMemo(
     () =>
@@ -79,6 +83,14 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
     [childOrgs]
   )
 
+  const departmentOptions: SearchableSelectOption[] = React.useMemo(
+    () =>
+      departments
+        .map((d) => ({ value: d.id, label: d.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [departments]
+  )
+
   const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner
 
   React.useEffect(() => {
@@ -86,6 +98,14 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
       onUpdate({ organization_id: organizationId })
     }
   }, [jobData.organization_id, userType, organizationId, onUpdate])
+
+  // Default department to "General" on first load if not set
+  React.useEffect(() => {
+    if (!jobData.department_id && !isLoadingDepts) {
+      const def = getDefault()
+      if (def) onUpdate({ department_id: def.id })
+    }
+  }, [jobData.department_id, isLoadingDepts, getDefault, onUpdate])
 
   // Defaults
   React.useEffect(() => {
@@ -110,6 +130,16 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
       }
     } catch (error) {
       console.error('Failed to create organization:', error)
+    }
+  }
+
+  const handleCreateDepartment = async (data: { name: string; description?: string | null }) => {
+    try {
+      const result = await createDepartment.mutateAsync(data)
+      setIsDeptFormOpen(false)
+      if (result?.id) onUpdate({ department_id: result.id })
+    } catch (error) {
+      console.error('Failed to create department:', error)
     }
   }
 
@@ -214,24 +244,44 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {canSelectOrganization && (
             <div>
-              <FieldLabel required>Department / Organization</FieldLabel>
+              <FieldLabel required>Client</FieldLabel>
               <div className="mt-2">
                 <SearchableSelect
                   options={organizationOptions}
                   value={jobData.organization_id || ''}
                   onValueChange={(value) => set('organization_id', value)}
-                  placeholder={isLoadingOrgs ? 'Loading…' : 'Select a department…'}
-                  searchPlaceholder="Search departments…"
-                  emptyMessage="No departments found."
+                  placeholder={isLoadingOrgs ? 'Loading…' : 'Select a client…'}
+                  searchPlaceholder="Search clients…"
+                  emptyMessage="No clients found."
                   disabled={isLoadingOrgs}
                   onCreateNew={() => setIsOrgFormOpen(true)}
-                  createNewLabel="Create Department"
+                  createNewLabel="Create client"
                 />
               </div>
-              <FieldHint>Which child org owns this req.</FieldHint>
+              <FieldHint>The company or business unit this role belongs to.</FieldHint>
             </div>
           )}
 
+          <div>
+            <FieldLabel required>Department</FieldLabel>
+            <div className="mt-2">
+              <SearchableSelect
+                options={departmentOptions}
+                value={jobData.department_id || ''}
+                onValueChange={(value) => set('department_id', value)}
+                placeholder={isLoadingDepts ? 'Loading…' : 'Select a department…'}
+                searchPlaceholder="Search departments…"
+                emptyMessage="No departments found."
+                disabled={isLoadingDepts}
+                onCreateNew={() => setIsDeptFormOpen(true)}
+                createNewLabel="Create department"
+              />
+            </div>
+            <FieldHint>Function area (Sales, People, Engineering…). Shared across clients.</FieldHint>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <FieldLabel>Job level</FieldLabel>
             <div className="mt-2">
@@ -475,12 +525,20 @@ We're hiring a…
         </div>
       </SectionCard>
 
-      {/* Organization Creation Sheet */}
+      {/* Client (Organization) Creation Sheet */}
       <OrganizationFormSheet
         isOpen={isOrgFormOpen}
         onClose={() => setIsOrgFormOpen(false)}
         onSubmit={handleCreateOrganization}
         isLoading={isCreatingOrg}
+      />
+
+      {/* Department Creation Dialog */}
+      <DepartmentFormDialog
+        open={isDeptFormOpen}
+        onOpenChange={setIsDeptFormOpen}
+        onSubmit={handleCreateDepartment}
+        isSubmitting={createDepartment.isPending}
       />
     </div>
   )

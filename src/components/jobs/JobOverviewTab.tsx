@@ -124,12 +124,18 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
       </div>
 
       {/* Quick Stats - MetricCards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
           title="Department"
-          value={job.organization_name || (job as any).organization?.name || job.department || 'Not specified'}
+          value={job.department || 'Not specified'}
           icon={Building}
-          tooltip="Job department"
+          tooltip="Function area this role belongs to"
+        />
+        <MetricCard
+          title="Client"
+          value={job.organization_name || (job as any).organization?.name || 'Not specified'}
+          icon={Building}
+          tooltip="Client this role is owned by"
         />
         <MetricCard
           title="Location"

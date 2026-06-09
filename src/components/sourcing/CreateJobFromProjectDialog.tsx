@@ -66,8 +66,8 @@ export function CreateJobFromProjectDialog({
   const handleCreateJob = async () => {
     if (!selectedOrgId) {
       toast({
-        title: 'Select Department',
-        description: 'Please select a department where the job will be created.',
+        title: 'Select Client',
+        description: 'Please select a client where the job will be created.',
         variant: 'destructive'
       })
       return
@@ -171,25 +171,25 @@ export function CreateJobFromProjectDialog({
               )}
             </div>
 
-            {/* Department Selection */}
+            {/* Client Selection */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                Select Department
+                Select Client
               </Label>
               <SearchableSelect
                 options={orgOptions}
                 value={selectedOrgId}
                 onValueChange={setSelectedOrgId}
-                placeholder={isLoadingOrgs ? "Loading departments..." : "Select a department..."}
-                searchPlaceholder="Search departments..."
-                emptyMessage="No departments found."
+                placeholder={isLoadingOrgs ? "Loading clients..." : "Select a client..."}
+                searchPlaceholder="Search clients..."
+                emptyMessage="No clients found."
                 disabled={isLoadingOrgs}
                 onCreateNew={() => setIsOrgFormOpen(true)}
-                createNewLabel="Create Department"
+                createNewLabel="Create Client"
               />
               <p className="text-xs text-muted-foreground">
-                The job will be created in this department and start as a draft.
+                The job will be created under this client and start as a draft.
               </p>
             </div>
           </div>
