@@ -24,6 +24,8 @@ import { OrganizationFormSheet } from '@/components/organizations/OrganizationFo
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
+import { useDepartments } from '@/hooks/useDepartments'
+import { DepartmentFormDialog } from '@/components/settings/DepartmentFormDialog'
 
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
@@ -66,10 +68,12 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
 
 export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   const [isOrgFormOpen, setIsOrgFormOpen] = React.useState(false)
+  const [isDeptFormOpen, setIsDeptFormOpen] = React.useState(false)
   const { data: childOrgs = [], isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
   const { userType, organizationId } = useAuth()
   const permissions = usePermissions()
   const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
+  const { departments, isLoading: isLoadingDepts, getDefault, createDepartment } = useDepartments()
 
   const organizationOptions: SearchableSelectOption[] = React.useMemo(
     () =>
@@ -79,6 +83,14 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
     [childOrgs]
   )
 
+  const departmentOptions: SearchableSelectOption[] = React.useMemo(
+    () =>
+      departments
+        .map((d) => ({ value: d.id, label: d.name }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [departments]
+  )
+
   const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner
 
   React.useEffect(() => {
@@ -86,6 +98,14 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
       onUpdate({ organization_id: organizationId })
     }
   }, [jobData.organization_id, userType, organizationId, onUpdate])
+
+  // Default department to "General" on first load if not set
+  React.useEffect(() => {
+    if (!jobData.department_id && !isLoadingDepts) {
+      const def = getDefault()
+      if (def) onUpdate({ department_id: def.id })
+    }
+  }, [jobData.department_id, isLoadingDepts, getDefault, onUpdate])
 
   // Defaults
   React.useEffect(() => {
@@ -110,6 +130,16 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
       }
     } catch (error) {
       console.error('Failed to create organization:', error)
+    }
+  }
+
+  const handleCreateDepartment = async (data: { name: string; description?: string | null }) => {
+    try {
+      const result = await createDepartment.mutateAsync(data)
+      setIsDeptFormOpen(false)
+      if (result?.id) onUpdate({ department_id: result.id })
+    } catch (error) {
+      console.error('Failed to create department:', error)
     }
   }
 
