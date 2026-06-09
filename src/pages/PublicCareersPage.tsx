@@ -114,8 +114,8 @@ export default function PublicCareersPage() {
   }
 
   const departments = useMemo(
-    () => Array.from(new Set(roles.map((r) => r.department))).sort(sortDepartments),
-    [roles],
+    () => Array.from(new Set([...workspaceDepartments, ...roles.map((r) => r.department)])).sort(sortDepartments),
+    [roles, workspaceDepartments],
   )
   const locations = useMemo(() => Array.from(new Set(roles.map((r) => r.location).filter(Boolean) as string[])).sort(), [roles])
   const types = useMemo(() => Array.from(new Set(roles.map((r) => r.type).filter(Boolean) as string[])).sort(), [roles])
