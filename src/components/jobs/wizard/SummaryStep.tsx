@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { CreateJobData } from '@/hooks/useJobs'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { useDepartments } from '@/hooks/useDepartments'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -180,7 +181,9 @@ export function SummaryStep({
   onAutoSourceChange,
 }: SummaryStepProps) {
   const { organizations } = useOrganizations()
+  const { departments } = useDepartments()
   const organization = organizations.find((o) => o.id === jobData.organization_id)
+  const selectedDepartment = departments.find((d) => d.id === jobData.department_id)
 
   const { loadHiringPlan } = useJobHiringPlan()
   const [stages, setStages] = useState<JobStage[]>([])
@@ -231,7 +234,7 @@ export function SummaryStep({
 
   const teamCount = assignments.length
   const stageCount = stages.length
-  const dept = jobData.department || 'General'
+  const dept = selectedDepartment?.name || jobData.department || 'General'
   const employmentLabel = (jobData.employment_type || '').replace('_', ' ')
   const workModeLabel = (jobData.work_mode || '').replace('_', ' ')
 
