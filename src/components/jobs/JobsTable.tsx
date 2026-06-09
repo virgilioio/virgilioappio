@@ -92,9 +92,13 @@ export function JobsTable({
   }, [jobs])
 
   const departmentOptions: FilterChipOption[] = useMemo(() => {
-    const set = new Set<string>()
-    jobs.forEach(j => j.department && set.add(j.department))
-    return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
+    const counts = new Map<string, number>()
+    jobs.forEach(j => {
+      if (j.department) counts.set(j.department, (counts.get(j.department) ?? 0) + 1)
+    })
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([v, count]) => ({ value: v, label: v, count }))
   }, [jobs])
 
   const locationOptions: FilterChipOption[] = useMemo(() => {
