@@ -42,6 +42,7 @@ export default function PublicCareersPage() {
   const [settings, setSettings] = useState<CareersSettings | null>(null)
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
   const [postings, setPostings] = useState<RawPosting[]>([])
+  const [workspaceDepartments, setWorkspaceDepartments] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,6 +75,14 @@ export default function PublicCareersPage() {
           .order('created_at', { ascending: false })
         if (p) setPostings(p as RawPosting[])
 
+        const { data: deps } = await supabase
+          .from('departments')
+          .select('name')
+          .eq('tenant_id', s.tenant_id)
+          .eq('is_archived', false)
+          .order('name')
+        if (deps) setWorkspaceDepartments(deps.map((d: any) => d.name).filter(Boolean))
+
         setIsLoading(false)
       } catch (e) {
         console.error(e); setError('Failed to load careers page'); setIsLoading(false)
@@ -105,8 +114,8 @@ export default function PublicCareersPage() {
   }
 
   const departments = useMemo(
-    () => Array.from(new Set(roles.map((r) => r.department))).sort(sortDepartments),
-    [roles],
+    () => Array.from(new Set([...workspaceDepartments, ...roles.map((r) => r.department)])).sort(sortDepartments),
+    [roles, workspaceDepartments],
   )
   const locations = useMemo(() => Array.from(new Set(roles.map((r) => r.location).filter(Boolean) as string[])).sort(), [roles])
   const types = useMemo(() => Array.from(new Set(roles.map((r) => r.type).filter(Boolean) as string[])).sort(), [roles])
