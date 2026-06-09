@@ -180,9 +180,13 @@ export default function PublicJobPosting() {
           description,
           details,
           tenant_id,
-          created_at
+          created_at,
+          is_active,
+          jobs!inner(status)
         `)
         .eq('slug', slug)
+        .eq('is_active', true)
+        .eq('jobs.status', 'open')
         .maybeSingle()
       if (!p) {
         setPosting(null)
