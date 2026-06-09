@@ -220,7 +220,7 @@ export function useOrganizations() {
       await logActivity({
         activityType: 'organization_created',
         title: `Department created: ${newOrg.name}`,
-        description: `New department/organization created`,
+        description: `New client created`,
         entityType: 'organization',
         entityId: newOrg.id,
         organizationId: newOrg.id,

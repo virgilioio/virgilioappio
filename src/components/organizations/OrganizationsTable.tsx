@@ -147,7 +147,7 @@ export function OrganizationsTable({
             <div className="relative w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search departments..."
+                placeholder="Search clients..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-9 pl-9"
@@ -185,9 +185,9 @@ export function OrganizationsTable({
           {filteredOrganizations.length === 0 ? (
             <EmptyState
               assetType="empty-state-organizations"
-              title={organizations.length === 0 ? 'No departments yet' : 'No departments match your filters'}
+              title={organizations.length === 0 ? 'No clients yet' : 'No clients match your filters'}
               description={organizations.length === 0 
-                ? 'Create your first department to get started.'
+                ? 'Create your first client to get started.'
                 : 'Try adjusting your search or filter criteria.'
               }
               fallbackIcon={Building2}
