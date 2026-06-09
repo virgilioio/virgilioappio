@@ -78,6 +78,7 @@ export function JobsTable({
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([])
   const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [postedRange, setPostedRange] = useState<string[]>([])
@@ -87,6 +88,12 @@ export function JobsTable({
   const companyOptions: FilterChipOption[] = useMemo(() => {
     const set = new Set<string>()
     jobs.forEach(j => j.organization_name && set.add(j.organization_name))
+    return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
+  }, [jobs])
+
+  const departmentOptions: FilterChipOption[] = useMemo(() => {
+    const set = new Set<string>()
+    jobs.forEach(j => j.department && set.add(j.department))
     return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
   }, [jobs])
 
@@ -137,6 +144,7 @@ export function JobsTable({
       }
 
       if (selectedCompanies.length && !selectedCompanies.includes(job.organization_name || '')) return false
+      if (selectedDepartments.length && !selectedDepartments.includes(job.department || '')) return false
       if (selectedLocations.length && !selectedLocations.includes(job.location || '')) return false
 
       if (postedRange.length) {
@@ -150,7 +158,7 @@ export function JobsTable({
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false
       return true
     })
-  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedLocations, selectedUsers, postedRange, assignedJobIds])
+  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedDepartments, selectedLocations, selectedUsers, postedRange, assignedJobIds])
 
   const visibleIds = useMemo(() => filteredJobs.map(j => j.id), [filteredJobs])
   const { data: metrics = [] } = usePipelineJobMetrics(visibleIds)
@@ -163,6 +171,7 @@ export function JobsTable({
   const hasActiveFilters =
     searchTerm.trim() !== '' ||
     selectedCompanies.length > 0 ||
+    selectedDepartments.length > 0 ||
     selectedLocations.length > 0 ||
     selectedUsers.length > 0 ||
     postedRange.length > 0
@@ -170,6 +179,7 @@ export function JobsTable({
   const clearAll = () => {
     setSearchTerm('')
     setSelectedCompanies([])
+    setSelectedDepartments([])
     setSelectedLocations([])
     setSelectedUsers([])
     setPostedRange([])
@@ -226,6 +236,13 @@ export function JobsTable({
               options={companyOptions}
               selectedValues={selectedCompanies}
               onSelectionChange={setSelectedCompanies}
+              searchable
+            />
+            <FilterChipPopover
+              label="Department"
+              options={departmentOptions}
+              selectedValues={selectedDepartments}
+              onSelectionChange={setSelectedDepartments}
               searchable
             />
             <FilterChipPopover
