@@ -327,6 +327,9 @@ export function useJobs() {
       })
 
       queryClient.invalidateQueries({ queryKey: ['jobs'] })
+      if (jobData.status && jobData.status !== 'open') {
+        queryClient.invalidateQueries({ queryKey: ['job-postings'] })
+      }
       return updatedJob
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update job'
