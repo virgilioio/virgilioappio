@@ -30,6 +30,7 @@ export interface Job {
   hiring_team: any[] | null
   hiring_team_names: string[] | null
   organization_id: string
+  department_id?: string | null
   organization_name?: string
   created_by: string | null
   created_at: string
@@ -65,6 +66,7 @@ export interface CreateJobData {
   last_skills_generation?: string
   hiring_team?: any[]
   organization_id?: string
+  department_id?: string | null
   internal_title?: string
   job_level?: string
   work_mode?: JobWorkMode
@@ -90,6 +92,7 @@ export interface UpdateJobData {
   auto_generated_skills?: any
   last_skills_generation?: string
   hiring_team?: any[]
+  department_id?: string | null
   internal_title?: string | null
   job_level?: string | null
   work_mode?: JobWorkMode | null
