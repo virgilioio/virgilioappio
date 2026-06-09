@@ -1,4 +1,4 @@
-import { Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, BarChart3, Briefcase, UsersIcon, Layers, Plug, Handshake } from 'lucide-react'
+import { Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, BarChart3, Briefcase, UsersIcon, Layers, Plug, Handshake, Network } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
@@ -77,6 +77,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       items: [
         { id: 'organization', label: 'General Settings', icon: Building, show: permissions.canManageOrganization },
         { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
+        { id: 'workspace-departments', label: 'Departments', icon: Network, show: showWorkspaceGroup },
         { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: showWorkspaceGroup },
         { id: 'workspace-deal-stages', label: 'Deal Stages', icon: Handshake, show: permissions.canViewOrganizations },
         { id: 'integrations', label: 'Integrations', icon: Plug, show: true, badge: integrationsBadge },
