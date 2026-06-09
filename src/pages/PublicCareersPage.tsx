@@ -42,6 +42,7 @@ export default function PublicCareersPage() {
   const [settings, setSettings] = useState<CareersSettings | null>(null)
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
   const [postings, setPostings] = useState<RawPosting[]>([])
+  const [workspaceDepartments, setWorkspaceDepartments] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
