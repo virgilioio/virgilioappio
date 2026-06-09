@@ -1,99 +1,76 @@
-# Departments as a first-class concept
+# Departments → Job Postings & Careers Page
 
-## Today (the mess we want to fix)
+Goal: make **Department** the canonical grouping/filter on every posting surface, end-to-end, using the new workspace-wide `departments` table introduced earlier.
 
-- `organizations` is overloaded. Sub-orgs under a tenant are called "Departments" in the UI but they are really **Clients** (Arqademy, etc.). `jobs.organization_id` points to a client org.
-- `jobs.department` exists as a free-text column, currently shown on the public careers page and in `JobHero`, but it isn't editable in the wizard and isn't backed by any real catalog.
-- Net effect: there is no real way to say "this is a Sales role at Arqademy" vs "this is a Finance role at Arqademy."
+Today the public careers page already groups by `details.department`, but that field is only populated ad-hoc and never synced to the new departments model. We close that gap.
 
-## Target model
+## 1. Persist department on job_postings.details
 
-- **Client** = the existing `organizations` row (kept as-is). Required on a job.
-- **Department** = a new, workspace-wide catalog (Sales, People, Finance, Engineering…), shared across all clients in the tenant. Required on a job.
-- Job picks **Client + Department** independently. One client can have jobs across many departments; one department can span many clients.
+`JobPostingStep.savePosting` currently builds `details` without department. Add the parent job's department (denormalized name string — already kept in sync via `useJobs.createJob/updateJob`) into the saved blob:
 
-## Database
+- In `src/components/jobs/wizard/JobPostingStep.tsx` (around line 283), include:
+  - `department: jobData?.department ?? null`
+  - `department_id: jobData?.department_id ?? null`
+- Same treatment wherever a posting is created/updated outside the wizard (search for `createPosting` / posting `details` writes in `useJobPostings.ts` and any posting edit sheets).
 
-New table `public.departments`:
+## 2. Keep posting department in sync with the job
 
-- `id uuid pk`
-- `tenant_id uuid not null` → `organizations(id)` (the tenant root)
-- `name text not null`
-- `slug text not null` (lowercased, for URLs/grouping on careers page)
-- `description text null`
-- `color text null` (optional, for chips later)
-- `is_archived bool default false`
-- `created_by`, `created_at`, `updated_at`
-- Unique `(tenant_id, lower(name))` and `(tenant_id, slug)`
-- GRANTs for `authenticated` + `service_role`; RLS via `user_has_tenant_access(tenant_id)` for read, and tenant-admin/owner check for write
-- Seed each existing tenant with: Engineering, Product, Design, Sales, Marketing, People, Finance, Operations, Customer Success, General (the last as a safe default)
+When a user changes a job's department later, the posting's denormalized snapshot would go stale. Two parts:
 
-Add to `public.jobs`:
+- **Client-side**: in `useJobs.updateJob`, after writing the new `department` text, patch `job_postings.details` for that job to overwrite `department` and `department_id`. Single targeted SQL update via supabase client (json `||` merge).
+- **DB trigger (defensive)**: `AFTER UPDATE OF department_id ON public.jobs` → updates `job_postings.details = details || jsonb_build_object('department', NEW.department, 'department_id', NEW.department_id)` for matching postings. SECURITY DEFINER, scoped by `job_id`. Belt-and-braces so anything that bypasses the hook stays consistent.
 
-- `department_id uuid null` → `departments(id) on delete set null`
-- Index on `(tenant_id, department_id)`
+## 3. One-shot backfill migration
 
-**Existing data handling (your "Arqademy shouldn't be a department" point):**
+Align existing data before the new behavior takes over:
 
-- We do **not** copy client names into departments.
-- We do **not** try to guess departments from the free-text `jobs.department` column.
-- All existing jobs get `department_id = <tenant's "General" department>` in the same migration.
-- Keep `jobs.department` column for now as a denormalized display cache (written from `departments.name` on save). We can drop it in a later cleanup migration once nothing reads it.
+```sql
+UPDATE public.job_postings p
+SET details = COALESCE(p.details, '{}'::jsonb)
+            || jsonb_build_object(
+                 'department', j.department,
+                 'department_id', j.department_id
+               )
+FROM public.jobs j
+WHERE p.job_id = j.id
+  AND j.department IS NOT NULL;
+```
 
-## Settings UI — manage Departments
+Combined with the earlier `jobs.department ← departments.name` backfill, every posting ends up tagged with its current department name.
 
-New tab: **Settings → Workspace → Departments** (admin/owner only).
+## 4. Public careers page polish (`PublicCareersPage` + `CareersFilterBar` + `CareersRoleList`)
 
-- Table of departments (name, # of open jobs, # of total jobs, archived flag).
-- Create / rename / archive (no hard-delete if jobs reference it; archive instead).
-- Cannot archive "General" (acts as fallback).
-- Inline create from the job wizard via `+ Create department` (mirrors today's `+ Create Department` affordance, but it really creates a department now, not a client org).
+The plumbing already groups/filters by `r.department`. Small UX fixes so departments feel intentional:
 
-## Job creation & editing
+- Fallback label: replace `'Open roles'` default with `'Other'` only when a posting genuinely has no department (rare after backfill).
+- Group sort: pin the tenant's system "General" department last; sort the rest alphabetically. Apply same order in the filter dropdown.
+- Hide empty filter options: only list departments that actually appear in active postings (already the case — verify).
+- Hero metric `departmentsCount` keeps working unchanged.
+- No schema changes needed on `careers_page_settings`.
 
-`src/components/jobs/wizard/JobInfoStep.tsx`:
+## 5. Internal job-posting UI (no behavior change required, just verify)
 
-- Split the current single field into **two** required `SearchableSelect`s, side by side:
-  - **Client** (label change from "Department / Organization" → "Client"). Source: `useChildOrganizationsForJobCreation`. `+ Create client` opens the existing `OrganizationFormSheet`.
-  - **Department**. Source: new `useDepartments()` hook. `+ Create department` opens a small inline create dialog.
-- Validation in `JobWizard.tsx`: `canProceed` now requires `organization_id` **and** `department_id`.
-- `JobFormSheet.tsx` (quick-create + edit): same two-field treatment.
-- On save, also write `jobs.department = <selected department.name>` so legacy reads keep working without a join.
+- `JobPostingStep` list (line 786) already shows `j.department` from the jobs hook — now powered by the synced field.
+- `PublicJobPosting.tsx` (line 628) reads `d.department` from posting details — now reliably populated.
+- `JobHero` / `JobOverviewTab` already updated in the prior pass; spot-check after backfill.
 
-## Display surfaces
+## 6. Verify
 
-All currently say "department" but read either `organization.name` or the free-text column. Update to prefer `department.name`:
+- Create a job in a non-default department → posting publishes → careers page lists it under that department, filter dropdown includes it.
+- Move a job to a different department → careers page reflects new group on next load (trigger fires).
+- Existing postings show real department names after backfill, not "Open roles".
 
-- `src/components/jobs/JobHero.tsx` — already takes a `department` prop. Pass department name; show client name separately as a small secondary line ("Acme · Sales").
-- `src/components/jobs/JobOverviewTab.tsx` — currently falls back `organization_name || department`. Change to show **Department** and **Client** as two distinct fields.
-- `src/components/jobs/wizard/SummaryStep.tsx` — same split.
-- Jobs list / filters (`src/components/pipeline/FilterCard.tsx`, `JobPostingStep.tsx` search) — add a Department filter chip alongside the existing Department-as-client behaviour. Existing client filter stays.
+## Files touched
 
-## Public careers + job posting
+- `src/components/jobs/wizard/JobPostingStep.tsx` — include department in saved details
+- `src/hooks/useJobs.ts` — sync posting details on department change
+- `src/hooks/useJobPostings.ts` — accept/forward department when present (no signature break)
+- `src/pages/PublicCareersPage.tsx` — fallback label, sort order, system-dept pinning
+- `src/components/careers/public/CareersFilterBar.tsx` — sorted options (if not already)
+- New migration: trigger + backfill (section 3)
 
-- `src/pages/PublicCareersPage.tsx` + `CareersRoleList.tsx` — already group by `department` text. Switch source to `department.name` (via the denormalized column or join). Grouping/filtering UX is unchanged.
-- `src/pages/PublicJobPosting.tsx` + `JobHeader.tsx` — show Department in the meta row exactly as today; nothing else changes.
-- Filter bar `CareersFilterBar.tsx` — keep "Department" filter; just sourced from the real department list now.
+## Out of scope
 
-## Out of scope (call out so we don't sneak it in)
-
-- No changes to billing, tenant model, RLS hierarchy, or `org_kind`.
-- No per-client department restriction (workspace-wide, per your answer).
-- No automation/scorecard/offer scoping by department (departments are descriptive, not access-controlling). Can revisit later.
-- No bulk re-tagging UI for existing jobs in this pass — admins do it manually from the job edit form. The "General" backfill keeps everything valid in the meantime.
-
-## Risks / things to watch
-
-- The word "Department" is plastered across the codebase pointing at the wrong thing (orgs). The rename in the wizard ("Client" vs "Department") is the most error-prone part — must audit `JobInfoStep`, `SummaryStep`, `JobFormSheet`, `CreateJobFromProjectDialog`, `JobOverviewTab` together in one pass.
-- `useChildOrganizationsForJobCreation` and `OrganizationFormSheet` strings (toast says "department created") — update copy to "client".
-- Memory entry `Default department structure` (auto-create "General" org during provisioning) becomes misleading. Update that memory after the migration so future agents don't confuse the two concepts.
-
-## Rollout order
-
-1. Migration: create `departments`, seed per-tenant, add `jobs.department_id`, backfill to "General".
-2. Hooks: `useDepartments`, `useCreateDepartment`.
-3. Settings → Departments tab.
-4. Wizard + JobFormSheet: dual selectors + validation.
-5. Display surfaces: JobHero, JobOverviewTab, SummaryStep, public careers/job pages.
-6. Copy cleanup on the Client (formerly "Department / Organization") flow.
-7. Memory update.
+- Department color/icon rendering on the public page (can be a later polish using `departments.color`).
+- Per-department careers sub-pages / SEO routes.
+- Reordering departments manually (alphabetical + system-last is enough for now).
