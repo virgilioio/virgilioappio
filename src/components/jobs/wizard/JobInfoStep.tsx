@@ -244,24 +244,44 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {canSelectOrganization && (
             <div>
-              <FieldLabel required>Department / Organization</FieldLabel>
+              <FieldLabel required>Client</FieldLabel>
               <div className="mt-2">
                 <SearchableSelect
                   options={organizationOptions}
                   value={jobData.organization_id || ''}
                   onValueChange={(value) => set('organization_id', value)}
-                  placeholder={isLoadingOrgs ? 'Loading…' : 'Select a department…'}
-                  searchPlaceholder="Search departments…"
-                  emptyMessage="No departments found."
+                  placeholder={isLoadingOrgs ? 'Loading…' : 'Select a client…'}
+                  searchPlaceholder="Search clients…"
+                  emptyMessage="No clients found."
                   disabled={isLoadingOrgs}
                   onCreateNew={() => setIsOrgFormOpen(true)}
-                  createNewLabel="Create Department"
+                  createNewLabel="Create client"
                 />
               </div>
-              <FieldHint>Which child org owns this req.</FieldHint>
+              <FieldHint>The company or business unit this role belongs to.</FieldHint>
             </div>
           )}
 
+          <div>
+            <FieldLabel required>Department</FieldLabel>
+            <div className="mt-2">
+              <SearchableSelect
+                options={departmentOptions}
+                value={jobData.department_id || ''}
+                onValueChange={(value) => set('department_id', value)}
+                placeholder={isLoadingDepts ? 'Loading…' : 'Select a department…'}
+                searchPlaceholder="Search departments…"
+                emptyMessage="No departments found."
+                disabled={isLoadingDepts}
+                onCreateNew={() => setIsDeptFormOpen(true)}
+                createNewLabel="Create department"
+              />
+            </div>
+            <FieldHint>Function area (Sales, People, Engineering…). Shared across clients.</FieldHint>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <FieldLabel>Job level</FieldLabel>
             <div className="mt-2">
