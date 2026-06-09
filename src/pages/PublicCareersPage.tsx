@@ -75,6 +75,14 @@ export default function PublicCareersPage() {
           .order('created_at', { ascending: false })
         if (p) setPostings(p as RawPosting[])
 
+        const { data: deps } = await supabase
+          .from('departments')
+          .select('name')
+          .eq('tenant_id', s.tenant_id)
+          .eq('is_archived', false)
+          .order('name')
+        if (deps) setWorkspaceDepartments(deps.map((d: any) => d.name).filter(Boolean))
+
         setIsLoading(false)
       } catch (e) {
         console.error(e); setError('Failed to load careers page'); setIsLoading(false)
