@@ -144,6 +144,7 @@ export function JobsTable({
       }
 
       if (selectedCompanies.length && !selectedCompanies.includes(job.organization_name || '')) return false
+      if (selectedDepartments.length && !selectedDepartments.includes(job.department || '')) return false
       if (selectedLocations.length && !selectedLocations.includes(job.location || '')) return false
 
       if (postedRange.length) {
@@ -157,7 +158,7 @@ export function JobsTable({
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false
       return true
     })
-  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedLocations, selectedUsers, postedRange, assignedJobIds])
+  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedDepartments, selectedLocations, selectedUsers, postedRange, assignedJobIds])
 
   const visibleIds = useMemo(() => filteredJobs.map(j => j.id), [filteredJobs])
   const { data: metrics = [] } = usePipelineJobMetrics(visibleIds)
