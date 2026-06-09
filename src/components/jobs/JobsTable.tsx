@@ -171,6 +171,7 @@ export function JobsTable({
   const hasActiveFilters =
     searchTerm.trim() !== '' ||
     selectedCompanies.length > 0 ||
+    selectedDepartments.length > 0 ||
     selectedLocations.length > 0 ||
     selectedUsers.length > 0 ||
     postedRange.length > 0
@@ -178,6 +179,7 @@ export function JobsTable({
   const clearAll = () => {
     setSearchTerm('')
     setSelectedCompanies([])
+    setSelectedDepartments([])
     setSelectedLocations([])
     setSelectedUsers([])
     setPostedRange([])
