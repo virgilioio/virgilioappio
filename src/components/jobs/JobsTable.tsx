@@ -91,6 +91,12 @@ export function JobsTable({
     return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
   }, [jobs])
 
+  const departmentOptions: FilterChipOption[] = useMemo(() => {
+    const set = new Set<string>()
+    jobs.forEach(j => j.department && set.add(j.department))
+    return Array.from(set).sort().map(v => ({ value: v, label: v, count: 0 }))
+  }, [jobs])
+
   const locationOptions: FilterChipOption[] = useMemo(() => {
     const set = new Set<string>()
     jobs.forEach(j => j.location && set.add(j.location))
