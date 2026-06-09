@@ -217,7 +217,7 @@ export function OrganizationDetailsDialog({
                     <div className="text-center py-6">
                       <Users className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground text-sm">
-                        No members found for this department
+                        No members found for this client
                       </p>
                     </div>
                   )}

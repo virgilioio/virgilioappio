@@ -82,7 +82,7 @@ export function OrganizationFormSheet({
               {isEditing ? 'Edit Department' : 'Create Department'}
             </SheetTitle>
             <SheetDescription>
-              {isEditing ? 'Update department details' : 'Create a new department. Parent and ownership will be set automatically based on your role.'}
+              {isEditing ? 'Update client details' : 'Create a new client. Parent and ownership will be set automatically based on your role.'}
             </SheetDescription>
           </SheetHeader>
 
@@ -96,7 +96,7 @@ export function OrganizationFormSheet({
                     <FormItem>
                       <FormLabel>Department Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter department name" {...field} />
+                        <Input placeholder="Enter client name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
