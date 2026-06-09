@@ -525,12 +525,20 @@ We're hiring a…
         </div>
       </SectionCard>
 
-      {/* Organization Creation Sheet */}
+      {/* Client (Organization) Creation Sheet */}
       <OrganizationFormSheet
         isOpen={isOrgFormOpen}
         onClose={() => setIsOrgFormOpen(false)}
         onSubmit={handleCreateOrganization}
         isLoading={isCreatingOrg}
+      />
+
+      {/* Department Creation Dialog */}
+      <DepartmentFormDialog
+        open={isDeptFormOpen}
+        onOpenChange={setIsDeptFormOpen}
+        onSubmit={handleCreateDepartment}
+        isSubmitting={createDepartment.isPending}
       />
     </div>
   )
