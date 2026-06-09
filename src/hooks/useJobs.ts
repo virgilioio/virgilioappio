@@ -236,12 +236,24 @@ export function useJobs() {
       const tenantId = await resolveTenantId(targetOrganizationId)
       if (!tenantId) throw new Error('Could not determine tenant for organization')
 
+      // If a department was selected, denormalize its name into jobs.department for legacy display
+      let departmentName: string | undefined
+      if (jobData.department_id) {
+        const { data: deptRow } = await supabase
+          .from('departments')
+          .select('name')
+          .eq('id', jobData.department_id)
+          .maybeSingle()
+        if (deptRow?.name) departmentName = deptRow.name
+      }
+
       const { data: newJob, error: createError } = await withAuthRetry(async () =>
         await supabase
           .from('jobs')
           .insert([{
             ...jobData,
             ...normalizedData,
+            ...(departmentName ? { department: departmentName } : {}),
             organization_id: targetOrganizationId,
             tenant_id: tenantId,
             created_by: user.id,
@@ -282,10 +294,19 @@ export function useJobs() {
 
   const updateJob = async (id: string, jobData: UpdateJobData) => {
     try {
+      const patch: Record<string, any> = { ...jobData }
+      if (jobData.department_id) {
+        const { data: deptRow } = await supabase
+          .from('departments')
+          .select('name')
+          .eq('id', jobData.department_id)
+          .maybeSingle()
+        if (deptRow?.name) patch.department = deptRow.name
+      }
       const { data: updatedJob, error: updateError } = await withAuthRetry(async () =>
         await supabase
           .from('jobs')
-          .update(jobData)
+          .update(patch)
           .eq('id', id)
           .select()
           .single()
