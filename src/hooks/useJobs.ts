@@ -362,6 +362,7 @@ export function useJobs() {
       })
 
       queryClient.invalidateQueries({ queryKey: ['jobs'] })
+      queryClient.invalidateQueries({ queryKey: ['job-postings'] })
       return archivedJob
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to archive job'
