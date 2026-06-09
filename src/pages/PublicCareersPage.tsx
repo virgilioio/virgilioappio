@@ -85,7 +85,7 @@ export default function PublicCareersPage() {
     id: p.id,
     slug: p.slug,
     title: p.title,
-    department: (p.details?.department as string) || 'Open roles',
+    department: (p.details?.department as string) || 'Other',
     location: p.location,
     type: p.job_type,
     workMode: (p.details?.work_mode as string) || (p.location?.toLowerCase().includes('remote') ? 'Remote' : null),
@@ -93,7 +93,20 @@ export default function PublicCareersPage() {
     featured: !!p.details?.featured,
   })), [postings])
 
-  const departments = useMemo(() => Array.from(new Set(roles.map((r) => r.department))).sort(), [roles])
+  // Sort departments alphabetically, but pin the generic catch-alls ("General", "Other") last
+  const sortDepartments = (a: string, b: string) => {
+    const pinned = (s: string) => s === 'General' || s === 'Other'
+    if (pinned(a) && !pinned(b)) return 1
+    if (!pinned(a) && pinned(b)) return -1
+    if (a === 'Other' && b === 'General') return 1
+    if (a === 'General' && b === 'Other') return -1
+    return a.localeCompare(b)
+  }
+
+  const departments = useMemo(
+    () => Array.from(new Set(roles.map((r) => r.department))).sort(sortDepartments),
+    [roles],
+  )
   const locations = useMemo(() => Array.from(new Set(roles.map((r) => r.location).filter(Boolean) as string[])).sort(), [roles])
   const types = useMemo(() => Array.from(new Set(roles.map((r) => r.type).filter(Boolean) as string[])).sort(), [roles])
 
@@ -114,7 +127,9 @@ export default function PublicCareersPage() {
       const arr = map.get(r.department) || []
       arr.push(r); map.set(r.department, arr)
     }
-    return Array.from(map.entries()).map(([dep, arr]) => ({ department: dep, roles: arr }))
+    return Array.from(map.entries())
+      .sort(([a], [b]) => sortDepartments(a, b))
+      .map(([dep, arr]) => ({ department: dep, roles: arr }))
   }, [filtered])
 
   const handleOpen = (slug: string) => window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer')
