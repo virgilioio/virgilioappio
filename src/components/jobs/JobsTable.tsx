@@ -78,6 +78,7 @@ export function JobsTable({
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([])
   const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [postedRange, setPostedRange] = useState<string[]>([])
