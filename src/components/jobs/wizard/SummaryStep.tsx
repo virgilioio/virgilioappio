@@ -231,7 +231,7 @@ export function SummaryStep({
 
   const teamCount = assignments.length
   const stageCount = stages.length
-  const dept = jobData.department || organization?.name || 'General'
+  const dept = jobData.department || 'General'
   const employmentLabel = (jobData.employment_type || '').replace('_', ' ')
   const workModeLabel = (jobData.work_mode || '').replace('_', ' ')
 
