@@ -23,7 +23,8 @@ export function CareersTopBar({ logoUrl, companyName, websiteUrl, showCompanyNam
           onClick={onLogoClick}
         >
           {logoUrl ? (
-            <img src={logoUrl} alt={companyName} className="h-9 w-9 rounded-lg object-cover" />
+            <img src={logoUrl} alt={companyName} className="h-9 w-auto max-w-[180px] object-contain" />
+
           ) : (
             <div className="h-9 w-9 rounded-lg bg-[#0d0d09] text-[#FFFCF9] flex items-center justify-center font-poppins font-semibold text-sm">
               {companyName.slice(0, 1).toUpperCase()}
