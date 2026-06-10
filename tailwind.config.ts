@@ -384,7 +384,12 @@ export default {
 			'gio-indeterminate': {
 				'0%': { left: '-40%' },
 				'100%': { left: '100%' }
+			},
+			'logo-fade': {
+				'0%, 100%': { opacity: '1' },
+				'50%': { opacity: '0.35' }
 			}
+
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -403,7 +408,9 @@ export default {
 			'gio-spin': 'gio-spin 0.9s linear infinite',
 			'gio-pulse': 'gio-pulse 1.2s ease-in-out infinite',
 			'gio-shimmer': 'gio-shimmer 1.4s ease-in-out infinite',
-			'gio-indeterminate': 'gio-indeterminate 1.1s cubic-bezier(0.65,0,0.35,1) infinite'
+			'gio-indeterminate': 'gio-indeterminate 1.1s cubic-bezier(0.65,0,0.35,1) infinite',
+			'logo-fade': 'logo-fade 1.6s ease-in-out infinite'
+
 			}
 		}
 	},
