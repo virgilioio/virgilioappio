@@ -6,7 +6,7 @@ import { Bell, Plus } from 'lucide-react'
 import { useCandidateReminders, type CandidateReminder } from '@/hooks/useCandidateReminders'
 import { ReminderCard } from './ReminderCard'
 import { ReminderForm } from './ReminderForm'
-import { EmptyState } from '@/components/ui/empty-state'
+import { InlineEmpty } from '@/components/ui/empty-state'
 
 interface CandidateRemindersProps {
   candidateId: string
