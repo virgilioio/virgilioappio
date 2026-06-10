@@ -7,7 +7,7 @@ import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useCreateCheckout } from '@/hooks/useBillingPortal'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { GioLoader } from '@/components/ui/GioLoader'
+import { VirgilioLoader } from '@/components/ui/VirgilioLoader'
 
 interface BillingGuardProps {
   children?: ReactNode
@@ -37,7 +37,7 @@ export function BillingGuard({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <GioLoader size="sm" message="Checking billing status..." />
+        <VirgilioLoader size="sm" message="Checking billing status..." />
       </div>
     )
   }

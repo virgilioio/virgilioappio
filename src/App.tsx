@@ -18,7 +18,7 @@ import { BillingGuard } from './components/auth/BillingGuard'
 import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
-import { GioLoader } from '@/components/ui/GioLoader'
+import { VirgilioLoader } from '@/components/ui/VirgilioLoader'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
@@ -97,7 +97,7 @@ function AppContent() {
     <div className="min-h-screen bg-background text-foreground">
       <Suspense fallback={
         <div className="min-h-screen bg-background flex items-center justify-center">
-          <GioLoader message="Loading..." />
+          <VirgilioLoader message="Loading..." />
         </div>
       }>
       <Routes>
@@ -176,7 +176,7 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <GioLoader message="Initializing authentication..." />
+        <VirgilioLoader message="Initializing authentication..." />
       </div>
     );
   }
@@ -247,7 +247,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (!sessionReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <GioLoader message={isLoggingOut ? 'Signing out...' : 'Authenticating...'} />
+        <VirgilioLoader message={isLoggingOut ? 'Signing out...' : 'Authenticating...'} />
       </div>
     )
   }
@@ -261,7 +261,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (!orgContextReady && !isPlatformAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <GioLoader message="Loading workspace..." />
+        <VirgilioLoader message="Loading workspace..." />
       </div>
     )
   }

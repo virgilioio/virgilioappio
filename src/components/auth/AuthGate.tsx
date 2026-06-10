@@ -1,7 +1,7 @@
 
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { GioLoader } from '@/components/ui/GioLoader'
+import { VirgilioLoader } from '@/components/ui/VirgilioLoader'
 
 interface AuthGateProps {
   children: React.ReactNode
@@ -13,7 +13,7 @@ export function AuthGate({ children }: AuthGateProps) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <GioLoader message="Loading..." />
+        <VirgilioLoader message="Loading..." />
       </div>
     )
   }
