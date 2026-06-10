@@ -43,11 +43,7 @@ export function ActivityFeedList({ candidateId, jobId }: ActivityFeedListProps) 
   
   if (!activities || activities.length === 0) {
     return (
-      <EmptyState
-        variant="inline"
-        title="No activity yet"
-        description="Activity for this candidate will appear here as you interact with them."
-      />
+      <InlineEmpty text="No activity yet." />
     );
   }
   
