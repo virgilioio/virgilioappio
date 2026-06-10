@@ -7,6 +7,8 @@ import { GitBranch, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 
 interface PipelineOverviewTableProps {
   jobIds: string[]
@@ -36,11 +38,12 @@ export function PipelineOverviewTable({ jobIds, isLoading: externalLoading }: Pi
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <GitBranch className="h-12 w-12 text-virgilio-muted/40 mb-3" />
-            <p className="text-virgilio-muted font-poppins">No jobs match your current filters</p>
-            <p className="text-sm text-virgilio-muted/70 mt-1">Adjust your filters to see pipeline data</p>
-          </div>
+          <EmptyState
+            size="card"
+            illustration={<SoftMagnifier />}
+            title="No matches"
+            body="No jobs match your current filters. Adjust them to see pipeline data."
+          />
         </CardContent>
       </Card>
     )

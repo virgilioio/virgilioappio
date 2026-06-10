@@ -1,21 +1,36 @@
-## Bug
+# Pipeline Overview — canonical empty state
 
-`src/components/ui/GioSplash.tsx` line 62 renders `<svg ... width="300" height="auto" ...>`. `auto` is not a valid SVG length and React throws in production (`Error: <svg> attribute height: Expected length, "auto"`), which crashes `<GioSplash>`. Because the splash sits above the auth UI and never unmounts cleanly on error, `/auth` shows the loader forever.
+The Pipeline Overview table in `src/components/analytics/PipelineOverviewTable.tsx` still renders a hand‑rolled empty block (a faded `GitBranch` icon plus two `<p>` lines). This violates the "no hand‑rolled empties" rule — every empty surface must use the canonical `<EmptyState>` primitive with one of the `SoftIllustrations` scenes.
 
-Unrelated to last commit — the bad attribute has been there; it only became fatal once the splash started mounting in this path.
+## Change
 
-## Fix
+Replace the hand‑rolled block (lines ~26–47) with the canonical primitive, keeping the surrounding `Card` + `CardHeader` chrome intact so the card title ("Pipeline Overview") still anchors the section.
 
-One line. Remove the invalid `height="auto"` and let the SVG derive its rendered height from `viewBox` + `width="300"` (intrinsic aspect ratio is preserved). No CSS change needed — `.logo-holder` already scales the whole thing with `transform: scale(0.5)`.
+- Use `size="card"` (this lives inside a Card on the analytics page).
+- Use `SoftMagnifier` as the illustration — the message is filter‑driven ("No jobs match your current filters"), which is the standard filtered‑empty semantic.
+- Title: `No matches` (purple period auto‑appended by the primitive).
+- Body: `No jobs match your current filters. Adjust them to see pipeline data.`
+- No CTA — filter controls live in the parent toolbar, not in this card.
 
-```diff
-- height="auto"
+Remove the now‑unused `GitBranch` import path used only inside the old empty block (the header still imports/uses `GitBranch`, so just drop the duplicated usage inside the empty render).
+
+## Technical details
+
+File: `src/components/analytics/PipelineOverviewTable.tsx`
+
+```tsx
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+
+// inside the `if (!isLoading && rows.length === 0)` branch, replace the inner CardContent with:
+<CardContent>
+  <EmptyState
+    size="card"
+    illustration={<SoftMagnifier />}
+    title="No matches"
+    body="No jobs match your current filters. Adjust them to see pipeline data."
+  />
+</CardContent>
 ```
 
-That's it. No other edits.
-
-## Verify
-
-- `bun run build` clean.
-- Open `/auth` in the preview — splash plays then exits, login form appears.
-- Console clean of the SVG attribute error.
+No other files change. No business logic, query, or layout changes — purely the empty‑state presentation.
