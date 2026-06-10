@@ -24,14 +24,15 @@ export function CareersHero({ openRolesCount, departmentsCount, companyName, hea
           </div>
 
           <h1 className="font-poppins font-bold text-[#0d0d09] text-[44px] sm:text-[56px] lg:text-[68px] leading-[1.02] tracking-[-0.04em]">
-            Help us build the<br />
-            modern <span className="italic font-serif font-normal" style={{ fontFamily: 'Instrument Serif, Cormorant, Georgia, serif' }}>hiring stack</span><span className="text-[hsl(var(--purple-period))]">.</span>
+            Find your next role at a company{' '}
+            <span className="italic font-serif font-normal" style={{ fontFamily: 'Instrument Serif, Cormorant, Georgia, serif' }}>worth joining</span>
+            <span className="text-[hsl(var(--purple-period))]">.</span>
           </h1>
 
           <p className="text-[15px] text-[#3f4451] leading-relaxed max-w-xl">
-            {headerText ||
-              `We started ${companyName} because hiring is too important to be slow, biased, or boring. Today we power hiring for teams worldwide — and we're growing the team that ships the next decade of it.`}
+            Every role here is a live search we're running for a hand-picked team. We've already vetted the company, the people, and the opportunity — so you can focus on whether the work is right for you.
           </p>
+
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <button
