@@ -6,13 +6,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 
-export type AppSection = 'home' | 'ats' | 'crm' | 'settings' | 'my-profile' | null
+export type AppSection = 'home' | 'ats' | 'crm' | 'analytics' | 'settings' | 'my-profile' | null
 
 const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/analytics', '/talent-intelligence']
 const CRM_PREFIXES = ['/crm']
+const ANALYTICS_PREFIXES = ['/insights']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
+  if (ANALYTICS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'analytics'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
   if (pathname === '/settings' || pathname === '/billing') {
@@ -60,6 +62,21 @@ const CrmIcon: IconRenderer = ({ className }) => (
   </svg>
 )
 
+// Placeholder Analytics glyph — bar chart in currentColor.
+// Will be swapped for the brand glyph the user provides.
+const AnalyticsIcon: IconRenderer = ({ className }) => (
+  <svg
+    viewBox="0 0 240 240"
+    fill="currentColor"
+    aria-hidden
+    className={cn('inline-block', className)}
+  >
+    <rect x="40" y="130" width="40" height="80" rx="12" />
+    <rect x="100" y="80" width="40" height="130" rx="12" />
+    <rect x="160" y="40" width="40" height="170" rx="12" />
+  </svg>
+)
+
 const CogIcon: IconRenderer = ({ className }) => (
   <svg
     viewBox="0 0 24 24"
@@ -80,6 +97,7 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile'>; label: str
   { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'crm', label: 'CRM', Icon: CrmIcon, href: '/crm', show: (p) => p.canViewOrganizations },
   { id: 'ats', label: 'ATS', Icon: AtsIcon, href: '/jobs', show: (p) => p.canViewJobs },
+  { id: 'analytics', label: 'Analytics', Icon: AnalyticsIcon, href: '/insights', show: (p) => !p.isSalesUser },
 ]
 
 export function AppSidebar() {
