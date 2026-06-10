@@ -59,7 +59,6 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
           <svg
             viewBox="0 0 82 71.25"
             width="300"
-            height="auto"
             shapeRendering="geometricPrecision"
             style={{ overflow: 'visible' }}
             aria-label="gio"
