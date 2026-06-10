@@ -7,6 +7,8 @@ import { GitBranch, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 
 interface PipelineOverviewTableProps {
   jobIds: string[]
