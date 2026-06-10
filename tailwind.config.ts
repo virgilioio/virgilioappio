@@ -425,7 +425,11 @@ export default {
 			'gio-pulse': 'gio-pulse 1.2s ease-in-out infinite',
 			'gio-shimmer': 'gio-shimmer 1.4s ease-in-out infinite',
 			'gio-indeterminate': 'gio-indeterminate 1.1s cubic-bezier(0.65,0,0.35,1) infinite',
-			'logo-fade': 'logo-fade 1.6s ease-in-out infinite'
+			'logo-fade': 'logo-fade 1.6s ease-in-out infinite',
+			'float-soft': 'float-soft 6s cubic-bezier(0.22,1,0.36,1) infinite alternate',
+			'panel-rise': 'panel-rise 700ms cubic-bezier(0.22,1,0.36,1) both',
+			'card-rise': 'card-rise 600ms cubic-bezier(0.22,1,0.36,1) both',
+			'slow-pulse': 'slow-pulse 2.8s ease-in-out infinite'
 
 			}
 		}
