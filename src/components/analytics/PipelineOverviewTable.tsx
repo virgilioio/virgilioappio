@@ -38,12 +38,16 @@ export function PipelineOverviewTable({ jobIds, isLoading: externalLoading }: Pi
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <GitBranch className="h-12 w-12 text-virgilio-muted/40 mb-3" />
-            <p className="text-virgilio-muted font-poppins">No jobs match your current filters</p>
-            <p className="text-sm text-virgilio-muted/70 mt-1">Adjust your filters to see pipeline data</p>
-          </div>
+          <EmptyState
+            size="card"
+            illustration={<SoftMagnifier />}
+            title="No matches"
+            body="No jobs match your current filters. Adjust them to see pipeline data."
+          />
         </CardContent>
+      </Card>
+    )
+  }
       </Card>
     )
   }
