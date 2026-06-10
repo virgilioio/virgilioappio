@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Share2, Users } from 'lucide-react'
-import { GioLoader } from '@/components/ui/GioLoader'
+import { BrandDot } from '@/components/ui/BrandDot'
 
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || '?'
@@ -19,7 +19,7 @@ export default function SharedList() {
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <GioLoader />
+        <BrandDot />
       </div>
     )
   }

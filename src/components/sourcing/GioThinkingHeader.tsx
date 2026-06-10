@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { GioLoader } from '@/components/ui/GioLoader'
+import { BrandDot } from '@/components/ui/BrandDot'
 
 const THINKING_MESSAGES = [
   "Analyzing your prompt",
@@ -23,7 +23,7 @@ export function GioThinkingHeader() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 animate-fade-in">
-      <GioLoader size="md" />
+      <BrandDot size="lg" />
 
       {/* Simple Shimmer Beam Bar - Solid Color */}
       <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">

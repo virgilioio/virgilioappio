@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { GioLoader } from '@/components/ui/GioLoader';
+import { BrandDot } from '@/components/ui/BrandDot';
 
 export default function MailOAuthCallback() {
   const [msg, setMsg] = useState('Connecting your account...');
@@ -77,7 +77,7 @@ export default function MailOAuthCallback() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
-      <GioLoader message={msg} />
+      <BrandDot message={msg} />
     </div>
   );
 }

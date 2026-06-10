@@ -9,7 +9,7 @@ import { GoGioLogo } from '@/components/GoGioLogo'
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
-import { GioLoader } from '@/components/ui/GioLoader'
+import { BrandDot } from '@/components/ui/BrandDot'
 
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth()
@@ -54,7 +54,7 @@ export default function Login() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <GioLoader message="Loading..." />
+        <BrandDot message="Loading..." />
       </div>
     )
   }

@@ -18,13 +18,14 @@ import { BillingGuard } from './components/auth/BillingGuard'
 import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
-import { VirgilioLoader } from '@/components/ui/VirgilioLoader'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
+import { useReportSplashReady } from './contexts/SplashReadyContext'
+
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Find = lazy(() => import('./pages/Find'))
 const Jobs = lazy(() => import('./pages/Jobs'))
@@ -95,11 +96,8 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Suspense fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <VirgilioLoader message="Loading..." />
-        </div>
-      }>
+      <Suspense fallback={null}>
+
       <Routes>
         {/* Public routes - no authentication required */}
         <Route path="/auth" element={<Login />} />
@@ -171,18 +169,20 @@ function AppContent() {
 }
 
 function AppBootstrap({ children }: { children: React.ReactNode }) {
-  const { ready, session, orgContext } = useAuthBootstrap();
+  const { ready, session } = useAuthBootstrap();
+
+  // Mark splash ready as soon as auth bootstrap settles AND there's no session
+  // (signed-out path — no org context to wait for).
+  useReportSplashReady(ready && !session);
 
   if (!ready) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <VirgilioLoader message="Initializing authentication..." />
-      </div>
-    );
+    // GioSplash covers cold-load; render nothing here so the splash sits on top.
+    return null;
   }
 
   return <>{children}</>;
 }
+
 
 function App() {
   // Run startup diagnostics in development
@@ -227,6 +227,9 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const sessionReady = !authLoading && !isLoggingOut
   const orgContextReady = !userTypeLoading && !orgLoading
 
+  // Report to the cold-load splash as soon as everything we need is settled.
+  useReportSplashReady(sessionReady && (orgContextReady || isPlatformAdmin))
+
   // ONE-TIME dev trace when decision is ready
   const traceRef = useRef(false)
   useEffect(() => {
@@ -243,13 +246,9 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     }
   }, [sessionReady, orgContextReady, isPlatformAdmin, hasOrganizationContext, isAuthenticated])
 
-  // 1. Show loader until session is ready
+  // 1. Wait for session — GioSplash covers cold-load; in-session sign-outs render nothing briefly.
   if (!sessionReady) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <VirgilioLoader message={isLoggingOut ? 'Signing out...' : 'Authenticating...'} />
-      </div>
-    )
+    return null
   }
 
   // 2. If not authenticated, redirect to auth
@@ -257,14 +256,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/auth" replace />
   }
 
-  // 3. Show loader until orgContext is ready (unless platform admin)
+  // 3. Wait for orgContext (unless platform admin) — splash/blank covers this.
   if (!orgContextReady && !isPlatformAdmin) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <VirgilioLoader message="Loading workspace..." />
-      </div>
-    )
+    return null
   }
+
 
   // 4. ONE GATE DECISION: Only RequireAuth redirects to /onboarding
   if (isPlatformAdmin) {

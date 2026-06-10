@@ -1,8 +1,9 @@
 import { createRoot } from 'react-dom/client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import App from './App.tsx'
 import './index.css'
 import { GioSplash } from './components/ui/GioSplash'
+import { SplashReadyProvider, useSplashReady } from './contexts/SplashReadyContext'
 
 // Dynamically import and init Sentry only in production
 if (!import.meta.env.DEV && import.meta.env.VITE_SENTRY_DSN) {
@@ -25,6 +26,12 @@ if (!import.meta.env.DEV && import.meta.env.VITE_SENTRY_DSN) {
   })
 }
 
+function SplashHost({ enabled }: { enabled: boolean }) {
+  const { ready } = useSplashReady()
+  if (!enabled) return null
+  return <GioSplash show={ready} />
+}
+
 function Root() {
   // Show splash only on cold load / hard refresh (once per tab session).
   const [isColdLoad] = useState(() => {
@@ -33,23 +40,13 @@ function Root() {
     if (!seen) sessionStorage.setItem('gio-splash-shown', '1')
     return !seen
   })
-  const [showSplash, setShowSplash] = useState(isColdLoad)
-
-  useEffect(() => {
-    if (!showSplash) return
-    // Trigger exit on next frame — GioSplash enforces its own 800ms minimum.
-    const id = window.setTimeout(() => setShowSplash(false), 50)
-    return () => window.clearTimeout(id)
-  }, [])
 
   return (
-    <>
+    <SplashReadyProvider initialReady={!isColdLoad}>
       <App />
-      {isColdLoad && <GioSplash show={showSplash} />}
-    </>
+      <SplashHost enabled={isColdLoad} />
+    </SplashReadyProvider>
   )
 }
 
 createRoot(document.getElementById("root")!).render(<Root />);
-
-

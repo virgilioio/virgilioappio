@@ -5,7 +5,7 @@ import { GoGioLogo } from '@/components/GoGioLogo';
 import { supabase } from '@/integrations/supabase/client';
 import { getChromeExtensionRedirectUrl, validateChromeRedirectUri } from '@/constants/chromeExtension';
 import { Chrome, LogIn } from 'lucide-react';
-import { GioLoader } from '@/components/ui/GioLoader';
+import { BrandDot } from '@/components/ui/BrandDot';
 
 /**
  * Chrome OAuth Start Page
@@ -102,7 +102,7 @@ export default function ChromeOAuthStart() {
   if (isChecking) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <GioLoader message="Connecting to GoGio..." />
+        <BrandDot message="Connecting to GoGio..." />
       </div>
     );
   }
