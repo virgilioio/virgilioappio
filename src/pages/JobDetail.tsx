@@ -393,6 +393,17 @@ export default function JobDetail() {
   const { postings: jobPostings, refetch: refetchJobPostings } = useJobPostings(id!)
   const activePosting = (jobPostings || []).find((p) => p.is_active) || (jobPostings || [])[0] || null
   const hasJobPosting = (jobPostings || []).length > 0
+  const { settings: careersSettings } = useCareersPageSettings()
+  const companySlug = careersSettings?.company_slug ?? null
+  const openActivePosting = () => {
+    if (!activePosting) return
+    const path = buildPostingPath({
+      postingSlug: activePosting.slug,
+      organizationId: job?.organization_id ?? null,
+      companySlug,
+    })
+    window.open(path, '_blank', 'noopener')
+  }
 
   // Candidates hook with new functions
   const {
