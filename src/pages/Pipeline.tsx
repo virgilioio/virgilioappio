@@ -229,7 +229,7 @@ export default function Pipeline() {
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#12B886' }} />
-                    {globalMetrics?.active_jobs ?? openJobs.length} open jobs
+                    {globalMetrics?.active_jobs ?? statusFilteredJobs.length} open jobs
                   </span>
                   <span>·</span>
                   <span>{globalMetrics?.active_candidates_count ?? totalActive} active candidates</span>
