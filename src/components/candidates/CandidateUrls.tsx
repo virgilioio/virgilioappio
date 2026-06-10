@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { FormField } from '@/components/ui/form-field'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { Plus, ExternalLink, Trash2, Github, FileText } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
 
