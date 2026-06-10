@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { GioLoader } from '@/components/ui/GioLoader'
+import { BrandDot } from '@/components/ui/BrandDot'
 
 const THINKING_MESSAGES = [
   "Scanning your talent pool",
@@ -34,7 +34,7 @@ export function SuggestedCandidatesLoader() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 animate-fade-in">
-      <GioLoader size="md" />
+      <BrandDot size="lg" />
 
       <div className="w-64 h-6 rounded-full bg-muted border border-border/50 overflow-hidden relative">
         <div 
