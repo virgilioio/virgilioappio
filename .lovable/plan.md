@@ -1,36 +1,27 @@
 ## Goal
 
-Exclude Virgilio-internal jobs from the general per-tenant careers page (`/careers/:companySlug`) so the two pages stay strictly separate:
-
-- `/virgilio-careers` → only the Virgilio internal org's jobs (already done).
-- `/careers/:companySlug` → all postings **except** those belonging to the Virgilio internal org.
+Replace the hero copy on the general per-tenant careers page (`/careers/:companySlug`) — rendered by `src/components/careers/public/CareersHero.tsx` — with the new headline and subtext from the screenshot. The Virgilio Careers page (`/virgilio-careers`) is untouched.
 
 ## Change
 
-**File:** `src/pages/PublicCareersPage.tsx`
+**File:** `src/components/careers/public/CareersHero.tsx`
 
-In the `job_postings` query, add `.neq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)` so internal postings never appear on any tenant's general careers page (including Virgilio's own `/careers/virgilio`).
+**Headline** — replace the current "Help us build the modern hiring stack." with:
 
-```ts
-const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
+> **Find your next role at a company** *worth joining***.**
 
-const { data: p } = await supabase
-  .from('job_postings')
-  .select('..., jobs!inner(status, organization_id)')
-  .eq('is_active', true)
-  .eq('tenant_id', s.tenant_id)
-  .eq('jobs.status', 'open')
-  .neq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)   // ← new
-  .order('created_at', { ascending: false })
-```
+- "Find your next role at a company" → Poppins bold (current display style)
+- "worth joining" → italic serif (same `Instrument Serif` treatment already used for "hiring stack")
+- Trailing period → purple (`text-purple-period`, same as today)
 
-That is the only edit. No DB, RLS, route, or UI changes.
+**Subtext** — replace the current paragraph with a fixed string (no more `headerText`/company-name interpolation on this page):
 
-## Side effects
+> Every role here is a live search we're running for a hand-picked team. We've already vetted the company, the people, and the opportunity — so you can focus on whether the work is right for you.
 
-- For every tenant other than Virgilio, the filter is a no-op (their jobs don't belong to that org).
-- For Virgilio's own `/careers/virgilio`, internal jobs disappear from that page and now live exclusively at `/virgilio-careers`.
+Because the copy is now generic across tenants, the `headerText` prop is no longer consulted for the paragraph. The prop stays in the signature (still passed from `PublicCareersPage`) but is ignored — keeps the change to one file, no callers to update.
 
 ## Out of scope
 
-- No admin toggle for which orgs to exclude — the id is hardcoded, matching the approach already used in `VirgilioCareersPage.tsx`.
+- No change to the stat cards, "Remote-first" dark card, CTAs, or the "We're hiring · N roles…" pill.
+- No change to `VirgilioCareersPage` or its hero.
+- No DB, routing, or settings changes.
