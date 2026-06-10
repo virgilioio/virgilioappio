@@ -82,10 +82,12 @@ export function MembersList({ tenantId }: MembersListProps) {
       </CardHeader>
       <CardContent>
         {filteredMembers.length === 0 ? (
-          <div className="text-center py-8 text-virgilio-muted">
-            <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-            <p>{searchTerm ? 'No members found' : 'No team members yet'}</p>
-          </div>
+          <EmptyState
+            size="card"
+            illustration={searchTerm ? <SoftMagnifier /> : <SoftPeople />}
+            title={searchTerm ? 'No matches' : 'No team members yet'}
+            body={searchTerm ? 'Try different keywords or clear the search.' : 'Invite teammates to collaborate on hiring.'}
+          />
         ) : (
           <div className="space-y-3">
             {filteredMembers.map((member: SaaSMember) => {
