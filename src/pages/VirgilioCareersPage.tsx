@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { CareersTopBar } from '@/components/careers/public/CareersTopBar'
-import { CareersHero } from '@/components/careers/public/CareersHero'
+import { VirgilioCareersHero } from '@/components/careers/virgilio/VirgilioCareersHero'
 import { CareersFilterBar } from '@/components/careers/public/CareersFilterBar'
 import { CareersRoleList, type CareersRole } from '@/components/careers/public/CareersRoleList'
 import { CareersHowWeHireCard } from '@/components/careers/public/CareersHowWeHireCard'
@@ -176,11 +176,9 @@ export default function VirgilioCareersPage() {
         websiteUrl={settings.company_website_url}
         showCompanyName={settings.show_company_name}
       />
-      <CareersHero
+      <VirgilioCareersHero
         openRolesCount={roles.length}
         departmentsCount={departments.length}
-        companyName={companyName}
-        headerText={settings.header_text}
         onScrollToRoles={scrollToRoles}
       />
       <div ref={rolesRef}>
