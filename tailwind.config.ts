@@ -388,6 +388,22 @@ export default {
 			'logo-fade': {
 				'0%, 100%': { opacity: '1' },
 				'50%': { opacity: '0.35' }
+			},
+			'float-soft': {
+				'0%': { transform: 'translateY(0px)' },
+				'100%': { transform: 'translateY(-12px)' }
+			},
+			'panel-rise': {
+				'0%': { opacity: '0', transform: 'translateY(20px)' },
+				'100%': { opacity: '1', transform: 'translateY(0)' }
+			},
+			'card-rise': {
+				'0%': { opacity: '0', transform: 'translateY(10px)' },
+				'100%': { opacity: '1', transform: 'translateY(0)' }
+			},
+			'slow-pulse': {
+				'0%, 100%': { opacity: '0.6' },
+				'50%': { opacity: '1' }
 			}
 
 			},
