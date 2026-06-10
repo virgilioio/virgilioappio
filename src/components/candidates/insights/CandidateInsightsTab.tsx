@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
 import { SoftRosette } from '@/components/ui/EmptyIllustrations'
 import { useEffect, useRef } from 'react'
 
@@ -70,12 +70,16 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
             illustration={<SoftRosette />}
             title="No analysis yet"
             body="Generate AI insights to evaluate fit for this role."
-            primary={{
-              label: isRefreshing ? 'Generating…' : 'Generate insights',
-              onClick: refreshInsights,
-              icon: isRefreshing ? Loader2 : Sparkles,
-              disabled: isRefreshing,
-            }}
+            primary={
+              <EmptyAction
+                variant="primary"
+                icon={isRefreshing ? Loader2 : Sparkles}
+                onClick={refreshInsights}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? 'Generating…' : 'Generate insights'}
+              </EmptyAction>
+            }
           />
         </CardContent>
       </Card>

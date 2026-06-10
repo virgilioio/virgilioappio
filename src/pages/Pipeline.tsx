@@ -13,6 +13,8 @@ import { usePipelineGlobalMetrics, PipelineFilters } from '@/hooks/usePipelineGl
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics';
 import { useJobs } from '@/hooks/useJobs';
 import { useMembers } from '@/hooks/useMembers';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SoftMagnifier } from '@/components/ui/EmptyIllustrations';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
