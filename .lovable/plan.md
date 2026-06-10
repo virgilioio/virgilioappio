@@ -1,54 +1,38 @@
-## Make Pipeline filter pills functional
+## Goal
 
-The Status / Owner / Department pills and the "Recent activity" sort pill are currently presentational — their click handlers are unused and the page always filters to `status === 'open'` with a hardcoded sort. Wire them to real state + popovers.
+Replace the flipping Gio avatar shown on screen-change / route loading screens with the new Virgilio logomark, animated as a simple, gentle fade in ↔ fade out.
 
-### State (in `src/pages/Pipeline.tsx`)
-- `status: 'open' | 'draft' | 'closed' | 'archived' | 'all'` — default `'open'`.
-- `selectedOwners: string[]` — default `[]` (empty = "Anyone").
-- `selectedDepartments: string[]` — default `[]` (empty = "All").
-- `sortBy: 'recent' | 'title' | 'active' | 'oldest'` — default `'recent'`.
+## Scope
 
-### Filtering / sorting logic
-Replace the current `openJobs` + `filteredJobs` memo with one `filteredJobs` memo that:
-1. Filters by `status` (skip when `'all'`).
-2. Filters by `selectedDepartments` against `job.department_id` (or `job.department` text fallback).
-3. Filters by `selectedOwners` — match against `job.hiring_team` (array of user ids) and `job.created_by`. Reuse `useUserAssignedJobIds(selectedOwners)` like the legacy `FilterCard` integration did, plus the `jobMatchesUsers` helper already in the repo.
-4. Filters by search.
-5. Sorts by `sortBy`:
-   - `recent` → `updated_at` desc (current behavior)
-   - `oldest` → `updated_at` asc
-   - `title` → `title` asc
-   - `active` → metricsMap active_candidates desc, then title
+Only the **full-screen "changing screens" loader** (Auth/route/workspace loads). Leave the playful Gio flipping avatar in place for thinking/sourcing/AI states (`GioThinkingHeader`, `SuggestedCandidatesLoader`, `RoleInterpretationDrawer`, `AIJobAssistant`, scorecard generation, etc.) — those are intentionally character-driven.
 
-The "Showing X of Y open jobs · sorted by …" line uses the chosen sort label and the chosen status label (e.g. "Showing 3 of 21 open jobs", or "Showing 3 of 5 closed jobs", or "Showing 3 of 26 jobs" when status = all).
+## Steps
 
-### Dropdown UX (rebuild pills as proper menus)
-Update `src/components/pipeline/PipelineFilterBar.tsx` so each pill is anchored to a real Radix popover using the project's existing dropdown primitives:
+1. **Upload the new logomark as a CDN asset**
+   - `lovable-assets create --file /mnt/user-uploads/Virgilio_Logomark_2025_1.svg --filename virgilio-logomark.svg > src/assets/virgilio-logomark.svg.asset.json`
 
-- **Status pill** — single-select via `<DropdownMenu>` with `<DropdownMenuRadioGroup>`. Options: All, Open ★ default, Draft, Closed, Archived. Pill is `active` (purple) whenever status ≠ default `'open'` OR... actually keep it always `active` to match current design but display the chosen label. Label: `Status · {Open|Draft|Closed|Archived|All}`.
-- **Owner pill** — multi-select via `<FilterChipPopover>` (searchable, Apply pattern). Options from `useMembers()` filtered by `user_status === 'active'`. Label: `Owner · Anyone` (when empty) / `Owner · {Name}` (1) / `Owner · {N} selected` (>1). Pill `active` when any selected.
-- **Department pill** — multi-select via `<FilterChipPopover>`. Options from `useDepartments()` (or fall back to `useOrganizations()` to mirror current data) — pick whichever the Jobs list uses so the values match `job.department_id`. Label: `Department · All` / `Department · {Name}` / `Department · {N} selected`. Pill `active` when any selected.
-- **Sort pill** — single-select via `<DropdownMenu>` with `<DropdownMenuRadioGroup>`. Options: Recent activity ★ default, Oldest activity, Job title (A→Z), Active candidates. Label reflects choice. Pill `active` when sort ≠ `recent`.
+2. **Create `src/components/ui/VirgilioLoader.tsx`**
+   - Renders the logomark centered, with a softly pulsing fade (opacity 1 → 0.35 → 1, ~1.6s, ease-in-out, infinite).
+   - Uses the existing `animate-pulse`-style approach but with a custom Tailwind utility `animate-logo-fade` for the exact opacity curve. Keyframe added to `tailwind.config.ts`.
+   - Sizes: `sm` (32px) / `md` (56px) / `lg` (80px). Optional `message` prop renders the same small muted label below as `GioLoader`.
+   - No flipping, no spinner, no progress bar — strictly fade in/out.
 
-All popovers should follow the dropdowns foundation (`src/lib/menu-classes.ts`, radius 12, 30h items) — no custom panel chrome.
+3. **Swap usage in screen-change loaders only**
+   - `src/App.tsx` (4 call sites: route Suspense, auth init, authenticating, workspace load)
+   - `src/components/auth/AuthGate.tsx`
+   - `src/components/auth/BillingGuard.tsx`
+   - Keep `GioLoader` exported and untouched for all other current consumers.
 
-### Persistence (out of scope for this fix)
-Skip `usePersistentFilters` / `SavedViewSelector` integration — the current page doesn't use them and adding them would expand scope. If desired later, restore exactly what the old Pipeline page had.
+4. **Tailwind keyframe**
+   - Add `logo-fade` keyframes + `animate-logo-fade` utility in `tailwind.config.ts`.
 
-### Props change for `PipelineFilterBar`
-Replace the unused `onStatusClick`/`onOwnerClick`/`onDepartmentClick`/`onSortClick` callbacks with:
-- `status`, `onStatusChange(value)`
-- `ownerOptions: {value,label}[]`, `selectedOwners`, `onSelectedOwnersChange`
-- `departmentOptions: {value,label}[]`, `selectedDepartments`, `onSelectedDepartmentsChange`
-- `sortBy`, `onSortChange(value)`
+## Non-goals
 
-Keep `search`, `grouped`, `allExpanded`, `onToggleGroup`, `onToggleExpandAll`, `onViewsClick` as-is. `onViewsClick` stays as a no-op stub (the Views pill remains visual until Saved Views are reconnected).
+- Not touching sourcing/AI thinking loaders.
+- Not redesigning messages, layout, or backgrounds of the loader screens.
+- No new dependencies.
 
-### Files touched
-- `src/pages/Pipeline.tsx` — extend state, filter/sort logic, wire props.
-- `src/components/pipeline/PipelineFilterBar.tsx` — convert Status/Owner/Department/Sort pills into real anchored popovers, drop dead `on*Click` props.
+## Files
 
-### Non-goals
-- No backend changes, no new hooks, no new RPCs.
-- No saved-views wiring on this page.
-- No changes to job rows, kanban, or metric strip.
+- **New:** `src/assets/virgilio-logomark.svg.asset.json`, `src/components/ui/VirgilioLoader.tsx`
+- **Edited:** `src/App.tsx`, `src/components/auth/AuthGate.tsx`, `src/components/auth/BillingGuard.tsx`, `tailwind.config.ts`
