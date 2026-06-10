@@ -3,8 +3,7 @@ import { Navigate, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { GoGioLogo } from '@/components/GoGioLogo'
-
+import { AuthLayout } from '@/components/auth/AuthLayout'
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
@@ -21,7 +20,6 @@ export default function SignUp() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
 
-  // Redirect authenticated users to dashboard - let RequireAuth handle org context
   if (isAuthenticated && !isLoading) {
     return <Navigate to="/dashboard" replace />
   }
@@ -32,7 +30,6 @@ export default function SignUp() {
     setSuccess('')
     setIsSubmitting(true)
 
-    // Validate password confirmation
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       setIsSubmitting(false)
@@ -47,7 +44,7 @@ export default function SignUp() {
         setSuccess('Account created! Redirecting...')
         setTimeout(() => navigate('/account-setup'), 1000)
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setIsSubmitting(false)
@@ -63,160 +60,113 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#fffcf9' }}>
-      {/* Centered content */}
-      <div className="w-full flex flex-col justify-center items-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-screen">
-        {/* Logo and tagline - outside the card */}
-        <div className="mb-8 text-center">
-          <div className="mb-4 flex justify-center">
-            <GoGioLogo size="xl" />
-          </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
-            Find your people<span style={{ color: '#d7c5fb' }}>.</span>
-          </h1>
+    <AuthLayout>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-base font-medium">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            required
+            disabled={isSubmitting}
+          />
         </div>
 
-        {/* Card wrapper for form */}
-        <div className="w-full max-w-md mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-base font-medium">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-base font-medium">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a password"
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-base font-medium">
-                  Confirm Password
-                </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  required
-                  disabled={isSubmitting}
-                />
-                <div className="flex justify-start">
-                  <Link 
-                    to="/auth" 
-                    className="text-sm transition-colors"
-                    style={{ color: 'rgb(31, 116, 179)' }}
-                  >
-                    Already have an account? Sign in
-                  </Link>
-                </div>
-              </div>
-
-              {error && (
-                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
-                  {error}
-                </div>
-              )}
-
-              {success && (
-                <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3">
-                  {success}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full h-12 text-base font-medium"
-                disabled={isSubmitting}
-                size="lg"
-              >
-                {isSubmitting ? 'Creating account...' : 'Create account'}
-              </Button>
-
-              <div className="relative text-center">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-12 text-base font-medium hover:!bg-transparent hover:text-[hsl(var(--google-blue))] hover:border-[hsl(var(--google-blue))]"
-                disabled={isGoogleSubmitting}
-                  onClick={async () => {
-                    setError('')
-                    setIsGoogleSubmitting(true)
-                    try {
-                      const { data, error } = await supabase.auth.signInWithOAuth({
-                        provider: 'google',
-                        options: {
-                          redirectTo: `${window.location.origin}/auth/callback`
-                        }
-                      })
-                      
-                      if (error) {
-                        setError(error.message)
-                        setIsGoogleSubmitting(false)
-                        return
-                      }
-                      
-                      if (data?.url) {
-                        if (import.meta.env.DEV) console.debug('[Google OAuth] Redirecting to:', data.url)
-                        window.location.assign(data.url)
-                      } else {
-                        setError('Failed to initiate Google sign-in')
-                        setIsGoogleSubmitting(false)
-                      }
-                    } catch (err: any) {
-                      setError(err.message || 'Google sign-up failed')
-                      setIsGoogleSubmitting(false)
-                    }
-                  }}
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <GoogleLogo className="h-5 w-5" />
-                  <span>{isGoogleSubmitting ? 'Redirecting to Google…' : 'Continue with Google'}</span>
-                </span>
-              </Button>
-            </form>
-          </div>
-
-          <footer className="mt-6 text-xs text-foreground/70 text-center">
-            <nav className="flex flex-wrap items-center justify-center gap-3">
-              <Link to="/privacy" className="underline underline-offset-2 hover:no-underline">Privacy Policy</Link>
-              <span aria-hidden="true">•</span>
-              <Link to="/terms" className="underline underline-offset-2 hover:no-underline">Terms of Service</Link>
-            </nav>
-            <p className="mt-2">© {new Date().getFullYear()} GoGio</p>
-          </footer>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-base font-medium">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Create a password"
+            required
+            disabled={isSubmitting}
+          />
         </div>
-      </div>
-    </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className="text-base font-medium">Confirm Password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm your password"
+            required
+            disabled={isSubmitting}
+          />
+          <div className="flex justify-start">
+            <Link to="/auth" className="text-sm transition-colors" style={{ color: 'rgb(31, 116, 179)' }}>
+              Already have an account? Sign in
+            </Link>
+          </div>
+        </div>
+
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3">
+            {success}
+          </div>
+        )}
+
+        <Button type="submit" className="w-full h-12 text-base font-medium" disabled={isSubmitting} size="lg">
+          {isSubmitting ? 'Creating account...' : 'Create account'}
+        </Button>
+
+        <div className="relative text-center">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-12 text-base font-medium hover:!bg-transparent hover:text-[hsl(var(--google-blue))] hover:border-[hsl(var(--google-blue))]"
+          disabled={isGoogleSubmitting}
+          onClick={async () => {
+            setError('')
+            setIsGoogleSubmitting(true)
+            try {
+              const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: `${window.location.origin}/auth/callback` },
+              })
+              if (error) {
+                setError(error.message)
+                setIsGoogleSubmitting(false)
+                return
+              }
+              if (data?.url) {
+                window.location.assign(data.url)
+              } else {
+                setError('Failed to initiate Google sign-in')
+                setIsGoogleSubmitting(false)
+              }
+            } catch (err: any) {
+              setError(err.message || 'Google sign-up failed')
+              setIsGoogleSubmitting(false)
+            }
+          }}
+        >
+          <span className="inline-flex items-center justify-center gap-2">
+            <GoogleLogo className="h-5 w-5" />
+            <span>{isGoogleSubmitting ? 'Redirecting to Google…' : 'Continue with Google'}</span>
+          </span>
+        </Button>
+      </form>
+    </AuthLayout>
   )
 }
