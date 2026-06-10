@@ -20,6 +20,7 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
   const mountedAtRef = useRef<number>(Date.now())
   const [mounted, setMounted] = useState(true)
   const [leaving, setLeaving] = useState(false)
+  const [settled, setSettled] = useState(false)
 
   // Begin exit when allowed (show=false AND minDuration elapsed)
   useEffect(() => {
@@ -37,20 +38,29 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
     return () => clearTimeout(id)
   }, [leaving])
 
+  // Once intro animation has settled, release will-change so the browser
+  // re-rasterizes the resting logo at full resolution (no fuzzy edges).
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(true), 1400)
+    return () => clearTimeout(id)
+  }, [])
+
   if (!mounted) return null
 
   return (
     <>
       <style>{splashCss}</style>
       <div
-        className={`gio-splash play${leaving ? ' leaving' : ''}`}
+        className={`gio-splash play${leaving ? ' leaving' : ''}${settled ? ' settled' : ''}`}
         aria-hidden="true"
         role="presentation"
       >
         <div className="logo-holder">
           <svg
             viewBox="0 0 82 71.25"
-            width="150"
+            width="300"
+            height="auto"
+            shapeRendering="geometricPrecision"
             style={{ overflow: 'visible' }}
             aria-label="gio"
           >
@@ -92,6 +102,7 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
   )
 }
 
+
 const splashCss = `
 .gio-splash {
   position: fixed;
@@ -101,6 +112,8 @@ const splashCss = `
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   --gio-ease-glide: cubic-bezier(.7, 0, .25, 1);
   --gio-ease-pop:   cubic-bezier(.3, 1.5, .5, 1);
   --gio-ease-bloom: cubic-bezier(.2, .9, .3, 1);
@@ -108,12 +121,23 @@ const splashCss = `
   --gio-dur-bloom:  450ms;
   --gio-dur-exit:   550ms;
 }
-.gio-splash .logo-holder { will-change: transform, opacity; }
+/* SVG renders at 300px intrinsic, displayed at 150px → headroom for upscale
+   during the dot's scale(1.55) peak. Keeps every animated frame downsampling
+   from a higher-res raster instead of upscaling a cached bitmap. */
+.gio-splash .logo-holder {
+  transform: scale(0.5);
+  transform-origin: center;
+}
 .gio-splash .part {
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
+  will-change: transform, opacity;
 }
+/* Release layer promotion after the intro so the resting logo re-rasterizes
+   at full resolution (sharp edges, no compositor blur). */
+.gio-splash.settled .part { will-change: auto; }
+
 .gio-splash.play .dot  { animation: gio-dot 1.05s var(--gio-ease-glide) both; }
 .gio-splash.play .pill { animation: gio-pill .4s var(--gio-ease-pop) both .78s; }
 .gio-splash.play .gl   { animation: gio-letter .45s var(--gio-ease-bloom) both; }
@@ -134,7 +158,8 @@ const splashCss = `
 .gio-splash.leaving              { animation: gio-overlay-out .55s cubic-bezier(.7, 0, .3, 1) both .25s; }
 .gio-splash.leaving .logo-holder { animation: gio-logo-out    .55s cubic-bezier(.7, 0, .3, 1) both .25s; }
 @keyframes gio-overlay-out { to { transform: translateY(-100%); } }
-@keyframes gio-logo-out    { to { transform: translateY(28vh) scale(.72); opacity: 0; } }
+/* Base scale is 0.5; exit shrinks from there to 0.36 (same visual feel as 1 → .72). */
+@keyframes gio-logo-out    { to { transform: translateY(28vh) scale(.36); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   .gio-splash.play .part { opacity: 1 !important; animation: none !important; transform: none !important; filter: none !important; }
@@ -143,3 +168,4 @@ const splashCss = `
   @keyframes gio-fade-out { to { opacity: 0; } }
 }
 `
+
