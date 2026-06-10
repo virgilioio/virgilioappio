@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Plus, Edit, Trash2, Building2, Search, ChevronLeft, ChevronRight, MoreHorizontal, Eye } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftBuilding } from '@/components/ui/EmptyIllustrations'
 import { Organization } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
@@ -184,17 +185,17 @@ export function OrganizationsTable({
         <CardContent>
           {filteredOrganizations.length === 0 ? (
             <EmptyState
-              assetType="empty-state-organizations"
-              title={organizations.length === 0 ? 'No clients yet' : 'No clients match your filters'}
-              description={organizations.length === 0 
-                ? 'Create your first client to get started.'
-                : 'Try adjusting your search or filter criteria.'
-              }
-              fallbackIcon={Building2}
-              action={organizations.length === 0 && permissions.canCreateOrganizations && onCreateNew ? {
-                label: 'Create Company',
-                onClick: onCreateNew
-              } : undefined}
+              size="card"
+              illustration={<SoftBuilding />}
+              title={organizations.length === 0 ? 'No companies yet' : 'No companies match your filters'}
+              body={organizations.length === 0
+                ? 'Add your first company to start tracking deals and contacts.'
+                : 'Try adjusting your search or filters.'}
+              primary={organizations.length === 0 && permissions.canCreateOrganizations && onCreateNew ? (
+                <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onCreateNew}>
+                  Create company
+                </EmptyAction>
+              ) : undefined}
             />
           ) : (
             <>
