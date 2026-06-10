@@ -293,14 +293,36 @@ export function CandidateTable({
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
           candidates.length === 0 ? (
-            <GioEmptyState
+            <EmptyState
+              illustration={<SoftPlane />}
               title="No candidates yet"
-              description="Add your first candidate to this job"
+              body="Add someone manually, or share your posting link — Gio scores and ranks every applicant as they land."
+              primary={
+                onAddNew ? (
+                  <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddNew}>
+                    Add candidate
+                  </EmptyAction>
+                ) : undefined
+              }
+              secondary={
+                <EmptyAction variant="secondary" icon={<LinkIcon size={16} strokeWidth={2} />}>
+                  Share posting
+                </EmptyAction>
+              }
             />
           ) : (
-            <GioEmptyState
-              title="No candidates match your filters"
-              description="Try adjusting your search or filters"
+            <EmptyState
+              illustration={<SoftMagnifier />}
+              title="No matches"
+              body="Nothing fits your search — the candidates are still there, just hidden."
+              primary={
+                <EmptyAction
+                  icon={<RotateCcw size={16} strokeWidth={2} />}
+                  onClick={() => setSearchTerm('')}
+                >
+                  Clear search
+                </EmptyAction>
+              }
             />
           )
         ) : (
