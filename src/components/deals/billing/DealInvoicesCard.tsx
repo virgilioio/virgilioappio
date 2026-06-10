@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, Trash2, Download, Paperclip } from 'lucide-react'
 import { useDealInvoices, type DealInvoice } from '@/hooks/useDealInvoices'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 
 function formatBytes(bytes: number | null): string {
