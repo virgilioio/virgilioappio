@@ -294,7 +294,7 @@ export default function Pipeline() {
               className="font-inter"
               style={{ marginTop: 12, fontSize: 11.5, color: '#8B8F9E' }}
             >
-              Showing {filteredJobs.length} of {openJobs.length} open jobs · sorted by recent activity
+              Showing {sortedJobs.length} of {baseJobs.length} {STATUS_LABEL[status]} · sorted by {SORT_LABEL[sortBy]}
             </div>
 
             {/* Job list */}
@@ -309,7 +309,7 @@ export default function Pipeline() {
                     />
                   ))}
                 </div>
-              ) : filteredJobs.length === 0 ? (
+              ) : sortedJobs.length === 0 ? (
                 <div
                   className="rounded-[12px] bg-white px-6 py-10 text-center font-inter"
                   style={{ border: '1px solid #E7E8EE', color: '#5A6072', fontSize: 13 }}
@@ -317,7 +317,7 @@ export default function Pipeline() {
                   {search ? (
                     <>No jobs match &ldquo;{search}&rdquo;</>
                   ) : (
-                    <>No open jobs yet</>
+                    <>No {STATUS_LABEL[status]} match the current filters</>
                   )}
                 </div>
               ) : grouped && groups ? (
@@ -355,7 +355,7 @@ export default function Pipeline() {
                 </div>
               ) : (
                 <div className="flex flex-col" style={{ gap: 10 }}>
-                  {filteredJobs.map((job) => (
+                  {sortedJobs.map((job) => (
                     <JobPipelineRow
                       key={job.id}
                       job={job}
