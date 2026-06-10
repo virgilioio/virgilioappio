@@ -3,13 +3,36 @@ import { useNavigate } from 'react-router-dom'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { useJobs } from '@/hooks/useJobs'
+import { useMembers } from '@/hooks/useMembers'
+import { useDepartments } from '@/hooks/useDepartments'
+import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds'
+import { jobMatchesUsers } from '@/utils/jobInvolvement'
 import { usePipelineGlobalMetrics } from '@/hooks/usePipelineGlobalMetrics'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
-import { PipelineFilterBar } from '@/components/pipeline/PipelineFilterBar'
+import {
+  PipelineFilterBar,
+  type PipelineStatus,
+  type PipelineSort,
+} from '@/components/pipeline/PipelineFilterBar'
 import { JobPipelineRow } from '@/components/pipeline/JobPipelineRow'
 import { Briefcase, FileText, Users, Clock, Download, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
+
+const STATUS_LABEL: Record<PipelineStatus, string> = {
+  all: 'jobs',
+  open: 'open jobs',
+  draft: 'draft jobs',
+  closed: 'closed jobs',
+  archived: 'archived jobs',
+}
+
+const SORT_LABEL: Record<PipelineSort, string> = {
+  recent: 'recent activity',
+  oldest: 'oldest activity',
+  title: 'job title',
+  active: 'active candidates',
+}
 
 export default function Pipeline() {
   const navigate = useNavigate()
