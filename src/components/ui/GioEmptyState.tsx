@@ -1,4 +1,5 @@
 import { EmptyState } from '@/components/ui/empty-state'
+import { SoftPlane } from '@/components/ui/EmptyIllustrations'
 
 interface GioEmptyStateProps {
   title: string
@@ -7,15 +8,17 @@ interface GioEmptyStateProps {
 }
 
 /**
- * @deprecated Use <EmptyState variant="inline"> from '@/components/ui/empty-state'.
- * Kept as a thin wrapper during the consolidation migration.
+ * @deprecated Use <EmptyState size="card|route" illustration={...}> directly with the
+ * surface-specific illustration from EmptyIllustrations. Kept as a thin fallback that
+ * renders the canonical card-size empty with a generic SoftPlane scene.
  */
-export function GioEmptyState({ title, description, className = '' }: GioEmptyStateProps) {
+export function GioEmptyState({ title, description, className }: GioEmptyStateProps) {
   return (
     <EmptyState
-      variant="inline"
+      size="card"
+      illustration={<SoftPlane />}
       title={title}
-      description={description}
+      body={description}
       className={className}
     />
   )
