@@ -22,6 +22,7 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SoftArchive } from '@/components/ui/EmptyIllustrations'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
