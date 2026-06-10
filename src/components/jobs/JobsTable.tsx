@@ -12,7 +12,9 @@ import {
   IdentityCell, StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
 } from '@/components/ui/table-cells'
 import { TableSkeleton } from '@/components/ui/table-states'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftFlag, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { Plus, RotateCcw } from 'lucide-react'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
