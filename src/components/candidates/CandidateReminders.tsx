@@ -96,11 +96,10 @@ export function CandidateReminders({ candidateId, jobId }: CandidateRemindersPro
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <EmptyState
-            variant="inline"
-            title="No reminders yet"
-            description="Set a reminder to follow up with this candidate"
-            action={{ label: 'Add Reminder', onClick: () => setIsFormOpen(true) }}
+          <InlineEmpty
+            text="No reminders set."
+            action="Add reminder"
+            onAction={() => setIsFormOpen(true)}
           />
         </CardContent>
       </Card>
