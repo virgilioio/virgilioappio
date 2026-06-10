@@ -18,13 +18,14 @@ import { BillingGuard } from './components/auth/BillingGuard'
 import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
-import { VirgilioLoader } from '@/components/ui/VirgilioLoader'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
+import { useReportSplashReady } from './contexts/SplashReadyContext'
+
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Find = lazy(() => import('./pages/Find'))
 const Jobs = lazy(() => import('./pages/Jobs'))
@@ -95,11 +96,8 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Suspense fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <VirgilioLoader message="Loading..." />
-        </div>
-      }>
+      <Suspense fallback={null}>
+
       <Routes>
         {/* Public routes - no authentication required */}
         <Route path="/auth" element={<Login />} />
