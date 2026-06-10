@@ -5,6 +5,8 @@ interface AnalyticsEmptyStateProps {
   title?: string
   description?: string
   className?: string
+  /** @deprecated Ignored — canonical wrapper always renders SoftChart. */
+  icon?: unknown
 }
 
 /**
