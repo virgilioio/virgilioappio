@@ -20,6 +20,7 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
   const mountedAtRef = useRef<number>(Date.now())
   const [mounted, setMounted] = useState(true)
   const [leaving, setLeaving] = useState(false)
+  const [settled, setSettled] = useState(false)
 
   // Begin exit when allowed (show=false AND minDuration elapsed)
   useEffect(() => {
@@ -37,20 +38,29 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
     return () => clearTimeout(id)
   }, [leaving])
 
+  // Once intro animation has settled, release will-change so the browser
+  // re-rasterizes the resting logo at full resolution (no fuzzy edges).
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(true), 1400)
+    return () => clearTimeout(id)
+  }, [])
+
   if (!mounted) return null
 
   return (
     <>
       <style>{splashCss}</style>
       <div
-        className={`gio-splash play${leaving ? ' leaving' : ''}`}
+        className={`gio-splash play${leaving ? ' leaving' : ''}${settled ? ' settled' : ''}`}
         aria-hidden="true"
         role="presentation"
       >
         <div className="logo-holder">
           <svg
             viewBox="0 0 82 71.25"
-            width="150"
+            width="300"
+            height="auto"
+            shapeRendering="geometricPrecision"
             style={{ overflow: 'visible' }}
             aria-label="gio"
           >
@@ -91,6 +101,7 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
     </>
   )
 }
+
 
 const splashCss = `
 .gio-splash {
