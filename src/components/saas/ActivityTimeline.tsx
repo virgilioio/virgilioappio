@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { 
   Briefcase, 
   Users, 
@@ -173,10 +174,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-virgilio-muted">
-            <Calendar className="h-12 w-12 mx-auto mb-3 opacity-40" />
-            <p>No recent activity to display</p>
-          </div>
+          <InlineEmpty text="No recent activity to display." />
         </CardContent>
       </Card>
     )

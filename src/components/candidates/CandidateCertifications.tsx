@@ -1,4 +1,5 @@
 import { Award, Calendar } from "lucide-react";
+import { InlineEmpty } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -25,7 +26,7 @@ export const CandidateCertificationsComponent = ({ certifications }: CandidateCe
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No certifications data available</p>
+          <InlineEmpty text="No certifications data available." />
         </CardContent>
       </Card>
     );

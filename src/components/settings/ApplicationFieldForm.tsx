@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -302,7 +303,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
               </div>
             ))}
             {selectOptions.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No options added yet. Click "Add Option".</p>
+              <InlineEmpty text='No options added yet. Click "Add Option".' />
             )}
           </CardContent>
         </Card>
@@ -342,7 +343,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
               </Card>
             ))}
             {validationRules.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No validation rules added yet.</p>
+              <InlineEmpty text="No validation rules added yet." />
             )}
           </CardContent>
         </Card>

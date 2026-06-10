@@ -1,4 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftPlane } from '@/components/ui/EmptyIllustrations'
 import { useCandidateList } from '@/hooks/useCandidateLists'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -85,10 +87,15 @@ export default function SharedList() {
         <h2 className="text-[10.5px] uppercase tracking-[0.06em] font-medium text-muted-foreground">
           Candidates
         </h2>
-        <div className="rounded-lg border border-black/8 divide-y divide-black/5">
-          {items.length === 0 && (
-            <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">No candidates in this list.</div>
-          )}
+        {items.length === 0 ? (
+          <EmptyState
+            size="card"
+            illustration={<SoftPlane />}
+            title="No candidates in this list"
+            body="The owner hasn't added any candidates yet."
+          />
+        ) : null}
+        <div className={items.length === 0 ? 'hidden' : 'rounded-lg border border-black/8 divide-y divide-black/5'}>
           {items.map((it: any) => {
             const c = it.candidates
             const name = c?.candidate_name ?? 'Unknown'

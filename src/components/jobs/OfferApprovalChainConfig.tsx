@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -286,13 +287,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
             </div>
 
             {steps.length === 0 ? (
-              <div className="text-center py-8 text-text-secondary">
-                <ShieldCheck className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p>No approvers configured yet.</p>
-                {canConfigure && (
-                  <p className="text-sm mt-1">Use the form above to add approvers.</p>
-                )}
-              </div>
+              <InlineEmpty text={canConfigure ? 'No approvers configured yet. Use the form above to add approvers.' : 'No approvers configured yet.'} />
             ) : (
               <DndContext
                 sensors={sensors}

@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -105,13 +106,11 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : (context === 'organization' ? tenantFields : fields).length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-sm text-muted-foreground mb-3">No custom application fields yet.</p>
-              <p className="text-xs text-muted-foreground mb-4">Core fields (name, email, phone, resume, etc.) are included automatically in all applications.</p>
-              <Button onClick={() => setIsCreateOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" /> Add your first custom field
-              </Button>
-            </div>
+            <InlineEmpty
+              text="No custom application fields yet. Core fields (name, email, phone, resume) are always included."
+              action="Add field"
+              onAction={() => setIsCreateOpen(true)}
+            />
           ) : (
             <div className="rounded-md border overflow-hidden">
               <Table>

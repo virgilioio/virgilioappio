@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import {
   DndContext,
   closestCenter,
@@ -118,11 +119,7 @@ export function DealStagesManager() {
         <div>
           <h4 className="text-base font-medium text-text-primary mb-3">Current Pipeline Stages</h4>
           {orderedStages.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-text-secondary">No stages in the pipeline</p>
-              </CardContent>
-            </Card>
+            <InlineEmpty text="No stages in the pipeline yet." />
           ) : (
             <DndContext
               sensors={sensors}

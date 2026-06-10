@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, InlineEmpty } from '@/components/ui/empty-state'
 
 import { Link, useNavigate } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -1334,7 +1334,7 @@ const stageHasAutomation = useMemo(() => {
                               />
                             )
                           ) : (
-                            <div className="text-sm text-text-secondary">No job candidate record linked.</div>
+                            <InlineEmpty text="No job candidate record linked." />
                           )}
                         </CardContent>
                       </Card>
@@ -1357,7 +1357,7 @@ const stageHasAutomation = useMemo(() => {
                                 className="text-text-primary leading-relaxed"
                               />
                             ) : (
-                              <div className="text-sm text-text-secondary">No summary available.</div>
+                              <InlineEmpty text="No summary available." />
                             )}
                           </CardContent>
                         </Card>
@@ -1389,7 +1389,7 @@ const stageHasAutomation = useMemo(() => {
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-sm text-text-secondary">No skills specified</div>
+                                <InlineEmpty text="No skills specified." />
                               )
                             })()}
                           </CardContent>
@@ -1420,7 +1420,7 @@ const stageHasAutomation = useMemo(() => {
                         </CardHeader>
                         <CardContent className="space-y-4">
                           {planStages.filter(p => supportsScorecard(p.stage.stage_type)).length === 0 ? (
-                            <div className="text-sm text-text-secondary">No scorecard-enabled stages.</div>
+                            <InlineEmpty text="No scorecard-enabled stages." />
                           ) : (
                             [...planStages]
                               .sort((a, b) => a.position - b.position)
@@ -1515,7 +1515,7 @@ const stageHasAutomation = useMemo(() => {
                               <CardTitle>Comments</CardTitle>
                             </CardHeader>
                             <CardContent>
-                              <div className="text-sm text-text-secondary">No candidate data available.</div>
+                              <InlineEmpty text="No candidate data available." />
                             </CardContent>
                           </Card>
                         )}

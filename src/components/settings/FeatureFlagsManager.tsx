@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -115,13 +116,7 @@ export function FeatureFlagsManager() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-8">
-                <Flag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No feature flags found</p>
-                <p className="text-sm text-muted-foreground">
-                  Feature flags will appear here when they are created
-                </p>
-              </div>
+              <InlineEmpty text="No feature flags yet. Flags will appear here when they are created." />
             )}
           </div>
         </CardContent>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { ensureAbsoluteUrl } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -464,14 +465,11 @@ function FitInsightsPanel({ candidateId, jobId }: { candidateId: string; jobId: 
 
   if (!insights?.analysis) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 gap-3">
-        <Sparkles className="h-6 w-6 text-muted-foreground" />
-        <p className="text-sm text-text-secondary">No fit analysis available.</p>
-        <Button variant="outline" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="gap-1.5">
-          {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          Generate
-        </Button>
-      </div>
+      <InlineEmpty
+        text="No fit analysis available."
+        action={isRefreshing ? 'Generating…' : 'Generate'}
+        onAction={isRefreshing ? undefined : refreshInsights}
+      />
     )
   }
 

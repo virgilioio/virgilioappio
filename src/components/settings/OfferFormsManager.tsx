@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -42,13 +43,11 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
         {isLoading ? (
           <div className="text-center py-8">Loading forms...</div>
         ) : displayForms.length === 0 ? (
-          <div className="text-center py-8">
-            <ClipboardList className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No offer forms found</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create your first offer form to get started
-            </p>
-          </div>
+          <InlineEmpty
+            text="No offer forms yet. Create your first form to get started."
+            action="Create form"
+            onAction={() => setFormSheet({ open: true, formId: undefined })}
+          />
         ) : (
           <div className="rounded-md border overflow-hidden">
             <Table>

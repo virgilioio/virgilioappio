@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -264,13 +265,7 @@ export function CreateOfferLetterSheet({
                 Loading forms...
               </div>
             ) : activeForms.length === 0 ? (
-              <div className="text-center py-8 border border-dashed rounded-md">
-                <ClipboardList className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No offer forms available</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Create offer forms in Settings → Templates → Offer Forms
-                </p>
-              </div>
+              <InlineEmpty text="No offer forms available. Create one in Settings → Templates → Offer Forms." />
             ) : (
               <Select value={selectedFormId} onValueChange={setSelectedFormId}>
                 <SelectTrigger>
