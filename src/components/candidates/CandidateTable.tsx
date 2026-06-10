@@ -292,9 +292,10 @@ export function CandidateTable({
       <CardContent>
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
-          <div className="py-8 flex items-center justify-center">
+          <div className="py-4">
             {candidates.length === 0 ? (
               <EmptyState
+                size="card"
                 illustration={<SoftPlane />}
                 title="No candidates yet"
                 body="Add someone manually, or share your posting link — Gio scores and ranks every applicant as they land."
@@ -313,6 +314,7 @@ export function CandidateTable({
               />
             ) : (
               <EmptyState
+                size="card"
                 illustration={<SoftMagnifier />}
                 title="No matches"
                 body="Nothing fits your search — the candidates are still there, just hidden."
