@@ -18,7 +18,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       {/* Top-left logo */}
       <header className="px-6 sm:px-8 lg:px-12 pt-6">
         <Link to="/" aria-label="Gio home" className="inline-flex">
-          <GoGioLogo size="lg" />
+          <GoGioLogo size="2xl" />
         </Link>
       </header>
 
@@ -29,9 +29,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           <PipelineProductGraphic />
         </div>
 
-        {/* Right: heading + form + footer */}
-        <div className="w-full max-w-md mx-auto lg:mx-0">
-          <div className="mb-8 text-center lg:text-left">
+        {/* Right: heading + form + footer — centered in its own half */}
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-8 text-center">
             <h1
               className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground"
               style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}
@@ -42,8 +42,8 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
           <div className="bg-white rounded-2xl shadow-lg p-8">{children}</div>
 
-          <footer className="mt-6 text-xs text-foreground/70 text-center lg:text-left">
-            <nav className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
+          <footer className="mt-6 text-xs text-foreground/70 text-center">
+            <nav className="flex flex-wrap items-center justify-center gap-3">
               <Link to="/privacy" className="underline underline-offset-2 hover:no-underline">
                 Privacy Policy
               </Link>
