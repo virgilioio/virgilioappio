@@ -53,7 +53,7 @@ export function DealPaymentsCard({ dealId, currency }: { dealId: string; currenc
           {payments.isLoading ? (
             <div className="text-sm text-virgilio-muted">Loading…</div>
           ) : (payments.data ?? []).length === 0 ? (
-            <GioEmptyState title="No payments yet" description="Register payments collected from the client." />
+            <InlineEmpty text="No payments yet." />
           ) : (
             <ul className="space-y-2">
               {(payments.data ?? []).map((p) => {
