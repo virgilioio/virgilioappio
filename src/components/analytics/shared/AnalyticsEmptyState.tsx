@@ -1,30 +1,27 @@
-import { BarChart3 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SoftChart } from '@/components/ui/EmptyIllustrations'
 
 interface AnalyticsEmptyStateProps {
   title?: string
   description?: string
-  icon?: LucideIcon
   className?: string
 }
 
 /**
- * @deprecated Use <EmptyState variant="chart"> from '@/components/ui/empty-state'.
- * Kept as a thin wrapper during the consolidation migration.
+ * @deprecated Use <EmptyState size="card" illustration={<SoftChart />}> directly.
+ * Thin wrapper that renders the canonical card-size empty with the SoftChart scene.
  */
 export function AnalyticsEmptyState({
-  title = 'No data available',
-  description = 'Try adjusting your filters or date range',
-  icon = BarChart3,
+  title = 'No data yet',
+  description = 'This chart fills in as candidates move through your pipeline.',
   className,
 }: AnalyticsEmptyStateProps) {
   return (
     <EmptyState
-      variant="chart"
+      size="card"
+      illustration={<SoftChart />}
       title={title}
-      description={description}
-      icon={icon}
+      body={description}
       className={className}
     />
   )
