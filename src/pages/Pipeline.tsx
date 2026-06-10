@@ -272,9 +272,16 @@ export default function Pipeline() {
               <PipelineFilterBar
                 search={search}
                 onSearchChange={setSearch}
-                status="Open"
-                owner="Anyone"
-                department="All"
+                status={status}
+                onStatusChange={setStatus}
+                ownerOptions={ownerOptions}
+                selectedOwners={selectedOwners}
+                onSelectedOwnersChange={setSelectedOwners}
+                departmentOptions={departmentOptions}
+                selectedDepartments={selectedDepartments}
+                onSelectedDepartmentsChange={setSelectedDepartments}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
                 grouped={grouped}
                 onToggleGroup={() => setGrouped((g) => !g)}
                 allExpanded={allExpanded}
