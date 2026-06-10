@@ -70,6 +70,7 @@ const SaaSCustomerDetail = lazy(() =>
   import('./pages/settings/saas-customers/SaaSCustomerDetail').then(m => ({ default: m.SaaSCustomerDetail }))
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
+const AnalyticsHub = lazy(() => import('./pages/AnalyticsHub'))
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
 const SharedList = lazy(() => import('./pages/SharedList'))
 const queryClient = new QueryClient({
