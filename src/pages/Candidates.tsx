@@ -595,6 +595,8 @@ function CandidatesInner() {
                 onToggleSelectAll={toggleSelectAll}
                 onOpenCandidate={handleOpenCandidate}
                 onDelete={(c) => setDeleteTarget({ id: c.id, name: c.candidate_name })}
+                onClearFilters={handleSearchClear}
+                onAddCandidate={() => setIsFormOpen(true)}
               />
             </PermissionGate>
 
