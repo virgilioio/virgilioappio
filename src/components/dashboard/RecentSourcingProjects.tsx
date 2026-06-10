@@ -5,6 +5,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { Users, ChevronRight, Search } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import gioFacePurple from '@/assets/gio-face-purple.png'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftFind } from '@/components/ui/EmptyIllustrations'
 
 export function RecentSourcingProjects() {
   const { data: projects, isLoading } = useSourcingProjects()
@@ -39,21 +41,20 @@ export function RecentSourcingProjects() {
   // Empty state - subtle, no pressure
   if (recentProjects.length === 0) {
     return (
-      <Card className="border-dashed">
+      <Card>
         <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             Recent Searches
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <img src={gioFacePurple} alt="No searches" className="w-16 h-16 mb-4" />
-            <h3 className="text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
-              No searches yet<span className="text-purple-period">.</span>
-            </h3>
-            <p className="text-sm text-virgilio-muted mt-2">Your sourcing projects will appear here</p>
-          </div>
+          <EmptyState
+            size="card"
+            illustration={<SoftFind />}
+            title="No searches yet"
+            body="Your sourcing projects will appear here."
+          />
         </CardContent>
       </Card>
     )

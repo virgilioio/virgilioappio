@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftRosette } from '@/components/ui/EmptyIllustrations'
 import { useEffect, useRef } from 'react'
 
 const cardClass = 'border-virgilio-border rounded-2xl shadow-md hover:shadow-xl transition-all duration-200'
@@ -62,13 +64,22 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
   if (!insights?.analysis) {
     return (
       <Card className={cardClass}>
-        <CardContent className="flex flex-col items-center justify-center py-12 space-y-3">
-          <Sparkles className="h-8 w-8 text-virgilio-muted" />
-          <p className="text-sm text-virgilio-muted font-poppins">No analysis yet</p>
-          <Button variant="outline" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="font-poppins">
-            {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            Generate Insights
-          </Button>
+        <CardContent className="p-0">
+          <EmptyState
+            size="card"
+            illustration={<SoftRosette />}
+            title="No analysis yet"
+            body="Generate AI insights to evaluate fit for this role."
+            primary={
+              <EmptyAction
+                variant="primary"
+                icon={isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                onClick={refreshInsights}
+              >
+                {isRefreshing ? 'Generating…' : 'Generate insights'}
+              </EmptyAction>
+            }
+          />
         </CardContent>
       </Card>
     )

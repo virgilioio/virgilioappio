@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { DepartmentFormDialog } from './DepartmentFormDialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftBuilding } from '@/components/ui/EmptyIllustrations'
 
 function useJobCountsByDepartment() {
   return useQuery({
@@ -102,9 +104,13 @@ export function DepartmentsManager() {
             )}
             {!isLoading && sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-12 text-text-tertiary">
-                  <Layers className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                  No departments yet
+                <TableCell colSpan={5} className="p-0">
+                  <EmptyState
+                    size="card"
+                    illustration={<SoftBuilding />}
+                    title="No departments yet"
+                    body="Add departments to organize your jobs and teams."
+                  />
                 </TableCell>
               </TableRow>
             )}

@@ -5,6 +5,8 @@ import { ExternalLink, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { formatPrice } from '@/utils/pricing'
 import type { Invoice } from '@/hooks/useInvoiceHistory'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftPaper } from '@/components/ui/EmptyIllustrations'
 
 interface InvoiceHistoryTableProps {
   invoices: Invoice[]
@@ -13,11 +15,12 @@ interface InvoiceHistoryTableProps {
 export function InvoiceHistoryTable({ invoices }: InvoiceHistoryTableProps) {
   if (invoices.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-        <p className="text-sm">No invoices yet</p>
-        <p className="text-xs mt-1">Your invoice history will appear here after your first payment</p>
-      </div>
+      <EmptyState
+        size="card"
+        illustration={<SoftPaper />}
+        title="No invoices yet"
+        body="Your invoice history will appear here after your first payment."
+      />
     )
   }
 

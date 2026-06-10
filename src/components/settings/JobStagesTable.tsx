@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge'
 import { JobStage, useJobStages } from '@/hooks/useJobStages'
 import { Edit, Trash2, Plus } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftFlag } from '@/components/ui/EmptyIllustrations'
 
 interface JobStagesTableProps {
   stages: JobStage[]
@@ -67,12 +69,12 @@ export function JobStagesTable({ stages, isLoading, onEdit, onDelete, onCopy, co
 
   if (stages.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-center">
-          <p className="text-sm text-text-secondary">No stages found</p>
-          <p className="text-xs text-text-tertiary mt-1">Create your first stage to get started</p>
-        </div>
-      </div>
+      <EmptyState
+        size="card"
+        illustration={<SoftFlag />}
+        title="No stages yet"
+        body="Create your first stage to get started."
+      />
     )
   }
 

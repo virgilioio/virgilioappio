@@ -13,6 +13,8 @@ import { usePipelineGlobalMetrics, PipelineFilters } from '@/hooks/usePipelineGl
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics';
 import { useJobs } from '@/hooks/useJobs';
 import { useMembers } from '@/hooks/useMembers';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SoftMagnifier } from '@/components/ui/EmptyIllustrations';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
@@ -221,9 +223,12 @@ export default function Pipeline() {
                   {jobsLoading || isFilteringUsers ? (
                     <TableSkeleton rows={5} />
                   ) : filteredJobs.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No jobs found matching your filters.
-                    </div>
+                    <EmptyState
+                      size="card"
+                      illustration={<SoftMagnifier />}
+                      title="No matches"
+                      body="No jobs match the current filters."
+                    />
                   ) : (
                     <Accordion type="multiple" defaultValue={[]} className="space-y-4">
                       {filteredJobs.map(job => (

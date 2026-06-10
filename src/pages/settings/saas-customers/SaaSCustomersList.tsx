@@ -25,6 +25,8 @@ import { MoreVertical, Search, Users, Briefcase, Activity } from 'lucide-react'
 import { useSaaSCustomers } from '@/hooks/useSaaSCustomers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TableSkeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
@@ -232,9 +234,12 @@ export function SaaSCustomersList() {
           )}
           
           {filteredCustomers?.length === 0 && !isLoading && (
-            <div className="text-center py-8 text-muted-foreground">
-              No customers found matching your criteria.
-            </div>
+            <EmptyState
+              size="card"
+              illustration={<SoftMagnifier />}
+              title="No matches"
+              body="Try different keywords or clear the filters."
+            />
           )}
         </CardContent>
       </Card>
