@@ -185,7 +185,7 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
     </div>
     <div class="email-container">
       <div class="email-header">
-        <div class="logo">GoGio</div>
+        <img src="https://app.gogio.io/gio-logo-light.svg" alt="Gio" height="28" style="height:28px;width:auto;display:inline-block;" />
       </div>
       <div class="email-body">
         <p class="greeting">Hi ${recipientName},</p>
