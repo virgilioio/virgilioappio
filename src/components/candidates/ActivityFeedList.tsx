@@ -2,7 +2,7 @@ import { Activity as ActivityIcon } from 'lucide-react';
 import { useActivityFeed } from '@/hooks/useActivityFeed';
 import { ActivityFeedItem } from './ActivityFeedItem';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EmptyState } from '@/components/ui/empty-state';
+import { InlineEmpty } from '@/components/ui/empty-state';
 
 interface ActivityFeedListProps {
   candidateId: string;
@@ -43,11 +43,7 @@ export function ActivityFeedList({ candidateId, jobId }: ActivityFeedListProps) 
   
   if (!activities || activities.length === 0) {
     return (
-      <EmptyState
-        variant="inline"
-        title="No activity yet"
-        description="Activity for this candidate will appear here as you interact with them."
-      />
+      <InlineEmpty text="No activity yet." />
     );
   }
   

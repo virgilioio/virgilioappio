@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftPlane, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { IdentityCell, NumericCell, ActionCell } from '@/components/ui/table-cells'
 import { TableEmpty } from '@/components/ui/table-states'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal, ListChecks, Archive, Clock } from 'lucide-react'
+import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal, ListChecks, Archive, Clock, Plus, RotateCcw, Link as LinkIcon } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -292,14 +293,36 @@ export function CandidateTable({
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
           candidates.length === 0 ? (
-            <GioEmptyState
+            <EmptyState
+              illustration={<SoftPlane />}
               title="No candidates yet"
-              description="Add your first candidate to this job"
+              body="Add someone manually, or share your posting link — Gio scores and ranks every applicant as they land."
+              primary={
+                onAddNew ? (
+                  <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddNew}>
+                    Add candidate
+                  </EmptyAction>
+                ) : undefined
+              }
+              secondary={
+                <EmptyAction variant="secondary" icon={<LinkIcon size={16} strokeWidth={2} />}>
+                  Share posting
+                </EmptyAction>
+              }
             />
           ) : (
-            <GioEmptyState
-              title="No candidates match your filters"
-              description="Try adjusting your search or filters"
+            <EmptyState
+              illustration={<SoftMagnifier />}
+              title="No matches"
+              body="Nothing fits your search — the candidates are still there, just hidden."
+              primary={
+                <EmptyAction
+                  icon={<RotateCcw size={16} strokeWidth={2} />}
+                  onClick={() => setSearchTerm('')}
+                >
+                  Clear search
+                </EmptyAction>
+              }
             />
           )
         ) : (
