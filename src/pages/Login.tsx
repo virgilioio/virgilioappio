@@ -66,7 +66,7 @@ export default function Login() {
         {/* Logo and tagline - outside the card */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
-            <GoGioLogo size="xl" />
+            <GoGioLogo size="3xl" />
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
             Find your people<span style={{ color: '#d7c5fb' }}>.</span>
