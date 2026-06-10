@@ -1,50 +1,54 @@
-## Pipeline Page Rebuild — Strict Spec
+## Make Pipeline filter pills functional
 
-Rebuild `/pipeline` from scratch to match the provided design exactly. Scope is **only** the Pipeline page and a new reusable `MetricStrip` primitive.
+The Status / Owner / Department pills and the "Recent activity" sort pill are currently presentational — their click handlers are unused and the page always filters to `status === 'open'` with a hardcoded sort. Wire them to real state + popovers.
 
-### New components
+### State (in `src/pages/Pipeline.tsx`)
+- `status: 'open' | 'draft' | 'closed' | 'archived' | 'all'` — default `'open'`.
+- `selectedOwners: string[]` — default `[]` (empty = "Anyone").
+- `selectedDepartments: string[]` — default `[]` (empty = "All").
+- `sortBy: 'recent' | 'title' | 'active' | 'oldest'` — default `'recent'`.
 
-1. **`src/components/ui/metric-strip.tsx`** — reusable `<MetricStrip items={...} />` + internal `<MetricCell />`.
-   - White card, radius 12, `#E7E8EE` border, padding 0, ~56h. Cells `flex-1` divided by `1px #F1F0EC`.
-   - Cell: 28×28 tinted icon chip (tones: purple/yellow/green/blue/pink/neutral), Inter 11/500 `#8B8F9E` label, Poppins 19/600 `-0.03em` value `#0d0d09` + optional `d` suffix 12/500 `#5A6072`.
-   - Qualifier slot: delta (arrow + number, green improving / red worsening; supports inverted metrics like time-down=green) OR amber annotation `#B45309`. Zero state = muted `#B5B9C4`.
+### Filtering / sorting logic
+Replace the current `openJobs` + `filteredJobs` memo with one `filteredJobs` memo that:
+1. Filters by `status` (skip when `'all'`).
+2. Filters by `selectedDepartments` against `job.department_id` (or `job.department` text fallback).
+3. Filters by `selectedOwners` — match against `job.hiring_team` (array of user ids) and `job.created_by`. Reuse `useUserAssignedJobIds(selectedOwners)` like the legacy `FilterCard` integration did, plus the `jobMatchesUsers` helper already in the repo.
+4. Filters by search.
+5. Sorts by `sortBy`:
+   - `recent` → `updated_at` desc (current behavior)
+   - `oldest` → `updated_at` asc
+   - `title` → `title` asc
+   - `active` → metricsMap active_candidates desc, then title
 
-2. **`src/components/pipeline/PipelineFilterBar.tsx`** — white card, padding 10. Controls: Views pill (bookmark), Search input (30h, `#F6F5F1` bg), pills Status/Owner/Department (active = purple), hairline divider, Sort pill "Recent activity", **Group** toggle (rows-3), **Expand all/Collapse all** toggle.
+The "Showing X of Y open jobs · sorted by …" line uses the chosen sort label and the chosen status label (e.g. "Showing 3 of 21 open jobs", or "Showing 3 of 5 closed jobs", or "Showing 3 of 26 jobs" when status = all).
 
-3. **`src/components/pipeline/StageFunnelBar.tsx`** — fixed 360w. One 20h segment per stage with 2px gaps; width ∝ `count + 0.45`. Filled ramp `#ADB2BD → #C9B8FB → #A98BFA → #8456F6 → #6F3FF5`. Empty = same color @18% opacity. White 10.5/600 centered count. 9px `#8B8F9E` truncated stage labels below. Tooltip on hover.
+### Dropdown UX (rebuild pills as proper menus)
+Update `src/components/pipeline/PipelineFilterBar.tsx` so each pill is anchored to a real Radix popover using the project's existing dropdown primitives:
 
-4. **`src/components/pipeline/JobPipelineRow.tsx`** — replaces current `JobRow`. Collapsed: chevron, title (Poppins 13.5/600) + green Open chip + attention flags (amber `clock-alert` "N idle >7d", gray `moon` "quiet 6d"), meta line (building/map-pin/activity, 11.5 `#8B8F9E`), funnel bar (360w), active count (Poppins 16/600 over "active" label, muted if 0), 22px avatar stack (max 3), 28px more-button. Whole card toggles. Card padding 12×16, radius 12.
+- **Status pill** — single-select via `<DropdownMenu>` with `<DropdownMenuRadioGroup>`. Options: All, Open ★ default, Draft, Closed, Archived. Pill is `active` (purple) whenever status ≠ default `'open'` OR... actually keep it always `active` to match current design but display the chosen label. Label: `Status · {Open|Draft|Closed|Archived|All}`.
+- **Owner pill** — multi-select via `<FilterChipPopover>` (searchable, Apply pattern). Options from `useMembers()` filtered by `user_status === 'active'`. Label: `Owner · Anyone` (when empty) / `Owner · {Name}` (1) / `Owner · {N} selected` (>1). Pill `active` when any selected.
+- **Department pill** — multi-select via `<FilterChipPopover>`. Options from `useDepartments()` (or fall back to `useOrganizations()` to mirror current data) — pick whichever the Jobs list uses so the values match `job.department_id`. Label: `Department · All` / `Department · {Name}` / `Department · {N} selected`. Pill `active` when any selected.
+- **Sort pill** — single-select via `<DropdownMenu>` with `<DropdownMenuRadioGroup>`. Options: Recent activity ★ default, Oldest activity, Job title (A→Z), Active candidates. Label reflects choice. Pill `active` when sort ≠ `recent`.
 
-5. **`src/components/pipeline/InlineKanban.tsx`** — expansion panel `#FAFAF7` with top hairline, 12 padding.
-   - Summary row "N active candidates · N stages" + right actions: ghost "Add candidate", secondary "Open board" → `/jobs/:id`.
-   - Equal-width column grid, 8px gap. Column: white, radius 10, `#E7E8EE` border. Header: 6px stage dot, name (Poppins 11/600), count, `+` icon. Body `#FCFCFA` min-h 76.
-   - **Candidate row** (`InlineCandidateRow.tsx`): white, radius 7, padding 5×8 — 18px avatar, name (Inter 11.5/500), days-in-stage `Xd`. Idle (>7d) = amber clock-alert + amber bold count + amber avatar tint. Click → open profile.
-   - **DnD** between stages of same job via `@dnd-kit`. Drop target highlight `#EDE4FF/40` + `#D7C5FB` border. Empty column dashed "Empty"/"Drop here". On drop, call existing `useCandidateStageMove` (or equivalent) and reset days counter optimistically.
+All popovers should follow the dropdowns foundation (`src/lib/menu-classes.ts`, radius 12, 30h items) — no custom panel chrome.
 
-### Page rewrite — `src/pages/Pipeline.tsx`
+### Persistence (out of scope for this fix)
+Skip `usePersistentFilters` / `SavedViewSelector` integration — the current page doesn't use them and adding them would expand scope. If desired later, restore exactly what the old Pipeline page had.
 
-- Page bg `#F6F5F1`. Custom header (not `PageHeader`) per spec: title "Pipeline" + meta line `{N} open jobs · {M} active candidates · Updated {x}` + right actions Export (download icon, secondary) and "New job" (primary purple, plus icon → `/jobs/new`).
-- 12px gap → `<MetricStrip items={[active jobs · purple · ↑Δ, in app review · yellow · annotation, active candidates · green · ↑Δ, avg days in review · blue · ↓Δ green]} />`.
-- 10px gap → `<PipelineFilterBar />`.
-- 8px gap → result count line "Showing X of Y open jobs · sorted by recent activity" (Inter 11.5 `#8B8F9E`).
-- 12px gap → vertical job list, 10px gap. When Group is on, render uppercase 11px section headers per department with count + hairline.
-- Expand state: `Set<jobId>` (multi-expand). Expand/Collapse all toggles all visible.
-- Empty search: centered card "No jobs match \"query\"".
-- Drop existing `MetricCard` hero strip, `MetricCardGroup`, `Accordion`, and current `JobRow`.
+### Props change for `PipelineFilterBar`
+Replace the unused `onStatusClick`/`onOwnerClick`/`onDepartmentClick`/`onSortClick` callbacks with:
+- `status`, `onStatusChange(value)`
+- `ownerOptions: {value,label}[]`, `selectedOwners`, `onSelectedOwnersChange`
+- `departmentOptions: {value,label}[]`, `selectedDepartments`, `onSelectedDepartmentsChange`
+- `sortBy`, `onSortChange(value)`
 
-### Data
+Keep `search`, `grouped`, `allExpanded`, `onToggleGroup`, `onToggleExpandAll`, `onViewsClick` as-is. `onViewsClick` stays as a no-op stub (the Views pill remains visual until Saved Views are reconnected).
 
-- Reuse `useJobs`, `useMembers`, `useOrganizations`, `usePipelineGlobalMetrics`, `usePipelineJobMetrics`.
-- `globalMetrics` already returns `active_jobs`, `application_review_count`, `active_candidates_count`, `avg_days_in_application_review` — feed directly into the strip. Deltas: omit if not in payload (no fake data); keep cells without qualifier per spec ("zero state never hidden"). Annotation for "In application review" shown only if backend exposes an `over_X_days` field — otherwise omit annotation.
-- `jobMetrics.stages` drives the funnel bar (per-job stages).
-- For inline kanban candidate lists, reuse `usePipelineOverviewData(jobId)` (already used by `PipelineOverview`) to fetch candidates per stage, plus the existing stage-move mutation it uses for DnD.
-
-### Files
-
-- **New:** `src/components/ui/metric-strip.tsx`, `src/components/pipeline/PipelineFilterBar.tsx`, `src/components/pipeline/StageFunnelBar.tsx`, `src/components/pipeline/JobPipelineRow.tsx`, `src/components/pipeline/InlineKanban.tsx`, `src/components/pipeline/InlineCandidateRow.tsx`.
-- **Rewritten:** `src/pages/Pipeline.tsx`.
-- **Untouched (deprecated for this page but kept):** `src/components/pipeline/JobRow.tsx`, `PipelineMetricCard.tsx`, `FilterCard.tsx`.
+### Files touched
+- `src/pages/Pipeline.tsx` — extend state, filter/sort logic, wire props.
+- `src/components/pipeline/PipelineFilterBar.tsx` — convert Status/Owner/Department/Sort pills into real anchored popovers, drop dead `on*Click` props.
 
 ### Non-goals
-
-- No backend / RPC changes. No new tables. No changes to job board pages. No new global tokens.
+- No backend changes, no new hooks, no new RPCs.
+- No saved-views wiring on this page.
+- No changes to job rows, kanban, or metric strip.

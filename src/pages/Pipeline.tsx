@@ -3,27 +3,103 @@ import { useNavigate } from 'react-router-dom'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { useJobs } from '@/hooks/useJobs'
+import { useMembers } from '@/hooks/useMembers'
+import { useDepartments } from '@/hooks/useDepartments'
+import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds'
+import { jobMatchesUsers } from '@/utils/jobInvolvement'
 import { usePipelineGlobalMetrics } from '@/hooks/usePipelineGlobalMetrics'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
-import { PipelineFilterBar } from '@/components/pipeline/PipelineFilterBar'
+import {
+  PipelineFilterBar,
+  type PipelineStatus,
+  type PipelineSort,
+} from '@/components/pipeline/PipelineFilterBar'
 import { JobPipelineRow } from '@/components/pipeline/JobPipelineRow'
 import { Briefcase, FileText, Users, Clock, Download, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 
+const STATUS_LABEL: Record<PipelineStatus, string> = {
+  all: 'jobs',
+  open: 'open jobs',
+  draft: 'draft jobs',
+  closed: 'closed jobs',
+  archived: 'archived jobs',
+}
+
+const SORT_LABEL: Record<PipelineSort, string> = {
+  recent: 'recent activity',
+  oldest: 'oldest activity',
+  title: 'job title',
+  active: 'active candidates',
+}
+
 export default function Pipeline() {
   const navigate = useNavigate()
   const { jobs, isLoading: jobsLoading } = useJobs()
+  const { members } = useMembers()
+  const { departments } = useDepartments()
 
   const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<PipelineStatus>('open')
+  const [selectedOwners, setSelectedOwners] = useState<string[]>([])
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<PipelineSort>('recent')
   const [grouped, setGrouped] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  const openJobs = useMemo(() => jobs.filter((j) => j.status === 'open'), [jobs])
+  const { assignedJobIds } = useUserAssignedJobIds(selectedOwners)
+
+  const ownerOptions = useMemo(
+    () =>
+      (members ?? [])
+        .filter((m) => m.user_status === 'active' && m.user_id)
+        .map((m) => ({
+          value: m.user_id as string,
+          label:
+            [m.user_first_name, m.user_last_name].filter(Boolean).join(' ') ||
+            m.user_email ||
+            'Unknown',
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [members],
+  )
+
+  const departmentOptions = useMemo(
+    () => (departments ?? []).map((d) => ({ value: d.id, label: d.name })),
+    [departments],
+  )
+
+  const statusFilteredJobs = useMemo(
+    () => (status === 'all' ? jobs : jobs.filter((j) => j.status === status)),
+    [jobs, status],
+  )
+
+  // Used for the "of N" denominator in the result count line — same status scope as filteredJobs.
+  const baseJobs = statusFilteredJobs
 
   const filteredJobs = useMemo(() => {
+    let list = [...statusFilteredJobs]
+
+    if (selectedDepartments.length > 0) {
+      const deptIds = new Set(selectedDepartments)
+      const deptNames = new Set(
+        (departments ?? [])
+          .filter((d) => deptIds.has(d.id))
+          .map((d) => d.name.toLowerCase()),
+      )
+      list = list.filter((j) => {
+        if (j.department_id && deptIds.has(j.department_id)) return true
+        if (j.department && deptNames.has(j.department.toLowerCase())) return true
+        return false
+      })
+    }
+
+    if (selectedOwners.length > 0) {
+      list = list.filter((j) => jobMatchesUsers(j, selectedOwners, assignedJobIds))
+    }
+
     const q = search.trim().toLowerCase()
-    let list = [...openJobs]
     if (q) {
       list = list.filter(
         (j) =>
@@ -31,15 +107,38 @@ export default function Pipeline() {
           (j.department || '').toLowerCase().includes(q),
       )
     }
-    // Recent activity sort
-    list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+
     return list
-  }, [openJobs, search])
+  }, [statusFilteredJobs, selectedDepartments, departments, selectedOwners, assignedJobIds, search])
 
   const { data: globalMetrics } = usePipelineGlobalMetrics({ jobStatuses: ['open'] })
   const jobIds = filteredJobs.map((j) => j.id)
   const { data: jobMetrics } = usePipelineJobMetrics(jobIds)
   const metricsMap = useMemo(() => new Map((jobMetrics ?? []).map((m) => [m.job_id, m])), [jobMetrics])
+
+  const sortedJobs = useMemo(() => {
+    const list = [...filteredJobs]
+    switch (sortBy) {
+      case 'oldest':
+        list.sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
+        break
+      case 'title':
+        list.sort((a, b) => a.title.localeCompare(b.title))
+        break
+      case 'active':
+        list.sort((a, b) => {
+          const av = metricsMap.get(a.id)?.active_candidates ?? 0
+          const bv = metricsMap.get(b.id)?.active_candidates ?? 0
+          if (bv !== av) return bv - av
+          return a.title.localeCompare(b.title)
+        })
+        break
+      case 'recent':
+      default:
+        list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    }
+    return list
+  }, [filteredJobs, sortBy, metricsMap])
 
   const totalActive = useMemo(
     () => (jobMetrics ?? []).reduce((s, m) => s + (m.active_candidates || 0), 0),
@@ -47,10 +146,10 @@ export default function Pipeline() {
   )
 
   const lastUpdate = useMemo(() => {
-    if (openJobs.length === 0) return null
-    const maxT = Math.max(...openJobs.map((j) => new Date(j.updated_at).getTime()))
+    if (statusFilteredJobs.length === 0) return null
+    const maxT = Math.max(...statusFilteredJobs.map((j) => new Date(j.updated_at).getTime()))
     return new Date(maxT)
-  }, [openJobs])
+  }, [statusFilteredJobs])
 
   const metricItems: MetricItem[] = [
     {
@@ -92,23 +191,23 @@ export default function Pipeline() {
     })
   }, [])
 
-  const allExpanded = filteredJobs.length > 0 && filteredJobs.every((j) => expanded.has(j.id))
+  const allExpanded = sortedJobs.length > 0 && sortedJobs.every((j) => expanded.has(j.id))
   const onToggleExpandAll = () => {
-    setExpanded(allExpanded ? new Set() : new Set(filteredJobs.map((j) => j.id)))
+    setExpanded(allExpanded ? new Set() : new Set(sortedJobs.map((j) => j.id)))
   }
 
   // Grouped sections by department
   const groups = useMemo(() => {
     if (!grouped) return null
-    const map = new Map<string, typeof filteredJobs>()
-    for (const j of filteredJobs) {
+    const map = new Map<string, typeof sortedJobs>()
+    for (const j of sortedJobs) {
       const key = j.department || 'Unassigned'
       const arr = map.get(key) ?? []
       arr.push(j)
       map.set(key, arr)
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  }, [filteredJobs, grouped])
+  }, [sortedJobs, grouped])
 
   return (
     <AuthGate>
@@ -130,7 +229,7 @@ export default function Pipeline() {
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#12B886' }} />
-                    {globalMetrics?.active_jobs ?? openJobs.length} open jobs
+                    {globalMetrics?.active_jobs ?? statusFilteredJobs.length} open jobs
                   </span>
                   <span>·</span>
                   <span>{globalMetrics?.active_candidates_count ?? totalActive} active candidates</span>
@@ -173,9 +272,16 @@ export default function Pipeline() {
               <PipelineFilterBar
                 search={search}
                 onSearchChange={setSearch}
-                status="Open"
-                owner="Anyone"
-                department="All"
+                status={status}
+                onStatusChange={setStatus}
+                ownerOptions={ownerOptions}
+                selectedOwners={selectedOwners}
+                onSelectedOwnersChange={setSelectedOwners}
+                departmentOptions={departmentOptions}
+                selectedDepartments={selectedDepartments}
+                onSelectedDepartmentsChange={setSelectedDepartments}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
                 grouped={grouped}
                 onToggleGroup={() => setGrouped((g) => !g)}
                 allExpanded={allExpanded}
@@ -188,7 +294,7 @@ export default function Pipeline() {
               className="font-inter"
               style={{ marginTop: 12, fontSize: 11.5, color: '#8B8F9E' }}
             >
-              Showing {filteredJobs.length} of {openJobs.length} open jobs · sorted by recent activity
+              Showing {sortedJobs.length} of {baseJobs.length} {STATUS_LABEL[status]} · sorted by {SORT_LABEL[sortBy]}
             </div>
 
             {/* Job list */}
@@ -203,7 +309,7 @@ export default function Pipeline() {
                     />
                   ))}
                 </div>
-              ) : filteredJobs.length === 0 ? (
+              ) : sortedJobs.length === 0 ? (
                 <div
                   className="rounded-[12px] bg-white px-6 py-10 text-center font-inter"
                   style={{ border: '1px solid #E7E8EE', color: '#5A6072', fontSize: 13 }}
@@ -211,7 +317,7 @@ export default function Pipeline() {
                   {search ? (
                     <>No jobs match &ldquo;{search}&rdquo;</>
                   ) : (
-                    <>No open jobs yet</>
+                    <>No {STATUS_LABEL[status]} match the current filters</>
                   )}
                 </div>
               ) : grouped && groups ? (
@@ -249,7 +355,7 @@ export default function Pipeline() {
                 </div>
               ) : (
                 <div className="flex flex-col" style={{ gap: 10 }}>
-                  {filteredJobs.map((job) => (
+                  {sortedJobs.map((job) => (
                     <JobPipelineRow
                       key={job.id}
                       job={job}
