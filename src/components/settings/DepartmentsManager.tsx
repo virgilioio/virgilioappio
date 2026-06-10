@@ -17,6 +17,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { DepartmentFormDialog } from './DepartmentFormDialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftBuilding } from '@/components/ui/EmptyIllustrations'
 
 function useJobCountsByDepartment() {
   return useQuery({

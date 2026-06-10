@@ -5,6 +5,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { Users, ChevronRight, Search } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import gioFacePurple from '@/assets/gio-face-purple.png'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftFind } from '@/components/ui/EmptyIllustrations'
 
 export function RecentSourcingProjects() {
   const { data: projects, isLoading } = useSourcingProjects()

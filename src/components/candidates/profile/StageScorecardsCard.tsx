@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/empty-state'
 
 interface PanelistRow {
   userId: string

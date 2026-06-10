@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, Sparkles, Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftRosette } from '@/components/ui/EmptyIllustrations'
 import { useEffect, useRef } from 'react'
 
 const cardClass = 'border-virgilio-border rounded-2xl shadow-md hover:shadow-xl transition-all duration-200'

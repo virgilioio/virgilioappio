@@ -5,6 +5,8 @@ import { ExternalLink, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { formatPrice } from '@/utils/pricing'
 import type { Invoice } from '@/hooks/useInvoiceHistory'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftPaper } from '@/components/ui/EmptyIllustrations'
 
 interface InvoiceHistoryTableProps {
   invoices: Invoice[]

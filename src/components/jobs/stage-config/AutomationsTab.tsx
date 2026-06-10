@@ -7,6 +7,8 @@ import { Plus, Mail, Trash2, Calendar, Repeat, Pencil } from 'lucide-react';
 import { useStageAutomations, type StageAutomation } from '@/hooks/useStageAutomations';
 import { AutomationFormSheet } from './AutomationFormSheet';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SoftPaper } from '@/components/ui/EmptyIllustrations';
 
 interface AutomationsTabProps {
   jhsId: string;
