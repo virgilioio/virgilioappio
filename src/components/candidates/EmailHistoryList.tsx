@@ -62,13 +62,7 @@ export function EmailHistoryList({ candidateId, jobId, onReply, onForward }: Ema
   }
 
   if (!emails || emails.length === 0) {
-    return (
-      <EmptyState
-        variant="inline"
-        title="No emails yet"
-        description="Email conversations with this candidate will appear here."
-      />
-    );
+    return <InlineEmpty text="No emails yet." />;
   }
 
   return (
