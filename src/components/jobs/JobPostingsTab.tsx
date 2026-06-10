@@ -51,11 +51,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { copyToClipboard } from '@/utils/clipboard'
 import { cn } from '@/lib/utils'
+import { buildPostingPath, buildPostingUrl } from '@/lib/postingUrl'
 
 interface JobPostingsTabProps {
   jobId: string
   jobTitle: string
   readOnly?: boolean
+  organizationId?: string | null
+  companySlug?: string | null
 }
 
 // ── Posting status helpers ──────────────────────────────────────────────────
@@ -206,7 +209,7 @@ function Kpi({
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
-export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProps) {
+export function JobPostingsTab({ jobId, jobTitle, readOnly, organizationId, companySlug }: JobPostingsTabProps) {
   const { toast } = useToast()
   const {
     postings,
