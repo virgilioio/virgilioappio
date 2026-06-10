@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { useState } from 'react'
+
 import App from './App.tsx'
 import './index.css'
 import { GioSplash } from './components/ui/GioSplash'
@@ -33,18 +33,13 @@ function SplashHost({ enabled }: { enabled: boolean }) {
 }
 
 function Root() {
-  // Show splash only on cold load / hard refresh (once per tab session).
-  const [isColdLoad] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const seen = sessionStorage.getItem('gio-splash-shown')
-    if (!seen) sessionStorage.setItem('gio-splash-shown', '1')
-    return !seen
-  })
-
+  // Splash plays on every full page load (cold load / hard refresh).
+  // It does NOT play on soft client-side navigations because <Root /> mounts
+  // exactly once per page load.
   return (
-    <SplashReadyProvider initialReady={!isColdLoad}>
+    <SplashReadyProvider initialReady={false}>
       <App />
-      <SplashHost enabled={isColdLoad} />
+      <SplashHost enabled />
     </SplashReadyProvider>
   )
 }
