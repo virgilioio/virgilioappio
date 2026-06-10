@@ -394,11 +394,7 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                         <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                       </div>
                     ) : (notes.data ?? []).length === 0 ? (
-                      <EmptyState
-                        variant="inline"
-                        title="No notes yet"
-                        description="Be the first to add a note"
-                      />
+                      <InlineEmpty text="No notes yet." />
                     ) : (
                       (notes.data ?? []).map((n) => (
                         <div key={n.id} className="bg-muted/20 rounded-lg p-4 space-y-2">
