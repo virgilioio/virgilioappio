@@ -113,6 +113,7 @@ function AppContent() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/p/:slug" element={<PublicJobPosting />} />
         <Route path="/careers/:companySlug" element={<PublicCareersPage />} />
+        <Route path="/virgilio-careers" element={<VirgilioCareersPage />} />
         <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/:eventSlug" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
