@@ -45,7 +45,7 @@ import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { DealFormSheet } from './DealFormSheet'
 import { DealDetailsCollapsible } from './DealDetailsCollapsible'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+
 import { DealBillingSummary } from './billing/DealBillingSummary'
 import { DealInvoicesCard } from './billing/DealInvoicesCard'
 import { DealPaymentsCard } from './billing/DealPaymentsCard'
