@@ -178,11 +178,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
 
                 {/* Attachments List */}
                 {attachments.length === 0 ? (
-                  <EmptyState
-                    variant="inline"
-                    title="No attachments yet"
-                    description={!canManageCandidates ? "You don't have permission to upload attachments" : undefined}
-                  />
+                  <InlineEmpty text="No attachments yet." />
                 ) : (
                   <div className="space-y-sm">
                     {attachments.map((attachment) => {
