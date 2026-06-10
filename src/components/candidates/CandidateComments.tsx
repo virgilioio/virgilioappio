@@ -115,11 +115,7 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
               <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
             </div>
           ) : comments.length === 0 ? (
-            <EmptyState
-              variant="inline"
-              title="No comments yet"
-              description="Be the first to add a comment"
-            />
+            <InlineEmpty text="No comments on this candidate." />
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="bg-muted/20 rounded-lg p-4 space-y-2">
