@@ -13,6 +13,8 @@ import { useGlobalSearch, type SearchResult } from '@/hooks/useGlobalSearch'
 import { SearchResultRow } from './SearchResultRow'
 import { SearchResultsSkeleton } from './SearchResultsSkeleton'
 import { IndependentCandidateProfileSheet } from '@/components/candidates/IndependentCandidateProfileSheet'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 
 interface SearchResultsDialogProps {
   open: boolean
@@ -131,13 +133,15 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
                 <SearchResultsSkeleton count={5} />
               </div>
             ) : filteredResults.length === 0 ? (
-              <div className="p-8 text-center">
-                <Search className="h-12 w-12 text-virgilio-border mx-auto mb-3" />
-                <p className="text-sm text-virgilio-muted font-poppins">
-                  {query.length < 2 
-                    ? "Type at least 2 characters to search" 
-                    : `No results found for "${query}"`}
-                </p>
+              <div className="p-6">
+                <EmptyState
+                  size="card"
+                  illustration={<SoftMagnifier />}
+                  title={query.length < 2 ? 'Start typing to search' : 'No matches'}
+                  body={query.length < 2
+                    ? 'Type at least 2 characters to search candidates, jobs, and more.'
+                    : `Nothing found for "${query}". Try different keywords.`}
+                />
               </div>
             ) : (
               <div className="p-2">

@@ -552,16 +552,13 @@ export default function PublicBookingPage() {
 
       <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14 max-w-[1280px]">
         {showNoEventTypes ? (
-          <div className="max-w-lg mx-auto text-center py-16">
-            <div className="rounded-2xl border border-virgilio-border bg-white p-8 space-y-4">
-              <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
-              <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
-                No Availability<span className="text-virgilio-purple">.</span>
-              </h1>
-              <p className="text-virgilio-muted">
-                There are no booking options available at this time. Please check back later or contact the organizer.
-              </p>
-            </div>
+          <div className="max-w-lg mx-auto py-16">
+            <EmptyState
+              size="card"
+              illustration={<SoftCalendar />}
+              title="No availability"
+              body="There are no booking options available at this time. Please check back later or contact the organizer."
+            />
           </div>
         ) : (
           <>

@@ -31,6 +31,7 @@ import {
 import { SectionCard, ToggleRow } from '@/components/jobs/wizard/_parts'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { cn } from '@/lib/utils'
+import { InlineEmpty } from '@/components/ui/empty-state'
 
 /* ---------------- shared types & constants ---------------- */
 
@@ -253,10 +254,7 @@ export function ApplicationFormBuilder({
 
       <div className="space-y-2">
         {fields.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-virgilio-border bg-[#FAFAF7] px-4 py-8 text-center">
-            <p className="text-[13px] font-poppins font-medium text-text-secondary">No questions yet</p>
-            <p className="text-[12px] text-text-tertiary mt-1">Use “Add question” to start with a smart field or a basic type.</p>
-          </div>
+          <InlineEmpty text={'No questions yet — use "Add question" to start with a smart field or a basic type.'} />
         ) : (
           fields.map((f, i) => (
             <FieldRow

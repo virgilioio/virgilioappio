@@ -12,6 +12,8 @@ import { Member } from '@/hooks/useMembers'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
 import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftFlag } from '@/components/ui/EmptyIllustrations'
 
 interface MemberJobAssignmentsDialogProps {
   isOpen: boolean
@@ -223,10 +225,12 @@ export function MemberJobAssignmentsDialog({
             ))}
           </div>
         ) : jobs.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No jobs available in this organization.</p>
-          </div>
+          <EmptyState
+            size="card"
+            illustration={<SoftFlag />}
+            title="No jobs available"
+            body="There are no jobs in this organization yet."
+          />
         ) : (
           <ScrollArea className="max-h-[400px] pr-4">
             <div className="space-y-2 py-2">

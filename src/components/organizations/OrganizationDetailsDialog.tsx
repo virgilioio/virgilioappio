@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { User, Mail, Users, MoreVertical, Trash2, Edit, Eye } from 'lucide-react'
 import { UserDeletionDialog } from './UserDeletionDialog'
 import { usePermissions } from '@/hooks/usePermissions'
+import { InlineEmpty } from '@/components/ui/empty-state'
 
 interface OrganizationDetailsDialogProps {
   organization: Organization | null
@@ -214,12 +215,7 @@ export function OrganizationDetailsDialog({
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-6">
-                      <Users className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                      <p className="text-muted-foreground text-sm">
-                        No members found for this client
-                      </p>
-                    </div>
+                    <InlineEmpty text="No members found for this client" />
                   )}
                 </CardContent>
               </Card>
