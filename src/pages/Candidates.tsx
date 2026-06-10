@@ -208,6 +208,15 @@ function CandidatesInner() {
     setCommittedQuery('')
     setSearchRunTick(t => t + 1)
   }, [])
+  const handleClearResultsFilters = useCallback(() => {
+    clearAll()
+    setQuery('')
+    setCommittedQuery('')
+    setActiveSmartList('all')
+    setActiveViewId(null)
+    setBaselineFilters({})
+    setSearchRunTick(t => t + 1)
+  }, [clearAll])
   const shown = Math.min(page * pageSize, finalAfterSmart.length)
   const visible = finalAfterSmart.slice(0, shown)
 
@@ -595,6 +604,8 @@ function CandidatesInner() {
                 onToggleSelectAll={toggleSelectAll}
                 onOpenCandidate={handleOpenCandidate}
                 onDelete={(c) => setDeleteTarget({ id: c.id, name: c.candidate_name })}
+                onClearFilters={handleClearResultsFilters}
+                onAddCandidate={() => setIsFormOpen(true)}
               />
             </PermissionGate>
 
