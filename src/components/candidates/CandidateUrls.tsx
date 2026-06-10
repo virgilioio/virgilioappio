@@ -174,11 +174,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
           <AccordionContent>
             <CardContent className="space-y-sm pt-0">
               {urls.length === 0 ? (
-                <EmptyState
-                  variant="inline"
-                  title="No URLs added yet"
-                  description={!canManageCandidates ? "You don't have permission to add URLs" : undefined}
-                />
+                <InlineEmpty text="No links added." />
               ) : (
                 <div className="space-y-sm">
                   {urls.map((url) => {
