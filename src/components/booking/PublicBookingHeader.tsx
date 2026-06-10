@@ -1,4 +1,5 @@
 import { ShieldCheck } from 'lucide-react';
+import { GioWordmark } from '@/components/icons/GioWordmark';
 
 interface PublicBookingHeaderProps {
   workspaceName?: string;
@@ -30,8 +31,9 @@ export function PublicBookingHeader({ workspaceName, workspaceInitial }: PublicB
             <span>Secure link</span>
           </div>
           <span className="h-4 w-px bg-virgilio-border" />
-          <div className="text-virgilio-muted">
-            Powered by <span className="font-poppins font-bold text-virgilio-text">Gio</span>
+          <div className="flex items-center gap-1.5 text-virgilio-muted">
+            <span>Powered by</span>
+            <GioWordmark height={14} className="text-virgilio-text" />
           </div>
         </div>
       </div>
