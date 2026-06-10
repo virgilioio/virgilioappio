@@ -1370,7 +1370,7 @@ export default function JobDetail() {
           isLoading={jobUpdateLoading}
           candidateCount={allAssociatedCandidates.length}
           onPreviewPosting={() => {
-            if (activePosting) window.open(`/p/${activePosting.slug}`, '_blank', 'noopener')
+            openActivePosting()
           }}
           onCloseJob={() => { setShowEditJobModal(false); setConfirmCloseJob(true) }}
           onArchiveJob={async () => { setShowEditJobModal(false); await archiveJob(id!); navigate('/jobs') }}
