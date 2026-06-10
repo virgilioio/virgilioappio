@@ -65,7 +65,7 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
           title="No automations yet"
           body="Create your first automation to start engaging candidates automatically."
           primary={
-            <EmptyAction variant="primary" icon={Plus} onClick={handleOpenCreate}>
+            <EmptyAction variant="primary" icon={<Plus className="h-4 w-4" />} onClick={handleOpenCreate}>
               Create automation
             </EmptyAction>
           }
