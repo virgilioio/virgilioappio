@@ -221,9 +221,12 @@ export default function Pipeline() {
                   {jobsLoading || isFilteringUsers ? (
                     <TableSkeleton rows={5} />
                   ) : filteredJobs.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No jobs found matching your filters.
-                    </div>
+                    <EmptyState
+                      size="card"
+                      illustration={<SoftMagnifier />}
+                      title="No matches"
+                      body="No jobs match the current filters."
+                    />
                   ) : (
                     <Accordion type="multiple" defaultValue={[]} className="space-y-4">
                       {filteredJobs.map(job => (

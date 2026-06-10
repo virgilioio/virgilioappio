@@ -62,13 +62,19 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription }: Can
   if (!insights?.analysis) {
     return (
       <Card className={cardClass}>
-        <CardContent className="flex flex-col items-center justify-center py-12 space-y-3">
-          <Sparkles className="h-8 w-8 text-virgilio-muted" />
-          <p className="text-sm text-virgilio-muted font-poppins">No analysis yet</p>
-          <Button variant="outline" size="sm" onClick={refreshInsights} disabled={isRefreshing} className="font-poppins">
-            {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            Generate Insights
-          </Button>
+        <CardContent className="p-0">
+          <EmptyState
+            size="card"
+            illustration={<SoftRosette />}
+            title="No analysis yet"
+            body="Generate AI insights to evaluate fit for this role."
+            primary={{
+              label: isRefreshing ? 'Generating…' : 'Generate insights',
+              onClick: refreshInsights,
+              icon: isRefreshing ? Loader2 : Sparkles,
+              disabled: isRefreshing,
+            }}
+          />
         </CardContent>
       </Card>
     )

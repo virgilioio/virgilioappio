@@ -232,9 +232,12 @@ export function SaaSCustomersList() {
           )}
           
           {filteredCustomers?.length === 0 && !isLoading && (
-            <div className="text-center py-8 text-muted-foreground">
-              No customers found matching your criteria.
-            </div>
+            <EmptyState
+              size="card"
+              illustration={<SoftMagnifier />}
+              title="No matches"
+              body="Try different keywords or clear the filters."
+            />
           )}
         </CardContent>
       </Card>

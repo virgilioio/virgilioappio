@@ -635,23 +635,12 @@ export function SourcingCandidateTable({
 
   if (candidates.length === 0) {
     return (
-      <Card className="shadow-calendly">
-        <CardContent className="p-12 text-center">
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <img 
-                src={emptyStateAvatar} 
-                alt="No candidates found"
-                className="h-24 w-24 rounded-full"
-              />
-            </div>
-            <h3 className="text-lg font-semibold">No candidates found</h3>
-            <p className="text-sm text-muted-foreground">
-              Try adjusting your search criteria or filters
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <EmptyState
+        size="card"
+        illustration={<SoftMagnifier />}
+        title="No matches"
+        body="Try adjusting your search criteria or filters."
+      />
     )
   }
 

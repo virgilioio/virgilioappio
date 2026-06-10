@@ -117,14 +117,12 @@ export function StageScorecardsCard({
         {loading && submitted.length === 0 && pendingPanelists.length === 0 ? (
           <div className="px-5 sm:px-6 py-6 text-[13px] text-text-tertiary">Loading scorecards…</div>
         ) : submitted.length === 0 && pendingPanelists.length === 0 ? (
-          <div className="px-5 sm:px-6 py-8 text-center">
-            <Star className="h-5 w-5 mx-auto text-text-tertiary mb-2" />
-            <p className="text-[13.5px] text-text-secondary font-poppins">No scorecards yet</p>
-            {onSubmitScorecard && (
-              <Button variant="secondary" size="sm" icon={Plus} onClick={onSubmitScorecard} className="mt-3">
-                Submit scorecard
-              </Button>
-            )}
+          <div className="px-5 sm:px-6 py-4">
+            <InlineEmpty
+              text="No scorecards yet"
+              action={onSubmitScorecard ? 'Submit scorecard' : undefined}
+              onAction={onSubmitScorecard}
+            />
           </div>
         ) : (
           <>

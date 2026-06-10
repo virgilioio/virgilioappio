@@ -6,6 +6,8 @@ import { Search, Users, Mail } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useSaaSCustomerMembers, SaaSMember } from '@/hooks/useSaaSCustomerMembers'
 import { formatDistanceToNow } from 'date-fns'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftMagnifier, SoftPeople } from '@/components/ui/EmptyIllustrations'
 
 interface MembersListProps {
   tenantId: string

@@ -269,8 +269,7 @@ export function CandidatesSearchesRail({
             />
           </div>
           {sortedTags.length === 0 ? (
-            <div className="px-2 py-2 text-[12px] text-text-tertiary flex items-center gap-1.5">
-              <TagIcon className="h-3 w-3 opacity-50" />
+            <div className="px-2 py-2 text-[12px] text-text-tertiary">
               No tags yet
             </div>
           ) : (

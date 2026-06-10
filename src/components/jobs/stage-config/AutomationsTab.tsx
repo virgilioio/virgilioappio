@@ -57,17 +57,13 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
       </div>
       
       {automations.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h4 className="text-lg font-medium mb-2">No automations yet</h4>
-          <p className="text-sm text-muted-foreground mb-4">
-            Create your first automation to start engaging candidates automatically
-          </p>
-          <Button onClick={handleOpenCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Automation
-          </Button>
-        </Card>
+        <EmptyState
+          size="card"
+          illustration={<SoftPaper />}
+          title="No automations yet"
+          body="Create your first automation to start engaging candidates automatically."
+          primary={{ label: 'Create automation', onClick: handleOpenCreate, icon: Plus }}
+        />
       ) : (
         <div className="space-y-3">
           {automations.map(automation => {
