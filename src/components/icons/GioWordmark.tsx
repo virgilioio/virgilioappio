@@ -25,9 +25,7 @@ const GioWordmark = React.forwardRef<SVGSVGElement, GioWordmarkProps>(
         style={{ color: "#0d0d09", ...(props.style || {}) }}
         {...props}
       >
-        {/* Top circle */}
-        <circle cx="10.195" cy="10.191" r="9.895" fill="currentColor" />
-        {/* Bottom circle */}
+        {/* Circle */}
         <circle cx="10.195" cy="37.191" r="9.895" fill="currentColor" />
         {/* Small pill under bottom circle */}
         <rect x="6.863" y="47.578" width="13.242" height="8.832" rx="4.414" fill="currentColor" />
