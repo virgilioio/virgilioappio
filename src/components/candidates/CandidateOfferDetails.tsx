@@ -130,12 +130,8 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   if (!offerLetter) {
     return (
       <Card>
-        <CardContent className="p-0">
-          <EmptyState
-            variant="inline"
-            title="No offer details yet"
-            description="Create an offer using the Offer Form to see details here."
-          />
+        <CardContent className="p-4">
+          <InlineEmpty text="No offer yet." />
         </CardContent>
       </Card>
     )
