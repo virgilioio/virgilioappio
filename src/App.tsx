@@ -53,6 +53,7 @@ function CandidateRedirect() {
 
 const PublicJobPosting = lazy(() => import('./pages/PublicJobPosting'))
 const PublicCareersPage = lazy(() => import('./pages/PublicCareersPage'))
+const VirgilioCareersPage = lazy(() => import('./pages/VirgilioCareersPage'))
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
 const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
