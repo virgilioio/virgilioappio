@@ -169,11 +169,11 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
 
   if (savedCandidates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full p-4">
         <EmptyState
-          variant="page"
+          illustration={<SoftPlane />}
           title="No candidates collected yet"
-          description={`Candidates you reveal from the search results will appear here. Go to the Candidates tab and click "Reveal Full Profile" to collect candidates.`}
+          body="Browse a search and collect the profiles you like — previewing is free."
         />
       </div>
     )
