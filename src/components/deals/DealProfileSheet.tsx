@@ -136,8 +136,8 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl">
-          <div className="py-16">
-            <GioEmptyState title="Loading deal" />
+          <div className="py-16 px-6">
+            <InlineEmpty text="Loading deal…" />
           </div>
         </SheetContent>
       </Sheet>
