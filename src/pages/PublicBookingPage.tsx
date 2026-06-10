@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SoftFlag, SoftCalendar } from '@/components/ui/EmptyIllustrations';
 import { AlertCircle, Globe, ShieldX, ArrowLeft, Clock, Users } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
@@ -431,15 +433,12 @@ export default function PublicBookingPage() {
       <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
         <PublicBookingHeader workspaceName="Scheduling" />
         <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
-          <div className="rounded-2xl border border-virgilio-border bg-white p-8 text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
-            <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
-              Booking Link Not Found<span className="text-virgilio-purple">.</span>
-            </h1>
-            <p className="text-virgilio-muted">
-              This booking link is either inactive or doesn't exist. Please check with the person who sent you this link.
-            </p>
-          </div>
+          <EmptyState
+            size="card"
+            illustration={<SoftFlag />}
+            title="Booking link not found"
+            body="This booking link is either inactive or doesn't exist. Please check with the person who sent you this link."
+          />
         </main>
         <PublicBookingFooter />
       </div>
@@ -451,15 +450,12 @@ export default function PublicBookingPage() {
       <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
         <PublicBookingHeader workspaceName={workspaceName} />
         <main className="flex-1 container mx-auto px-4 py-16 max-w-lg">
-          <div className="rounded-2xl border border-virgilio-border bg-white p-8 text-center space-y-4">
-            <ShieldX className="w-12 h-12 text-virgilio-muted mx-auto" />
-            <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
-              This Link Has Expired<span className="text-virgilio-purple">.</span>
-            </h1>
-            <p className="text-virgilio-muted">
-              This booking link is no longer active. If you need to schedule an interview, please contact the person who sent you this link.
-            </p>
-          </div>
+          <EmptyState
+            size="card"
+            illustration={<SoftFlag />}
+            title="This link has expired"
+            body="This booking link is no longer active. If you need to schedule an interview, please contact the person who sent you this link."
+          />
         </main>
         <PublicBookingFooter />
       </div>
@@ -556,16 +552,13 @@ export default function PublicBookingPage() {
 
       <main className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-10 md:py-14 max-w-[1280px]">
         {showNoEventTypes ? (
-          <div className="max-w-lg mx-auto text-center py-16">
-            <div className="rounded-2xl border border-virgilio-border bg-white p-8 space-y-4">
-              <AlertCircle className="w-12 h-12 text-virgilio-muted mx-auto" />
-              <h1 className="text-2xl font-poppins font-bold text-virgilio-text">
-                No Availability<span className="text-virgilio-purple">.</span>
-              </h1>
-              <p className="text-virgilio-muted">
-                There are no booking options available at this time. Please check back later or contact the organizer.
-              </p>
-            </div>
+          <div className="max-w-lg mx-auto py-16">
+            <EmptyState
+              size="card"
+              illustration={<SoftCalendar />}
+              title="No availability"
+              body="There are no booking options available at this time. Please check back later or contact the organizer."
+            />
           </div>
         ) : (
           <>

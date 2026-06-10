@@ -24,6 +24,7 @@ import { FilterCheckboxGroup } from '@/components/ui/filter-checkbox-group'
 import { useSourcingProjects } from '@/hooks/useSourcingProjects'
 import { LocationSelector } from './LocationSelector'
 import { SourcingProject, SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
+import { InlineEmpty } from '@/components/ui/empty-state'
 
 // Apollo seniority options
 const SENIORITY_OPTIONS = [
@@ -248,12 +249,7 @@ export function SourcingSidebar({
                   )}
                   
                   {!isLoading && !error && filteredProjects.length === 0 && (
-                    <div className="p-4 text-center bg-virgilio-purple/5 rounded-lg">
-                      <FileSearch className="h-10 w-10 mx-auto text-virgilio-muted mb-2" />
-                      <p className="text-xs font-medium text-virgilio-text">
-                        {searchQuery ? 'No matching projects' : 'No projects yet'}
-                      </p>
-                    </div>
+                    <InlineEmpty text={searchQuery ? 'No matching projects' : 'No projects yet'} />
                   )}
                   
                   {!isLoading && filteredProjects.length > 0 && (

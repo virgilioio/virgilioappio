@@ -9,7 +9,8 @@ import { CareersRoleList, type CareersRole } from '@/components/careers/public/C
 import { CareersHowWeHireCard } from '@/components/careers/public/CareersHowWeHireCard'
 import { CareersOpenApplicationBand } from '@/components/careers/public/CareersOpenApplicationBand'
 import { CareersFooter } from '@/components/careers/public/CareersFooter'
-import gioEmptyState from '@/assets/gio-empty-state.png'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftFlag, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 
 // Hardcoded so the duplicate "Virgilio" org (with 0 jobs) can never be selected.
 // Org id is the one currently holding the 7 internal Virgilio job postings.
@@ -157,11 +158,15 @@ export default function VirgilioCareersPage() {
 
   if (error || !settings) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
-        <Card className="max-w-md w-full mx-4 p-6 text-center">
-          <h1 className="text-2xl font-bold text-virgilio-text mb-2">{error || 'Page Not Found'}</h1>
-          <p className="text-text-tertiary">The careers page you're looking for doesn't exist or is no longer available.</p>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
+        <div className="max-w-md w-full">
+          <EmptyState
+            size="card"
+            illustration={<SoftFlag />}
+            title={error || 'Page not found'}
+            body="The careers page you're looking for doesn't exist or is no longer available."
+          />
+        </div>
       </div>
     )
   }
@@ -190,15 +195,30 @@ export default function VirgilioCareersPage() {
           departments={departments} locations={locations} types={types}
         />
         {groups.length === 0 ? (
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <Card className="p-12 text-center bg-white border-black/5">
-              <img src={gioEmptyState} alt="No open roles" className="h-28 w-28 mx-auto mb-5" />
-              <p className="text-[14px] text-[#5a6072]">
-                {roles.length === 0
-                  ? 'No open positions at this time. Check back soon.'
-                  : 'No roles match your filters. Try clearing them.'}
-              </p>
-            </Card>
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            {roles.length === 0 ? (
+              <EmptyState
+                size="card"
+                illustration={<SoftFlag />}
+                title="No open roles right now"
+                body="Check back soon — we're always on the lookout for great people."
+              />
+            ) : (
+              <EmptyState
+                size="card"
+                illustration={<SoftMagnifier />}
+                title="No roles match your filters"
+                body="Try clearing your filters to see all open positions."
+                primary={
+                  <EmptyAction
+                    variant="primary"
+                    onClick={() => { setSearch(''); setDepartment('all'); setLocation('all'); setType('all') }}
+                  >
+                    Clear filters
+                  </EmptyAction>
+                }
+              />
+            )}
           </div>
         ) : (
           <CareersRoleList groups={groups} onOpen={handleOpen} />
