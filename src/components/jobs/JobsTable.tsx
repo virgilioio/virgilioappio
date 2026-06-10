@@ -454,20 +454,26 @@ export function JobsTable({
         {isLoading ? (
           <Card><CardContent className="p-4 text-text-tertiary text-sm">Loading…</CardContent></Card>
         ) : filteredJobs.length === 0 ? (
-          <Card><CardContent className="p-6">
+          <Card><CardContent className="p-4">
             {jobs.length === 0 ? (
-              <GioEmptyState
-                title="No jobs yet"
-                description="Create your first job to start sourcing and tracking candidates."
+              <EmptyState
+                size="card"
+                illustration={<SoftFlag />}
+                title="No open jobs"
+                body="Create a job and its live pipeline shows up here."
               />
             ) : (
-              <div className="flex flex-col items-center gap-3">
-                <GioEmptyState
-                  title="No matches"
-                  description={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs match the current filters.'}
-                />
-                <Button variant="ghost" size="sm" onClick={clearAll}>Clear all filters</Button>
-              </div>
+              <EmptyState
+                size="card"
+                illustration={<SoftMagnifier />}
+                title="No matching jobs"
+                body={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs match the current filters.'}
+                primary={
+                  <EmptyAction icon={<RotateCcw size={16} strokeWidth={2} />} onClick={clearAll}>
+                    Clear filters
+                  </EmptyAction>
+                }
+              />
             )}
           </CardContent></Card>
         ) : (
