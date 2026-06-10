@@ -145,6 +145,7 @@ function AppContent() {
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/insights" element={<AnalyticsHub />} />
             <Route path="/talent-intelligence" element={<TalentIntelligence />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
             <Route path="/jobs/:jobId/pipeline" element={<JobDetail />} />
