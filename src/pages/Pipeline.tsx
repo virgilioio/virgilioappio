@@ -1,247 +1,269 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { AuthGate } from '@/components/auth/AuthGate';
-import { PermissionGate } from '@/components/auth/PermissionGate';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Section } from '@/components/layout/Section';
-import { AppContainer } from '@/components/layout/AppContainer';
-import { MetricCard } from '@/components/ui/metric-card';
-import { MetricCardGroup } from '@/components/ui/metric-card-group';
-import { FilterCard } from '@/components/pipeline/FilterCard';
-import { JobRow } from '@/components/pipeline/JobRow';
-import { SavedViewSelector } from '@/components/filters/SavedViewSelector';
-import { usePipelineGlobalMetrics, PipelineFilters } from '@/hooks/usePipelineGlobalMetrics';
-import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics';
-import { useJobs } from '@/hooks/useJobs';
-import { useMembers } from '@/hooks/useMembers';
-import { EmptyState } from '@/components/ui/empty-state';
-import { SoftMagnifier } from '@/components/ui/EmptyIllustrations';
-import { useOrganizations } from '@/hooks/useOrganizations';
-import { usePermissions } from '@/hooks/usePermissions';
-import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds';
-import { usePersistentFilters } from '@/hooks/usePersistentFilters';
-import { useSavedViews } from '@/hooks/useSavedViews';
-import { jobMatchesUsers } from '@/utils/jobInvolvement';
-import { Briefcase, FileText, Clock, Users } from 'lucide-react';
-import { Accordion } from '@/components/ui/accordion';
-import { TableSkeleton } from '@/components/ui/skeleton';
-
-interface PipelinePageFilters {
-  selectedUsers: string[]
-  selectedDepartments: string[]
-  jobStatus: string
-  searchTerm: string
-}
-
-const DEFAULT_FILTERS: PipelinePageFilters = {
-  selectedUsers: [],
-  selectedDepartments: [],
-  jobStatus: 'open',
-  searchTerm: '',
-}
+import { useMemo, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AuthGate } from '@/components/auth/AuthGate'
+import { PermissionGate } from '@/components/auth/PermissionGate'
+import { useJobs } from '@/hooks/useJobs'
+import { usePipelineGlobalMetrics } from '@/hooks/usePipelineGlobalMetrics'
+import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
+import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
+import { PipelineFilterBar } from '@/components/pipeline/PipelineFilterBar'
+import { JobPipelineRow } from '@/components/pipeline/JobPipelineRow'
+import { Briefcase, FileText, Users, Clock, Download, Plus } from 'lucide-react'
+import { formatDistanceToNowStrict } from 'date-fns'
 
 export default function Pipeline() {
-  const permissions = usePermissions();
-  const { jobs, isLoading: jobsLoading } = useJobs();
-  const { members } = useMembers();
-  const { organizations } = useOrganizations();
+  const navigate = useNavigate()
+  const { jobs, isLoading: jobsLoading } = useJobs()
 
-  // Filters
-  const [pageFilters, setPageFilters] = useState<PipelinePageFilters>(DEFAULT_FILTERS);
-  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [search, setSearch] = useState('')
+  const [grouped, setGrouped] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
-    'pipeline',
-    pageFilters,
-    setPageFilters,
-    DEFAULT_FILTERS,
-  );
-
-  const { defaultView } = useSavedViews('pipeline');
-
-  // On mount, restore active view or apply default
-  useEffect(() => {
-    const storedViewId = getActiveViewId();
-    if (storedViewId) {
-      setActiveViewId(storedViewId);
-    } else if (defaultView) {
-      setActiveViewId(defaultView.id);
-      setPageFilters(defaultView.filters as unknown as PipelinePageFilters);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultView?.id]);
-
-  const handleActiveViewChange = useCallback((viewId: string | null) => {
-    setActiveViewId(viewId);
-    persistViewId(viewId);
-  }, [persistViewId]);
-
-  const handleApplyView = useCallback((filters: Record<string, unknown>) => {
-    setPageFilters(filters as unknown as PipelinePageFilters);
-  }, []);
-
-  const { selectedUsers, selectedDepartments, jobStatus, searchTerm } = pageFilters;
-
-  const setSelectedUsers = useCallback((v: string[]) => setPageFilters(p => ({ ...p, selectedUsers: v })), []);
-  const setSelectedDepartments = useCallback((v: string[]) => setPageFilters(p => ({ ...p, selectedDepartments: v })), []);
-  const setJobStatus = useCallback((v: string) => { setPageFilters(p => ({ ...p, jobStatus: v })); setActiveViewId(null); persistViewId(null); }, [persistViewId]);
-  const setSearchTerm = useCallback((v: string) => setPageFilters(p => ({ ...p, searchTerm: v })), []);
-
-  const filters: PipelineFilters = useMemo(() => ({
-    userIds: selectedUsers.length > 0 ? selectedUsers : undefined,
-    jobStatuses: jobStatus !== 'all' ? [jobStatus] : undefined,
-    search: searchTerm.trim() || undefined,
-  }), [selectedUsers, jobStatus, searchTerm]);
-
-  const { data: globalMetrics, isLoading: metricsLoading } = usePipelineGlobalMetrics(filters);
-  const { assignedJobIds, isLoading: assignmentsLoading } = useUserAssignedJobIds(selectedUsers);
+  const openJobs = useMemo(() => jobs.filter((j) => j.status === 'open'), [jobs])
 
   const filteredJobs = useMemo(() => {
-    return jobs.filter(job => {
-      if (jobStatus !== 'all' && job.status !== jobStatus) return false;
-      if (searchTerm && !job.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false;
-      if (selectedDepartments.length > 0 && !selectedDepartments.includes(job.organization_id)) return false;
-      return true;
-    });
-  }, [jobs, jobStatus, searchTerm, selectedUsers, assignedJobIds, selectedDepartments]);
+    const q = search.trim().toLowerCase()
+    let list = [...openJobs]
+    if (q) {
+      list = list.filter(
+        (j) =>
+          j.title.toLowerCase().includes(q) ||
+          (j.department || '').toLowerCase().includes(q),
+      )
+    }
+    // Recent activity sort
+    list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    return list
+  }, [openJobs, search])
 
-  const isFilteringUsers = selectedUsers.length > 0 && assignmentsLoading;
+  const { data: globalMetrics } = usePipelineGlobalMetrics({ jobStatuses: ['open'] })
+  const jobIds = filteredJobs.map((j) => j.id)
+  const { data: jobMetrics } = usePipelineJobMetrics(jobIds)
+  const metricsMap = useMemo(() => new Map((jobMetrics ?? []).map((m) => [m.job_id, m])), [jobMetrics])
 
-  const jobIds = filteredJobs.map(j => j.id);
-  const { data: jobMetrics } = usePipelineJobMetrics(jobIds);
+  const totalActive = useMemo(
+    () => (jobMetrics ?? []).reduce((s, m) => s + (m.active_candidates || 0), 0),
+    [jobMetrics],
+  )
 
-  const metricsMap = useMemo(() => {
-    if (!jobMetrics) return new Map();
-    return new Map(jobMetrics.map(m => [m.job_id, m]));
-  }, [jobMetrics]);
+  const lastUpdate = useMemo(() => {
+    if (openJobs.length === 0) return null
+    const maxT = Math.max(...openJobs.map((j) => new Date(j.updated_at).getTime()))
+    return new Date(maxT)
+  }, [openJobs])
 
-  const userOptions = useMemo(() => {
-    return members
-      .filter(m => m.user_status === 'active' && m.user_id)
-      .map(m => ({
-        value: m.user_id!,
-        label: `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() || m.user_email || m.invited_email || 'Unknown',
-      }));
-  }, [members]);
+  const metricItems: MetricItem[] = [
+    {
+      icon: Briefcase,
+      tone: 'purple',
+      label: 'Active jobs',
+      value: globalMetrics?.active_jobs ?? 0,
+    },
+    {
+      icon: FileText,
+      tone: 'yellow',
+      label: 'In application review',
+      value: globalMetrics?.application_review_count ?? 0,
+    },
+    {
+      icon: Users,
+      tone: 'green',
+      label: 'Active candidates',
+      value: globalMetrics?.active_candidates_count ?? 0,
+    },
+    {
+      icon: Clock,
+      tone: 'blue',
+      label: 'Avg days in review',
+      value:
+        globalMetrics?.avg_days_in_application_review != null
+          ? Number(globalMetrics.avg_days_in_application_review).toFixed(1)
+          : '—',
+      unit: globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined,
+    },
+  ]
 
-  const departmentOptions = useMemo(() => {
-    return organizations
-      .filter(org => org.status === 'active')
-      .map(org => ({
-        value: org.id,
-        label: org.name,
-      }));
-  }, [organizations]);
+  const toggleRow = useCallback((id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
-  const showUserFilter = permissions.isAdmin || permissions.isPlatformAdmin || permissions.isWorkspaceOwner;
+  const allExpanded = filteredJobs.length > 0 && filteredJobs.every((j) => expanded.has(j.id))
+  const onToggleExpandAll = () => {
+    setExpanded(allExpanded ? new Set() : new Set(filteredJobs.map((j) => j.id)))
+  }
+
+  // Grouped sections by department
+  const groups = useMemo(() => {
+    if (!grouped) return null
+    const map = new Map<string, typeof filteredJobs>()
+    for (const j of filteredJobs) {
+      const key = j.department || 'Unassigned'
+      const arr = map.get(key) ?? []
+      arr.push(j)
+      map.set(key, arr)
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [filteredJobs, grouped])
 
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden">
-          <Section variant="default" banded className="shrink-0 animate-fade-in">
-            <AppContainer>
-              <PageHeader title="Pipeline" />
-            </AppContainer>
-          </Section>
-
-          <Section className="flex-1 min-h-0 overflow-hidden !py-0 animate-fade-in">
-            <AppContainer className="h-full min-h-0">
-              <div className="py-6 h-full min-h-0 overflow-auto">
-                <div className="space-y-12">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <SavedViewSelector
-                      pageContext="pipeline"
-                      currentFilters={pageFilters as unknown as Record<string, unknown>}
-                      onApplyView={handleApplyView}
-                      activeViewId={activeViewId}
-                      onActiveViewChange={handleActiveViewChange}
-                    />
-                    <FilterCard
-                      searchTerm={searchTerm}
-                      onSearchChange={setSearchTerm}
-                      jobStatus={jobStatus}
-                      onJobStatusChange={setJobStatus}
-                      selectedUsers={selectedUsers}
-                      onSelectedUsersChange={setSelectedUsers}
-                      userOptions={userOptions}
-                      showUserFilter={showUserFilter}
-                      selectedDepartments={selectedDepartments}
-                      onSelectedDepartmentsChange={setSelectedDepartments}
-                      departmentOptions={departmentOptions}
-                    />
-                  </div>
-
-                  {/* Row 1: Hero KPIs */}
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <MetricCard
-                        variant="hero"
-                        title="Active Jobs"
-                        value={metricsLoading ? 0 : globalMetrics?.active_jobs || 0}
-                        icon={Briefcase}
-                        iconColor="text-primary"
-                        tooltip="Number of open jobs"
-                        isLoading={metricsLoading}
-                      />
-                      <MetricCard
-                        variant="hero"
-                        title="In App Review"
-                        value={globalMetrics?.application_review_count || 0}
-                        icon={FileText}
-                        iconColor="text-warning"
-                        tooltip="Candidates in Application Review"
-                        isLoading={metricsLoading}
-                      />
-                      <MetricCard
-                        variant="hero"
-                        title="Active Candidates"
-                        value={globalMetrics?.active_candidates_count || 0}
-                        icon={Users}
-                        iconColor="text-virgilio-success"
-                        tooltip="Candidates in Recruiting Process stages"
-                        isLoading={metricsLoading}
-                      />
-                    </div>
-
-                    {/* Row 2: Grouped strip */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <MetricCardGroup title="Pipeline Health" direction="vertical">
-                        <MetricCard
-                          variant="inline"
-                          title="Avg Days in Review"
-                          value={globalMetrics?.avg_days_in_application_review !== null && globalMetrics?.avg_days_in_application_review !== undefined ? globalMetrics.avg_days_in_application_review : 'N/A'}
-                          suffix={globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined}
-                          tooltip="Average time in Application Review"
-                          isLoading={metricsLoading}
-                        />
-                      </MetricCardGroup>
-                    </div>
-                  </div>
-
-                  {/* Job List */}
-                  {jobsLoading || isFilteringUsers ? (
-                    <TableSkeleton rows={5} />
-                  ) : filteredJobs.length === 0 ? (
-                    <EmptyState
-                      size="card"
-                      illustration={<SoftMagnifier />}
-                      title="No matches"
-                      body="No jobs match the current filters."
-                    />
-                  ) : (
-                    <Accordion type="multiple" defaultValue={[]} className="space-y-4">
-                      {filteredJobs.map(job => (
-                        <JobRow key={job.id} job={job} metrics={metricsMap.get(job.id)} />
-                      ))}
-                    </Accordion>
-                  )}
+        <div className="min-h-[100dvh] w-full" style={{ background: '#F6F5F1' }}>
+          <div className="mx-auto max-w-[1400px] px-6 py-6">
+            {/* Header */}
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1
+                  className="font-poppins text-[#0d0d09]"
+                  style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.04em', lineHeight: 1.1 }}
+                >
+                  Pipeline
+                </h1>
+                <div
+                  className="mt-1.5 flex flex-wrap items-center font-inter"
+                  style={{ fontSize: 12, color: '#8B8F9E', gap: 8 }}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: '#12B886' }} />
+                    {globalMetrics?.active_jobs ?? openJobs.length} open jobs
+                  </span>
+                  <span>·</span>
+                  <span>{globalMetrics?.active_candidates_count ?? totalActive} active candidates</span>
+                  {lastUpdate ? (
+                    <>
+                      <span>·</span>
+                      <span>Updated {formatDistanceToNowStrict(lastUpdate, { addSuffix: true })}</span>
+                    </>
+                  ) : null}
                 </div>
               </div>
-            </AppContainer>
-          </Section>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-white px-3 font-poppins text-[13px] font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
+                  style={{ borderColor: '#E7E8EE' }}
+                >
+                  <Download size={14} strokeWidth={2} />
+                  Export
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/jobs?new=1')}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 font-poppins text-[13px] font-medium text-white"
+                  style={{ background: '#0d0d09' }}
+                >
+                  <Plus size={14} strokeWidth={2} />
+                  New job
+                </button>
+              </div>
+            </div>
+
+            {/* Metric strip */}
+            <div style={{ marginTop: 12 }}>
+              <MetricStrip items={metricItems} />
+            </div>
+
+            {/* Filter bar */}
+            <div style={{ marginTop: 10 }}>
+              <PipelineFilterBar
+                search={search}
+                onSearchChange={setSearch}
+                status="Open"
+                owner="Anyone"
+                department="All"
+                grouped={grouped}
+                onToggleGroup={() => setGrouped((g) => !g)}
+                allExpanded={allExpanded}
+                onToggleExpandAll={onToggleExpandAll}
+              />
+            </div>
+
+            {/* Result count */}
+            <div
+              className="font-inter"
+              style={{ marginTop: 12, fontSize: 11.5, color: '#8B8F9E' }}
+            >
+              Showing {filteredJobs.length} of {openJobs.length} open jobs · sorted by recent activity
+            </div>
+
+            {/* Job list */}
+            <div style={{ marginTop: 12 }}>
+              {jobsLoading ? (
+                <div className="flex flex-col gap-2.5">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-[12px] bg-white"
+                      style={{ border: '1px solid #E7E8EE', height: 68 }}
+                    />
+                  ))}
+                </div>
+              ) : filteredJobs.length === 0 ? (
+                <div
+                  className="rounded-[12px] bg-white px-6 py-10 text-center font-inter"
+                  style={{ border: '1px solid #E7E8EE', color: '#5A6072', fontSize: 13 }}
+                >
+                  {search ? (
+                    <>No jobs match &ldquo;{search}&rdquo;</>
+                  ) : (
+                    <>No open jobs yet</>
+                  )}
+                </div>
+              ) : grouped && groups ? (
+                <div className="flex flex-col gap-5">
+                  {groups.map(([dept, list]) => (
+                    <div key={dept}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span
+                          className="font-inter uppercase"
+                          style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: '#8B8F9E' }}
+                        >
+                          {dept}
+                        </span>
+                        <span
+                          className="font-poppins tabular-nums"
+                          style={{ fontSize: 11, color: '#B5B9C4' }}
+                        >
+                          {list.length}
+                        </span>
+                        <div className="ml-1 h-px flex-1" style={{ background: '#F1F0EC' }} />
+                      </div>
+                      <div className="flex flex-col" style={{ gap: 10 }}>
+                        {list.map((job) => (
+                          <JobPipelineRow
+                            key={job.id}
+                            job={job}
+                            metrics={metricsMap.get(job.id)}
+                            expanded={expanded.has(job.id)}
+                            onToggle={() => toggleRow(job.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col" style={{ gap: 10 }}>
+                  {filteredJobs.map((job) => (
+                    <JobPipelineRow
+                      key={job.id}
+                      job={job}
+                      metrics={metricsMap.get(job.id)}
+                      expanded={expanded.has(job.id)}
+                      onToggle={() => toggleRow(job.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </PermissionGate>
     </AuthGate>
-  );
+  )
 }

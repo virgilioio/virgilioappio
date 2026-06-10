@@ -1,108 +1,50 @@
-## 1. Public job posting URLs — namespace under careers
+## Pipeline Page Rebuild — Strict Spec
 
-**Today.** Every posting lives at `/p/:slug`, regardless of tenant. Virgilio postings open as a generic chromeless page; non-Virgilio postings don't reflect their company's careers slug.
+Rebuild `/pipeline` from scratch to match the provided design exactly. Scope is **only** the Pipeline page and a new reusable `MetricStrip` primitive.
 
-**Target URL shape**
-- Standard tenants: `https://app.gogio.io/careers/:companySlug/:postingSlug`
-- Virgilio internal org: `https://app.gogio.io/virgilio-careers/:postingSlug`
-- Legacy `/p/:slug` kept as a permanent redirect (existing share links keep working).
+### New components
 
-**Implementation**
-1. `src/App.tsx` — add two routes that render the existing `PublicJobPosting` component:
-   - `/careers/:companySlug/:postingSlug`
-   - `/virgilio-careers/:postingSlug`
-   Keep `/p/:slug` mounted to a tiny `LegacyPostingRedirect` component that loads the posting + tenant, resolves the right namespaced URL, and `<Navigate replace>`s to it.
-2. `PublicJobPosting.tsx` — accept either `slug` or `postingSlug` from `useParams`. Reuse the existing query (slug-based). After loading the posting + careers settings, if the URL is `/p/:slug`, redirect to the canonical namespaced URL. If the tenant is the Virgilio internal org id (`4b8e739f-2b15-487e-8d31-0a2ce765a8ef`), force the `/virgilio-careers/...` path; else use `/careers/<company_slug>/...`.
-3. Update every place that builds a posting URL to the new shape. Helper `buildPostingUrl(posting, tenantId, companySlug)` in `src/lib/postingUrl.ts` (single source of truth):
-   - `src/components/jobs/JobPostingsTab.tsx` — both the "Open" link and the copy-to-clipboard.
-   - `src/pages/JobDetail.tsx` — the two `window.open(`/p/${activePosting.slug}`)` calls (including the "View posting" hero button).
-   - `src/components/jobs/JobHero.tsx` — passthrough already; the parent (`JobDetail`) supplies the click handler.
-   - `src/components/jobs/wizard/SummaryStep.tsx` — any preview link.
-   - `src/components/settings/CareersPageTab.tsx` — preview link.
-4. `JobDetail` already fetches `activePosting`; extend the data it has (or call `careers_page_settings` once per job) so the helper has `company_slug` and the tenant id to decide Virgilio vs careers path.
+1. **`src/components/ui/metric-strip.tsx`** — reusable `<MetricStrip items={...} />` + internal `<MetricCell />`.
+   - White card, radius 12, `#E7E8EE` border, padding 0, ~56h. Cells `flex-1` divided by `1px #F1F0EC`.
+   - Cell: 28×28 tinted icon chip (tones: purple/yellow/green/blue/pink/neutral), Inter 11/500 `#8B8F9E` label, Poppins 19/600 `-0.03em` value `#0d0d09` + optional `d` suffix 12/500 `#5A6072`.
+   - Qualifier slot: delta (arrow + number, green improving / red worsening; supports inverted metrics like time-down=green) OR amber annotation `#B45309`. Zero state = muted `#B5B9C4`.
 
-**Out of scope.** No schema changes, no edge-function changes, no application form behavior changes.
+2. **`src/components/pipeline/PipelineFilterBar.tsx`** — white card, padding 10. Controls: Views pill (bookmark), Search input (30h, `#F6F5F1` bg), pills Status/Owner/Department (active = purple), hairline divider, Sort pill "Recent activity", **Group** toggle (rows-3), **Expand all/Collapse all** toggle.
 
-## 2. "Posting Not Found" → canonical empty state
+3. **`src/components/pipeline/StageFunnelBar.tsx`** — fixed 360w. One 20h segment per stage with 2px gaps; width ∝ `count + 0.45`. Filled ramp `#ADB2BD → #C9B8FB → #A98BFA → #8456F6 → #6F3FF5`. Empty = same color @18% opacity. White 10.5/600 centered count. 9px `#8B8F9E` truncated stage labels below. Tooltip on hover.
 
-`src/pages/PublicJobPosting.tsx` lines 608-621 still render a bespoke `Card` + `CardHeader`/`CardContent`. Replace with:
+4. **`src/components/pipeline/JobPipelineRow.tsx`** — replaces current `JobRow`. Collapsed: chevron, title (Poppins 13.5/600) + green Open chip + attention flags (amber `clock-alert` "N idle >7d", gray `moon` "quiet 6d"), meta line (building/map-pin/activity, 11.5 `#8B8F9E`), funnel bar (360w), active count (Poppins 16/600 over "active" label, muted if 0), 22px avatar stack (max 3), 28px more-button. Whole card toggles. Card padding 12×16, radius 12.
 
-```tsx
-<div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
-  <div className="max-w-md w-full">
-    <EmptyState
-      size="card"
-      illustration={<SoftFlag />}
-      title="Posting not found"
-      body="This job posting is no longer available or the link is incorrect."
-    />
-  </div>
-</div>
-```
+5. **`src/components/pipeline/InlineKanban.tsx`** — expansion panel `#FAFAF7` with top hairline, 12 padding.
+   - Summary row "N active candidates · N stages" + right actions: ghost "Add candidate", secondary "Open board" → `/jobs/:id`.
+   - Equal-width column grid, 8px gap. Column: white, radius 10, `#E7E8EE` border. Header: 6px stage dot, name (Poppins 11/600), count, `+` icon. Body `#FCFCFA` min-h 76.
+   - **Candidate row** (`InlineCandidateRow.tsx`): white, radius 7, padding 5×8 — 18px avatar, name (Inter 11.5/500), days-in-stage `Xd`. Idle (>7d) = amber clock-alert + amber bold count + amber avatar tint. Click → open profile.
+   - **DnD** between stages of same job via `@dnd-kit`. Drop target highlight `#EDE4FF/40` + `#D7C5FB` border. Empty column dashed "Empty"/"Drop here". On drop, call existing `useCandidateStageMove` (or equivalent) and reset days counter optimistically.
 
-Add imports for `EmptyState` and `SoftFlag`. Matches the `PublicCareersPage` "Page not found" treatment.
+### Page rewrite — `src/pages/Pipeline.tsx`
 
-## 3. Notification Center empty state
+- Page bg `#F6F5F1`. Custom header (not `PageHeader`) per spec: title "Pipeline" + meta line `{N} open jobs · {M} active candidates · Updated {x}` + right actions Export (download icon, secondary) and "New job" (primary purple, plus icon → `/jobs/new`).
+- 12px gap → `<MetricStrip items={[active jobs · purple · ↑Δ, in app review · yellow · annotation, active candidates · green · ↑Δ, avg days in review · blue · ↓Δ green]} />`.
+- 10px gap → `<PipelineFilterBar />`.
+- 8px gap → result count line "Showing X of Y open jobs · sorted by recent activity" (Inter 11.5 `#8B8F9E`).
+- 12px gap → vertical job list, 10px gap. When Group is on, render uppercase 11px section headers per department with count + hairline.
+- Expand state: `Set<jobId>` (multi-expand). Expand/Collapse all toggles all visible.
+- Empty search: centered card "No jobs match \"query\"".
+- Drop existing `MetricCard` hero strip, `MetricCardGroup`, `Accordion`, and current `JobRow`.
 
-`src/components/layout/NotificationCenter.tsx` defines a local `function EmptyState()` (lines 146-158) with hand-rolled circle + Inbox icon. Replace its body with the canonical primitive (use `InlineEmpty`-equivalent — `<EmptyState size="card" illustration={<SoftPaper />} title="You're all caught up" body="Mentions, scorecards, and stage moves will appear here as your team works." />`) and rename the local function to `NotificationsEmpty` to avoid colliding with the imported `EmptyState`. Keep the popover height; the canonical card sits centered inside.
+### Data
 
-## 4. CRM → Companies (Organizations) empty state
+- Reuse `useJobs`, `useMembers`, `useOrganizations`, `usePipelineGlobalMetrics`, `usePipelineJobMetrics`.
+- `globalMetrics` already returns `active_jobs`, `application_review_count`, `active_candidates_count`, `avg_days_in_application_review` — feed directly into the strip. Deltas: omit if not in payload (no fake data); keep cells without qualifier per spec ("zero state never hidden"). Annotation for "In application review" shown only if backend exposes an `over_X_days` field — otherwise omit annotation.
+- `jobMetrics.stages` drives the funnel bar (per-job stages).
+- For inline kanban candidate lists, reuse `usePipelineOverviewData(jobId)` (already used by `PipelineOverview`) to fetch candidates per stage, plus the existing stage-move mutation it uses for DnD.
 
-`src/components/organizations/OrganizationsTable.tsx` lines 185-198 still use the legacy API (`assetType`, `description`, `fallbackIcon`, `action`). Migrate to the canonical form:
+### Files
 
-```tsx
-<EmptyState
-  size="card"
-  illustration={<SoftBuilding />}
-  title={organizations.length === 0 ? 'No companies yet' : 'No companies match your filters'}
-  body={organizations.length === 0
-    ? 'Add your first company to start tracking deals and contacts.'
-    : 'Try adjusting your search or filters.'}
-  primary={organizations.length === 0 && permissions.canCreateOrganizations && onCreateNew ? (
-    <EmptyAction icon={<Plus size={16} />} onClick={onCreateNew}>Create company</EmptyAction>
-  ) : undefined}
-/>
-```
+- **New:** `src/components/ui/metric-strip.tsx`, `src/components/pipeline/PipelineFilterBar.tsx`, `src/components/pipeline/StageFunnelBar.tsx`, `src/components/pipeline/JobPipelineRow.tsx`, `src/components/pipeline/InlineKanban.tsx`, `src/components/pipeline/InlineCandidateRow.tsx`.
+- **Rewritten:** `src/pages/Pipeline.tsx`.
+- **Untouched (deprecated for this page but kept):** `src/components/pipeline/JobRow.tsx`, `PipelineMetricCard.tsx`, `FilterCard.tsx`.
 
-## 5. Settings → Members empty + filtered-empty
+### Non-goals
 
-Two sites in `src/components/members/MembersTable.tsx`:
-- **Empty (no members):** lines 235-242 still use legacy props → migrate to canonical `<EmptyState size="card" illustration={<SoftPeople />} ...>` with `EmptyAction` for "Add member".
-- **Filtered empty:** lines 326-331 are a raw `<TableRow><TableCell colSpan={6}>No members match your filters</TableCell></TableRow>` → replace with `<TableFilteredEmpty colSpan={6} onClearFilters={clearFilters} />` (already imported elsewhere).
-
-## 6. Candidates → "No matches" centering
-
-`src/components/candidates/CandidateTable.tsx` lines 314-326 render the empty state inside `<CardContent>` above the (hidden) table, so on wide screens the card has the table's full width and the empty content stays left-anchored to the card edge. Fix by wrapping in a centered container so the EmptyState column sits in the middle of the table area:
-
-```tsx
-<div className="py-8 flex items-center justify-center">
-  <EmptyState size="card" ... />
-</div>
-```
-
-Apply the same wrapper to the sibling "No candidates yet" branch for consistency.
-
-## Files touched
-
-- `src/App.tsx` — add 2 routes + legacy redirect component import.
-- `src/lib/postingUrl.ts` — **new**, single URL helper + Virgilio org id constant.
-- `src/pages/PublicJobPosting.tsx` — param fallback, canonical-URL redirect, Posting Not Found empty state.
-- `src/components/jobs/JobPostingsTab.tsx` — use helper for open + copy.
-- `src/pages/JobDetail.tsx` — use helper for "View posting" + 2nd open.
-- `src/components/jobs/wizard/SummaryStep.tsx` — use helper for preview link.
-- `src/components/settings/CareersPageTab.tsx` — use helper for preview link.
-- `src/components/layout/NotificationCenter.tsx` — replace inline empty.
-- `src/components/organizations/OrganizationsTable.tsx` — migrate to canonical EmptyState.
-- `src/components/members/MembersTable.tsx` — migrate empty + filtered-empty.
-- `src/components/candidates/CandidateTable.tsx` — center the empty branches.
-
-## Validation
-
-1. Create a job posting in a normal tenant → open from Jobs list and JobDetail "View posting"; URL is `/careers/<slug>/<posting-slug>` and page renders.
-2. Open an old `/p/<slug>` link → redirects to the namespaced URL.
-3. Create a Virgilio posting (org `4b8e739f-...`) → "View posting" lands on `/virgilio-careers/<posting-slug>`.
-4. Visit `/p/does-not-exist` → "Posting not found" empty state matches the spec.
-5. Open Notifications popover with zero items → canonical empty.
-6. CRM → Companies with zero rows and with filtered-out rows → canonical empty.
-7. Settings → Members with zero rows and with filtered-out rows → canonical empty + filtered empty in-table.
-8. Candidates table with filtered search miss → empty state centered.
+- No backend / RPC changes. No new tables. No changes to job board pages. No new global tokens.
