@@ -53,6 +53,7 @@ function CandidateRedirect() {
 
 const PublicJobPosting = lazy(() => import('./pages/PublicJobPosting'))
 const PublicCareersPage = lazy(() => import('./pages/PublicCareersPage'))
+const VirgilioCareersPage = lazy(() => import('./pages/VirgilioCareersPage'))
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
 const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
@@ -112,6 +113,7 @@ function AppContent() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/p/:slug" element={<PublicJobPosting />} />
         <Route path="/careers/:companySlug" element={<PublicCareersPage />} />
+        <Route path="/virgilio-careers" element={<VirgilioCareersPage />} />
         <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/:eventSlug" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
