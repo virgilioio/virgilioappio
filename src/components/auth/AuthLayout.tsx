@@ -18,7 +18,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       {/* Top-left logo */}
       <header className="px-6 sm:px-8 lg:px-12 pt-6">
         <Link to="/" aria-label="Gio home" className="inline-flex">
-          <GoGioLogo size="lg" />
+          <GoGioLogo size="2xl" />
         </Link>
       </header>
 
@@ -29,8 +29,8 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           <PipelineProductGraphic />
         </div>
 
-        {/* Right: heading + form + footer */}
-        <div className="w-full max-w-md mx-auto lg:mx-0">
+        {/* Right: heading + form + footer — centered in its own half */}
+        <div className="w-full max-w-md mx-auto">
           <div className="mb-8 text-center lg:text-left">
             <h1
               className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground"
