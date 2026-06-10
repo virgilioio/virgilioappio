@@ -1,47 +1,36 @@
 ## Goal
 
-Add a second public careers page, mounted at `/virgilio-careers`, that looks and behaves exactly like the current tenant careers page, but only lists open jobs whose Company/Client is the **Virgilio internal organization** (`4b8e739f-2b15-487e-8d31-0a2ce765a8ef` — the one with 7 jobs; we deliberately do NOT match by name "Virgilio" because there's a duplicate org with the same name but no jobs).
+Exclude Virgilio-internal jobs from the general per-tenant careers page (`/careers/:companySlug`) so the two pages stay strictly separate:
 
-The existing `/careers/:companySlug` page (used for all client postings today) stays exactly as-is.
+- `/virgilio-careers` → only the Virgilio internal org's jobs (already done).
+- `/careers/:companySlug` → all postings **except** those belonging to the Virgilio internal org.
 
-## How it works
+## Change
 
-```text
-/careers/:companySlug   →  unchanged. Shows ALL postings for that tenant.
-/virgilio-careers       →  NEW. Shows only postings where job.organization_id = <Virgilio internal org id>.
+**File:** `src/pages/PublicCareersPage.tsx`
+
+In the `job_postings` query, add `.neq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)` so internal postings never appear on any tenant's general careers page (including Virgilio's own `/careers/virgilio`).
+
+```ts
+const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
+
+const { data: p } = await supabase
+  .from('job_postings')
+  .select('..., jobs!inner(status, organization_id)')
+  .eq('is_active', true)
+  .eq('tenant_id', s.tenant_id)
+  .eq('jobs.status', 'open')
+  .neq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)   // ← new
+  .order('created_at', { ascending: false })
 ```
 
-The new page is a thin sibling of `PublicCareersPage`, reusing every existing child component (`CareersTopBar`, `CareersHero`, `CareersFilterBar`, `CareersRoleList`, `CareersHowWeHireCard`, `CareersOpenApplicationBand`, `CareersFooter`).
+That is the only edit. No DB, RLS, route, or UI changes.
 
-## Steps
+## Side effects
 
-1. **New page** — `src/pages/VirgilioCareersPage.tsx`
-   - Constants at the top:
-     ```ts
-     const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
-     const VIRGILIO_TENANT_ID = '5ba7b145-f251-4b18-8900-724cb06028ab'
-     ```
-     (Hardcoded so the duplicate "Virgilio" org cannot be picked up accidentally.)
-   - Load `careers_page_settings` where `tenant_id = VIRGILIO_TENANT_ID AND is_active = true` (for branding: logo, header text, page title, website URL).
-   - Load `tenants` row for the company name fallback.
-   - Load `job_postings` with `jobs!inner(status, organization_id)`, filtered by `tenant_id = VIRGILIO_TENANT_ID`, `is_active = true`, `jobs.status = 'open'`, **and** `jobs.organization_id = VIRGILIO_INTERNAL_ORG_ID`.
-   - Load `departments` for the tenant (same as today) so the filter shows the workspace list.
-   - Reuse the existing memos / grouping / filter logic 1:1.
-
-2. **Route** — `src/App.tsx`
-   - Lazy import `VirgilioCareersPage` and add `<Route path="/virgilio-careers" element={<VirgilioCareersPage />} />` next to the existing `/careers/:companySlug` route.
-
-3. **No DB / RLS changes**
-   - All required tables (`job_postings`, `jobs`, `tenants`, `departments`, `careers_page_settings`) already have anon SELECT access used by the existing public careers page. The new query uses the same anon key and the same access patterns.
-
-## Safety notes
-
-- We resolve the org by **ID**, not by name. If you ever rename the org or create another "Virgilio" duplicate, the page keeps showing the correct 7 jobs.
-- If you later delete or merge the duplicate empty org, no code change is needed.
-- The existing `/careers/:companySlug` page is untouched and continues to render every posting in the tenant (clients + internal).
+- For every tenant other than Virgilio, the filter is a no-op (their jobs don't belong to that org).
+- For Virgilio's own `/careers/virgilio`, internal jobs disappear from that page and now live exclusively at `/virgilio-careers`.
 
 ## Out of scope
 
-- No filter on the existing `/careers/:companySlug` to hide internal jobs (can be added later if you decide to split).
-- No subdomain / custom domain routing.
-- No admin UI — the dedicated page is implicit (driven by the hardcoded org id).
+- No admin toggle for which orgs to exclude — the id is hardcoded, matching the approach already used in `VirgilioCareersPage.tsx`.

@@ -69,9 +69,10 @@ export default function PublicCareersPage() {
 
         const { data: p } = await supabase
           .from('job_postings')
-          .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type, jobs!inner(status)')
+          .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type, jobs!inner(status, organization_id)')
           .eq('is_active', true).eq('tenant_id', s.tenant_id)
           .eq('jobs.status', 'open')
+          .neq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)
           .order('created_at', { ascending: false })
         if (p) setPostings(p as RawPosting[])
 
