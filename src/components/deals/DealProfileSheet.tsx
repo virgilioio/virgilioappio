@@ -32,7 +32,7 @@ import {
   MessageSquare,
   Send,
 } from 'lucide-react'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { useDeal, useDealMutations } from '@/hooks/useDeals'
 import { useDealStages, type DealStageType } from '@/hooks/useDealStages'
@@ -394,13 +394,11 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                         <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                       </div>
                     ) : (notes.data ?? []).length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <img src={gioFaceEmpty} alt="No notes" className="h-16 w-16 mx-auto mb-4 rounded-full" />
-                        <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-                          <span>No notes yet</span><span className="text-[#d7c5fb]">.</span>
-                        </p>
-                        <p className="text-sm">Be the first to add a note</p>
-                      </div>
+                      <EmptyState
+                        variant="inline"
+                        title="No notes yet"
+                        description="Be the first to add a note"
+                      />
                     ) : (
                       (notes.data ?? []).map((n) => (
                         <div key={n.id} className="bg-muted/20 rounded-lg p-4 space-y-2">

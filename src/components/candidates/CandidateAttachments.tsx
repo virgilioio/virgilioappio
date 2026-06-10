@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { Upload, File, Download, Trash2, AlertCircle } from 'lucide-react'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
@@ -178,15 +178,11 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
 
                 {/* Attachments List */}
                 {attachments.length === 0 ? (
-                <div className="text-center py-8 text-text-secondary">
-                    <img src={gioFaceEmpty} alt="No attachments" className="h-16 w-16 mx-auto mb-4 rounded-full" />
-                    <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-                      <span>No attachments yet</span><span className="text-[#d7c5fb]">.</span>
-                    </p>
-                    {!canManageCandidates && (
-                      <p className="text-xs mt-1">You don't have permission to upload attachments</p>
-                    )}
-                  </div>
+                  <EmptyState
+                    variant="inline"
+                    title="No attachments yet"
+                    description={!canManageCandidates ? "You don't have permission to upload attachments" : undefined}
+                  />
                 ) : (
                   <div className="space-y-sm">
                     {attachments.map((attachment) => {

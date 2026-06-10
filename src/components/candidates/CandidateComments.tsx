@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 import { Trash2, MessageSquare, Send } from 'lucide-react'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useCandidateComments } from '@/hooks/useCandidateComments'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -115,13 +115,11 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
               <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
             </div>
           ) : comments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <img src={gioFaceEmpty} alt="No comments" className="h-16 w-16 mx-auto mb-4 rounded-full" />
-              <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-                <span>No comments yet</span><span className="text-[#d7c5fb]">.</span>
-              </p>
-              <p className="text-sm">Be the first to add a comment</p>
-            </div>
+            <EmptyState
+              variant="inline"
+              title="No comments yet"
+              description="Be the first to add a comment"
+            />
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="bg-muted/20 rounded-lg p-4 space-y-2">

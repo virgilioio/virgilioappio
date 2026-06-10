@@ -6,7 +6,7 @@ import { Bell, Plus } from 'lucide-react'
 import { useCandidateReminders, type CandidateReminder } from '@/hooks/useCandidateReminders'
 import { ReminderCard } from './ReminderCard'
 import { ReminderForm } from './ReminderForm'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface CandidateRemindersProps {
   candidateId: string
@@ -96,24 +96,12 @@ export function CandidateReminders({ candidateId, jobId }: CandidateRemindersPro
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <img 
-              src={gioFaceEmpty}
-              alt="No reminders"
-              className="h-16 w-16 mx-auto mb-4 rounded-full"
-            />
-            <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-              <span>No reminders yet</span>
-              <span className="text-purple-period">.</span>
-            </p>
-            <p className="text-sm mb-4">
-              Set a reminder to follow up with this candidate
-            </p>
-            <Button onClick={() => setIsFormOpen(true)} variant="default">
-              <Bell className="h-4 w-4 mr-2" />
-              Add Reminder
-            </Button>
-          </div>
+          <EmptyState
+            variant="inline"
+            title="No reminders yet"
+            description="Set a reminder to follow up with this candidate"
+            action={{ label: 'Add Reminder', onClick: () => setIsFormOpen(true) }}
+          />
         </CardContent>
       </Card>
     )
