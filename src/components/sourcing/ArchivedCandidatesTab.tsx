@@ -21,7 +21,7 @@ import {
   MapPin, 
   RotateCcw
 } from 'lucide-react'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -79,12 +79,12 @@ export function ArchivedCandidatesTab({ projectId }: ArchivedCandidatesTabProps)
 
   if (archivedCandidates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <img src={gioFaceEmpty} alt="No archived candidates" className="w-24 h-24 mb-4" />
-        <h3 className="text-lg font-semibold text-foreground mb-2">No archived candidates</h3>
-        <p className="text-muted-foreground max-w-md">
-          Candidates you archive from the Saved tab will appear here. You can restore them anytime.
-        </p>
+      <div className="flex flex-col items-center justify-center h-full">
+        <EmptyState
+          variant="page"
+          title="No archived candidates"
+          description="Candidates you archive from the Saved tab will appear here. You can restore them anytime."
+        />
       </div>
     )
   }

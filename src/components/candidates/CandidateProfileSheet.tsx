@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 
 import { Link, useNavigate } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -1326,29 +1326,12 @@ const stageHasAutomation = useMemo(() => {
                                 <CandidateResumeViewer candidateId={independentCandidateId || candidateId} />
                               </>
                             ) : (
-                              <div className="text-center py-8">
-                                <img 
-                                  src={gioFaceEmpty}
-                                  alt="No resume"
-                                  className="h-16 w-16 mx-auto mb-4 rounded-full"
-                                />
-                                <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-                                  <span>No resume uploaded yet</span>
-                                  <span className="text-purple-period">.</span>
-                                </p>
-                                <p className="text-sm text-text-secondary mb-4">
-                                  Upload a resume to auto-extract candidate information
-                                </p>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  icon={Edit}
-                                  onClick={() => setEditOpen(true)}
-                                  disabled={!canEditCandidates}
-                                >
-                                  Upload Resume
-                                </Button>
-                              </div>
+                              <EmptyState
+                                variant="inline"
+                                title="No resume uploaded yet"
+                                description="Upload a resume to auto-extract candidate information"
+                                action={canEditCandidates ? { label: 'Upload Resume', onClick: () => setEditOpen(true), variant: 'secondary' } : undefined}
+                              />
                             )
                           ) : (
                             <div className="text-sm text-text-secondary">No job candidate record linked.</div>

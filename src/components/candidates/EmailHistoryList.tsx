@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import gioFaceEmpty from '@/assets/gio-face-empty.png';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface EmailHistoryListProps {
   candidateId: string;
@@ -63,20 +63,11 @@ export function EmailHistoryList({ candidateId, jobId, onReply, onForward }: Ema
 
   if (!emails || emails.length === 0) {
     return (
-      <div className="text-center py-12">
-        <img 
-          src={gioFaceEmpty}
-          alt="No emails"
-          className="h-16 w-16 mx-auto mb-4 rounded-full"
-        />
-        <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-          <span>No emails yet</span>
-          <span className="text-purple-period">.</span>
-        </p>
-        <p className="text-sm text-text-secondary max-w-sm mx-auto">
-          Email conversations with this candidate will appear here.
-        </p>
-      </div>
+      <EmptyState
+        variant="inline"
+        title="No emails yet"
+        description="Email conversations with this candidate will appear here."
+      />
     );
   }
 

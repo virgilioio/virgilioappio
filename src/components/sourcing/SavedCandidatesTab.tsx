@@ -36,7 +36,7 @@ import {
   ArrowRight,
   Loader2
 } from 'lucide-react'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -168,13 +168,12 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
 
   if (savedCandidates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <img src={gioFaceEmpty} alt="No saved candidates" className="w-24 h-24 mb-4" />
-        <h3 className="text-lg font-semibold text-foreground mb-2">No candidates collected yet</h3>
-        <p className="text-muted-foreground max-w-md">
-          Candidates you reveal from the search results will appear here. 
-          Go to the Candidates tab and click "Reveal Full Profile" to collect candidates.
-        </p>
+      <div className="flex flex-col items-center justify-center h-full">
+        <EmptyState
+          variant="page"
+          title="No candidates collected yet"
+          description={`Candidates you reveal from the search results will appear here. Go to the Candidates tab and click "Reveal Full Profile" to collect candidates.`}
+        />
       </div>
     )
   }

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
 import { Loader2, Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2 } from 'lucide-react'
-import gioFaceEmpty from '@/assets/gio-face-empty.png'
+import { EmptyState } from '@/components/ui/empty-state'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
 import { supabase } from '@/lib/supabaseClient'
@@ -130,18 +130,12 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   if (!offerLetter) {
     return (
       <Card>
-        <CardContent className="py-12">
-          <div className="text-center">
-            <img
-              src={gioFaceEmpty}
-              alt="No offer details"
-              className="h-16 w-16 mx-auto mb-4 rounded-full"
-            />
-            <CardTitle className="mb-2">No offer details yet</CardTitle>
-            <p className="text-body-sm text-text-secondary">
-              Create an offer using the Offer Form to see details here.
-            </p>
-          </div>
+        <CardContent className="p-0">
+          <EmptyState
+            variant="inline"
+            title="No offer details yet"
+            description="Create an offer using the Offer Form to see details here."
+          />
         </CardContent>
       </Card>
     )
