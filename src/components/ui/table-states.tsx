@@ -1,17 +1,13 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { TableCell, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
 
 /**
  * Tables — Row state primitives (Gio Foundation v1.0 §4)
  *
- * Drop these into <TableBody>:
- *
- *   {loading ? <TableSkeleton rows={5} columns={5} /> :
- *    items.length === 0 ? <TableEmpty colSpan={5} title="No members yet"
- *      description="Invite your team to collaborate." ctaLabel="Invite members" onCta={...} /> :
- *    items.map(...)}
+ * Loading skeleton is unique to tables. Empty / FilteredEmpty are thin
+ * wrappers around the canonical <EmptyState variant="table-row"> primitive.
  */
 
 // Loading ───────────────────────────────────────────────────────────────────
@@ -51,23 +47,15 @@ export function TableEmpty({
   className?: string
 }) {
   return (
-    <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={colSpan} className={cn("py-12 text-center", className)}>
-        <div className="mx-auto max-w-sm space-y-1.5">
-          <div className="text-table-name text-text-primary">{title}</div>
-          {description ? (
-            <div className="text-body-sm text-text-tertiary">{description}</div>
-          ) : null}
-          {ctaLabel && onCta ? (
-            <div className="pt-3">
-              <Button variant="purple" size="sm" onClick={onCta}>
-                {ctaLabel}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      </TableCell>
-    </TableRow>
+    <EmptyState
+      variant="table-row"
+      colSpan={colSpan}
+      title={title}
+      description={description}
+      mascot={false}
+      action={ctaLabel && onCta ? { label: ctaLabel, onClick: onCta, variant: 'purple' } : undefined}
+      className={cn(className)}
+    />
   )
 }
 
@@ -75,7 +63,7 @@ export function TableEmpty({
 export function TableFilteredEmpty({
   colSpan,
   query,
-  activeFilters,
+  activeFilters: _activeFilters,
   onClearFilters,
   className,
 }: {
@@ -86,22 +74,11 @@ export function TableFilteredEmpty({
   className?: string
 }) {
   return (
-    <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={colSpan} className={cn("py-12 text-center", className)}>
-        <div className="mx-auto max-w-sm space-y-1.5">
-          <div className="text-table-name text-text-primary">No matches</div>
-          <div className="text-body-sm text-text-tertiary">
-            No items match{" "}
-            {query ? <span className="font-medium text-text-primary">"{query}"</span> : "the current filters"}
-            {activeFilters ? <> with {activeFilters}</> : null}.
-          </div>
-          <div className="pt-3">
-            <Button variant="ghost" size="sm" onClick={onClearFilters}>
-              Clear all filters
-            </Button>
-          </div>
-        </div>
-      </TableCell>
-    </TableRow>
+    <EmptyState.Filtered
+      colSpan={colSpan}
+      query={query}
+      onClearFilters={onClearFilters}
+      className={className}
+    />
   )
 }

@@ -1,56 +1,114 @@
-## Goal
+# Consolidate empty states into one source of truth
 
-Rebuild the hero section of the Virgilio Careers page (`/virgilio-careers`) to match the attached screenshot — and add the italic Instrument Serif treatment on one word (the screenshot doesn't show it, but per request it should match the General careers page styling).
+Today empty states live in **6+ implementations** and dozens of hand-rolled inline blocks. This plan unifies them into a single canonical primitive at `src/components/ui/empty-state.tsx`, then migrates every call site. **No copy/visual changes yet** — that comes in a follow-up plan once the foundation is in place.
 
-## Approach
+---
 
-The current `VirgilioCareersPage` uses the shared `CareersHero` (now styled for tenant careers pages). To keep the two pages truly separate, I'll build a dedicated hero component for Virgilio rather than overloading the shared one.
+## 1. The canonical primitive
 
-**New file:** `src/components/careers/virgilio/VirgilioCareersHero.tsx`
+**File:** `src/components/ui/empty-state.tsx` (replaces the current file)
 
-**Wired into:** `src/pages/VirgilioCareersPage.tsx` — replace `<CareersHero …/>` with `<VirgilioCareersHero …/>` (same props it already passes: `openRolesCount`, `departmentsCount`, `onScrollToRoles`).
+One component, four variants. Composition over configuration.
 
-## Hero layout (matches screenshot)
+```tsx
+<EmptyState
+  variant="page" | "table-row" | "chart" | "inline"
+  // Visual
+  mascot?: boolean                      // default true — show Gio face
+  icon?: LucideIcon                     // alternative to mascot
+  assetType?: PlatformAssetType         // optional DB-driven hero image (page only)
+  // Copy
+  title: ReactNode                      // purple period auto-appended
+  description?: ReactNode
+  // Action
+  action?: { label: string; onClick: () => void; variant?: ButtonVariant }
+  secondaryAction?: { label: string; onClick: () => void }
+  // Layout
+  size?: 'sm' | 'md' | 'lg'             // default md
+  className?: string
+  // Table-row only
+  colSpan?: number
+/>
+```
 
-Two-column, cream background (`#FAF7F2`), generous vertical padding.
+**Variant specs (locked to Gio Foundation v1.0):**
 
-**Left column (≈7/12):**
-- **Eyebrow pill**: small purple dot + `CAREERS AT VIRGILIO · REMOTE-FIRST` in uppercase tracked caps (Poppins, ~11.5px, `#5a6072`).
-- **Headline** (Poppins bold, ~68–80px desktop, tracking-[-0.04em], leading ~1.02):
-  > Come build the future of *hiring*<span class="purple">.</span>
-  
-  The word **"hiring"** rendered italic Instrument Serif (same treatment as `worth joining` on the General careers page). Trailing period in purple (`text-purple-period`).
-- **Subtext** (~15px, `#3f4451`, max-w ~xl):
-  > We're a people company, building the modern way to hire. If you care about doing hiring right — fast, fair, and human — there's a seat for you here.
-- **CTA row**:
-  - Primary pill button (black `#0d0d09`, cream text): **See open roles** + circular white arrow chip on the right. Wired to `onScrollToRoles`.
-  - Secondary pill button (cream/white border): **Why Virgilio** + arrow chip. Anchor link to `#why-virgilio` (section may not exist yet — just an in-page anchor, no error if missing).
-- **Stat strip** (three inline stats, big Poppins number + small caption):
-  - **Remote** — Fully distributed
-  - **48h** — We always reply
-  - **{departmentsCount}** Teams & growing (falls back to `11` if 0, just for visual parity? — I'll use live `departmentsCount` and label it `Team${s} & growing`).
+| Variant       | Use case                                | Size       | Mascot | Padding   |
+|---------------|-----------------------------------------|------------|--------|-----------|
+| `page`        | Full page / large surface (Jobs, Deals) | 64px image | yes    | py-16     |
+| `table-row`   | Inside `<TableBody>` (replaces `TableEmpty`) | none / 20px icon | no | py-12 |
+| `chart`       | Inside analytics chart cards            | 40px icon  | no     | py-8      |
+| `inline`      | Cards, sheets, side panels (comments, attachments, activity) | 48px | yes | py-10 |
 
-**Right column (≈5/12):**
-- Large rounded portrait card on a warm tan background block with two decorative shapes (small black circle top-left, lilac blob top-right peeking behind).
-- **Portrait image**: I'll generate a friendly portrait photo (warm tan backdrop, woman smiling, similar mood to the screenshot) via `imagegen` at `src/assets/virgilio-careers-hero.jpg`. Generic, not depicting a real person.
-- **Floating chip top-right**: white pill `● We're hiring` (green dot).
-- **Floating card bottom-left** (white, rounded-2xl, soft shadow):
-  - Small lilac circle with heart icon
-  - `Every applicant` (bold) / `hears back from us`
-  - Divider row: `AVG. FIRST REPLY` caps · large `48h` · green `No ghosting` badge.
+**Typography (all variants):**
+- Title: `text-table-name text-text-primary` + auto `<span className="text-purple-period">.</span>`
+- Description: `text-body-sm text-text-tertiary`
+- Action: standard `<Button>` (no overrides)
 
-All chrome uses existing tokens (`virgilio-purple`, `purple-period`, Poppins, Inter, Instrument Serif). No new global tokens.
+**Sub-exports (keep API ergonomic without growing the matrix):**
+- `<EmptyState.Page>`, `<EmptyState.TableRow>`, `<EmptyState.Chart>`, `<EmptyState.Inline>` — thin wrappers that set `variant`.
+- `<EmptyState.Filtered>` — preset for "no results match filters" with built-in "Clear filters" action.
 
-## Out of scope
+---
 
-- No changes to the rest of the page (filters, role list, how-we-hire, footer).
-- No changes to the General careers page or the shared `CareersHero` component.
-- No DB / routing / settings changes.
-- No "Why Virgilio" section content — just an anchor target placeholder for now (to be built in a later step).
+## 2. What gets deleted / collapsed
+
+| Old                                                          | Replacement                                       |
+|--------------------------------------------------------------|---------------------------------------------------|
+| `src/components/ui/GioEmptyState.tsx`                        | `<EmptyState variant="inline">`                   |
+| `src/components/ui/empty-state.tsx` (old `EmptyState`)       | Rewritten as canonical (keeps `assetType` prop)   |
+| `src/components/analytics/shared/AnalyticsEmptyState.tsx`    | `<EmptyState variant="chart">`                    |
+| `src/components/talent-intelligence/TalentIntelligenceEmptyState.tsx` | `<EmptyState variant="inline">`          |
+| `TableEmpty` / `TableFilteredEmpty` in `table-states.tsx`    | Re-export thin wrappers around `<EmptyState variant="table-row">` (so existing imports keep working during migration) |
+| Inline empty blocks in `ActivityFeedList`, `NoJobDescriptionCard`, `EmailHistoryList`, `CandidateComments`, `CandidateReminders`, `CandidateAttachments`, `CandidateUrls`, `NotificationCenter`, `UpcomingActivities`, `DealPaymentsCard`, `DealInvoicesCard`, `SavedCandidatesTab`, `ArchivedCandidatesTab`, etc. | `<EmptyState variant="inline">`                   |
+
+`platform_assets` integration (DB-driven hero images for organizations/jobs/candidates/members/etc.) is **preserved** — moves into the `page` variant under `assetType`.
+
+---
+
+## 3. Migration plan (one PR per phase, all behind same primitive)
+
+**Phase A — Foundation (no behavior change)**
+1. Implement new `EmptyState` in `src/components/ui/empty-state.tsx`.
+2. Keep `TableEmpty` / `TableFilteredEmpty` exports in `table-states.tsx` but reimplement them as thin wrappers → zero churn for table call sites.
+3. Re-export `GioEmptyState`, `AnalyticsEmptyState`, `TalentIntelligenceEmptyState` as deprecated wrappers around the new primitive (logged once via console.warn in dev only).
+
+**Phase B — Migrate call sites (mechanical)**
+- Analytics: `AnalyticsChartCard`, `AnalyticsTableCard`, `TalentInsightsSection`, `OfferAnalyticsSection`, `TalentPoolComposition`, `GeographyInsights`, `CompensationInsights` → `variant="chart"`.
+- Cards/sheets: `ActivityFeedList`, `CandidateComments`, `CandidateReminders`, `CandidateAttachments`, `CandidateUrls`, `EmailHistoryList`, `NoJobDescriptionCard`, `NotificationCenter`, `UpcomingActivities`, `ApplicationReviewCard`, `DealPayments/InvoicesCard`, `SavedCandidatesTab`, `ArchivedCandidatesTab` → `variant="inline"`.
+- Pages: `Jobs`, `Deals`, `TalentIntelligence`, `Find`, `Organizations`, `Members` → `variant="page"` (preserves `assetType`).
+- Tables: keep using `TableEmpty` import (now a wrapper) — no edits required.
+
+**Phase C — Cleanup**
+- Delete `GioEmptyState.tsx`, `AnalyticsEmptyState.tsx`, `TalentIntelligenceEmptyState.tsx`.
+- Inline the table wrappers (collapse `TableEmpty` → direct `<EmptyState variant="table-row">`) OR keep as semantic re-exports (TBD with you — leaning **keep** for table grammar clarity).
+
+---
+
+## 4. Style guide + memory updates
+
+- Add **§7 Empty States** to `docs/style-guide.md` documenting the 4 variants, props, and when to use which.
+- Update memory `mem://style/ui/standardized-empty-states` to point at the canonical primitive.
+- Add Core rule one-liner: *"Empty states: single `<EmptyState>` primitive — variants `page | table-row | chart | inline`. No hand-rolled blocks."*
+
+---
+
+## 5. Out of scope (next plan)
+
+Once consolidation lands, we'll do a **separate** plan for:
+- Copy refresh (titles, descriptions)
+- Mascot pose variants (sad / searching / celebrating)
+- Illustration vs. icon decisions per surface
+- Action button conventions per empty state
+
+---
 
 ## Technical notes
 
-- New component is presentational; props mirror the slice of data Virgilio page already has.
-- Portrait image generated once and imported as a static asset (ES6 import).
-- Decorative shapes are pure CSS (absolutely positioned rounded divs), no extra assets.
-- Italic serif word uses inline `style={{ fontFamily: 'Instrument Serif, Cormorant, Georgia, serif' }}` + `italic font-normal`, matching the General careers hero exactly.
+- New primitive is **presentation-only** — no data fetching except the existing `platform_assets` lookup (which only runs when `assetType` is passed).
+- Purple period rendering is centralized — call sites pass plain title strings.
+- `colSpan` is required when `variant="table-row"` (TS discriminated union enforces it).
+- All sizes use existing tokens (`text-table-name`, `text-body-sm`, `text-text-tertiary`, `text-purple-period`, `virgilio-purple`). No new CSS.
+- Tree-shakeable: sub-exports are static properties, not separate modules.
+
+Ready to implement Phase A as soon as you approve.
