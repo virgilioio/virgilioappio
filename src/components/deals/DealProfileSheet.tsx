@@ -32,7 +32,7 @@ import {
   MessageSquare,
   Send,
 } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, InlineEmpty } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { useDeal, useDealMutations } from '@/hooks/useDeals'
 import { useDealStages, type DealStageType } from '@/hooks/useDealStages'
