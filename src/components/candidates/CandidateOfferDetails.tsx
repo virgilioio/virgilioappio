@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert } from '@/components/ui/alert'
 import { Loader2, Send, Pencil, Undo2, Check, X, FileText, DollarSign, MapPin, Calendar, Briefcase, User, BadgeCheck, Building2 } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
 import { supabase } from '@/lib/supabaseClient'
@@ -130,12 +130,8 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
   if (!offerLetter) {
     return (
       <Card>
-        <CardContent className="p-0">
-          <EmptyState
-            variant="inline"
-            title="No offer details yet"
-            description="Create an offer using the Offer Form to see details here."
-          />
+        <CardContent className="p-4">
+          <InlineEmpty text="No offer yet." />
         </CardContent>
       </Card>
     )

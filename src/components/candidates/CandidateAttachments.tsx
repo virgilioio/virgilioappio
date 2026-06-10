@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { Upload, File, Download, Trash2, AlertCircle } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
@@ -178,11 +178,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
 
                 {/* Attachments List */}
                 {attachments.length === 0 ? (
-                  <EmptyState
-                    variant="inline"
-                    title="No attachments yet"
-                    description={!canManageCandidates ? "You don't have permission to upload attachments" : undefined}
-                  />
+                  <InlineEmpty text="No attachments yet." />
                 ) : (
                   <div className="space-y-sm">
                     {attachments.map((attachment) => {

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { FormField } from '@/components/ui/form-field'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { Plus, ExternalLink, Trash2, Github, FileText } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -174,11 +174,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
           <AccordionContent>
             <CardContent className="space-y-sm pt-0">
               {urls.length === 0 ? (
-                <EmptyState
-                  variant="inline"
-                  title="No URLs added yet"
-                  description={!canManageCandidates ? "You don't have permission to add URLs" : undefined}
-                />
+                <InlineEmpty text="No links added." />
               ) : (
                 <div className="space-y-sm">
                   {urls.map((url) => {

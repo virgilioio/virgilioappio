@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { EmptyState } from '@/components/ui/empty-state';
+import { InlineEmpty } from '@/components/ui/empty-state';
 
 interface EmailHistoryListProps {
   candidateId: string;
@@ -62,13 +62,7 @@ export function EmailHistoryList({ candidateId, jobId, onReply, onForward }: Ema
   }
 
   if (!emails || emails.length === 0) {
-    return (
-      <EmptyState
-        variant="inline"
-        title="No emails yet"
-        description="Email conversations with this candidate will appear here."
-      />
-    );
+    return <InlineEmpty text="No emails yet." />;
   }
 
   return (

@@ -12,7 +12,9 @@ import {
   IdentityCell, StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
 } from '@/components/ui/table-cells'
 import { TableSkeleton } from '@/components/ui/table-states'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftFlag, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { Plus, RotateCcw } from 'lucide-react'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -296,26 +298,26 @@ export function JobsTable({
               <TableSkeleton rows={5} columns={COLS} />
             ) : filteredJobs.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={COLS} className="py-10">
+                <TableCell colSpan={COLS} className="p-4">
                   {jobs.length === 0 ? (
-                    <GioEmptyState
-                      title="No jobs yet"
-                      description="Create your first job to start sourcing and tracking candidates."
+                    <EmptyState
+                      size="card"
+                      illustration={<SoftFlag />}
+                      title="No open jobs"
+                      body="Create a job and its live pipeline shows up here — stage by stage, candidates routed automatically."
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-3">
-                      <GioEmptyState
-                        title="No matches"
-                        description={
-                          searchTerm
-                            ? `No jobs match "${searchTerm}" with the current filters.`
-                            : 'No jobs match the current filters.'
-                        }
-                      />
-                      <Button variant="ghost" size="sm" onClick={clearAll}>
-                        Clear all filters
-                      </Button>
-                    </div>
+                    <EmptyState
+                      size="card"
+                      illustration={<SoftMagnifier />}
+                      title="No matching jobs"
+                      body={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs fit these filters.'}
+                      primary={
+                        <EmptyAction icon={<RotateCcw size={16} strokeWidth={2} />} onClick={clearAll}>
+                          Clear filters
+                        </EmptyAction>
+                      }
+                    />
                   )}
                 </TableCell>
               </TableRow>
@@ -452,20 +454,26 @@ export function JobsTable({
         {isLoading ? (
           <Card><CardContent className="p-4 text-text-tertiary text-sm">Loading…</CardContent></Card>
         ) : filteredJobs.length === 0 ? (
-          <Card><CardContent className="p-6">
+          <Card><CardContent className="p-4">
             {jobs.length === 0 ? (
-              <GioEmptyState
-                title="No jobs yet"
-                description="Create your first job to start sourcing and tracking candidates."
+              <EmptyState
+                size="card"
+                illustration={<SoftFlag />}
+                title="No open jobs"
+                body="Create a job and its live pipeline shows up here."
               />
             ) : (
-              <div className="flex flex-col items-center gap-3">
-                <GioEmptyState
-                  title="No matches"
-                  description={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs match the current filters.'}
-                />
-                <Button variant="ghost" size="sm" onClick={clearAll}>Clear all filters</Button>
-              </div>
+              <EmptyState
+                size="card"
+                illustration={<SoftMagnifier />}
+                title="No matching jobs"
+                body={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs match the current filters.'}
+                primary={
+                  <EmptyAction icon={<RotateCcw size={16} strokeWidth={2} />} onClick={clearAll}>
+                    Clear filters
+                  </EmptyAction>
+                }
+              />
             )}
           </CardContent></Card>
         ) : (

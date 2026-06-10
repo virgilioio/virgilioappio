@@ -22,6 +22,7 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SoftArchive } from '@/components/ui/EmptyIllustrations'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -79,11 +80,11 @@ export function ArchivedCandidatesTab({ projectId }: ArchivedCandidatesTabProps)
 
   if (archivedCandidates.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full p-4">
         <EmptyState
-          variant="page"
+          illustration={<SoftArchive />}
           title="No archived candidates"
-          description="Candidates you archive from the Saved tab will appear here. You can restore them anytime."
+          body="Candidates you archive are kept here for reference."
         />
       </div>
     )

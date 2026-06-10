@@ -6,7 +6,7 @@ import { Bell, Plus } from 'lucide-react'
 import { useCandidateReminders, type CandidateReminder } from '@/hooks/useCandidateReminders'
 import { ReminderCard } from './ReminderCard'
 import { ReminderForm } from './ReminderForm'
-import { EmptyState } from '@/components/ui/empty-state'
+import { InlineEmpty } from '@/components/ui/empty-state'
 
 interface CandidateRemindersProps {
   candidateId: string
@@ -96,11 +96,10 @@ export function CandidateReminders({ candidateId, jobId }: CandidateRemindersPro
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <EmptyState
-            variant="inline"
-            title="No reminders yet"
-            description="Set a reminder to follow up with this candidate"
-            action={{ label: 'Add Reminder', onClick: () => setIsFormOpen(true) }}
+          <InlineEmpty
+            text="No reminders set."
+            action="Add reminder"
+            onAction={() => setIsFormOpen(true)}
           />
         </CardContent>
       </Card>

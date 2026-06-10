@@ -32,7 +32,7 @@ import {
   MessageSquare,
   Send,
 } from 'lucide-react'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, InlineEmpty } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { useDeal, useDealMutations } from '@/hooks/useDeals'
 import { useDealStages, type DealStageType } from '@/hooks/useDealStages'
@@ -45,7 +45,7 @@ import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { DealFormSheet } from './DealFormSheet'
 import { DealDetailsCollapsible } from './DealDetailsCollapsible'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+
 import { DealBillingSummary } from './billing/DealBillingSummary'
 import { DealInvoicesCard } from './billing/DealInvoicesCard'
 import { DealPaymentsCard } from './billing/DealPaymentsCard'
@@ -136,8 +136,8 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl">
-          <div className="py-16">
-            <GioEmptyState title="Loading deal" />
+          <div className="py-16 px-6">
+            <InlineEmpty text="Loading deal…" />
           </div>
         </SheetContent>
       </Sheet>
@@ -394,11 +394,7 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                         <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                       </div>
                     ) : (notes.data ?? []).length === 0 ? (
-                      <EmptyState
-                        variant="inline"
-                        title="No notes yet"
-                        description="Be the first to add a note"
-                      />
+                      <InlineEmpty text="No notes yet." />
                     ) : (
                       (notes.data ?? []).map((n) => (
                         <div key={n.id} className="bg-muted/20 rounded-lg p-4 space-y-2">

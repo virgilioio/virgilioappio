@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, Trash2, Download, Paperclip } from 'lucide-react'
 import { useDealInvoices, type DealInvoice } from '@/hooks/useDealInvoices'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 
 function formatBytes(bytes: number | null): string {
@@ -76,7 +76,7 @@ export function DealInvoicesCard({ dealId }: { dealId: string }) {
         {invoices.isLoading ? (
           <div className="text-sm text-virgilio-muted">Loading…</div>
         ) : (invoices.data ?? []).length === 0 ? (
-          <GioEmptyState title="No documents yet" description="Upload contracts, invoices or receipts." />
+          <InlineEmpty text="No invoices yet." action="Upload" onAction={() => inputRef.current?.click()} />
         ) : (
           <ul className="space-y-2">
             {(invoices.data ?? []).map((inv) => (

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
 import { useDealPayments, type DealPayment } from '@/hooks/useDealPayments'
-import { GioEmptyState } from '@/components/ui/GioEmptyState'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { DealPaymentFormDialog } from './DealPaymentFormDialog'
 import { useAuth } from '@/contexts/AuthContext'
@@ -53,7 +53,7 @@ export function DealPaymentsCard({ dealId, currency }: { dealId: string; currenc
           {payments.isLoading ? (
             <div className="text-sm text-virgilio-muted">Loading…</div>
           ) : (payments.data ?? []).length === 0 ? (
-            <GioEmptyState title="No payments yet" description="Register payments collected from the client." />
+            <InlineEmpty text="No payments yet." />
           ) : (
             <ul className="space-y-2">
               {(payments.data ?? []).map((p) => {
