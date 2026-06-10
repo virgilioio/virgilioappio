@@ -29,7 +29,7 @@ if (!import.meta.env.DEV && import.meta.env.VITE_SENTRY_DSN) {
 function SplashHost({ enabled }: { enabled: boolean }) {
   const { ready } = useSplashReady()
   if (!enabled) return null
-  return <GioSplash show={ready} />
+  return <GioSplash show={!ready} />
 }
 
 function Root() {
