@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { TableFilteredEmpty } from '@/components/ui/table-states'
+import { SoftPeople } from '@/components/ui/EmptyIllustrations'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { Input } from '@/components/ui/input'
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
@@ -234,11 +236,15 @@ export function MembersTable({
         <CardContent>
           {members.length === 0 ? (
             <EmptyState
-              assetType="empty-state-members"
+              size="card"
+              illustration={<SoftPeople />}
               title="No team members yet"
-              description="Invite your first team member to start collaborating"
-              fallbackIcon={UserCheck}
-              action={onAddNew ? { label: "Add Member", onClick: onAddNew } : undefined}
+              body="Invite your first team member to start collaborating."
+              primary={onAddNew ? (
+                <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddNew}>
+                  Add member
+                </EmptyAction>
+              ) : undefined}
             />
           ) : (
             <>
@@ -324,11 +330,7 @@ export function MembersTable({
                   </TableHeader>
                   <TableBody>
                     {filteredMembers.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No members match your filters
-                        </TableCell>
-                      </TableRow>
+                      <TableFilteredEmpty colSpan={6} onClearFilters={clearFilters} />
                     ) : filteredMembers.map((member) => {
                       const isInactive = member.user_status === 'inactive'
                       return (

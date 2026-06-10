@@ -51,11 +51,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { copyToClipboard } from '@/utils/clipboard'
 import { cn } from '@/lib/utils'
+import { buildPostingPath, buildPostingUrl } from '@/lib/postingUrl'
 
 interface JobPostingsTabProps {
   jobId: string
   jobTitle: string
   readOnly?: boolean
+  organizationId?: string | null
+  companySlug?: string | null
 }
 
 // ── Posting status helpers ──────────────────────────────────────────────────
@@ -206,7 +209,7 @@ function Kpi({
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
-export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProps) {
+export function JobPostingsTab({ jobId, jobTitle, readOnly, organizationId, companySlug }: JobPostingsTabProps) {
   const { toast } = useToast()
   const {
     postings,
@@ -495,7 +498,7 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
                           icon={ExternalLink}
                           iconOnly
                           aria-label="Open public posting"
-                          onClick={() => window.open(`/p/${p.slug}`, '_blank', 'noopener')}
+                          onClick={() => window.open(buildPostingPath({ postingSlug: p.slug, organizationId, companySlug }), '_blank', 'noopener')}
                         />
                         {!readOnly && (
                           <>
@@ -522,7 +525,7 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    copyToClipboard(`${window.location.origin}/p/${p.slug}`, 'Public link copied')
+                                    copyToClipboard(buildPostingUrl({ postingSlug: p.slug, organizationId, companySlug }), 'Public link copied')
                                   }
                                 >
                                   <LinkIcon className="h-3.5 w-3.5 mr-2" /> Copy URL

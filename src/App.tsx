@@ -54,6 +54,7 @@ function CandidateRedirect() {
 const PublicJobPosting = lazy(() => import('./pages/PublicJobPosting'))
 const PublicCareersPage = lazy(() => import('./pages/PublicCareersPage'))
 const VirgilioCareersPage = lazy(() => import('./pages/VirgilioCareersPage'))
+const LegacyPostingRedirect = lazy(() => import('./pages/LegacyPostingRedirect'))
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
 const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
@@ -111,9 +112,11 @@ function AppContent() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/p/:slug" element={<PublicJobPosting />} />
+        <Route path="/p/:slug" element={<LegacyPostingRedirect />} />
         <Route path="/careers/:companySlug" element={<PublicCareersPage />} />
+        <Route path="/careers/:companySlug/:postingSlug" element={<PublicJobPosting />} />
         <Route path="/virgilio-careers" element={<VirgilioCareersPage />} />
+        <Route path="/virgilio-careers/:postingSlug" element={<PublicJobPosting />} />
         <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/:eventSlug" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />

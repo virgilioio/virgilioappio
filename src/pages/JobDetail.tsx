@@ -12,6 +12,8 @@ import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 import { JobPostingsTab } from '@/components/jobs/JobPostingsTab'
+import { useCareersPageSettings } from '@/hooks/useCareersPageSettings'
+import { buildPostingPath } from '@/lib/postingUrl'
 import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
 import { PostingSheet } from '@/components/jobs/postings/PostingSheet'
 
@@ -391,6 +393,17 @@ export default function JobDetail() {
   const { postings: jobPostings, refetch: refetchJobPostings } = useJobPostings(id!)
   const activePosting = (jobPostings || []).find((p) => p.is_active) || (jobPostings || [])[0] || null
   const hasJobPosting = (jobPostings || []).length > 0
+  const { settings: careersSettings } = useCareersPageSettings()
+  const companySlug = careersSettings?.company_slug ?? null
+  const openActivePosting = () => {
+    if (!activePosting) return
+    const path = buildPostingPath({
+      postingSlug: activePosting.slug,
+      organizationId: job?.organization_id ?? null,
+      companySlug,
+    })
+    window.open(path, '_blank', 'noopener')
+  }
 
   // Candidates hook with new functions
   const {
@@ -974,9 +987,7 @@ export default function JobDetail() {
                   hiringTeam={(job.hiring_team as any[]) || []}
                   onShare={() => {}}
                   onViewPosting={() => {
-                    if (activePosting) {
-                      window.open(`/p/${activePosting.slug}`, '_blank', 'noopener')
-                    }
+                    openActivePosting()
                   }}
                   onCreatePosting={() => setShowCreatePostingSheet(true)}
                   hasPosting={hasJobPosting}
@@ -1021,7 +1032,7 @@ export default function JobDetail() {
               className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
             >
               <div className="h-full overflow-auto bg-[#FAFAF7] -mx-1 px-1 pb-6">
-                <JobPostingsTab jobId={id!} jobTitle={job.title} />
+                <JobPostingsTab jobId={id!} jobTitle={job.title} organizationId={job.organization_id ?? null} companySlug={companySlug} />
               </div>
             </TabsContent>
           )}
@@ -1359,7 +1370,7 @@ export default function JobDetail() {
           isLoading={jobUpdateLoading}
           candidateCount={allAssociatedCandidates.length}
           onPreviewPosting={() => {
-            if (activePosting) window.open(`/p/${activePosting.slug}`, '_blank', 'noopener')
+            openActivePosting()
           }}
           onCloseJob={() => { setShowEditJobModal(false); setConfirmCloseJob(true) }}
           onArchiveJob={async () => { setShowEditJobModal(false); await archiveJob(id!); navigate('/jobs') }}

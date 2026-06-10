@@ -292,39 +292,41 @@ export function CandidateTable({
       <CardContent>
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
-          candidates.length === 0 ? (
-            <EmptyState
-              illustration={<SoftPlane />}
-              title="No candidates yet"
-              body="Add someone manually, or share your posting link — Gio scores and ranks every applicant as they land."
-              primary={
-                onAddNew ? (
-                  <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddNew}>
-                    Add candidate
+          <div className="py-8 flex items-center justify-center">
+            {candidates.length === 0 ? (
+              <EmptyState
+                illustration={<SoftPlane />}
+                title="No candidates yet"
+                body="Add someone manually, or share your posting link — Gio scores and ranks every applicant as they land."
+                primary={
+                  onAddNew ? (
+                    <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddNew}>
+                      Add candidate
+                    </EmptyAction>
+                  ) : undefined
+                }
+                secondary={
+                  <EmptyAction variant="secondary" icon={<LinkIcon size={16} strokeWidth={2} />}>
+                    Share posting
                   </EmptyAction>
-                ) : undefined
-              }
-              secondary={
-                <EmptyAction variant="secondary" icon={<LinkIcon size={16} strokeWidth={2} />}>
-                  Share posting
-                </EmptyAction>
-              }
-            />
-          ) : (
-            <EmptyState
-              illustration={<SoftMagnifier />}
-              title="No matches"
-              body="Nothing fits your search — the candidates are still there, just hidden."
-              primary={
-                <EmptyAction
-                  icon={<RotateCcw size={16} strokeWidth={2} />}
-                  onClick={() => setSearchTerm('')}
-                >
-                  Clear search
-                </EmptyAction>
-              }
-            />
-          )
+                }
+              />
+            ) : (
+              <EmptyState
+                illustration={<SoftMagnifier />}
+                title="No matches"
+                body="Nothing fits your search — the candidates are still there, just hidden."
+                primary={
+                  <EmptyAction
+                    icon={<RotateCcw size={16} strokeWidth={2} />}
+                    onClick={() => setSearchTerm('')}
+                  >
+                    Clear search
+                  </EmptyAction>
+                }
+              />
+            )}
+          </div>
         ) : (
           <>
             <div className="space-y-sm">

@@ -15,6 +15,8 @@ import {
   useNotificationPreferences, PREFS_CATEGORIES, CategoryKey, NotificationPreferences,
 } from '@/hooks/useNotificationPreferences'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftCaughtUp } from '@/components/ui/EmptyIllustrations'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -143,16 +145,15 @@ function NotificationItem({ n, onClick, onMarkRead }: {
   )
 }
 
-function EmptyState() {
+function NotificationsEmpty() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className="h-12 w-12 rounded-full bg-[#F5F4EF] flex items-center justify-center mb-3">
-        <Inbox className="h-5 w-5 text-[#8B8F9E]" />
-      </div>
-      <p className="text-[13px] font-poppins font-semibold text-virgilio-text">You're all caught up</p>
-      <p className="text-[11.5px] text-[#8B8F9E] mt-1 max-w-[260px]">
-        Mentions, scorecards, and stage moves will appear here as your team works.
-      </p>
+    <div className="px-3 py-6">
+      <EmptyState
+        size="card"
+        illustration={<SoftCaughtUp />}
+        title="You're all caught up"
+        body="Mentions, scorecards, and stage moves will appear here as your team works."
+      />
     </div>
   )
 }
@@ -381,7 +382,7 @@ export function NotificationCenter() {
             {/* List */}
             <div className="flex-1 overflow-y-auto border-t border-[#E7E8EE]">
               {filtered.length === 0 ? (
-                <EmptyState />
+                <NotificationsEmpty />
               ) : (
                 (['Today', 'Yesterday', 'Earlier'] as const).map((label) => {
                   const items = grouped[label]

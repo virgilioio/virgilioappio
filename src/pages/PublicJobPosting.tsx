@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftFlag } from '@/components/ui/EmptyIllustrations'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -107,7 +109,8 @@ interface SelectOption {
 }
 
 export default function PublicJobPosting() {
-  const { slug } = useParams<{ slug: string }>()
+  const params = useParams<{ slug?: string; postingSlug?: string }>()
+  const slug = params.slug || params.postingSlug
   // useNavigate previously used by old header; no longer needed
   const [posting, setPosting] = useState<Posting | null>(null)
   const [customFields, setCustomFields] = useState<PostingField[]>([])
@@ -607,15 +610,15 @@ export default function PublicJobPosting() {
 
   if (!posting) {
     return (
-      <div className="max-w-3xl mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Posting Not Found</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">This job posting is not available.</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
+        <div className="max-w-md w-full">
+          <EmptyState
+            size="card"
+            illustration={<SoftFlag />}
+            title="Posting not found"
+            body="This job posting is no longer available or the link is incorrect."
+          />
+        </div>
       </div>
     )
   }
