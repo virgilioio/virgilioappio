@@ -1,7 +1,7 @@
 import { GioWordmark } from '@/components/icons/GioWordmark'
 
 interface GoGioLogoProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
   className?: string
 }
 
@@ -10,6 +10,8 @@ const SIZE_MAP = {
   md: 32,
   lg: 48,
   xl: 64,
+  '2xl': 96,
+  '3xl': 128,
 } as const
 
 /**
