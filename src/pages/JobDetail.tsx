@@ -1032,7 +1032,7 @@ export default function JobDetail() {
               className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
             >
               <div className="h-full overflow-auto bg-[#FAFAF7] -mx-1 px-1 pb-6">
-                <JobPostingsTab jobId={id!} jobTitle={job.title} />
+                <JobPostingsTab jobId={id!} jobTitle={job.title} organizationId={job.organization_id ?? null} companySlug={companySlug} />
               </div>
             </TabsContent>
           )}
