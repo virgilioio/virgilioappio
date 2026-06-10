@@ -5,12 +5,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { IdentityCell, NumericCell, ActionCell } from '@/components/ui/table-cells'
-import { TableSkeleton, TableFilteredEmpty, TableEmpty } from '@/components/ui/table-states'
+import { TableSkeleton } from '@/components/ui/table-states'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftMagnifier, SoftPlane } from '@/components/ui/EmptyIllustrations'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import type { AssociationsMap, AssociationDetail } from '@/hooks/useCandidateJobAssociations'
+import { Plus, RotateCcw } from 'lucide-react'
 
 interface CandidatesTableProps {
   candidates: IndependentCandidate[]
@@ -25,6 +28,8 @@ interface CandidatesTableProps {
   onToggleSelectAll: () => void
   onOpenCandidate: (id: string) => void
   onDelete: (candidate: IndependentCandidate) => void
+  onClearFilters?: () => void
+  onAddCandidate?: () => void
 }
 
 const SOURCE_TONE: Record<string, { letter: string; tone: 'green' | 'blue' | 'purple' | 'orange' | 'neutral' | 'pink' }> = {
@@ -132,7 +137,7 @@ function isNew(iso: string): boolean {
 
 export function CandidatesTable({
   candidates, totalCount, associationsMap, isLoading, isSearching, hasActiveFilters,
-  selectedIds, onToggleSelect, onToggleSelectAll, onOpenCandidate, onDelete,
+  selectedIds, onToggleSelect, onToggleSelectAll, onOpenCandidate, onDelete, onClearFilters, onAddCandidate,
 }: CandidatesTableProps) {
   const navigate = useNavigate()
   const allSelected = useMemo(
@@ -142,9 +147,41 @@ export function CandidatesTable({
 
   if (isLoading || isSearching) return <TableSkeleton rows={8} columns={9} />
   if (candidates.length === 0) {
-    return hasActiveFilters
-      ? <TableFilteredEmpty colSpan={9} onClearFilters={() => { /* handled by parent */ }} />
-      : <TableEmpty colSpan={9} title="No candidates yet" description="Add your first candidate to get started." />
+    return (
+      <div className="min-h-[500px] w-full p-6 flex items-center justify-center">
+        {hasActiveFilters ? (
+          <EmptyState
+            className="w-full max-w-[540px]"
+            size="card"
+            illustration={<SoftMagnifier />}
+            title="No matches"
+            body="No items match the current filters. Clear them to see everything again."
+            primary={
+              onClearFilters ? (
+                <EmptyAction icon={<RotateCcw size={16} strokeWidth={2} />} onClick={onClearFilters}>
+                  Clear filters
+                </EmptyAction>
+              ) : undefined
+            }
+          />
+        ) : (
+          <EmptyState
+            className="w-full max-w-[540px]"
+            size="card"
+            illustration={<SoftPlane />}
+            title="No candidates yet"
+            body="Add your first candidate to get started."
+            primary={
+              onAddCandidate ? (
+                <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddCandidate}>
+                  Add candidate
+                </EmptyAction>
+              ) : undefined
+            }
+          />
+        )}
+      </div>
+    )
   }
 
   return (
