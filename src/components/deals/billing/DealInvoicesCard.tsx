@@ -76,7 +76,7 @@ export function DealInvoicesCard({ dealId }: { dealId: string }) {
         {invoices.isLoading ? (
           <div className="text-sm text-virgilio-muted">Loading…</div>
         ) : (invoices.data ?? []).length === 0 ? (
-          <GioEmptyState title="No documents yet" description="Upload contracts, invoices or receipts." />
+          <InlineEmpty text="No invoices yet." action="Upload" onAction={() => inputRef.current?.click()} />
         ) : (
           <ul className="space-y-2">
             {(invoices.data ?? []).map((inv) => (
