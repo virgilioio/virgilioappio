@@ -191,23 +191,23 @@ export default function Pipeline() {
     })
   }, [])
 
-  const allExpanded = filteredJobs.length > 0 && filteredJobs.every((j) => expanded.has(j.id))
+  const allExpanded = sortedJobs.length > 0 && sortedJobs.every((j) => expanded.has(j.id))
   const onToggleExpandAll = () => {
-    setExpanded(allExpanded ? new Set() : new Set(filteredJobs.map((j) => j.id)))
+    setExpanded(allExpanded ? new Set() : new Set(sortedJobs.map((j) => j.id)))
   }
 
   // Grouped sections by department
   const groups = useMemo(() => {
     if (!grouped) return null
-    const map = new Map<string, typeof filteredJobs>()
-    for (const j of filteredJobs) {
+    const map = new Map<string, typeof sortedJobs>()
+    for (const j of sortedJobs) {
       const key = j.department || 'Unassigned'
       const arr = map.get(key) ?? []
       arr.push(j)
       map.set(key, arr)
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  }, [filteredJobs, grouped])
+  }, [sortedJobs, grouped])
 
   return (
     <AuthGate>
