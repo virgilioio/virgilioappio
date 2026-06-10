@@ -12,6 +12,9 @@ import { CareersOpenApplicationBand } from '@/components/careers/public/CareersO
 import { CareersFooter } from '@/components/careers/public/CareersFooter'
 import gioEmptyState from '@/assets/gio-empty-state.png'
 
+// Virgilio internal org — its jobs live exclusively on /virgilio-careers, never here.
+const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
+
 interface CareersSettings {
   id: string
   tenant_id: string
