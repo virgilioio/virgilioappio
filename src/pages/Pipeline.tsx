@@ -37,16 +37,69 @@ const SORT_LABEL: Record<PipelineSort, string> = {
 export default function Pipeline() {
   const navigate = useNavigate()
   const { jobs, isLoading: jobsLoading } = useJobs()
+  const { members } = useMembers()
+  const { departments } = useDepartments()
 
   const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<PipelineStatus>('open')
+  const [selectedOwners, setSelectedOwners] = useState<string[]>([])
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<PipelineSort>('recent')
   const [grouped, setGrouped] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  const openJobs = useMemo(() => jobs.filter((j) => j.status === 'open'), [jobs])
+  const { assignedJobIds } = useUserAssignedJobIds(selectedOwners)
+
+  const ownerOptions = useMemo(
+    () =>
+      (members ?? [])
+        .filter((m) => m.user_status === 'active' && m.user_id)
+        .map((m) => ({
+          value: m.user_id as string,
+          label:
+            [m.user_first_name, m.user_last_name].filter(Boolean).join(' ') ||
+            m.user_email ||
+            'Unknown',
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [members],
+  )
+
+  const departmentOptions = useMemo(
+    () => (departments ?? []).map((d) => ({ value: d.id, label: d.name })),
+    [departments],
+  )
+
+  const statusFilteredJobs = useMemo(
+    () => (status === 'all' ? jobs : jobs.filter((j) => j.status === status)),
+    [jobs, status],
+  )
+
+  // Used for the "of N" denominator in the result count line — same status scope as filteredJobs.
+  const baseJobs = statusFilteredJobs
 
   const filteredJobs = useMemo(() => {
+    let list = [...statusFilteredJobs]
+
+    if (selectedDepartments.length > 0) {
+      const deptIds = new Set(selectedDepartments)
+      const deptNames = new Set(
+        (departments ?? [])
+          .filter((d) => deptIds.has(d.id))
+          .map((d) => d.name.toLowerCase()),
+      )
+      list = list.filter((j) => {
+        if (j.department_id && deptIds.has(j.department_id)) return true
+        if (j.department && deptNames.has(j.department.toLowerCase())) return true
+        return false
+      })
+    }
+
+    if (selectedOwners.length > 0) {
+      list = list.filter((j) => jobMatchesUsers(j, selectedOwners, assignedJobIds))
+    }
+
     const q = search.trim().toLowerCase()
-    let list = [...openJobs]
     if (q) {
       list = list.filter(
         (j) =>
@@ -54,15 +107,38 @@ export default function Pipeline() {
           (j.department || '').toLowerCase().includes(q),
       )
     }
-    // Recent activity sort
-    list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+
     return list
-  }, [openJobs, search])
+  }, [statusFilteredJobs, selectedDepartments, departments, selectedOwners, assignedJobIds, search])
 
   const { data: globalMetrics } = usePipelineGlobalMetrics({ jobStatuses: ['open'] })
   const jobIds = filteredJobs.map((j) => j.id)
   const { data: jobMetrics } = usePipelineJobMetrics(jobIds)
   const metricsMap = useMemo(() => new Map((jobMetrics ?? []).map((m) => [m.job_id, m])), [jobMetrics])
+
+  const sortedJobs = useMemo(() => {
+    const list = [...filteredJobs]
+    switch (sortBy) {
+      case 'oldest':
+        list.sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
+        break
+      case 'title':
+        list.sort((a, b) => a.title.localeCompare(b.title))
+        break
+      case 'active':
+        list.sort((a, b) => {
+          const av = metricsMap.get(a.id)?.active_candidates ?? 0
+          const bv = metricsMap.get(b.id)?.active_candidates ?? 0
+          if (bv !== av) return bv - av
+          return a.title.localeCompare(b.title)
+        })
+        break
+      case 'recent':
+      default:
+        list.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    }
+    return list
+  }, [filteredJobs, sortBy, metricsMap])
 
   const totalActive = useMemo(
     () => (jobMetrics ?? []).reduce((s, m) => s + (m.active_candidates || 0), 0),
@@ -70,10 +146,10 @@ export default function Pipeline() {
   )
 
   const lastUpdate = useMemo(() => {
-    if (openJobs.length === 0) return null
-    const maxT = Math.max(...openJobs.map((j) => new Date(j.updated_at).getTime()))
+    if (statusFilteredJobs.length === 0) return null
+    const maxT = Math.max(...statusFilteredJobs.map((j) => new Date(j.updated_at).getTime()))
     return new Date(maxT)
-  }, [openJobs])
+  }, [statusFilteredJobs])
 
   const metricItems: MetricItem[] = [
     {
