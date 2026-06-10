@@ -987,9 +987,7 @@ export default function JobDetail() {
                   hiringTeam={(job.hiring_team as any[]) || []}
                   onShare={() => {}}
                   onViewPosting={() => {
-                    if (activePosting) {
-                      window.open(`/p/${activePosting.slug}`, '_blank', 'noopener')
-                    }
+                    openActivePosting()
                   }}
                   onCreatePosting={() => setShowCreatePostingSheet(true)}
                   hasPosting={hasJobPosting}
