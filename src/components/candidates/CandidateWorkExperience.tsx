@@ -1,4 +1,5 @@
 import { Building2, MapPin, Calendar, Sparkles } from "lucide-react";
+import { InlineEmpty } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -64,7 +65,7 @@ export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkE
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No work experience data available</p>
+          <InlineEmpty text="No work experience data available." />
         </CardContent>
       </Card>
     );

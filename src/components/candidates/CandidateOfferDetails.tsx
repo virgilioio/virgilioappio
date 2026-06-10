@@ -392,9 +392,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                 )
               })
           ) : (
-            <div className="py-2.5">
-              <p className="text-[13px] font-poppins text-text-secondary">No field values recorded.</p>
-            </div>
+            <InlineEmpty text="No field values recorded." />
           )}
         </dl>
 

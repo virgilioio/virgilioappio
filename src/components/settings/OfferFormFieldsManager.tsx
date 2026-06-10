@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -187,13 +188,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading fields...</p>
           ) : sortedFields.length === 0 ? (
-            <div className="text-center py-8">
-              <List className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No form fields yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Add fields that recruiters will fill out when creating an offer
-              </p>
-            </div>
+            <InlineEmpty text="No form fields yet. Add fields that recruiters will fill out when creating an offer." />
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e) => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd}>
               <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>

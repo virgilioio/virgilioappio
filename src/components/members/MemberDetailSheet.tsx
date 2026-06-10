@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -253,7 +254,7 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
                 <Skeleton className="h-12 w-full" />
               </div>
             ) : allJobs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No job assignments</p>
+              <InlineEmpty text="No job assignments yet." />
             ) : (
               <div className="space-y-2">
                 {allJobs.map(job => (

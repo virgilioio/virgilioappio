@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -163,13 +164,7 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               {offerLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
               ) : (context === 'organization' ? tenantOfferTemplates : offerTemplates).length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No offer templates found</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create your first template to get started
-                  </p>
-                </div>
+                <InlineEmpty text="No offer templates yet. Create your first template to get started." />
               ) : (
                 <div className="rounded-md border overflow-hidden">
                   <Table>
@@ -266,13 +261,7 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               {emailLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
               ) : emailTemplates.length === 0 ? (
-                <div className="text-center py-8">
-                  <Mail className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No email templates found</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create your first template to get started
-                  </p>
-                </div>
+                <InlineEmpty text="No email templates yet. Create your first template to get started." />
               ) : (
                 <div className="rounded-md border overflow-hidden">
                   <Table>
@@ -421,13 +410,7 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               {contractLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
               ) : (context === 'organization' ? tenantContractTemplates : contractTemplates).length === 0 ? (
-                <div className="text-center py-8">
-                  <FileCheck className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">No contract templates found</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Create your first template to get started
-                  </p>
-                </div>
+                <InlineEmpty text="No contract templates yet. Create your first template to get started." />
               ) : (
                 <div className="rounded-md border overflow-hidden">
                   <Table>

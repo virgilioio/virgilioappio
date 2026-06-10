@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { CandidateProfileSkeleton } from './CandidateProfileSkeleton'
 import { useNavigate } from 'react-router-dom'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
@@ -395,23 +396,11 @@ export function IndependentCandidateProfileSheet({
                                 <CandidateResumeViewer candidateId={candidateId} />
                               </>
                             ) : (
-                              <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-                                <FileText className="h-12 w-12 text-muted-foreground" />
-                                <div>
-                                  <p className="text-sm text-muted-foreground">No resume uploaded yet</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Upload a resume to auto-extract candidate information
-                                  </p>
-                                </div>
-                                <Button 
-                                  variant="outline" 
-                                  onClick={() => setEditOpen(true)}
-                                  disabled={!canEditCandidates}
-                                >
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Upload Resume
-                                </Button>
-                              </div>
+                              <InlineEmpty
+                                text="No resume uploaded yet. Upload one to auto-extract candidate information."
+                                action={canEditCandidates ? 'Upload resume' : undefined}
+                                onAction={canEditCandidates ? () => setEditOpen(true) : undefined}
+                              />
                             )}
                           </CardContent>
                         </Card>
@@ -458,7 +447,7 @@ export function IndependentCandidateProfileSheet({
                                     className="text-text-primary leading-relaxed"
                                   />
                                 ) : (
-                                  <div className="text-sm text-text-secondary">No summary available. Enrich this candidate to generate one.</div>
+                                  <InlineEmpty text="No summary available. Enrich this candidate to generate one." />
                                 )}
                               </div>
                             </CollapsibleContent>
@@ -491,7 +480,7 @@ export function IndependentCandidateProfileSheet({
                                         ))}
                                       </div>
                                     ) : (
-                                      <div className="text-sm text-text-secondary">No skills specified</div>
+                                      <InlineEmpty text="No skills specified." />
                                     )
                                   })()}
                                 </CardContent>

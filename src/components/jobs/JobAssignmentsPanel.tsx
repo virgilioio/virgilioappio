@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -230,10 +231,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
         </div>
 
         {assignedUsers.length === 0 ? (
-          <div className="text-center py-8 text-text-secondary">
-            <p>No users are currently assigned to this job.</p>
-            <p className="text-sm mt-1">Use the form above to assign users.</p>
-          </div>
+          <InlineEmpty text="No users assigned to this job yet. Use the form above to assign users." />
         ) : (
           <div className="space-y-3">
             {assignedUsers.map((item) => {

@@ -1,4 +1,5 @@
 import { GraduationCap, Calendar } from "lucide-react";
+import { InlineEmpty } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -34,7 +35,7 @@ export const CandidateEducationComponent = ({ education }: CandidateEducationPro
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No education data available</p>
+          <InlineEmpty text="No education data available." />
         </CardContent>
       </Card>
     );

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -359,7 +360,7 @@ export function SummaryStep({
         </Eyebrow>
         <div className="rounded-2xl bg-white border border-virgilio-border p-2">
           {stages.length === 0 ? (
-            <p className="p-4 text-[12.5px] text-text-tertiary">No stages configured yet.</p>
+            <div className="p-2"><InlineEmpty text="No stages configured yet." /></div>
           ) : (
             <ul className="divide-y divide-virgilio-border">
               {stages.map((s, i) => (
@@ -408,7 +409,7 @@ export function SummaryStep({
         </Eyebrow>
         <div className="rounded-2xl bg-white border border-virgilio-border p-2">
           {teamCount === 0 ? (
-            <p className="p-4 text-[12.5px] text-text-tertiary">No team members assigned.</p>
+            <div className="p-2"><InlineEmpty text="No team members assigned." /></div>
           ) : (
             <ul className="divide-y divide-virgilio-border">
               {assignments.map((a) => {

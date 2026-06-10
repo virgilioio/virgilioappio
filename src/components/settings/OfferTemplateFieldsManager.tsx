@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -243,13 +244,7 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
           {isLoading ? (
             <TableSkeleton rows={3} />
           ) : fields.length === 0 ? (
-            <div className="text-center py-8">
-              <List className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No dynamic fields found</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Add custom fields that can be filled when generating offers
-              </p>
-            </div>
+            <InlineEmpty text="No dynamic fields yet. Add custom fields that can be filled when generating offers." />
           ) : (
             <Table>
               <TableHeader>

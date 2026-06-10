@@ -1,66 +1,64 @@
-# Empty-state audit
+# Final Empty-State Audit & Migration
 
-Two canonical components (`EmptyState`, `InlineEmpty`) + 14 illustrations are in place and the legacy wrappers (`GioEmptyState`, `AnalyticsEmptyState`, `TalentIntelligenceEmptyState`, `TableEmpty`, `TableFilteredEmpty`) shim to them. This audit covers what still renders a bespoke empty UI.
+Comprehensive scan of ATS, CRM, and every settings sub-section (workspace + platform) surfaced ~35 surfaces still rendering hand-rolled empty copy. The two canonical components (`<EmptyState size="card|route">` and `<InlineEmpty>`) plus the 14 SVG illustrations are already in place — this pass only swaps remaining call sites.
 
-## A. Public / candidate-facing — NOT migrated yet
+## Scope
 
-These are the highest-priority gap from your message. Per spec they should use `SoftFlag` (candidate-facing) and **no app chrome** — keep `min-h-screen`, the page's hero/footer, and candidate copy; just swap the inner box.
+### Settings — Workspace
+- **VerifiedDomainsManager** — "No domains configured yet" → `InlineEmpty` (settings card)
+- **DepartmentsManager** — already done (verify)
+- **JobStagesTable** — already done (verify)
+- **DealStagesManager** — "No stages in the pipeline" → `InlineEmpty`
+- **OfferFormsManager** — "No offer forms found" → `InlineEmpty` + "New form" action
+- **OfferTemplatesManager** — 3 sites (offer / email / contract templates) → `InlineEmpty` each
+- **OfferTemplateFieldsManager** — "No dynamic fields found" → `InlineEmpty`
+- **OfferFormFieldsManager** — "No form fields yet" → `InlineEmpty`
+- **RejectionEmailTemplatesManager** — "No rejection email templates found" → `InlineEmpty`
+- **ApplicationFieldsManager** — "No custom application fields yet." → `InlineEmpty`
+- **ApplicationFieldForm** — 2 micro empties (options, validation rules) → `InlineEmpty` (tiny)
+- **AutomationsTab** — already done (verify)
+- **Billing.tsx** — "No payment method" card → keep as native card (NOT a list empty — it's an action prompt), leave as-is
+- **JobBoardsTab** — verify no custom empty
 
-| File | Empty/error state | Action |
-| --- | --- | --- |
-| `src/pages/PublicCareersPage.tsx` (L160, L196) | (1) `Page Not Found` card · (2) "No open positions" / "No roles match your filters" | (1) `EmptyState size="card"` + `SoftFlag` (candidate copy, no buttons). (2) split: empty list → `SoftFlag` "No open roles right now"; filtered → `SoftMagnifier` "No roles match your filters" + "Clear filters". |
-| `src/pages/VirgilioCareersPage.tsx` (L160, L192) | Mirror of PublicCareersPage | Same two swaps. |
-| `src/pages/PublicBookingPage.tsx` (L425 inactive link, L449 expired, L558 No availability) | Three bespoke white cards | Migrate all three to `EmptyState size="card"`: inactive → `SoftFlag`, expired → `SoftFlag`, No availability → `SoftCalendar`. Keep page chrome (`PublicBookingHeader`/`Footer`). |
-| `src/pages/NotFound.tsx` | Bare 404 | Wrap in `EmptyState size="route"` + `SoftFlag` "Page not found" with a "Go home" button. |
-| `src/components/careers/public/ApplicationSubmittedScreen.tsx` | Confirmation screen (not empty per se) | **Leave as-is** — it's a success state, not empty. |
-| `src/pages/PublicJobPosting.tsx` | No empty states (it's a form) | None. Verify "job closed / no longer accepting" branch exists; if so, migrate. |
+### Settings — Platform
+- **FeatureFlagsManager** — "No feature flags found" → `InlineEmpty`
+- **PlatformOfferTemplatesManager / PlatformJobStagesManager / PlatformJobSettingsManager / PlatformApplicationFieldsManager / PlatformSettingsManager** — scan & swap any remaining bespoke empties to `InlineEmpty`
+- **PlatformAssetUploader** — leave untouched (it's an internal asset-management screen, not real empty states)
+- **SaaSCustomerDetail / SaaSSubscription** — scan & swap
+- **CustomerManagementTab** — scan & swap
 
-## B. Internal surfaces still rendering custom empties — finish the second pass
+### CRM / Deals
+- **DealsKanbanBoard** — board-level "No stages yet" already uses `EmptyState`; per-column "No deals in this stage" stays as micro-text (intentional column placeholder, too small for `InlineEmpty`)
+- **DealProfileSheet** — "No deal stages configured." inline string → `InlineEmpty`
+- **DealCard** — "No company" micro-label stays (inline metadata, not an empty state)
 
-| File | What renders today | Migrate to |
-| --- | --- | --- |
-| `src/components/members/MembersTable.tsx` (L235) | Custom row | `TableEmpty` / `TableFilteredEmpty` (auto-shimmed) |
-| `src/components/organizations/OrganizationDetailsDialog.tsx` (L220) | "No members found for this client" | `InlineEmpty` |
-| `src/components/jobs/JobPostingsTab.tsx` (L402–L410) | Already uses legacy `EmptyState` props — works via shim | Verify it renders correctly; otherwise swap to canonical + `SoftPaper`. |
-| `src/components/jobs/postings/ApplicationFormBuilder.tsx` (L255) | "No questions yet" | `InlineEmpty` (it's inside the builder rail) |
-| `src/components/sourcing/SourcingSidebar.tsx` (L250) | "No projects yet" / "No matching projects" | `InlineEmpty` (sidebar rail) |
-| `src/components/dashboard/WorldClockWidget.tsx` (L264) | "No cities found" in picker | Leave — it's inside a dropdown (`Command` empty), per spec dropdowns keep their tiny text |
-| `src/components/dashboard/CurrencyConverterWidget.tsx` (L86) | `CommandEmpty` | Leave (dropdown rule) |
-| `src/components/search/SearchResultsDialog.tsx` (L133) | "No results found for X" | `EmptyState size="card"` + `SoftMagnifier` inside the dialog body |
-| `src/components/search/v2/GlobalSearchPanel.tsx` (L229, L385) | Two bespoke empties | Replace with `InlineEmpty` (panel-style — keep dense) |
-| `src/components/candidates/bulk/ShareListModal.tsx` (L402, L433) | "No teammate found" | Leave the inline combobox one (dropdown rule); migrate L433 panel empty to `InlineEmpty` |
-| `src/components/candidates/MoveToPipelineMenu.tsx` (L60) | "No stages available" inside dropdown | Leave (dropdown rule) |
-| `src/components/members/MemberJobAssignmentsDialog.tsx` (L225) | "No jobs available in this organization." | `EmptyState size="card"` + `SoftFlag` |
-| `src/components/deals/DealsKanbanBoard.tsx` (L136, L193) | Already uses canonical for "No stages"; per-column empty is a chip | Leave per-column chip (kanban convention); verify L136 illustration = `SoftDeal`. |
+### ATS — remaining
+- **JobAssignmentsPanel** — "No users are currently assigned to this job." → `InlineEmpty`
+- **OfferApprovalChainConfig** — "No approvers configured yet." → `InlineEmpty`
+- **TeamTab** (stage-config) — "No interviewers assigned yet" → `InlineEmpty`
+- **JobSetupLayout** — "No team members yet." → `InlineEmpty`
+- **HiringPlanTab** — "No stages in the hiring plan" + "No candidates are currently in this stage." → `InlineEmpty`
+- **SummaryStep** (wizard) — "No stages configured yet." / "No team members assigned." → `InlineEmpty`
+- **MemberDetailSheet** — "No job assignments" → `InlineEmpty`
+- **CandidateOfferDetails** — "No field values recorded." → `InlineEmpty`
+- **CreateOfferLetterDialog / OfferComposerBody** — "No offer forms available" → `InlineEmpty`
+- **CandidateApplicationResponses** — "No additional application details available." → `InlineEmpty`
+- **ApplicationReviewSheet** — "No fit analysis available." → `InlineEmpty`
+- **CandidateEducation/WorkExperience/Certifications** — "No … data available" → `InlineEmpty` (these are profile-tab sub-sections; small inline form)
+- **CandidateProfileSheet / IndependentCandidateProfileSheet** — multiple "No summary / No skills / No scorecard-enabled stages." inline strings → `InlineEmpty`
+- **SharedList** — "No candidates in this list." → `EmptyState size="card"` + `SoftPlane` (it's a route)
+- **ShareListModal** — "No candidates left." panel empty → `InlineEmpty`
+- **ActivityTimeline** (saas) — "No recent activity to display" → `InlineEmpty`
 
-## C. Already migrated (no action) — confirm during QA
+### Intentionally out of scope (micro-text, not empties)
+- `CommandEmpty` / `emptyMessage` on combobox/select dropdowns (currency-select, searchable-select, LocationSelector, TimezoneSelector, AddToJobPopover, MoveToPipelineMenu, AddTagPopover, CandidatesSearchesRail single-line)
+- DealCard "No company", SaaSCustomersList "No owner assigned" (inline metadata)
+- Loading/Select placeholders ("Loading stages…", "Select a stage")
 
-Routes/cards: `CandidateTable`, `JobsTable`, `SavedCandidatesTab`, `ArchivedCandidatesTab`, `MembersList` (saas), `IndependentCandidateTable`, `RecentSourcingProjects`, `DepartmentsManager`, `JobStagesTable`, `AutomationsTab`, `InvoiceHistoryTable`, `SaaSCustomersList`, `Pipeline`, `SourcingCandidateTable`, `CandidateInsightsTab`, `OrganizationsTable`.
+## Technical notes
+- All swaps use `<InlineEmpty text="..." />` (sometimes with `action`/`onAction`) or `<EmptyState size="card" illustration={<Soft*/>} ...>` for route-level surfaces. No new imports beyond `@/components/ui/empty-state` and `@/components/ui/EmptyIllustrations`.
+- Illustration choices: people → `SoftPeople`, search/filtered → `SoftMagnifier`, jobs/flags/postings → `SoftFlag`, lists/docs/templates → `SoftPaper`, deals/CRM → `SoftDeal`, calendar/scheduling → `SoftCalendar`, sourcing → `SoftFind`, insights/scorecards → `SoftRosette`, generic data → `SoftPlane`, building/clients/departments → `SoftBuilding`.
+- No new colors, fonts, or icons. No business-logic changes.
 
-Inline: `ActivityFeedList`, `CandidateAttachments`, `CandidateComments`, `CandidateOfferDetails`, `CandidateReminders`, `CandidateUrls`, `EmailHistoryList`, `DealInvoicesCard`, `DealPaymentsCard`, `StageScorecardsCard`, `CandidatesSearchesRail`.
-
-Auto-shimmed via legacy wrappers (no edit needed): everything still calling `GioEmptyState`, `AnalyticsEmptyState`, `TalentIntelligenceEmptyState`, `TableEmpty`, `TableFilteredEmpty`.
-
-## D. Explicitly OUT of scope (dropdown/popover micro-text — per spec)
-
-`filter-chip-popover`, `filter-checkbox-group`, `searchable-select`, `currency-select`, `LocationSelector`, `TimezoneSelector`, `AddTagPopover`, `SearchDropdown`, `Command*` empties. These keep their existing micro-text per the spec's "no chrome inside dropdowns" rule.
-
----
-
-## Build plan
-
-**Phase 1 — Public/candidate surfaces (the gap you flagged)**
-1. `PublicCareersPage.tsx` — migrate both empty/error branches (`SoftFlag` + `SoftMagnifier`).
-2. `VirgilioCareersPage.tsx` — same two swaps.
-3. `PublicBookingPage.tsx` — migrate inactive, expired, and "No availability" cards.
-4. `NotFound.tsx` — wrap in canonical 404.
-5. Verify `PublicJobPosting.tsx` job-closed branch (if present).
-
-**Phase 2 — Remaining internal surfaces**
-6. `OrganizationDetailsDialog`, `ApplicationFormBuilder`, `SourcingSidebar`, `SearchResultsDialog`, `GlobalSearchPanel`, `ShareListModal` (panel empty only), `MemberJobAssignmentsDialog`, `MembersTable`.
-7. Sanity-check `JobPostingsTab` and `DealsKanbanBoard` render correctly via shim.
-
-**Phase 3 — QA pass**
-8. Visit: `/careers/[slug]` (real + bogus slug), `/virgilio-careers`, an inactive/expired booking link, `/dashboard` (Recent searches), `/pipeline`, `/candidates?search=zzzqqq`, Members, Organizations, a Job's Postings tab, Global Search with no matches, `/settings/billing`. Confirm: white card on cream, single soft illustration, Poppins title, black primary button only when relevant.
-
-No new colors, fonts, icons, or assets — everything uses the existing `EmptyIllustrations.tsx` + tokens.
+## Validation
+After migration: spot-check `/settings` workspace tabs (Departments, Job stages, Offer templates, Offer forms, Rejection templates, Application fields, Verified domains, Deal stages, Automations), `/settings` platform tabs (Feature flags, Platform templates, SaaS customers), `/crm` deal sheet → notes/payments/invoices/stages, ATS job setup (team, hiring plan, offer approval), candidate profile tabs (offer, application, scorecards, fit), `/shared/[token]` empty list.

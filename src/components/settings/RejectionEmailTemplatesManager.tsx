@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { InlineEmpty } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,13 +49,11 @@ export function RejectionEmailTemplatesManager({ context }: RejectionEmailTempla
         {isLoading ? (
           <TableSkeleton rows={3} />
         ) : templates.length === 0 ? (
-          <div className="text-center py-8">
-            <FileX className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No rejection email templates found</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create your first rejection email template to get started
-            </p>
-          </div>
+          <InlineEmpty
+            text="No rejection email templates yet. Create your first template to get started."
+            action="Create template"
+            onAction={openCreateSheet}
+          />
         ) : (
           <div className="rounded-md border overflow-hidden">
             <Table>

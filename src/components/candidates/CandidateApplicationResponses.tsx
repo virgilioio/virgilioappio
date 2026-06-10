@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { InlineEmpty } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -224,7 +225,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
         </div>
       ))}
       {responses.length === 0 && (
-        <div className="text-sm text-muted-foreground">No additional application details available.</div>
+        <InlineEmpty text="No additional application details available." />
       )}
     </div>
   );

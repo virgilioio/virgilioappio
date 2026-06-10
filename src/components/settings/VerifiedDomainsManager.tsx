@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { InlineEmpty } from '@/components/ui/empty-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -168,13 +169,7 @@ export function VerifiedDomainsManager({
       </CardHeader>
       <CardContent>
         {domains.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No domains configured yet.</p>
-            {canManageDomains && (
-              <p className="text-sm mt-2">Add your company domain to enable auto-join for team members.</p>
-            )}
-          </div>
+          <InlineEmpty text={canManageDomains ? 'No domains configured yet. Add your company domain to enable auto-join for team members.' : 'No domains configured yet.'} />
         ) : (
           <Table>
             <TableHeader>

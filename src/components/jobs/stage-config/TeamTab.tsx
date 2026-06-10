@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { Button } from '@/components/ui/button'
@@ -298,13 +299,7 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
             ))}
           </div>
         ) : interviewers.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-6 text-center">
-            <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No interviewers assigned yet</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Use the form above to assign team members
-            </p>
-          </div>
+          <InlineEmpty text="No interviewers assigned yet. Use the form above to assign team members." />
         ) : (
           <div className="space-y-3">
             {interviewers.map(interviewer => {

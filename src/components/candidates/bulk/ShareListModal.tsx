@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -318,7 +319,7 @@ export function ShareListModal({ candidateIds, candidateNames, candidates: candi
                   </div>
                   <div className="rounded-lg border border-black/8 bg-background divide-y divide-black/5 max-h-[220px] overflow-y-auto">
                     {finalIds.length === 0 && (
-                      <div className="px-3 py-4 text-[13px] text-muted-foreground text-center">No candidates left.</div>
+                      <div className="p-2"><InlineEmpty text="No candidates left." /></div>
                     )}
                     {finalIds.map(id => {
                       const c = candidateMap.get(id)

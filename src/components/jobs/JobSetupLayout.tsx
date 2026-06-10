@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import {
   Pencil,
   Globe,
@@ -476,7 +477,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
                 <div className="space-y-2">
                   {teamMembers.length === 0 ? (
-                    <p className="text-[13px] text-text-secondary">No team members yet.</p>
+                    <InlineEmpty text="No team members yet." />
                   ) : (
                     teamMembers.map((m) => (
                       <div

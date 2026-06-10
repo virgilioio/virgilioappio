@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { InlineEmpty } from '@/components/ui/empty-state'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useJobStages } from '@/hooks/useJobStages'
@@ -326,11 +327,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
           <div>
             <h4 className="text-base font-medium text-text-primary mb-3">Current Hiring Stages</h4>
             {selectedStages.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <p className="text-text-secondary">No stages in the hiring plan</p>
-                </CardContent>
-              </Card>
+              <InlineEmpty text="No stages in the hiring plan yet." />
             ) : (
               <DndContext 
                 sensors={sensors}

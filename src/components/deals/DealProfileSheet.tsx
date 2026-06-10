@@ -338,7 +338,7 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                         })}
                       </Accordion>
                     ) : (
-                      <div className="text-sm text-text-secondary">No deal stages configured.</div>
+                      <InlineEmpty text="No deal stages configured." />
                     )}
                   </CardContent>
                 </Card>
