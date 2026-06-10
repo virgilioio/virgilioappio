@@ -1,114 +1,66 @@
-# Consolidate empty states into one source of truth
+# Empty-state audit
 
-Today empty states live in **6+ implementations** and dozens of hand-rolled inline blocks. This plan unifies them into a single canonical primitive at `src/components/ui/empty-state.tsx`, then migrates every call site. **No copy/visual changes yet** — that comes in a follow-up plan once the foundation is in place.
+Two canonical components (`EmptyState`, `InlineEmpty`) + 14 illustrations are in place and the legacy wrappers (`GioEmptyState`, `AnalyticsEmptyState`, `TalentIntelligenceEmptyState`, `TableEmpty`, `TableFilteredEmpty`) shim to them. This audit covers what still renders a bespoke empty UI.
 
----
+## A. Public / candidate-facing — NOT migrated yet
 
-## 1. The canonical primitive
+These are the highest-priority gap from your message. Per spec they should use `SoftFlag` (candidate-facing) and **no app chrome** — keep `min-h-screen`, the page's hero/footer, and candidate copy; just swap the inner box.
 
-**File:** `src/components/ui/empty-state.tsx` (replaces the current file)
+| File | Empty/error state | Action |
+| --- | --- | --- |
+| `src/pages/PublicCareersPage.tsx` (L160, L196) | (1) `Page Not Found` card · (2) "No open positions" / "No roles match your filters" | (1) `EmptyState size="card"` + `SoftFlag` (candidate copy, no buttons). (2) split: empty list → `SoftFlag` "No open roles right now"; filtered → `SoftMagnifier` "No roles match your filters" + "Clear filters". |
+| `src/pages/VirgilioCareersPage.tsx` (L160, L192) | Mirror of PublicCareersPage | Same two swaps. |
+| `src/pages/PublicBookingPage.tsx` (L425 inactive link, L449 expired, L558 No availability) | Three bespoke white cards | Migrate all three to `EmptyState size="card"`: inactive → `SoftFlag`, expired → `SoftFlag`, No availability → `SoftCalendar`. Keep page chrome (`PublicBookingHeader`/`Footer`). |
+| `src/pages/NotFound.tsx` | Bare 404 | Wrap in `EmptyState size="route"` + `SoftFlag` "Page not found" with a "Go home" button. |
+| `src/components/careers/public/ApplicationSubmittedScreen.tsx` | Confirmation screen (not empty per se) | **Leave as-is** — it's a success state, not empty. |
+| `src/pages/PublicJobPosting.tsx` | No empty states (it's a form) | None. Verify "job closed / no longer accepting" branch exists; if so, migrate. |
 
-One component, four variants. Composition over configuration.
+## B. Internal surfaces still rendering custom empties — finish the second pass
 
-```tsx
-<EmptyState
-  variant="page" | "table-row" | "chart" | "inline"
-  // Visual
-  mascot?: boolean                      // default true — show Gio face
-  icon?: LucideIcon                     // alternative to mascot
-  assetType?: PlatformAssetType         // optional DB-driven hero image (page only)
-  // Copy
-  title: ReactNode                      // purple period auto-appended
-  description?: ReactNode
-  // Action
-  action?: { label: string; onClick: () => void; variant?: ButtonVariant }
-  secondaryAction?: { label: string; onClick: () => void }
-  // Layout
-  size?: 'sm' | 'md' | 'lg'             // default md
-  className?: string
-  // Table-row only
-  colSpan?: number
-/>
-```
+| File | What renders today | Migrate to |
+| --- | --- | --- |
+| `src/components/members/MembersTable.tsx` (L235) | Custom row | `TableEmpty` / `TableFilteredEmpty` (auto-shimmed) |
+| `src/components/organizations/OrganizationDetailsDialog.tsx` (L220) | "No members found for this client" | `InlineEmpty` |
+| `src/components/jobs/JobPostingsTab.tsx` (L402–L410) | Already uses legacy `EmptyState` props — works via shim | Verify it renders correctly; otherwise swap to canonical + `SoftPaper`. |
+| `src/components/jobs/postings/ApplicationFormBuilder.tsx` (L255) | "No questions yet" | `InlineEmpty` (it's inside the builder rail) |
+| `src/components/sourcing/SourcingSidebar.tsx` (L250) | "No projects yet" / "No matching projects" | `InlineEmpty` (sidebar rail) |
+| `src/components/dashboard/WorldClockWidget.tsx` (L264) | "No cities found" in picker | Leave — it's inside a dropdown (`Command` empty), per spec dropdowns keep their tiny text |
+| `src/components/dashboard/CurrencyConverterWidget.tsx` (L86) | `CommandEmpty` | Leave (dropdown rule) |
+| `src/components/search/SearchResultsDialog.tsx` (L133) | "No results found for X" | `EmptyState size="card"` + `SoftMagnifier` inside the dialog body |
+| `src/components/search/v2/GlobalSearchPanel.tsx` (L229, L385) | Two bespoke empties | Replace with `InlineEmpty` (panel-style — keep dense) |
+| `src/components/candidates/bulk/ShareListModal.tsx` (L402, L433) | "No teammate found" | Leave the inline combobox one (dropdown rule); migrate L433 panel empty to `InlineEmpty` |
+| `src/components/candidates/MoveToPipelineMenu.tsx` (L60) | "No stages available" inside dropdown | Leave (dropdown rule) |
+| `src/components/members/MemberJobAssignmentsDialog.tsx` (L225) | "No jobs available in this organization." | `EmptyState size="card"` + `SoftFlag` |
+| `src/components/deals/DealsKanbanBoard.tsx` (L136, L193) | Already uses canonical for "No stages"; per-column empty is a chip | Leave per-column chip (kanban convention); verify L136 illustration = `SoftDeal`. |
 
-**Variant specs (locked to Gio Foundation v1.0):**
+## C. Already migrated (no action) — confirm during QA
 
-| Variant       | Use case                                | Size       | Mascot | Padding   |
-|---------------|-----------------------------------------|------------|--------|-----------|
-| `page`        | Full page / large surface (Jobs, Deals) | 64px image | yes    | py-16     |
-| `table-row`   | Inside `<TableBody>` (replaces `TableEmpty`) | none / 20px icon | no | py-12 |
-| `chart`       | Inside analytics chart cards            | 40px icon  | no     | py-8      |
-| `inline`      | Cards, sheets, side panels (comments, attachments, activity) | 48px | yes | py-10 |
+Routes/cards: `CandidateTable`, `JobsTable`, `SavedCandidatesTab`, `ArchivedCandidatesTab`, `MembersList` (saas), `IndependentCandidateTable`, `RecentSourcingProjects`, `DepartmentsManager`, `JobStagesTable`, `AutomationsTab`, `InvoiceHistoryTable`, `SaaSCustomersList`, `Pipeline`, `SourcingCandidateTable`, `CandidateInsightsTab`, `OrganizationsTable`.
 
-**Typography (all variants):**
-- Title: `text-table-name text-text-primary` + auto `<span className="text-purple-period">.</span>`
-- Description: `text-body-sm text-text-tertiary`
-- Action: standard `<Button>` (no overrides)
+Inline: `ActivityFeedList`, `CandidateAttachments`, `CandidateComments`, `CandidateOfferDetails`, `CandidateReminders`, `CandidateUrls`, `EmailHistoryList`, `DealInvoicesCard`, `DealPaymentsCard`, `StageScorecardsCard`, `CandidatesSearchesRail`.
 
-**Sub-exports (keep API ergonomic without growing the matrix):**
-- `<EmptyState.Page>`, `<EmptyState.TableRow>`, `<EmptyState.Chart>`, `<EmptyState.Inline>` — thin wrappers that set `variant`.
-- `<EmptyState.Filtered>` — preset for "no results match filters" with built-in "Clear filters" action.
+Auto-shimmed via legacy wrappers (no edit needed): everything still calling `GioEmptyState`, `AnalyticsEmptyState`, `TalentIntelligenceEmptyState`, `TableEmpty`, `TableFilteredEmpty`.
+
+## D. Explicitly OUT of scope (dropdown/popover micro-text — per spec)
+
+`filter-chip-popover`, `filter-checkbox-group`, `searchable-select`, `currency-select`, `LocationSelector`, `TimezoneSelector`, `AddTagPopover`, `SearchDropdown`, `Command*` empties. These keep their existing micro-text per the spec's "no chrome inside dropdowns" rule.
 
 ---
 
-## 2. What gets deleted / collapsed
+## Build plan
 
-| Old                                                          | Replacement                                       |
-|--------------------------------------------------------------|---------------------------------------------------|
-| `src/components/ui/GioEmptyState.tsx`                        | `<EmptyState variant="inline">`                   |
-| `src/components/ui/empty-state.tsx` (old `EmptyState`)       | Rewritten as canonical (keeps `assetType` prop)   |
-| `src/components/analytics/shared/AnalyticsEmptyState.tsx`    | `<EmptyState variant="chart">`                    |
-| `src/components/talent-intelligence/TalentIntelligenceEmptyState.tsx` | `<EmptyState variant="inline">`          |
-| `TableEmpty` / `TableFilteredEmpty` in `table-states.tsx`    | Re-export thin wrappers around `<EmptyState variant="table-row">` (so existing imports keep working during migration) |
-| Inline empty blocks in `ActivityFeedList`, `NoJobDescriptionCard`, `EmailHistoryList`, `CandidateComments`, `CandidateReminders`, `CandidateAttachments`, `CandidateUrls`, `NotificationCenter`, `UpcomingActivities`, `DealPaymentsCard`, `DealInvoicesCard`, `SavedCandidatesTab`, `ArchivedCandidatesTab`, etc. | `<EmptyState variant="inline">`                   |
+**Phase 1 — Public/candidate surfaces (the gap you flagged)**
+1. `PublicCareersPage.tsx` — migrate both empty/error branches (`SoftFlag` + `SoftMagnifier`).
+2. `VirgilioCareersPage.tsx` — same two swaps.
+3. `PublicBookingPage.tsx` — migrate inactive, expired, and "No availability" cards.
+4. `NotFound.tsx` — wrap in canonical 404.
+5. Verify `PublicJobPosting.tsx` job-closed branch (if present).
 
-`platform_assets` integration (DB-driven hero images for organizations/jobs/candidates/members/etc.) is **preserved** — moves into the `page` variant under `assetType`.
+**Phase 2 — Remaining internal surfaces**
+6. `OrganizationDetailsDialog`, `ApplicationFormBuilder`, `SourcingSidebar`, `SearchResultsDialog`, `GlobalSearchPanel`, `ShareListModal` (panel empty only), `MemberJobAssignmentsDialog`, `MembersTable`.
+7. Sanity-check `JobPostingsTab` and `DealsKanbanBoard` render correctly via shim.
 
----
+**Phase 3 — QA pass**
+8. Visit: `/careers/[slug]` (real + bogus slug), `/virgilio-careers`, an inactive/expired booking link, `/dashboard` (Recent searches), `/pipeline`, `/candidates?search=zzzqqq`, Members, Organizations, a Job's Postings tab, Global Search with no matches, `/settings/billing`. Confirm: white card on cream, single soft illustration, Poppins title, black primary button only when relevant.
 
-## 3. Migration plan (one PR per phase, all behind same primitive)
-
-**Phase A — Foundation (no behavior change)**
-1. Implement new `EmptyState` in `src/components/ui/empty-state.tsx`.
-2. Keep `TableEmpty` / `TableFilteredEmpty` exports in `table-states.tsx` but reimplement them as thin wrappers → zero churn for table call sites.
-3. Re-export `GioEmptyState`, `AnalyticsEmptyState`, `TalentIntelligenceEmptyState` as deprecated wrappers around the new primitive (logged once via console.warn in dev only).
-
-**Phase B — Migrate call sites (mechanical)**
-- Analytics: `AnalyticsChartCard`, `AnalyticsTableCard`, `TalentInsightsSection`, `OfferAnalyticsSection`, `TalentPoolComposition`, `GeographyInsights`, `CompensationInsights` → `variant="chart"`.
-- Cards/sheets: `ActivityFeedList`, `CandidateComments`, `CandidateReminders`, `CandidateAttachments`, `CandidateUrls`, `EmailHistoryList`, `NoJobDescriptionCard`, `NotificationCenter`, `UpcomingActivities`, `ApplicationReviewCard`, `DealPayments/InvoicesCard`, `SavedCandidatesTab`, `ArchivedCandidatesTab` → `variant="inline"`.
-- Pages: `Jobs`, `Deals`, `TalentIntelligence`, `Find`, `Organizations`, `Members` → `variant="page"` (preserves `assetType`).
-- Tables: keep using `TableEmpty` import (now a wrapper) — no edits required.
-
-**Phase C — Cleanup**
-- Delete `GioEmptyState.tsx`, `AnalyticsEmptyState.tsx`, `TalentIntelligenceEmptyState.tsx`.
-- Inline the table wrappers (collapse `TableEmpty` → direct `<EmptyState variant="table-row">`) OR keep as semantic re-exports (TBD with you — leaning **keep** for table grammar clarity).
-
----
-
-## 4. Style guide + memory updates
-
-- Add **§7 Empty States** to `docs/style-guide.md` documenting the 4 variants, props, and when to use which.
-- Update memory `mem://style/ui/standardized-empty-states` to point at the canonical primitive.
-- Add Core rule one-liner: *"Empty states: single `<EmptyState>` primitive — variants `page | table-row | chart | inline`. No hand-rolled blocks."*
-
----
-
-## 5. Out of scope (next plan)
-
-Once consolidation lands, we'll do a **separate** plan for:
-- Copy refresh (titles, descriptions)
-- Mascot pose variants (sad / searching / celebrating)
-- Illustration vs. icon decisions per surface
-- Action button conventions per empty state
-
----
-
-## Technical notes
-
-- New primitive is **presentation-only** — no data fetching except the existing `platform_assets` lookup (which only runs when `assetType` is passed).
-- Purple period rendering is centralized — call sites pass plain title strings.
-- `colSpan` is required when `variant="table-row"` (TS discriminated union enforces it).
-- All sizes use existing tokens (`text-table-name`, `text-body-sm`, `text-text-tertiary`, `text-purple-period`, `virgilio-purple`). No new CSS.
-- Tree-shakeable: sub-exports are static properties, not separate modules.
-
-Ready to implement Phase A as soon as you approve.
+No new colors, fonts, icons, or assets — everything uses the existing `EmptyIllustrations.tsx` + tokens.
