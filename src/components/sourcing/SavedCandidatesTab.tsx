@@ -37,6 +37,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SoftPlane } from '@/components/ui/EmptyIllustrations'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
