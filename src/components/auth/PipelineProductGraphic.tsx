@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Sparkles } from 'lucide-react'
+import avatarDaniel from '@/assets/avatar-daniel.jpg'
+import avatarMateo from '@/assets/avatar-mateo.jpg'
+import avatarSofia from '@/assets/avatar-sofia.jpg'
+import avatarMateoServices from '@/assets/avatar-mateo-services.jpg'
 
-interface CandidateRowProps {
-  initials: string
-  avatarBg: string
+interface CandidateCardProps {
+  avatar: string
   name: string
   country: string
   score: string
@@ -18,9 +21,8 @@ interface CandidateRowProps {
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
 
-function CandidateRow({
-  initials,
-  avatarBg,
+function CandidateCard({
+  avatar,
   name,
   country,
   score,
@@ -31,7 +33,7 @@ function CandidateRow({
   hovered,
   countDelay = 0,
   highlight = false,
-}: CandidateRowProps) {
+}: CandidateCardProps) {
   const numericTarget = Number(score)
   const isNumeric = !Number.isNaN(numericTarget) && score.trim() !== ''
   const [display, setDisplay] = useState(0)
@@ -48,8 +50,7 @@ function CandidateRow({
     const startTimeout = window.setTimeout(() => {
       const step = (ts: number) => {
         if (start === null) start = ts
-        const elapsed = ts - start
-        const t = Math.min(1, elapsed / duration)
+        const t = Math.min(1, (ts - start) / duration)
         setDisplay(Math.round(easeOutCubic(t) * numericTarget))
         if (t < 1) raf = requestAnimationFrame(step)
       }
@@ -64,38 +65,45 @@ function CandidateRow({
   return (
     <div
       className={[
-        'flex items-center gap-2.5 rounded-xl px-2.5 py-2 bg-white animate-card-rise',
+        'rounded-2xl bg-[#FAF8F3] p-3.5 animate-card-rise',
         'transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
         'hover:-translate-y-[2px]',
         highlight
-          ? 'ring-1 ring-[#d7c5fb] shadow-[0_8px_24px_-12px_rgba(215,197,251,0.85)]'
-          : 'ring-1 ring-black/5',
+          ? 'ring-1 ring-[#d7c5fb] shadow-[0_12px_28px_-14px_rgba(215,197,251,0.9)]'
+          : 'ring-1 ring-black/[0.06]',
       ].join(' ')}
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div
-        className="h-7 w-7 rounded-full flex items-center justify-center text-[10.5px] font-semibold text-white shrink-0"
-        style={{ background: avatarBg }}
-        aria-hidden
-      >
-        {initials}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-semibold text-[#0d0d09] leading-tight truncate">
-          {name}
+      {/* Top: avatar + name/country */}
+      <div className="flex items-center gap-3">
+        <img
+          src={avatar}
+          alt=""
+          loading="lazy"
+          width={48}
+          height={48}
+          className="h-11 w-11 rounded-full object-cover shrink-0 ring-1 ring-black/5"
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <div className="font-poppins font-semibold text-[13.5px] text-[#0d0d09] leading-tight tracking-[-0.01em] truncate">
+            {name}
+          </div>
+          <div className="text-[11.5px] text-[#5A6072] leading-tight truncate mt-0.5">
+            {country}
+          </div>
         </div>
-        <div className="text-[10.5px] text-[#5A6072] leading-tight truncate">
-          {country}
-        </div>
       </div>
-      <div
-        className="text-[11px] font-semibold rounded-md px-1.5 py-0.5 tabular-nums shrink-0"
-        style={{ background: scoreBg, color: scoreText }}
-      >
-        {isNumeric ? `${display}%` : score}
-      </div>
-      <div className="text-[10.5px] text-[#8B8F9E] tabular-nums shrink-0 w-9 text-right">
-        {meta}
+
+      {/* Bottom: score chip + meta */}
+      <div className="mt-3 flex items-center justify-between">
+        <span
+          className="text-[11px] font-semibold rounded-full px-2 py-0.5 tabular-nums"
+          style={{ background: scoreBg, color: scoreText }}
+        >
+          {isNumeric ? `${display}%` : score}
+        </span>
+        <span className="text-[11px] text-[#8B8F9E] tabular-nums">{meta}</span>
       </div>
     </div>
   )
@@ -108,16 +116,16 @@ interface ColumnProps {
 }
 function Column({ label, count, children }: ColumnProps) {
   return (
-    <div className="flex flex-col gap-2 min-w-0">
-      <div className="flex items-center justify-between px-1 mb-0.5">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#5A6072]">
+    <div className="flex flex-col gap-3 min-w-0">
+      <div className="flex items-baseline gap-2 px-1">
+        <span className="text-[12px] font-semibold text-[#0d0d09] tracking-[-0.01em]">
           {label}
         </span>
-        <span className="text-[10px] font-semibold text-[#8B8F9E] tabular-nums">
+        <span className="text-[12px] font-medium text-[#8B8F9E] tabular-nums">
           {count}
         </span>
       </div>
-      {children}
+      <div className="flex flex-col gap-3">{children}</div>
     </div>
   )
 }
@@ -126,15 +134,15 @@ export function PipelineProductGraphic() {
   const [hovered, setHovered] = useState(false)
 
   return (
-    <div className="relative w-full max-w-[560px] mx-auto" aria-hidden={false}>
-      {/* Decorative shapes */}
+    <div className="relative w-full max-w-[640px] mx-auto">
+      {/* Decorative shapes behind the card */}
       <div
         aria-hidden
-        className="absolute -top-4 right-6 w-16 h-16 rounded-full bg-[#0d0d09] z-0 animate-float-soft"
+        className="absolute -top-6 right-10 w-16 h-16 rounded-full bg-[#0d0d09] z-0 animate-float-soft"
       />
       <div
         aria-hidden
-        className="absolute -top-2 right-20 w-56 h-56 rounded-full bg-[#d6e6ff] z-0 animate-float-soft"
+        className="absolute -top-3 right-24 w-56 h-56 rounded-full bg-[#d6e6ff] z-0 animate-float-soft"
         style={{ animationDelay: '1.2s' }}
       />
 
@@ -142,25 +150,23 @@ export function PipelineProductGraphic() {
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="relative z-10 bg-white rounded-2xl shadow-[0_24px_60px_-24px_rgba(13,13,9,0.18)] ring-1 ring-black/5 p-5 animate-panel-rise"
+        className="relative z-10 bg-white rounded-[28px] shadow-[0_30px_70px_-30px_rgba(13,13,9,0.22)] ring-1 ring-black/[0.06] p-6 sm:p-7 animate-panel-rise"
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-poppins font-semibold text-[13.5px] text-[#0d0d09] tracking-[-0.02em]">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-poppins font-bold text-[18px] sm:text-[19px] text-[#0d0d09] tracking-[-0.025em]">
             Account Executive · Pipeline
           </h3>
-          <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200/70 rounded-full px-2 py-0.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Active
+          <span className="inline-flex items-center text-[12px] font-semibold text-[#5b3fa3] bg-[#EDE4FF] rounded-full px-3 py-1">
+            9 active
           </span>
         </div>
 
         {/* Columns */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           <Column label="Screening" count={3}>
-            <CandidateRow
-              initials="DO"
-              avatarBg="linear-gradient(135deg,#7c3aed,#a78bfa)"
+            <CandidateCard
+              avatar={avatarDaniel}
               name="Daniel O."
               country="Colombia"
               score="88"
@@ -171,9 +177,8 @@ export function PipelineProductGraphic() {
               hovered={hovered}
               countDelay={0}
             />
-            <CandidateRow
-              initials="MA"
-              avatarBg="linear-gradient(135deg,#2563eb,#60a5fa)"
+            <CandidateCard
+              avatar={avatarMateo}
               name="Mateo A."
               country="Chile"
               score="81"
@@ -187,9 +192,8 @@ export function PipelineProductGraphic() {
           </Column>
 
           <Column label="Interview" count={2}>
-            <CandidateRow
-              initials="SB"
-              avatarBg="linear-gradient(135deg,#16a34a,#4ade80)"
+            <CandidateCard
+              avatar={avatarSofia}
               name="Sofia B."
               country="Mexico"
               score="92"
@@ -204,9 +208,8 @@ export function PipelineProductGraphic() {
           </Column>
 
           <Column label="Offer" count={1}>
-            <CandidateRow
-              initials="MS"
-              avatarBg="linear-gradient(135deg,#0d9488,#5eead4)"
+            <CandidateCard
+              avatar={avatarMateoServices}
               name="Mateo S."
               country="Mexico"
               score="Sent"
@@ -220,24 +223,24 @@ export function PipelineProductGraphic() {
         </div>
 
         {/* Footer */}
-        <div className="mt-5 pt-4 border-t border-black/5 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#0d0d09]">
-            <Sparkles className="h-3.5 w-3.5 text-[#d7c5fb] animate-slow-pulse" />
-            AI-scored
-          </div>
-          <div className="text-[11px] text-[#5A6072]">
-            Avg. time to hire · 18 days
-          </div>
+        <div className="mt-7 pt-5 border-t border-black/[0.06] flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#5b3fa3] bg-[#EDE4FF] rounded-full pl-2 pr-3 py-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-[#7c3aed] animate-slow-pulse" />
+            AI scored every candidate
+          </span>
+          <span className="text-[13px] font-bold text-[#0d0d09]">
+            Avg. 21d to hire
+          </span>
         </div>
       </div>
 
-      {/* Floating live badge */}
-      <div className="absolute right-4 -bottom-4 z-20 inline-flex items-center gap-1.5 bg-[#0d0d09] text-white rounded-full pl-2 pr-3 py-1.5 shadow-[0_12px_32px_-12px_rgba(13,13,9,0.4)]">
-        <span className="relative flex h-2 w-2">
+      {/* Floating "Pipeline live" badge — overlaps bottom edge */}
+      <div className="absolute right-6 -bottom-4 z-20 inline-flex items-center gap-2 bg-white text-[#0d0d09] rounded-full pl-2.5 pr-4 py-2 shadow-[0_16px_36px_-12px_rgba(13,13,9,0.25)] ring-1 ring-black/[0.06]">
+        <span className="relative flex h-2.5 w-2.5">
           <span className="absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75 animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
         </span>
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em]">
+        <span className="text-[12.5px] font-semibold tracking-[-0.01em]">
           Pipeline live
         </span>
       </div>
