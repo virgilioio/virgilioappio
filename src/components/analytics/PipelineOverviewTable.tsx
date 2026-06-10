@@ -48,9 +48,6 @@ export function PipelineOverviewTable({ jobIds, isLoading: externalLoading }: Pi
       </Card>
     )
   }
-      </Card>
-    )
-  }
 
   return (
     <Card className="border-virgilio-border h-full sm:h-auto flex flex-col">
