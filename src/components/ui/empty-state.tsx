@@ -123,6 +123,9 @@ function CanonicalEmptyState({
         textAlign: 'center',
         minHeight: t.minH,
         padding: t.pad,
+        ...(size === 'card'
+          ? { width: '100%', maxWidth: 480, marginInline: 'auto' }
+          : null),
       }}
     >
       <div style={{ marginBottom: 6, transform: size === 'card' ? 'scale(0.82)' : 'none' }}>
