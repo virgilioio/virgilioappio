@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { CurrencySettings } from "./CurrencySettings";
 import { SettingsCard } from "@/components/settings/shared/SettingsCard";
+import { stripHtmlToPlainText } from "@/utils/templateUtils";
 
 interface TenantFormData {
   name: string;
