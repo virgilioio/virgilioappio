@@ -241,27 +241,27 @@ export default function OrganizationTab() {
           </div>
         )}
 
-          {isEditMode && (
-            <div className="flex justify-end gap-2 pt-md">
-              <Button
-                variant="outline"
-                onClick={handleEditModeToggle}
-                disabled={isSaving}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving || !hasUnsavedChanges}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {isEditMode && (
+          <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-[#EFEFEA]">
+            <Button
+              variant="secondary"
+              icon={X}
+              onClick={handleEditModeToggle}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              icon={Save}
+              onClick={handleSave}
+              disabled={isSaving || !hasUnsavedChanges}
+              loading={isSaving}
+            >
+              Save changes
+            </Button>
+          </div>
+        )}
+      </SettingsCard>
 
       <CurrencySettings />
 
