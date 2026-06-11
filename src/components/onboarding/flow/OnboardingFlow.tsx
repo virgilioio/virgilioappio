@@ -286,12 +286,14 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     setCandidatesPhase('searching')
     const start = Date.now()
     ;(async () => {
-      try {
-        await supabase.functions.invoke('get-job-matching-candidates', {
-          body: { job_id: jobId, limit: 18 },
-        })
-      } catch (err) {
-        console.warn('[Onboarding] matching call failed (non-fatal, showing samples)', err)
+      if (!demo) {
+        try {
+          await supabase.functions.invoke('get-job-matching-candidates', {
+            body: { job_id: jobId, limit: 18 },
+          })
+        } catch (err) {
+          console.warn('[Onboarding] matching call failed (non-fatal, showing samples)', err)
+        }
       }
       const elapsed = Date.now() - start
       const minMs = 1600
@@ -301,7 +303,7 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     return () => {
       cancelled = true
     }
-  }, [step, jobId])
+  }, [step, jobId, demo])
 
   // ─── Step 5: Team ───
   type InviteRow = { email: string; role: 'admin' | 'member' | 'sales' }
