@@ -117,15 +117,27 @@ export function MembersTab() {
 
   return (
     <div className="space-y-4">
-      <MetricStrip
-        metrics={[
-          { label: 'Paid seats', value: paidCount, hint: 'Admins, Owners, Recruiters' },
-          { label: 'Free collaborators', value: freeCount, hint: 'Hiring Managers, Interviewers' },
-          { label: 'Deactivated', value: deactivatedCount, hint: 'Not counted toward seats' },
-        ]}
-      />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <MetricCard
+          title="Paid seats"
+          value={paidCount}
+          icon={Users}
+          tooltip="Admins, Owners, Recruiters"
+        />
+        <MetricCard
+          title="Free collaborators"
+          value={freeCount}
+          icon={UserPlus}
+          tooltip="Hiring Managers, Interviewers"
+        />
+        <MetricCard
+          title="Deactivated"
+          value={deactivatedCount}
+          icon={Archive}
+          tooltip="Not counted toward seats"
+        />
+      </div>
 
-      {tenantId && <SeatUsageCard tenantId={tenantId} />}
 
       <MembersTable
         members={enrichedMembers}
