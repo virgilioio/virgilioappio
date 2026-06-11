@@ -41,15 +41,13 @@ export function PlatformJobStagesManager() {
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border overflow-hidden">
-          <JobStagesTable 
-            stages={stages} 
-            isLoading={isLoading} 
-            onEdit={handleEdit}
-            onDelete={deleteStage}
-            context="platform-defaults"
-          />
-        </div>
+        <JobStagesTable 
+          stages={stages} 
+          isLoading={isLoading} 
+          onEdit={handleEdit}
+          onDelete={deleteStage}
+          context="platform-defaults"
+        />
       </CardContent>
 
       {/* Create Sheet */}
