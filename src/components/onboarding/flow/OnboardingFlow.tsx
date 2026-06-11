@@ -115,8 +115,10 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     saveState(STORAGE_KEY, { step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo })
   }, [STORAGE_KEY, step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo])
 
-  // Step 4 candidate phase
+  // Step 4 candidate phase + real Apollo results
   const [candidatesPhase, setCandidatesPhase] = useState<'idle' | 'searching' | 'ready'>('idle')
+  const [realCandidates, setRealCandidates] = useState<typeof SAMPLE_CANDIDATES | null>(null)
+  const [usedRealCandidates, setUsedRealCandidates] = useState(false)
 
   // Derived preview
   const preview: PreviewState = useMemo(() => {
