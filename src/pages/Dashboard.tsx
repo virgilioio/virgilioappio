@@ -281,7 +281,7 @@ export default function Dashboard() {
     if (item.type === 'reply' && item.emailId && !doneIds.has(item.id)) {
       void supabase
         .from('email_logs')
-        .update({ read_at: new Date().toISOString() })
+        .update({ is_read: true })
         .eq('id', item.emailId)
         .then(() => queryClient.invalidateQueries({ queryKey: ['pending-activities'] }))
     }
