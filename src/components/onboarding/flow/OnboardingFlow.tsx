@@ -700,8 +700,17 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
         >
           <BadgeCheck size={14} strokeWidth={2} style={{ color: '#6F3FF5', marginTop: 2, flexShrink: 0 }} />
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, color: '#3D1FA3', lineHeight: 1.45 }}>
-            <span style={{ fontWeight: 600 }}>These are real, sourceable people</span> — live profiles matched
-            to your job just now, not sample data.
+            {usedRealCandidates ? (
+              <>
+                <span style={{ fontWeight: 600 }}>These are real, sourceable people</span> — live
+                profiles matched to your job just now, not sample data.
+              </>
+            ) : (
+              <>
+                <span style={{ fontWeight: 600 }}>Here's a feel for your queue</span> — your live
+                matches arrive in Find as soon as you land.
+              </>
+            )}
           </div>
         </div>
         <div
