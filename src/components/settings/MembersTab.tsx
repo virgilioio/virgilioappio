@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
 import { MetricCard } from '@/components/ui/metric-card'
-import { Users, UserPlus, Archive } from 'lucide-react'
+import { Users, UserPlus, Archive, Lock } from 'lucide-react'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
@@ -148,6 +148,12 @@ export function MembersTab() {
         onDeleteUser={handleDeleteUser}
         onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
       />
+
+      <p className="flex items-center justify-center gap-1.5 font-inter text-[12.5px] text-muted-foreground pt-1">
+        <Lock className="h-3.5 w-3.5" />
+        Billing &amp; invoices are visible to workspace owners.
+      </p>
+
 
       <MemberInviteSheet
         isOpen={isInviteSheetOpen}

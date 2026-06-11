@@ -238,7 +238,7 @@ export function MembersTable({
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {members.length === 0 ? (
             <EmptyState
               size="card"
@@ -252,197 +252,102 @@ export function MembersTable({
               ) : undefined}
             />
           ) : (
-            <>
-              {/* Selection toolbar */}
-              {selectedIds.length > 0 && (
-                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border bg-muted/50">
-                  <span className="text-sm font-medium">{selectedIds.length} selected</span>
-                  <div className="flex gap-2 ml-auto">
-                    <Button variant="outline" size="sm" onClick={() => {
-                      selectedIds.forEach(id => onDeactivate(id))
-                      setSelectedIds([])
-                    }}>
-                      <UserX className="h-3.5 w-3.5 mr-1.5" />
-                      Deactivate
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Toolbar */}
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <div className="relative w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-9 pl-9"
-                  />
-                </div>
-
-                <FilterChipPopover
-                  label="Seat"
-                  options={seatOptions}
-                  selectedValues={seatFilter}
-                  onSelectionChange={setSeatFilter}
-                />
-                <FilterChipPopover
-                  label="Role"
-                  options={roleOptions}
-                  selectedValues={roleFilter}
-                  onSelectionChange={setRoleFilter}
-                />
-                <FilterChipPopover
-                  label="Status"
-                  options={statusOptions}
-                  selectedValues={statusFilter}
-                  onSelectionChange={setStatusFilter}
-                />
-
-                {hasActiveFilters && (
-                  <button
-                    onClick={clearFilters}
-                    className="text-xs text-muted-foreground hover:text-foreground font-poppins font-medium transition-colors"
+            <ul className="divide-y divide-border/60">
+              {members.map((member) => {
+                const isInactive = member.user_status === 'inactive'
+                const isInvited = member.user_status === 'invited'
+                const statusLabel = isInactive ? 'Inactive' : isInvited ? 'Invited' : 'Active'
+                return (
+                  <li
+                    key={member.id}
+                    className={`flex items-center gap-3 py-3 px-1 cursor-pointer hover:bg-muted/40 rounded-md transition-colors ${isInactive ? 'opacity-60' : ''}`}
+                    onClick={() => setDetailMember(member)}
                   >
-                    Clear filters
-                  </button>
-                )}
-              </div>
-
-
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40px]">
-                        <Checkbox
-                          checked={allFilteredSelected}
-                          // @ts-ignore
-                          indeterminate={someFilteredSelected && !allFilteredSelected}
-                          onCheckedChange={toggleSelectAll}
-                        />
-                      </TableHead>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Seat</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMembers.length === 0 ? (
-                      <TableFilteredEmpty colSpan={6} onClearFilters={clearFilters} />
-                    ) : filteredMembers.map((member) => {
-                      const isInactive = member.user_status === 'inactive'
-                      return (
-                      <TableRow
-                        key={member.id}
-                        className={`cursor-pointer hover:bg-muted/50 ${isInactive ? 'opacity-50' : ''}`}
-                        onClick={() => setDetailMember(member)}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={selectedIds.includes(member.id)}
-                            onCheckedChange={() => toggleSelect(member.id)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className={`h-8 w-8 ${isInactive ? 'grayscale' : ''}`}>
-                              {member.user_avatar_url && <AvatarImage src={member.user_avatar_url} alt={getDisplayName(member)} />}
-                              <AvatarFallback className={`${isInactive ? 'bg-muted text-muted-foreground' : getAvatarColor(member)} text-xs font-semibold`}>
-                                {getInitials(member)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <div className="font-medium truncate">{getDisplayName(member)}</div>
-                              <div className={`text-sm text-muted-foreground truncate ${member.user_status === 'invited' ? 'italic' : ''}`}>
-                                {getDisplayEmail(member)}
-                                {member.user_status === 'invited' && <span className="ml-1 text-xs">(pending)</span>}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={isInactive ? 'secondary' : getRoleBadgeVariant(member.effectiveRole)}>
-                            {member.effectiveRole || (member.system_role === 'admin' ? 'Admin' : 'Member')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {!isInactive && member.seatType && (
-                            <Badge variant={member.seatType === 'paid' ? 'seat-paid' : 'seat-free'}>
-                              {member.seatType === 'paid' ? 'Paid' : 'Free'}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Badge variant={getStatusBadgeVariant(member.user_status)}>
-                              {member.user_status}
-                            </Badge>
-                            {getEmailStatusIndicator(member)}
-                          </div>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => onEdit(member)}>Edit Member</DropdownMenuItem>
-                              {onManageJobAssignments && member.user_status === 'active' && (
-                                <DropdownMenuItem onClick={() => onManageJobAssignments(member)} className="gap-2">
-                                  <Briefcase className="h-4 w-4" />Manage Job Access
-                                </DropdownMenuItem>
-                              )}
-                              {member.user_status === 'invited' && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleResendInvitation(member)} className="gap-2">
-                                    <Send className="h-4 w-4" />Resend Invitation
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => copyInviteLink(member)} disabled={copyingInvite === member.id} className="gap-2">
-                                    <Copy className="h-4 w-4" />{copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              {member.user_status === 'active' && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => onDeactivate(member.id)} className="gap-2">
-                                    <UserX className="h-4 w-4" />Deactivate Member
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              {member.user_status === 'inactive' && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => onEdit(member)} className="gap-2">
-                                    <UserCheck className="h-4 w-4" />Reactivate Member
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => onDeleteUser(member)} className="gap-2 text-destructive">
-                                <Trash2 className="h-4 w-4" />Delete User
+                    <Avatar className={`h-9 w-9 shrink-0 ${isInactive ? 'grayscale' : ''}`}>
+                      {member.user_avatar_url && <AvatarImage src={member.user_avatar_url} alt={getDisplayName(member)} />}
+                      <AvatarFallback className={`${isInactive ? 'bg-muted text-muted-foreground' : getAvatarColor(member)} text-xs font-semibold`}>
+                        {getInitials(member)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-poppins font-semibold text-[14px] text-foreground truncate">
+                        {isInvited ? getDisplayEmail(member) : getDisplayName(member)}
+                      </div>
+                      <div className="font-inter text-[12.5px] text-muted-foreground truncate">
+                        {isInvited ? (
+                          <span className="italic">Invite pending</span>
+                        ) : (
+                          getDisplayEmail(member)
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant={isInactive ? 'secondary' : getRoleBadgeVariant(member.effectiveRole)}>
+                        {member.effectiveRole || (member.system_role === 'admin' ? 'Admin' : 'Member')}
+                      </Badge>
+                      {member.seatType && (
+                        <Badge variant={member.seatType === 'paid' ? 'seat-paid' : 'seat-free'}>
+                          {member.seatType === 'paid' ? 'Paid' : 'Free'}
+                        </Badge>
+                      )}
+                      <Badge variant={getStatusBadgeVariant(member.user_status)}>
+                        {statusLabel}
+                      </Badge>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(member)}>Edit Member</DropdownMenuItem>
+                            {onManageJobAssignments && member.user_status === 'active' && (
+                              <DropdownMenuItem onClick={() => onManageJobAssignments(member)} className="gap-2">
+                                <Briefcase className="h-4 w-4" />Manage Job Access
                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )})}
-                  </TableBody>
-
-                </Table>
-              </div>
-            </>
+                            )}
+                            {member.user_status === 'invited' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleResendInvitation(member)} className="gap-2">
+                                  <Send className="h-4 w-4" />Resend Invitation
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => copyInviteLink(member)} disabled={copyingInvite === member.id} className="gap-2">
+                                  <Copy className="h-4 w-4" />{copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {member.user_status === 'active' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onDeactivate(member.id)} className="gap-2">
+                                  <UserX className="h-4 w-4" />Deactivate Member
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {member.user_status === 'inactive' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onEdit(member)} className="gap-2">
+                                  <UserCheck className="h-4 w-4" />Reactivate Member
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => onDeleteUser(member)} className="gap-2 text-destructive">
+                              <Trash2 className="h-4 w-4" />Delete User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </CardContent>
       </Card>
+
 
       <MemberDetailSheet
         member={detailMember}
