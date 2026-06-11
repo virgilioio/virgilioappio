@@ -180,22 +180,6 @@ export function EmailCalendarTab() {
               }
             />
 
-            <ProviderRow
-              logo={<MicrosoftLogo size={22} />}
-              name="Microsoft 365"
-              subtitle="Outlook mail and calendar."
-              connected={false}
-              action={
-                <Button
-                  size="sm"
-                  disabled
-                  title="Coming soon"
-                >
-                  Connect
-                </Button>
-              }
-            />
-
             <p className="flex items-center gap-1.5 font-inter text-[11.5px] text-[#8B8F9E] pt-1">
               <Lock className="h-3 w-3" strokeWidth={2} />
               Gio never reads your inbox — send-only for mail, free/busy + write for
