@@ -145,6 +145,7 @@ function AppContent() {
             <Route path="/find/:projectId" element={<Find />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/calendar" element={<Calendar />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/insights" element={<AnalyticsHub />} />
             <Route path="/talent-intelligence" element={<TalentIntelligence />} />
