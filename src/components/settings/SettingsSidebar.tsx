@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 interface SettingsNavItem {
   id: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
   show: boolean
   badge?: React.ReactNode
   ownerBadge?: boolean
