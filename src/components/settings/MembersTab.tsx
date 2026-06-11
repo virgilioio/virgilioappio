@@ -8,7 +8,6 @@ import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialo
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
-import { MetricCard } from '@/components/ui/metric-card'
 import { Users, UserPlus, Archive, Lock } from 'lucide-react'
 
 export function MembersTab() {
@@ -117,26 +116,38 @@ export function MembersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard
-          title="Paid seats"
-          value={paidCount}
-          icon={Users}
-          tooltip="Admins, Owners, Recruiters"
-        />
-        <MetricCard
-          title="Free collaborators"
-          value={freeCount}
-          icon={UserPlus}
-          tooltip="Hiring Managers, Interviewers"
-        />
-        <MetricCard
-          title="Deactivated"
-          value={deactivatedCount}
-          icon={Archive}
-          tooltip="Not counted toward seats"
-        />
+      <div className="rounded-2xl border border-border/60 bg-card shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
+          <div className="flex items-center gap-4 px-6 py-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-virgilio-purple/10 text-virgilio-purple">
+              <Users className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-inter text-[13px] text-muted-foreground">Paid seats</p>
+              <p className="font-poppins text-[26px] font-semibold leading-tight text-foreground tracking-[-0.02em]">{paidCount}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 px-6 py-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-virgilio-success/10 text-virgilio-success">
+              <UserPlus className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-inter text-[13px] text-muted-foreground">Free collaborators</p>
+              <p className="font-poppins text-[26px] font-semibold leading-tight text-foreground tracking-[-0.02em]">{freeCount}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 px-6 py-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <Archive className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-inter text-[13px] text-muted-foreground">Deactivated</p>
+              <p className="font-poppins text-[26px] font-semibold leading-tight text-foreground tracking-[-0.02em]">{deactivatedCount}</p>
+            </div>
+          </div>
+        </div>
       </div>
+
 
 
       <MembersTable
