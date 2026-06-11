@@ -79,15 +79,26 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
   return (
     <div className="space-y-6">
       <Tabs defaultValue="offer-forms" className="w-full">
-        <TabsList>
-          <TabsTrigger value="offer-forms">Offer Forms</TabsTrigger>
-          <TabsTrigger value="offer-letters">Offer Letters</TabsTrigger>
-          <TabsTrigger value="email-templates">Email Templates</TabsTrigger>
-          <TabsTrigger value="contract-templates">Contracts</TabsTrigger>
-          <TabsTrigger value="rejection-reasons">Rejection Reasons</TabsTrigger>
-          <TabsTrigger value="rejection-templates">Rejection Templates</TabsTrigger>
-          <TabsTrigger value="candidate-sources">Candidate Sources</TabsTrigger>
+        <TabsList className="bg-[#F1F0EC] p-1 h-auto rounded-full inline-flex gap-1 mb-4">
+          {[
+            ['offer-forms', 'Offer forms'],
+            ['offer-letters', 'Offer letters'],
+            ['email-templates', 'Emails'],
+            ['contract-templates', 'Contracts'],
+            ['rejection-reasons', 'Rejection reasons'],
+            ['rejection-templates', 'Rejection templates'],
+            ['candidate-sources', 'Sources'],
+          ].map(([value, label]) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="rounded-full px-3 h-7 font-poppins font-medium text-[12px] text-[#5A6072] data-[state=active]:bg-[#0d0d09] data-[state=active]:text-[#fffcf9] data-[state=active]:shadow-none"
+            >
+              {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
+
 
         <TabsContent value="offer-forms" className="mt-4">
           <OfferFormsManager context={context} />

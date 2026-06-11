@@ -64,12 +64,7 @@ export function SaaSCustomersList() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="SaaS Customers" 
-       
-      />
-
+    <div className="space-y-4">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4">
@@ -97,6 +92,7 @@ export function SaaSCustomersList() {
             </select>
           </div>
         </CardHeader>
+
         
         <CardContent>
           {isLoading ? (
