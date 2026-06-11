@@ -117,6 +117,7 @@ export default function PublicJobPosting() {
   const [customFields, setCustomFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
   const [loading, setLoading] = useState(true)
+  useReportSplashReady(!loading)
   const [scrolled, setScrolled] = useState(false)
   const [tab, setTab] = useState<'overview' | 'application'>('overview')
   const { toast } = useToast()
