@@ -149,6 +149,12 @@ export function MembersTab() {
         onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
       />
 
+      <p className="flex items-center justify-center gap-1.5 font-inter text-[12.5px] text-muted-foreground pt-1">
+        <Lock className="h-3.5 w-3.5" />
+        Billing &amp; invoices are visible to workspace owners.
+      </p>
+
+
       <MemberInviteSheet
         isOpen={isInviteSheetOpen}
         onClose={() => setIsInviteSheetOpen(false)}
