@@ -313,16 +313,47 @@ export default function Pipeline() {
                   ))}
                 </div>
               ) : sortedJobs.length === 0 ? (
-                <div
-                  className="rounded-[12px] bg-white px-6 py-10 text-center font-inter"
-                  style={{ border: '1px solid #E7E8EE', color: '#5A6072', fontSize: 13 }}
-                >
-                  {search ? (
-                    <>No jobs match &ldquo;{search}&rdquo;</>
-                  ) : (
-                    <>No {STATUS_LABEL[status]} match the current filters</>
-                  )}
-                </div>
+                jobs.length === 0 ? (
+                  <EmptyState
+                    size="card"
+                    illustration={<SoftPlane />}
+                    title="No jobs yet"
+                    body="Create your first job to start building a pipeline."
+                    primary={
+                      <EmptyAction
+                        icon={<Plus size={16} strokeWidth={2} />}
+                        onClick={() => navigate('/jobs?new=1')}
+                      >
+                        New job
+                      </EmptyAction>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    size="card"
+                    illustration={<SoftMagnifier />}
+                    title="No matches"
+                    body={
+                      search
+                        ? `Nothing fits "${search}" — adjust or clear your filters to widen the results.`
+                        : `No ${STATUS_LABEL[status]} match the current filters. Clear them to see everything again.`
+                    }
+                    primary={
+                      <EmptyAction
+                        icon={<RotateCcw size={16} strokeWidth={2} />}
+                        onClick={() => {
+                          setSearch('')
+                          setStatus('all')
+                          setSelectedOwners([])
+                          setSelectedDepartments([])
+                        }}
+                      >
+                        Clear filters
+                      </EmptyAction>
+                    }
+                  />
+                )
+
               ) : grouped && groups ? (
                 <div className="flex flex-col gap-5">
                   {groups.map(([dept, list]) => (
