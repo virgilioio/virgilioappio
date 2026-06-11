@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
 import { MemberDetailSheet } from '@/components/members/MemberDetailSheet'
-import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search } from 'lucide-react'
+import { MoreVertical, Plus, Send, UserCheck, UserX, UserPlus, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search } from 'lucide-react'
 
 export interface EnrichedMember extends Member {
   seatType?: 'paid' | 'free'
@@ -223,12 +223,17 @@ export function MembersTable({
     <>
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Team Members</CardTitle>
+          <div className="flex justify-between items-start gap-4">
+            <div className="space-y-1">
+              <CardTitle>Team members</CardTitle>
+              <p className="font-inter text-[13px] text-muted-foreground">
+                Paid seats: admins, owners &amp; recruiters. Hiring managers and interviewers are free.
+              </p>
+            </div>
             {onAddNew && (
-              <Button onClick={onAddNew} className="hidden sm:inline-flex gap-2">
-                <Plus className="h-4 w-4" />
-                Add Member
+              <Button onClick={onAddNew} variant="secondary" className="hidden sm:inline-flex gap-2 shrink-0">
+                <UserPlus className="h-4 w-4" />
+                Add member
               </Button>
             )}
           </div>
