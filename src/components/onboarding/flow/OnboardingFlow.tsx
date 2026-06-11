@@ -154,6 +154,11 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
   const handleSubmitOrg = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!orgName.trim() || submitting1) return
+    if (demo) {
+      setOrgId('demo-org-id')
+      setStep(2)
+      return
+    }
     setSubmitting1(true)
     try {
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
