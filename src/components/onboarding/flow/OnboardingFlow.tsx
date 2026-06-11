@@ -34,7 +34,12 @@ interface PersistedState {
   isDemo: boolean
 }
 
-const STORAGE_KEY = 'gio_ob_state'
+const STORAGE_KEY_REAL = 'gio_ob_state'
+const STORAGE_KEY_DEMO = 'gio_ob_demo_state'
+
+interface OnboardingFlowProps {
+  demo?: boolean
+}
 
 const SAMPLE_CANDIDATES = [
   { name: 'Teresa Galvan', role: 'Customer Success Manager', company: 'Konfio', match: 94, initials: 'TG', color: '#7C3AED' },
