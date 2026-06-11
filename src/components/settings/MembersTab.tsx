@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
 import { Users, UserPlus, Archive, Lock } from 'lucide-react'
-import { MetricCard } from '@/components/ui/metric-card'
+import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
@@ -117,26 +117,13 @@ export function MembersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <MetricCard
-          title="Paid seats"
-          value={paidCount}
-          icon={Users}
-          iconColor="text-virgilio-purple"
-        />
-        <MetricCard
-          title="Free collaborators"
-          value={freeCount}
-          icon={UserPlus}
-          iconColor="text-virgilio-success"
-        />
-        <MetricCard
-          title="Deactivated"
-          value={deactivatedCount}
-          icon={Archive}
-          iconColor="text-muted-foreground"
-        />
-      </div>
+      <MetricStrip
+        items={[
+          { icon: Users, tone: 'purple', label: 'Paid seats', value: paidCount },
+          { icon: UserPlus, tone: 'green', label: 'Free collaborators', value: freeCount },
+          { icon: Archive, tone: 'neutral', label: 'Deactivated', value: deactivatedCount },
+        ] satisfies MetricItem[]}
+      />
 
 
 
