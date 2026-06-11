@@ -19,20 +19,6 @@ import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { toast } from 'sonner'
 
-/**
- * Microsoft 365 logo (inline 4-square mark).
- */
-function MicrosoftLogo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="10" height="10" fill="#F25022" />
-      <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
-      <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
-      <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
-    </svg>
-  )
-}
-
 interface ProviderRowProps {
   logo: React.ReactNode
   name: string
@@ -144,10 +130,7 @@ export function EmailCalendarTab() {
     >
       <div className="space-y-3">
         {isLoading ? (
-          <>
-            <Skeleton className="h-[88px] w-full rounded-lg" />
-            <Skeleton className="h-[72px] w-full rounded-lg" />
-          </>
+          <Skeleton className="h-[88px] w-full rounded-lg" />
         ) : (
           <>
             <ProviderRow
@@ -194,22 +177,6 @@ export function EmailCalendarTab() {
                     {connectGmail.isPending ? 'Connecting…' : 'Connect'}
                   </Button>
                 )
-              }
-            />
-
-            <ProviderRow
-              logo={<MicrosoftLogo size={22} />}
-              name="Microsoft 365"
-              subtitle="Outlook mail and calendar."
-              connected={false}
-              action={
-                <Button
-                  size="sm"
-                  disabled
-                  title="Coming soon"
-                >
-                  Connect
-                </Button>
               }
             />
 
