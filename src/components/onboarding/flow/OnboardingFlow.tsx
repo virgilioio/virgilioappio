@@ -297,15 +297,70 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     if (step !== 4 || !jobId) return
     let cancelled = false
     setCandidatesPhase('searching')
+    setRealCandidates(null)
+    setUsedRealCandidates(false)
     const start = Date.now()
     ;(async () => {
       if (!demo) {
         try {
-          await supabase.functions.invoke('get-job-matching-candidates', {
-            body: { job_id: jobId, limit: 18 },
-          })
+          const criteria = {
+            skills: [] as string[],
+            title_keywords: jobTitle ? [jobTitle] : [],
+            locations: jobLocation ? [jobLocation] : [],
+          }
+          // 1) Create a sourcing project tied to the freshly-created job
+          const { data: projectRes, error: projectErr } = await supabase.functions.invoke(
+            'create-sourcing-project',
+            {
+              body: {
+                name: `${jobTitle || 'Onboarding'} — first search`,
+                description: 'Auto-created during onboarding',
+                job_id: jobId,
+                search_criteria: criteria,
+              },
+            },
+          )
+          if (projectErr || !projectRes?.id) {
+            throw projectErr || new Error('No sourcing project returned')
+          }
+
+          // 2) Apollo preview search — search itself is free; cap to 3 results
+          const { data: apolloRes, error: apolloErr } = await supabase.functions.invoke(
+            'search-apollo-candidates',
+            {
+              body: {
+                project_id: projectRes.id,
+                criteria,
+                limit: 3,
+                max_results: 3,
+              },
+            },
+          )
+          if (apolloErr) throw apolloErr
+
+          const raw = Array.isArray(apolloRes?.candidates) ? apolloRes.candidates.slice(0, 3) : []
+          if (raw.length > 0) {
+            const mapped = raw.map((c: any, i: number) => {
+              const name: string =
+                c.full_name ||
+                `${c.first_name || ''} ${c.last_name_obfuscated || ''}`.trim() ||
+                'Candidate'
+              return {
+                name,
+                role: c.current_title || c.headline || 'Candidate',
+                company: c.current_company || '—',
+                match: [94, 91, 88][i] ?? 85,
+                initials: initialsFrom(name),
+                color: CANDIDATE_PALETTE[i % CANDIDATE_PALETTE.length],
+              }
+            })
+            if (!cancelled) {
+              setRealCandidates(mapped)
+              setUsedRealCandidates(true)
+            }
+          }
         } catch (err) {
-          console.warn('[Onboarding] matching call failed (non-fatal, showing samples)', err)
+          console.warn('[Onboarding] Apollo seed failed (non-fatal, showing samples)', err)
         }
       }
       const elapsed = Date.now() - start
@@ -316,7 +371,7 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     return () => {
       cancelled = true
     }
-  }, [step, jobId, demo])
+  }, [step, jobId, demo, jobTitle, jobLocation])
 
   // ─── Step 5: Team ───
   type InviteRow = { email: string; role: 'admin' | 'member' | 'sales' }
