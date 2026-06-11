@@ -41,6 +41,16 @@ interface OnboardingFlowProps {
   demo?: boolean
 }
 
+const CANDIDATE_PALETTE = ['#7C3AED', '#10B981', '#6366F1']
+
+function initialsFrom(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '··'
+  const first = parts[0][0] || ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : ''
+  return (first + last).toUpperCase().slice(0, 2) || '··'
+}
+
 const SAMPLE_CANDIDATES = [
   { name: 'Teresa Galvan', role: 'Customer Success Manager', company: 'Konfio', match: 94, initials: 'TG', color: '#7C3AED' },
   { name: 'Sofia Camarena', role: 'CS Team Lead', company: 'Clip', match: 91, initials: 'SC', color: '#10B981' },
@@ -105,8 +115,10 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     saveState(STORAGE_KEY, { step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo })
   }, [STORAGE_KEY, step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo])
 
-  // Step 4 candidate phase
+  // Step 4 candidate phase + real Apollo results
   const [candidatesPhase, setCandidatesPhase] = useState<'idle' | 'searching' | 'ready'>('idle')
+  const [realCandidates, setRealCandidates] = useState<typeof SAMPLE_CANDIDATES | null>(null)
+  const [usedRealCandidates, setUsedRealCandidates] = useState(false)
 
   // Derived preview
   const preview: PreviewState = useMemo(() => {
@@ -124,17 +136,18 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
         searchingLabel: 'Scanning 2,400+ LATAM profiles…',
       }
     }
+    const displayCandidates = realCandidates ?? SAMPLE_CANDIDATES
     if (step === 4 && candidatesPhase === 'ready') {
-      return { ...base, pipelineMode: 'with-candidates', candidates: SAMPLE_CANDIDATES }
+      return { ...base, pipelineMode: 'with-candidates', candidates: displayCandidates }
     }
     if (step === 5) {
-      return { ...base, pipelineMode: 'with-candidates', candidates: SAMPLE_CANDIDATES, teamCount: 3 }
+      return { ...base, pipelineMode: 'with-candidates', candidates: displayCandidates, teamCount: 3 }
     }
     if (step === 6) {
       return {
         ...base,
         pipelineMode: 'with-candidates',
-        candidates: SAMPLE_CANDIDATES,
+        candidates: displayCandidates,
         teamCount: 3,
         showFinalStrip: true,
         finalCaption: true,
@@ -147,7 +160,7 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
       return { ...base, pipelineMode: 'placeholder' }
     }
     return base
-  }, [step, candidatesPhase, orgName, departmentName, jobTitle, jobLocation])
+  }, [step, candidatesPhase, orgName, departmentName, jobTitle, jobLocation, realCandidates])
 
   // ─── Step 1: Provision organization ───
   const [submitting1, setSubmitting1] = useState(false)
@@ -284,15 +297,70 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     if (step !== 4 || !jobId) return
     let cancelled = false
     setCandidatesPhase('searching')
+    setRealCandidates(null)
+    setUsedRealCandidates(false)
     const start = Date.now()
     ;(async () => {
       if (!demo) {
         try {
-          await supabase.functions.invoke('get-job-matching-candidates', {
-            body: { job_id: jobId, limit: 18 },
-          })
+          const criteria = {
+            skills: [] as string[],
+            title_keywords: jobTitle ? [jobTitle] : [],
+            locations: jobLocation ? [jobLocation] : [],
+          }
+          // 1) Create a sourcing project tied to the freshly-created job
+          const { data: projectRes, error: projectErr } = await supabase.functions.invoke(
+            'create-sourcing-project',
+            {
+              body: {
+                name: `${jobTitle || 'Onboarding'} — first search`,
+                description: 'Auto-created during onboarding',
+                job_id: jobId,
+                search_criteria: criteria,
+              },
+            },
+          )
+          if (projectErr || !projectRes?.id) {
+            throw projectErr || new Error('No sourcing project returned')
+          }
+
+          // 2) Apollo preview search — search itself is free; cap to 3 results
+          const { data: apolloRes, error: apolloErr } = await supabase.functions.invoke(
+            'search-apollo-candidates',
+            {
+              body: {
+                project_id: projectRes.id,
+                criteria,
+                limit: 3,
+                max_results: 3,
+              },
+            },
+          )
+          if (apolloErr) throw apolloErr
+
+          const raw = Array.isArray(apolloRes?.candidates) ? apolloRes.candidates.slice(0, 3) : []
+          if (raw.length > 0) {
+            const mapped = raw.map((c: any, i: number) => {
+              const name: string =
+                c.full_name ||
+                `${c.first_name || ''} ${c.last_name_obfuscated || ''}`.trim() ||
+                'Candidate'
+              return {
+                name,
+                role: c.current_title || c.headline || 'Candidate',
+                company: c.current_company || '—',
+                match: [94, 91, 88][i] ?? 85,
+                initials: initialsFrom(name),
+                color: CANDIDATE_PALETTE[i % CANDIDATE_PALETTE.length],
+              }
+            })
+            if (!cancelled) {
+              setRealCandidates(mapped)
+              setUsedRealCandidates(true)
+            }
+          }
         } catch (err) {
-          console.warn('[Onboarding] matching call failed (non-fatal, showing samples)', err)
+          console.warn('[Onboarding] Apollo seed failed (non-fatal, showing samples)', err)
         }
       }
       const elapsed = Date.now() - start
@@ -303,7 +371,7 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
     return () => {
       cancelled = true
     }
-  }, [step, jobId, demo])
+  }, [step, jobId, demo, jobTitle, jobLocation])
 
   // ─── Step 5: Team ───
   type InviteRow = { email: string; role: 'admin' | 'member' | 'sales' }
@@ -615,7 +683,9 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
       <OnboardingShell step={4} preview={preview} onSkip={skipCandidates}>
         <ObTitle>Your first candidates</ObTitle>
         <ObSub>
-          18 strong matches. The top three just landed in your pipeline — the rest are waiting in Find.
+          {usedRealCandidates
+            ? 'Top three matches just landed in your pipeline — the rest are waiting in Find.'
+            : 'Your queue is set up. Real matches will surface in Find as your search runs.'}
         </ObSub>
         <div
           className="ob-in"
@@ -632,8 +702,17 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
         >
           <BadgeCheck size={14} strokeWidth={2} style={{ color: '#6F3FF5', marginTop: 2, flexShrink: 0 }} />
           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, color: '#3D1FA3', lineHeight: 1.45 }}>
-            <span style={{ fontWeight: 600 }}>These are real, sourceable people</span> — live profiles matched
-            to your job just now, not sample data.
+            {usedRealCandidates ? (
+              <>
+                <span style={{ fontWeight: 600 }}>These are real, sourceable people</span> — live
+                profiles matched to your job just now, not sample data.
+              </>
+            ) : (
+              <>
+                <span style={{ fontWeight: 600 }}>Here's a feel for your queue</span> — your live
+                matches arrive in Find as soon as you land.
+              </>
+            )}
           </div>
         </div>
         <div
