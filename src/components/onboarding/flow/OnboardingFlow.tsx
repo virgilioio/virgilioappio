@@ -136,17 +136,18 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
         searchingLabel: 'Scanning 2,400+ LATAM profiles…',
       }
     }
+    const displayCandidates = realCandidates ?? SAMPLE_CANDIDATES
     if (step === 4 && candidatesPhase === 'ready') {
-      return { ...base, pipelineMode: 'with-candidates', candidates: SAMPLE_CANDIDATES }
+      return { ...base, pipelineMode: 'with-candidates', candidates: displayCandidates }
     }
     if (step === 5) {
-      return { ...base, pipelineMode: 'with-candidates', candidates: SAMPLE_CANDIDATES, teamCount: 3 }
+      return { ...base, pipelineMode: 'with-candidates', candidates: displayCandidates, teamCount: 3 }
     }
     if (step === 6) {
       return {
         ...base,
         pipelineMode: 'with-candidates',
-        candidates: SAMPLE_CANDIDATES,
+        candidates: displayCandidates,
         teamCount: 3,
         showFinalStrip: true,
         finalCaption: true,
@@ -159,7 +160,7 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
       return { ...base, pipelineMode: 'placeholder' }
     }
     return base
-  }, [step, candidatesPhase, orgName, departmentName, jobTitle, jobLocation])
+  }, [step, candidatesPhase, orgName, departmentName, jobTitle, jobLocation, realCandidates])
 
   // ─── Step 1: Provision organization ───
   const [submitting1, setSubmitting1] = useState(false)
