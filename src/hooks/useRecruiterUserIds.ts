@@ -10,7 +10,7 @@ export function useRecruiterUserIds() {
   const { user } = useAuth()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['recruiter-user-ids'],
+    queryKey: ['recruiter-user-ids', 'v2'],
     queryFn: async () => {
       const { data: assignments, error } = await supabase
         .from('job_assignments')
@@ -29,8 +29,10 @@ export function useRecruiterUserIds() {
     staleTime: 1000 * 60 * 2,
   })
 
+  const ids = data instanceof Set ? data : new Set(Array.isArray(data) ? data : [])
+
   return {
-    recruiterUserIds: data ?? new Set<string>(),
+    recruiterUserIds: ids,
     isLoading,
   }
 }
