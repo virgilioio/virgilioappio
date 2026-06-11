@@ -1,5 +1,4 @@
 
-import { Card, CardContent } from '@/components/ui/card'
 import { MembersTable, EnrichedMember } from '@/components/members/MembersTable'
 import { useMembers } from '@/hooks/useMembers'
 import { useState, useMemo } from 'react'
@@ -8,10 +7,9 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { SeatUsageCard } from '@/components/members/SeatUsageCard'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
-import { addMonths, addYears, format } from 'date-fns'
+import { MetricStrip } from '@/components/settings/shared/MetricStrip'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
@@ -66,20 +64,7 @@ export function MembersTab() {
   const freeCount = activeMembers.filter(m => m.seatType === 'free').length
   const deactivatedCount = enrichedMembers.filter(m => m.user_status === 'inactive').length
 
-  // Tenant subscription functionality removed
-  const subscription = null as any
-  const nextBillingDate = (() => {
-    if (!subscription?.created_at) return null
-    const start = new Date(subscription.created_at)
-    const interval = subscription.billing_interval || 'month'
-    let next = new Date(start)
-    const now = new Date()
-    while (next <= now) {
-      next = interval === 'year' ? addYears(next, 1) : addMonths(next, 1)
-    }
-    return next
-  })()
-  const nextBillingLabel = nextBillingDate ? format(nextBillingDate, 'PPP') : '—'
+  // Next billing date is shown on the Billing tab — keep Members focused on seats.
 
   const handleEdit = (member) => {
     setEditingMember(member)
@@ -131,44 +116,14 @@ export function MembersTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Team Members">
-        <span className="text-sm text-muted-foreground font-medium">
-          {paidCount} paid {paidCount === 1 ? 'seat' : 'seats'} · {freeCount} free {freeCount === 1 ? 'collaborator' : 'collaborators'}
-        </span>
-      </PageHeader>
-
-      <Card data-onboarding-target="team">
-        <CardContent className="py-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Next Billing */}
-            <div className="rounded-brand border border-pastel-purple/50 bg-pastel-purple/40 p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-sm text-pastel-purple-foreground/80">Next Billing</div>
-              <div className="text-3xl font-semibold text-pastel-purple-foreground mt-1">{nextBillingLabel}</div>
-            </div>
-            {/* Paid Seats */}
-            <div className="rounded-brand border border-pastel-purple/50 bg-pastel-purple/40 p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-sm text-pastel-purple-foreground/80">Paid Seats</div>
-              <div className="text-3xl font-semibold text-pastel-purple-foreground mt-1">{paidCount}</div>
-              <div className="text-xs text-pastel-purple-foreground/60 mt-1">Admins, Owners & Recruiters</div>
-            </div>
-            {/* Free Collaborators */}
-            <div className="rounded-brand border border-pastel-blue/50 bg-pastel-blue/40 p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-sm text-pastel-blue-foreground/80">Free Collaborators</div>
-              <div className="text-3xl font-semibold text-pastel-blue-foreground mt-1">{freeCount}</div>
-              <div className="text-xs text-pastel-blue-foreground/60 mt-1">Hiring Managers & Interviewers</div>
-            </div>
-            {/* Deactivated */}
-            {deactivatedCount > 0 && (
-              <div className="rounded-brand border border-border bg-muted/40 p-4 shadow-[var(--shadow-xs)]">
-                <div className="text-sm text-muted-foreground/80">Deactivated</div>
-                <div className="text-3xl font-semibold text-muted-foreground mt-1">{deactivatedCount}</div>
-                <div className="text-xs text-muted-foreground/60 mt-1">Not counted toward seats</div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <MetricStrip
+        metrics={[
+          { label: 'Paid seats', value: paidCount, hint: 'Admins, Owners, Recruiters' },
+          { label: 'Free collaborators', value: freeCount, hint: 'Hiring Managers, Interviewers' },
+          { label: 'Deactivated', value: deactivatedCount, hint: 'Not counted toward seats' },
+        ]}
+      />
 
       {tenantId && <SeatUsageCard tenantId={tenantId} />}
 
