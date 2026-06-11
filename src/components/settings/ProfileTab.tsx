@@ -7,10 +7,20 @@ import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { SettingsCard } from './shared/SettingsCard'
 import { StatusChip } from './shared/StatusChip'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useRef } from 'react'
+import { Mail, ShieldCheck, UserCircle2 } from 'lucide-react'
+
+function formatRoleLabel(value?: string | null) {
+  if (!value) return '—'
+  return value
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
 
 interface ProfileFormData {
   first_name: string
