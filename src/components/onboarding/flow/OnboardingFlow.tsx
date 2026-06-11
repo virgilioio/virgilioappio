@@ -223,6 +223,12 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
   const handleSubmitDept = async () => {
     const name = (showCustomDept ? customDept : deptSelection).trim()
     if (!name || submitting2) return
+    if (demo) {
+      setDepartmentId('demo-dept-id')
+      setDepartmentName(name)
+      setStep(3)
+      return
+    }
     setSubmitting2(true)
     try {
       const result = await createDepartment.mutateAsync({ name })
@@ -239,6 +245,14 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
   // ─── Step 3: Job ───
   const [submitting3, setSubmitting3] = useState(false)
   const createJobAndAdvance = async (input: { title: string; location: string; demo: boolean }) => {
+    if (demo) {
+      setJobId('demo-job-id')
+      setJobTitle(input.title)
+      setJobLocation(input.location)
+      setIsDemo(input.demo)
+      setStep(4)
+      return
+    }
     if (!organizationId) {
       toast({ title: 'Workspace not ready', description: 'Refresh and try again.', variant: 'destructive' })
       return
