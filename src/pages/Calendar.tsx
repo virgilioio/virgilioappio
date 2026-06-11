@@ -827,9 +827,14 @@ function RailNeedsScheduling({
                     {initials(item.candidateName)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-inter truncate" style={{ fontSize: 11.5, fontWeight: 600, color: C.ink }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/candidates/${item.candidateId}`)}
+                      className="font-inter truncate cursor-pointer hover:underline text-left"
+                      style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, background: 'none', border: 'none', padding: 0 }}
+                    >
                       {item.candidateName}
-                    </div>
+                    </button>
                     <div className="font-inter truncate" style={{ fontSize: 10, color: C.tertiary }}>
                       {item.jobTitle}
                     </div>
