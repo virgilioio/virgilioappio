@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { IdentityCell, NumericCell, StatusCell, ActionCell } from '@/components/ui/table-cells'
 import {
