@@ -23,19 +23,21 @@ import { SoftBuilding } from '@/components/ui/EmptyIllustrations'
 function useJobCountsByDepartment() {
   return useQuery({
     queryKey: ['departments', 'job-counts'],
-    queryFn: async () => {
+    queryFn: async (): Promise<Record<string, { total: number; open: number }>> => {
       const { data, error } = await supabase
         .from('jobs')
         .select('department_id, status')
         .not('department_id', 'is', null)
       if (error) throw error
-      const counts = new Map<string, { total: number; open: number }>()
+      // Plain object (not Map) so the React Query persister can rehydrate it
+      // from localStorage without losing prototype methods.
+      const counts: Record<string, { total: number; open: number }> = {}
       for (const row of data || []) {
         const id = (row as any).department_id as string
-        const c = counts.get(id) || { total: 0, open: 0 }
+        const c = counts[id] || { total: 0, open: 0 }
         c.total += 1
         if ((row as any).status === 'open') c.open += 1
-        counts.set(id, c)
+        counts[id] = c
       }
       return counts
     },
