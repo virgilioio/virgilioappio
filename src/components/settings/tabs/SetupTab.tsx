@@ -38,15 +38,15 @@ export function SetupTab() {
   const { tenant } = useTenant()
   const { identities: mail = [] } = useMailIdentities()
   const { identities: calendars = [] } = useCalendarIdentities()
-  const { data: departments = [] } = useDepartments()
-  const { data: members = [] } = useMembers()
+  const { departments } = useDepartments()
+  const { members } = useMembers()
 
   const { data: scorecardCount = 0 } = useQuery({
     queryKey: ['setup', 'scorecard-templates-count', tenant?.id],
     enabled: !!tenant?.id,
     queryFn: async () => {
       const { count } = await supabase
-        .from('scorecard_templates')
+        .from('stage_scorecard_templates')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', tenant!.id)
       return count ?? 0
