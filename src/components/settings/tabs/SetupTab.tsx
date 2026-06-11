@@ -45,11 +45,11 @@ export function SetupTab() {
     queryKey: ['setup', 'scorecard-templates-count', tenant?.id],
     enabled: !!tenant?.id,
     queryFn: async () => {
-      const { count } = await supabase
+      const { count } = await (supabase as any)
         .from('stage_scorecard_templates')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', tenant!.id)
-      return count ?? 0
+      return (count as number) ?? 0
     },
   })
 
