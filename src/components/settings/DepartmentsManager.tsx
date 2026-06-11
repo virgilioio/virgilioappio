@@ -97,11 +97,11 @@ export function DepartmentsManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="w-[120px]">Open jobs</TableHead>
-              <TableHead className="w-[120px]">Total jobs</TableHead>
-              <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="w-[160px] text-right">Actions</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead className="text-right">Open jobs</TableHead>
+              <TableHead className="text-right">Total jobs</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[32px] text-right" aria-label="Actions" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -127,64 +127,58 @@ export function DepartmentsManager() {
               return (
                 <TableRow key={d.id}>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-poppins font-medium text-text-primary">{d.name}</span>
-                      {d.is_system && <Badge tone="lilac" size="xs">Default</Badge>}
-                    </div>
-                    {d.description && (
-                      <div className="text-[12px] text-text-tertiary mt-0.5">{d.description}</div>
-                    )}
-                  </TableCell>
-                  <TableCell className="tabular-nums">{c?.open ?? 0}</TableCell>
-                  <TableCell className="tabular-nums">{c?.total ?? 0}</TableCell>
-                  <TableCell>
-                    {d.is_archived ? (
-                      <Badge tone="neutral" size="sm">Archived</Badge>
-                    ) : (
-                      <Badge tone="green" size="sm" dot>Active</Badge>
-                    )}
+                    <IdentityCell
+                      name={
+                        <span className="flex items-center gap-2">
+                          {d.name}
+                          {d.is_system && <Badge tone="lilac" size="xs">Default</Badge>}
+                        </span>
+                      }
+                      sub={d.description || undefined}
+                      fallback={d.name}
+                    />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        icon={Pencil}
-                        aria-label="Edit"
-                        onClick={() => { setEditing(d); setFormOpen(true) }}
-                        disabled={d.is_system}
-                      />
+                    <NumericCell>{c?.open ?? 0}</NumericCell>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <NumericCell>{c?.total ?? 0}</NumericCell>
+                  </TableCell>
+                  <TableCell>
+                    <StatusCell>
                       {d.is_archived ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          iconOnly
-                          icon={ArchiveRestore}
-                          aria-label="Restore"
-                          onClick={() => updateDepartment.mutate({ id: d.id, is_archived: false })}
-                        />
+                        <Badge tone="neutral" size="sm">Archived</Badge>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          iconOnly
-                          icon={Archive}
-                          aria-label="Archive"
-                          onClick={() => updateDepartment.mutate({ id: d.id, is_archived: true })}
-                          disabled={d.is_system}
-                        />
+                        <Badge tone="green" size="sm" dot>Active</Badge>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        icon={Trash2}
-                        aria-label="Delete"
-                        onClick={() => setToDelete(d)}
-                        disabled={d.is_system || (c?.total ?? 0) > 0}
-                      />
-                    </div>
+                    </StatusCell>
+                  </TableCell>
+                  <TableCell className="w-[32px] text-right">
+                    <ActionCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="Department actions" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setEditing(d); setFormOpen(true) }} disabled={d.is_system}>
+                            <Pencil className="h-4 w-4 mr-2" />Edit
+                          </DropdownMenuItem>
+                          {d.is_archived ? (
+                            <DropdownMenuItem onClick={() => updateDepartment.mutate({ id: d.id, is_archived: false })}>
+                              <ArchiveRestore className="h-4 w-4 mr-2" />Restore
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => updateDepartment.mutate({ id: d.id, is_archived: true })} disabled={d.is_system}>
+                              <Archive className="h-4 w-4 mr-2" />Archive
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setToDelete(d)} disabled={d.is_system || (c?.total ?? 0) > 0} className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-2" />Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </ActionCell>
                   </TableCell>
                 </TableRow>
               )
