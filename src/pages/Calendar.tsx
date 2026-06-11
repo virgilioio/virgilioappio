@@ -593,7 +593,7 @@ export default function CalendarPage() {
               <RailNeedsScheduling
                 items={needsScheduling}
                 onSchedule={item => setScheduleTarget(item)}
-                onCandidateClick={(candidateId) => navigate(`/candidates/${candidateId}`)}
+                onCandidateClick={(candidateId, jobId) => navigate(`/jobs/${jobId}/candidates/${candidateId}`)}
               />
             </div>
           </div>
@@ -764,7 +764,7 @@ function RailNeedsScheduling({
 }: {
   items: NeedsSchedulingItem[]
   onSchedule: (item: NeedsSchedulingItem) => void
-  onCandidateClick: (candidateId: string) => void
+  onCandidateClick: (candidateId: string, jobId: string) => void
 }) {
   return (
     <div
@@ -832,7 +832,7 @@ function RailNeedsScheduling({
                   <div className="min-w-0 flex-1">
                     <button
                       type="button"
-                      onClick={() => onCandidateClick(item.candidateId)}
+                      onClick={() => onCandidateClick(item.candidateId, item.jobId)}
                       className="font-inter truncate cursor-pointer hover:underline text-left"
                       style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, background: 'none', border: 'none', padding: 0 }}
                     >
