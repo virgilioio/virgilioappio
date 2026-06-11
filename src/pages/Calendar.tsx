@@ -773,7 +773,7 @@ function RailNeedsScheduling({
         top: 16,
       }}
     >
-      <div className="px-3.5 pt-3 pb-2">
+      <div className="px-3.5 pt-3 pb-2 flex-shrink-0">
         <div className="flex items-center gap-2">
           <CalendarClock size={14} strokeWidth={2} color={C.ink2} />
           <span className="font-poppins" style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
