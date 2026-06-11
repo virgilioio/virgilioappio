@@ -18,6 +18,9 @@ import {
 import { JobPipelineRow } from '@/components/pipeline/JobPipelineRow'
 import { Briefcase, FileText, Users, Clock, Download, Plus } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftPlane, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { RotateCcw } from 'lucide-react'
 
 const STATUS_LABEL: Record<PipelineStatus, string> = {
   all: 'jobs',
