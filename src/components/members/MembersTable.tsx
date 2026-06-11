@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
 import { MemberDetailSheet } from '@/components/members/MemberDetailSheet'
-import { MoreVertical, Plus, Send, UserCheck, UserX, UserPlus, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search } from 'lucide-react'
+import { MoreHorizontal, Plus, Send, UserCheck, UserX, UserPlus, Trash2, Copy, Briefcase, Mail, MailX, Clock, Search } from 'lucide-react'
 
 export interface EnrichedMember extends Member {
   seatType?: 'paid' | 'free'
