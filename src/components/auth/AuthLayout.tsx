@@ -24,22 +24,21 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
       {/* Two-column body */}
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center px-6 sm:px-8 lg:px-12 py-10 lg:py-12">
-        {/* Left: product graphic (hidden on small screens) */}
-        <div className="hidden lg:flex justify-center items-center">
-          <PipelineProductGraphic />
+        {/* Left: heading + product graphic (graphic hidden on small screens) */}
+        <div className="flex flex-col items-center gap-8">
+          <h1
+            className="text-3xl sm:text-4xl lg:text-5xl text-foreground text-center"
+            style={{ fontFamily: 'Poppins', fontWeight: 700, letterSpacing: '-0.06em' }}
+          >
+            Find your people<span style={{ color: '#d7c5fb' }}>.</span>
+          </h1>
+          <div className="hidden lg:flex justify-center items-center">
+            <PipelineProductGraphic />
+          </div>
         </div>
 
-        {/* Right: heading + form + footer — centered in its own half */}
+        {/* Right: form + footer — centered in its own half */}
         <div className="w-full max-w-md mx-auto">
-          <div className="mb-8 text-center">
-            <h1
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground"
-              style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}
-            >
-              Find your people<span style={{ color: '#d7c5fb' }}>.</span>
-            </h1>
-          </div>
-
           <div className="bg-white rounded-2xl shadow-lg p-8">{children}</div>
 
           <footer className="mt-6 text-xs text-foreground/70 text-center">
