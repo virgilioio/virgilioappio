@@ -593,6 +593,7 @@ export default function CalendarPage() {
               <RailNeedsScheduling
                 items={needsScheduling}
                 onSchedule={item => setScheduleTarget(item)}
+                onCandidateClick={(candidateId) => navigate(`/candidates/${candidateId}`)}
               />
             </div>
           </div>
@@ -759,9 +760,11 @@ function EventPopover({
 function RailNeedsScheduling({
   items,
   onSchedule,
+  onCandidateClick,
 }: {
   items: NeedsSchedulingItem[]
   onSchedule: (item: NeedsSchedulingItem) => void
+  onCandidateClick: (candidateId: string) => void
 }) {
   return (
     <div
@@ -827,9 +830,14 @@ function RailNeedsScheduling({
                     {initials(item.candidateName)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-inter truncate" style={{ fontSize: 11.5, fontWeight: 600, color: C.ink }}>
+                    <button
+                      type="button"
+                      onClick={() => onCandidateClick(item.candidateId)}
+                      className="font-inter truncate cursor-pointer hover:underline text-left"
+                      style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, background: 'none', border: 'none', padding: 0 }}
+                    >
                       {item.candidateName}
-                    </div>
+                    </button>
                     <div className="font-inter truncate" style={{ fontSize: 10, color: C.tertiary }}>
                       {item.jobTitle}
                     </div>
