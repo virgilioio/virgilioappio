@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { CurrencySettings } from "./CurrencySettings";
 import { SettingsCard } from "@/components/settings/shared/SettingsCard";
+import { stripHtmlToPlainText } from "@/utils/templateUtils";
 
 interface TenantFormData {
   name: string;
@@ -42,7 +43,7 @@ export default function OrganizationTab() {
     if (tenant) {
       setForm({
         name: tenant.name || "",
-        about: tenant.about || "",
+        about: stripHtmlToPlainText(tenant.about || ""),
         billing_email: tenant.billing_email || "",
         billing_phone: tenant.billing_phone || "",
       });
