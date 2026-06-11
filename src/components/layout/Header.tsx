@@ -141,6 +141,7 @@ export function Header() {
       show: canSeeRecruiterTools && canViewCandidatesNavigation,
       section: 'ats',
     },
+    { href: '/calendar', icon: CalendarIcon, label: 'Calendar', show: canSeeRecruiterTools, section: 'ats' },
     { href: '/pipeline', icon: TrendingUp, label: 'Pipeline', show: canViewJobs, section: 'ats' },
     {
       href: '/analytics',
