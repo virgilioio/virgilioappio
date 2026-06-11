@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
 import { Users, UserPlus, Archive, Lock } from 'lucide-react'
-import { MetricCard } from '@/components/ui/metric-card'
+import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
