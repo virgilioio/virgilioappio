@@ -1,22 +1,25 @@
-## Goal
-Make the Members section's top stat row use the exact same component as ATS > Pipeline so the two surfaces are visually identical.
+# Members Stats: Use Pipeline's Real `<MetricStrip>` Component
 
-## Component to use
-`<MetricCard>` from `src/components/ui/metric-card.tsx`, default variant — the same one wrapped by `PipelineMetricCard`. Key style traits (already baked into the component, no overrides):
-- `rounded-2xl border-border/60 shadow-md` card, `p-4`
-- Left **circular** icon badge: `w-12 h-12 rounded-full bg-background shadow-md border border-border/50`, icon `h-5 w-5`
-- Title: `text-xs font-poppins font-medium text-muted-foreground`
-- Value: `text-2xl font-poppins font-bold`
+## Correction
+Pipeline's top counters are NOT individual `MetricCard`s. They are one `<MetricStrip>` — a single white card (radius 12, border `#E7E8EE`) divided into cells, each with a 28×28 tinted square icon chip, an 11px muted label on top, and a 19px Poppins bold value below. This matches your screenshot exactly.
 
-## Changes (single file: `src/components/settings/MembersTab.tsx`)
-1. Remove the current single segmented stat card (with tinted square tiles) added in the last iteration.
-2. Replace with a `grid grid-cols-1 sm:grid-cols-3 gap-3` row of three `<MetricCard>` instances:
-   - **Total members** — icon `Users`, value = total count
-   - **Active members** — icon `UserCheck`, value = active count, `iconColor="text-virgilio-success"`
-   - **Billable seats** — icon `CreditCard` (or `Coins`), value = billable count, `iconColor="text-virgilio-purple"`
-3. Drop the now-unused `Lock` import path adjustments only if they're truly unused; keep the footer line ("Billing & invoices are visible to workspace owners.") unchanged.
-4. No other files touched. No business-logic changes — `useRecruiterUserIds` and `isBillableMember` stay as-is.
+## Change
+**`src/components/settings/MembersTab.tsx`** — replace the three `MetricCard`s with one `<MetricStrip>` using the exact same component Pipeline imports:
+
+```tsx
+import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
+
+const metricItems: MetricItem[] = [
+  { icon: Users,    tone: 'purple',  label: 'Paid seats',         value: paidCount },
+  { icon: UserPlus, tone: 'green',   label: 'Free collaborators', value: freeCount },
+  { icon: Archive,  tone: 'neutral', label: 'Deactivated',        value: deactivatedCount },
+]
+
+<MetricStrip items={metricItems} />
+```
+
+- Remove the `MetricCard` import and the `grid grid-cols-3` wrapper.
+- No logic changes; counts stay as-is.
 
 ## Verification
-- Visually compare `/settings?tab=members` stat row with `/pipeline` stat row — chrome (radius, shadow, circular icon badge, typography) must match 1:1.
-- TypeScript build clean.
+Side-by-side compare `/settings?tab=members` strip vs `/pipeline` strip — identical chrome, chips, dividers, typography.
