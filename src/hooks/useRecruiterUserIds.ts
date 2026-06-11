@@ -29,8 +29,10 @@ export function useRecruiterUserIds() {
     staleTime: 1000 * 60 * 2,
   })
 
+  const ids = data instanceof Set ? data : new Set(Array.isArray(data) ? data : [])
+
   return {
-    recruiterUserIds: data ?? new Set<string>(),
+    recruiterUserIds: ids,
     isLoading,
   }
 }
