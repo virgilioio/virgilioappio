@@ -593,7 +593,7 @@ export default function CalendarPage() {
               <RailNeedsScheduling
                 items={needsScheduling}
                 onSchedule={item => setScheduleTarget(item)}
-                onCandidateClick={(candidateId) => navigate(`/candidates/${candidateId}`)}
+                onCandidateClick={(candidateId, jobId) => navigate(`/jobs/${jobId}/candidates/${candidateId}`)}
               />
             </div>
           </div>
