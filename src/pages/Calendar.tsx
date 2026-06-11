@@ -760,9 +760,11 @@ function EventPopover({
 function RailNeedsScheduling({
   items,
   onSchedule,
+  onCandidateClick,
 }: {
   items: NeedsSchedulingItem[]
   onSchedule: (item: NeedsSchedulingItem) => void
+  onCandidateClick: (candidateId: string) => void
 }) {
   return (
     <div
