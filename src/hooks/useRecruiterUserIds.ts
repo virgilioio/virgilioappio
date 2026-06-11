@@ -10,7 +10,7 @@ export function useRecruiterUserIds() {
   const { user } = useAuth()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['recruiter-user-ids'],
+    queryKey: ['recruiter-user-ids', 'v2'],
     queryFn: async () => {
       const { data: assignments, error } = await supabase
         .from('job_assignments')
