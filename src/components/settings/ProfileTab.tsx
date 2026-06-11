@@ -173,20 +173,30 @@ export function ProfileTab() {
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Account" description="Read-only details about your access.">
-        <dl className="grid gap-3 md:grid-cols-2 text-[12.5px] font-inter">
-          <div>
-            <dt className="text-[#8B8F9E] mb-1">Email</dt>
-            <dd className="text-[#0d0d09]">{user?.email}</dd>
+      <SettingsCard
+        title="Account"
+        description="Your access level — managed by workspace admins."
+      >
+        <dl className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[12.5px] font-inter text-[#0d0d09]">
+          <div className="flex items-center gap-2">
+            <Mail className="h-3.5 w-3.5 text-[#8B8F9E]" strokeWidth={2} />
+            <dt className="sr-only">Email</dt>
+            <dd>{user?.email}</dd>
           </div>
-          <div>
-            <dt className="text-[#8B8F9E] mb-1">User type</dt>
-            <dd><StatusChip tone="progress" label={userType || '—'} /></dd>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-3.5 w-3.5 text-[#8B8F9E]" strokeWidth={2} />
+            <dt className="text-[#5A6072]">User type</dt>
+            <dd>
+              <Badge tone="purple" size="xs">{formatRoleLabel(userType)}</Badge>
+            </dd>
           </div>
           {memberRole && (
-            <div>
-              <dt className="text-[#8B8F9E] mb-1">Member role</dt>
-              <dd><StatusChip tone="neutral" label={memberRole} /></dd>
+            <div className="flex items-center gap-2">
+              <UserCircle2 className="h-3.5 w-3.5 text-[#8B8F9E]" strokeWidth={2} />
+              <dt className="text-[#5A6072]">Member role</dt>
+              <dd>
+                <Badge tone="blue" size="xs">{formatRoleLabel(memberRole)}</Badge>
+              </dd>
             </div>
           )}
         </dl>
