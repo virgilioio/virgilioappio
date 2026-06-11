@@ -19,11 +19,16 @@ import { AutomationsTab } from '@/components/settings/AutomationsTab'
 import { CareersPageTab } from '@/components/settings/CareersPageTab'
 import { JobBoardsTab } from '@/pages/settings/JobBoardsTab'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
+import { SetupTab } from '@/components/settings/tabs/SetupTab'
+import { NotificationsTab } from '@/components/settings/tabs/NotificationsTab'
+import { EmailCalendarTab } from '@/components/settings/tabs/EmailCalendarTab'
+import { BookingTab } from '@/components/settings/tabs/BookingTab'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
+import { useSetupProgress } from '@/hooks/useSetupProgress'
 import { scrollToHighlightedSection } from '@/utils/scrollToHighlight'
 
 // Map legacy tab keys to new ones so old links keep working.
@@ -85,23 +90,20 @@ export default function Settings() {
     setMobileOpen(false)
   }
 
-  // TODO(setup): wire essentials calculation in Phase 4 SetupTab.
-  const essentialsRemaining = 5
-  const essentialsTotal = 9
-  const configuredCount = essentialsTotal - essentialsRemaining
+  const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
 
   const renderContent = () => {
     switch (currentTab) {
       case 'setup':
-        return <ComingSoonCard title="Setup" description="A guided checklist of essentials grouped by You / Your workspace / Grow." />
+        return <SetupTab />
       case 'profile':
         return <ProfileTab />
       case 'email-calendar':
-        return <ComingSoonCard title="Email & calendar" description="Connect Google Workspace or Microsoft 365 for candidate replies and scheduling." />
+        return <EmailCalendarTab />
       case 'booking':
-        return <ComingSoonCard title="Booking & event types" description="Your public scheduling page and event types. Currently still in My Profile — moving here in the next pass." />
+        return <BookingTab />
       case 'notifications':
-        return <ComingSoonCard title="Notifications" description="Choose what reaches your inbox vs. what stays in your queue." />
+        return <NotificationsTab />
       case 'organization':
         return <OrganizationTab />
       case 'members':
