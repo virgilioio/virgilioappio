@@ -53,7 +53,7 @@ export function OnboardingShell({
             marginBottom: 'auto',
           }}
         >
-          <GioWordmark height={24} />
+          <GoGioLogo size="2xl" />
           {onSkip ? (
             <button
               type="button"
