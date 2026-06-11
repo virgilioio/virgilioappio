@@ -102,7 +102,7 @@ export function EmailCalendarTab() {
     mailIdentities?.[0]?.email_address || calendarIdentities?.[0]?.email_address
 
   const googleCapabilities: string[] = []
-  if (hasMail) googleCapabilities.push('Mail · send-only')
+  if (hasMail) googleCapabilities.push('Mail · two-way')
   if (hasCalendar) googleCapabilities.push('Calendar · two-way')
 
   const handleDisconnectGoogle = async () => {
@@ -182,7 +182,7 @@ export function EmailCalendarTab() {
 
             <p className="flex items-center gap-1.5 font-inter text-[11.5px] text-[#8B8F9E] pt-1">
               <Lock className="h-3 w-3" strokeWidth={2} />
-              Gio never reads your inbox — send-only for mail, free/busy + write for
+              Gio never reads your inbox — two-way for mail, free/busy + write for
               calendar. Disconnect anytime.
             </p>
           </>
