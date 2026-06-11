@@ -280,6 +280,21 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           toast.error('Public job title is required')
           return false
         }
+
+        // Resolve department NAME for the public careers page. The wizard's
+        // jobData carries department_id; postings need the human label too so
+        // the careers page can group jobs without an extra join.
+        const deptId: string | null = (jobData as any)?.department_id ?? null
+        let deptName: string | null = (jobData as any)?.department ?? null
+        if (deptId && !deptName) {
+          const { data: deptRow } = await supabase
+            .from('departments')
+            .select('name')
+            .eq('id', deptId)
+            .maybeSingle()
+          if (deptRow?.name) deptName = deptRow.name
+        }
+
         const details = {
           slug, reference_id: refId || null, language,
           deadline: deadline ? deadline.toISOString().slice(0, 10) : null,
@@ -293,8 +308,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           seo: { meta_title: metaTitle, meta_description: metaDescription },
           // Departments are the dividing category on the public careers page.
           // Denormalize from the parent job so postings stay groupable without an extra join.
-          department: (jobData as any)?.department ?? null,
-          department_id: (jobData as any)?.department_id ?? null,
+          department: deptName,
+          department_id: deptId,
           compensation: {
             variable_enabled: variableEnabled,
             commission_currency: variableEnabled ? commissionCurrency : null,
@@ -311,6 +326,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         }
       },
     }))
+
 
     return (
       <div className="space-y-6 pb-6">
