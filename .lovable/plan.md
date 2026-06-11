@@ -1,44 +1,36 @@
-# Fix: Calendar page should belong to the ATS module
+## Backfill: Cleanup rejections on inactive jobs
 
-## Root cause
+Flip `job_candidate_associations` to `rejected` with rejection reason **"Cleanup?"** for candidates attached to jobs in `draft`, `closed`, or `archived` status.
 
-`getActiveSection()` in `src/components/layout/AppSidebar.tsx` is the single source of truth for "which module am I in". Its `ATS_PREFIXES` list currently is:
+### Scope
+- **Jobs included:** status in (`draft`, `closed`, `archived`) — 86 jobs total (1 draft, 59 closed, 26 archived)
+- **Candidates included:** associations with status NOT IN (`rejected`, `hired`, `offer`)
+- **Protected:** `hired` and `offer` candidates are left untouched
+- **Estimated impact:** ~230 `active` rows (the 4 `offer` rows are now excluded)
 
+### What changes per row
+- `status` → `'rejected'`
+- `rejection_reason_id` → `8e7611b3-6e15-4d34-9127-81d9e9aa9d2c` ("Cleanup?", global)
+- `rejected_at` → `now()` if currently null (preserve existing timestamps)
+- `updated_at` → `now()`
+
+### What does NOT change
+- No emails sent, no stage history rewrite, no scorecard/booking changes
+- No touch to `current_stage_id`
+- Already-rejected rows are skipped (no reason overwrite)
+
+### SQL
+```sql
+UPDATE public.job_candidate_associations jca
+SET
+  status = 'rejected',
+  rejection_reason_id = '8e7611b3-6e15-4d34-9127-81d9e9aa9d2c',
+  rejected_at = COALESCE(jca.rejected_at, now()),
+  updated_at = now()
+FROM public.jobs j
+WHERE j.id = jca.job_id
+  AND j.status IN ('draft','closed','archived')
+  AND jca.status NOT IN ('rejected','hired','offer');
 ```
-['/find', '/jobs', '/candidates', '/pipeline', '/analytics', '/talent-intelligence']
-```
 
-`/calendar` is missing, so on the Calendar page it returns `null`. That single value drives both broken behaviors:
-
-- **Left rail (AppSidebar):** no item matches `active === 'ats'`, so the ATS tile loses its cream/active treatment.
-- **Top header (Header.tsx, line 176–178):** `activeSection` is `null`, and the nav is built by `items.filter(i => i.section === activeSection)`, which yields an empty array — the entire ATS tab strip disappears.
-
-## Change
-
-Single-line edit in `src/components/layout/AppSidebar.tsx`:
-
-Add `'/calendar'` to `ATS_PREFIXES`:
-
-```ts
-const ATS_PREFIXES = [
-  '/find',
-  '/jobs',
-  '/candidates',
-  '/pipeline',
-  '/calendar',
-  '/analytics',
-  '/talent-intelligence',
-]
-```
-
-That's the entire fix — both Header and AppSidebar already read from `getActiveSection`, and the Calendar nav entry in `Header.tsx` is already tagged `section: 'ats'`.
-
-## Verification
-
-- Navigate to `/calendar`: ATS tile in the left rail shows the active (cream) state with lilac accent; top header shows the full ATS nav with "Calendar" highlighted.
-- Navigate to `/jobs`, `/candidates`, etc.: unchanged.
-- Navigate to `/crm`, `/insights`, `/dashboard`: unchanged.
-
-## Out of scope
-
-No changes to the Calendar page itself, the Header nav list, route registration, or any other module logic.
+Approve to run.
