@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Settings as SettingsIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import gilioIcon from '@/assets/gio-home-icon.png'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -27,13 +26,17 @@ export function getActiveSection(pathname: string, search = ''): AppSection {
 
 type IconRenderer = (props: { className?: string }) => JSX.Element
 
-const GilioIcon: IconRenderer = ({ className }) => (
-  <img
-    src={gilioIcon}
-    alt=""
-    aria-hidden
-    className={cn('inline-block object-contain', className)}
-  />
+/**
+ * Dashboard glyph — exact 48×48 geometry. The lilac "signal" dot uses the
+ * `.accent` class so the tile controls its fill (lilac only on hover/active).
+ */
+const DashboardGlyph: IconRenderer = ({ className }) => (
+  <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+    <circle className="accent" cx="13.5" cy="13.5" r="4.5" fill="currentColor" />
+    <rect x="22" y="9" width="17" height="9" rx="4.5" fill="currentColor" />
+    <rect x="9" y="21.5" width="30" height="9" rx="4.5" fill="currentColor" />
+    <rect x="9" y="34" width="21" height="9" rx="4.5" fill="currentColor" />
+  </svg>
 )
 
 /**
@@ -67,7 +70,7 @@ const AnalyticsGlyph: IconRenderer = ({ className }) => (
 )
 
 const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'>; label: string; Icon: IconRenderer; href: string; show: (p: ReturnType<typeof usePermissions>) => boolean }> = [
-  { id: 'home', label: 'Home', Icon: GilioIcon, href: '/dashboard', show: (p) => !p.isSalesUser },
+  { id: 'home', label: 'Dashboard', Icon: DashboardGlyph, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'ats', label: 'ATS', Icon: AtsGlyph, href: '/jobs', show: (p) => p.canViewJobs },
   { id: 'crm', label: 'CRM', Icon: CrmGlyph, href: '/crm', show: (p) => p.canViewOrganizations },
   { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/insights', show: (p) => !p.isSalesUser },
@@ -114,22 +117,36 @@ export function AppSidebar() {
           const { Icon } = item
           const isActive = active === item.id
           return (
-            <Tooltip key={item.id}>
-              <TooltipTrigger asChild>
-                <Link
-                  to={item.href}
-                  aria-current={isActive ? 'page' : undefined}
-                  aria-label={item.label}
-                  title={item.label}
-                  className={cn(tileBase, isActive ? tileActive : tileInactive)}
-                >
-                  <Icon className="h-6 w-6" />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={12}>
-                {item.label}
-              </TooltipContent>
-            </Tooltip>
+            <div key={item.id} className="flex flex-col items-center" style={{ rowGap: 6 }}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={item.href}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={item.label}
+                    title={item.label}
+                    className={cn(tileBase, isActive ? tileActive : tileInactive)}
+                  >
+                    <Icon className="h-6 w-6" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={12}>
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
+              {item.id === 'home' && (
+                <div
+                  aria-hidden
+                  style={{
+                    width: 28,
+                    height: 1,
+                    backgroundColor: 'rgba(255,252,249,0.14)',
+                    marginTop: 2,
+                    marginBottom: 2,
+                  }}
+                />
+              )}
+            </div>
           )
         })}
 
