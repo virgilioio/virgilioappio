@@ -60,27 +60,28 @@ function slugify(s: string) {
   )
 }
 
-function loadState(): PersistedState | null {
+function loadState(key: string): PersistedState | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = sessionStorage.getItem(key)
     if (!raw) return null
     return JSON.parse(raw) as PersistedState
   } catch {
     return null
   }
 }
-function saveState(s: PersistedState) {
+function saveState(key: string, s: PersistedState) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+    sessionStorage.setItem(key, JSON.stringify(s))
   } catch {}
 }
-function clearState() {
+function clearState(key: string) {
   try {
-    sessionStorage.removeItem(STORAGE_KEY)
+    sessionStorage.removeItem(key)
   } catch {}
 }
 
-export default function OnboardingFlow() {
+export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
+  const STORAGE_KEY = demo ? STORAGE_KEY_DEMO : STORAGE_KEY_REAL
   const navigate = useNavigate()
   const { toast } = useToast()
   const { user, organizationId } = useAuth()
