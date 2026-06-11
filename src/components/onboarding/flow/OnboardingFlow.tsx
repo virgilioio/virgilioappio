@@ -90,7 +90,7 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
   const { createJob } = useJobs()
   const { createMember } = useMembers()
 
-  const initial = loadState()
+  const initial = loadState(STORAGE_KEY)
   const [step, setStep] = useState<FlowStep>(initial?.step || 1)
   const [orgId, setOrgId] = useState<string | null>(initial?.orgId || null)
   const [orgName, setOrgName] = useState(initial?.orgName || '')
@@ -102,8 +102,8 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
   const [isDemo, setIsDemo] = useState(initial?.isDemo || false)
 
   useEffect(() => {
-    saveState({ step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo })
-  }, [step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo])
+    saveState(STORAGE_KEY, { step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo })
+  }, [STORAGE_KEY, step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo])
 
   // Step 4 candidate phase
   const [candidatesPhase, setCandidatesPhase] = useState<'idle' | 'searching' | 'ready'>('idle')
