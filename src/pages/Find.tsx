@@ -277,12 +277,14 @@ export default function Find() {
 
             {/* Two-column workspace */}
             <div className="flex gap-6 min-h-[calc(100dvh-16rem)]">
-              <FindFilterPanel
-                criteria={editableCriteria}
-                onCriteriaChange={handleCriteriaChange}
-                resultFilters={filters}
-                onResultFiltersChange={setFilters}
-              />
+              {mode === 'project' && (
+                <FindFilterPanel
+                  criteria={editableCriteria}
+                  onCriteriaChange={handleCriteriaChange}
+                  resultFilters={filters}
+                  onResultFiltersChange={setFilters}
+                />
+              )}
 
               <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 {mode === 'project' && currentProject && (
