@@ -798,7 +798,7 @@ function RailNeedsScheduling({
         </div>
       </div>
 
-      <div className="px-3 pb-3" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="px-3 pb-3 overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8">
             <CheckCircle2 size={20} color={C.green} strokeWidth={2} />
