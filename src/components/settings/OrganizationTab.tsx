@@ -43,7 +43,7 @@ export default function OrganizationTab() {
     if (tenant) {
       setForm({
         name: tenant.name || "",
-        about: tenant.about || "",
+        about: stripHtmlToPlainText(tenant.about || ""),
         billing_email: tenant.billing_email || "",
         billing_phone: tenant.billing_phone || "",
       });
