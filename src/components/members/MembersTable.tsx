@@ -248,98 +248,116 @@ export function MembersTable({
               ) : undefined}
             />
           ) : (
-            <ul className="divide-y divide-border/60">
-              {members.map((member) => {
-                const isInactive = member.user_status === 'inactive'
-                const isInvited = member.user_status === 'invited'
-                const statusLabel = isInactive ? 'Inactive' : isInvited ? 'Invited' : 'Active'
-                return (
-                  <li
-                    key={member.id}
-                    className={`flex items-center gap-4 py-4 px-1 cursor-pointer hover:bg-muted/40 rounded-md transition-colors ${isInactive ? 'opacity-60' : ''}`}
-                    onClick={() => setDetailMember(member)}
-                  >
-                    <Avatar className={`h-10 w-10 shrink-0 ${isInactive ? 'grayscale' : ''}`}>
-                      {member.user_avatar_url && <AvatarImage src={member.user_avatar_url} alt={getDisplayName(member)} />}
-                      <AvatarFallback className={`${isInactive ? 'bg-muted text-muted-foreground' : getAvatarColor(member)} text-[13px] font-semibold`}>
-                        {getInitials(member)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-poppins font-semibold text-[14.5px] text-foreground truncate tracking-[-0.01em]">
-                        {isInvited ? getDisplayEmail(member) : getDisplayName(member)}
-                      </div>
-                      <div className="font-inter text-[13px] text-muted-foreground truncate">
-                        {isInvited ? (
-                          <span className="italic">Invite pending</span>
-                        ) : (
-                          getDisplayEmail(member)
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant={isInactive ? 'secondary' : getRoleBadgeVariant(member.effectiveRole)}>
-                        {member.effectiveRole || (member.system_role === 'admin' ? 'Admin' : 'Member')}
-                      </Badge>
-                      {member.seatType && (
-                        <Badge variant={member.seatType === 'paid' ? 'seat-paid' : 'seat-free'}>
-                          {member.seatType === 'paid' ? 'Paid' : 'Free'}
-                        </Badge>
-                      )}
-                      <Badge variant={getStatusBadgeVariant(member.user_status)}>
-                        {statusLabel}
-                      </Badge>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onEdit(member)}>Edit Member</DropdownMenuItem>
-                            {onManageJobAssignments && member.user_status === 'active' && (
-                              <DropdownMenuItem onClick={() => onManageJobAssignments(member)} className="gap-2">
-                                <Briefcase className="h-4 w-4" />Manage Job Access
-                              </DropdownMenuItem>
-                            )}
-                            {member.user_status === 'invited' && (
-                              <>
+            <div className="rounded-xl border border-virgilio-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Member</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Seat</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[32px] text-right" aria-label="Actions" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.map((member) => {
+                    const isInactive = member.user_status === 'inactive'
+                    const isInvited = member.user_status === 'invited'
+                    const statusLabel = isInactive ? 'Inactive' : isInvited ? 'Invited' : 'Active'
+                    const displayName = isInvited ? getDisplayEmail(member) : getDisplayName(member)
+                    const sub = isInvited ? 'Invite pending' : getDisplayEmail(member)
+                    return (
+                      <TableRow
+                        key={member.id}
+                        interactive
+                        className={`group cursor-pointer ${isInactive ? 'opacity-60' : ''}`}
+                        onClick={() => setDetailMember(member)}
+                      >
+                        <TableCell>
+                          <IdentityCell
+                            name={displayName}
+                            sub={sub}
+                            src={member.user_avatar_url}
+                            fallback={getInitials(member)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <StatusCell>
+                            <Badge size="sm" variant={isInactive ? 'secondary' : getRoleBadgeVariant(member.effectiveRole)}>
+                              {member.effectiveRole || (member.system_role === 'admin' ? 'Admin' : 'Member')}
+                            </Badge>
+                          </StatusCell>
+                        </TableCell>
+                        <TableCell>
+                          {member.seatType ? (
+                            <StatusCell>
+                              <Badge size="sm" variant={member.seatType === 'paid' ? 'seat-paid' : 'seat-free'}>
+                                {member.seatType === 'paid' ? 'Paid' : 'Free'}
+                              </Badge>
+                            </StatusCell>
+                          ) : <span className="text-text-tertiary">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          <StatusCell>
+                            <Badge size="sm" variant={getStatusBadgeVariant(member.user_status)}>
+                              {statusLabel}
+                            </Badge>
+                          </StatusCell>
+                        </TableCell>
+                        <TableCell className="w-[32px] text-right">
+                          <ActionCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="Member actions" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(member) }}>Edit Member</DropdownMenuItem>
+                                {onManageJobAssignments && member.user_status === 'active' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onManageJobAssignments(member) }} className="gap-2">
+                                    <Briefcase className="h-4 w-4" />Manage Job Access
+                                  </DropdownMenuItem>
+                                )}
+                                {member.user_status === 'invited' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleResendInvitation(member) }} className="gap-2">
+                                      <Send className="h-4 w-4" />Resend Invitation
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); copyInviteLink(member) }} disabled={copyingInvite === member.id} className="gap-2">
+                                      <Copy className="h-4 w-4" />{copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {member.user_status === 'active' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeactivate(member.id) }} className="gap-2">
+                                      <UserX className="h-4 w-4" />Deactivate Member
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {member.user_status === 'inactive' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(member) }} className="gap-2">
+                                      <UserCheck className="h-4 w-4" />Reactivate Member
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleResendInvitation(member)} className="gap-2">
-                                  <Send className="h-4 w-4" />Resend Invitation
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeleteUser(member) }} className="gap-2 text-destructive">
+                                  <Trash2 className="h-4 w-4" />Delete User
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => copyInviteLink(member)} disabled={copyingInvite === member.id} className="gap-2">
-                                  <Copy className="h-4 w-4" />{copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {member.user_status === 'active' && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => onDeactivate(member.id)} className="gap-2">
-                                  <UserX className="h-4 w-4" />Deactivate Member
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {member.user_status === 'inactive' && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => onEdit(member)} className="gap-2">
-                                  <UserCheck className="h-4 w-4" />Reactivate Member
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => onDeleteUser(member)} className="gap-2 text-destructive">
-                              <Trash2 className="h-4 w-4" />Delete User
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </ActionCell>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
