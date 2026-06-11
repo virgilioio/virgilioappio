@@ -117,7 +117,7 @@ export function DepartmentsManager() {
               </TableRow>
             )}
             {sorted.map((d) => {
-              const c = counts?.get(d.id)
+              const c = counts?.[d.id]
               return (
                 <TableRow key={d.id}>
                   <TableCell>
