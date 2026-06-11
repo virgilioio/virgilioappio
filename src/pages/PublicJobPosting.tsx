@@ -42,6 +42,7 @@ import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsR
 import { PhoneInput } from '@/components/ui/phone-input'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { sanitizeToE164 } from '@/utils/phoneUtils'
+import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 
 function getViolationToast(violation: { type?: string; message?: string; cooldown_until?: string }) {
   const cooldownDate = violation.cooldown_until ? new Date(violation.cooldown_until) : null
@@ -116,6 +117,7 @@ export default function PublicJobPosting() {
   const [customFields, setCustomFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
   const [loading, setLoading] = useState(true)
+  useReportSplashReady(!loading)
   const [scrolled, setScrolled] = useState(false)
   const [tab, setTab] = useState<'overview' | 'application'>('overview')
   const { toast } = useToast()
