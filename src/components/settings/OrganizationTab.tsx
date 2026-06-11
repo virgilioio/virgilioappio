@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { OrganizationDisplay } from "./OrganizationDisplay";
 import { CurrencySettings } from "./CurrencySettings";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { SettingsCard } from "@/components/settings/shared/SettingsCard";
 import { Pencil, Save, X } from "lucide-react";
 
 interface TenantFormData {
@@ -121,59 +120,29 @@ export default function OrganizationTab() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="space-y-md">
-        <PageHeader
-          title="General Settings"
-         
-        />
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <SettingsCard title="Company">
+        <p className="font-inter text-[12px] text-[#8B8F9E] py-4 text-center">Loading…</p>
+      </SettingsCard>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <div className="space-y-md">
-        <PageHeader
-          title="General Settings"
-         
-        />
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center py-8">
-              <p className="text-destructive">Error loading company data</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <SettingsCard title="Company">
+        <p className="font-inter text-[12px] text-[#A21D1D] py-4 text-center">Error loading company data</p>
+      </SettingsCard>
     );
   }
 
   // No tenant state
   if (!tenant) {
     return (
-      <div className="space-y-md">
-        <PageHeader
-          title="General Settings"
-         
-        />
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">
-                No company data available. Please contact support if you believe this is an error.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <SettingsCard title="Company">
+        <p className="font-inter text-[12px] text-[#8B8F9E] py-4 text-center">
+          No company data available. Contact support if this looks wrong.
+        </p>
+      </SettingsCard>
     );
   }
 
@@ -182,112 +151,95 @@ export default function OrganizationTab() {
 
   if (!canEditTenant) {
     return (
-      <div className="space-y-md">
-        <PageHeader
-          title="General Settings"
-         
-        />
-        <Card>
-          <CardContent className="pt-6">
-            <OrganizationDisplay tenant={tenant} />
-          </CardContent>
-        </Card>
+      <div className="space-y-4">
+        <SettingsCard title="Company">
+          <OrganizationDisplay tenant={tenant} />
+        </SettingsCard>
+        <CurrencySettings />
       </div>
     );
   }
 
   return (
-    <div className="space-y-md">
-      <PageHeader
-        title="General Settings"
-       
+    <div className="space-y-4">
+      <SettingsCard
+        title="Company"
+        description="Your company name and details, shown on careers pages, offers and invoices."
+        action={
+          !isEditMode ? (
+            <Button size="sm" variant="secondary" icon={Pencil} onClick={handleEditModeToggle}>
+              Edit
+            </Button>
+          ) : undefined
+        }
       >
-        {!isEditMode && (
-          <Button
-            onClick={handleEditModeToggle}
-            variant="outline"
-            size="sm"
-          >
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-        )}
-      </PageHeader>
+        {!isEditMode ? (
+          <OrganizationDisplay tenant={tenant} />
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Company name</Label>
+              <Input
+                id="name"
+                value={tenantFormData.name}
+                onChange={(e) => handleFormDataChange("name", e.target.value)}
+                placeholder="Enter company name"
+              />
+            </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Company Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-md">
-          {!isEditMode ? (
-            <OrganizationDisplay tenant={tenant} />
-          ) : (
-            <div className="space-y-sm">
-              <div className="space-y-2">
-                <Label htmlFor="name">Company Name</Label>
-                <Input
-                  id="name"
-                  value={tenantFormData.name}
-                  onChange={(e) => handleFormDataChange("name", e.target.value)}
-                  placeholder="Enter company name"
-                />
-              </div>
+            <Separator />
 
-              <Separator />
+            <div className="space-y-2">
+              <Label htmlFor="about">About</Label>
+              <p className="font-inter text-[11.5px] text-[#8B8F9E]">
+                Describe your company. Shown on your public careers page.
+              </p>
+              <RichTextEditor
+                value={tenantFormData.about}
+                onChange={(value) => handleFormDataChange("about", value)}
+                placeholder="Tell candidates about your company, culture, mission, and values…"
+                minHeight="150px"
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="about">About</Label>
-                <p className="text-xs text-muted-foreground">
-                  Describe your company. This information can be displayed on your public careers page.
-                </p>
-                <RichTextEditor
-                  value={tenantFormData.about}
-                  onChange={(value) => handleFormDataChange("about", value)}
-                  placeholder="Tell candidates about your company, culture, mission, and values..."
-                  minHeight="150px"
-                />
-              </div>
+            <Separator />
 
-              <Separator />
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Billing Contact</h4>
-                <div className="space-y-sm">
-                  <div className="space-y-2">
-                    <Label htmlFor="billing_contact_name">Contact Name</Label>
-                    <Input
-                      id="billing_contact_name"
-                      value={tenantFormData.billing_contact_name || ""}
-                      onChange={(e) => handleFormDataChange("billing_contact_name", e.target.value)}
-                      placeholder="Enter billing contact name"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="billing_email">Email</Label>
-                    <Input
-                      id="billing_email"
-                      type="email"
-                      value={tenantFormData.billing_email || ""}
-                      onChange={(e) => handleFormDataChange("billing_email", e.target.value)}
-                      placeholder="Enter billing email"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="billing_phone">Phone</Label>
-                    <Input
-                      id="billing_phone"
-                      type="tel"
-                      value={tenantFormData.billing_phone || ""}
-                      onChange={(e) => handleFormDataChange("billing_phone", e.target.value)}
-                      placeholder="Enter billing phone number"
-                    />
-                  </div>
+            <div className="space-y-3">
+              <h4 className="font-poppins font-semibold text-[12.5px] text-[#0d0d09]">Billing contact</h4>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="billing_contact_name">Contact name</Label>
+                  <Input
+                    id="billing_contact_name"
+                    value={tenantFormData.billing_contact_name || ""}
+                    onChange={(e) => handleFormDataChange("billing_contact_name", e.target.value)}
+                    placeholder="Enter billing contact name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="billing_email">Email</Label>
+                  <Input
+                    id="billing_email"
+                    type="email"
+                    value={tenantFormData.billing_email || ""}
+                    onChange={(e) => handleFormDataChange("billing_email", e.target.value)}
+                    placeholder="Enter billing email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="billing_phone">Phone</Label>
+                  <Input
+                    id="billing_phone"
+                    type="tel"
+                    value={tenantFormData.billing_phone || ""}
+                    onChange={(e) => handleFormDataChange("billing_phone", e.target.value)}
+                    placeholder="Enter billing phone number"
+                  />
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {isEditMode && (
             <div className="flex justify-end gap-2 pt-md">
