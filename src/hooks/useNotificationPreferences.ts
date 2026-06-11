@@ -125,6 +125,7 @@ export function useNotificationPreferences() {
   // Back-compat shim for older consumers expecting react-query-like shape.
   const save = {
     mutateAsync: (patch: Partial<NotificationPreferences>) => update(patch),
+    isPending: false,
   }
 
   return { prefs, data: prefs, loading, update, save }
