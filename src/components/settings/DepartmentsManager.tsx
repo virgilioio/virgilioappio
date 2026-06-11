@@ -71,23 +71,21 @@ export function DepartmentsManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-poppins font-semibold text-[24px] tracking-[-0.04em] text-text-primary">
-            Departments<span className="text-virgilio-purple">.</span>
-          </h1>
-          <p className="mt-1 text-[13px] text-text-secondary max-w-[640px]">
-            Departments group jobs by function (Sales, People, Engineering…). They are shared across every client in your workspace
-            and are independent from clients — one client can have jobs in many departments.
-          </p>
-        </div>
-        <Button icon={Plus} onClick={() => { setEditing(null); setFormOpen(true) }}>
-          Create department
-        </Button>
-      </header>
-
-      <div className="rounded-2xl border border-virgilio-border bg-white overflow-hidden">
+    <div className="space-y-4">
+      <div className="bg-white border border-[#E7E8EE] rounded-xl overflow-hidden">
+        <header className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
+          <div className="min-w-0">
+            <h3 className="font-poppins font-semibold text-[14px] text-[#0d0d09]" style={{ letterSpacing: '-0.01em' }}>
+              Departments
+            </h3>
+            <p className="font-inter text-[12px] text-[#5A6072] mt-1 leading-relaxed">
+              Group jobs by function. Shared across every client in your workspace.
+            </p>
+          </div>
+          <Button size="sm" icon={Plus} onClick={() => { setEditing(null); setFormOpen(true) }}>
+            Create department
+          </Button>
+        </header>
         <Table>
           <TableHeader>
             <TableRow>

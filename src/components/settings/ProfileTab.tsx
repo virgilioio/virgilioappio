@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { User, Mail, Shield, Save } from 'lucide-react'
 import { AvatarUploader } from './AvatarUploader'
 import { ProfileForm } from './ProfileForm'
-import { PageHeader } from '@/components/layout/PageHeader'
+
 import { BookingLinkSection } from './BookingLinkSection'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -87,11 +87,9 @@ export function ProfileTab() {
   )
 
   return (
-    <div className="space-y-md">
-      <PageHeader 
-        title="Profile" 
-       
-      />
+    <div className="space-y-4">
+
+
       
       {/* Profile Information Card */}
       <Card data-onboarding-target="profile">
