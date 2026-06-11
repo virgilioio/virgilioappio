@@ -89,10 +89,7 @@ export default function Settings() {
     setMobileOpen(false)
   }
 
-  // TODO(setup): wire essentials calculation in Phase 4 SetupTab.
-  const essentialsRemaining = 5
-  const essentialsTotal = 9
-  const configuredCount = essentialsTotal - essentialsRemaining
+  const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
 
   const renderContent = () => {
     switch (currentTab) {
