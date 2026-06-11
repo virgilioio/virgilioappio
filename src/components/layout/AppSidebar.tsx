@@ -8,7 +8,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'analytics' | 'settings' | 'my-profile' | null
 
-const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/analytics', '/talent-intelligence']
+const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar', '/analytics', '/talent-intelligence']
 const CRM_PREFIXES = ['/crm']
 const ANALYTICS_PREFIXES = ['/insights']
 
