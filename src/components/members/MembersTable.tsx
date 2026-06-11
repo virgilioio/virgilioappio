@@ -231,7 +231,7 @@ export function MembersTable({
               </p>
             </div>
             {onAddNew && (
-              <Button onClick={onAddNew} variant="secondary" className="hidden sm:inline-flex gap-2 shrink-0">
+              <Button onClick={onAddNew} className="hidden sm:inline-flex gap-2 shrink-0">
                 <UserPlus className="h-4 w-4" />
                 Add member
               </Button>
@@ -260,20 +260,20 @@ export function MembersTable({
                 return (
                   <li
                     key={member.id}
-                    className={`flex items-center gap-3 py-3 px-1 cursor-pointer hover:bg-muted/40 rounded-md transition-colors ${isInactive ? 'opacity-60' : ''}`}
+                    className={`flex items-center gap-4 py-4 px-1 cursor-pointer hover:bg-muted/40 rounded-md transition-colors ${isInactive ? 'opacity-60' : ''}`}
                     onClick={() => setDetailMember(member)}
                   >
-                    <Avatar className={`h-9 w-9 shrink-0 ${isInactive ? 'grayscale' : ''}`}>
+                    <Avatar className={`h-10 w-10 shrink-0 ${isInactive ? 'grayscale' : ''}`}>
                       {member.user_avatar_url && <AvatarImage src={member.user_avatar_url} alt={getDisplayName(member)} />}
-                      <AvatarFallback className={`${isInactive ? 'bg-muted text-muted-foreground' : getAvatarColor(member)} text-xs font-semibold`}>
+                      <AvatarFallback className={`${isInactive ? 'bg-muted text-muted-foreground' : getAvatarColor(member)} text-[13px] font-semibold`}>
                         {getInitials(member)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
-                      <div className="font-poppins font-semibold text-[14px] text-foreground truncate">
+                      <div className="font-poppins font-semibold text-[14.5px] text-foreground truncate tracking-[-0.01em]">
                         {isInvited ? getDisplayEmail(member) : getDisplayName(member)}
                       </div>
-                      <div className="font-inter text-[12.5px] text-muted-foreground truncate">
+                      <div className="font-inter text-[13px] text-muted-foreground truncate">
                         {isInvited ? (
                           <span className="italic">Invite pending</span>
                         ) : (
@@ -296,7 +296,7 @@ export function MembersTable({
                       <div onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => onEdit(member)}>Edit Member</DropdownMenuItem>
