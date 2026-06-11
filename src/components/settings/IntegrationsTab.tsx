@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Search, X } from 'lucide-react'
-import { PageHeader } from '@/components/layout/PageHeader'
+
 import { Input } from '@/components/ui/input'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
@@ -256,11 +256,8 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
   }
 
   return (
-    <div className="space-y-md">
-      <PageHeader
-        title="Integrations"
-       
-      />
+    <div className="space-y-4">
+      {/* PageHeader removed — Settings shell renders the page header. */}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
