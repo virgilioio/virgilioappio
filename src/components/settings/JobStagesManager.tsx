@@ -50,16 +50,14 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border overflow-hidden">
-              <JobStagesTable 
-                stages={platformStages} 
-                isLoading={isLoading} 
-                onEdit={() => {}}
-                onCopy={handleCopy}
-                context={context}
-                readOnly
-              />
-            </div>
+            <JobStagesTable 
+              stages={platformStages} 
+              isLoading={isLoading} 
+              onEdit={() => {}}
+              onCopy={handleCopy}
+              context={context}
+              readOnly
+            />
           </CardContent>
         </Card>
       )}
