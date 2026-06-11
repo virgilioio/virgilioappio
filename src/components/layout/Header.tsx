@@ -24,6 +24,7 @@ import {
   Lightbulb,
   Handshake,
   ChevronDown,
+  Calendar as CalendarIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -140,6 +141,7 @@ export function Header() {
       show: canSeeRecruiterTools && canViewCandidatesNavigation,
       section: 'ats',
     },
+    { href: '/calendar', icon: CalendarIcon, label: 'Calendar', show: canSeeRecruiterTools, section: 'ats' },
     { href: '/pipeline', icon: TrendingUp, label: 'Pipeline', show: canViewJobs, section: 'ats' },
     {
       href: '/analytics',
