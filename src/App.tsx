@@ -125,6 +125,8 @@ function AppContent() {
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+        {/* Dev-only preview of the onboarding flow (no auth, all backend stubbed) */}
+        <Route path="/__preview/onboarding" element={<OnboardingPreview />} />
 
         
         
