@@ -64,15 +64,8 @@ export function FindEmptyState({
         <div className="mx-auto w-full max-w-[820px] space-y-8">
           {/* Hero */}
           <div className="text-center space-y-4 animate-fade-in">
-            <div className="relative inline-flex items-center justify-center">
-              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-virgilio-purple to-virgilio-purple/60 flex items-center justify-center shadow-[0_8px_24px_-8px_rgba(124,58,237,0.45)]">
-                {isGenerating ? (
-                  <Sparkles className="h-8 w-8 text-white animate-pulse" />
-                ) : (
-                  <Sparkles className="h-8 w-8 text-white" />
-                )}
-              </div>
-              <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white" />
+            <div className="mx-auto w-[200px] h-[160px] flex items-center justify-center">
+              <SoftFind />
             </div>
 
             {isGenerating ? (
