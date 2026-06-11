@@ -8,7 +8,6 @@ import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialo
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
-import { MetricCard } from '@/components/ui/metric-card'
 import { Users, UserPlus, Archive, Lock } from 'lucide-react'
 
 export function MembersTab() {
