@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PageHeader } from '@/components/layout/PageHeader'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
@@ -69,11 +69,8 @@ export function JobBoardsTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Job Boards" 
-       
-      />
+    <div className="space-y-4">
+
 
       {/* Talent.com Integration Card */}
       <Card>

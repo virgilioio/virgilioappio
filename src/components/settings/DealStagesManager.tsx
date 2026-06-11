@@ -37,7 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Plus } from 'lucide-react'
 import { useDealStages, type DealStage, type DealStageType } from '@/hooks/useDealStages'
 import { DraggableDealStageItem } from './DraggableDealStageItem'
-import { PageHeader } from '@/components/layout/PageHeader'
+
 
 export function DealStagesManager() {
   const { data: stagesData = [], isLoading, createStage, updateStage, deleteStage, reorderStages } = useDealStages()
@@ -100,13 +100,13 @@ export function DealStagesManager() {
   const activeStage = activeId ? orderedStages.find((s) => s.id === activeId) : null
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Deal Stages">
-        <Button onClick={() => setCreating(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Button size="sm" icon={Plus} onClick={() => setCreating(true)}>
           Add stage
         </Button>
-      </PageHeader>
+      </div>
+
 
       <div>
         <h3 className="text-lg font-medium text-text-primary mb-2">Pipeline Stages</h3>
