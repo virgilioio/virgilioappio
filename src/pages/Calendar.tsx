@@ -832,7 +832,7 @@ function RailNeedsScheduling({
                   <div className="min-w-0 flex-1">
                     <button
                       type="button"
-                      onClick={() => navigate(`/candidates/${item.candidateId}`)}
+                      onClick={() => onCandidateClick(item.candidateId)}
                       className="font-inter truncate cursor-pointer hover:underline text-left"
                       style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, background: 'none', border: 'none', padding: 0 }}
                     >
