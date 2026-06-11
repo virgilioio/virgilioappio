@@ -1,18 +1,16 @@
-
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useQueryClient } from '@tanstack/react-query'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { User, Mail, Shield, Save } from 'lucide-react'
-import { AvatarUploader } from './AvatarUploader'
-import { ProfileForm } from './ProfileForm'
-
-import { BookingLinkSection } from './BookingLinkSection'
+import { Input } from '@/components/ui/input'
+import { FormField } from '@/components/ui/form-field'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { SettingsCard } from './shared/SettingsCard'
+import { StatusChip } from './shared/StatusChip'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useRef } from 'react'
 
 interface ProfileFormData {
   first_name: string
@@ -23,204 +21,176 @@ interface ProfileFormData {
   timezone: string
 }
 
+const TIMEZONES = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Asia/Tokyo',
+  'Asia/Shanghai',
+  'Australia/Sydney',
+  'Pacific/Auckland',
+].map((v) => ({ value: v, label: v }))
+
 export function ProfileTab() {
   const { user, userType, memberRole } = useAuth()
-  const { profile, updateProfile, uploadAvatar, isLoading: profileLoading } = useUserProfile()
+  const { profile, updateProfile, uploadAvatar, isLoading } = useUserProfile()
   const queryClient = useQueryClient()
   const isMobile = useIsMobile()
-  
-  const [profileFormData, setProfileFormData] = useState<ProfileFormData>({
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [data, setData] = useState<ProfileFormData>({
     first_name: '',
     last_name: '',
     title: '',
     phone: '',
     linkedin_url: '',
-    timezone: 'UTC'
+    timezone: 'UTC',
   })
-  
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
-  // Update form data when profile loads
   useEffect(() => {
     if (profile) {
-      setProfileFormData({
+      setData({
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
         title: profile.title || '',
         phone: profile.phone || '',
         linkedin_url: profile.linkedin_url || '',
-        timezone: profile.timezone || 'UTC'
+        timezone: profile.timezone || 'UTC',
       })
     }
   }, [profile])
 
-  const handleProfileSave = async () => {
-    try {
-      const hadNoNames = !profile?.first_name || !profile?.last_name
-      const nowHasNames = profileFormData.first_name && profileFormData.last_name
-      
-      await updateProfile(profileFormData)
-      setLastUpdated(new Date().toLocaleString())
-      
-      // If user just completed their profile, trigger booking config creation
-      if (hadNoNames && nowHasNames) {
-        queryClient.invalidateQueries({ queryKey: ['booking-config'] })
-      }
-    } catch (error) {
-      // Error handling is done in the hook
+  const hasChanges = profile && (
+    data.first_name !== (profile.first_name || '') ||
+    data.last_name !== (profile.last_name || '') ||
+    data.title !== (profile.title || '') ||
+    data.phone !== (profile.phone || '') ||
+    data.linkedin_url !== (profile.linkedin_url || '') ||
+    data.timezone !== (profile.timezone || 'UTC')
+  )
+
+  const handleSave = async () => {
+    const hadNoNames = !profile?.first_name || !profile?.last_name
+    const nowHasNames = data.first_name && data.last_name
+    await updateProfile(data)
+    if (hadNoNames && nowHasNames) {
+      queryClient.invalidateQueries({ queryKey: ['booking-config'] })
     }
   }
 
-  const handleAvatarUpload = async (file: File) => {
-    await uploadAvatar(file)
-    setLastUpdated(new Date().toLocaleString())
+  const handleAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) await uploadAvatar(file)
+    e.target.value = ''
   }
 
-  // Check if form has changes
-  const hasChanges = profile && (
-    profileFormData.first_name !== (profile.first_name || '') ||
-    profileFormData.last_name !== (profile.last_name || '') ||
-    profileFormData.title !== (profile.title || '') ||
-    profileFormData.phone !== (profile.phone || '') ||
-    profileFormData.linkedin_url !== (profile.linkedin_url || '') ||
-    profileFormData.timezone !== (profile.timezone || 'UTC')
-  )
+  const initials = ((profile?.first_name?.[0] || '') + (profile?.last_name?.[0] || '')) || (user?.email?.[0]?.toUpperCase() ?? '?')
+  const update = (k: keyof ProfileFormData, v: string) => setData((d) => ({ ...d, [k]: v }))
 
   return (
     <div className="space-y-4">
-
-
-      
-      {/* Profile Information Card */}
-      <Card data-onboarding-target="profile">
-        <CardHeader className="pb-sm">
-          <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
-            <User className="h-4 w-4 text-virgilio-purple" />
-            Profile Information<span className="text-purple-period">.</span>
-          </CardTitle>
-          <CardDescription className="text-xs text-virgilio-muted">
-            Manage your personal information and preferences
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-md">
-          {/* Avatar Section */}
-          <div className={isMobile ? '' : 'pb-md border-b border-border'}>
-            <AvatarUploader
-              avatarUrl={profile?.avatar_url}
-              firstName={profile?.first_name}
-              lastName={profile?.last_name}
-              userEmail={user?.email}
-              isLoading={profileLoading}
-              onUpload={isMobile ? undefined : handleAvatarUpload}
-            />
+      <SettingsCard
+        title="Profile"
+        description="How your name and contact details appear across the workspace."
+        footer={
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={isLoading || !hasChanges}>
+              {isLoading ? 'Saving…' : 'Save changes'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          {/* Avatar row */}
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16">
+              {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt="" />}
+              <AvatarFallback className="bg-[#EDE4FF] text-[#6F3FF5] text-sm font-medium">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            {!isMobile && (
+              <>
+                <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarPick} />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Change photo
+                </Button>
+              </>
+            )}
           </div>
 
-          {isMobile ? (
-            /* Mobile: Read-only profile summary */
-            <div className="space-y-2 text-sm text-text-secondary">
-              {(profile?.first_name || profile?.last_name) && (
-                <div className="flex items-center gap-2">
-                  <User className="h-3 w-3" />
-                  <span>{profile.first_name} {profile.last_name}</span>
-                </div>
-              )}
-              {profile?.title && (
-                <div className="text-xs text-text-muted">{profile.title}</div>
-              )}
-              {profile?.phone && (
-                <div className="text-xs text-text-muted">📞 {profile.phone}</div>
-              )}
-              {profile?.timezone && profile.timezone !== 'UTC' && (
-                <div className="text-xs text-text-muted">🕐 {profile.timezone}</div>
-              )}
-              {profile?.linkedin_url && (
-                <a href={profile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline truncate block">
-                  LinkedIn Profile
-                </a>
-              )}
+          {/* Form grid */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <FormField label="First name" required htmlFor="first-name">
+              <Input id="first-name" value={data.first_name} onChange={(e) => update('first_name', e.target.value)} />
+            </FormField>
+            <FormField label="Last name" required htmlFor="last-name">
+              <Input id="last-name" value={data.last_name} onChange={(e) => update('last_name', e.target.value)} />
+            </FormField>
+            <FormField label="Title" htmlFor="title" className="md:col-span-2">
+              <Input id="title" value={data.title} onChange={(e) => update('title', e.target.value)} placeholder="e.g. Talent Partner" />
+            </FormField>
+            <FormField label="Email" htmlFor="email" helpText="Your sign-in email.">
+              <Input id="email" value={user?.email || ''} disabled />
+            </FormField>
+            <FormField label="Phone" htmlFor="phone">
+              <Input id="phone" type="tel" value={data.phone} onChange={(e) => update('phone', e.target.value)} />
+            </FormField>
+            <FormField label="Timezone" htmlFor="timezone" className="md:col-span-2">
+              <SearchableSelect
+                options={TIMEZONES}
+                value={data.timezone}
+                onValueChange={(v) => update('timezone', v)}
+                placeholder="Select timezone"
+                searchPlaceholder="Search timezones…"
+                emptyMessage="No timezones found."
+              />
+            </FormField>
+            <FormField
+              label="LinkedIn URL"
+              htmlFor="linkedin"
+              className="md:col-span-2"
+              helpText="Shown on shared candidate cards and outreach signatures."
+            >
+              <Input
+                id="linkedin"
+                type="url"
+                value={data.linkedin_url}
+                onChange={(e) => update('linkedin_url', e.target.value)}
+                placeholder="https://linkedin.com/in/yourprofile"
+              />
+            </FormField>
+          </div>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard title="Account" description="Read-only details about your access.">
+        <dl className="grid gap-3 md:grid-cols-2 text-[12.5px] font-inter">
+          <div>
+            <dt className="text-[#8B8F9E] mb-1">Email</dt>
+            <dd className="text-[#0d0d09]">{user?.email}</dd>
+          </div>
+          <div>
+            <dt className="text-[#8B8F9E] mb-1">User type</dt>
+            <dd><StatusChip tone="info">{userType || '—'}</StatusChip></dd>
+          </div>
+          {memberRole && (
+            <div>
+              <dt className="text-[#8B8F9E] mb-1">Member role</dt>
+              <dd><StatusChip tone="neutral">{memberRole}</StatusChip></dd>
             </div>
-          ) : (
-            <>
-              {/* Desktop: Profile Form */}
-              <div className="space-y-sm" id="profile-form">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">Personal Information</h4>
-                  {lastUpdated && (
-                    <span className="text-xs text-text-secondary">
-                      Last updated: {lastUpdated}
-                    </span>
-                  )}
-                </div>
-                
-                <ProfileForm
-                  formData={profileFormData}
-                  onFormDataChange={setProfileFormData}
-                />
-              </div>
-
-              {/* Save Button */}
-              <div className="flex justify-end pt-sm border-t border-border">
-                <Button 
-                  onClick={handleProfileSave} 
-                  disabled={profileLoading || !hasChanges}
-                  className="flex items-center gap-2"
-                  size="sm"
-                >
-                  <Save className="h-3 w-3" />
-                  {profileLoading ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </>
           )}
-        </CardContent>
-      </Card>
-
-      <Separator className="my-4 sm:my-8" />
-
-      <BookingLinkSection />
-      
-      {!isMobile && (
-        <>
-          <Separator className="my-4 sm:my-8" />
-          
-          {/* Account Information Card - hidden on mobile */}
-          <Card>
-            <CardHeader className="pb-sm">
-              <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
-                <Shield className="h-4 w-4 text-virgilio-purple" />
-                Account Information<span className="text-purple-period">.</span>
-              </CardTitle>
-              <CardDescription className="text-xs text-virgilio-muted">
-                View your account details and permissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-sm">
-              <div className="grid gap-sm text-sm text-text-secondary">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-3 w-3" />
-                  <span>Email: {user?.email}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-3 w-3" />
-                  <span>User Type: </span>
-                  <Badge variant="secondary" className="text-xs">
-                    {userType || 'none'}
-                  </Badge>
-                </div>
-                {memberRole && (
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-3 w-3" />
-                    <span>Member Role: </span>
-                    <Badge variant="outline" className="text-xs">
-                      {memberRole}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+        </dl>
+      </SettingsCard>
     </div>
   )
 }
