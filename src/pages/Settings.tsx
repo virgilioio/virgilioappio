@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
+import { useSetupProgress } from '@/hooks/useSetupProgress'
 import { scrollToHighlightedSection } from '@/utils/scrollToHighlight'
 
 // Map legacy tab keys to new ones so old links keep working.
