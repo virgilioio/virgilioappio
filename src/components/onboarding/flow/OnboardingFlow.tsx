@@ -310,6 +310,10 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
   const [invites, setInvites] = useState<InviteRow[]>([{ email: '', role: 'member' }])
   const [submitting5, setSubmitting5] = useState(false)
   const handleSendInvites = async () => {
+    if (demo) {
+      setStep(6)
+      return
+    }
     if (!organizationId) {
       setStep(6)
       return
@@ -341,7 +345,21 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
 
   // ─── Step 6: Done ───
   const handleFinish = () => {
-    clearState()
+    clearState(STORAGE_KEY)
+    if (demo) {
+      // Reset preview flow back to start instead of navigating
+      setStep(1)
+      setOrgId(null)
+      setOrgName('')
+      setDepartmentId(null)
+      setDepartmentName('')
+      setJobId(null)
+      setJobTitle('')
+      setJobLocation('')
+      setIsDemo(false)
+      setCandidatesPhase('idle')
+      return
+    }
     sessionStorage.setItem('virgilio_first_run', 'true')
     navigate('/trial-activation', { replace: true })
   }
