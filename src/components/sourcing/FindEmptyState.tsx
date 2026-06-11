@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { GioThinkingHeader } from '@/components/sourcing/GioThinkingHeader'
 import { Badge } from '@/components/ui/badge'
+import { SoftFind } from '@/components/ui/EmptyIllustrations'
 import { cn } from '@/lib/utils'
 import type { SourcingProject } from '@/types/sourcing'
 
