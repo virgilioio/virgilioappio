@@ -23,32 +23,26 @@ export function useChildOrganizationsForJobCreation() {
     queryKey: ['child-orgs-for-job-creation', organizationId],
     queryFn: async () => {
       if (!user || !organizationId) return []
-      
-      // Get the user's root organization (where they're a member)
-      const { data: rootOrg, error: rootError } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('id', organizationId)
-        .single()
-      
-      if (rootError) throw rootError
-      if (!rootOrg) return []
-      
-      // Get all child organizations (job folders)
+
+      // Jobs only live under client orgs (the workspace's hiring containers).
+      // The root saas/tenant org is NOT a valid job owner — excluding it
+      // prevents the confusing duplicate (e.g. two "Virgilio" entries) in
+      // pickers.
       const { data: children, error: childrenError } = await supabase
         .from('organizations')
         .select('id, name')
         .eq('parent_organization_id', organizationId)
+        .eq('org_kind', 'client')
         .eq('status', 'active')
         .order('name')
-      
+
       if (childrenError) throw childrenError
-      
-      // Return root org + all children
-      return [rootOrg, ...(children || [])]
+
+      return children || []
     },
     enabled: !!user && !!organizationId
   })
+
   
   return query
 }
