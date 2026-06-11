@@ -24,6 +24,7 @@ import {
   Lightbulb,
   Handshake,
   ChevronDown,
+  Calendar as CalendarIcon,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
