@@ -12,6 +12,7 @@ import { CareersOpenApplicationBand } from '@/components/careers/public/CareersO
 import { CareersFooter } from '@/components/careers/public/CareersFooter'
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
 import { SoftFlag, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 
 // Virgilio internal org — its jobs live exclusively on /virgilio-careers, never here.
 const VIRGILIO_INTERNAL_ORG_ID = '4b8e739f-2b15-487e-8d31-0a2ce765a8ef'
@@ -146,6 +147,8 @@ export default function PublicCareersPage() {
       .sort(([a], [b]) => sortDepartments(a, b))
       .map(([dep, arr]) => ({ department: dep, roles: arr }))
   }, [filtered])
+
+  useReportSplashReady(!isLoading)
 
   const handleOpen = (slug: string) => window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer')
   const scrollToRoles = () => rolesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
