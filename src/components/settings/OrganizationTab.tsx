@@ -1,123 +1,80 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
-import { OrganizationDisplay } from "./OrganizationDisplay";
 import { CurrencySettings } from "./CurrencySettings";
 import { SettingsCard } from "@/components/settings/shared/SettingsCard";
-import { Pencil, Save, X } from "lucide-react";
 
 interface TenantFormData {
   name: string;
   about: string;
-  billing_contact_name?: string;
-  billing_email?: string;
-  billing_phone?: string;
+  billing_email: string;
+  billing_phone: string;
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="font-inter text-[11.5px] font-medium text-[#5A6072] mb-1.5 block">
+      {children}
+    </label>
+  );
 }
 
 export default function OrganizationTab() {
   const { toast } = useToast();
   const { userType } = useAuth();
   const { tenant, isLoading, error, updateTenant } = useTenant();
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  const [tenantFormData, setTenantFormData] = useState<TenantFormData>({
-    name: tenant?.name || "",
-    about: tenant?.about || "",
-    billing_contact_name: tenant?.billing_contact_name || "",
-    billing_email: tenant?.billing_email || "",
-    billing_phone: tenant?.billing_phone || "",
+  const [form, setForm] = useState<TenantFormData>({
+    name: "",
+    about: "",
+    billing_email: "",
+    billing_phone: "",
   });
 
   useEffect(() => {
     if (tenant) {
-      setTenantFormData({
+      setForm({
         name: tenant.name || "",
         about: tenant.about || "",
-        billing_contact_name: tenant.billing_contact_name || "",
         billing_email: tenant.billing_email || "",
         billing_phone: tenant.billing_phone || "",
       });
+      setDirty(false);
     }
   }, [tenant]);
 
-  const handleFormDataChange = (field: keyof TenantFormData, value: string) => {
-    setTenantFormData(prev => ({ ...prev, [field]: value }));
-    setHasUnsavedChanges(true);
+  const update = (field: keyof TenantFormData, value: string) => {
+    setForm((p) => ({ ...p, [field]: value }));
+    setDirty(true);
   };
 
-  const handleEditModeToggle = () => {
-    if (isEditMode && hasUnsavedChanges) {
-      setShowCancelDialog(true);
-    } else {
-      setIsEditMode(!isEditMode);
-      if (!isEditMode && tenant) {
-        setTenantFormData({
-          name: tenant.name || "",
-          about: tenant.about || "",
-          billing_contact_name: tenant.billing_contact_name || "",
-          billing_email: tenant.billing_email || "",
-          billing_phone: tenant.billing_phone || "",
-        });
-        setHasUnsavedChanges(false);
-      }
-    }
-  };
-
-  const handleCancelEdit = () => {
-    if (tenant) {
-      setTenantFormData({
-        name: tenant.name || "",
-        about: tenant.about || "",
-        billing_contact_name: tenant.billing_contact_name || "",
-        billing_email: tenant.billing_email || "",
-        billing_phone: tenant.billing_phone || "",
-      });
-    }
-    setIsEditMode(false);
-    setHasUnsavedChanges(false);
-    setShowCancelDialog(false);
-  };
+  const canEdit = userType === "platform_admin" || userType === "workspace_owner";
 
   const handleSave = async () => {
-    if (!tenant?.id) {
-      toast({
-        title: "Error",
-        description: "No tenant found",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!tenant?.id) return;
     setIsSaving(true);
     try {
       await updateTenant.mutateAsync({
-        name: tenantFormData.name,
-        about: tenantFormData.about,
-        billing_contact_name: tenantFormData.billing_contact_name || null,
-        billing_email: tenantFormData.billing_email || null,
-        billing_phone: tenantFormData.billing_phone || null,
+        name: form.name,
+        about: form.about,
+        billing_email: form.billing_email || null,
+        billing_phone: form.billing_phone || null,
       });
-
-      setIsEditMode(false);
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error('Failed to update tenant:', error);
+      setDirty(false);
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <SettingsCard title="Company">
@@ -126,169 +83,121 @@ export default function OrganizationTab() {
     );
   }
 
-  // Error state
-  if (error) {
+  if (error || !tenant) {
     return (
       <SettingsCard title="Company">
-        <p className="font-inter text-[12px] text-[#A21D1D] py-4 text-center">Error loading company data</p>
-      </SettingsCard>
-    );
-  }
-
-  // No tenant state
-  if (!tenant) {
-    return (
-      <SettingsCard title="Company">
-        <p className="font-inter text-[12px] text-[#8B8F9E] py-4 text-center">
-          No company data available. Contact support if this looks wrong.
+        <p className="font-inter text-[12px] text-[#A21D1D] py-4 text-center">
+          {error ? "Error loading company data" : "No company data available."}
         </p>
       </SettingsCard>
     );
   }
 
-  // Check if current user can edit the tenant
-  const canEditTenant = userType === 'platform_admin' || userType === 'workspace_owner';
+  const createdDate = new Date(tenant.created_at).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
-  if (!canEditTenant) {
-    return (
-      <div className="space-y-4">
-        <SettingsCard title="Company">
-          <OrganizationDisplay tenant={tenant} />
-        </SettingsCard>
-        <CurrencySettings />
-      </div>
-    );
-  }
+  const statusTone = tenant.status === "active" ? "green" : "neutral";
 
   return (
     <div className="space-y-4">
       <SettingsCard
         title="Company"
-        description="Your company name and details, shown on careers pages, offers and invoices."
+        description="Workspace identity — name, story, and billing contact."
         action={
-          !isEditMode ? (
-            <Button size="sm" variant="secondary" icon={Pencil} onClick={handleEditModeToggle}>
-              Edit
-            </Button>
-          ) : undefined
+          <Badge tone={statusTone as any} size="sm" dot>
+            {tenant.status === "active" ? "Active" : tenant.status}
+          </Badge>
         }
       >
-        {!isEditMode ? (
-          <OrganizationDisplay tenant={tenant} />
-        ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Company name</Label>
+        <div className="space-y-5">
+          {/* Row 1: Name + Created */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>Company name</FieldLabel>
               <Input
-                id="name"
-                value={tenantFormData.name}
-                onChange={(e) => handleFormDataChange("name", e.target.value)}
+                value={form.name}
+                onChange={(e) => update("name", e.target.value)}
+                disabled={!canEdit}
                 placeholder="Enter company name"
               />
             </div>
+            <div>
+              <FieldLabel>Created</FieldLabel>
+              <Input value={createdDate} disabled readOnly className="bg-[#FAFAF7] text-[#5A6072]" />
+            </div>
+          </div>
 
-            <Separator />
+          {/* About */}
+          <div>
+            <FieldLabel>About</FieldLabel>
+            <Textarea
+              value={form.about}
+              onChange={(e) => update("about", e.target.value)}
+              disabled={!canEdit}
+              placeholder="Tell candidates about your company, culture, mission, and values…"
+              rows={4}
+              className="resize-y min-h-[110px]"
+            />
+            <p className="font-inter text-[11px] text-[#8B8F9E] mt-1.5">
+              Feeds your careers page hero — keep it candidate-facing.
+            </p>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="about">About</Label>
-              <p className="font-inter text-[11.5px] text-[#8B8F9E]">
-                Describe your company. Shown on your public careers page.
-              </p>
-              <RichTextEditor
-                value={tenantFormData.about}
-                onChange={(value) => handleFormDataChange("about", value)}
-                placeholder="Tell candidates about your company, culture, mission, and values…"
-                minHeight="150px"
+          {/* Billing contact row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>Billing contact email</FieldLabel>
+              <Input
+                type="email"
+                value={form.billing_email}
+                onChange={(e) => update("billing_email", e.target.value)}
+                disabled={!canEdit}
+                placeholder="billing@company.com"
               />
             </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <h4 className="font-poppins font-semibold text-[12.5px] text-[#0d0d09]">Billing contact</h4>
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="billing_contact_name">Contact name</Label>
-                  <Input
-                    id="billing_contact_name"
-                    value={tenantFormData.billing_contact_name || ""}
-                    onChange={(e) => handleFormDataChange("billing_contact_name", e.target.value)}
-                    placeholder="Enter billing contact name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="billing_email">Email</Label>
-                  <Input
-                    id="billing_email"
-                    type="email"
-                    value={tenantFormData.billing_email || ""}
-                    onChange={(e) => handleFormDataChange("billing_email", e.target.value)}
-                    placeholder="Enter billing email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="billing_phone">Phone</Label>
-                  <Input
-                    id="billing_phone"
-                    type="tel"
-                    value={tenantFormData.billing_phone || ""}
-                    onChange={(e) => handleFormDataChange("billing_phone", e.target.value)}
-                    placeholder="Enter billing phone number"
-                  />
-                </div>
-              </div>
+            <div>
+              <FieldLabel>Billing contact phone</FieldLabel>
+              <Input
+                type="tel"
+                value={form.billing_phone}
+                onChange={(e) => update("billing_phone", e.target.value)}
+                disabled={!canEdit}
+                placeholder="+1 555 000 0000"
+              />
             </div>
           </div>
-        )}
 
-        {isEditMode && (
-          <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-[#EFEFEA]">
-            <Button
-              variant="secondary"
-              icon={X}
-              onClick={handleEditModeToggle}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button
-              icon={Save}
-              onClick={handleSave}
-              disabled={isSaving || !hasUnsavedChanges}
-              loading={isSaving}
-            >
-              Save changes
-            </Button>
+          {/* Tenant ID — readonly mono */}
+          <div>
+            <FieldLabel>Tenant ID</FieldLabel>
+            <Input
+              value={tenant.id}
+              disabled
+              readOnly
+              onClick={(e) => {
+                (e.target as HTMLInputElement).select();
+                navigator.clipboard?.writeText(tenant.id).then(() => {
+                  toast({ title: "Copied", description: "Tenant ID copied to clipboard" });
+                });
+              }}
+              className="bg-[#FAFAF7] text-[#5A6072] font-mono text-[12px] cursor-pointer"
+            />
           </div>
-        )}
+
+          {canEdit && (
+            <div className="flex justify-end pt-3 border-t border-[#EFEFEA]">
+              <Button onClick={handleSave} disabled={!dirty || isSaving} loading={isSaving}>
+                Save changes
+              </Button>
+            </div>
+          )}
+        </div>
       </SettingsCard>
 
       <CurrencySettings />
-
-      {/* Confirmation Dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes. Are you sure you want to cancel? Your changes will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowCancelDialog(false)}>
-              Continue Editing
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setShowCancelDialog(false);
-                handleCancelEdit();
-              }}
-            >
-              Discard Changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
