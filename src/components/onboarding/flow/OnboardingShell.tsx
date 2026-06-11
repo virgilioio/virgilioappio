@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { GioWordmark } from '@/components/icons/GioWordmark'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { ProgressTracker } from './ProgressTracker'
 import { WorkspacePreview, PreviewState } from './WorkspacePreview'
 import './onboarding.css'
