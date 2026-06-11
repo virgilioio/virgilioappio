@@ -97,15 +97,15 @@ export default function Settings() {
   const renderContent = () => {
     switch (currentTab) {
       case 'setup':
-        return <ComingSoonCard title="Setup" description="A guided checklist of essentials grouped by You / Your workspace / Grow." />
+        return <SetupTab />
       case 'profile':
         return <ProfileTab />
       case 'email-calendar':
-        return <ComingSoonCard title="Email & calendar" description="Connect Google Workspace or Microsoft 365 for candidate replies and scheduling." />
+        return <EmailCalendarTab />
       case 'booking':
-        return <ComingSoonCard title="Booking & event types" description="Your public scheduling page and event types. Currently still in My Profile — moving here in the next pass." />
+        return <BookingTab />
       case 'notifications':
-        return <ComingSoonCard title="Notifications" description="Choose what reaches your inbox vs. what stays in your queue." />
+        return <NotificationsTab />
       case 'organization':
         return <OrganizationTab />
       case 'members':
