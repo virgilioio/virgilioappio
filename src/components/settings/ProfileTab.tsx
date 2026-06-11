@@ -181,12 +181,12 @@ export function ProfileTab() {
           </div>
           <div>
             <dt className="text-[#8B8F9E] mb-1">User type</dt>
-            <dd><StatusChip tone="info">{userType || '—'}</StatusChip></dd>
+            <dd><StatusChip tone="progress" label={userType || '—'} /></dd>
           </div>
           {memberRole && (
             <div>
               <dt className="text-[#8B8F9E] mb-1">Member role</dt>
-              <dd><StatusChip tone="neutral">{memberRole}</StatusChip></dd>
+              <dd><StatusChip tone="neutral" label={memberRole} /></dd>
             </div>
           )}
         </dl>
