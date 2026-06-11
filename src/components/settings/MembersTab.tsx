@@ -7,9 +7,9 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { SeatUsageCard } from '@/components/members/SeatUsageCard'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
-import { MetricStrip } from '@/components/settings/shared/MetricStrip'
+import { MetricCard } from '@/components/ui/metric-card'
+import { Users, UserPlus, Archive } from 'lucide-react'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
