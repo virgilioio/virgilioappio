@@ -683,7 +683,9 @@ export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
       <OnboardingShell step={4} preview={preview} onSkip={skipCandidates}>
         <ObTitle>Your first candidates</ObTitle>
         <ObSub>
-          18 strong matches. The top three just landed in your pipeline — the rest are waiting in Find.
+          {usedRealCandidates
+            ? 'Top three matches just landed in your pipeline — the rest are waiting in Find.'
+            : 'Your queue is set up. Real matches will surface in Find as your search runs.'}
         </ObSub>
         <div
           className="ob-in"
