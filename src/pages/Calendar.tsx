@@ -764,7 +764,15 @@ function RailNeedsScheduling({
   onSchedule: (item: NeedsSchedulingItem) => void
 }) {
   return (
-    <div className="rounded-xl bg-white" style={{ border: `1px solid ${C.border}` }}>
+    <div
+      className="rounded-xl bg-white flex flex-col"
+      style={{
+        border: `1px solid ${C.border}`,
+        maxHeight: 'calc(100dvh - 220px)',
+        position: 'sticky',
+        top: 16,
+      }}
+    >
       <div className="px-3.5 pt-3 pb-2">
         <div className="flex items-center gap-2">
           <CalendarClock size={14} strokeWidth={2} color={C.ink2} />
