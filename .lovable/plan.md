@@ -1,62 +1,68 @@
-# Real Apollo candidates in onboarding (step 4)
+# Settings Revamp — Implementation Plan
 
-Today step 4 calls `get-job-matching-candidates` (DB-only matching) and the right-side preview shows three hardcoded `SAMPLE_CANDIDATES`. We'll spend ~3 Apollo previews to show real, real-named candidates for the job the user just created.
+A strict re-skin and re-IA of the entire Settings area. Backend reuse is the rule: wire to existing org/members/departments/integrations/job-settings/deal-stages/Stripe data. No new schemas. Locally persist + TODO only where a new pref has no backend (notifications, careers page toggles new to spec).
 
-## Cost shape (so the trade-off is explicit)
+## Scope split into 4 phases (delivered in this order, single build)
 
-- **Apollo search (preview)** is the cheap call — returns obfuscated last names + title + company + has-email/has-phone flags. No enrichment, no LinkedIn URLs, no contact data. This is what we'll use.
-- **PDL** and **Apollo enrichment** stay disabled for onboarding (those are the expensive parts per the PDL cost memory).
-- Hard cap: **3 candidates**, single Apollo call, no pagination, no retry.
+### Phase 1 — Shell + new IA
+1. **`src/pages/Settings.tsx`** — rebuild layout. Replace `AppContainer + Section` wrapper with `padding 24px 28px` page; replace floating `SettingsSidebar` (Card) with a **flat rail** on page bg. New grid `224px nav / minmax(0,1fr) content (max-w 860px)`, gap 26. Header: `Settings.` (Poppins, existing token) + meta line `{tenant.name} · {n} of {m} essentials configured`.
+2. **`src/components/settings/SettingsSidebar.tsx`** — rewrite as flat list (no Card). Group labels (Inter 10/600 uppercase 0.08em #8B8F9E). Items 7px 10px, radius 8, icon 14px lucide, Inter 12.5px. Active = `#0d0d09` bg, cream text. Hover `rgba(13,13,9,0.05)`. New IA order:
+   - Setup (badge: remaining essentials, lilac)
+   - YOU: Profile, Email & calendar, Booking & event types, Notifications
+   - WORKSPACE: General, Members, Departments, Integrations, Billing (OWNERS mini-badge, owner-only)
+   - RECRUITING: Pipeline stages, Application form, Templates, Automations, Careers page, Job boards
+   - CRM: Deal stages, Customers
+3. **Route redirects**: old `?tab=workspace-job-settings` → split into the 6 new recruiting tabs. `?tab=platform-saas-customers` → `?tab=customers`. Keep Platform routes intact (out of scope) but remove from nav.
+4. **Profile single-entry**: move profile into Settings · Profile. Top-bar avatar menu "My profile" routes to `/settings?tab=profile`. Remove the bottom-rail profile entry.
+5. **Permissions gating**: non-admins see Setup + YOU only; owners additionally see Billing.
 
-That's ~1 Apollo search credit total per onboarded workspace, not 3 enrichment credits. If the user genuinely wants 3 enrichments instead, say the word and I'll switch — the cost goes ~5–10x.
+### Phase 2 — YOU group
+- **Profile** (`ProfileTab.tsx` restyle): 64px avatar + Change photo; 2-col grid First/Last, Title, Email (read-only, "Your sign-in email."), Phone, Timezone; full-width LinkedIn URL with hint. Footer-right noir "Save changes". Below: read-only **Account card** with user_type + member_role chips.
+- **Email & calendar** (new `EmailCalendarTab.tsx`): Google Workspace + Microsoft 365 cards. Wire to existing mail/calendar identity hooks (`useMailIdentities`, `useCalendarIdentities`). Chips "Mail · send-only", "Calendar · two-way". Trust line.
+- **Booking & event types** (new `BookingTab.tsx`): move the existing booking system from My Profile here without losing functionality. Two cards: Booking link (toggle + mono URL + Copy/Open), Event types (rows + Create + Edit sheet). Edit sheet keeps existing Weekly hours / Meeting / Rules tabs as pills.
+- **Notifications** (new `NotificationsTab.tsx`): 3-col grid with toggles. Local-persist via `localStorage` + TODO comment (no backend).
 
-## Flow change (step 3 → step 4)
+### Phase 3 — Workspace + Recruiting + CRM re-skin
+- **General** (`OrganizationTab.tsx` restyle): Company card (name, created RO, About w/ hint, billing email/phone, Tenant ID mono) + Save. Base currency card + Refresh rates.
+- **Members** (`MembersTab.tsx` restyle): metric strip (Paid seats / Free collaborators / Deactivated). Team members card; existing rows restyled to chip system. Lock footer note.
+- **Departments** (`DepartmentsManager.tsx` restyle): single card, columns Name (+Default chip), Open, Total, Status, pencil/archive. Also **fix the `counts` Map→Record bug** that crashes Settings (use `counts?.[d.id]`).
+- **Integrations** (`IntegrationsTab.tsx` restyle): one card, 3-up grid (LinkedIn Companion, Google Workspace, WhatsApp) with Installed/Not installed chip + Configure/Install.
+- **Pipeline stages, Application form, Templates, Automations, Careers page, Job boards**: route each to the existing component currently nested in `JobSettingsManager`; restyle to the shared card formula. Templates uses pill sub-nav.
+- **Deal stages** (`DealStagesManager.tsx` restyle): row list w/ grip handle, chip, pencil/trash, Add stage.
+- **Customers**: route to `SaaSCustomersList` reskinned (or alias) under CRM · Customers.
 
-Right after `createJob` returns in step 3, kick off a new edge function `seed-onboarding-candidates` (server-side, service-role) that does the whole sequence atomically:
+### Phase 4 — Billing redesign + Setup
+- **Billing** (`pages/settings/Billing.tsx` rebuild):
+  1. Metric strip: Plan / Paid seats / Credits/month / Next billing date.
+  2. Your plan card: green Active chip, "Team seats" split bar (purple paid + lilac free), legend, View team link, info row w/ sparkles.
+  3. Payment method: shield-check, "Stripe connected", "Visa ·· 4242 · next charge on renewal", Verified chip. Header: Manage + Stripe dashboard.
+  4. Credit bundles: 3 columns separated by hairlines, middle column tinted `#FBFAFF` w/ purple "Most popular" + noir Buy now.
+  5. Billing history: invoice list or one-line empty state.
+- **Setup** (new `SetupTab.tsx`): three tier cards (You / Your workspace / Grow). Row = 30px icon tile, title, status chip, blocks note, time estimate, noir Set up/Continue. Done rows 55% opacity. Status derived from real state (mail identity, calendar identity, logo, departments count, members count, scorecard templates count). Footer note. Badge count → remaining essentials.
 
-1. Insert a `sourcing_projects` row tied to `job_id` with minimal `search_criteria`:
-   - `title_keywords: [jobTitle]`
-   - `locations: jobLocation ? [jobLocation] : []`
-   - `skills: []`
-2. Invoke `search-apollo-candidates` with `{ project_id, criteria, limit: 3, max_results: 3 }`.
-3. Return a compact array of 3 candidates shaped for the preview:
-   ```ts
-   { name, role, company, initials, color, match }
-   ```
-   - `name`: `first_name + " " + last_name_obfuscated` (e.g. "Teresa G***n")
-   - `role`: `title || 'Candidate'`
-   - `company`: `organization?.name || ''`
-   - `match`: deterministic 88/91/94 from index (Apollo preview has no score; we don't fabricate one — we label these as "Top match" tiers in the UI, not exact %)
-   - `color`: pick from the existing 3-color palette by index
+## Files to add
+- `src/components/settings/tabs/SetupTab.tsx`
+- `src/components/settings/tabs/EmailCalendarTab.tsx`
+- `src/components/settings/tabs/BookingTab.tsx`
+- `src/components/settings/tabs/NotificationsTab.tsx`
+- `src/components/settings/shared/MetricStrip.tsx`
+- `src/components/settings/shared/SettingsCard.tsx`
+- `src/components/settings/shared/StatusChip.tsx`
 
-Why server-side: keeps `APOLLO_API_KEY` server-only, lets us use service-role for the sourcing-project insert without dragging RLS into onboarding, and bounds the credit cost in one place.
+## Files to edit
+- `src/pages/Settings.tsx`, `src/components/settings/SettingsSidebar.tsx`
+- `src/components/settings/{ProfileTab, MembersTab, OrganizationTab, DepartmentsManager, IntegrationsTab, DealStagesManager}.tsx`
+- `src/pages/settings/Billing.tsx`
+- top-bar avatar menu (where "My profile" lives) + left-sidebar (remove bottom profile entry)
+- routing for tab keys in `Settings.tsx`
 
-## Client changes (`OnboardingFlow.tsx`)
+## Crash fix (bonus, requested earlier)
+`DepartmentsManager.tsx`: change `useJobCountsByDepartment` to return `Record<string,{total,open}>` and read with `counts?.[d.id]` so React Query persister doesn't lose the Map prototype on Settings.
 
-- Replace the step-4 `useEffect` that calls `get-job-matching-candidates` with a call to the new `seed-onboarding-candidates` function.
-- Keep the 1.6s minimum-delay UX (so the "Scanning…" animation feels real even when Apollo answers in 400ms).
-- Store the returned candidates in component state and pass them into `preview` instead of the hardcoded `SAMPLE_CANDIDATES`.
-- If Apollo fails or returns 0: **fall back to the existing `SAMPLE_CANDIDATES`** and silently log — onboarding never blocks on a 3rd-party outage.
-- Demo route (`/__preview/onboarding`): skip the call entirely, keep showing `SAMPLE_CANDIDATES` (already gated by the `demo` prop).
+## Out of scope
+Platform settings (App Personalization, SaaS Customers admin), Stripe BYOK, schema changes.
 
-## Copy update
+## Risk + size note
+This is a very large change — roughly 15–20 file edits and 7 new files. I'll deliver it as one build, but a single subsequent message may be needed for polish if any restyled subcomponent (Templates inner tabs, edit-event sheet) needs deeper rework than a CSS pass.
 
-The lilac proof box on step 4 currently says "These are real, sourceable people". That's only true when Apollo succeeded. Change it to render conditionally:
-- Apollo success → keep current copy.
-- Fallback → "Here's a feel for what your queue looks like — your real matches arrive in Find."
-
-## Backend: new edge function `seed-onboarding-candidates`
-
-- Input: `{ job_id: string, organization_id: string, job_title: string, location?: string }`.
-- Auth: JWT required, validates the caller belongs to `organization_id`.
-- Steps: create sourcing project → invoke `search-apollo-candidates` (3-cap) → map preview shape → return.
-- Errors return `{ candidates: [] }` with 200 so the client falls back cleanly.
-
-No DB schema changes. No new secrets (`APOLLO_API_KEY` already exists per `search-apollo-candidates`).
-
-## What we explicitly will NOT do here
-
-- No enrichment (no real emails/phones revealed in onboarding).
-- No PDL call.
-- No write into the candidate pipeline yet (the 3 results live on the sourcing project; promoting them into Pipeline can be a follow-up).
-- No change to the existing `get-job-matching-candidates` (other callers untouched).
+**Approve to start with Phase 1 (shell + nav) and proceed through Phase 4.**
