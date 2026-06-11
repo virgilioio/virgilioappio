@@ -34,7 +34,12 @@ interface PersistedState {
   isDemo: boolean
 }
 
-const STORAGE_KEY = 'gio_ob_state'
+const STORAGE_KEY_REAL = 'gio_ob_state'
+const STORAGE_KEY_DEMO = 'gio_ob_demo_state'
+
+interface OnboardingFlowProps {
+  demo?: boolean
+}
 
 const SAMPLE_CANDIDATES = [
   { name: 'Teresa Galvan', role: 'Customer Success Manager', company: 'Konfio', match: 94, initials: 'TG', color: '#7C3AED' },
@@ -55,27 +60,28 @@ function slugify(s: string) {
   )
 }
 
-function loadState(): PersistedState | null {
+function loadState(key: string): PersistedState | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = sessionStorage.getItem(key)
     if (!raw) return null
     return JSON.parse(raw) as PersistedState
   } catch {
     return null
   }
 }
-function saveState(s: PersistedState) {
+function saveState(key: string, s: PersistedState) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+    sessionStorage.setItem(key, JSON.stringify(s))
   } catch {}
 }
-function clearState() {
+function clearState(key: string) {
   try {
-    sessionStorage.removeItem(STORAGE_KEY)
+    sessionStorage.removeItem(key)
   } catch {}
 }
 
-export default function OnboardingFlow() {
+export default function OnboardingFlow({ demo = false }: OnboardingFlowProps) {
+  const STORAGE_KEY = demo ? STORAGE_KEY_DEMO : STORAGE_KEY_REAL
   const navigate = useNavigate()
   const { toast } = useToast()
   const { user, organizationId } = useAuth()
@@ -84,7 +90,7 @@ export default function OnboardingFlow() {
   const { createJob } = useJobs()
   const { createMember } = useMembers()
 
-  const initial = loadState()
+  const initial = loadState(STORAGE_KEY)
   const [step, setStep] = useState<FlowStep>(initial?.step || 1)
   const [orgId, setOrgId] = useState<string | null>(initial?.orgId || null)
   const [orgName, setOrgName] = useState(initial?.orgName || '')
@@ -96,8 +102,8 @@ export default function OnboardingFlow() {
   const [isDemo, setIsDemo] = useState(initial?.isDemo || false)
 
   useEffect(() => {
-    saveState({ step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo })
-  }, [step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo])
+    saveState(STORAGE_KEY, { step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo })
+  }, [STORAGE_KEY, step, orgId, orgName, departmentId, departmentName, jobId, jobTitle, jobLocation, isDemo])
 
   // Step 4 candidate phase
   const [candidatesPhase, setCandidatesPhase] = useState<'idle' | 'searching' | 'ready'>('idle')
@@ -148,6 +154,11 @@ export default function OnboardingFlow() {
   const handleSubmitOrg = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!orgName.trim() || submitting1) return
+    if (demo) {
+      setOrgId('demo-org-id')
+      setStep(2)
+      return
+    }
     setSubmitting1(true)
     try {
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
@@ -212,6 +223,12 @@ export default function OnboardingFlow() {
   const handleSubmitDept = async () => {
     const name = (showCustomDept ? customDept : deptSelection).trim()
     if (!name || submitting2) return
+    if (demo) {
+      setDepartmentId('demo-dept-id')
+      setDepartmentName(name)
+      setStep(3)
+      return
+    }
     setSubmitting2(true)
     try {
       const result = await createDepartment.mutateAsync({ name })
@@ -228,6 +245,14 @@ export default function OnboardingFlow() {
   // ─── Step 3: Job ───
   const [submitting3, setSubmitting3] = useState(false)
   const createJobAndAdvance = async (input: { title: string; location: string; demo: boolean }) => {
+    if (demo) {
+      setJobId('demo-job-id')
+      setJobTitle(input.title)
+      setJobLocation(input.location)
+      setIsDemo(input.demo)
+      setStep(4)
+      return
+    }
     if (!organizationId) {
       toast({ title: 'Workspace not ready', description: 'Refresh and try again.', variant: 'destructive' })
       return
@@ -261,12 +286,14 @@ export default function OnboardingFlow() {
     setCandidatesPhase('searching')
     const start = Date.now()
     ;(async () => {
-      try {
-        await supabase.functions.invoke('get-job-matching-candidates', {
-          body: { job_id: jobId, limit: 18 },
-        })
-      } catch (err) {
-        console.warn('[Onboarding] matching call failed (non-fatal, showing samples)', err)
+      if (!demo) {
+        try {
+          await supabase.functions.invoke('get-job-matching-candidates', {
+            body: { job_id: jobId, limit: 18 },
+          })
+        } catch (err) {
+          console.warn('[Onboarding] matching call failed (non-fatal, showing samples)', err)
+        }
       }
       const elapsed = Date.now() - start
       const minMs = 1600
@@ -276,13 +303,17 @@ export default function OnboardingFlow() {
     return () => {
       cancelled = true
     }
-  }, [step, jobId])
+  }, [step, jobId, demo])
 
   // ─── Step 5: Team ───
   type InviteRow = { email: string; role: 'admin' | 'member' | 'sales' }
   const [invites, setInvites] = useState<InviteRow[]>([{ email: '', role: 'member' }])
   const [submitting5, setSubmitting5] = useState(false)
   const handleSendInvites = async () => {
+    if (demo) {
+      setStep(6)
+      return
+    }
     if (!organizationId) {
       setStep(6)
       return
@@ -314,7 +345,21 @@ export default function OnboardingFlow() {
 
   // ─── Step 6: Done ───
   const handleFinish = () => {
-    clearState()
+    clearState(STORAGE_KEY)
+    if (demo) {
+      // Reset preview flow back to start instead of navigating
+      setStep(1)
+      setOrgId(null)
+      setOrgName('')
+      setDepartmentId(null)
+      setDepartmentName('')
+      setJobId(null)
+      setJobTitle('')
+      setJobLocation('')
+      setIsDemo(false)
+      setCandidatesPhase('idle')
+      return
+    }
     sessionStorage.setItem('virgilio_first_run', 'true')
     navigate('/trial-activation', { replace: true })
   }

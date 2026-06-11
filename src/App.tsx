@@ -60,6 +60,7 @@ const LegacyPostingRedirect = lazy(() => import('./pages/LegacyPostingRedirect')
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
 const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
+const OnboardingPreview = lazy(() => import('./pages/dev/OnboardingPreview'))
 const TrialActivation = lazy(() => import('./pages/TrialActivation'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Terms = lazy(() => import('./pages/Terms'))
@@ -124,6 +125,8 @@ function AppContent() {
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+        {/* Dev-only preview of the onboarding flow (no auth, all backend stubbed) */}
+        <Route path="/__preview/onboarding" element={<OnboardingPreview />} />
 
         
         
