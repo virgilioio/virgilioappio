@@ -41,6 +41,16 @@ interface OnboardingFlowProps {
   demo?: boolean
 }
 
+const CANDIDATE_PALETTE = ['#7C3AED', '#10B981', '#6366F1']
+
+function initialsFrom(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '··'
+  const first = parts[0][0] || ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : ''
+  return (first + last).toUpperCase().slice(0, 2) || '··'
+}
+
 const SAMPLE_CANDIDATES = [
   { name: 'Teresa Galvan', role: 'Customer Success Manager', company: 'Konfio', match: 94, initials: 'TG', color: '#7C3AED' },
   { name: 'Sofia Camarena', role: 'CS Team Lead', company: 'Clip', match: 91, initials: 'SC', color: '#10B981' },
