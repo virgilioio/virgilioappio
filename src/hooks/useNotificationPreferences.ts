@@ -122,5 +122,22 @@ export function useNotificationPreferences() {
     [user?.id, prefs],
   )
 
-  return { prefs, loading, update }
+  // Back-compat shim for older consumers expecting react-query-like shape.
+  const save = {
+    mutateAsync: (patch: Partial<NotificationPreferences>) => update(patch),
+  }
+
+  return { prefs, data: prefs, loading, update, save }
 }
+
+export type CategoryKey = NotificationCategory
+
+export const PREFS_CATEGORIES: { key: CategoryKey; label: string; description: string }[] = [
+  { key: 'mention',             label: 'Mentions',           description: 'When someone @mentions you in a candidate comment.' },
+  { key: 'application_batch',   label: 'New applications',   description: 'Batched digest of new candidates applying to your jobs.' },
+  { key: 'scorecard_submitted', label: 'Scorecard submitted', description: 'When a teammate submits a scorecard on a candidate.' },
+  { key: 'interview_event',     label: 'Interview events',   description: 'Interview scheduled, rescheduled, or canceled.' },
+  { key: 'offer_event',         label: 'Offer events',       description: 'Offer created, approval requested, approved, or signed.' },
+  { key: 'posting_status',      label: 'Job posting status', description: 'Posting published, expired, or board sync issues.' },
+  { key: 'daily_digest',        label: 'Daily digest',       description: 'Once-a-day summary of pipeline activity.' },
+]
