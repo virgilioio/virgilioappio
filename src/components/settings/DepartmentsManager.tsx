@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Archive, ArchiveRestore, Trash2, Layers } from 'lucide-react'
+import { Plus, Pencil, Archive, ArchiveRestore, Trash2, MoreHorizontal } from 'lucide-react'
 import { useDepartments, type Department } from '@/hooks/useDepartments'
 import { supabase } from '@/lib/supabaseClient'
 import { useQuery } from '@tanstack/react-query'
