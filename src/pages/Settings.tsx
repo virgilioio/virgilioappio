@@ -11,6 +11,7 @@ import { PlatformJobSettingsManager } from '@/components/settings/PlatformJobSet
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
 import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
+import { CustomersTab } from '@/components/settings/tabs/CustomersTab'
 import { Billing } from '@/pages/settings/Billing'
 import { JobStagesManager } from '@/components/settings/JobStagesManager'
 import { ApplicationFieldsManager } from '@/components/settings/ApplicationFieldsManager'
@@ -129,7 +130,7 @@ export default function Settings() {
       case 'workspace-deal-stages':
         return <DealStagesManager />
       case 'customers':
-        return <SaaSCustomersList />
+        return <CustomersTab />
       case 'platform-dashboard':
         return <PlatformTab />
       case 'platform-settings':
