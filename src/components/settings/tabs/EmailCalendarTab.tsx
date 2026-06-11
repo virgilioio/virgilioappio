@@ -130,10 +130,7 @@ export function EmailCalendarTab() {
     >
       <div className="space-y-3">
         {isLoading ? (
-          <>
-            <Skeleton className="h-[88px] w-full rounded-lg" />
-            <Skeleton className="h-[72px] w-full rounded-lg" />
-          </>
+          <Skeleton className="h-[88px] w-full rounded-lg" />
         ) : (
           <>
             <ProviderRow
