@@ -1,96 +1,157 @@
-import { useEffect, useState } from 'react'
 import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
+import { Loader2 } from 'lucide-react'
+import {
+  useNotificationPreferences,
+  PREFS_CATEGORIES,
+  type NotificationChannel,
+  type NotificationPreferences,
+} from '@/hooks/useNotificationPreferences'
 
-// TODO(notifications): wire to a real `user_notification_preferences` table.
-const STORAGE_KEY = 'virgilio:notification-prefs:v2'
-
-type Channel = 'email' | 'inapp'
-
-interface PrefRow {
-  id: string
-  label: string
-  email: boolean
-  inapp: boolean
-}
-
-const ROWS: PrefRow[] = [
-  { id: 'new_application',   label: 'New application',            email: true,  inapp: true  },
-  { id: 'candidate_reply',   label: 'Candidate reply',            email: true,  inapp: true  },
-  { id: 'interview_moved',   label: 'Interview scheduled or moved', email: true, inapp: true },
-  { id: 'scorecard_due',     label: 'Scorecard due',              email: false, inapp: true  },
-  { id: 'stage_changes',     label: 'Stage changes on my jobs',   email: false, inapp: true  },
-  { id: 'weekly_digest',     label: 'Weekly pipeline digest',     email: true,  inapp: false },
+const CHANNELS: { key: NotificationChannel; label: string }[] = [
+  { key: 'in_app', label: 'In-app' },
+  { key: 'email',  label: 'Email'  },
+  { key: 'push',   label: 'Push'   },
 ]
 
-type PrefState = Record<string, { email: boolean; inapp: boolean }>
-
-function loadPrefs(): PrefState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as PrefState
-  } catch {}
-  const initial: PrefState = {}
-  ROWS.forEach((r) => (initial[r.id] = { email: r.email, inapp: r.inapp }))
-  return initial
-}
-
 export function NotificationsTab() {
-  const [prefs, setPrefs] = useState<PrefState>(loadPrefs)
+  const { prefs, loading, update } = useNotificationPreferences()
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
-    } catch {}
-  }, [prefs])
-
-  const toggle = (id: string, channel: Channel) => {
-    setPrefs((p) => ({
-      ...p,
-      [id]: { ...p[id], [channel]: !p[id]?.[channel] },
-    }))
+  if (loading || !prefs) {
+    return (
+      <SettingsCard title="Notifications">
+        <div className="flex items-center justify-center py-10 text-[#8B8F9E]">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      </SettingsCard>
+    )
   }
 
-  return (
-    <SettingsCard
-      title="Notifications"
-      description="What reaches your inbox vs. what stays in your queue."
-      bodyClassName="px-0 pb-0"
-    >
-      {/* Header */}
-      <div className="grid grid-cols-[1fr_88px_88px] items-center px-5 pb-2 pt-1">
-        <div />
-        <div className="text-center font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]">
-          Email
-        </div>
-        <div className="text-center font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]">
-          In-app
-        </div>
-      </div>
+  const get = (key: string, ch: NotificationChannel) =>
+    Boolean((prefs as any)[`${key}_${ch}`])
 
-      {/* Rows */}
-      <ul className="divide-y divide-[#EFEFEA] border-t border-[#EFEFEA]">
-        {ROWS.map((row) => (
-          <li
-            key={row.id}
-            className="grid grid-cols-[1fr_88px_88px] items-center px-5 py-3.5"
-          >
-            <div className="font-inter text-[13px] text-[#0d0d09]">{row.label}</div>
-            <div className="flex justify-center">
+  const set = (key: string, ch: NotificationChannel, value: boolean) =>
+    update({ [`${key}_${ch}`]: value } as Partial<NotificationPreferences>)
+
+  return (
+    <div className="space-y-4">
+      {/* Notification matrix */}
+      <SettingsCard
+        title="What to notify me about"
+        description="Pick how each event reaches you. Push uses your browser when enabled."
+        bodyClassName="px-0 pb-0"
+      >
+        {/* Column headers */}
+        <div className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 pb-2 pt-1">
+          <div />
+          {CHANNELS.map((c) => (
+            <div
+              key={c.key}
+              className="text-center font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]"
+            >
+              {c.label}
+            </div>
+          ))}
+        </div>
+
+        <ul className="divide-y divide-[#EFEFEA] border-t border-[#EFEFEA]">
+          {PREFS_CATEGORIES.map((row) => (
+            <li
+              key={row.key}
+              className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 py-3.5"
+            >
+              <div className="min-w-0 pr-4">
+                <div className="font-inter text-[13px] text-[#0d0d09]">{row.label}</div>
+                <div className="font-inter text-[12px] text-[#8B8F9E] mt-0.5">
+                  {row.description}
+                </div>
+              </div>
+              {CHANNELS.map((c) => (
+                <div key={c.key} className="flex justify-center">
+                  <Switch
+                    checked={get(row.key, c.key)}
+                    onCheckedChange={(v) => set(row.key, c.key, v)}
+                  />
+                </div>
+              ))}
+            </li>
+          ))}
+        </ul>
+      </SettingsCard>
+
+      {/* Delivery preferences */}
+      <SettingsCard
+        title="Delivery"
+        description="Quiet hours and sound for your notifications."
+      >
+        <div className="divide-y divide-[#EFEFEA] -mx-5">
+          {/* Quiet hours */}
+          <div className="px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="font-inter text-[13px] text-[#0d0d09]">Quiet hours</div>
+                <div className="font-inter text-[12px] text-[#8B8F9E] mt-0.5">
+                  Mute in-app sounds and push notifications during this window.
+                </div>
+              </div>
               <Switch
-                checked={!!prefs[row.id]?.email}
-                onCheckedChange={() => toggle(row.id, 'email')}
+                checked={prefs.quiet_hours_enabled}
+                onCheckedChange={(v) => update({ quiet_hours_enabled: v })}
               />
             </div>
-            <div className="flex justify-center">
-              <Switch
-                checked={!!prefs[row.id]?.inapp}
-                onCheckedChange={() => toggle(row.id, 'inapp')}
-              />
+
+            {prefs.quiet_hours_enabled && (
+              <div className="mt-3 grid grid-cols-[1fr_1fr_1.4fr] gap-3">
+                <label className="block">
+                  <span className="block font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E] mb-1">
+                    Start
+                  </span>
+                  <Input
+                    type="time"
+                    value={prefs.quiet_hours_start ?? '22:00'}
+                    onChange={(e) => update({ quiet_hours_start: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="block font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E] mb-1">
+                    End
+                  </span>
+                  <Input
+                    type="time"
+                    value={prefs.quiet_hours_end ?? '08:00'}
+                    onChange={(e) => update({ quiet_hours_end: e.target.value })}
+                  />
+                </label>
+                <label className="block">
+                  <span className="block font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E] mb-1">
+                    Timezone
+                  </span>
+                  <Input
+                    value={prefs.quiet_hours_tz}
+                    onChange={(e) => update({ quiet_hours_tz: e.target.value })}
+                    placeholder="e.g. Europe/Rome"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Sound on mention */}
+          <div className="px-5 py-4 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="font-inter text-[13px] text-[#0d0d09]">Sound on @mention</div>
+              <div className="font-inter text-[12px] text-[#8B8F9E] mt-0.5">
+                Play a chime when someone mentions you in the app.
+              </div>
             </div>
-          </li>
-        ))}
-      </ul>
-    </SettingsCard>
+            <Switch
+              checked={prefs.sound_on_mention}
+              onCheckedChange={(v) => update({ sound_on_mention: v })}
+            />
+          </div>
+        </div>
+      </SettingsCard>
+    </div>
   )
 }
