@@ -320,6 +320,25 @@ export function SaaSCustomerDetail() {
     enabled: !!customer?.tenant_id,
   })
 
+  const { data: activeGrant } = useQuery({
+    queryKey: ['tenant-access-grant', customer?.tenant_id],
+    queryFn: async () => {
+      if (!customer?.tenant_id) return null
+      const { data, error } = await supabase
+        .from('tenant_access_grants')
+        .select('id, reason, ends_at, granted_by, created_at')
+        .eq('tenant_id', customer.tenant_id)
+        .is('revoked_at', null)
+        .is('expired_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw error
+      return data as any
+    },
+    enabled: !!customer?.tenant_id,
+  })
+
   const health: CustomerHealthResult = useMemo(() => {
     if (!customer) return { status: 'inactive', reasons: [], recommendation: '' }
     return calculateCustomerHealth({
