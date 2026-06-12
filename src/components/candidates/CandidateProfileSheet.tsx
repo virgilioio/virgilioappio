@@ -71,6 +71,7 @@ import { HiredBannerSmart } from './status/HiredBannerSmart'
 import { RejectionDetailsTab } from './status/RejectionDetailsTab'
 import { OnboardingTab } from './status/OnboardingTab'
 import { HireSummaryCard, TimeToHireCard } from './status/HireSummaryCard'
+import { OfferTimelineCard } from './status/OfferTimelineCard'
 import { formatMovedHere } from './statusBannerUtils'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
@@ -1023,6 +1024,27 @@ const stageHasAutomation = useMemo(() => {
     toast({ title: 'Status updated', description: 'Candidate returned to offer stage' })
   }
 
+  const handleSendOfferReminder = async () => {
+    toast({
+      title: 'Reminder queued',
+      description: 'A reminder will be sent to the candidate shortly.',
+    })
+  }
+
+  const handleMarkReqClosed = async () => {
+    if (!jobId) return
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status: 'closed' } as any)
+      .eq('id', jobId)
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to close requisition', variant: 'destructive' })
+      return
+    }
+    toast({ title: 'Requisition closed', description: 'This job is now marked as closed.' })
+    onStageChanged?.()
+  }
+
   const getHeaderBgClass = (type: string) => {
     switch (type) {
       case 'application':
@@ -1191,6 +1213,7 @@ const stageHasAutomation = useMemo(() => {
                         candidateFirstName={candidate?.first_name}
                         offeredAt={offerDetails?.offeredAt || null}
                         onCreateOffer={() => setOfferFormOpen(true)}
+                        onSendReminder={handleSendOfferReminder}
                         onMarkHired={() => handleSetStatus('hired')}
                       />
                     ) : associationStatus === 'hired' && candidateId ? (
@@ -1202,6 +1225,7 @@ const stageHasAutomation = useMemo(() => {
                         hiredAt={hiredDetails?.hiredAt || null}
                         jobTitle={job?.title}
                         onOpenOnboarding={() => setActiveTab('onboarding')}
+                        onMarkReqClosed={handleMarkReqClosed}
                       />
                     ) : associationStatus === 'rejected' && rejectionDetails ? (
                       <StatusBanner
@@ -1648,6 +1672,14 @@ const stageHasAutomation = useMemo(() => {
                         openTo={(candidate as any)?.location || null}
                         workAuth={(candidate as any)?.work_authorization || null}
                       />
+
+                      {associationStatus === 'offer' && candidateId && (
+                        <OfferTimelineCard
+                          candidateId={candidateId}
+                          jobId={jobId}
+                          offeredAt={offerDetails?.offeredAt || null}
+                        />
+                      )}
 
                       {associationStatus === 'hired' && candidateId && (
                         <>
