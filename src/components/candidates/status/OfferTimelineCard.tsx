@@ -1,5 +1,5 @@
-import { format } from 'date-fns';
-import { CheckCircle2, Circle, Clock, FileText, Send, Pen, AlertTriangle } from 'lucide-react';
+import { format, differenceInCalendarDays } from 'date-fns';
+import { CheckCircle2, Circle, Clock, FileText, Send, Pen, AlertTriangle, CalendarClock } from 'lucide-react';
 import { useOfferLetters } from '@/hooks/useOfferLetters';
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest';
 
