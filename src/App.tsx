@@ -3,7 +3,6 @@ import {
   Routes,
   Route,
   Navigate,
-  useParams,
 } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { OrgContextProvider } from './contexts/OrgContext'
