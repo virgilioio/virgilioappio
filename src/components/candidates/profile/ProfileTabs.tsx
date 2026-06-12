@@ -46,10 +46,10 @@ export function ProfileTabs({ tabs, activeTab, onTabChange, className }: Profile
               <span>{label}</span>
               {typeof count === 'number' && count > 0 && (
                 <span className={cn(
-                  'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10.5px] font-poppins font-medium tabular-nums',
+                  'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-poppins font-medium tabular-nums',
                   isActive
-                    ? 'bg-text-primary/10 text-text-primary'
-                    : 'bg-muted text-text-tertiary'
+                    ? 'bg-[#0d0d09] text-[#fffcf9]'
+                    : 'bg-[#F1F0EC] text-[#5A6072]'
                 )}>
                   {count}
                 </span>
