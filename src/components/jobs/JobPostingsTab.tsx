@@ -314,38 +314,42 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly, organizationId, comp
   return (
     <div className="space-y-4">
       {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi
-          label="Postings"
-          value={totals.count}
-          sub={`${totals.live} live · ${totals.offline} drafts/paused`}
-        />
-        <Kpi
-          label="Total applications"
-          value={totals.apps}
-          sub={
-            totals.newThisWeek > 0 ? (
-              <span className="text-[hsl(var(--virgilio-success,142_71%_45%))]">+{totals.newThisWeek} this week</span>
-            ) : (
-              'No new this week'
-            )
-          }
-        />
-        <Kpi
-          label="Total views"
-          value={totals.views || '—'}
-          sub={totals.views > 0 ? `avg ${totals.applyRate}% apply rate` : 'Tracking starts at first view'}
-        />
-        {!readOnly && (
-          <Kpi
-            label="Monthly spend"
-            value="$0"
-            sub="Sponsored postings billed monthly"
-            dark
-            icon={Zap}
-          />
-        )}
-      </div>
+      <MetricStrip
+        items={[
+          {
+            icon: Globe,
+            tone: 'purple',
+            label: `Postings · ${totals.live} live`,
+            value: totals.count,
+          },
+          {
+            icon: FileText,
+            tone: 'green',
+            label: 'Total applications',
+            value: totals.apps,
+            delta:
+              totals.newThisWeek > 0
+                ? { value: totals.newThisWeek, direction: 'up', improving: true }
+                : undefined,
+          },
+          {
+            icon: Eye,
+            tone: 'blue',
+            label: 'Total views',
+            value: totals.views ? totals.views.toLocaleString() : '—',
+          },
+          ...(!readOnly
+            ? [{
+                icon: Zap,
+                tone: 'yellow' as const,
+                label: 'Monthly spend',
+                value: '$129',
+                unit: '+ 1 credit',
+              }]
+            : []),
+        ]}
+      />
+
 
       {/* Toolbar */}
       <TableToolbar
