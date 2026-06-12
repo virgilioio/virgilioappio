@@ -324,77 +324,110 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
           </div>
         )}
 
-        {/* Field list — matches Application card pattern */}
-        <dl className="divide-y divide-virgilio-border/60">
-          <div className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-            <dt className="inline-flex items-center gap-2 text-[13px] font-poppins text-text-secondary">
-              <span className="text-text-tertiary"><FileText className="h-3.5 w-3.5" /></span>
-              Offer Title
-            </dt>
-            <dd className="text-[13px] font-poppins text-text-primary text-right truncate max-w-[60%]">
-              {offerLetter.title}
-            </dd>
-          </div>
+        {/* Grouped field layout: currency tiles → short pairs → long text */}
+        {(() => {
+          if (fields.length === 0 || Object.keys(fieldValues).length === 0) {
+            return <InlineEmpty text="No field values recorded." />
+          }
+          const sorted = [...fields]
+            .sort((a, b) => a.display_order - b.display_order)
+            .filter(f => fieldValues[f.field_name] !== undefined)
 
-          {fields.length > 0 && Object.keys(fieldValues).length > 0 ? (
-            fields
-              .sort((a, b) => a.display_order - b.display_order)
-              .filter(f => fieldValues[f.field_name] !== undefined)
-              .map(field => {
-                const value = fieldValues[field.field_name]
-                const label = field.field_label
-                const fieldType = field.field_type
+          const currencyFields = sorted.filter(f => f.field_type === 'salary')
+          const longFields = sorted.filter(f =>
+            f.field_type === 'textarea' || f.field_type === 'rich_text' ||
+            (typeof fieldValues[f.field_name] === 'string' && (fieldValues[f.field_name] as string).length > 140)
+          )
+          const shortFields = sorted.filter(f => !currencyFields.includes(f) && !longFields.includes(f))
 
-                let displayValue: string
-                if (fieldType === 'location') {
-                  displayValue = formatLocationValue(value)
-                } else if (fieldType === 'salary') {
-                  displayValue = formatSalaryValue(value, field.field_config)
-                } else if (fieldType === 'checkbox') {
-                  displayValue = value ? 'Yes' : 'No'
-                } else if (fieldType === 'date' && value) {
-                  try {
-                    displayValue = new Date(String(value) + 'T00:00:00').toLocaleDateString()
-                  } catch {
-                    displayValue = String(value)
-                  }
-                } else if (fieldType === 'recruiter') {
-                  const match = recruiterOptions.find(r => r.value === value)
-                  displayValue = match?.label || String(value)
-                } else if (fieldType === 'employment_type') {
-                  displayValue = employmentTypeLabels[String(value)] || String(value)
-                } else if (fieldType === 'work_location') {
-                  displayValue = workLocationLabels[String(value)] || String(value)
-                } else {
-                  displayValue = value != null && value !== '' ? String(value) : '—'
-                }
+          const iconFor = (t: string) =>
+            t === 'salary' ? DollarSign
+            : t === 'location' ? MapPin
+            : t === 'work_location' ? Building2
+            : t === 'date' ? Calendar
+            : t === 'employment_type' ? Briefcase
+            : t === 'recruiter' ? User
+            : t === 'checkbox' ? BadgeCheck
+            : FileText
 
-                const Icon =
-                  fieldType === 'salary' ? DollarSign
-                  : fieldType === 'location' ? MapPin
-                  : fieldType === 'work_location' ? Building2
-                  : fieldType === 'date' ? Calendar
-                  : fieldType === 'employment_type' ? Briefcase
-                  : fieldType === 'recruiter' ? User
-                  : fieldType === 'checkbox' ? BadgeCheck
-                  : FileText
+          const renderValue = (field: any) => {
+            const value = fieldValues[field.field_name]
+            const t = field.field_type
+            if (t === 'location') return formatLocationValue(value)
+            if (t === 'salary') return formatSalaryValue(value, field.field_config)
+            if (t === 'checkbox') return value ? 'Yes' : 'No'
+            if (t === 'date' && value) {
+              try { return new Date(String(value) + 'T00:00:00').toLocaleDateString() } catch { return String(value) }
+            }
+            if (t === 'recruiter') {
+              const match = recruiterOptions.find(r => r.value === value)
+              return match?.label || String(value)
+            }
+            if (t === 'employment_type') return employmentTypeLabels[String(value)] || String(value)
+            if (t === 'work_location') return workLocationLabels[String(value)] || String(value)
+            return value != null && value !== '' ? String(value) : '—'
+          }
 
-                return (
-                  <div key={field.field_name} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-                    <dt className="inline-flex items-center gap-2 text-[13px] font-poppins text-text-secondary">
-                      <span className="text-text-tertiary"><Icon className="h-3.5 w-3.5" /></span>
-                      {label}
-                    </dt>
-                    <dd className="text-[13px] font-poppins text-text-primary text-right truncate max-w-[60%]">
-                      {displayValue}
-                    </dd>
+          return (
+            <div className="space-y-5">
+              {/* Currency stat tiles */}
+              {currencyFields.length > 0 && (
+                <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(currencyFields.length, 3)}, minmax(0, 1fr))` }}>
+                  {currencyFields.map((field, idx) => {
+                    const isAccent = idx === 0 && currencyFields.length > 1
+                    return (
+                      <div
+                        key={field.field_name}
+                        className={cn(
+                          'rounded-xl px-4 py-3 border',
+                          isAccent ? 'border-transparent' : 'border-[#F1F0EC] bg-[#FAFAF7]',
+                        )}
+                        style={isAccent ? { backgroundColor: '#EDE4FF' } : undefined}
+                      >
+                        <p className="font-inter uppercase" style={{ fontSize: 10.5, letterSpacing: '0.08em', color: isAccent ? '#5B2BD9' : '#8B8F9E' }}>
+                          {field.field_label}
+                        </p>
+                        <p className="font-poppins font-semibold mt-1.5 tabular-nums" style={{ fontSize: 17, letterSpacing: '-0.02em', color: '#0d0d09' }}>
+                          {renderValue(field)}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Short fields — 2-col icon+label+value */}
+              {shortFields.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-text-tertiary mt-0.5"><FileText className="h-3.5 w-3.5" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-inter text-[11.5px] text-[#8B8F9E]">Offer title</p>
+                      <p className="font-poppins text-[13px] text-text-primary truncate">{offerLetter.title}</p>
+                    </div>
                   </div>
-                )
-              })
-          ) : (
-            <InlineEmpty text="No field values recorded." />
-          )}
-        </dl>
+                  {shortFields.map(field => {
+                    const Icon = iconFor(field.field_type)
+                    return (
+                      <div key={field.field_name} className="flex items-start gap-2.5">
+                        <span className="text-text-tertiary mt-0.5"><Icon className="h-3.5 w-3.5" /></span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-inter text-[11.5px] text-[#8B8F9E]">{field.field_label}</p>
+                          <p className="font-poppins text-[13px] text-text-primary truncate">{renderValue(field)}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Long text fields */}
+              {longFields.map(field => (
+                <LongTextField key={field.field_name} label={field.field_label} value={String(renderValue(field))} />
+              ))}
+            </div>
+          )
+        })()}
 
 
 
