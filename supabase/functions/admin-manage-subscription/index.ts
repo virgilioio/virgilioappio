@@ -219,29 +219,33 @@ Deno.serve(async (req) => {
         break
 
       case 'grant_access': {
+        console.log('[grant_access] entering', { tenantId, currentStatus: currentSub.billing_status })
         if (!params?.endDate || !params?.reason || params.reason.trim().length < 5) {
+          console.warn('[grant_access] validation failed', { hasEndDate: !!params?.endDate, reasonLen: params?.reason?.trim().length ?? 0 })
           return new Response(
-            JSON.stringify({ error: 'endDate and reason (min 5 chars) required for grant_access' }),
+            JSON.stringify({ error: 'A future end date and a reason of at least 5 characters are required.' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
         const allowed = ['locked', 'past_due', 'canceled']
         if (!allowed.includes(currentSub.billing_status)) {
+          console.warn('[grant_access] disallowed status', currentSub.billing_status)
           return new Response(
-            JSON.stringify({ error: `Grant Access is only allowed when billing_status is one of ${allowed.join(', ')}` }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: `Grant Access is only available when the tenant is locked, past due, or canceled (current: ${currentSub.billing_status}).` }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
         const endDateObj = new Date(params.endDate)
         if (isNaN(endDateObj.getTime()) || endDateObj <= new Date()) {
+          console.warn('[grant_access] invalid endDate', params.endDate)
           return new Response(
-            JSON.stringify({ error: 'endDate must be in the future' }),
+            JSON.stringify({ error: 'The access end date must be in the future.' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
 
-        // Insert grant (trigger auto-revokes any prior active grant)
-        const { error: grantError } = await serviceClient
+        console.log('[grant_access] inserting grant row')
+        const { data: grantRow, error: grantError } = await serviceClient
           .from('tenant_access_grants')
           .insert({
             tenant_id: tenantId,
@@ -249,13 +253,26 @@ Deno.serve(async (req) => {
             reason: params.reason.trim(),
             ends_at: endDateObj.toISOString(),
           })
+          .select('id')
+          .single()
         if (grantError) {
-          console.error('Grant insert failed:', grantError)
+          console.error('[grant_access] grant insert failed', {
+            message: grantError.message,
+            details: grantError.details,
+            hint: grantError.hint,
+            code: grantError.code,
+          })
           return new Response(
-            JSON.stringify({ error: 'Failed to record grant', details: grantError.message }),
+            JSON.stringify({
+              error: 'Could not record the access grant.',
+              details: grantError.message,
+              hint: grantError.hint,
+              code: grantError.code,
+            }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
+        console.log('[grant_access] grant row created', grantRow?.id)
 
         updateData = {
           ...updateData,
