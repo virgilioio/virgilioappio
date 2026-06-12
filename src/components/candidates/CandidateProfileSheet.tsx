@@ -1555,17 +1555,56 @@ const stageHasAutomation = useMemo(() => {
                       </>
                     )}
 
+                    {/* Rejection details Tab */}
+                    {activeTab === 'rejection-details' && rejectionDetails && (
+                      <RejectionDetailsTab
+                        rejectedAt={rejectionDetails.rejectedAt}
+                        rejectedByName={rejectionDetails.rejectedByName}
+                        rejectionReason={rejectionDetails.rejectionReason}
+                        rejectionNotes={rejectionDetails.rejectionNotes}
+                        rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
+                        notifiedCandidate={!!rejectionDetails.rejectionEmailSentAt}
+                        notifyChannel={rejectionDetails.rejectionEmailSentAt ? 'Email' : null}
+                      />
+                    )}
+
+                    {/* Onboarding Tab */}
+                    {activeTab === 'onboarding' && associationId && (
+                      <OnboardingTab
+                        applicationId={associationId}
+                        startDate={hiredDetails?.hiredAt || null}
+                        firstName={candidate?.first_name}
+                      />
+                    )}
+
                     {/* Offer Tab */}
                     {activeTab === 'offer' && candidateId && (
                       <Tabs defaultValue="offer-details" className="w-full">
-                        <TabsList className="w-full">
-                          <TabsTrigger value="offer-details" className="flex-1">Offer Details</TabsTrigger>
-                          <TabsTrigger value="offer-approvals" className="flex-1">Offer Approvals</TabsTrigger>
+                        <TabsList
+                          className="inline-flex w-auto p-1 rounded-[10px] h-auto bg-transparent gap-1"
+                          style={{ backgroundColor: '#F1F0EC' }}
+                        >
+                          <TabsTrigger
+                            value="offer-details"
+                            className="h-8 px-3 rounded-[8px] font-inter font-semibold data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:shadow-[0_1px_2px_rgba(13,13,9,0.08)] text-[#5A6072]"
+                            style={{ fontSize: 12 }}
+                          >
+                            <FileText className="h-3 w-3 mr-1.5" />
+                            Offer details
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="offer-approvals"
+                            className="h-8 px-3 rounded-[8px] font-inter font-semibold data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:shadow-[0_1px_2px_rgba(13,13,9,0.08)] text-[#5A6072]"
+                            style={{ fontSize: 12 }}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                            Offer approvals
+                          </TabsTrigger>
                         </TabsList>
-                        <TabsContent value="offer-details">
+                        <TabsContent value="offer-details" className="mt-4">
                           <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
-                        <TabsContent value="offer-approvals">
+                        <TabsContent value="offer-approvals" className="mt-4">
                           <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
                         </TabsContent>
                       </Tabs>
