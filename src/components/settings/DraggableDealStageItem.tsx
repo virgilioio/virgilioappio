@@ -52,7 +52,7 @@ export function DraggableDealStageItem({ stage, onEdit, onRemove, isDragging, is
 
       <span
         className="flex-1 min-w-0 truncate font-inter"
-        style={{ fontSize: 12.5, fontWeight: 600, color: '#1F2230' }}
+        style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}
       >
         {stage.name}
       </span>
