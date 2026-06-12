@@ -180,12 +180,15 @@ export function ProfileHeroCard({
         </div>
 
         <div className="mt-1 flex items-center gap-1.5 flex-wrap text-body-sm text-text-secondary">
-          {jobTitle && (
+          {candidateId && (
             <>
               <span>Applying for</span>
-              <Link to={`/jobs/${jobId}`} className="text-text-primary font-medium hover:underline truncate max-w-[260px]">
-                {jobTitle}
-              </Link>
+              <ApplicationSwitcher
+                candidateId={candidateId}
+                candidateFirstName={candidateFirstName || candidateName?.split(' ')[0] || null}
+                currentJobId={jobId}
+                currentJobTitle={jobTitle || null}
+              />
             </>
           )}
           {source && (
