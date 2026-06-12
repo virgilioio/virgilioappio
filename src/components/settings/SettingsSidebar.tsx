@@ -133,10 +133,11 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
           <div key={section.id} className="space-y-0.5">
             {section.label && (
               <div
-                className="px-2.5 mb-1.5 font-inter font-semibold uppercase text-[#8B8F9E]"
+                className="px-2.5 mb-1.5 flex items-center gap-1.5 font-inter font-semibold uppercase text-[#8B8F9E]"
                 style={{ fontSize: '10px', letterSpacing: '0.08em' }}
               >
-                {section.label}
+                <span>{section.label}</span>
+                {section.groupBadge}
               </div>
             )}
             {section.items.map((item) => {
