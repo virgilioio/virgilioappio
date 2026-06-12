@@ -4,8 +4,9 @@ import {
   ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
   Heart, Briefcase, MapPin, Mail, Phone, DollarSign, Calendar, Sparkles,
   FileText, File as FileIcon, GraduationCap, Info, MessageSquare, UserPlus,
-  Upload, Globe, Download, Clock, User as UserIcon,
+  Upload, Globe, Download, Clock, User as UserIcon, Plus,
 } from 'lucide-react'
+import { ExperienceTimeline, EducationTimeline } from '@/components/candidates/profile/tabs/ExperienceTimeline'
 
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
