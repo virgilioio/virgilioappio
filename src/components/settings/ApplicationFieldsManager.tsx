@@ -18,16 +18,46 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
   const [editing, setEditing] = useState<ApplicationField | null>(null)
   const [toDelete, setToDelete] = useState<ApplicationField | null>(null)
 
-  const platformFields = (fields || []).filter(f => f.source === 'platform')
+  const allPlatform = (fields || []).filter(f => f.source === 'platform')
+  const coreFields = allPlatform
+    .filter(f => f.is_core_field === true)
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+  const platformFields = allPlatform.filter(f => f.is_core_field !== true)
   const tenantFields = (fields || []).filter(f => f.source === 'tenant')
-  const listFields = context === 'organization' ? tenantFields : fields || []
+  const listFields = context === 'organization' ? tenantFields : (fields || []).filter(f => f.is_core_field !== true)
 
   return (
     <div className="max-w-[860px]">
+      <SpecCard
+        title="Standard fields"
+        description="Always collected on every application. Required by the platform and can't be edited."
+      >
+        {isLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
+        ) : coreFields.length === 0 ? (
+          <SpecEmpty title="No standard fields available." />
+        ) : (
+          coreFields.map((f, i) => (
+            <SpecRow key={f.id} last={i === coreFields.length - 1}>
+              <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                <span className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>
+                  {f.field_label}
+                </span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#8B8F9E' }}>
+                  {f.field_name}
+                </span>
+              </div>
+              <SpecChip tone="gray">{f.field_type}</SpecChip>
+              <SpecChip tone="purple">Required</SpecChip>
+            </SpecRow>
+          ))
+        )}
+      </SpecCard>
+
       {context === 'organization' && (
         <SpecCard
           title="Platform fields"
-          description="Core fields (name, email, phone, resume) are always included. These optional fields can be copied and customized."
+          description="Optional fields you can copy and customize."
         >
           {isLoading ? (
             <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
@@ -58,6 +88,7 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
           )}
         </SpecCard>
       )}
+
 
       <SpecCard
         title="My custom fields"
