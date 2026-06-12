@@ -125,7 +125,7 @@ function useOwnerProfiles(ownerIds: string[]) {
     if (missing.length === 0) return
     let cancelled = false
     ;(async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('profiles')
         .select('id, full_name, email')
         .in('id', missing)
