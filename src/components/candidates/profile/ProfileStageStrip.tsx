@@ -42,12 +42,12 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
         const m = meta[opt.jhsId] || {}
         const clickable = interactive && !isCurrent
 
-        const base = 'flex-1 min-w-[140px] rounded-xl px-3 py-2.5 transition-all text-left'
+        const base = 'flex-1 min-w-[140px] rounded-[10px] px-3 py-2.5 transition-all text-left'
         const stateClass = isPast
-          ? 'bg-pastel-green text-pastel-green-foreground'
+          ? 'bg-[#D1FAE5] text-[#065F46]'
           : isCurrent
-          ? 'bg-text-primary text-white'
-          : 'border border-dashed border-virgilio-border text-text-tertiary bg-transparent'
+          ? 'bg-[#0d0d09] text-[#fffcf9]'
+          : 'border border-dashed border-[#D1D0CB] text-[#8B8F9E] bg-transparent'
         const interactiveClass = clickable
           ? 'cursor-pointer hover:ring-2 hover:ring-virgilio-purple/30 hover:border-virgilio-purple/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40'
           : ''
@@ -59,8 +59,8 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
               {isPending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" />
               ) : isPast ? (
-                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-pastel-green-foreground/15">
-                  <Check className="h-2.5 w-2.5 text-pastel-green-foreground" strokeWidth={3} />
+                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#12B886]">
+                  <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                 </span>
               ) : isCurrent ? (
                 <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white/15">
@@ -69,19 +69,24 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
               ) : (
                 <Circle className="h-3.5 w-3.5 opacity-50" />
               )}
-              <span className="font-poppins font-medium text-[12.5px] tracking-[-0.005em] truncate">
+              <span className={cn(
+                'font-poppins text-[11.5px] tracking-[-0.005em] truncate',
+                isCurrent ? 'font-semibold' : 'font-medium'
+              )}>
                 {opt.stage.stage_name}
               </span>
             </div>
             <div className={cn(
-              'mt-1 font-poppins text-[11px] tracking-[-0.005em] truncate',
-              isPast ? 'text-pastel-green-foreground/80' : isCurrent ? 'text-white/70' : 'text-text-tertiary/80'
+              'mt-1 font-inter text-[10.5px] tracking-[-0.005em] truncate',
+              isPast ? 'text-[#065F46]/80' : isCurrent ? 'text-white/70' : 'text-[#8B8F9E]/80'
             )}>
               {isPast
                 ? (m.passedInDays != null ? `✓ Passed in ${m.passedInDays}d` : '✓ Passed')
                 : isCurrent
                 ? (m.currentDay && m.totalDays
                     ? `In stage · day ${m.currentDay} of ${m.totalDays}`
+                    : m.currentDay
+                    ? `In stage · day ${m.currentDay}`
                     : 'In stage')
                 : 'Upcoming'}
             </div>
