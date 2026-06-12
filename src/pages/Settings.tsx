@@ -165,7 +165,7 @@ export default function Settings() {
             <p className="mt-2 font-inter text-[12.5px] text-[#5A6072]">
               {workspaceName} workspace
               <span className="mx-2 text-[#B5B9C4]">·</span>
-              {configuredCount} of {essentialsTotal} essentials configured
+              {configuredCount} of {essentialsTotal} essentials done
             </p>
           </div>
           {/* Mobile menu trigger */}
