@@ -1126,8 +1126,17 @@ const stageHasAutomation = useMemo(() => {
                           activeTab={activeTab}
                           onTabChange={(v) => setActiveTab(v as typeof activeTab)}
                           tabs={[
-                            ...((associationStatus === 'offer' || associationStatus === 'hired')
+                            ...(associationStatus === 'offer'
                               ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
+                              : []),
+                            ...(associationStatus === 'rejected'
+                              ? [{ value: 'rejection-details', label: 'Rejection details', Icon: XCircle }]
+                              : []),
+                            ...(associationStatus === 'hired'
+                              ? [
+                                  { value: 'onboarding', label: 'Onboarding', Icon: CheckCircle2 },
+                                  { value: 'offer', label: 'Offer', Icon: FileText },
+                                ]
                               : []),
                             { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
                             { value: 'resume', label: 'Resume', Icon: FileText },
