@@ -671,11 +671,6 @@ function CandidatesInner() {
         onComplete={() => { setIsCSVImportOpen(false); getCandidates() }}
       />
 
-      <UniversalCandidateProfileSheet
-        candidateId={profileId}
-        open={profileOpen}
-        onOpenChange={setProfileOpen}
-      />
 
       {deleteTarget && (
         <DeleteCandidateDialog
