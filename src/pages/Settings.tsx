@@ -62,9 +62,12 @@ export default function Settings() {
   const { organizationId, userType } = useAuth()
   const { tenant } = useTenant()
 
+  const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
+
   const isBillingRoute = location.pathname === '/billing'
   const pickDefaultTab = () => {
     if (isPlatformAdmin) return 'platform-dashboard'
+    if (essentialsRemaining > 0) return 'setup'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
     return 'profile'
   }
@@ -90,8 +93,6 @@ export default function Settings() {
     setSearchParams({ tab })
     setMobileOpen(false)
   }
-
-  const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
 
   const renderContent = () => {
     switch (currentTab) {
@@ -164,7 +165,7 @@ export default function Settings() {
             <p className="mt-2 font-inter text-[12.5px] text-[#5A6072]">
               {workspaceName} workspace
               <span className="mx-2 text-[#B5B9C4]">·</span>
-              {configuredCount} of {essentialsTotal} essentials configured
+              {configuredCount} of {essentialsTotal} essentials done
             </p>
           </div>
           {/* Mobile menu trigger */}
