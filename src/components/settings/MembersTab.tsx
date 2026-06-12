@@ -137,8 +137,8 @@ export function MembersTab() {
         onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
       />
 
-      <p className="flex items-center justify-center gap-1.5 font-inter text-[12.5px] text-muted-foreground pt-1">
-        <Lock className="h-3.5 w-3.5" />
+      <p className="flex items-center justify-center gap-1.5 font-inter pt-1" style={{ fontSize: 11, color: '#8B8F9E' }}>
+        <Lock style={{ width: 11, height: 11 }} />
         Billing &amp; invoices are visible to workspace owners.
       </p>
 
