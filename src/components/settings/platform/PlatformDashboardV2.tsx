@@ -42,7 +42,7 @@ function MetricStrip({ cells }: { cells: MetricCell[] }) {
           <div key={c.label} className={i > 0 ? 'border-l border-[#F1F0EC]' : ''} style={{ padding: '14px 16px', minHeight: 56 }}>
             <div className="flex items-center gap-2.5">
               <div className="flex items-center justify-center rounded-[8px] shrink-0" style={{ width: 28, height: 28, background: c.iconBg }}>
-                <Icon className="" strokeWidth={2} style={{ width: 14, height: 14, color: c.iconColor } as React.CSSProperties} />
+                <Icon strokeWidth={2} style={{ width: 14, height: 14, color: c.iconColor }} />
               </div>
               <div className="min-w-0">
                 <div className="font-inter font-medium text-[#8B8F9E]" style={{ fontSize: '11px' }}>{c.label}</div>
