@@ -932,8 +932,34 @@ function OverviewTab({
               <QuickBtn icon={CreditCard} label="Change plan" onClick={onChange} />
             )}
             <QuickBtn icon={Sparkles} label="Grant credits" onClick={onGrant} />
+            {(['locked', 'past_due', 'canceled'].includes(sub?.billing_status) || activeGrant) && (
+              activeGrant ? (
+                <QuickBtn icon={Unlock} label="Revoke access" onClick={onRevokeAccess} />
+              ) : (
+                <QuickBtn icon={Unlock} label="Grant access" onClick={onGrantAccess} />
+              )
+            )}
           </div>
+          {activeGrant && (
+            <div
+              className="font-inter"
+              style={{
+                borderTop: `1px solid ${HAIRLINE}`,
+                padding: '10px 14px',
+                fontSize: 11,
+                color: SUBTEXT,
+                lineHeight: 1.5,
+                background: '#FAFAF7',
+              }}
+            >
+              <div style={{ color: TEXT, fontWeight: 600, marginBottom: 2 }}>
+                Access granted until {format(new Date(activeGrant.ends_at), 'MMM d, yyyy')}
+              </div>
+              <div style={{ color: MUTED }}>{activeGrant.reason}</div>
+            </div>
+          )}
         </section>
+
 
         {/* Owner */}
         <section style={CARD}>
