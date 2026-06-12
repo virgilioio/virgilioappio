@@ -677,6 +677,16 @@ export function SaaSCustomerDetail() {
         currentCollectLimit={creditUsage?.collect_credits_limit}
         isPending={assignMutation.isPending}
       />
+      <GrantAccessDialog
+        open={grantOpen}
+        onOpenChange={setGrantOpen}
+        onConfirm={(endDate, reason) => {
+          grantMutation.mutate({ tenantId: customer.tenant_id, endDate, reason })
+          setGrantOpen(false)
+        }}
+        organizationName={customer.name}
+        isPending={grantMutation.isPending}
+      />
     </div>
   )
 }
