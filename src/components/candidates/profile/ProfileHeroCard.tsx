@@ -12,7 +12,6 @@ import { ApplicationSwitcher } from '@/components/candidates/profile/Application
 interface ProfileHeroCardProps {
   candidateName: string
   candidateFirstName?: string | null
-  candidateName: string
   candidateId: string
   jobId: string
   jobTitle?: string | null
