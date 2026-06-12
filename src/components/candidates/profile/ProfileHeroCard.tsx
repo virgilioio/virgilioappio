@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { Link } from 'react-router-dom'
+import { ApplicationSwitcher } from '@/components/candidates/profile/ApplicationSwitcher'
 
 // (avatar removed — initials helper no longer needed)
 
