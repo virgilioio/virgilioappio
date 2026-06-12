@@ -481,37 +481,60 @@ export default function IndependentCandidateProfile() {
                         </div>
                       ) : (
                         <ul className="divide-y divide-[#F1F0EC]">
-                          {jobAssociations.map((a) => {
-                            const ob = outcomeBadge(a.status, null)
-                            return (
-                              <li key={a.id} className="flex items-center gap-3 px-5 py-3.5">
-                                <div className="h-[34px] w-[34px] rounded-[9px] bg-[#F1F0EC] flex items-center justify-center shrink-0">
-                                  <Briefcase className="h-4 w-4 text-text-secondary" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-poppins font-semibold text-[13px] text-text-primary truncate">
-                                      {a.job?.title || 'Untitled job'}
-                                    </span>
-                                    <Badge tone={ob.tone} size="xs" dot>{ob.label}</Badge>
-                                  </div>
-                                  {a.job?.organization?.name && (
-                                    <div className="text-[11.5px] text-text-tertiary font-inter mt-0.5 truncate">
-                                      {a.job.organization.name}
+                          {[...jobAssociations]
+                            .sort((a, b) => {
+                              const aClosed = ['hired','rejected','withdrawn'].includes((a.status || '').toLowerCase())
+                              const bClosed = ['hired','rejected','withdrawn'].includes((b.status || '').toLowerCase())
+                              if (aClosed !== bClosed) return aClosed ? 1 : -1
+                              return 0
+                            })
+                            .map((a) => {
+                              const status = (a.status || '').toLowerCase()
+                              const isClosed = status === 'hired' || status === 'rejected' || status === 'withdrawn'
+                              const stageName = a.current_stage?.custom_stage_name || a.current_stage?.stage?.stage_name || null
+                              const ob = isClosed
+                                ? outcomeBadge(a.status, null)
+                                : { tone: 'purple' as const, label: stageName ? `Active · ${stageName}` : 'Active' }
+                              const detail = isClosed
+                                ? (a.job?.organization?.name || null)
+                                : (stageName ? `${stageName} — act from the in-job profile` : 'Open application — act from the in-job profile')
+                              return (
+                                <li key={a.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/jobs/${a.job_id}/candidates/${candidate.id}`)}
+                                    className="group w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-[#FAFAF7] transition-colors cursor-pointer"
+                                  >
+                                    <div className={cn(
+                                      'h-[34px] w-[34px] rounded-[9px] flex items-center justify-center shrink-0',
+                                      isClosed ? 'bg-[#F1F0EC]' : 'bg-[#EDE4FF]',
+                                    )}>
+                                      <Briefcase className={cn(
+                                        'h-4 w-4',
+                                        isClosed ? 'text-[#5A6072]' : 'text-virgilio-purple',
+                                      )} />
                                     </div>
-                                  )}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => window.open(`/jobs/${a.job_id}?candidate=${candidate.id}`, '_blank')}
-                                  className="p-1.5 rounded-md hover:bg-muted text-text-tertiary hover:text-text-secondary transition-colors"
-                                  aria-label="Open in job"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </button>
-                              </li>
-                            )
-                          })}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-poppins font-semibold text-[13px] text-text-primary truncate">
+                                          {a.job?.title || 'Untitled job'}
+                                        </span>
+                                        <Badge tone={ob.tone} size="xs" dot>{ob.label}</Badge>
+                                      </div>
+                                      {detail && (
+                                        <div className="text-[11.5px] text-text-tertiary font-inter mt-0.5 truncate">
+                                          {detail}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="inline-flex items-center gap-1 font-inter font-semibold text-[11px] text-virgilio-purple shrink-0">
+                                      Open
+                                      <ArrowRight className="h-3 w-3" />
+                                    </span>
+                                  </button>
+                                </li>
+                              )
+                            })}
                         </ul>
                       )}
                     </SectionCard>
