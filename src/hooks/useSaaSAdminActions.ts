@@ -288,7 +288,12 @@ export function useRevokeAccess() {
         const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
           body: { action: 'revoke_access', tenantId },
         })
-        if (error) throw error
+        if (error) {
+          const parsed = await readFunctionsErrorBody(error)
+          const detailed = describeError(parsed, error)
+          log.error('revoke_access edge function failed:', { parsed, raw: error })
+          throw new Error(detailed)
+        }
         return data.data
       })
     },
