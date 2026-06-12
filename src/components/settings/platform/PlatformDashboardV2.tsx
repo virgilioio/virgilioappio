@@ -148,11 +148,11 @@ export function PlatformDashboardV2() {
         <div className={CARD}>
           <CardHeader title={`Growth · ${currentMonth}`} desc="New across all tenants this month." />
           <div>
-            {[
+            {([
               { icon: Building2, label: 'New organizations', value: newOrgs },
               { icon: Briefcase, label: 'New jobs', value: newJobs },
               { icon: FileText, label: 'New candidates', value: newCandidates },
-            ].map((row, i, arr) => {
+            ] as { icon: LucideIcon; label: string; value: number }[]).map((row, i, arr) => {
               const Icon = row.icon
               const zero = row.value === 0
               return (
