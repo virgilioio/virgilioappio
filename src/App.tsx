@@ -48,11 +48,6 @@ const NotFound = lazy(() => import('./pages/NotFound'))
 const CandidateProfile = lazy(() => import('@/pages/CandidateProfile'))
 const IndependentCandidateProfile = lazy(() => import('@/pages/IndependentCandidateProfile'))
 
-// Redirect component for legacy /candidates/:candidateId URLs
-function CandidateRedirect() {
-  const { candidateId } = useParams()
-  return <Navigate to={`/candidates?openCandidate=${candidateId}`} replace />
-}
 
 const PublicJobPosting = lazy(() => import('./pages/PublicJobPosting'))
 const PublicCareersPage = lazy(() => import('./pages/PublicCareersPage'))
