@@ -14,6 +14,25 @@ import { GenerateOfferDialog } from './GenerateOfferDialog'
 import { MinimizableEmailComposer } from './MinimizableEmailComposer'
 import { supabase } from '@/lib/supabaseClient'
 import { logActivity } from '@/lib/activityLogger'
+import { cn } from '@/lib/utils'
+
+function LongTextField({ label, value }: { label: string; value: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const long = value.length > 220
+  return (
+    <div>
+      <p className="font-inter uppercase mb-1.5" style={{ fontSize: 10.5, letterSpacing: '0.08em', color: '#8B8F9E' }}>{label}</p>
+      <p className={cn('font-inter text-[13px] text-text-primary whitespace-pre-wrap', !expanded && long && 'line-clamp-2')} style={{ lineHeight: 1.5 }}>
+        {value}
+      </p>
+      {long && (
+        <button type="button" onClick={() => setExpanded(e => !e)} className="mt-1 font-inter text-[12px] text-virgilio-purple hover:underline">
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
+  )
+}
 
 
 const employmentTypeLabels: Record<string, string> = {
