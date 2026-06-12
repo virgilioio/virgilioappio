@@ -35,8 +35,11 @@ import { scrollToHighlightedSection } from '@/utils/scrollToHighlight'
 const LEGACY_TAB_MAP: Record<string, string> = {
   'workspace-currency': 'organization',
   'workspace-job-settings': 'pipeline-stages',
-  'platform-saas-customers': 'customers',
   'workspace-deal-stages': 'workspace-deal-stages',
+  // Old Platform group → new Platform group
+  'platform-saas-customers': 'platform-customers',
+  'platform-job-settings': 'platform-job-defaults',
+  'platform-settings': 'platform-dashboard',
 }
 
 // Brand-new tabs that don't have content yet — render a small placeholder card.
