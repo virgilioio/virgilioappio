@@ -1310,6 +1310,7 @@ function ActivityTab({
     { key: 'interviews', label: 'Interviews' },
     { key: 'documents', label: 'Documents' },
     { key: 'team', label: 'Team' },
+    { key: 'platform', label: 'Platform' },
   ]
   const groupKeys = Object.keys(groupedFeed)
   return (
