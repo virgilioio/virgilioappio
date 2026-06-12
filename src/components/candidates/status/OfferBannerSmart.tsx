@@ -80,11 +80,11 @@ export function OfferBannerSmart({
 
   // Compose comp fragment from currency-type fields in the form
   const fv = offerLetter.field_values || {};
-  const currencyFields = fields.filter((f) => f.field_type === 'currency' || f.field_type === 'salary');
+  const currencyFields = fields.filter((f) => f.field_type === 'salary');
   const compFragments: string[] = [];
   for (const f of currencyFields.slice(0, 3)) {
     const money = fmtMoney(fv[f.field_name]);
-    if (money) compFragments.push(`${money} ${f.label?.toLowerCase() || ''}`.trim());
+    if (money) compFragments.push(`${money} ${f.field_label?.toLowerCase() || ''}`.trim());
   }
 
   // Approval progress
