@@ -5,7 +5,7 @@ import {
   ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock,
   Briefcase, Users, UserCheck, Lightbulb, Copy, Check, CalendarPlus, Sparkles, CreditCard, Ban,
   UserPlus, ArrowRightLeft, Video, Upload, FileText, Download, Minus, Plus,
-  CircleDollarSign, Mail, Eye, PencilLine,
+  CircleDollarSign, Mail, Eye, PencilLine, Unlock,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, formatDistanceToNowStrict, differenceInCalendarDays, isToday, isYesterday } from 'date-fns'
@@ -16,7 +16,7 @@ import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
 import { useSaaSCustomerMembers } from '@/hooks/useSaaSCustomerMembers'
 import { useSaaSCustomerOnboarding } from '@/hooks/useSaaSCustomerOnboarding'
 import {
-  useSuspendOrganization, useExtendTrial,
+  useSuspendOrganization, useExtendTrial, useGrantAccess, useRevokeAccess,
 } from '@/hooks/useSaaSAdminActions'
 import { useChangePlan } from '@/hooks/useChangePlan'
 import { useAssignTenantCredits } from '@/hooks/useAssignTenantCredits'
@@ -26,6 +26,7 @@ import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganiza
 import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
 import { ChangePlanDialog } from '@/components/settings/ChangePlanDialog'
 import { AssignCreditsDialog } from '@/components/settings/AssignCreditsDialog'
+import { GrantAccessDialog } from '@/components/settings/GrantAccessDialog'
 
 // ─────────────────────────────────────────────────────────────────
 // design tokens
