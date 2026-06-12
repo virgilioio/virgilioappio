@@ -4,6 +4,7 @@ import {
   Pencil,
   Globe,
   Activity,
+  History,
   GitBranch,
   Users,
   Bell,
@@ -15,6 +16,7 @@ import {
   Settings2,
   Trash2,
 } from 'lucide-react'
+
 import { formatDistanceToNowStrict } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
