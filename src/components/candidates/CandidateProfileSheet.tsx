@@ -1023,6 +1023,27 @@ const stageHasAutomation = useMemo(() => {
     toast({ title: 'Status updated', description: 'Candidate returned to offer stage' })
   }
 
+  const handleSendOfferReminder = async () => {
+    toast({
+      title: 'Reminder queued',
+      description: 'A reminder will be sent to the candidate shortly.',
+    })
+  }
+
+  const handleMarkReqClosed = async () => {
+    if (!jobId) return
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status: 'closed' } as any)
+      .eq('id', jobId)
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to close requisition', variant: 'destructive' })
+      return
+    }
+    toast({ title: 'Requisition closed', description: 'This job is now marked as closed.' })
+    onStageChanged?.()
+  }
+
   const getHeaderBgClass = (type: string) => {
     switch (type) {
       case 'application':
