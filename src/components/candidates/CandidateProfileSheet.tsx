@@ -1418,10 +1418,17 @@ const stageHasAutomation = useMemo(() => {
                           </CardHeader>
                           <CardContent>
                             {candidate.profile_summary ? (
-                              <ProfileSummaryMarkdown
-                                content={candidate.profile_summary}
-                                className="text-text-primary leading-relaxed"
-                              />
+                              /<\w+[^>]*>/.test(candidate.profile_summary) ? (
+                                <SafeHtml
+                                  content={candidate.profile_summary}
+                                  className="text-text-primary leading-relaxed text-[13.5px] font-inter [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                                />
+                              ) : (
+                                <ProfileSummaryMarkdown
+                                  content={candidate.profile_summary}
+                                  className="text-text-primary leading-relaxed"
+                                />
+                              )
                             ) : (
                               <InlineEmpty text="No summary available." />
                             )}
