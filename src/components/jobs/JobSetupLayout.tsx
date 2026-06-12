@@ -676,10 +676,15 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 function NavGroupLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={cn(
-        'px-2 pt-2 pb-1.5 text-[10.5px] font-inter font-semibold tracking-[0.14em] uppercase text-[#8B8F9E]',
-        className
-      )}
+      className={cn('font-inter uppercase', className)}
+      style={{
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+        color: '#8B8F9E',
+        padding: '0 10px',
+        margin: '14px 0 5px',
+      }}
     >
       {children}
     </div>
@@ -704,19 +709,31 @@ function NavItem({
       type="button"
       onClick={onClick}
       className={cn(
-        'group w-full flex items-center gap-2.5 rounded-lg px-2.5 h-9 text-left text-[13px] font-poppins font-medium tracking-[-0.005em] transition-colors',
-        active
-          ? 'bg-[#0d0d09] text-[#fffcf9]'
-          : muted
-          ? 'text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary'
-          : 'text-text-primary hover:bg-[#F1F0EC]'
+        'group w-full flex items-center text-left font-inter transition-colors',
+        active ? '' : 'hover:bg-[rgba(13,13,9,0.05)]'
       )}
+      style={{
+        gap: 9,
+        padding: '7px 10px',
+        borderRadius: 8,
+        fontSize: 12.5,
+        fontWeight: active ? 600 : 500,
+        background: active ? '#0d0d09' : 'transparent',
+        color: active ? '#fffcf9' : '#1F2230',
+        opacity: muted && !active ? 0.75 : 1,
+        transition: 'background 140ms ease',
+      }}
     >
-      <Icon className={cn('h-3.5 w-3.5', active ? 'text-[#fffcf9]' : '')} />
+      <Icon
+        size={14}
+        strokeWidth={2}
+        style={{ color: active ? '#fffcf9' : '#5A6072', flexShrink: 0 }}
+      />
       <span className="truncate">{label}</span>
     </button>
   )
 }
+
 
 /* ---------- Role select (compact) ---------- */
 
