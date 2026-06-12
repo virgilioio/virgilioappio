@@ -1598,7 +1598,7 @@ const stageHasAutomation = useMemo(() => {
                           <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
                         <TabsContent value="offer-approvals" className="mt-4">
-                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} />
                         </TabsContent>
                       </Tabs>
                     )}
