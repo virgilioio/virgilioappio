@@ -1,58 +1,67 @@
-## The leak
+## Goal
 
-In `src/App.tsx`, three routes sit **outside** `BillingGuard` so users can always reach billing to recover:
+Give platform admins two distinct tools on a locked/past_due/canceled tenant:
 
-```
-/billing                                  → <Settings />
-/settings                                 → <Settings />
-/settings/platform/saas-customers/:id     → <SaaSCustomerDetail />
-```
+1. **Extend Trial** (already exists) — keeps the tenant on a real trial.
+2. **Grant Access** (new) — temporary unlock for sales / goodwill that is **not** a trial and **auto-reverts to locked** when the end date passes.
 
-That intent was right for `payment_pending`/`subscription_ended`, but when a tenant is **locked** the user can still:
+Both can be used; they don't replace each other.
 
-- open every Settings tab (Members, Workspace, Integrations, Automations, etc.)
-- send member invites and edit workspace data
-- land on `/billing` after pressing **Back** in Stripe Checkout and bypass the LockedScreen entirely
+## Behavior
 
-That's exactly what you hit.
+- Visible only when `billing_status` is `locked`, `past_due`, or `canceled`. Hidden otherwise.
+- Admin picks an end date (required) and types a reason (required).
+- Sets `billing_status = 'active'` so `BillingGuard` / `SettingsLockGuard` let the tenant back in, but stores the grant separately so we know it's temporary and non-billable.
+- A scheduled job runs hourly; any expired grant flips `billing_status` back to `'locked'` (the same wall they hit before).
+- Action is fully audited and surfaced on the customer profile.
 
-## Fix
+## Data model
 
-Treat the locked state as a true takeover: when `billing_status === 'locked'`, `/settings` and `/billing` render the `LockedScreen` too — same component, same Subscribe / Update payment / Sign out CTAs already wired up. Stripe's Back button keeps returning to `/billing`, the user just lands back on the LockedScreen instead of a usable Settings shell.
+New table `public.tenant_access_grants` (one active row per tenant at a time, history preserved):
 
-`payment_pending` and `subscription_ended` keep their current `/billing` access, since the user needs to reach the billing portal to fix the card or resubscribe — and those statuses already trigger LockedScreen via `BillingGuard` on all other routes.
+- `tenant_id`, `granted_by` (user id), `reason` (text, required), `starts_at`, `ends_at`, `revoked_at`, `expired_at`, `created_at`.
+- Index on `(tenant_id, ends_at)` for the expiry sweep.
+- RLS: platform admins only (SELECT/INSERT/UPDATE via `has_role` / `members.user_type = 'platform_admin'`); `service_role` ALL.
+- Full GRANTs per project conventions.
 
-Platform admins, members (non-admin), and the SaaS customer detail page (admin-only) stay unaffected.
+No new column on `tenant_subscriptions` — we read the latest non-revoked, non-expired grant for "currently granted" state.
 
-### Implementation
+## Edge function
 
-1. **New tiny wrapper** `src/components/auth/SettingsLockGuard.tsx`
-   - Reuses `useAuth` + `useBillingStatus` (same pattern as `BillingGuard`).
-   - Bypass for `userType === 'platform_admin'` and `memberRole === 'member'`.
-   - If `billing_status === 'locked'` → `return <LockedScreen status="locked" />`.
-   - Otherwise `<Outlet />` (so `/billing` and `/settings` keep working for trialing / grace / past_due / canceled).
+Extend `supabase/functions/admin-manage-subscription/index.ts`:
 
-2. **`src/App.tsx`** — wrap the three "always accessible" routes:
-   ```tsx
-   <Route element={<SettingsLockGuard />}>
-     <Route path="/billing" element={<Settings />} />
-     <Route path="/settings" element={<Settings />} />
-     <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
-   </Route>
-   ```
-   No other route changes. `/trial-activation`, `/account-setup`, `/mail/oauth/callback` stay untouched.
+- New action `grant_access` — params: `endDate` (ISO), `reason` (string, min 5 chars). Validates tenant is currently locked/past_due/canceled. Inserts grant row, sets `billing_status='active'`, clears `suspended_at/suspended_reason`. Audits as `tenant_access_granted`.
+- New action `revoke_access` — ends the active grant immediately, flips status back to `'locked'`. Audits as `tenant_access_revoked`.
 
-### What this does NOT change
+New edge function `expire-access-grants` (scheduled via `supabase/config.toml` cron, hourly):
 
-- No backend changes, no RLS edits, no new endpoints.
-- `LockedScreen` itself is untouched (logo, copy, CTAs all stay).
-- `BillingGuard` behavior on app routes is unchanged.
-- Members (Hiring Managers) still have their existing scoped access.
-- Stripe Checkout `return_url` doesn't need to change — `/billing` just becomes a locked surface for locked tenants.
+- Selects grants where `ends_at <= now()` AND `revoked_at IS NULL` AND `expired_at IS NULL`.
+- For each: sets `expired_at = now()`, updates `tenant_subscriptions.billing_status = 'locked'`, writes audit row `tenant_access_grant_expired`.
+- Idempotent — safe to re-run.
 
-### Verification
+## Frontend
 
-- Locked tenant → visit `/billing`, `/settings`, `/settings/members`, `/settings/workspace` → all render LockedScreen.
-- Press Back in Stripe Checkout → land on `/billing` → LockedScreen (not the Settings shell).
-- `payment_pending` tenant → `/billing` still opens Settings so they can launch the billing portal.
-- Platform admin impersonating / browsing → unaffected, can still open the SaaS customer detail page.
+`src/components/saas/QuickActionsPanel.tsx`:
+
+- When status is locked/past_due/canceled, add **Grant Access** button next to Activate / Restore. Use neutral styling (not green, not red).
+- When an active grant exists, swap it for **Revoke Access** + show "Granted until {date}" caption.
+
+New `src/components/settings/GrantAccessDialog.tsx`:
+
+- DatePickerVirgilio (min = tomorrow, default = today + 14 days), required reason textarea, plain `<Button>` submit per the form standard. Helper text: "The tenant regains access until this date. It will revert to locked automatically — this is not a trial."
+
+New hooks in `src/hooks/useSaaSAdminActions.ts`: `useGrantAccess`, `useRevokeAccess` — same shape as `useExtendTrial` / `useSuspendOrganization`.
+
+Surface the active grant on the SaaS customer profile (digest / Health signals area) — a small badge "Access granted until {date} · {reason}" with revoke action — using existing card chrome (no new visuals).
+
+## Out of scope
+
+- No email notification to the tenant when the grant expires (can be added later).
+- No "extend grant" path — admin revokes and re-grants if they need a new date.
+- No change to Stripe / billing — grants are free, internal-only.
+
+## Technical notes
+
+- Cron registration goes in `supabase/config.toml` under `[functions.expire-access-grants]` with a schedule expression (e.g. `0 * * * *`).
+- Grant table uses a `BEFORE INSERT` SECURITY DEFINER trigger to revoke any existing active grant for the same tenant (one active at a time).
+- All status mutations go through the edge function — never directly from the client — so audit logging stays consistent.
