@@ -22,6 +22,7 @@ interface SettingsNavSection {
   label?: string
   show: boolean
   items: SettingsNavItem[]
+  groupBadge?: React.ReactNode
 }
 
 interface SettingsSidebarProps {
