@@ -40,13 +40,11 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   }, [open, initialQuery])
 
   const handleResultClick = (result: SearchResult) => {
+    onOpenChange(false)
     if (result.type === 'candidate') {
-      setSelectedCandidateId(result.id)
-      setSheetOpen(true)
-      onOpenChange(false)
+      navigate(`/candidates/${result.id}`)
     } else {
       navigate(result.route)
-      onOpenChange(false)
     }
   }
 
