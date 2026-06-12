@@ -66,8 +66,11 @@ import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 import { RejectionDialog } from './RejectionDialog'
 import { StatusBanner } from './status/StatusBanner'
+import { OfferBannerSmart } from './status/OfferBannerSmart'
+import { HiredBannerSmart } from './status/HiredBannerSmart'
 import { RejectionDetailsTab } from './status/RejectionDetailsTab'
 import { OnboardingTab } from './status/OnboardingTab'
+import { HireSummaryCard, TimeToHireCard } from './status/HireSummaryCard'
 import { formatMovedHere } from './statusBannerUtils'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
@@ -1181,34 +1184,24 @@ const stageHasAutomation = useMemo(() => {
                           }}
                         />
                       </section>
-                    ) : associationStatus === 'offer' ? (
-                      <StatusBanner
-                        tone="offer"
-                        icon={Hourglass}
-                        eyebrow="Offer stage"
-                        meta={offerDetails?.offeredAt ? `Moved here ${formatMovedHere(offerDetails.offeredAt)}` : undefined}
-                        title="Ready to send an offer"
-                        sub="The team has aligned. Build the offer once and we'll route approvals automatically."
-                        actions={
-                          <Button
-                            variant="secondary"
-                            size="md"
-                            icon={Plus}
-                            onClick={() => setOfferFormOpen(true)}
-                            style={{ backgroundColor: 'rgba(255,252,249,0.12)', color: '#fffcf9', border: '1px solid rgba(255,252,249,0.22)' }}
-                          >
-                            Create offer
-                          </Button>
-                        }
+                    ) : associationStatus === 'offer' && candidateId ? (
+                      <OfferBannerSmart
+                        candidateId={candidateId}
+                        jobId={jobId}
+                        candidateFirstName={candidate?.first_name}
+                        offeredAt={offerDetails?.offeredAt || null}
+                        onCreateOffer={() => setOfferFormOpen(true)}
+                        onMarkHired={() => handleSetStatus('hired')}
                       />
-                    ) : associationStatus === 'hired' ? (
-                      <StatusBanner
-                        tone="hired"
-                        icon={PartyPopper}
-                        eyebrow="Hired"
-                        meta={hiredDetails?.hiredAt ? `Accepted ${formatMovedHere(hiredDetails.hiredAt)} ago` : undefined}
-                        title={<><strong className="font-semibold">{(candidate?.first_name) || 'Candidate'}</strong> is hired</>}
-                        sub={<><strong className="font-semibold">{job?.title || 'Position'}</strong>{hiredDetails?.hiredByName && ` · hired by ${hiredDetails.hiredByName}`}</>}
+                    ) : associationStatus === 'hired' && candidateId ? (
+                      <HiredBannerSmart
+                        applicationId={associationId}
+                        candidateId={candidateId}
+                        jobId={jobId}
+                        candidateFirstName={candidate?.first_name}
+                        hiredAt={hiredDetails?.hiredAt || null}
+                        jobTitle={job?.title}
+                        onOpenOnboarding={() => setActiveTab('onboarding')}
                       />
                     ) : associationStatus === 'rejected' && rejectionDetails ? (
                       <StatusBanner
@@ -1655,6 +1648,16 @@ const stageHasAutomation = useMemo(() => {
                         openTo={(candidate as any)?.location || null}
                         workAuth={(candidate as any)?.work_authorization || null}
                       />
+
+                      {associationStatus === 'hired' && candidateId && (
+                        <>
+                          <HireSummaryCard candidateId={candidateId} jobId={jobId} />
+                          <TimeToHireCard
+                            appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                            hiredAt={hiredDetails?.hiredAt || null}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
