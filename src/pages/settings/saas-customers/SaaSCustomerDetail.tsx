@@ -696,8 +696,8 @@ export function SaaSCustomerDetail() {
 // ─────────────────────────────────────────────────────────────────
 function OverviewTab({
   customer, health, sub, ownerName, ownerEmail, isTrialing,
-  firstGroupKey, groupedFeed,
-  onExtend, onGrant, onChange, onSuspend, onSwitchActivity,
+  firstGroupKey, groupedFeed, activeGrant,
+  onExtend, onGrant, onChange, onSuspend, onGrantAccess, onRevokeAccess, onSwitchActivity,
 }: any) {
   const onboarding = useSaaSCustomerOnboarding(customer.tenant_id)
   const queryClient = useQueryClient()
