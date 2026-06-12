@@ -43,7 +43,7 @@ export function useSetupProgress() {
   const { members = [] } = useMembers()
   const { settings: careers } = useCareersPageSettings()
   const { config: bookingConfig } = useBookingConfig()
-  const { eventTypes = [] } = useBookingEventTypes()
+  const { eventTypes = [] } = useBookingEventTypes((bookingConfig as any)?.id)
   const { userType, organizationId } = useAuth()
   const permissions = usePermissions()
 
