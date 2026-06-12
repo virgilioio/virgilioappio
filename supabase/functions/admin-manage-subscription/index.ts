@@ -316,6 +316,7 @@ Deno.serve(async (req) => {
     }
 
     // Perform the update
+    console.log('[update] applying tenant_subscriptions update', { action, updateData })
     const { data: updatedSub, error: updateError } = await serviceClient
       .from('tenant_subscriptions')
       .update(updateData)
@@ -324,9 +325,20 @@ Deno.serve(async (req) => {
       .single()
 
     if (updateError) {
-      console.error('Subscription update error:', updateError)
+      console.error('[update] subscription update failed', {
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        code: updateError.code,
+        updateData,
+      })
       return new Response(
-        JSON.stringify({ error: 'Failed to update subscription', details: updateError.message }),
+        JSON.stringify({
+          error: `Could not update the subscription (${action}).`,
+          details: updateError.message,
+          hint: updateError.hint,
+          code: updateError.code,
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
