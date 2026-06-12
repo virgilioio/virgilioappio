@@ -94,8 +94,6 @@ export default function Settings() {
     setMobileOpen(false)
   }
 
-  const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
-
   const renderContent = () => {
     switch (currentTab) {
       case 'setup':
