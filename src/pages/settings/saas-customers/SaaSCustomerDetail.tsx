@@ -513,12 +513,7 @@ export function SaaSCustomerDetail() {
 
         {/* Metric strip */}
         <MetricStrip cells={[
-          {
-            icon: passingCount === totalSignals ? CheckCircle2 : AlertTriangle,
-            iconBg: passingCount === totalSignals ? '#D1FAE5' : '#FEF3C7',
-            iconColor: passingCount === totalSignals ? '#0B7A57' : '#B45309',
-            label: 'Health signals', value: passingCount, suffix: `of ${totalSignals}`,
-          },
+          moneyCell,
           trialOrRenewal,
           {
             icon: Briefcase, iconBg: '#EDE4FF', iconColor: '#6F3FF5',
@@ -537,6 +532,7 @@ export function SaaSCustomerDetail() {
             muted: (customer.members_active_count ?? 0) === 0,
           },
         ]} />
+
 
         {/* Tabs */}
         <div className="flex items-center" style={{ gap: 6, margin: '14px 0' }}>
