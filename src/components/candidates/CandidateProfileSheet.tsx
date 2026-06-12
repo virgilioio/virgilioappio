@@ -1181,34 +1181,24 @@ const stageHasAutomation = useMemo(() => {
                           }}
                         />
                       </section>
-                    ) : associationStatus === 'offer' ? (
-                      <StatusBanner
-                        tone="offer"
-                        icon={Hourglass}
-                        eyebrow="Offer stage"
-                        meta={offerDetails?.offeredAt ? `Moved here ${formatMovedHere(offerDetails.offeredAt)}` : undefined}
-                        title="Ready to send an offer"
-                        sub="The team has aligned. Build the offer once and we'll route approvals automatically."
-                        actions={
-                          <Button
-                            variant="secondary"
-                            size="md"
-                            icon={Plus}
-                            onClick={() => setOfferFormOpen(true)}
-                            style={{ backgroundColor: 'rgba(255,252,249,0.12)', color: '#fffcf9', border: '1px solid rgba(255,252,249,0.22)' }}
-                          >
-                            Create offer
-                          </Button>
-                        }
+                    ) : associationStatus === 'offer' && candidateId ? (
+                      <OfferBannerSmart
+                        candidateId={candidateId}
+                        jobId={jobId}
+                        candidateFirstName={candidate?.first_name}
+                        offeredAt={offerDetails?.offeredAt || null}
+                        onCreateOffer={() => setOfferFormOpen(true)}
+                        onMarkHired={handleMoveToHired}
                       />
-                    ) : associationStatus === 'hired' ? (
-                      <StatusBanner
-                        tone="hired"
-                        icon={PartyPopper}
-                        eyebrow="Hired"
-                        meta={hiredDetails?.hiredAt ? `Accepted ${formatMovedHere(hiredDetails.hiredAt)} ago` : undefined}
-                        title={<><strong className="font-semibold">{(candidate?.first_name) || 'Candidate'}</strong> is hired</>}
-                        sub={<><strong className="font-semibold">{job?.title || 'Position'}</strong>{hiredDetails?.hiredByName && ` · hired by ${hiredDetails.hiredByName}`}</>}
+                    ) : associationStatus === 'hired' && candidateId ? (
+                      <HiredBannerSmart
+                        applicationId={associationId}
+                        candidateId={candidateId}
+                        jobId={jobId}
+                        candidateFirstName={candidate?.first_name}
+                        hiredAt={hiredDetails?.hiredAt || null}
+                        jobTitle={job?.title}
+                        onOpenOnboarding={() => setActiveTab('onboarding')}
                       />
                     ) : associationStatus === 'rejected' && rejectionDetails ? (
                       <StatusBanner
