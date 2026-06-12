@@ -1672,6 +1672,14 @@ const stageHasAutomation = useMemo(() => {
                         workAuth={(candidate as any)?.work_authorization || null}
                       />
 
+                      {associationStatus === 'offer' && candidateId && (
+                        <OfferTimelineCard
+                          candidateId={candidateId}
+                          jobId={jobId}
+                          offeredAt={offerDetails?.offeredAt || null}
+                        />
+                      )}
+
                       {associationStatus === 'hired' && candidateId && (
                         <>
                           <HireSummaryCard candidateId={candidateId} jobId={jobId} />
