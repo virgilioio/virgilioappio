@@ -1191,7 +1191,7 @@ const stageHasAutomation = useMemo(() => {
                         candidateFirstName={candidate?.first_name}
                         offeredAt={offerDetails?.offeredAt || null}
                         onCreateOffer={() => setOfferFormOpen(true)}
-                        onMarkHired={handleMoveToHired}
+                        onMarkHired={() => handleSetStatus('hired')}
                       />
                     ) : associationStatus === 'hired' && candidateId ? (
                       <HiredBannerSmart
