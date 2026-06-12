@@ -16,6 +16,8 @@ export interface OfferLetter {
   created_by?: string
   created_at: string
   updated_at: string
+  sent_at?: string | null
+  expires_at?: string | null
 }
 
 export function useOfferLetters(candidateId?: string) {

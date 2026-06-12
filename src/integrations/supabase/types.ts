@@ -3982,11 +3982,13 @@ export type Database = {
           content: string | null
           created_at: string
           created_by: string | null
+          expires_at: string | null
           field_values: Json | null
           form_id: string | null
           id: string
           job_id: string
           organization_id: string
+          sent_at: string | null
           status: string
           template_id: string | null
           title: string
@@ -3997,11 +3999,13 @@ export type Database = {
           content?: string | null
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           field_values?: Json | null
           form_id?: string | null
           id?: string
           job_id: string
           organization_id: string
+          sent_at?: string | null
           status?: string
           template_id?: string | null
           title: string
@@ -4012,11 +4016,13 @@ export type Database = {
           content?: string | null
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           field_values?: Json | null
           form_id?: string | null
           id?: string
           job_id?: string
           organization_id?: string
+          sent_at?: string | null
           status?: string
           template_id?: string | null
           title?: string
