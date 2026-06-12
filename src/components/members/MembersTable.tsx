@@ -172,12 +172,12 @@ export function MembersTable({
               >
                 <Avatar className="h-7 w-7 shrink-0">
                   <AvatarImage src={m.user_avatar_url || undefined} />
-                  <AvatarFallback className="text-[10.5px] font-inter font-semibold bg-[#F1F0EC] text-[#5A6072]">
+                  <AvatarFallback className="text-[10.5px] font-inter font-medium bg-[#F1F0EC] text-[#5A6072]">
                     {getInitials(m)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="font-inter font-semibold text-[#1F2230] truncate" style={{ fontSize: 12.5, lineHeight: 1.3 }}>
+                  <div className="font-inter font-medium text-[#1F2230] truncate" style={{ fontSize: 12.5, lineHeight: 1.3 }}>
                     {displayName}
                   </div>
                   {sub && (
