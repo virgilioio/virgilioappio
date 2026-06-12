@@ -1648,6 +1648,16 @@ const stageHasAutomation = useMemo(() => {
                         openTo={(candidate as any)?.location || null}
                         workAuth={(candidate as any)?.work_authorization || null}
                       />
+
+                      {associationStatus === 'hired' && candidateId && (
+                        <>
+                          <HireSummaryCard candidateId={candidateId} jobId={jobId} />
+                          <TimeToHireCard
+                            appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                            hiredAt={hiredDetails?.hiredAt || null}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
