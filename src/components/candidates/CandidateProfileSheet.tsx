@@ -91,8 +91,18 @@ import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileA
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
+import {
+  JobOverviewSidebar,
+  ResumeSidebar,
+  OverviewSidebar,
+  ScorecardsSidebar,
+  ActivitySidebar,
+  EmailsSidebar,
+  CommentsSidebar,
+} from '@/components/candidates/profile/tabs/SidebarRouter'
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
+import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 
 interface StageScorecardProps {
   stageInstanceId: string;
