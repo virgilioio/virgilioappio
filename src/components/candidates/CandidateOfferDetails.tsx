@@ -354,7 +354,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
 
           const currencyFields = sorted.filter(f => f.field_type === 'salary')
           const longFields = sorted.filter(f =>
-            f.field_type === 'textarea' || f.field_type === 'rich_text' ||
+            f.field_type === 'textarea' ||
             (typeof fieldValues[f.field_name] === 'string' && (fieldValues[f.field_name] as string).length > 140)
           )
           const shortFields = sorted.filter(f => !currencyFields.includes(f) && !longFields.includes(f))
