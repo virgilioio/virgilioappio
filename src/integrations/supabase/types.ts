@@ -4253,6 +4253,63 @@ export type Database = {
           },
         ]
       }
+      onboarding_tasks: {
+        Row: {
+          application_id: string
+          created_at: string
+          done: boolean
+          due_date: string | null
+          id: string
+          label: string
+          owner_label: string | null
+          owner_user_id: string | null
+          position: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          label: string
+          owner_label?: string | null
+          owner_user_id?: string | null
+          position?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          label?: string
+          owner_label?: string | null
+          owner_user_id?: string | null
+          position?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_tasks_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           billing_id: string | null
