@@ -1,15 +1,12 @@
-
 import { useState } from 'react'
-import { InlineEmpty } from '@/components/ui/empty-state'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useApplicationFields, ApplicationField } from '@/hooks/useApplicationFields'
 import { ApplicationFieldForm } from './ApplicationFieldForm'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Copy, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { SpecCard } from './shared/SpecCard'
+import { SpecRow, SpecEmpty, NOIR_BTN, SEC_BTN } from './shared/SpecRow'
+import { SpecChip } from './shared/SpecChip'
 
 interface ApplicationFieldsManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -17,196 +14,139 @@ interface ApplicationFieldsManagerProps {
 
 export function ApplicationFieldsManager({ context = 'organization' }: ApplicationFieldsManagerProps) {
   const { fields, isLoading, deleteField, refetch, copyPlatformTemplate } = useApplicationFields(context)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingField, setEditingField] = useState<ApplicationField | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editing, setEditing] = useState<ApplicationField | null>(null)
+  const [toDelete, setToDelete] = useState<ApplicationField | null>(null)
 
-  const platformFields = fields?.filter(f => f.source === 'platform')
-  const tenantFields = fields?.filter(f => f.source === 'tenant')
-
-  const handleEdit = (field: ApplicationField) => setEditingField(field)
-  const handleCloseEdit = () => setEditingField(null)
-
-  const handleCopy = async (fieldId: string) => {
-    await copyPlatformTemplate(fieldId)
-  }
+  const platformFields = (fields || []).filter(f => f.source === 'platform')
+  const tenantFields = (fields || []).filter(f => f.source === 'tenant')
+  const listFields = context === 'organization' ? tenantFields : fields || []
 
   return (
-    <>
-      {context === 'organization' && platformFields.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Platform Library</CardTitle>
-            <CardDescription>
-              Default fields provided by the platform. Copy to your library to customize.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : (
-              <div className="rounded-md border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Label</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Default</TableHead>
-                      <TableHead>Order</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {platformFields.map((f) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="font-medium">{f.field_label}</TableCell>
-                        <TableCell>{f.field_name}</TableCell>
-                        <TableCell>
-                          <Badge variant="category" className="capitalize text-xs">{f.field_type}</Badge>
-                        </TableCell>
-                        <TableCell>{f.is_default ? 'Yes' : 'No'}</TableCell>
-                        <TableCell>{f.display_order}</TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleCopy(f.id)}
-                          >
-                            <Plus className="h-4 w-4 mr-1" /> Copy to My Library
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+    <div className="max-w-[860px]">
+      {context === 'organization' && (
+        <SpecCard
+          title="Platform fields"
+          description="Core fields (name, email, phone, resume) are always included. These optional fields can be copied and customized."
+        >
+          {isLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
+          ) : platformFields.length === 0 ? (
+            <SpecEmpty title="No optional platform fields available." />
+          ) : (
+            platformFields.map((f, i) => (
+              <SpecRow key={f.id} last={i === platformFields.length - 1}>
+                <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                  <span className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>
+                    {f.field_label}
+                  </span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#8B8F9E' }}>
+                    {f.field_name}
+                  </span>
+                </div>
+                <SpecChip tone="gray">{f.field_type}</SpecChip>
+                <button
+                  type="button"
+                  className={SEC_BTN}
+                  style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}
+                  onClick={() => copyPlatformTemplate(f.id)}
+                >
+                  <Copy size={11} /> Copy
+                </button>
+              </SpecRow>
+            ))
+          )}
+        </SpecCard>
       )}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>
-              {context === 'organization' ? 'My Custom Fields Library' : 'Custom Application Fields Library'}
-            </CardTitle>
-            <CardDescription>
-              {context === 'organization'
-                ? 'Custom fields for your organization. Core fields (name, email, phone, resume, etc.) are included automatically.'
-                : 'Create and manage additional application fields for your job postings. Core fields (name, email, phone, resume, etc.) are included automatically.'
-              }
-            </CardDescription>
-          </div>
-          <Button onClick={() => setIsCreateOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Add Custom Field
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
-          ) : (context === 'organization' ? tenantFields : fields).length === 0 ? (
-            <InlineEmpty
-              text="No custom application fields yet. Core fields (name, email, phone, resume) are always included."
-              action="Add field"
-              onAction={() => setIsCreateOpen(true)}
-            />
-          ) : (
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Default</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(context === 'organization' ? tenantFields : fields).map((f) => (
-                    <TableRow key={f.id}>
-                      <TableCell className="font-medium">{f.field_label}</TableCell>
-                      <TableCell>{f.field_name}</TableCell>
-                      <TableCell>
-                        <Badge variant="category" className="capitalize text-xs">{f.field_type}</Badge>
-                      </TableCell>
-                      <TableCell>{f.is_default ? 'Yes' : 'No'}</TableCell>
-                      <TableCell>{f.display_order}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleEdit(f)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Field</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{f.field_label}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={async () => {
-                                    await deleteField(f.id)
-                                    await refetch()
-                                  }}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
+      <SpecCard
+        title="My custom fields"
+        description="Organization-specific questions on every application."
+        action={
+          <button
+            type="button"
+            className={NOIR_BTN}
+            style={{ height: 30, padding: '0 12px', fontSize: 12 }}
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus size={13} /> Add custom field
+          </button>
+        }
+      >
+        {isLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
+        ) : listFields.length === 0 ? (
+          <SpecEmpty title="No custom fields yet" body="Add one to start collecting more from applicants." />
+        ) : (
+          listFields.map((f, i) => (
+            <SpecRow key={f.id} last={i === listFields.length - 1}>
+              <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                <span className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>
+                  {f.field_label}
+                </span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#8B8F9E' }}>
+                  {f.field_name}
+                </span>
+              </div>
+              <SpecChip tone="gray">{f.field_type}</SpecChip>
+              <button
+                type="button"
+                className="text-[#8B8F9E] hover:text-[#0d0d09] transition-colors"
+                onClick={() => setEditing(f)}
+                aria-label="Edit"
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                type="button"
+                className="text-[#8B8F9E] hover:text-[#B91C1C] transition-colors"
+                onClick={() => setToDelete(f)}
+                aria-label="Delete"
+              >
+                <Trash2 size={13} />
+              </button>
+            </SpecRow>
+          ))
+        )}
+      </SpecCard>
 
-        {/* Create Dialog */}
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Field</DialogTitle>
-              <DialogDescription>Add a new field to the application fields library</DialogDescription>
-            </DialogHeader>
-            <ApplicationFieldForm
-              onClose={() => setIsCreateOpen(false)}
-              onSaved={refetch}
-            />
-          </DialogContent>
-        </Dialog>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create new field</DialogTitle>
+            <DialogDescription>Add a new field to the application form</DialogDescription>
+          </DialogHeader>
+          <ApplicationFieldForm onClose={() => setCreateOpen(false)} onSaved={refetch} />
+        </DialogContent>
+      </Dialog>
 
-        {/* Edit Dialog */}
-        <Dialog open={!!editingField} onOpenChange={(open) => !open && handleCloseEdit()}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Field</DialogTitle>
-              <DialogDescription>Update the field details</DialogDescription>
-            </DialogHeader>
-            {editingField && (
-              <ApplicationFieldForm field={editingField} onClose={handleCloseEdit} onSaved={refetch} />
-            )}
-          </DialogContent>
-        </Dialog>
-      </Card>
-    </>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit field</DialogTitle>
+            <DialogDescription>Update the field details</DialogDescription>
+          </DialogHeader>
+          {editing && <ApplicationFieldForm field={editing} onClose={() => setEditing(null)} onSaved={refetch} />}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete field</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{toDelete?.field_label}"? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => { if (toDelete) { await deleteField(toDelete.id); await refetch(); setToDelete(null) } }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }
