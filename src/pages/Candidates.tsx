@@ -231,8 +231,8 @@ function CandidatesInner() {
   const selectAllFiltered = () => setSelectedIds(finalAfterSmart.map(c => c.id))
 
   // Sheets & dialogs
-  const [profileId, setProfileId] = useState<string | null>(null)
-  const [profileOpen, setProfileOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
