@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { useGlobalSearch, type SearchResult } from '@/hooks/useGlobalSearch'
 import { SearchResultRow } from './SearchResultRow'
 import { SearchResultsSkeleton } from './SearchResultsSkeleton'
-import { IndependentCandidateProfileSheet } from '@/components/candidates/IndependentCandidateProfileSheet'
+
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 
