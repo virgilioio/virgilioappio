@@ -1212,6 +1212,7 @@ const stageHasAutomation = useMemo(() => {
                         candidateFirstName={candidate?.first_name}
                         offeredAt={offerDetails?.offeredAt || null}
                         onCreateOffer={() => setOfferFormOpen(true)}
+                        onSendReminder={handleSendOfferReminder}
                         onMarkHired={() => handleSetStatus('hired')}
                       />
                     ) : associationStatus === 'hired' && candidateId ? (
@@ -1223,6 +1224,7 @@ const stageHasAutomation = useMemo(() => {
                         hiredAt={hiredDetails?.hiredAt || null}
                         jobTitle={job?.title}
                         onOpenOnboarding={() => setActiveTab('onboarding')}
+                        onMarkReqClosed={handleMarkReqClosed}
                       />
                     ) : associationStatus === 'rejected' && rejectionDetails ? (
                       <StatusBanner
