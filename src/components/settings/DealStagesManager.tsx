@@ -1,59 +1,37 @@
 import { useEffect, useState } from 'react'
-import { InlineEmpty } from '@/components/ui/empty-state'
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragStartEvent,
-  DragOverlay,
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay,
 } from '@dnd-kit/core'
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Plus } from 'lucide-react'
 import { useDealStages, type DealStage, type DealStageType } from '@/hooks/useDealStages'
 import { DraggableDealStageItem } from './DraggableDealStageItem'
 
-
 export function DealStagesManager() {
-  const { data: stagesData = [], isLoading, createStage, updateStage, deleteStage, reorderStages } = useDealStages()
+  const {
+    data: stagesData = [], isLoading,
+    createStage, updateStage, deleteStage, reorderStages,
+  } = useDealStages()
 
   const [orderedStages, setOrderedStages] = useState<DealStage[]>([])
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<DealStage | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DealStage | null>(null)
 
-  useEffect(() => {
-    if (!hasUnsavedChanges) {
-      setOrderedStages(stagesData)
-    }
-  }, [stagesData, hasUnsavedChanges])
+  useEffect(() => { setOrderedStages(stagesData) }, [stagesData])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -66,18 +44,12 @@ export function DealStagesManager() {
     const { active, over } = e
     setActiveId(null)
     if (!over || active.id === over.id) return
-    setOrderedStages((items) => {
-      const oldIndex = items.findIndex((s) => s.id === active.id)
-      const newIndex = items.findIndex((s) => s.id === over.id)
-      if (oldIndex === -1 || newIndex === -1) return items
-      return arrayMove(items, oldIndex, newIndex)
-    })
-    setHasUnsavedChanges(true)
-  }
-
-  const handleSave = async () => {
-    await reorderStages.mutateAsync(orderedStages.map((s) => s.id))
-    setHasUnsavedChanges(false)
+    const oldIndex = orderedStages.findIndex((s) => s.id === active.id)
+    const newIndex = orderedStages.findIndex((s) => s.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const next = arrayMove(orderedStages, oldIndex, newIndex)
+    setOrderedStages(next)
+    reorderStages.mutate(next.map((s) => s.id))
   }
 
   const handleConfirmDelete = async () => {
@@ -86,80 +58,91 @@ export function DealStagesManager() {
     setDeleteTarget(null)
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-20 w-full" />
-      </div>
-    )
-  }
-
   const activeStage = activeId ? orderedStages.find((s) => s.id === activeId) : null
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <Button size="sm" icon={Plus} onClick={() => setCreating(true)}>
-          Add stage
-        </Button>
-      </div>
-
-
-      <div>
-        <h3 className="text-lg font-medium text-text-primary mb-2">Pipeline Stages</h3>
-        <p className="text-sm text-text-secondary mb-4">
-          Customize the stages used by the CRM Deals kanban. Drag to reorder, edit names, or mark a stage as Won or Lost.
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <h4 className="text-base font-medium text-text-primary mb-3">Current Pipeline Stages</h4>
-          {orderedStages.length === 0 ? (
-            <InlineEmpty text="No stages in the pipeline yet." />
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
+    <div>
+      <section
+        className="bg-white rounded-[12px] overflow-hidden mb-[14px]"
+        style={{ border: '1px solid #E7E8EE' }}
+      >
+        <header
+          className="flex items-start justify-between gap-4"
+          style={{ padding: '14px 18px', borderBottom: '1px solid #F1F0EC' }}
+        >
+          <div className="min-w-0">
+            <h3
+              className="font-poppins font-semibold text-[#0d0d09] m-0"
+              style={{ fontSize: 13.5, letterSpacing: '-0.01em', lineHeight: 1.2 }}
             >
-              <SortableContext items={orderedStages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-                  {orderedStages.map((stage) => (
-                    <DraggableDealStageItem
-                      key={stage.id}
-                      stage={stage}
-                      onEdit={(s) => setEditing(s)}
-                      onRemove={(s) => setDeleteTarget(s)}
-                      isDragging={activeId === stage.id}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-                {activeStage && (
-                  <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
-                    <DraggableDealStageItem stage={activeStage} onEdit={() => {}} onRemove={() => {}} />
-                  </div>
-                )}
-              </DragOverlay>
-            </DndContext>
-          )}
-        </div>
-      </div>
-
-      <div className="pt-4 border-t border-border/50">
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-text-secondary">Total stages: {orderedStages.length}</p>
-          <Button disabled={!hasUnsavedChanges || reorderStages.isPending} onClick={handleSave}>
-            {reorderStages.isPending ? 'Saving...' : 'Save Pipeline'}
+              Deal stages
+            </h3>
+            <p
+              className="font-inter text-[#8B8F9E] m-0"
+              style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 3 }}
+            >
+              The columns of your CRM Deals kanban. Drag to reorder; mark a stage as Won or Lost.
+            </p>
+          </div>
+          <Button size="sm" icon={Plus} onClick={() => setCreating(true)}>
+            Add stage
           </Button>
-        </div>
-      </div>
+        </header>
+
+        {isLoading ? (
+          <div style={{ padding: '18px', fontSize: 12, color: '#8B8F9E' }} className="font-inter">
+            Loading…
+          </div>
+        ) : orderedStages.length === 0 ? (
+          <div
+            className="font-inter text-center"
+            style={{ padding: '24px 18px', fontSize: 12, color: '#8B8F9E' }}
+          >
+            No stages yet — add the first stage of your pipeline.
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={orderedStages.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <div>
+                {orderedStages.map((stage, idx) => (
+                  <DraggableDealStageItem
+                    key={stage.id}
+                    stage={stage}
+                    onEdit={(s) => setEditing(s)}
+                    onRemove={(s) => setDeleteTarget(s)}
+                    isDragging={activeId === stage.id}
+                    isLast={idx === orderedStages.length - 1}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+            <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+              {activeStage && (
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E7E8EE',
+                    borderRadius: 8,
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.10)',
+                  }}
+                >
+                  <DraggableDealStageItem
+                    stage={activeStage}
+                    onEdit={() => {}}
+                    onRemove={() => {}}
+                    isLast
+                  />
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+        )}
+      </section>
 
       <StageFormSheet
         open={creating}
@@ -262,7 +245,7 @@ function StageFormSheet({ open, onOpenChange, stage, onSubmit }: StageFormSheetP
             </Select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button
