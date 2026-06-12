@@ -207,6 +207,35 @@ interface RevokeAccessParams {
   tenantId: string
 }
 
+async function readFunctionsErrorBody(error: any): Promise<{ message: string; details?: string; hint?: string; code?: string } | null> {
+  try {
+    const res: Response | undefined = error?.context
+    if (res && typeof res.json === 'function') {
+      const body = await res.clone().json()
+      return {
+        message: body?.error || body?.message || 'Edge function error',
+        details: body?.details,
+        hint: body?.hint,
+        code: body?.code,
+      }
+    }
+  } catch (_) {
+    // fall through
+  }
+  return null
+}
+
+function describeError(parsed: { message: string; details?: string; hint?: string; code?: string } | null, fallback: unknown): string {
+  if (parsed) {
+    const parts = [parsed.message]
+    if (parsed.details && parsed.details !== parsed.message) parts.push(parsed.details)
+    if (parsed.hint) parts.push(`Hint: ${parsed.hint}`)
+    if (parsed.code) parts.push(`(${parsed.code})`)
+    return parts.join(' — ')
+  }
+  return extractErrorMessage(fallback)
+}
+
 export function useGrantAccess() {
   const queryClient = useQueryClient()
 
@@ -220,7 +249,12 @@ export function useGrantAccess() {
             params: { endDate: endDate.toISOString(), reason },
           },
         })
-        if (error) throw error
+        if (error) {
+          const parsed = await readFunctionsErrorBody(error)
+          const detailed = describeError(parsed, error)
+          log.error('grant_access edge function failed:', { parsed, raw: error })
+          throw new Error(detailed)
+        }
         return data.data
       })
     },
