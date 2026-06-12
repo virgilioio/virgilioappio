@@ -39,7 +39,7 @@ function MainPill({ active, onClick, children }: { active: boolean; onClick: () 
   )
 }
 
-function NoirBtn({ icon: Icon, children, onClick }: { icon?: React.ComponentType<{ size?: number }>; children: React.ReactNode; onClick?: () => void }) {
+function NoirBtn({ icon: Icon, children, onClick }: { icon?: LucideIcon; children: React.ReactNode; onClick?: () => void }) {
   return (
     <button type="button" onClick={onClick} className={NOIR_BTN} style={{ height: 30, padding: '0 12px', fontSize: 11.5, fontWeight: 600 }}>
       {Icon && <Icon size={13} />} {children}
