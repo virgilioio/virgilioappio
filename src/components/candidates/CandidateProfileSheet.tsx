@@ -1128,6 +1128,7 @@ const stageHasAutomation = useMemo(() => {
                   <>
                     <ProfileHeroCard
                       candidateName={candidate.candidate_name}
+                      candidateFirstName={candidate.first_name || null}
                       candidateId={candidate.id}
                       jobId={jobId}
                       jobTitle={job?.title}
