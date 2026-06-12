@@ -2,7 +2,7 @@ import {
   Zap, User, Mail, Clock, Bell,
   Building2, Users, Folder, Plug, CreditCard,
   GitBranch, ListChecks, FileText, Workflow, Globe, Megaphone,
-  Handshake, Building, BarChart3, Settings as SettingsIcon, Briefcase, UsersIcon,
+  Handshake, Building, Gauge, Package,
 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
@@ -22,6 +22,7 @@ interface SettingsNavSection {
   label?: string
   show: boolean
   items: SettingsNavItem[]
+  groupBadge?: React.ReactNode
 }
 
 interface SettingsSidebarProps {
@@ -103,11 +104,19 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
       id: 'platform',
       label: 'PLATFORM',
       show: isPlatform,
+      groupBadge: (
+        <span
+          title="Visible to platform admins"
+          className="inline-flex items-center font-inter font-semibold rounded-full"
+          style={{ fontSize: '8.5px', padding: '1px 5px', background: '#F1F0EC', color: '#8B8F9E', letterSpacing: '0.06em' }}
+        >
+          ADMIN
+        </span>
+      ),
       items: [
-        { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
-        { id: 'platform-settings', label: 'App Personalization', icon: SettingsIcon, show: true },
-        { id: 'platform-job-settings', label: 'Job Settings', icon: Briefcase, show: true },
-        { id: 'platform-saas-customers', label: 'SaaS Customers', icon: UsersIcon, show: true },
+        { id: 'platform-dashboard', label: 'Dashboard', icon: Gauge, show: true },
+        { id: 'platform-job-defaults', label: 'Job defaults', icon: Package, show: true },
+        { id: 'platform-customers', label: 'SaaS customers', icon: Building2, show: true },
       ],
     },
   ]
@@ -124,10 +133,11 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
           <div key={section.id} className="space-y-0.5">
             {section.label && (
               <div
-                className="px-2.5 mb-1.5 font-inter font-semibold uppercase text-[#8B8F9E]"
+                className="px-2.5 mb-1.5 flex items-center gap-1.5 font-inter font-semibold uppercase text-[#8B8F9E]"
                 style={{ fontSize: '10px', letterSpacing: '0.08em' }}
               >
-                {section.label}
+                <span>{section.label}</span>
+                {section.groupBadge}
               </div>
             )}
             {section.items.map((item) => {

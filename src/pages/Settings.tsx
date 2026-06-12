@@ -4,13 +4,12 @@ import { Menu } from 'lucide-react'
 import { ProfileTab } from '@/components/settings/ProfileTab'
 import OrganizationTab from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
-import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
 import { DealStagesManager } from '@/components/settings/DealStagesManager'
 import { DepartmentsManager } from '@/components/settings/DepartmentsManager'
-import { PlatformJobSettingsManager } from '@/components/settings/PlatformJobSettingsManager'
-import { PlatformTab } from '@/components/settings/PlatformTab'
+import { PlatformDashboardV2 } from '@/components/settings/platform/PlatformDashboardV2'
+import { PlatformJobDefaults } from '@/components/settings/platform/PlatformJobDefaults'
+import { PlatformCustomers } from '@/components/settings/platform/PlatformCustomers'
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
-import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
 import { CustomersTab } from '@/components/settings/tabs/CustomersTab'
 import { Billing } from '@/pages/settings/Billing'
 import { JobStagesManager } from '@/components/settings/JobStagesManager'
@@ -36,8 +35,11 @@ import { scrollToHighlightedSection } from '@/utils/scrollToHighlight'
 const LEGACY_TAB_MAP: Record<string, string> = {
   'workspace-currency': 'organization',
   'workspace-job-settings': 'pipeline-stages',
-  'platform-saas-customers': 'customers',
   'workspace-deal-stages': 'workspace-deal-stages',
+  // Old Platform group → new Platform group
+  'platform-saas-customers': 'platform-customers',
+  'platform-job-settings': 'platform-job-defaults',
+  'platform-settings': 'platform-dashboard',
 }
 
 // Brand-new tabs that don't have content yet — render a small placeholder card.
@@ -133,13 +135,11 @@ export default function Settings() {
       case 'customers':
         return <CustomersTab />
       case 'platform-dashboard':
-        return <PlatformTab />
-      case 'platform-settings':
-        return <PlatformSettingsManager />
-      case 'platform-job-settings':
-        return <PlatformJobSettingsManager />
-      case 'platform-saas-customers':
-        return <SaaSCustomersList />
+        return <PlatformDashboardV2 />
+      case 'platform-job-defaults':
+        return <PlatformJobDefaults />
+      case 'platform-customers':
+        return <PlatformCustomers />
       default:
         if (currentTab.startsWith('integration-')) {
           return <IntegrationsTab initialConfigureId={currentTab.replace('integration-', '')} />
