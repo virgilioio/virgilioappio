@@ -583,25 +583,33 @@ export default function IndependentCandidateProfile() {
                   </ProfileCard>
                 )}
 
-                {activeTab === 'experience' && (
-                  <ProfileCard
-                    title="Experience"
-                    subtitle={`${workExperience.length} role${workExperience.length === 1 ? '' : 's'}${yearsExp != null ? ` · ${yearsExp}y total` : ''}`}
-                    action={<Button variant="secondary" size="sm" onClick={() => setIsFormOpen(true)}>Add role</Button>}
-                    bodyPadding="tight"
-                  >
-                    <CandidateWorkExperienceComponent experiences={workExperience} />
-                  </ProfileCard>
-                )}
+                {activeTab === 'experience' && (() => {
+                  const totalMonths = workExperience.reduce((sum, e) => {
+                    if (!e.start_date) return sum
+                    const s = new Date(e.start_date).getTime()
+                    const end = (e.is_current || !e.end_date) ? Date.now() : new Date(e.end_date).getTime()
+                    if (isNaN(s) || isNaN(end)) return sum
+                    return sum + Math.max(0, Math.round((end - s) / (1000 * 60 * 60 * 24 * 30.4375)))
+                  }, 0)
+                  const totalYears = Math.round((totalMonths / 12) * 10) / 10
+                  return (
+                    <ProfileCard
+                      title="Experience"
+                      subtitle={`${workExperience.length} role${workExperience.length === 1 ? '' : 's'}${totalMonths > 0 ? ` · ${totalYears}y total` : ''}`}
+                      action={<Button variant="secondary" size="sm" icon={Plus} onClick={() => setIsFormOpen(true)}>Add role</Button>}
+                    >
+                      <ExperienceTimeline experiences={workExperience} />
+                    </ProfileCard>
+                  )
+                })()}
 
                 {activeTab === 'education' && (
                   <ProfileCard
                     title="Education"
                     subtitle={`${education.length} entr${education.length === 1 ? 'y' : 'ies'}`}
-                    action={<Button variant="secondary" size="sm" onClick={() => setIsFormOpen(true)}>Add</Button>}
-                    bodyPadding="tight"
+                    action={<Button variant="secondary" size="sm" icon={Plus} onClick={() => setIsFormOpen(true)}>Add</Button>}
                   >
-                    <CandidateEducationComponent education={education} />
+                    <EducationTimeline education={education} />
                   </ProfileCard>
                 )}
 
