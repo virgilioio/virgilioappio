@@ -9,13 +9,23 @@ export interface CandidateJobAssociation {
   job_id: string
   status: string | null
   current_stage_id: string | null
+  created_at?: string | null
+  entered_stage_at?: string | null
+  rejected_at?: string | null
+  hired_at?: string | null
+  offered_at?: string | null
   job: {
     id: string
     title: string
+    department?: string | null
     organization: {
       name: string
     } | null
   }
+  current_stage?: {
+    custom_stage_name: string | null
+    stage: { stage_name: string | null } | null
+  } | null
 }
 
 export function useCandidateJobAssociations(candidateId: string | null) {
@@ -37,11 +47,23 @@ export function useCandidateJobAssociations(candidateId: string | null) {
           job_id,
           status,
           current_stage_id,
+          created_at,
+          entered_stage_at,
+          rejected_at,
+          hired_at,
+          offered_at,
           job:jobs!inner (
             id,
             title,
+            department,
             organization:organizations (
               name
+            )
+          ),
+          current_stage:job_hiring_stages (
+            custom_stage_name,
+            stage:job_stages (
+              stage_name
             )
           )
         `)

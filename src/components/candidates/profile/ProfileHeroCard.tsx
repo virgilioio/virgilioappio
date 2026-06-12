@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { Link } from 'react-router-dom'
+import { ApplicationSwitcher } from '@/components/candidates/profile/ApplicationSwitcher'
 
 // (avatar removed — initials helper no longer needed)
 
 interface ProfileHeroCardProps {
   candidateName: string
+  candidateFirstName?: string | null
   candidateId: string
   jobId: string
   jobTitle?: string | null
@@ -55,7 +57,7 @@ function relativeTime(iso?: string | null) {
 }
 
 export function ProfileHeroCard({
-  candidateName, candidateId, jobId, jobTitle, source, appliedAt,
+  candidateName, candidateFirstName, candidateId, jobId, jobTitle, source, appliedAt,
   currentStageName, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
   fitScore,
   onClose, index, total, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
@@ -178,12 +180,15 @@ export function ProfileHeroCard({
         </div>
 
         <div className="mt-1 flex items-center gap-1.5 flex-wrap text-body-sm text-text-secondary">
-          {jobTitle && (
+          {candidateId && (
             <>
               <span>Applying for</span>
-              <Link to={`/jobs/${jobId}`} className="text-text-primary font-medium hover:underline truncate max-w-[260px]">
-                {jobTitle}
-              </Link>
+              <ApplicationSwitcher
+                candidateId={candidateId}
+                candidateFirstName={candidateFirstName || candidateName?.split(' ')[0] || null}
+                currentJobId={jobId}
+                currentJobTitle={jobTitle || null}
+              />
             </>
           )}
           {source && (
