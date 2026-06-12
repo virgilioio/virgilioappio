@@ -28,8 +28,6 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
   const [activeTab, setActiveTab] = useState<TabType>('all')
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
   
   // Use unlimited results for dialog
   const { results, isLoading, totalCounts } = useGlobalSearch(query, { limit: 50 })
