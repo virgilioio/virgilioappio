@@ -133,8 +133,8 @@ export function LockedScreen({ status }: LockedScreenProps) {
         className="flex flex-col w-full lg:w-[520px] lg:flex-shrink-0"
         style={{ padding: '26px 48px 32px' }}
       >
-        <div style={{ height: 24 }} className="flex items-center">
-          <GoGioLogo size="sm" />
+        <div className="flex items-center">
+          <GoGioLogo size="2xl" />
         </div>
 
         <div className="flex-1 flex flex-col justify-center" style={{ paddingBottom: 30 }}>
