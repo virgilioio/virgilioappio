@@ -1729,7 +1729,7 @@ const stageHasAutomation = useMemo(() => {
                             return (
                               <ResumeSidebar
                                 fileName={resumeAttachment?.file_name ?? null}
-                                fileSize={resumeAttachment?.file_size ? `${(resumeAttachment.file_size / 1024).toFixed(0)} KB` : null}
+                                fileSize={null}
                                 pages={null}
                                 uploadedAt={resumeAttachment?.created_at ?? null}
                                 uploadedBy={null}
@@ -1770,18 +1770,7 @@ const stageHasAutomation = useMemo(() => {
                                 stats={{ activeDays: daysInStage, eventsLogged: null, touchesFromUs: null, lastContact: null }}
                               />
                             )
-                          case 'emails':
-                            return (
-                              <EmailsSidebar
-                                sent={0}
-                                opened={null}
-                                replied={0}
-                                avgResponse={null}
-                                linksClicked={null}
-                                openRate={null}
-                                inboxAddress={null}
-                              />
-                            )
+                          // 'emails' tab not yet wired — EmailsSidebar reserved for future use
                           case 'comments':
                             return (
                               <CommentsSidebar mentions={[]} hiringTeamCount={0} />
