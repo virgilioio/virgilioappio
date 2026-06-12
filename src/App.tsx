@@ -15,6 +15,7 @@ import { Layout } from './components/layout/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { log } from './lib/logger'
 import { BillingGuard } from './components/auth/BillingGuard'
+import { SettingsLockGuard } from './components/auth/SettingsLockGuard'
 import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
@@ -135,10 +136,13 @@ function AppContent() {
 
         {/* Authenticated routes wrapped with RequireAuth and Layout */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
-          {/* Always accessible routes - users need access to manage billing */}
-          <Route path="/billing" element={<Settings />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
+          {/* Always accessible routes - users need access to manage billing.
+              SettingsLockGuard still locks them out when billing_status === 'locked'. */}
+          <Route element={<SettingsLockGuard />}>
+            <Route path="/billing" element={<Settings />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
+          </Route>
           <Route path="/account-setup" element={<AccountSetup />} />
           <Route path="/mail/oauth/callback" element={<MailOAuthCallback />} />
           
