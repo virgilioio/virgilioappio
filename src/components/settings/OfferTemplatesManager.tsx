@@ -48,13 +48,19 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={cn(
-                'font-inter transition-colors',
-                active
-                  ? 'bg-[#0d0d09] text-[#fffcf9] border-transparent'
-                  : 'bg-white text-[#5A6072] border-[#E7E8EE] hover:bg-[#FAFAF7]'
-              )}
-              style={{ height: 28, padding: '0 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 500, borderWidth: 1, borderStyle: 'solid' }}
+              className="font-inter transition-colors"
+              style={{
+                height: 26,
+                padding: '0 10px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 500,
+                borderWidth: 1,
+                borderStyle: 'solid',
+                background: active ? '#EDE4FF' : '#FFFFFF',
+                color: active ? '#5B21B6' : '#5A6072',
+                borderColor: active ? '#D7C5FB' : '#E7E8EE',
+              }}
             >
               {t.label}
             </button>
