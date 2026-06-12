@@ -1276,9 +1276,9 @@ const stageHasAutomation = useMemo(() => {
 
                 {/* Tabs moved into ProfileHeroCard */}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
                   {/* Left column — tab content */}
-                  <div className="lg:col-span-2 space-y-6 min-w-0">
+                  <div className="space-y-4 min-w-0">
                     {/* Job Overview Tab */}
                     {activeTab === 'job' && (() => {
                       const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
@@ -1649,68 +1649,167 @@ const stageHasAutomation = useMemo(() => {
                     )}
                   </div>
 
-                  {/* Right column — Quick Actions + Application sidebar */}
-                  <div className="space-y-4 hidden lg:block">
+                  {/* Right column — per-tab sidebar */}
+                  <div className="hidden lg:block">
                     <div className="sticky top-4 space-y-4">
                       {(() => {
                         const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
                         const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
                         const nextStage = currentIdx >= 0 && currentIdx < sortedStages.length - 1 ? sortedStages[currentIdx + 1] : null
                         const currentStage = currentIdx >= 0 ? sortedStages[currentIdx] : null
-                        return (
-                          <ProfileQuickActionsCard
-                            nextStageLabel={nextStage?.stage.stage_name ?? (currentIdx >= 0 && associationStatus === 'active' ? 'Offer' : null)}
-                            onAdvance={async () => {
-                              if (nextStage) {
-                                if (!associationId) return
-                                await moveAssociationToStage(associationId, nextStage.jhsId)
-                                setCurrentStageId(nextStage.jhsId)
-                                onStageChanged?.()
-                              } else if (currentIdx >= 0 && associationStatus === 'active') {
-                                await handleMoveToOffer()
-                              }
-                            }}
-                            onSubmitScorecard={() => {
-                              if (!currentStage) return
-                              setScoreStageInstId(currentStage.jhsId)
-                              setScoreStageName(currentStage.stage.stage_name)
-                              setScoreOpen(true)
-                            }}
-                            onAddTransfer={() => setAddTransferOpen(true)}
-                            onCreateOffer={() => setOfferFormOpen(true)}
-                            onReject={handleReject}
-                            isOfferStatus={associationStatus === 'offer'}
-                            isRejected={associationStatus === 'rejected'}
-                            isHired={associationStatus === 'hired'}
-                          />
-                        )
+                        const nextStageLabel = nextStage?.stage.stage_name ?? (currentIdx >= 0 && associationStatus === 'active' ? 'Offer' : null)
+                        const handleAdvance = async () => {
+                          if (nextStage) {
+                            if (!associationId) return
+                            await moveAssociationToStage(associationId, nextStage.jhsId)
+                            setCurrentStageId(nextStage.jhsId)
+                            onStageChanged?.()
+                          } else if (currentIdx >= 0 && associationStatus === 'active') {
+                            await handleMoveToOffer()
+                          }
+                        }
+                        const handleSubmitScorecard = () => {
+                          if (!currentStage) return
+                          setScoreStageInstId(currentStage.jhsId)
+                          setScoreStageName(currentStage.stage.stage_name)
+                          setScoreOpen(true)
+                        }
+                        const urls = (candidateUrls || []).map((u) => ({ label: u.label, url: u.url }))
+                        const isTerminal = associationStatus === 'rejected' || associationStatus === 'hired' || associationStatus === 'offer'
+
+                        // Terminal-status sidebar — keep existing OfferTimeline / HireSummary cards
+                        if (associationStatus === 'offer' && candidateId) {
+                          return (
+                            <>
+                              <ProfileQuickActionsCard
+                                nextStageLabel={nextStageLabel}
+                                onAdvance={handleAdvance}
+                                onSubmitScorecard={handleSubmitScorecard}
+                                onAddTransfer={() => setAddTransferOpen(true)}
+                                onCreateOffer={() => setOfferFormOpen(true)}
+                                onReject={handleReject}
+                                isOfferStatus
+                                isRejected={false}
+                                isHired={false}
+                              />
+                              <OfferTimelineCard
+                                candidateId={candidateId}
+                                jobId={jobId}
+                                offeredAt={offerDetails?.offeredAt || null}
+                              />
+                            </>
+                          )
+                        }
+                        if (associationStatus === 'hired' && candidateId) {
+                          return (
+                            <>
+                              <HireSummaryCard candidateId={candidateId} jobId={jobId} />
+                              <TimeToHireCard
+                                appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                                hiredAt={hiredDetails?.hiredAt || null}
+                              />
+                            </>
+                          )
+                        }
+                        if (associationStatus === 'rejected') {
+                          return (
+                            <ProfileApplicationCard
+                              appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                              source={candidate?.job_board_source || candidate?.source || null}
+                              compensation={formatSalaryExpectation(candidate as any)}
+                              openTo={(candidate as any)?.location || null}
+                              workAuth={(candidate as any)?.work_authorization || null}
+                            />
+                          )
+                        }
+
+                        // Per-tab sidebars (active candidate)
+                        switch (activeTab) {
+                          case 'resume':
+                            return (
+                              <ResumeSidebar
+                                fileName={resumeAttachment?.file_name ?? null}
+                                fileSize={resumeAttachment?.file_size ? `${(resumeAttachment.file_size / 1024).toFixed(0)} KB` : null}
+                                pages={null}
+                                uploadedAt={resumeAttachment?.created_at ?? null}
+                                uploadedBy={null}
+                                parsedFields={null}
+                                onReplace={() => replaceResumeInputRef.current?.click()}
+                                onDelete={resumeAttachment ? handleDeleteResume : undefined}
+                              />
+                            )
+                          case 'overview':
+                            return (
+                              <OverviewSidebar
+                                tags={Array.isArray((candidate as any)?.tags) ? (candidate as any).tags : []}
+                                urls={urls}
+                                filesCount={attachments.length}
+                                onUploadFile={() => setEditOpen(true)}
+                              />
+                            )
+                          case 'scorecards':
+                            return (
+                              <ScorecardsSidebar
+                                average={null}
+                                panelistCount={Object.keys(myScorecardsByStage || {}).length}
+                                verdictBreakdown={[
+                                  { label: 'Strong yes', tone: 'green', count: 0 },
+                                  { label: 'Yes', tone: 'green', count: 0 },
+                                  { label: 'Lean yes', tone: 'yellow', count: 0 },
+                                  { label: 'No', tone: 'red', count: 0 },
+                                ]}
+                                pending={[]}
+                              />
+                            )
+                          case 'activity':
+                            return (
+                              <ActivitySidebar
+                                counts={{ all: 0, stageMoves: 0, scorecards: 0, emails: 0, comments: 0, files: 0 }}
+                                filters={activityFilters}
+                                onFilterChange={setActivityFilters}
+                                stats={{ activeDays: daysInStage, eventsLogged: null, touchesFromUs: null, lastContact: null }}
+                              />
+                            )
+                          case 'emails':
+                            return (
+                              <EmailsSidebar
+                                sent={0}
+                                opened={null}
+                                replied={0}
+                                avgResponse={null}
+                                linksClicked={null}
+                                openRate={null}
+                                inboxAddress={null}
+                              />
+                            )
+                          case 'comments':
+                            return (
+                              <CommentsSidebar mentions={[]} hiringTeamCount={0} />
+                            )
+                          case 'job':
+                          default:
+                            return (
+                              <JobOverviewSidebar
+                                candidate={candidate}
+                                job={job}
+                                appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                                source={candidate?.job_board_source || candidate?.source || null}
+                                urls={urls}
+                                filesCount={attachments.length}
+                                onUploadFile={() => setEditOpen(true)}
+                                nextStageLabel={nextStageLabel}
+                                onAdvance={handleAdvance}
+                                onSubmitScorecard={handleSubmitScorecard}
+                                onAddTransfer={() => setAddTransferOpen(true)}
+                                onCreateOffer={() => setOfferFormOpen(true)}
+                                onReject={handleReject}
+                                isOfferStatus={false}
+                                isRejected={false}
+                                isHired={false}
+                              />
+                            )
+                        }
                       })()}
-
-                      <ProfileApplicationCard
-                        appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
-                        source={candidate?.job_board_source || candidate?.source || null}
-                        compensation={formatSalaryExpectation(candidate as any)}
-                        openTo={(candidate as any)?.location || null}
-                        workAuth={(candidate as any)?.work_authorization || null}
-                      />
-
-                      {associationStatus === 'offer' && candidateId && (
-                        <OfferTimelineCard
-                          candidateId={candidateId}
-                          jobId={jobId}
-                          offeredAt={offerDetails?.offeredAt || null}
-                        />
-                      )}
-
-                      {associationStatus === 'hired' && candidateId && (
-                        <>
-                          <HireSummaryCard candidateId={candidateId} jobId={jobId} />
-                          <TimeToHireCard
-                            appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
-                            hiredAt={hiredDetails?.hiredAt || null}
-                          />
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>
