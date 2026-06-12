@@ -1,19 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
 import { GlobalSearchPanel } from './v2/GlobalSearchPanel'
 import { SearchResultsDialog } from './SearchResultsDialog'
-import { IndependentCandidateProfileSheet } from '@/components/candidates/IndependentCandidateProfileSheet'
 
 export function GlobalSearchBar() {
   const inputRef = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate()
 
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
 
   // Cmd+K (and legacy Cmd+/) shortcut
   useEffect(() => {
@@ -29,9 +28,9 @@ export function GlobalSearchBar() {
   }, [])
 
   const handleOpenCandidate = useCallback((id: string) => {
-    setSelectedCandidateId(id)
-    setSheetOpen(true)
-  }, [])
+    setIsOpen(false)
+    navigate(`/candidates/${id}`)
+  }, [navigate])
 
   return (
     <>
@@ -89,12 +88,6 @@ export function GlobalSearchBar() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         initialQuery={query}
-      />
-
-      <IndependentCandidateProfileSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        candidateId={selectedCandidateId}
       />
     </>
   )
