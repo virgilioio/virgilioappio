@@ -303,12 +303,12 @@ export function PlatformCustomers() {
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
                   className="flex items-center justify-center shrink-0 font-poppins"
-                  style={{ width: 26, height: 26, borderRadius: 999, background: '#EDE4FF', color: '#5B21B6', fontSize: 10.5, fontWeight: 600 }}
+                  style={{ width: 26, height: 26, borderRadius: 999, background: '#EDE4FF', color: '#5B21B6', fontSize: 10.5, fontWeight: 500 }}
                 >
                   {initials(c.name)}
                 </div>
                 <div className="min-w-0">
-                  <div className="font-inter truncate" style={{ fontSize: 12.5, fontWeight: 600, color: '#1F2230' }}>{c.name}</div>
+                  <div className="font-inter truncate" style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>{c.name}</div>
                   <div className="font-inter truncate" style={{ fontSize: 10, color: '#B5B9C4' }}>
                     since {new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </div>
