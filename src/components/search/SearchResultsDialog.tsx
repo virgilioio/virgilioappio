@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { useGlobalSearch, type SearchResult } from '@/hooks/useGlobalSearch'
 import { SearchResultRow } from './SearchResultRow'
 import { SearchResultsSkeleton } from './SearchResultsSkeleton'
-import { IndependentCandidateProfileSheet } from '@/components/candidates/IndependentCandidateProfileSheet'
+
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 
@@ -28,8 +28,6 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
   const [activeTab, setActiveTab] = useState<TabType>('all')
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
   
   // Use unlimited results for dialog
   const { results, isLoading, totalCounts } = useGlobalSearch(query, { limit: 50 })
@@ -42,13 +40,11 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   }, [open, initialQuery])
 
   const handleResultClick = (result: SearchResult) => {
+    onOpenChange(false)
     if (result.type === 'candidate') {
-      setSelectedCandidateId(result.id)
-      setSheetOpen(true)
-      onOpenChange(false)
+      navigate(`/candidates/${result.id}`)
     } else {
       navigate(result.route)
-      onOpenChange(false)
     }
   }
 
@@ -178,12 +174,6 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
         </DialogContent>
       </Dialog>
 
-      {/* Candidate Profile Sheet */}
-      <IndependentCandidateProfileSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        candidateId={selectedCandidateId}
-      />
     </>
   )
 }

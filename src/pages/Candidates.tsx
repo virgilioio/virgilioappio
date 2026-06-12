@@ -39,7 +39,7 @@ import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { MinimizableBulkUploadDialog } from '@/components/candidates/MinimizableBulkUploadDialog'
 import { CSVImportDialog } from '@/components/candidates/CSVImportDialog'
-import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 
@@ -231,8 +231,6 @@ function CandidatesInner() {
   const selectAllFiltered = () => setSelectedIds(finalAfterSmart.map(c => c.id))
 
   // Sheets & dialogs
-  const [profileId, setProfileId] = useState<string | null>(null)
-  const [profileOpen, setProfileOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
@@ -240,18 +238,17 @@ function CandidatesInner() {
   const [isCSVImportOpen, setIsCSVImportOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{ existing: any; incoming: any; merged: any } | null>(null)
-  
 
-  // Auto-open candidate sheet from query param
+  // Legacy ?openCandidate=… deep-link → redirect to new full page
   useEffect(() => {
     const id = searchParams.get('openCandidate')
     if (id) {
-      setProfileId(id); setProfileOpen(true)
       const next = new URLSearchParams(searchParams); next.delete('openCandidate'); setSearchParams(next, { replace: true })
+      navigate(`/candidates/${id}`)
     }
-  }, [searchParams, setSearchParams])
+  }, [searchParams, setSearchParams, navigate])
 
-  const handleOpenCandidate = (id: string) => { setProfileId(id); setProfileOpen(true) }
+  const handleOpenCandidate = (id: string) => navigate(`/candidates/${id}`)
   const handleDelete = async () => {
     if (!deleteTarget) return
     await deleteCandidate(deleteTarget.id)
@@ -674,11 +671,6 @@ function CandidatesInner() {
         onComplete={() => { setIsCSVImportOpen(false); getCandidates() }}
       />
 
-      <UniversalCandidateProfileSheet
-        candidateId={profileId}
-        open={profileOpen}
-        onOpenChange={setProfileOpen}
-      />
 
       {deleteTarget && (
         <DeleteCandidateDialog
