@@ -100,8 +100,23 @@ export default function IndependentCandidateProfile() {
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
 
-  const [workExperience] = useState<CandidateWorkExperience[]>([])
-  const [education] = useState<CandidateEducation[]>([])
+  const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
+  const [education, setEducation] = useState<CandidateEducation[]>([])
+
+  useEffect(() => {
+    if (!candidateId) return
+    let cancelled = false
+    ;(async () => {
+      const [{ data: expData }, { data: eduData }] = await Promise.all([
+        supabase.from('candidate_work_experience').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+        supabase.from('candidate_education').select('*').eq('candidate_id', candidateId).order('start_date', { ascending: false }),
+      ])
+      if (cancelled) return
+      setWorkExperience((expData as any) || [])
+      setEducation((eduData as any) || [])
+    })()
+    return () => { cancelled = true }
+  }, [candidateId])
 
   const { jobAssociations } = useCandidateJobAssociations(candidate?.id ?? null)
 
