@@ -1220,11 +1220,6 @@ function BillingTab({
       <section style={CARD}>
         <CardHeader title="Seats" desc="Adjusting applies immediately and prorates billing." />
         <Row last>
-          <div>
-            <div className="font-inter" style={{ fontSize: 11, color: MUTED, fontWeight: 500 }}>Current seats</div>
-            <div className="font-poppins tabular-nums" style={{ fontSize: 19, fontWeight: 600, color: NOIR, marginTop: 2 }}>{seats}</div>
-          </div>
-          <div style={{ width: 1, height: 32, background: HAIRLINE, margin: '0 18px' }} />
           <div className="flex-1">
             <div className="font-inter" style={{ fontSize: 11, color: MUTED, fontWeight: 500 }}>Maximum allowed</div>
             <div className="font-poppins tabular-nums" style={{ fontSize: 19, fontWeight: 600, color: sub?.max_users ? NOIR : '#B5B9C4', marginTop: 2 }}>
