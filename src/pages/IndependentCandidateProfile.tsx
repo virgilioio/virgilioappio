@@ -4,7 +4,7 @@ import {
   ArrowLeft, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
   Heart, Briefcase, MapPin, Mail, Phone, DollarSign, Calendar, Sparkles,
   FileText, File as FileIcon, GraduationCap, Info, MessageSquare, UserPlus,
-  Download, Pencil, MoreHorizontal, ExternalLink, Upload, Link as LinkIcon,
+  Pencil, MoreHorizontal, ExternalLink, Upload,
 } from 'lucide-react'
 
 import { AuthGate } from '@/components/auth/AuthGate'
