@@ -1145,7 +1145,14 @@ function BillingTab({
         <CardHeader
           title="Subscription"
           desc={`${seats} seat${seats === 1 ? '' : 's'} × $${pricePerSeat}/${interval === 'year' ? 'yr' : 'mo'} = $${total}/${interval === 'year' ? 'year' : 'month'}`}
-          action={statusChip}
+          action={
+            <div className="flex items-center" style={{ gap: 8 }}>
+              <button style={SEC_BTN} onClick={onChange}>
+                <ArrowRightLeft size={12} />Change plan
+              </button>
+              {statusChip}
+            </div>
+          }
         />
         <div>
           {lvRow('Plan', `Gio ATS · per-seat · ${interval === 'year' ? 'annual' : 'monthly'}`)}
