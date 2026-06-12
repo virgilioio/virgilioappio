@@ -413,11 +413,37 @@ export function SaaSCustomerDetail() {
     </>
   })()
 
-  // ── Health metric (passing count)
+  // ── Health metric (passing count) — still shown in Health signals card
   const passingCount = health.reasons.filter(r => r.passed).length
   const totalSignals = health.reasons.length || 1
 
-  // ── Metric strip
+  // ── Money cell (replaces Health in metric strip)
+  const pricePerSeat = interval === 'year' ? 49 : 5
+  const moneyCell: MetricCell = (() => {
+    if (isTrialing) {
+      const monthly = seats * 5 // seats × monthly seat price
+      return {
+        icon: CircleDollarSign, iconBg: '#D1FAE5', iconColor: '#0B7A57',
+        label: 'Plan value',
+        value: `$${monthly.toLocaleString()}`, suffix: '/mo',
+        delta: { text: '$0 collected', tone: 'amber' },
+      }
+    }
+    if (interval === 'year') {
+      const arr = seats * pricePerSeat
+      return {
+        icon: CircleDollarSign, iconBg: '#D1FAE5', iconColor: '#0B7A57',
+        label: 'ARR', value: `$${arr.toLocaleString()}`, suffix: '/yr',
+      }
+    }
+    const mrr = seats * pricePerSeat
+    return {
+      icon: CircleDollarSign, iconBg: '#D1FAE5', iconColor: '#0B7A57',
+      label: 'MRR', value: `$${mrr.toLocaleString()}`, suffix: '/mo',
+    }
+  })()
+
+  // ── Trial / renewal cell
   const trialOrRenewal: MetricCell = (() => {
     if (customer.status === 'suspended') {
       return {
