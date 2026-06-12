@@ -601,10 +601,13 @@ export function SaaSCustomerDetail() {
             isTrialing={isTrialing}
             firstGroupKey={firstGroupKey}
             groupedFeed={groupedFeed}
+            activeGrant={activeGrant}
             onExtend={() => setExtendOpen(true)}
             onGrant={() => setAssignOpen(true)}
             onChange={() => setChangeOpen(true)}
             onSuspend={() => setSuspendOpen(true)}
+            onGrantAccess={() => setGrantOpen(true)}
+            onRevokeAccess={() => revokeMutation.mutate({ tenantId: customer.tenant_id })}
             onSwitchActivity={() => setTab('activity')}
           />
         )}
