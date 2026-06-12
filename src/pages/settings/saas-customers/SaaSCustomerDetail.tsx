@@ -1025,16 +1025,29 @@ function MembersTab({ tenantId }: { tenantId: string }) {
     if (r === 'hiring_manager') return <Chip tone="amber">Hiring Manager</Chip>
     return <Chip tone="gray">{role}</Chip>
   }
-  const statusChip = (s: string) => {
-    if (s === 'active') return <Chip tone="green">Active</Chip>
-    if (s === 'invited') return <Chip tone="amber">Invited</Chip>
-    return <Chip tone="gray">Inactive</Chip>
+  const memberState = (m: any): { tone: ChipTone; label: string } => {
+    const s = (m.user_status || '').toLowerCase()
+    const hasProfile = !!m.profile
+    if (s === 'active') return { tone: 'green', label: 'Active' }
+    if (s === 'invited' || (!hasProfile && (s === 'pending' || !s))) return { tone: 'amber', label: 'Invited' }
+    if (s === 'deactivated' || s === 'inactive') return { tone: 'gray', label: 'Deactivated' }
+    return { tone: 'gray', label: s || 'Inactive' }
   }
+
+  const activeCount = members.filter((m: any) => (m.user_status || '').toLowerCase() === 'active').length
+  const invitedCount = members.filter((m: any) => {
+    const s = (m.user_status || '').toLowerCase()
+    return s === 'invited' || (!m.profile && (s === 'pending' || !s))
+  }).length
 
   return (
     <section style={CARD}>
       <CardHeader title="Team members" desc="Everyone in this workspace, with their last activity."
-        action={<Chip tone="gray">{members.length} members</Chip>} />
+        action={
+          <Chip tone="gray">
+            {activeCount} active{invitedCount > 0 ? ` · ${invitedCount} invited` : ''}
+          </Chip>
+        } />
       <div>
         {isLoading ? (
           <div style={{ padding: 24, textAlign: 'center', color: MUTED, fontFamily: 'Inter', fontSize: 12 }}>Loading…</div>
@@ -1045,8 +1058,10 @@ function MembersTab({ tenantId }: { tenantId: string }) {
             ? `${m.profile.first_name || ''} ${m.profile.last_name || ''}`.trim() || m.profile.email || m.invited_email || 'Unknown'
             : m.invited_email || 'Pending invite'
           const email = m.profile?.email || m.invited_email || ''
+          const state = memberState(m)
+          const isInvited = state.label === 'Invited'
           const lastIso = m.updated_at
-          const isNow = lastIso ? (Date.now() - new Date(lastIso).getTime()) < 5 * 60 * 1000 : false
+          const isNow = !isInvited && lastIso ? (Date.now() - new Date(lastIso).getTime()) < 5 * 60 * 1000 : false
           return (
             <Row key={m.id} last={i === members.length - 1}>
               <div className="flex items-center justify-center shrink-0"
@@ -1059,10 +1074,10 @@ function MembersTab({ tenantId }: { tenantId: string }) {
                 <div className="font-inter truncate" style={{ fontSize: 10.5, color: MUTED }}>{email}</div>
               </div>
               {roleChip(m.system_role)}
-              {statusChip(m.user_status)}
+              <Chip tone={state.tone}>{state.label}</Chip>
               <span className="font-inter shrink-0"
                 style={{ fontSize: 11, color: isNow ? '#0B7A57' : MUTED, fontWeight: isNow ? 600 : 400, minWidth: 90, textAlign: 'right' }}>
-                {isNow ? 'now' : lastIso ? timeAgoShort(lastIso) : '—'}
+                {isInvited ? '—' : isNow ? 'now' : lastIso ? timeAgoShort(lastIso) : '—'}
               </span>
             </Row>
           )
