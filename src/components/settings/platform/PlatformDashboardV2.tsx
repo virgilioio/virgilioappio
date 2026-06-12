@@ -24,7 +24,7 @@ function Chip({ tone, children }: { tone: 'green' | 'amber' | 'blue' | 'purple' 
 }
 
 interface MetricCell {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
+  icon: LucideIcon
   iconBg: string
   iconColor: string
   label: string
