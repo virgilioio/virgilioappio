@@ -231,8 +231,6 @@ function CandidatesInner() {
   const selectAllFiltered = () => setSelectedIds(finalAfterSmart.map(c => c.id))
 
   // Sheets & dialogs
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
@@ -240,18 +238,17 @@ function CandidatesInner() {
   const [isCSVImportOpen, setIsCSVImportOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{ existing: any; incoming: any; merged: any } | null>(null)
-  
 
-  // Auto-open candidate sheet from query param
+  // Legacy ?openCandidate=… deep-link → redirect to new full page
   useEffect(() => {
     const id = searchParams.get('openCandidate')
     if (id) {
-      setProfileId(id); setProfileOpen(true)
       const next = new URLSearchParams(searchParams); next.delete('openCandidate'); setSearchParams(next, { replace: true })
+      navigate(`/candidates/${id}`)
     }
-  }, [searchParams, setSearchParams])
+  }, [searchParams, setSearchParams, navigate])
 
-  const handleOpenCandidate = (id: string) => { setProfileId(id); setProfileOpen(true) }
+  const handleOpenCandidate = (id: string) => navigate(`/candidates/${id}`)
   const handleDelete = async () => {
     if (!deleteTarget) return
     await deleteCandidate(deleteTarget.id)
