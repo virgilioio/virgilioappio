@@ -22,7 +22,9 @@ export interface ApplicationField {
   updated_at: string
   source?: 'platform' | 'tenant'
   tenant_id?: string | null
+  is_core_field?: boolean
 }
+
 
 // Simplified interface since validation_rules and select_options tables don't exist
 export interface ApplicationFieldWithRelations extends ApplicationField {
