@@ -1153,6 +1153,7 @@ const stageHasAutomation = useMemo(() => {
                       source={candidate?.job_board_source || candidate?.source || null}
                       appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                       currentStageName={currentStage?.stage.stage_name || null}
+                      daysInStage={daysInStage}
                       isFavorite={isFavorite}
                       onToggleFavorite={jobId ? handleToggleFavorite : undefined}
                       onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
