@@ -219,6 +219,14 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
 // Hiring plan stages for vertical accordion
 const { loadHiringPlanInstances } = useJobHiringPlan()
 const { insights: fitInsights } = useCandidateFitInsights(candidateId, jobId)
+const { urls: candidateUrls } = useCandidateUrls(independentCandidateId || candidateId || '')
+const daysInStage = useMemo(() => {
+  if (!enteredStageAt) return null
+  const ms = Date.now() - new Date(enteredStageAt).getTime()
+  if (Number.isNaN(ms) || ms < 0) return 0
+  return Math.floor(ms / 86_400_000)
+}, [enteredStageAt])
+const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>({ all: true })
 type PlanStageOption = { jhsId: string; stage: JobStage; position: number }
 const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
 const [openStageId, setOpenStageId] = useState<string | null>(null)
