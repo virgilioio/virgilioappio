@@ -601,6 +601,7 @@ export function SaaSCustomerDetail() {
             trialStartIso={trialStartIso}
             daysLeftTrial={daysLeftTrial}
             onGrant={() => setAssignOpen(true)}
+            onChange={() => setChangeOpen(true)}
             seatMutation={seatMutation}
           />
         )}
