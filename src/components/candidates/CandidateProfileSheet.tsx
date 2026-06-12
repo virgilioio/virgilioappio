@@ -17,7 +17,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -65,9 +65,10 @@ import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 import { RejectionDialog } from './RejectionDialog'
-import { RejectionStatusBanner } from './RejectionStatusBanner'
-import { OfferStatusBanner } from './OfferStatusBanner'
-import { HiredStatusBanner } from './HiredStatusBanner'
+import { StatusBanner } from './status/StatusBanner'
+import { RejectionDetailsTab } from './status/RejectionDetailsTab'
+import { OnboardingTab } from './status/OnboardingTab'
+import { formatMovedHere } from './statusBannerUtils'
 import { MinimizableOfferComposer } from './MinimizableOfferComposer'
 import { CandidateReminders } from './CandidateReminders'
 import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
@@ -153,7 +154,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'comments' | 'offer'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
@@ -428,11 +429,11 @@ const stageHasAutomation = useMemo(() => {
     load()
   }, [open, candidateId])
 
-  // Auto-select offer tab when status changes to offer/hired
+  // Auto-select status-specific tab when status changes
   useEffect(() => {
-    if (associationStatus === 'offer' || associationStatus === 'hired') {
-      setActiveTab('offer')
-    }
+    if (associationStatus === 'offer') setActiveTab('offer')
+    else if (associationStatus === 'hired') setActiveTab('onboarding')
+    else if (associationStatus === 'rejected') setActiveTab('rejection-details')
   }, [associationStatus])
 
   useEffect(() => {
@@ -1125,8 +1126,17 @@ const stageHasAutomation = useMemo(() => {
                           activeTab={activeTab}
                           onTabChange={(v) => setActiveTab(v as typeof activeTab)}
                           tabs={[
-                            ...((associationStatus === 'offer' || associationStatus === 'hired')
+                            ...(associationStatus === 'offer'
                               ? [{ value: 'offer', label: 'Offer', Icon: FileText }]
+                              : []),
+                            ...(associationStatus === 'rejected'
+                              ? [{ value: 'rejection-details', label: 'Rejection details', Icon: XCircle }]
+                              : []),
+                            ...(associationStatus === 'hired'
+                              ? [
+                                  { value: 'onboarding', label: 'Onboarding', Icon: CheckCircle2 },
+                                  { value: 'offer', label: 'Offer', Icon: FileText },
+                                ]
                               : []),
                             { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
                             { value: 'resume', label: 'Resume', Icon: FileText },
@@ -1172,29 +1182,47 @@ const stageHasAutomation = useMemo(() => {
                         />
                       </section>
                     ) : associationStatus === 'offer' ? (
-                      <OfferStatusBanner
-                        offeredAt={offerDetails?.offeredAt || null}
-                        offeredByName={offerDetails?.offeredByName || undefined}
-                        onCreateOffer={() => setOfferFormOpen(true)}
-                        onReactivate={handleReactivate}
+                      <StatusBanner
+                        tone="offer"
+                        icon={Hourglass}
+                        eyebrow="Offer stage"
+                        meta={offerDetails?.offeredAt ? `Moved here ${formatMovedHere(offerDetails.offeredAt)}` : undefined}
+                        title="Ready to send an offer"
+                        sub="The team has aligned. Build the offer once and we'll route approvals automatically."
+                        actions={
+                          <Button
+                            variant="secondary"
+                            size="md"
+                            icon={Plus}
+                            onClick={() => setOfferFormOpen(true)}
+                            style={{ backgroundColor: 'rgba(255,252,249,0.12)', color: '#fffcf9', border: '1px solid rgba(255,252,249,0.22)' }}
+                          >
+                            Create offer
+                          </Button>
+                        }
                       />
                     ) : associationStatus === 'hired' ? (
-                      <HiredStatusBanner
-                        hiredAt={hiredDetails?.hiredAt || null}
-                        hiredByName={hiredDetails?.hiredByName || undefined}
-                        jobTitle={job?.title}
-                        candidateSource={candidate?.source || candidate?.job_board_source || undefined}
-                        onUnhire={handleUnhire}
+                      <StatusBanner
+                        tone="hired"
+                        icon={PartyPopper}
+                        eyebrow="Hired"
+                        meta={hiredDetails?.hiredAt ? `Accepted ${formatMovedHere(hiredDetails.hiredAt)} ago` : undefined}
+                        title={<><strong className="font-semibold">{(candidate?.first_name) || 'Candidate'}</strong> is hired</>}
+                        sub={<><strong className="font-semibold">{job?.title || 'Position'}</strong>{hiredDetails?.hiredByName && ` · hired by ${hiredDetails.hiredByName}`}</>}
                       />
                     ) : associationStatus === 'rejected' && rejectionDetails ? (
-                      <RejectionStatusBanner
-                        rejectedAt={rejectionDetails.rejectedAt}
-                        rejectedByName={rejectionDetails.rejectedByName || undefined}
-                        rejectionReason={rejectionDetails.rejectionReason}
-                        rejectionNotes={rejectionDetails.rejectionNotes}
-                        rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
-                        rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
-                        onReactivate={handleReactivate}
+                      <StatusBanner
+                        tone="rejected"
+                        icon={XCircle}
+                        eyebrow="Rejected"
+                        meta={rejectionDetails.rejectedAt ? `${formatMovedHere(rejectionDetails.rejectedAt)} ago${rejectionDetails.rejectedByName ? ` by ${rejectionDetails.rejectedByName}` : ''}` : undefined}
+                        title={<><strong className="font-semibold">{candidate?.first_name || 'Candidate'}</strong> is no longer in consideration</>}
+                        sub={<><strong className="font-semibold">Reason:</strong> {rejectionDetails.rejectionReason?.name || 'Not specified'}{rejectionDetails.rejectionEmailSentAt ? `. Rejection email sent.` : ''}</>}
+                        actions={
+                          <Button variant="secondary" size="md" icon={RotateCcw} onClick={handleReactivate}>
+                            Reactivate
+                          </Button>
+                        }
                       />
                     ) : null}
                   </>
@@ -1527,17 +1555,56 @@ const stageHasAutomation = useMemo(() => {
                       </>
                     )}
 
+                    {/* Rejection details Tab */}
+                    {activeTab === 'rejection-details' && rejectionDetails && (
+                      <RejectionDetailsTab
+                        rejectedAt={rejectionDetails.rejectedAt}
+                        rejectedByName={rejectionDetails.rejectedByName}
+                        rejectionReason={rejectionDetails.rejectionReason}
+                        rejectionNotes={rejectionDetails.rejectionNotes}
+                        rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
+                        notifiedCandidate={!!rejectionDetails.rejectionEmailSentAt}
+                        notifyChannel={rejectionDetails.rejectionEmailSentAt ? 'Email' : null}
+                      />
+                    )}
+
+                    {/* Onboarding Tab */}
+                    {activeTab === 'onboarding' && associationId && (
+                      <OnboardingTab
+                        applicationId={associationId}
+                        startDate={hiredDetails?.hiredAt || null}
+                        firstName={candidate?.first_name}
+                      />
+                    )}
+
                     {/* Offer Tab */}
                     {activeTab === 'offer' && candidateId && (
                       <Tabs defaultValue="offer-details" className="w-full">
-                        <TabsList className="w-full">
-                          <TabsTrigger value="offer-details" className="flex-1">Offer Details</TabsTrigger>
-                          <TabsTrigger value="offer-approvals" className="flex-1">Offer Approvals</TabsTrigger>
+                        <TabsList
+                          className="inline-flex w-auto p-1 rounded-[10px] h-auto bg-transparent gap-1"
+                          style={{ backgroundColor: '#F1F0EC' }}
+                        >
+                          <TabsTrigger
+                            value="offer-details"
+                            className="h-8 px-3 rounded-[8px] font-inter font-semibold data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:shadow-[0_1px_2px_rgba(13,13,9,0.08)] text-[#5A6072]"
+                            style={{ fontSize: 12 }}
+                          >
+                            <FileText className="h-3 w-3 mr-1.5" />
+                            Offer details
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="offer-approvals"
+                            className="h-8 px-3 rounded-[8px] font-inter font-semibold data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:shadow-[0_1px_2px_rgba(13,13,9,0.08)] text-[#5A6072]"
+                            style={{ fontSize: 12 }}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                            Offer approvals
+                          </TabsTrigger>
                         </TabsList>
-                        <TabsContent value="offer-details">
+                        <TabsContent value="offer-details" className="mt-4">
                           <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
-                        <TabsContent value="offer-approvals">
+                        <TabsContent value="offer-approvals" className="mt-4">
                           <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
                         </TabsContent>
                       </Tabs>
