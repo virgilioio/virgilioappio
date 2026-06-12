@@ -1173,29 +1173,47 @@ const stageHasAutomation = useMemo(() => {
                         />
                       </section>
                     ) : associationStatus === 'offer' ? (
-                      <OfferStatusBanner
-                        offeredAt={offerDetails?.offeredAt || null}
-                        offeredByName={offerDetails?.offeredByName || undefined}
-                        onCreateOffer={() => setOfferFormOpen(true)}
-                        onReactivate={handleReactivate}
+                      <StatusBanner
+                        tone="offer"
+                        icon={Hourglass}
+                        eyebrow="Offer stage"
+                        meta={offerDetails?.offeredAt ? `Moved here ${formatMovedHere(offerDetails.offeredAt)}` : undefined}
+                        title="Ready to send an offer"
+                        sub="The team has aligned. Build the offer once and we'll route approvals automatically."
+                        actions={
+                          <Button
+                            variant="secondary"
+                            size="md"
+                            icon={Plus}
+                            onClick={() => setOfferFormOpen(true)}
+                            style={{ backgroundColor: 'rgba(255,252,249,0.12)', color: '#fffcf9', border: '1px solid rgba(255,252,249,0.22)' }}
+                          >
+                            Create offer
+                          </Button>
+                        }
                       />
                     ) : associationStatus === 'hired' ? (
-                      <HiredStatusBanner
-                        hiredAt={hiredDetails?.hiredAt || null}
-                        hiredByName={hiredDetails?.hiredByName || undefined}
-                        jobTitle={job?.title}
-                        candidateSource={candidate?.source || candidate?.job_board_source || undefined}
-                        onUnhire={handleUnhire}
+                      <StatusBanner
+                        tone="hired"
+                        icon={PartyPopper}
+                        eyebrow="Hired"
+                        meta={hiredDetails?.hiredAt ? `Accepted ${formatMovedHere(hiredDetails.hiredAt)} ago` : undefined}
+                        title={<><strong className="font-semibold">{(candidate?.first_name) || 'Candidate'}</strong> is hired</>}
+                        sub={<><strong className="font-semibold">{job?.title || 'Position'}</strong>{hiredDetails?.hiredByName && ` · hired by ${hiredDetails.hiredByName}`}</>}
                       />
                     ) : associationStatus === 'rejected' && rejectionDetails ? (
-                      <RejectionStatusBanner
-                        rejectedAt={rejectionDetails.rejectedAt}
-                        rejectedByName={rejectionDetails.rejectedByName || undefined}
-                        rejectionReason={rejectionDetails.rejectionReason}
-                        rejectionNotes={rejectionDetails.rejectionNotes}
-                        rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
-                        rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
-                        onReactivate={handleReactivate}
+                      <StatusBanner
+                        tone="rejected"
+                        icon={XCircle}
+                        eyebrow="Rejected"
+                        meta={rejectionDetails.rejectedAt ? `${formatMovedHere(rejectionDetails.rejectedAt)} ago${rejectionDetails.rejectedByName ? ` by ${rejectionDetails.rejectedByName}` : ''}` : undefined}
+                        title={<><strong className="font-semibold">{candidate?.first_name || 'Candidate'}</strong> is no longer in consideration</>}
+                        sub={<><strong className="font-semibold">Reason:</strong> {rejectionDetails.rejectionReason?.name || 'Not specified'}{rejectionDetails.rejectionEmailSentAt ? `. Rejection email sent.` : ''}</>}
+                        actions={
+                          <Button variant="secondary" size="md" icon={RotateCcw} onClick={handleReactivate}>
+                            Reactivate
+                          </Button>
+                        }
                       />
                     ) : null}
                   </>
