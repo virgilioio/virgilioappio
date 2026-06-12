@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
+  ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
   Heart, Briefcase, MapPin, Mail, Phone, DollarSign, Calendar, Sparkles,
   FileText, File as FileIcon, GraduationCap, Info, MessageSquare, UserPlus,
   Pencil, MoreHorizontal, ExternalLink, Upload,
