@@ -6100,6 +6100,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_access_grants: {
+        Row: {
+          created_at: string
+          ends_at: string
+          expired_at: string | null
+          granted_by: string
+          id: string
+          reason: string
+          revoked_at: string | null
+          revoked_by: string | null
+          starts_at: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          expired_at?: string | null
+          granted_by: string
+          id?: string
+          reason: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          starts_at?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          expired_at?: string | null
+          granted_by?: string
+          id?: string
+          reason?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          starts_at?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tenant_domains: {
         Row: {
           added_by: string
