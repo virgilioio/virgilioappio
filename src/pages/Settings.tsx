@@ -135,13 +135,11 @@ export default function Settings() {
       case 'customers':
         return <CustomersTab />
       case 'platform-dashboard':
-        return <PlatformTab />
-      case 'platform-settings':
-        return <PlatformSettingsManager />
-      case 'platform-job-settings':
-        return <PlatformJobSettingsManager />
-      case 'platform-saas-customers':
-        return <SaaSCustomersList />
+        return <PlatformDashboardV2 />
+      case 'platform-job-defaults':
+        return <PlatformJobDefaults />
+      case 'platform-customers':
+        return <PlatformCustomers />
       default:
         if (currentTab.startsWith('integration-')) {
           return <IntegrationsTab initialConfigureId={currentTab.replace('integration-', '')} />
