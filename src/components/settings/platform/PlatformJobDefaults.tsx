@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { GripVertical, Pencil, Trash2, Plus, Loader2 } from 'lucide-react'
 import { SpecCard } from '../shared/SpecCard'
 import { SpecRow, NOIR_BTN } from '../shared/SpecRow'
