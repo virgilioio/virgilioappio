@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { Building2, Users, Briefcase, FileText, AlertCircle } from 'lucide-react'
 import { usePlatformMetrics } from '@/hooks/usePlatformMetrics'
 
