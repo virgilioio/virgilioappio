@@ -270,11 +270,14 @@ export function SaaSCustomerDetail() {
   const [extendOpen, setExtendOpen] = useState(false)
   const [changeOpen, setChangeOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
+  const [grantOpen, setGrantOpen] = useState(false)
 
   const suspendMutation = useSuspendOrganization()
   const extendMutation = useExtendTrial()
   const changeMutation = useChangePlan()
   const assignMutation = useAssignTenantCredits()
+  const grantMutation = useGrantAccess()
+  const revokeMutation = useRevokeAccess()
 
   const { data: sub } = useQuery({
     queryKey: ['tenant-subscription', customer?.tenant_id],
