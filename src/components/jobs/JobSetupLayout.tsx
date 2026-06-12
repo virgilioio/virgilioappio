@@ -78,8 +78,9 @@ const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
 const NAV_QUICK = [
   { id: 'edit-info', label: 'Edit job info', icon: Pencil },
   { id: 'manage-postings', label: 'Manage postings', icon: Globe },
-  { id: 'activity', label: 'Activity log', icon: Activity },
+  { id: 'activity', label: 'Activity log', icon: History },
 ] as const
+
 
 function getInitials(first?: string | null, last?: string | null, email?: string | null) {
   const f = (first || '').trim()
