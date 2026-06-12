@@ -11,7 +11,11 @@ import {
   Eye,
   Sparkles,
   Zap,
+  Globe,
+  FileText,
 } from 'lucide-react'
+import { MetricStrip } from '@/components/ui/metric-strip'
+
 import { formatDistanceToNowStrict } from 'date-fns'
 import { useToast } from '@/hooks/use-toast'
 import { useJobPostings, JobPosting } from '@/hooks/useJobPostings'
