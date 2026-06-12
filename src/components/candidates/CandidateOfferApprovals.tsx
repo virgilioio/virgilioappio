@@ -3,28 +3,20 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Check, X, Clock, AlertCircle, Loader2 } from 'lucide-react'
+import { Check, X, Clock, Send, Loader2 } from 'lucide-react'
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
-
+import { toast } from 'sonner'
 
 interface CandidateOfferApprovalsProps {
   candidateId: string
   jobId: string
   organizationId?: string | null
+  candidateFirstName?: string
 }
-
-const stepColors = [
-  { bg: 'bg-pastel-blue', text: 'text-blue-600' },
-  { bg: 'bg-pastel-purple', text: 'text-purple-600' },
-  { bg: 'bg-pastel-green', text: 'text-green-600' },
-  { bg: 'bg-pastel-pink', text: 'text-pink-600' },
-  { bg: 'bg-pastel-yellow', text: 'text-yellow-600' },
-  { bg: 'bg-pastel-orange', text: 'text-orange-600' },
-]
 
 const roleLabelMap: Record<string, string> = {
   admin: 'Admin',
@@ -33,81 +25,122 @@ const roleLabelMap: Record<string, string> = {
   interviewer: 'Interviewer',
 }
 
-export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: CandidateOfferApprovalsProps) {
+type RowState = 'approved' | 'active' | 'waiting' | 'declined' | 'recalled'
+
+function NumberedCircle({ state, index }: { state: RowState; index: number }) {
+  const base = 'h-7 w-7 rounded-full flex items-center justify-center font-poppins font-semibold text-[11.5px]'
+  if (state === 'approved') {
+    return (
+      <div className={cn(base)} style={{ backgroundColor: '#DCFCE7', color: '#0B6E4F' }}>
+        <Check className="h-3.5 w-3.5" />
+      </div>
+    )
+  }
+  if (state === 'declined') {
+    return (
+      <div className={cn(base)} style={{ backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+        <X className="h-3.5 w-3.5" />
+      </div>
+    )
+  }
+  if (state === 'active') {
+    return (
+      <div className={cn(base, 'ring-2 ring-virgilio-purple/30')} style={{ backgroundColor: '#EDE4FF', color: '#5B2BD9' }}>
+        {index}
+      </div>
+    )
+  }
+  return (
+    <div className={cn(base)} style={{ backgroundColor: '#F1F0EC', color: '#8B8F9E' }}>
+      {index}
+    </div>
+  )
+}
+
+function StatusDotChip({ state }: { state: RowState }) {
+  const map: Record<RowState, { label: string; color: string; bg: string }> = {
+    approved: { label: 'Approved', color: '#0B6E4F', bg: '#DCFCE7' },
+    active: { label: 'Pending', color: '#5B2BD9', bg: '#EDE4FF' },
+    waiting: { label: 'Waiting', color: '#8B8F9E', bg: '#F1F0EC' },
+    declined: { label: 'Declined', color: '#B91C1C', bg: '#FEE2E2' },
+    recalled: { label: 'Recalled', color: '#8B8F9E', bg: '#F1F0EC' },
+  }
+  const t = map[state]
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-inter" style={{ fontSize: 11, backgroundColor: t.bg, color: t.color }}>
+      <span className="inline-block rounded-full" style={{ width: 5, height: 5, backgroundColor: 'currentColor' }} />
+      {t.label}
+    </span>
+  )
+}
+
+export function CandidateOfferApprovals({ candidateId, jobId, organizationId, candidateFirstName }: CandidateOfferApprovalsProps) {
   const { offerLetters } = useOfferLetters(candidateId)
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
   const { approvalRequest, isLoading, isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } = useOfferApprovalRequest(offerLetter?.id, jobId)
-  const { steps: configuredSteps, isEnabled: chainEnabled, isLoading: chainLoading } = useOfferApprovalChain(jobId)
-  
+  const { steps: configuredSteps, isEnabled: chainEnabled } = useOfferApprovalChain(jobId)
+
   const [declineNotes, setDeclineNotes] = useState('')
   const [showDeclineForm, setShowDeclineForm] = useState(false)
 
   if (isLoading) {
     return (
-      <Card className="bg-surface-primary border-border">
+      <Card>
         <CardContent className="py-8">
-          <div className="text-sm text-text-secondary text-center">Loading approval status...</div>
+          <div className="text-body-sm text-text-secondary text-center">Loading approval status…</div>
         </CardContent>
       </Card>
     )
   }
 
+  // Draft state — show chain config with all rows Waiting
   if (!approvalRequest) {
-    const hasConfiguredChain = chainEnabled && configuredSteps.length > 0
-
-    if (!hasConfiguredChain) {
+    if (!chainEnabled || configuredSteps.length === 0) {
       return (
-        <Card className="bg-surface-primary border-border">
+        <Card>
           <CardContent className="py-12">
-            <p className="text-sm text-muted-foreground text-center">
-              No approval chain configured for this job.
-            </p>
+            <p className="text-body-sm text-text-secondary text-center">No approval chain configured for this job.</p>
           </CardContent>
         </Card>
       )
     }
-
+    const sorted = [...configuredSteps].sort((a, b) => a.step_order - b.step_order)
     return (
-      <Card className="bg-surface-primary border-border">
-        <CardContent className="py-6">
-          <div className="opacity-50">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4">Steps</div>
-            <div className="relative">
-              <div className="absolute left-[14px] top-0 bottom-0 w-0.5 bg-border" />
-              {configuredSteps
-                .sort((a, b) => a.step_order - b.step_order)
-                .map((step, index) => {
-                  const isLast = index === configuredSteps.length - 1
-                  return (
-                    <div key={step.id} className="relative flex gap-2.5">
-                      <div className="relative z-10 flex-shrink-0">
-                        <div className={`h-[30px] w-[30px] rounded-full ${stepColors[index % stepColors.length].bg} flex items-center justify-center`}>
-                          <span className={`text-xs font-semibold ${stepColors[index % stepColors.length].text}`}>{index + 1}</span>
-                        </div>
-                      </div>
-                      <div className={cn("flex-1 pt-0.5", isLast ? "pb-0" : "pb-7")}>
-                        <span className="text-sm font-semibold text-text-primary">
-                          {step.approver_name}
-                        </span>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {roleLabelMap[step.approver_role] || 'Approval'}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-            </div>
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-poppins font-semibold text-[14px] text-text-primary">Approval chain</h3>
+            <span className="font-inter text-[11.5px] uppercase tracking-[0.08em] text-[#8B8F9E]">{sorted.length} steps</span>
           </div>
+          <div className="space-y-3.5">
+            {sorted.map((step, i) => (
+              <div key={step.id} className="flex items-center gap-3">
+                <NumberedCircle state="waiting" index={i + 1} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-poppins font-medium text-[13px] text-text-primary truncate">{step.approver_name}</p>
+                  <p className="font-inter text-[11.5px] text-[#8B8F9E]">{roleLabelMap[step.approver_role] || 'Approver'}</p>
+                </div>
+                <StatusDotChip state="waiting" />
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 font-inter text-[12px] text-[#8B8F9E]">
+            Approvals start when you submit the offer.
+          </p>
         </CardContent>
       </Card>
     )
   }
+
+  const steps = approvalRequest.steps
+  const approvedCount = steps.filter(s => s.status === 'approved').length
+  const total = steps.length
+  const allApproved = approvalRequest.status === 'approved'
 
   const handleApprove = async () => {
     if (!activeStep) return
     await approveStep(activeStep.id)
   }
-
   const handleDecline = async () => {
     if (!activeStep) return
     await declineStep(activeStep.id, declineNotes.trim() || undefined)
@@ -116,162 +149,107 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId }: 
   }
 
   return (
-    <Card className="bg-surface-primary border-border">
-      <CardContent className="pt-6 pb-4">
-        {/* Overall status */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-semibold text-text-primary">Approval Chain</h3>
-          <Badge
-            variant={
-              approvalRequest.status === 'approved' ? 'default' :
-              approvalRequest.status === 'declined' ? 'destructive' :
-              approvalRequest.status === 'recalled' ? 'outline' :
-              'secondary'
-            }
-            className="capitalize"
+    <Card>
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-poppins font-semibold text-[14px] text-text-primary">Approval chain</h3>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-inter"
+            style={{
+              fontSize: 11.5,
+              backgroundColor: allApproved ? '#DCFCE7' : '#EDE4FF',
+              color: allApproved ? '#0B6E4F' : '#5B2BD9',
+            }}
           >
-            {approvalRequest.status === 'pending' ? 'In Progress' : approvalRequest.status}
-          </Badge>
+            <Check className="h-3 w-3" />
+            Approved {approvedCount} of {total}
+          </span>
         </div>
 
-        {/* Timeline */}
-        <div className="relative space-y-0">
-          {approvalRequest.steps.map((step, index) => {
+        <div className="space-y-3.5">
+          {steps.map((step, i) => {
             const isActive = approvalRequest.status === 'pending' && step.step_order === approvalRequest.current_step_order && step.status === 'pending'
-            const isApprovedStep = step.status === 'approved'
-            const isDeclinedStep = step.status === 'declined'
-            const isRecalledStep = step.status === 'recalled'
-            const isPending = step.status === 'pending' && !isActive
-            const isLast = index === approvalRequest.steps.length - 1
+            const isApproved = step.status === 'approved'
+            const isDeclined = step.status === 'declined'
+            const isRecalled = step.status === 'recalled'
+            const state: RowState = isApproved ? 'approved' : isDeclined ? 'declined' : isRecalled ? 'recalled' : isActive ? 'active' : 'waiting'
 
             return (
-              <div key={step.id} className="relative flex gap-3">
-                {/* Vertical line */}
-                {!isLast && (
-                  <div className="absolute left-[13px] top-7 bottom-0 w-px bg-border" />
+              <div key={step.id}>
+                <div className="flex items-center gap-3">
+                  <NumberedCircle state={state} index={i + 1} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-poppins font-medium text-[13px] text-text-primary truncate">{step.approver_name}</p>
+                    <p className="font-inter text-[11.5px] text-[#8B8F9E] truncate">
+                      {roleLabelMap[step.approver_role] || 'Approver'}
+                      {step.decided_at && <> · {isApproved ? 'Approved' : 'Declined'} {formatDistanceToNow(new Date(step.decided_at), { addSuffix: true })}</>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <StatusDotChip state={state} />
+                    {isActive && !isCurrentUserActiveApprover && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        icon={Send}
+                        onClick={() => toast.success(`Reminder sent to ${step.approver_name}`)}
+                      >
+                        Send reminder
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {(isApproved || isDeclined) && step.notes && (
+                  <div className="ml-10 mt-2 rounded-lg px-3 py-2" style={{ backgroundColor: isDeclined ? '#FBF1F0' : '#FAFAF7', border: `1px solid ${isDeclined ? '#F3D9D6' : '#F1F0EC'}` }}>
+                    <p className="font-inter text-[12px] text-text-primary whitespace-pre-wrap">{step.notes}</p>
+                  </div>
                 )}
 
-                {/* Status icon */}
-                <div className="relative z-10 flex-shrink-0 mt-0.5">
-                  {isApprovedStep && (
-                    <div className="h-7 w-7 rounded-full bg-green-500/15 flex items-center justify-center">
-                      <Check className="h-3.5 w-3.5 text-green-600" />
-                    </div>
-                  )}
-                  {isDeclinedStep && (
-                    <div className="h-7 w-7 rounded-full bg-destructive/15 flex items-center justify-center">
-                      <X className="h-3.5 w-3.5 text-destructive" />
-                    </div>
-                  )}
-                  {isActive && (
-                    <div className="h-7 w-7 rounded-full bg-virgilio-purple/15 flex items-center justify-center ring-2 ring-virgilio-purple/30">
-                      <AlertCircle className="h-3.5 w-3.5 text-virgilio-purple" />
-                    </div>
-                  )}
-                  {isPending && (
-                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className={cn("flex-1 pb-6", isLast && "pb-0")}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-text-primary">
-                      {step.approver_name}
-                    </span>
-                    {step.approver_role && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                        {roleLabelMap[step.approver_role] || step.approver_role}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Step {step.step_order}
-                    {step.decided_at && (
-                      <> · {isApprovedStep ? 'Approved' : 'Declined'} {formatDistanceToNow(new Date(step.decided_at), { addSuffix: true })}</>
-                    )}
-                    {isActive && ' · Awaiting decision'}
-                    {isRecalledStep && ' · Recalled'}
-                    {isPending && ' · Pending'}
-                  </div>
-
-                  {/* Decline notes */}
-                  {isDeclinedStep && step.notes && (
-                    <div className="mt-2 p-3 bg-destructive/5 border border-destructive/20 rounded-lg">
-                      <p className="text-xs font-medium text-destructive mb-1">Reason for declining:</p>
-                      <p className="text-sm text-text-secondary">{step.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Approval notes */}
-                  {isApprovedStep && step.notes && (
-                    <div className="mt-2 p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
-                      <p className="text-xs font-medium text-green-600 mb-1">Notes:</p>
-                      <p className="text-sm text-text-secondary">{step.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Action buttons for active approver */}
-                  {isActive && isCurrentUserActiveApprover && (
-                    <div className="mt-3 space-y-3">
-                      {!showDeclineForm ? (
+                {isActive && isCurrentUserActiveApprover && (
+                  <div className="ml-10 mt-3">
+                    {!showDeclineForm ? (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="primary" icon={Check} onClick={handleApprove} disabled={isApproving || isDeclining} loading={isApproving}>
+                          Approve
+                        </Button>
+                        <Button size="sm" variant="danger" icon={X} onClick={() => setShowDeclineForm(true)} disabled={isApproving || isDeclining}>
+                          Decline
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Textarea placeholder="Please provide a reason for declining…" value={declineNotes} onChange={(e) => setDeclineNotes(e.target.value)} rows={3} className="text-sm" />
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={handleApprove}
-                            disabled={isApproving || isDeclining}
-                          >
-                            {isApproving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-                            Approve
+                          <Button size="sm" variant="dangerSolid" icon={isDeclining ? Loader2 : X} onClick={handleDecline} disabled={isDeclining} loading={isDeclining}>
+                            Confirm Decline
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowDeclineForm(true)}
-                            disabled={isApproving || isDeclining}
-                          >
-                            <X className="h-3.5 w-3.5 mr-1.5" />
-                            Decline
+                          <Button size="sm" variant="ghost" onClick={() => { setShowDeclineForm(false); setDeclineNotes('') }}>
+                            Cancel
                           </Button>
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Textarea
-                            placeholder="Please provide a reason for declining..."
-                            value={declineNotes}
-                            onChange={(e) => setDeclineNotes(e.target.value)}
-                            rows={3}
-                            className="text-sm"
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={handleDecline}
-                              disabled={isDeclining}
-                            >
-                              {isDeclining ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <X className="h-3.5 w-3.5 mr-1.5" />}
-                              Confirm Decline
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => { setShowDeclineForm(false); setDeclineNotes('') }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
+
+          {/* Terminal sent row */}
+          {allApproved && (
+            <div className="flex items-center gap-3 pt-1">
+              <div className="h-7 w-7 rounded-full flex items-center justify-center" style={{ backgroundColor: '#0d0d09', color: '#fffcf9' }}>
+                <Send className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-poppins font-medium text-[13px] text-text-primary">
+                  Offer sent to {candidateFirstName || 'candidate'}
+                </p>
+                <p className="font-inter text-[11.5px] text-[#8B8F9E]">All approvals complete</p>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
