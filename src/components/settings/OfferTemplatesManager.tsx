@@ -1,14 +1,8 @@
 import { useState } from 'react'
-import { InlineEmpty } from '@/components/ui/empty-state'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Edit, Trash2, FileText, Settings as SettingsIcon, Mail, FileCheck } from 'lucide-react'
-import { useOfferTemplates, type OfferTemplate } from '@/hooks/useOfferTemplates'
+import { Plus, Pencil, Trash2, Settings as SettingsIcon, Loader2, FilePlus2 } from 'lucide-react'
+import { useOfferTemplates } from '@/hooks/useOfferTemplates'
 import { useEmailTemplates } from '@/hooks/useEmailTemplates'
 import { useContractTemplates } from '@/hooks/useContractTemplates'
 import { OfferLetterSheet } from './templates/OfferLetterSheet'
@@ -19,524 +13,265 @@ import { RejectionReasonsManager } from './RejectionReasonsManager'
 import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
 import { OfferFormsManager } from './OfferFormsManager'
 import { CandidateSourcesManager } from './CandidateSourcesManager'
-
-type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates' | 'candidate-sources'
+import { SpecCard } from './shared/SpecCard'
+import { SpecRow, SpecEmpty, NOIR_BTN } from './shared/SpecRow'
+import { SpecChip } from './shared/SpecChip'
+import { cn } from '@/lib/utils'
 
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
 }
 
+type TabKey = 'offer-forms' | 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates' | 'candidate-sources'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'offer-forms', label: 'Offer forms' },
+  { key: 'offer-letters', label: 'Offer letters' },
+  { key: 'email-templates', label: 'Email templates' },
+  { key: 'contract-templates', label: 'Contracts' },
+  { key: 'rejection-reasons', label: 'Rejection reasons' },
+  { key: 'rejection-templates', label: 'Rejection templates' },
+  { key: 'candidate-sources', label: 'Candidate sources' },
+]
+
 export function OfferTemplatesManager({ context = 'organization' }: OfferTemplatesManagerProps) {
-  const { templates: offerTemplates, isLoading: offerLoading, deleteTemplate: deleteOffer, copyPlatformTemplate: copyOffer } = useOfferTemplates(context)
-  const { templates: emailTemplates, isLoading: emailLoading, deleteTemplate: deleteEmail } = useEmailTemplates(context)
-  const { templates: contractTemplates, isLoading: contractLoading, deleteTemplate: deleteContract, copyPlatformTemplate: copyContract } = useContractTemplates(context)
-  
-  const [offerLetterSheet, setOfferLetterSheet] = useState({ open: false, templateId: undefined as string | undefined })
-  const [emailTemplateSheet, setEmailTemplateSheet] = useState({ open: false, templateId: undefined as string | undefined })
-  const [contractTemplateSheet, setContractTemplateSheet] = useState({ open: false, templateId: undefined as string | undefined })
-  
-  const [isFieldsDialogOpen, setIsFieldsDialogOpen] = useState(false)
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-
-  const platformOfferTemplates = offerTemplates?.filter(t => t.source === 'platform')
-  const tenantOfferTemplates = offerTemplates?.filter(t => t.source === 'tenant')
-  const platformContractTemplates = contractTemplates?.filter(t => t.source === 'platform')
-  const tenantContractTemplates = contractTemplates?.filter(t => t.source === 'tenant')
-
-  const openCreateSheet = (type: TemplateType) => {
-    if (type === 'offer-letters') {
-      setOfferLetterSheet({ open: true, templateId: undefined })
-    } else if (type === 'email-templates') {
-      setEmailTemplateSheet({ open: true, templateId: undefined })
-    } else if (type === 'contract-templates') {
-      setContractTemplateSheet({ open: true, templateId: undefined })
-    }
-  }
-
-  const openEditSheet = (templateId: string, type: TemplateType) => {
-    if (type === 'offer-letters') {
-      setOfferLetterSheet({ open: true, templateId })
-    } else if (type === 'email-templates') {
-      setEmailTemplateSheet({ open: true, templateId })
-    } else if (type === 'contract-templates') {
-      setContractTemplateSheet({ open: true, templateId })
-    }
-  }
-
-  const openFieldsDialog = (templateId: string) => {
-    setSelectedTemplateId(templateId)
-    setIsFieldsDialogOpen(true)
-  }
-
-  const handleCopyOffer = async (templateId: string) => {
-    await copyOffer(templateId)
-  }
-
-  const handleCopyContract = async (templateId: string) => {
-    await copyContract(templateId)
-  }
+  const [tab, setTab] = useState<TabKey>('offer-forms')
 
   return (
-    <div className="space-y-6">
-      <Tabs defaultValue="offer-forms" className="w-full">
-        <TabsList className="bg-[#F1F0EC] p-1 h-auto rounded-full inline-flex gap-1 mb-4">
-          {[
-            ['offer-forms', 'Offer forms'],
-            ['offer-letters', 'Offer letters'],
-            ['email-templates', 'Emails'],
-            ['contract-templates', 'Contracts'],
-            ['rejection-reasons', 'Rejection reasons'],
-            ['rejection-templates', 'Rejection templates'],
-            ['candidate-sources', 'Sources'],
-          ].map(([value, label]) => (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className="rounded-full px-3 h-7 font-poppins font-medium text-[12px] text-[#5A6072] data-[state=active]:bg-[#0d0d09] data-[state=active]:text-[#fffcf9] data-[state=active]:shadow-none"
+    <div className="max-w-[860px]">
+      {/* Pill sub-nav */}
+      <div className="flex flex-wrap gap-1.5 mb-[14px]">
+        {TABS.map(t => {
+          const active = tab === t.key
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={cn(
+                'font-inter transition-colors',
+                active
+                  ? 'bg-[#0d0d09] text-[#fffcf9] border-transparent'
+                  : 'bg-white text-[#5A6072] border-[#E7E8EE] hover:bg-[#FAFAF7]'
+              )}
+              style={{ height: 28, padding: '0 12px', borderRadius: 999, fontSize: 11.5, fontWeight: 500, borderWidth: 1, borderStyle: 'solid' }}
             >
-              {label}
-            </TabsTrigger>
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {tab === 'offer-letters' && <OfferLettersSection context={context} />}
+      {tab === 'email-templates' && <EmailTemplatesSection context={context} />}
+      {tab === 'contract-templates' && <ContractTemplatesSection context={context} />}
+      {tab === 'offer-forms' && <div className="[&_.bg-white]:!shadow-none"><OfferFormsManager context={context} /></div>}
+      {tab === 'rejection-reasons' && <div className="[&_.bg-white]:!shadow-none"><RejectionReasonsManager context={context} /></div>}
+      {tab === 'rejection-templates' && <div className="[&_.bg-white]:!shadow-none"><RejectionEmailTemplatesManager context={context} /></div>}
+      {tab === 'candidate-sources' && <div className="[&_.bg-white]:!shadow-none"><CandidateSourcesManager context={context} /></div>}
+    </div>
+  )
+}
+
+// ─── Offer Letters ───
+function OfferLettersSection({ context }: { context: 'platform-defaults' | 'organization' }) {
+  const { templates, isLoading, deleteTemplate, copyPlatformTemplate } = useOfferTemplates(context)
+  const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
+  const [fieldsId, setFieldsId] = useState<string | null>(null)
+  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null)
+
+  const platformItems = (templates || []).filter(t => t.source === 'platform')
+  const tenantItems = (templates || []).filter(t => t.source === 'tenant')
+  const list = context === 'organization' ? tenantItems : templates || []
+
+  return (
+    <>
+      {context === 'organization' && platformItems.length > 0 && (
+        <SpecCard title="Platform offer letters" description="Defaults provided by Gio. Copy to your library to customize.">
+          {platformItems.map((t, i) => (
+            <SpecRow key={t.id} last={i === platformItems.length - 1}>
+              <div className="flex-1 min-w-0">
+                <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
+                <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>
+                  {t.description || `Added ${new Date(t.created_at).toLocaleDateString()}`}
+                </div>
+              </div>
+              <SpecChip tone="gray">Platform</SpecChip>
+              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => copyPlatformTemplate(t.id)} aria-label="Copy">
+                <Plus size={13} />
+              </button>
+            </SpecRow>
           ))}
-        </TabsList>
+        </SpecCard>
+      )}
 
-
-        <TabsContent value="offer-forms" className="mt-4">
-          <OfferFormsManager context={context} />
-        </TabsContent>
-
-        <TabsContent value="offer-letters" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>
-                  {context === 'platform-defaults' ? 'Platform Default Offer Templates' : 'Offer Letter Templates'}
-                </CardTitle>
-                <CardDescription>
-                  {context === 'platform-defaults'
-                    ? 'Manage platform-wide default offer letter templates'
-                    : 'Manage offer letter templates for your organization'
-                  }
-                </CardDescription>
+      <SpecCard
+        title="Offer letters"
+        description="Manage offer letters for your organization."
+        action={<button type="button" className={NOIR_BTN} style={{ height: 30, padding: '0 12px', fontSize: 12 }} onClick={() => setSheet({ open: true })}><Plus size={13} /> Create</button>}
+      >
+        {isLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
+        ) : list.length === 0 ? (
+          <SpecEmpty icon={FilePlus2} title="No offer letters yet" body="Create your first to get started." />
+        ) : (
+          list.map((t, i) => (
+            <SpecRow key={t.id} last={i === list.length - 1}>
+              <div className="flex-1 min-w-0">
+                <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
+                <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>
+                  {t.description || `Updated ${new Date(t.created_at).toLocaleDateString()}`}
+                </div>
               </div>
-              <Button onClick={() => openCreateSheet('offer-letters')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Template
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {context === 'organization' && platformOfferTemplates.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold mb-2">Platform Library</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Default templates provided by the platform. Copy to your library to customize.
-                  </p>
-                  {offerLoading ? (
-                    <div className="text-center py-8">Loading templates...</div>
-                  ) : (
-                    <div className="rounded-md border overflow-hidden mb-6">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {platformOfferTemplates.map((template) => (
-                            <TableRow key={template.id}>
-                              <TableCell className="font-medium">{template.name}</TableCell>
-                              <TableCell>
-                                {template.description || <span className="text-muted-foreground italic">No description</span>}
-                              </TableCell>
-                              <TableCell>
-                                {new Date(template.created_at).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleCopyOffer(template.id)}
-                                >
-                                  <Plus className="h-4 w-4 mr-1" /> Copy to My Library
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              )}
+              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setFieldsId(t.id)} aria-label="Fields"><SettingsIcon size={13} /></button>
+              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setSheet({ open: true, id: t.id })} aria-label="Edit"><Pencil size={13} /></button>
+              <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C]" onClick={() => setToDelete({ id: t.id, name: t.name })} aria-label="Delete"><Trash2 size={13} /></button>
+            </SpecRow>
+          ))
+        )}
+      </SpecCard>
 
-              {context === 'organization' && <h4 className="text-sm font-semibold mb-2">My Library</h4>}
-              {offerLoading ? (
-                <div className="text-center py-8">Loading templates...</div>
-              ) : (context === 'organization' ? tenantOfferTemplates : offerTemplates).length === 0 ? (
-                <InlineEmpty text="No offer templates yet. Create your first template to get started." />
-              ) : (
-                <div className="rounded-md border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(context === 'organization' ? tenantOfferTemplates : offerTemplates).map((template) => (
-                        <TableRow key={template.id}>
-                          <TableCell className="font-medium">{template.name}</TableCell>
-                          <TableCell>
-                            {template.description || <span className="text-muted-foreground italic">No description</span>}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(template.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openFieldsDialog(template.id)}
-                              >
-                                <SettingsIcon className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditSheet(template.id, 'offer-letters')}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteOffer(template.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+      <OfferLetterSheet open={sheet.open} onOpenChange={(o) => setSheet({ open: o, id: undefined })} templateId={sheet.id} context={context} onFieldsClick={(id) => setFieldsId(id)} />
 
-        <TabsContent value="email-templates" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>
-                  {context === 'platform-defaults' ? 'Platform Default Email Templates' : 'Email Templates'}
-                </CardTitle>
-                <CardDescription>
-                  {context === 'platform-defaults'
-                    ? 'Manage platform-wide default email templates'
-                    : 'Manage email templates for your organization'
-                  }
-                </CardDescription>
-              </div>
-              <Button onClick={() => openCreateSheet('email-templates')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Email
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {emailLoading ? (
-                <div className="text-center py-8">Loading templates...</div>
-              ) : emailTemplates.length === 0 ? (
-                <InlineEmpty text="No email templates yet. Create your first template to get started." />
-              ) : (
-                <div className="rounded-md border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead>Created</TableHead>
-                        {context === 'organization' && <TableHead>Source</TableHead>}
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {emailTemplates.map((template) => (
-                        <TableRow key={template.id}>
-                          <TableCell className="font-medium">{template.name}</TableCell>
-                          <TableCell>{template.subject}</TableCell>
-                          <TableCell>
-                            {new Date(template.created_at).toLocaleDateString()}
-                          </TableCell>
-                          {context === 'organization' && (
-                            <TableCell>
-                              <Badge variant={template.source === 'platform' ? 'source-inherited' : 'source-custom'}>
-                                {template.source === 'platform' ? 'Inherited' : 'Custom'}
-                              </Badge>
-                            </TableCell>
-                          )}
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditSheet(template.id, 'email-templates')}
-                                disabled={context === 'organization' && template.source === 'platform'}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    disabled={context === 'organization' && template.source === 'platform'}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteEmail(template.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="contract-templates" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>
-                  {context === 'platform-defaults' ? 'Platform Default Contract Templates' : 'Contract Templates'}
-                </CardTitle>
-                <CardDescription>
-                  {context === 'platform-defaults'
-                    ? 'Manage platform-wide default contract templates'
-                    : 'Manage contract templates for your organization'
-                  }
-                </CardDescription>
-              </div>
-              <Button onClick={() => openCreateSheet('contract-templates')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Contract
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {context === 'organization' && platformContractTemplates.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold mb-2">Platform Library</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Default templates provided by the platform. Copy to your library to customize.
-                  </p>
-                  {contractLoading ? (
-                    <div className="text-center py-8">Loading templates...</div>
-                  ) : (
-                    <div className="rounded-md border overflow-hidden mb-6">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {platformContractTemplates.map((template) => (
-                            <TableRow key={template.id}>
-                              <TableCell className="font-medium">{template.name}</TableCell>
-                              <TableCell>
-                                {template.description || <span className="text-muted-foreground italic">No description</span>}
-                              </TableCell>
-                              <TableCell>
-                                {new Date(template.created_at).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleCopyContract(template.id)}
-                                >
-                                  <Plus className="h-4 w-4 mr-1" /> Copy to My Library
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {context === 'organization' && <h4 className="text-sm font-semibold mb-2">My Library</h4>}
-              {contractLoading ? (
-                <div className="text-center py-8">Loading templates...</div>
-              ) : (context === 'organization' ? tenantContractTemplates : contractTemplates).length === 0 ? (
-                <InlineEmpty text="No contract templates yet. Create your first template to get started." />
-              ) : (
-                <div className="rounded-md border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(context === 'organization' ? tenantContractTemplates : contractTemplates).map((template) => (
-                        <TableRow key={template.id}>
-                          <TableCell className="font-medium">{template.name}</TableCell>
-                          <TableCell>
-                            {template.description || <span className="text-muted-foreground italic">No description</span>}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(template.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditSheet(template.id, 'contract-templates')}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteContract(template.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="rejection-reasons" className="mt-4">
-          <RejectionReasonsManager context={context} />
-        </TabsContent>
-
-        <TabsContent value="rejection-templates" className="mt-4">
-          <RejectionEmailTemplatesManager context={context} />
-        </TabsContent>
-
-        <TabsContent value="candidate-sources" className="mt-4">
-          <CandidateSourcesManager context={context} />
-        </TabsContent>
-      </Tabs>
-
-      {/* Offer Letter Sheet */}
-      <OfferLetterSheet
-        open={offerLetterSheet.open}
-        onOpenChange={(open) => setOfferLetterSheet({ open, templateId: undefined })}
-        templateId={offerLetterSheet.templateId}
-        context={context}
-        onFieldsClick={openFieldsDialog}
-      />
-
-      {/* Email Template Sheet */}
-      <EmailTemplateSheet
-        open={emailTemplateSheet.open}
-        onOpenChange={(open) => setEmailTemplateSheet({ open, templateId: undefined })}
-        templateId={emailTemplateSheet.templateId}
-        context={context}
-      />
-
-      {/* Contract Template Sheet */}
-      <ContractTemplateSheet
-        open={contractTemplateSheet.open}
-        onOpenChange={(open) => setContractTemplateSheet({ open, templateId: undefined })}
-        templateId={contractTemplateSheet.templateId}
-        context={context}
-      />
-
-      {/* Template Fields Dialog */}
-      <Dialog open={isFieldsDialogOpen} onOpenChange={() => setIsFieldsDialogOpen(false)}>
+      <Dialog open={!!fieldsId} onOpenChange={() => setFieldsId(null)}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Template Fields</DialogTitle>
-          </DialogHeader>
-          {selectedTemplateId && (
-            <OfferTemplateFieldsManager templateId={selectedTemplateId} />
-          )}
+          <DialogHeader><DialogTitle>Manage template fields</DialogTitle></DialogHeader>
+          {fieldsId && <OfferTemplateFieldsManager templateId={fieldsId} />}
         </DialogContent>
       </Dialog>
-    </div>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete template</AlertDialogTitle>
+            <AlertDialogDescription>Delete "{toDelete?.name}"? This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
+// ─── Email Templates ───
+function EmailTemplatesSection({ context }: { context: 'platform-defaults' | 'organization' }) {
+  const { templates, isLoading, deleteTemplate } = useEmailTemplates(context)
+  const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
+  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null)
+
+  return (
+    <>
+      <SpecCard
+        title="Email templates"
+        description="Manage email templates for your organization."
+        action={<button type="button" className={NOIR_BTN} style={{ height: 30, padding: '0 12px', fontSize: 12 }} onClick={() => setSheet({ open: true })}><Plus size={13} /> Create</button>}
+      >
+        {isLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
+        ) : templates.length === 0 ? (
+          <SpecEmpty icon={FilePlus2} title="No email templates yet" body="Create your first to get started." />
+        ) : (
+          templates.map((t, i) => {
+            const isPlatform = context === 'organization' && t.source === 'platform'
+            return (
+              <SpecRow key={t.id} last={i === templates.length - 1}>
+                <div className="flex-1 min-w-0">
+                  <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
+                  <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>{t.subject}</div>
+                </div>
+                {isPlatform && <SpecChip tone="gray">Inherited</SpecChip>}
+                <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09] disabled:opacity-40" onClick={() => setSheet({ open: true, id: t.id })} disabled={isPlatform} aria-label="Edit"><Pencil size={13} /></button>
+                <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C] disabled:opacity-40" onClick={() => setToDelete({ id: t.id, name: t.name })} disabled={isPlatform} aria-label="Delete"><Trash2 size={13} /></button>
+              </SpecRow>
+            )
+          })
+        )}
+      </SpecCard>
+
+      <EmailTemplateSheet open={sheet.open} onOpenChange={(o) => setSheet({ open: o, id: undefined })} templateId={sheet.id} context={context} />
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete template</AlertDialogTitle>
+            <AlertDialogDescription>Delete "{toDelete?.name}"? This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
+// ─── Contract Templates ───
+function ContractTemplatesSection({ context }: { context: 'platform-defaults' | 'organization' }) {
+  const { templates, isLoading, deleteTemplate, copyPlatformTemplate } = useContractTemplates(context)
+  const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
+  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null)
+
+  const platformItems = (templates || []).filter(t => t.source === 'platform')
+  const tenantItems = (templates || []).filter(t => t.source === 'tenant')
+  const list = context === 'organization' ? tenantItems : templates || []
+
+  return (
+    <>
+      {context === 'organization' && platformItems.length > 0 && (
+        <SpecCard title="Platform contracts" description="Defaults provided by Gio. Copy to your library to customize.">
+          {platformItems.map((t, i) => (
+            <SpecRow key={t.id} last={i === platformItems.length - 1}>
+              <div className="flex-1 min-w-0">
+                <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
+                <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>{t.description || ''}</div>
+              </div>
+              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => copyPlatformTemplate(t.id)} aria-label="Copy"><Plus size={13} /></button>
+            </SpecRow>
+          ))}
+        </SpecCard>
+      )}
+
+      <SpecCard
+        title="Contracts"
+        description="Manage contracts for your organization."
+        action={<button type="button" className={NOIR_BTN} style={{ height: 30, padding: '0 12px', fontSize: 12 }} onClick={() => setSheet({ open: true })}><Plus size={13} /> Create</button>}
+      >
+        {isLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-[#8B8F9E]" /></div>
+        ) : list.length === 0 ? (
+          <SpecEmpty icon={FilePlus2} title="No contracts yet" body="Create your first to get started." />
+        ) : (
+          list.map((t, i) => (
+            <SpecRow key={t.id} last={i === list.length - 1}>
+              <div className="flex-1 min-w-0">
+                <div className="font-inter text-[#0d0d09] truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{t.name}</div>
+                <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>{t.description || `Updated ${new Date(t.created_at).toLocaleDateString()}`}</div>
+              </div>
+              <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setSheet({ open: true, id: t.id })} aria-label="Edit"><Pencil size={13} /></button>
+              <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C]" onClick={() => setToDelete({ id: t.id, name: t.name })} aria-label="Delete"><Trash2 size={13} /></button>
+            </SpecRow>
+          ))
+        )}
+      </SpecCard>
+
+      <ContractTemplateSheet open={sheet.open} onOpenChange={(o) => setSheet({ open: o, id: undefined })} templateId={sheet.id} context={context} />
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete contract</AlertDialogTitle>
+            <AlertDialogDescription>Delete "{toDelete?.name}"? This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

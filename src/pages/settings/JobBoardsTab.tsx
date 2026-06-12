@@ -1,21 +1,20 @@
 import { useState } from 'react'
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { FormField } from '@/components/ui/form-field'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
-import { Copy, Info, CheckCircle2, XCircle, Loader2, AlertTriangle } from 'lucide-react'
+import { Copy, Loader2, Radio, Briefcase } from 'lucide-react'
 import { copyToClipboard } from '@/utils/clipboard'
 import { useToast } from '@/hooks/use-toast'
+import { SpecCard } from '@/components/settings/shared/SpecCard'
+import { SpecRow, SEC_BTN } from '@/components/settings/shared/SpecRow'
+import { SpecChip } from '@/components/settings/shared/SpecChip'
 
-interface FeedTestResult {
-  status: 'success' | 'error'
-  jobCount?: number
-  message?: string
-}
+interface FeedTestResult { status: 'success' | 'error'; jobCount?: number; message?: string }
+
+const ROWS: { key: 'feed_url' | 'webhook_url' | 'questions_url'; label: string }[] = [
+  { key: 'feed_url', label: 'XML feed' },
+  { key: 'webhook_url', label: 'Application webhook' },
+  { key: 'questions_url', label: 'Screening questions' },
+]
 
 export function JobBoardsTab() {
   const { toast } = useToast()
@@ -25,223 +24,116 @@ export function JobBoardsTab() {
 
   const handleCopy = (text: string, label: string) => {
     copyToClipboard(text)
-    toast({
-      title: 'Copied',
-      description: `${label} copied to clipboard`
-    })
+    toast({ title: 'Copied', description: `${label} copied to clipboard` })
   }
 
   const handleTestFeed = async () => {
     if (!integration?.feed_url) return
-    
-    setIsTesting(true)
-    setTestResult(null)
-    
+    setIsTesting(true); setTestResult(null)
     try {
-      const response = await fetch(integration.feed_url)
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        setTestResult({
-          status: 'error',
-          message: errorData.error || `HTTP ${response.status}: ${response.statusText}`
-        })
+      const r = await fetch(integration.feed_url)
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}))
+        setTestResult({ status: 'error', message: err.error || `HTTP ${r.status}` })
         return
       }
-      
-      const xmlText = await response.text()
-      // Count <job> tags in the XML
-      const jobMatches = xmlText.match(/<job>/g)
-      const jobCount = jobMatches?.length || 0
-      
-      setTestResult({
-        status: 'success',
-        jobCount
-      })
-    } catch (error) {
-      setTestResult({
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to test feed'
-      })
-    } finally {
-      setIsTesting(false)
-    }
+      const xml = await r.text()
+      const count = (xml.match(/<job>/g) || []).length
+      setTestResult({ status: 'success', jobCount: count })
+      toast({ title: 'Feed working', description: `${count} active job${count !== 1 ? 's' : ''} found` })
+    } catch (e) {
+      setTestResult({ status: 'error', message: e instanceof Error ? e.message : 'Failed' })
+    } finally { setIsTesting(false) }
   }
 
   return (
-    <div className="space-y-4">
-
-
-      {/* Talent.com Integration Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <span className="text-lg font-bold text-primary">T</span>
-              </div>
-              <div>
-                <CardTitle>Talent.com</CardTitle>
-                <CardDescription>
-                  Reach millions of job seekers across North America
-                </CardDescription>
-              </div>
-            </div>
-            <Switch 
-              checked={isEnabled} 
-              onCheckedChange={toggleIntegration}
-              disabled={isLoading}
-            />
+    <div className="max-w-[860px]">
+      <SpecCard
+        title="Talent.com"
+        description="Jobs sync automatically from your feed; applications flow back via webhook and AI parses the resumes."
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className={SEC_BTN}
+              style={{ height: 26, padding: '0 10px', fontSize: 11.5 }}
+              onClick={handleTestFeed}
+              disabled={!integration?.feed_url || isTesting}
+            >
+              {isTesting ? <Loader2 size={11} className="animate-spin" /> : <Radio size={11} />} Test feed
+            </button>
+            <Switch checked={isEnabled} onCheckedChange={toggleIntegration} disabled={isLoading} />
           </div>
-        </CardHeader>
-        
-        {isEnabled && integration && (
-          <CardContent className="space-y-4">
-            {/* Test Feed Result */}
-            {testResult && (
-              <Alert variant={testResult.status === 'success' ? 'default' : 'destructive'}>
-                {testResult.status === 'success' ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                ) : (
-                  <XCircle className="h-4 w-4" />
-                )}
-                <AlertDescription>
-                  {testResult.status === 'success' 
-                    ? `Feed working! ${testResult.jobCount} active job${testResult.jobCount !== 1 ? 's' : ''} found.`
-                    : `Feed error: ${testResult.message}`
-                  }
-                  {testResult.status === 'success' && testResult.jobCount === 0 && (
-                    <span className="block mt-1 text-amber-600">
-                      No jobs are published to Talent.com yet. Enable "Publish to Talent.com" on your job postings.
-                    </span>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* Warning if no test has been done */}
-            {!testResult && (
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  Test your feed before sharing with Talent.com to ensure everything is working correctly.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="space-y-1">
-              <FormField label="XML Feed URL">
-                <div className="flex gap-2">
-                  <Input 
-                    value={integration.feed_url || ''} 
-                    readOnly 
-                    className="font-mono text-xs"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleCopy(integration.feed_url || '', 'Feed URL')}
+        }
+      >
+        {isEnabled && integration ? (
+          <>
+            {ROWS.map((row, i) => {
+              const url = (integration as any)[row.key] as string | null
+              return (
+                <SpecRow key={row.key} last={i === ROWS.length - 1}>
+                  <span
+                    className="font-inter text-[#0d0d09] shrink-0"
+                    style={{ width: 150, fontSize: 11.5, fontWeight: 600 }}
                   >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    size="sm"
-                    onClick={handleTestFeed}
-                    disabled={isTesting}
+                    {row.label}
+                  </span>
+                  <span
+                    className="flex-1 min-w-0 truncate"
+                    style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10.5, color: '#5A6072' }}
                   >
-                    {isTesting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      'Test Feed'
-                    )}
-                  </Button>
-                </div>
-              </FormField>
-              <p className="text-xs text-muted-foreground">This feed contains all your active job postings</p>
-            </div>
-            
-            <div className="space-y-1">
-              <FormField label="Application Webhook URL">
-                <div className="flex gap-2">
-                  <Input 
-                    value={integration.webhook_url || ''} 
-                    readOnly 
-                    className="font-mono text-xs"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleCopy(integration.webhook_url || '', 'Webhook URL')}
+                    {url || '—'}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-[#8B8F9E] hover:text-[#0d0d09]"
+                    onClick={() => url && handleCopy(url, row.label)}
+                    disabled={!url}
+                    aria-label="Copy"
                   >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </FormField>
-              <p className="text-xs text-muted-foreground">Talent.com will POST applications to this endpoint</p>
+                    <Copy size={12} />
+                  </button>
+                </SpecRow>
+              )
+            })}
+            <div
+              className="font-inter text-[#8B8F9E]"
+              style={{ borderTop: '1px solid #F1F0EC', padding: '9px 18px', fontSize: 11 }}
+            >
+              Enable Talent.com per job in each job's posting settings.
+              {testResult?.status === 'success' && testResult.jobCount === 0 && (
+                <span className="ml-1 text-[#92400E]">No jobs published yet.</span>
+              )}
+              {testResult?.status === 'error' && (
+                <span className="ml-1 text-[#B91C1C]">Feed error: {testResult.message}</span>
+              )}
             </div>
-            
-            <div className="space-y-1">
-              <FormField label="Screening Questions URL">
-                <div className="flex gap-2">
-                  <Input 
-                    value={integration.questions_url || ''} 
-                    readOnly 
-                    className="font-mono text-xs"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleCopy(integration.questions_url || '', 'Questions URL')}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </FormField>
-              <p className="text-xs text-muted-foreground">Dynamic screening questions per job posting</p>
-            </div>
-            
-            <div className="pt-4 border-t">
-              <h4 className="text-sm font-medium mb-2">How it Works</h4>
-              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Enable job postings for Talent.com in each job's posting settings</li>
-                <li>Talent.com automatically syncs your jobs from the feed URL</li>
-                <li>Applications flow directly into your pipeline via the webhook</li>
-                <li>AI automatically parses resumes and extracts candidate data</li>
-              </ol>
-            </div>
-          </CardContent>
+          </>
+        ) : (
+          <div className="font-inter text-[#8B8F9E]" style={{ padding: '18px', fontSize: 12 }}>
+            Enable Talent.com to view your sync URLs.
+          </div>
         )}
-      </Card>
+      </SpecCard>
 
-      {/* Placeholder cards for future integrations */}
-      <Card className="opacity-50">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-lg font-bold text-muted-foreground">I</span>
-            </div>
-            <div>
-              <CardTitle>Indeed</CardTitle>
-              <CardDescription>Coming Soon - Post jobs to the world's #1 job site</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      <Card className="opacity-50">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-              <span className="text-lg font-bold text-muted-foreground">L</span>
-            </div>
-            <div>
-              <CardTitle>LinkedIn Jobs</CardTitle>
-              <CardDescription>Coming Soon - Reach professional networks worldwide</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+      <SpecCard title="More boards" description="Coming soon to your workspace.">
+        {[
+          { icon: Briefcase, label: 'Indeed', desc: "Post to the world's #1 job site." },
+          { icon: Briefcase, label: 'LinkedIn Jobs', desc: 'Publish openings to LinkedIn.' },
+        ].map((b, i, arr) => {
+          const Icon = b.icon
+          return (
+            <SpecRow key={b.label} last={i === arr.length - 1} className="opacity-60">
+              <Icon size={16} color="#5A6072" />
+              <div className="flex-1 min-w-0">
+                <div className="font-inter text-[#0d0d09]" style={{ fontSize: 12.5, fontWeight: 600 }}>{b.label}</div>
+                <div className="font-inter text-[#8B8F9E]" style={{ fontSize: 11 }}>{b.desc}</div>
+              </div>
+              <SpecChip tone="gray">Coming soon</SpecChip>
+            </SpecRow>
+          )
+        })}
+      </SpecCard>
     </div>
   )
 }
