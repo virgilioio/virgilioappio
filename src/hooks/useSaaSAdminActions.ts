@@ -196,3 +196,85 @@ export function useActivateAccount() {
     }
   })
 }
+
+interface GrantAccessParams {
+  tenantId: string
+  endDate: Date
+  reason: string
+}
+
+interface RevokeAccessParams {
+  tenantId: string
+}
+
+export function useGrantAccess() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ tenantId, endDate, reason }: GrantAccessParams) => {
+      return withAuthRetry(async () => {
+        const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
+          body: {
+            action: 'grant_access',
+            tenantId,
+            params: { endDate: endDate.toISOString(), reason },
+          },
+        })
+        if (error) throw error
+        return data.data
+      })
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-access-grant', variables.tenantId] })
+      toast({
+        title: 'Access granted',
+        description: `Tenant unlocked until ${variables.endDate.toLocaleDateString()}.`,
+      })
+    },
+    onError: (error) => {
+      log.error('Failed to grant access:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Grant failed',
+        description: extractErrorMessage(error),
+      })
+    },
+  })
+}
+
+export function useRevokeAccess() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ tenantId }: RevokeAccessParams) => {
+      return withAuthRetry(async () => {
+        const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
+          body: { action: 'revoke_access', tenantId },
+        })
+        if (error) throw error
+        return data.data
+      })
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-access-grant', variables.tenantId] })
+      toast({
+        title: 'Access revoked',
+        description: 'Tenant has been re-locked.',
+      })
+    },
+    onError: (error) => {
+      log.error('Failed to revoke access:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Revoke failed',
+        description: extractErrorMessage(error),
+      })
+    },
+  })
+}
