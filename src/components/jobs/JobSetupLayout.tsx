@@ -252,58 +252,70 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   return (
     <div
       ref={scrollRef}
-      className="h-full overflow-auto bg-[#FAFAF7]"
+      className="h-full overflow-auto bg-[#F6F5F1]"
     >
       <div className="mx-auto max-w-[1280px] px-6 sm:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
-          {/* Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-[224px_minmax(0,1fr)] items-start gap-[26px]">
+          {/* Sidebar — flat rail */}
           <aside className="lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100dvh-120px)] lg:overflow-auto">
-            <div className="rounded-2xl border border-virgilio-border bg-white p-4">
-              <div className="px-2 pt-1 pb-3">
-                <div className="font-poppins font-semibold tracking-[-0.04em] text-[18px] text-text-primary">
-                  Job setup<span className="text-virgilio-purple">.</span>
-                </div>
-                <div className="text-[12px] text-text-tertiary truncate">{jobTitle}</div>
+            <div style={{ padding: '0 10px 12px' }}>
+              <div
+                className="font-poppins"
+                style={{ fontSize: 16, fontWeight: 600, color: '#0d0d09', letterSpacing: '-0.03em' }}
+              >
+                Job setup<span style={{ color: '#D7C5FB' }}>.</span>
               </div>
-
-              <NavGroupLabel>Configuration</NavGroupLabel>
-              <nav className="space-y-1">
-                {NAV_CONFIG.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    active={active === item.id}
-                    onClick={() => scrollTo(item.id)}
-                  />
-                ))}
-              </nav>
-
-              <NavGroupLabel className="mt-4">Quick links</NavGroupLabel>
-              <nav className="space-y-1">
-                {NAV_QUICK.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    muted
-                    onClick={() => handleQuick(item.id)}
-                  />
-                ))}
-              </nav>
-
-              {lastEdited && (
-                <div className="mt-4 rounded-xl bg-[#EDE4FF] px-3 py-3">
-                  <div className="text-[10px] font-poppins font-semibold tracking-[0.14em] uppercase text-virgilio-purple">
-                    Auto-saved
-                  </div>
-                  <div className="mt-1 text-[12px] text-text-primary leading-snug">
-                    Last edit {lastEdited} ago by {editorName}.
-                  </div>
-                </div>
-              )}
+              <div
+                className="font-inter truncate"
+                style={{ fontSize: 11, color: '#8B8F9E', marginTop: 2 }}
+              >
+                {jobTitle}
+              </div>
             </div>
+
+            <NavGroupLabel>Configuration</NavGroupLabel>
+            <nav className="flex flex-col gap-px">
+              {NAV_CONFIG.map((item) => (
+                <NavItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  active={active === item.id}
+                  onClick={() => scrollTo(item.id)}
+                />
+              ))}
+            </nav>
+
+            <NavGroupLabel>Quick links</NavGroupLabel>
+            <nav className="flex flex-col gap-px">
+              {NAV_QUICK.map((item) => (
+                <NavItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  muted
+                  onClick={() => handleQuick(item.id)}
+                />
+              ))}
+            </nav>
+
+            {lastEdited && (
+              <div
+                className="font-inter"
+                style={{
+                  margin: '14px 10px 0',
+                  borderTop: '1px solid #E7E8EE',
+                  paddingTop: 10,
+                  fontSize: 10.5,
+                  color: '#B5B9C4',
+                  lineHeight: 1.5,
+                }}
+              >
+                Auto-saved · last edit {lastEdited} ago by {editorName}.
+              </div>
+            )}
           </aside>
+
 
           {/* Main column */}
           <main className="space-y-8 min-w-0">
