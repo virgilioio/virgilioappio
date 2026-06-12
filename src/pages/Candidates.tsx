@@ -39,7 +39,7 @@ import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { MinimizableBulkUploadDialog } from '@/components/candidates/MinimizableBulkUploadDialog'
 import { CSVImportDialog } from '@/components/candidates/CSVImportDialog'
-import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
+
 import { DeleteCandidateDialog } from '@/components/candidates/DeleteCandidateDialog'
 import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 
