@@ -62,9 +62,12 @@ export default function Settings() {
   const { organizationId, userType } = useAuth()
   const { tenant } = useTenant()
 
+  const { essentialsRemaining, essentialsTotal, configuredCount } = useSetupProgress()
+
   const isBillingRoute = location.pathname === '/billing'
   const pickDefaultTab = () => {
     if (isPlatformAdmin) return 'platform-dashboard'
+    if (essentialsRemaining > 0) return 'setup'
     if (userType === 'workspace_owner' && organizationId) return 'organization'
     return 'profile'
   }
