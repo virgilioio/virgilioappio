@@ -107,6 +107,26 @@ export function OfferTimelineCard({ candidateId, jobId, offeredAt }: OfferTimeli
         icon: Pen,
       });
     }
+
+    // Offer expiry — only show if explicitly set and offer is still open
+    const expiresAt = offer.expires_at;
+    const isOpen = !['accepted', 'declined'].includes(offer.status || '');
+    if (expiresAt && isOpen) {
+      const daysLeft = differenceInCalendarDays(new Date(expiresAt), new Date());
+      const overdue = daysLeft < 0;
+      const dueSoon = daysLeft >= 0 && daysLeft <= 2;
+      milestones.push({
+        label: overdue
+          ? 'Offer expired'
+          : daysLeft === 0
+            ? 'Offer expires today'
+            : `Offer expires in ${daysLeft}d`,
+        at: expiresAt,
+        meta: overdue ? `${Math.abs(daysLeft)}d overdue` : undefined,
+        tone: overdue ? 'warn' : dueSoon ? 'active' : 'pending',
+        icon: overdue ? AlertTriangle : CalendarClock,
+      });
+    }
   }
 
   if (!milestones.length) return null;
