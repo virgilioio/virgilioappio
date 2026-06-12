@@ -174,12 +174,6 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
         </DialogContent>
       </Dialog>
 
-      {/* Candidate Profile Sheet */}
-      <IndependentCandidateProfileSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        candidateId={selectedCandidateId}
-      />
     </>
   )
 }
