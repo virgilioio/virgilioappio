@@ -45,9 +45,9 @@ export function useApplicationFields(context: ApplicationFieldsContext = 'organi
       let query = supabase
         .from('application_fields')
         .select('*')
-        .eq('is_core_field', false) // Only fetch custom fields
 
       // Filter based on context
+
       if (context === 'platform-defaults') {
         query = query.is('tenant_id', null)
       } else {
