@@ -6,13 +6,14 @@ const corsHeaders = {
 }
 
 interface ManageSubscriptionRequest {
-  action: 'suspend' | 'restore' | 'activate' | 'change_plan' | 'extend_trial'
+  action: 'suspend' | 'restore' | 'activate' | 'change_plan' | 'extend_trial' | 'grant_access' | 'revoke_access'
   tenantId: string
   params?: {
     reason?: string
     newEndDate?: string
     newInterval?: string
     newSeats?: number  // Optional admin override for seat count
+    endDate?: string   // grant_access: when the temporary access expires
   }
 }
 
@@ -216,6 +217,79 @@ Deno.serve(async (req) => {
         }
         auditAction = 'tenant_subscription_trial_extended'
         break
+
+      case 'grant_access': {
+        if (!params?.endDate || !params?.reason || params.reason.trim().length < 5) {
+          return new Response(
+            JSON.stringify({ error: 'endDate and reason (min 5 chars) required for grant_access' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        const allowed = ['locked', 'past_due', 'canceled']
+        if (!allowed.includes(currentSub.billing_status)) {
+          return new Response(
+            JSON.stringify({ error: `Grant Access is only allowed when billing_status is one of ${allowed.join(', ')}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        const endDateObj = new Date(params.endDate)
+        if (isNaN(endDateObj.getTime()) || endDateObj <= new Date()) {
+          return new Response(
+            JSON.stringify({ error: 'endDate must be in the future' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Insert grant (trigger auto-revokes any prior active grant)
+        const { error: grantError } = await serviceClient
+          .from('tenant_access_grants')
+          .insert({
+            tenant_id: tenantId,
+            granted_by: user.id,
+            reason: params.reason.trim(),
+            ends_at: endDateObj.toISOString(),
+          })
+        if (grantError) {
+          console.error('Grant insert failed:', grantError)
+          return new Response(
+            JSON.stringify({ error: 'Failed to record grant', details: grantError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        updateData = {
+          ...updateData,
+          billing_status: 'active',
+          suspended_at: null,
+          suspended_reason: null,
+        }
+        auditAction = 'tenant_access_granted'
+        break
+      }
+
+      case 'revoke_access': {
+        // Mark active grant revoked
+        const { error: revokeError } = await serviceClient
+          .from('tenant_access_grants')
+          .update({ revoked_at: new Date().toISOString(), revoked_by: user.id })
+          .eq('tenant_id', tenantId)
+          .is('revoked_at', null)
+          .is('expired_at', null)
+        if (revokeError) {
+          console.error('Grant revoke failed:', revokeError)
+          return new Response(
+            JSON.stringify({ error: 'Failed to revoke grant', details: revokeError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        updateData = {
+          ...updateData,
+          billing_status: 'locked',
+        }
+        auditAction = 'tenant_access_revoked'
+        break
+      }
+
 
       default:
         return new Response(

@@ -5,7 +5,7 @@ import {
   ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock,
   Briefcase, Users, UserCheck, Lightbulb, Copy, Check, CalendarPlus, Sparkles, CreditCard, Ban,
   UserPlus, ArrowRightLeft, Video, Upload, FileText, Download, Minus, Plus,
-  CircleDollarSign, Mail, Eye, PencilLine,
+  CircleDollarSign, Mail, Eye, PencilLine, Unlock,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, formatDistanceToNowStrict, differenceInCalendarDays, isToday, isYesterday } from 'date-fns'
@@ -16,7 +16,7 @@ import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
 import { useSaaSCustomerMembers } from '@/hooks/useSaaSCustomerMembers'
 import { useSaaSCustomerOnboarding } from '@/hooks/useSaaSCustomerOnboarding'
 import {
-  useSuspendOrganization, useExtendTrial,
+  useSuspendOrganization, useExtendTrial, useGrantAccess, useRevokeAccess,
 } from '@/hooks/useSaaSAdminActions'
 import { useChangePlan } from '@/hooks/useChangePlan'
 import { useAssignTenantCredits } from '@/hooks/useAssignTenantCredits'
@@ -26,6 +26,7 @@ import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganiza
 import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
 import { ChangePlanDialog } from '@/components/settings/ChangePlanDialog'
 import { AssignCreditsDialog } from '@/components/settings/AssignCreditsDialog'
+import { GrantAccessDialog } from '@/components/settings/GrantAccessDialog'
 
 // ─────────────────────────────────────────────────────────────────
 // design tokens
@@ -269,11 +270,14 @@ export function SaaSCustomerDetail() {
   const [extendOpen, setExtendOpen] = useState(false)
   const [changeOpen, setChangeOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
+  const [grantOpen, setGrantOpen] = useState(false)
 
   const suspendMutation = useSuspendOrganization()
   const extendMutation = useExtendTrial()
   const changeMutation = useChangePlan()
   const assignMutation = useAssignTenantCredits()
+  const grantMutation = useGrantAccess()
+  const revokeMutation = useRevokeAccess()
 
   const { data: sub } = useQuery({
     queryKey: ['tenant-subscription', customer?.tenant_id],
@@ -312,6 +316,25 @@ export function SaaSCustomerDetail() {
         .order('created_at', { ascending: false })
       if (error) throw error
       return data as any[]
+    },
+    enabled: !!customer?.tenant_id,
+  })
+
+  const { data: activeGrant } = useQuery({
+    queryKey: ['tenant-access-grant', customer?.tenant_id],
+    queryFn: async () => {
+      if (!customer?.tenant_id) return null
+      const { data, error } = await supabase
+        .from('tenant_access_grants')
+        .select('id, reason, ends_at, granted_by, created_at')
+        .eq('tenant_id', customer.tenant_id)
+        .is('revoked_at', null)
+        .is('expired_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw error
+      return data as any
     },
     enabled: !!customer?.tenant_id,
   })
@@ -578,10 +601,13 @@ export function SaaSCustomerDetail() {
             isTrialing={isTrialing}
             firstGroupKey={firstGroupKey}
             groupedFeed={groupedFeed}
+            activeGrant={activeGrant}
             onExtend={() => setExtendOpen(true)}
             onGrant={() => setAssignOpen(true)}
             onChange={() => setChangeOpen(true)}
             onSuspend={() => setSuspendOpen(true)}
+            onGrantAccess={() => setGrantOpen(true)}
+            onRevokeAccess={() => revokeMutation.mutate({ tenantId: customer.tenant_id })}
             onSwitchActivity={() => setTab('activity')}
           />
         )}
@@ -651,6 +677,16 @@ export function SaaSCustomerDetail() {
         currentCollectLimit={creditUsage?.collect_credits_limit}
         isPending={assignMutation.isPending}
       />
+      <GrantAccessDialog
+        open={grantOpen}
+        onOpenChange={setGrantOpen}
+        onConfirm={(endDate, reason) => {
+          grantMutation.mutate({ tenantId: customer.tenant_id, endDate, reason })
+          setGrantOpen(false)
+        }}
+        organizationName={customer.name}
+        isPending={grantMutation.isPending}
+      />
     </div>
   )
 }
@@ -660,8 +696,8 @@ export function SaaSCustomerDetail() {
 // ─────────────────────────────────────────────────────────────────
 function OverviewTab({
   customer, health, sub, ownerName, ownerEmail, isTrialing,
-  firstGroupKey, groupedFeed,
-  onExtend, onGrant, onChange, onSuspend, onSwitchActivity,
+  firstGroupKey, groupedFeed, activeGrant,
+  onExtend, onGrant, onChange, onSuspend, onGrantAccess, onRevokeAccess, onSwitchActivity,
 }: any) {
   const onboarding = useSaaSCustomerOnboarding(customer.tenant_id)
   const queryClient = useQueryClient()
@@ -896,8 +932,34 @@ function OverviewTab({
               <QuickBtn icon={CreditCard} label="Change plan" onClick={onChange} />
             )}
             <QuickBtn icon={Sparkles} label="Grant credits" onClick={onGrant} />
+            {(['locked', 'past_due', 'canceled'].includes(sub?.billing_status) || activeGrant) && (
+              activeGrant ? (
+                <QuickBtn icon={Unlock} label="Revoke access" onClick={onRevokeAccess} />
+              ) : (
+                <QuickBtn icon={Unlock} label="Grant access" onClick={onGrantAccess} />
+              )
+            )}
           </div>
+          {activeGrant && (
+            <div
+              className="font-inter"
+              style={{
+                borderTop: `1px solid ${HAIRLINE}`,
+                padding: '10px 14px',
+                fontSize: 11,
+                color: SUBTEXT,
+                lineHeight: 1.5,
+                background: '#FAFAF7',
+              }}
+            >
+              <div style={{ color: TEXT, fontWeight: 600, marginBottom: 2 }}>
+                Access granted until {format(new Date(activeGrant.ends_at), 'MMM d, yyyy')}
+              </div>
+              <div style={{ color: MUTED }}>{activeGrant.reason}</div>
+            </div>
+          )}
         </section>
+
 
         {/* Owner */}
         <section style={CARD}>
