@@ -210,14 +210,23 @@ const HEALTH_WHY: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────
 // Activity feed bucketing
 // ─────────────────────────────────────────────────────────────────
-type FeedFilter = 'all' | 'jobs' | 'candidates' | 'interviews' | 'documents' | 'team'
+type FeedFilter = 'all' | 'jobs' | 'candidates' | 'interviews' | 'documents' | 'team' | 'platform'
+
+const PLATFORM_TYPES = new Set([
+  'trial_started', 'trial_extended',
+  'plan_changed', 'plan_converted', 'subscription_converted',
+  'payment_succeeded', 'payment_failed',
+  'credits_purchased', 'credits_granted',
+  'workspace_suspended', 'workspace_reactivated',
+])
 
 function feedCategory(type: string): FeedFilter {
+  if (PLATFORM_TYPES.has(type)) return 'platform'
   if (type.startsWith('job_')) return 'jobs'
   if (type.startsWith('interview')) return 'interviews'
   if (type === 'candidate_attachment_uploaded') return 'documents'
   if (type.startsWith('candidate_')) return 'candidates'
-  if (type.startsWith('member_') || type === 'plan_changed') return 'team'
+  if (type.startsWith('member_')) return 'team'
   return 'all'
 }
 
@@ -228,6 +237,7 @@ const FEED_ICON_MAP: Record<FeedFilter, { icon: LucideIcon; bg: string; fg: stri
   interviews: { icon: Video,          bg: '#FCE7F3', fg: '#BE185D' },
   documents:  { icon: Upload,         bg: '#DBEAFE', fg: '#2563EB' },
   team:       { icon: Users,          bg: '#F1F0EC', fg: SUBTEXT },
+  platform:   { icon: CreditCard,     bg: '#E0E7FF', fg: '#4F46E5' },
 }
 
 function stageIconOverride(type: string) {
