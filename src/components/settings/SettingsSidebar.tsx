@@ -51,7 +51,7 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
       id: 'top',
       show: true,
       items: [
-        { id: 'setup', label: 'Setup', icon: Zap, show: true, badge: setupBadge },
+        { id: 'setup', label: 'Setup', icon: Zap, show: essentialsRemaining > 0, badge: setupBadge },
       ],
     },
     {
