@@ -1093,7 +1093,7 @@ function MembersTab({ tenantId }: { tenantId: string }) {
 // ─────────────────────────────────────────────────────────────────
 function BillingTab({
   customer, sub, creditUsage, creditPurchases, seats, interval, isTrialing,
-  trialEndIso, trialStartIso, daysLeftTrial, onGrant, seatMutation,
+  trialEndIso, trialStartIso, daysLeftTrial, onGrant, onChange, seatMutation,
 }: any) {
   const pricePerSeat = interval === 'year' ? 49 : 5
   const total = seats * pricePerSeat
