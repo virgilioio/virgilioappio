@@ -214,7 +214,7 @@ export function CustomersTab() {
                     </div>
                     <span
                       className="truncate font-inter"
-                      style={{ fontSize: 12.5, fontWeight: 600, color: '#1F2230' }}
+                      style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}
                     >
                       {org.name}
                     </span>
@@ -224,7 +224,7 @@ export function CustomersTab() {
                   <div
                     className="font-poppins text-right tabular-nums"
                     style={{
-                      fontSize: 12.5, fontWeight: 600,
+                      fontSize: 12.5, fontWeight: 500,
                       color: c.deals > 0 ? '#1F2230' : '#B5B9C4',
                     }}
                   >
