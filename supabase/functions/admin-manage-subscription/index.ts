@@ -6,13 +6,14 @@ const corsHeaders = {
 }
 
 interface ManageSubscriptionRequest {
-  action: 'suspend' | 'restore' | 'activate' | 'change_plan' | 'extend_trial'
+  action: 'suspend' | 'restore' | 'activate' | 'change_plan' | 'extend_trial' | 'grant_access' | 'revoke_access'
   tenantId: string
   params?: {
     reason?: string
     newEndDate?: string
     newInterval?: string
     newSeats?: number  // Optional admin override for seat count
+    endDate?: string   // grant_access: when the temporary access expires
   }
 }
 
