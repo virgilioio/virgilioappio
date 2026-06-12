@@ -429,11 +429,11 @@ const stageHasAutomation = useMemo(() => {
     load()
   }, [open, candidateId])
 
-  // Auto-select offer tab when status changes to offer/hired
+  // Auto-select status-specific tab when status changes
   useEffect(() => {
-    if (associationStatus === 'offer' || associationStatus === 'hired') {
-      setActiveTab('offer')
-    }
+    if (associationStatus === 'offer') setActiveTab('offer')
+    else if (associationStatus === 'hired') setActiveTab('onboarding')
+    else if (associationStatus === 'rejected') setActiveTab('rejection-details')
   }, [associationStatus])
 
   useEffect(() => {
