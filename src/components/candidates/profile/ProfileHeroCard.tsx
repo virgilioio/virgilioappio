@@ -57,7 +57,7 @@ function relativeTime(iso?: string | null) {
 }
 
 export function ProfileHeroCard({
-  candidateName, candidateId, jobId, jobTitle, source, appliedAt,
+  candidateName, candidateFirstName, candidateId, jobId, jobTitle, source, appliedAt,
   currentStageName, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
   fitScore,
   onClose, index, total, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
