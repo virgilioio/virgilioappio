@@ -2,9 +2,10 @@ import { useMemo, useState, useEffect, type CSSProperties, type ReactNode } from
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, ExternalLink, AlertTriangle, CheckCircle2, XCircle, Clock,
+  ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock,
   Briefcase, Users, UserCheck, Lightbulb, Copy, Check, CalendarPlus, Sparkles, CreditCard, Ban,
   UserPlus, ArrowRightLeft, Video, Upload, FileText, Download, Minus, Plus,
+  CircleDollarSign, Mail, Eye, PencilLine,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, formatDistanceToNowStrict, differenceInCalendarDays, isToday, isYesterday } from 'date-fns'
@@ -209,14 +210,23 @@ const HEALTH_WHY: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────
 // Activity feed bucketing
 // ─────────────────────────────────────────────────────────────────
-type FeedFilter = 'all' | 'jobs' | 'candidates' | 'interviews' | 'documents' | 'team'
+type FeedFilter = 'all' | 'jobs' | 'candidates' | 'interviews' | 'documents' | 'team' | 'platform'
+
+const PLATFORM_TYPES = new Set([
+  'trial_started', 'trial_extended',
+  'plan_changed', 'plan_converted', 'subscription_converted',
+  'payment_succeeded', 'payment_failed',
+  'credits_purchased', 'credits_granted',
+  'workspace_suspended', 'workspace_reactivated',
+])
 
 function feedCategory(type: string): FeedFilter {
+  if (PLATFORM_TYPES.has(type)) return 'platform'
   if (type.startsWith('job_')) return 'jobs'
   if (type.startsWith('interview')) return 'interviews'
   if (type === 'candidate_attachment_uploaded') return 'documents'
   if (type.startsWith('candidate_')) return 'candidates'
-  if (type.startsWith('member_') || type === 'plan_changed') return 'team'
+  if (type.startsWith('member_')) return 'team'
   return 'all'
 }
 
@@ -227,6 +237,7 @@ const FEED_ICON_MAP: Record<FeedFilter, { icon: LucideIcon; bg: string; fg: stri
   interviews: { icon: Video,          bg: '#FCE7F3', fg: '#BE185D' },
   documents:  { icon: Upload,         bg: '#DBEAFE', fg: '#2563EB' },
   team:       { icon: Users,          bg: '#F1F0EC', fg: SUBTEXT },
+  platform:   { icon: CreditCard,     bg: '#E0E7FF', fg: '#4F46E5' },
 }
 
 function stageIconOverride(type: string) {
@@ -402,11 +413,37 @@ export function SaaSCustomerDetail() {
     </>
   })()
 
-  // ── Health metric (passing count)
+  // ── Health metric (passing count) — still shown in Health signals card
   const passingCount = health.reasons.filter(r => r.passed).length
   const totalSignals = health.reasons.length || 1
 
-  // ── Metric strip
+  // ── Money cell (replaces Health in metric strip)
+  const pricePerSeat = interval === 'year' ? 49 : 5
+  const moneyCell: MetricCell = (() => {
+    if (isTrialing) {
+      const monthly = seats * 5 // seats × monthly seat price
+      return {
+        icon: CircleDollarSign, iconBg: '#D1FAE5', iconColor: '#0B7A57',
+        label: 'Plan value',
+        value: `$${monthly.toLocaleString()}`, suffix: '/mo',
+        delta: { text: '$0 collected', tone: 'amber' },
+      }
+    }
+    if (interval === 'year') {
+      const arr = seats * pricePerSeat
+      return {
+        icon: CircleDollarSign, iconBg: '#D1FAE5', iconColor: '#0B7A57',
+        label: 'ARR', value: `$${arr.toLocaleString()}`, suffix: '/yr',
+      }
+    }
+    const mrr = seats * pricePerSeat
+    return {
+      icon: CircleDollarSign, iconBg: '#D1FAE5', iconColor: '#0B7A57',
+      label: 'MRR', value: `$${mrr.toLocaleString()}`, suffix: '/mo',
+    }
+  })()
+
+  // ── Trial / renewal cell
   const trialOrRenewal: MetricCell = (() => {
     if (customer.status === 'suspended') {
       return {
@@ -502,12 +539,7 @@ export function SaaSCustomerDetail() {
 
         {/* Metric strip */}
         <MetricStrip cells={[
-          {
-            icon: passingCount === totalSignals ? CheckCircle2 : AlertTriangle,
-            iconBg: passingCount === totalSignals ? '#D1FAE5' : '#FEF3C7',
-            iconColor: passingCount === totalSignals ? '#0B7A57' : '#B45309',
-            label: 'Health signals', value: passingCount, suffix: `of ${totalSignals}`,
-          },
+          moneyCell,
           trialOrRenewal,
           {
             icon: Briefcase, iconBg: '#EDE4FF', iconColor: '#6F3FF5',
@@ -526,6 +558,7 @@ export function SaaSCustomerDetail() {
             muted: (customer.members_active_count ?? 0) === 0,
           },
         ]} />
+
 
         {/* Tabs */}
         <div className="flex items-center" style={{ gap: 6, margin: '14px 0' }}>
@@ -568,6 +601,7 @@ export function SaaSCustomerDetail() {
             trialStartIso={trialStartIso}
             daysLeftTrial={daysLeftTrial}
             onGrant={() => setAssignOpen(true)}
+            onChange={() => setChangeOpen(true)}
             seatMutation={seatMutation}
           />
         )}
@@ -630,22 +664,80 @@ function OverviewTab({
   onExtend, onGrant, onChange, onSuspend, onSwitchActivity,
 }: any) {
   const onboarding = useSaaSCustomerOnboarding(customer.tenant_id)
+  const queryClient = useQueryClient()
 
-  // Lifecycle events
-  const lifecycle: { label: string; date: string | null; state: 'done' | 'next' | 'pending' }[] = []
-  lifecycle.push({
+  // ── Notes & touchpoints
+  const { data: notes = [] } = useQuery({
+    queryKey: ['tenant-notes', customer.tenant_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_notes')
+        .select('id, body, created_at, author_id')
+        .eq('tenant_id', customer.tenant_id)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      const ids = Array.from(new Set((data || []).map((n: any) => n.author_id)))
+      let authors: Record<string, { first_name: string | null; last_name: string | null; email: string | null }> = {}
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, email')
+          .in('user_id', ids)
+        ;(profs || []).forEach((p: any) => { authors[p.user_id] = p })
+      }
+      return (data || []).map((n: any) => ({ ...n, author: authors[n.author_id] }))
+    },
+    enabled: !!customer.tenant_id,
+  })
+  const [noteBody, setNoteBody] = useState('')
+  const addNote = useMutation({
+    mutationFn: async (body: string) => {
+      const { data: u } = await supabase.auth.getUser()
+      if (!u.user) throw new Error('Not authenticated')
+      const { error } = await supabase.from('tenant_notes').insert({
+        tenant_id: customer.tenant_id, author_id: u.user.id, body,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      setNoteBody('')
+      queryClient.invalidateQueries({ queryKey: ['tenant-notes', customer.tenant_id] })
+    },
+    onError: (e: Error) => toast.error('Failed to save note', { description: e.message }),
+  })
+
+  // ── Journey: interleave milestones + onboarding steps
+  type MilestoneRow = { kind: 'milestone'; label: string; date: string | null; state: 'done' | 'next' | 'pending' }
+  type StepRow = { kind: 'step'; label: string; completed: boolean }
+  const journey: (MilestoneRow | StepRow)[] = []
+
+  journey.push({
+    kind: 'milestone',
     label: `Signed up · ${(customer.signup_source || 'self_serve').replace(/_/g, ' ')}`,
     date: customer.created_at, state: 'done',
   })
-  if (sub?.trial_started_at) lifecycle.push({ label: 'Trial started', date: sub.trial_started_at, state: 'done' })
+  if (sub?.trial_started_at)
+    journey.push({ kind: 'milestone', label: 'Trial started', date: sub.trial_started_at, state: 'done' })
+
+  if (isTrialing && !onboarding.isComplete) {
+    onboarding.tasks.forEach(t => journey.push({ kind: 'step', label: t.title, completed: t.completed }))
+  } else if (onboarding.isComplete) {
+    journey.push({
+      kind: 'milestone',
+      label: `Getting started completed · ${onboarding.completedCount} of ${onboarding.totalCount} steps`,
+      date: onboarding.completedAt || sub?.trial_started_at || customer.created_at,
+      state: 'done',
+    })
+  }
+
   if (sub?.current_period_start && !isTrialing)
-    lifecycle.push({ label: 'Converted to paid', date: sub.current_period_start, state: 'done' })
+    journey.push({ kind: 'milestone', label: 'Converted to paid', date: sub.current_period_start, state: 'done' })
+  if (customer.first_job_at)
+    journey.push({ kind: 'milestone', label: 'First job created', date: customer.first_job_at, state: 'done' })
   if (isTrialing && sub?.trial_ends_at)
-    lifecycle.push({ label: 'Trial ends', date: sub.trial_ends_at, state: 'next' })
-  if (customer.first_job_at) lifecycle.push({ label: 'First job created', date: customer.first_job_at, state: 'done' })
-  else lifecycle.push({ label: 'First job created', date: null, state: 'pending' })
+    journey.push({ kind: 'milestone', label: 'Trial ends', date: sub.trial_ends_at, state: 'next' })
   if (sub?.current_period_end_at && !isTrialing)
-    lifecycle.push({ label: 'Renewal', date: sub.current_period_end_at, state: 'next' })
+    journey.push({ kind: 'milestone', label: 'Renewal', date: sub.current_period_end_at, state: 'next' })
 
   const passing = health.reasons.filter((r: any) => r.passed).length
   const total = health.reasons.length
@@ -692,29 +784,61 @@ function OverviewTab({
           </div>
         </section>
 
-        {/* Lifecycle */}
+        {/* Journey */}
         <section style={CARD}>
-          <CardHeader title="Lifecycle" desc="The account's journey so far." />
+          <CardHeader
+            title="Journey"
+            desc="Milestones and getting-started steps, in order."
+            action={isTrialing && !onboarding.isComplete
+              ? <Chip tone="amber">{onboarding.completedCount} of {onboarding.totalCount} steps done</Chip>
+              : undefined}
+          />
           <div>
-            {lifecycle.map((ev, i) => (
-              <Row key={i} last={i === lifecycle.length - 1}
-                   style={{ opacity: ev.state === 'pending' ? 0.5 : 1 }}>
-                <span className="shrink-0"
-                  style={{
-                    width: 9, height: 9, borderRadius: 999,
-                    background: ev.state === 'done' ? '#D7C5FB' : ev.state === 'next' ? NOIR : 'transparent',
-                    border: ev.state === 'pending' ? '1.5px solid #D2D4DC' : 'none',
-                  }} />
-                <div className="flex-1 min-w-0 font-inter"
-                     style={{ fontSize: 12.5, fontWeight: ev.state === 'next' ? 600 : 500, color: NOIR }}>
-                  {ev.label}
+            {journey.map((it, i) => {
+              const last = i === journey.length - 1
+              if (it.kind === 'milestone') {
+                return (
+                  <Row key={i} last={last}
+                       style={{ opacity: it.state === 'pending' ? 0.5 : 1 }}>
+                    <span className="shrink-0"
+                      style={{
+                        width: 9, height: 9, borderRadius: 999,
+                        background: it.state === 'done' ? '#D7C5FB' : it.state === 'next' ? NOIR : 'transparent',
+                        border: it.state === 'pending' ? '1.5px solid #D2D4DC' : 'none',
+                      }} />
+                    <div className="flex-1 min-w-0 font-inter"
+                         style={{ fontSize: 12.5, fontWeight: it.state === 'next' ? 600 : 500, color: NOIR }}>
+                      {it.label}
+                    </div>
+                    {it.state === 'next' && <Chip tone="amber">upcoming</Chip>}
+                    <span className="font-inter shrink-0" style={{ fontSize: 11, color: MUTED }}>
+                      {it.date ? format(new Date(it.date), 'MMM d, yyyy') : '—'}
+                    </span>
+                  </Row>
+                )
+              }
+              // Step row (indented)
+              return (
+                <div key={i} className="flex items-center gap-3"
+                     style={{ padding: '8px 18px 8px 38px',
+                              borderBottom: last ? 'none' : `1px solid ${HAIRLINE}`,
+                              opacity: it.completed ? 0.55 : 1 }}>
+                  <span className="shrink-0 flex items-center justify-center"
+                    style={{
+                      width: 16, height: 16, borderRadius: 999,
+                      background: it.completed ? '#EDE4FF' : 'transparent',
+                      border: it.completed ? 'none' : '1.5px solid #D2D4DC',
+                    }}>
+                    {it.completed && <Check size={10} color="#6F3FF5" strokeWidth={2.5} />}
+                  </span>
+                  <span className="font-inter flex-1"
+                    style={{ fontSize: 12, fontWeight: 500, color: NOIR,
+                             textDecoration: it.completed ? 'line-through' : 'none' }}>
+                    {it.label}
+                  </span>
                 </div>
-                {ev.state === 'next' && <Chip tone="amber">upcoming</Chip>}
-                <span className="font-inter shrink-0" style={{ fontSize: 11, color: MUTED }}>
-                  {ev.date ? format(new Date(ev.date), 'MMM d, yyyy') : '—'}
-                </span>
-              </Row>
-            ))}
+              )
+            })}
           </div>
         </section>
 
@@ -753,10 +877,25 @@ function OverviewTab({
         <section style={CARD}>
           <CardHeader title="Quick actions" />
           <div className="grid grid-cols-2 gap-2" style={{ padding: '12px 14px' }}>
-            <QuickBtn icon={CalendarPlus} label="Extend trial" onClick={onExtend} />
+            <QuickBtn
+              icon={Mail}
+              label="Email owner"
+              onClick={() => {
+                if (ownerEmail) window.location.href = `mailto:${ownerEmail}`
+                else toast.error('No owner email on file')
+              }}
+            />
+            <QuickBtn
+              icon={Eye}
+              label="View as tenant"
+              onClick={() => toast("Impersonation isn't available yet.")}
+            />
+            {isTrialing ? (
+              <QuickBtn icon={CalendarPlus} label="Extend trial" onClick={onExtend} />
+            ) : (
+              <QuickBtn icon={CreditCard} label="Change plan" onClick={onChange} />
+            )}
             <QuickBtn icon={Sparkles} label="Grant credits" onClick={onGrant} />
-            <QuickBtn icon={CreditCard} label="Change plan" onClick={onChange} />
-            <QuickBtn icon={Ban} label="Suspend" danger onClick={onSuspend} />
           </div>
         </section>
 
@@ -783,39 +922,75 @@ function OverviewTab({
           </div>
         </section>
 
-        {/* Getting started */}
+        {/* Notes & touchpoints */}
         <section style={CARD}>
-          <CardHeader
-            title="Getting started"
-            desc={`${onboarding.completedCount} of ${onboarding.totalCount} completed`}
-            action={
-              <div className="flex items-center gap-1">
-                {onboarding.tasks.map(t => (
-                  t.completed
-                    ? <span key={t.id} style={{ width: 13, height: 5, borderRadius: 999, background: '#D7C5FB' }} />
-                    : <span key={t.id} style={{ width: 5, height: 5, borderRadius: 999, background: 'rgba(13,13,9,0.14)' }} />
-                ))}
-              </div>
-            }
-          />
+          <CardHeader title="Notes & touchpoints" desc="Internal — only platform admins see this." />
+          <div style={{ padding: '12px 14px 4px' }}>
+            <div className="flex items-center gap-2"
+                 style={{ height: 34, borderRadius: 9, border: '1px solid #E7E8EE',
+                          padding: '0 10px', background: '#FFFFFF' }}>
+              <PencilLine size={12} color="#B5B9C4" />
+              <input
+                value={noteBody}
+                onChange={(e) => setNoteBody(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && noteBody.trim() && !addNote.isPending) {
+                    e.preventDefault()
+                    addNote.mutate(noteBody.trim())
+                  }
+                }}
+                placeholder="Log a note or touchpoint…"
+                className="font-inter flex-1 outline-none bg-transparent"
+                style={{ fontSize: 11.5, color: TEXT }}
+              />
+            </div>
+          </div>
           <div>
-            {onboarding.tasks.map((t, i) => (
-              <Row key={t.id} last={i === onboarding.tasks.length - 1} style={{ opacity: t.completed ? 0.55 : 1 }}>
-                <span className="shrink-0 flex items-center justify-center"
-                  style={{
-                    width: 16, height: 16, borderRadius: 999,
-                    background: t.completed ? '#EDE4FF' : 'transparent',
-                    border: t.completed ? 'none' : '1.5px solid #D2D4DC',
-                  }}>
-                  {t.completed && <Check size={10} color="#5B21B6" strokeWidth={2.5} />}
-                </span>
-                <span className="font-inter flex-1"
-                  style={{ fontSize: 12, fontWeight: 500, color: NOIR,
-                           textDecoration: t.completed ? 'line-through' : 'none' }}>
-                  {t.title}
-                </span>
-              </Row>
-            ))}
+            {notes.length === 0 ? (
+              <div className="font-inter" style={{ padding: '10px 18px 14px', fontSize: 11.5, color: '#B5B9C4' }}>
+                No touchpoints yet — nobody has reached out to this account.
+              </div>
+            ) : notes.map((n: any, i: number) => {
+              const a = n.author
+              const authorName = a
+                ? `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email || 'Unknown'
+                : 'Unknown'
+              return (
+                <div key={n.id}
+                     style={{ padding: '10px 18px',
+                              borderTop: `1px solid ${HAIRLINE}` }}>
+                  <div className="font-inter flex items-baseline gap-1.5">
+                    <span style={{ fontSize: 11, fontWeight: 600, color: TEXT }}>{authorName}</span>
+                    <span style={{ fontSize: 10.5, color: '#B5B9C4' }}>· {timeAgoShort(n.created_at)}</span>
+                  </div>
+                  <div className="font-inter" style={{ fontSize: 11.5, color: SUBTEXT, lineHeight: 1.5, marginTop: 2 }}>
+                    {n.body}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* Danger zone */}
+        <section style={CARD}>
+          <CardHeader title="Danger zone" />
+          <div className="flex items-center gap-3" style={{ padding: '12px 14px' }}>
+            <span className="font-inter flex-1" style={{ fontSize: 11, color: MUTED, lineHeight: 1.5 }}>
+              Suspending blocks all members immediately. Data is kept.
+            </span>
+            <button
+              type="button"
+              onClick={onSuspend}
+              className="font-inter inline-flex items-center justify-center gap-1.5"
+              style={{
+                height: 30, borderRadius: 9, fontSize: 11.5, fontWeight: 600,
+                background: '#FFFFFF', border: '1px solid #FCA5A5',
+                color: '#DC2626', cursor: 'pointer', padding: '0 12px',
+              }}>
+              <Ban size={12} color="#DC2626" />
+              Suspend
+            </button>
           </div>
         </section>
       </div>
@@ -823,16 +998,16 @@ function OverviewTab({
   )
 }
 
-function QuickBtn({ icon: Icon, label, onClick, danger }: { icon: LucideIcon; label: string; onClick: () => void; danger?: boolean }) {
+function QuickBtn({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
       className="font-inter inline-flex items-center justify-center gap-1.5"
       style={{
         height: 34, borderRadius: 9, fontSize: 11.5, fontWeight: 600,
         background: '#FFFFFF', border: '1px solid #E7E8EE',
-        color: danger ? '#DC2626' : NOIR, cursor: 'pointer',
+        color: NOIR, cursor: 'pointer',
       }}>
-      <Icon size={12} color={danger ? '#DC2626' : NOIR} />
+      <Icon size={12} color={NOIR} />
       {label}
     </button>
   )
@@ -851,16 +1026,29 @@ function MembersTab({ tenantId }: { tenantId: string }) {
     if (r === 'hiring_manager') return <Chip tone="amber">Hiring Manager</Chip>
     return <Chip tone="gray">{role}</Chip>
   }
-  const statusChip = (s: string) => {
-    if (s === 'active') return <Chip tone="green">Active</Chip>
-    if (s === 'invited') return <Chip tone="amber">Invited</Chip>
-    return <Chip tone="gray">Inactive</Chip>
+  const memberState = (m: any): { tone: ChipTone; label: string } => {
+    const s = (m.user_status || '').toLowerCase()
+    const hasProfile = !!m.profile
+    if (s === 'active') return { tone: 'green', label: 'Active' }
+    if (s === 'invited' || (!hasProfile && (s === 'pending' || !s))) return { tone: 'amber', label: 'Invited' }
+    if (s === 'deactivated' || s === 'inactive') return { tone: 'gray', label: 'Deactivated' }
+    return { tone: 'gray', label: s || 'Inactive' }
   }
+
+  const activeCount = members.filter((m: any) => (m.user_status || '').toLowerCase() === 'active').length
+  const invitedCount = members.filter((m: any) => {
+    const s = (m.user_status || '').toLowerCase()
+    return s === 'invited' || (!m.profile && (s === 'pending' || !s))
+  }).length
 
   return (
     <section style={CARD}>
       <CardHeader title="Team members" desc="Everyone in this workspace, with their last activity."
-        action={<Chip tone="gray">{members.length} members</Chip>} />
+        action={
+          <Chip tone="gray">
+            {activeCount} active{invitedCount > 0 ? ` · ${invitedCount} invited` : ''}
+          </Chip>
+        } />
       <div>
         {isLoading ? (
           <div style={{ padding: 24, textAlign: 'center', color: MUTED, fontFamily: 'Inter', fontSize: 12 }}>Loading…</div>
@@ -871,8 +1059,10 @@ function MembersTab({ tenantId }: { tenantId: string }) {
             ? `${m.profile.first_name || ''} ${m.profile.last_name || ''}`.trim() || m.profile.email || m.invited_email || 'Unknown'
             : m.invited_email || 'Pending invite'
           const email = m.profile?.email || m.invited_email || ''
+          const state = memberState(m)
+          const isInvited = state.label === 'Invited'
           const lastIso = m.updated_at
-          const isNow = lastIso ? (Date.now() - new Date(lastIso).getTime()) < 5 * 60 * 1000 : false
+          const isNow = !isInvited && lastIso ? (Date.now() - new Date(lastIso).getTime()) < 5 * 60 * 1000 : false
           return (
             <Row key={m.id} last={i === members.length - 1}>
               <div className="flex items-center justify-center shrink-0"
@@ -885,10 +1075,10 @@ function MembersTab({ tenantId }: { tenantId: string }) {
                 <div className="font-inter truncate" style={{ fontSize: 10.5, color: MUTED }}>{email}</div>
               </div>
               {roleChip(m.system_role)}
-              {statusChip(m.user_status)}
+              <Chip tone={state.tone}>{state.label}</Chip>
               <span className="font-inter shrink-0"
                 style={{ fontSize: 11, color: isNow ? '#0B7A57' : MUTED, fontWeight: isNow ? 600 : 400, minWidth: 90, textAlign: 'right' }}>
-                {isNow ? 'now' : lastIso ? timeAgoShort(lastIso) : '—'}
+                {isInvited ? '—' : isNow ? 'now' : lastIso ? timeAgoShort(lastIso) : '—'}
               </span>
             </Row>
           )
@@ -903,7 +1093,7 @@ function MembersTab({ tenantId }: { tenantId: string }) {
 // ─────────────────────────────────────────────────────────────────
 function BillingTab({
   customer, sub, creditUsage, creditPurchases, seats, interval, isTrialing,
-  trialEndIso, trialStartIso, daysLeftTrial, onGrant, seatMutation,
+  trialEndIso, trialStartIso, daysLeftTrial, onGrant, onChange, seatMutation,
 }: any) {
   const pricePerSeat = interval === 'year' ? 49 : 5
   const total = seats * pricePerSeat
@@ -955,7 +1145,14 @@ function BillingTab({
         <CardHeader
           title="Subscription"
           desc={`${seats} seat${seats === 1 ? '' : 's'} × $${pricePerSeat}/${interval === 'year' ? 'yr' : 'mo'} = $${total}/${interval === 'year' ? 'year' : 'month'}`}
-          action={statusChip}
+          action={
+            <div className="flex items-center" style={{ gap: 8 }}>
+              <button style={SEC_BTN} onClick={onChange}>
+                <ArrowRightLeft size={12} />Change plan
+              </button>
+              {statusChip}
+            </div>
+          }
         />
         <div>
           {lvRow('Plan', `Gio ATS · per-seat · ${interval === 'year' ? 'annual' : 'monthly'}`)}
@@ -1023,11 +1220,6 @@ function BillingTab({
       <section style={CARD}>
         <CardHeader title="Seats" desc="Adjusting applies immediately and prorates billing." />
         <Row last>
-          <div>
-            <div className="font-inter" style={{ fontSize: 11, color: MUTED, fontWeight: 500 }}>Current seats</div>
-            <div className="font-poppins tabular-nums" style={{ fontSize: 19, fontWeight: 600, color: NOIR, marginTop: 2 }}>{seats}</div>
-          </div>
-          <div style={{ width: 1, height: 32, background: HAIRLINE, margin: '0 18px' }} />
           <div className="flex-1">
             <div className="font-inter" style={{ fontSize: 11, color: MUTED, fontWeight: 500 }}>Maximum allowed</div>
             <div className="font-poppins tabular-nums" style={{ fontSize: 19, fontWeight: 600, color: sub?.max_users ? NOIR : '#B5B9C4', marginTop: 2 }}>
@@ -1121,6 +1313,7 @@ function ActivityTab({
     { key: 'interviews', label: 'Interviews' },
     { key: 'documents', label: 'Documents' },
     { key: 'team', label: 'Team' },
+    { key: 'platform', label: 'Platform' },
   ]
   const groupKeys = Object.keys(groupedFeed)
   return (
