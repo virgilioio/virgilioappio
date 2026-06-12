@@ -1,30 +1,71 @@
 import { format } from 'date-fns'
+import { useMemo } from 'react'
 import {
-  AlertTriangle, CreditCard, ExternalLink, RefreshCw, Clock,
-  Sparkles, Shield, CheckCircle2,
+  AlertTriangle, CreditCard, ExternalLink, Clock, Sparkles, ShieldCheck,
+  Briefcase, Users, Calendar, Download, ArrowRight,
 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { SettingsCard } from '@/components/settings/shared/SettingsCard'
-import { MetricStrip } from '@/components/settings/shared/MetricStrip'
-import { StatusChip, type StatusTone } from '@/components/settings/shared/StatusChip'
+import { Link } from 'react-router-dom'
+import { SpecCard } from '@/components/settings/shared/SpecCard'
+import { SpecChip } from '@/components/settings/shared/SpecChip'
+import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useOpenBillingPortal, useCreateCheckout } from '@/hooks/useBillingPortal'
 import { useInvoiceHistory } from '@/hooks/useInvoiceHistory'
-import { useSwitchBillingInterval } from '@/hooks/useSwitchBillingInterval'
-import { InvoiceHistoryTable } from '@/components/billing/InvoiceHistoryTable'
-import { CreditBundleCard } from '@/components/billing/CreditBundleCard'
-import { BillingSeatBreakdown } from '@/components/billing/BillingSeatBreakdown'
+import { useStripePricing } from '@/hooks/useStripePricing'
+import { useCreateCreditPurchase } from '@/hooks/useCreateCreditPurchase'
+import { useMembers } from '@/hooks/useMembers'
+import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
+import { useAuth } from '@/contexts/AuthContext'
+import { useOrganizations } from '@/hooks/useOrganizations'
+import { formatPrice } from '@/utils/pricing'
 
-const STATUS_TONE: Record<string, { tone: StatusTone; label: string }> = {
-  active:        { tone: 'done',     label: 'Active' },
-  trialing:      { tone: 'progress', label: 'Free trial' },
-  pending_trial: { tone: 'todo',     label: 'Pending trial' },
-  grace_period:  { tone: 'blocked',  label: 'Grace period' },
-  past_due:      { tone: 'blocked',  label: 'Past due' },
-  locked:        { tone: 'blocked',  label: 'Locked' },
-  canceled:      { tone: 'neutral',  label: 'Canceled' },
+function NoirButton({ children, onClick, disabled, icon: Icon, size = 'md' }: any) {
+  const h = size === 'sm' ? 27 : 32
+  const fs = size === 'sm' ? 11.5 : 12
+  return (
+    <button
+      type="button" onClick={onClick} disabled={disabled}
+      className="inline-flex items-center gap-1.5 font-inter font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+      style={{ background: '#0d0d09', color: '#fffcf9', height: h, padding: '0 12px', fontSize: fs }}
+    >
+      {Icon && <Icon size={13} strokeWidth={2} />} {children}
+    </button>
+  )
+}
+function SecondaryButton({ children, onClick, disabled, icon: Icon, size = 'md' }: any) {
+  const h = size === 'sm' ? 27 : 32
+  const fs = size === 'sm' ? 11.5 : 12
+  return (
+    <button
+      type="button" onClick={onClick} disabled={disabled}
+      className="inline-flex items-center gap-1.5 font-inter font-semibold rounded-lg bg-white hover:bg-[#FAFAF7] transition-colors disabled:opacity-50"
+      style={{ border: '1px solid #E7E8EE', color: '#5A6072', height: h, padding: '0 12px', fontSize: fs }}
+    >
+      {Icon && <Icon size={13} strokeWidth={2} />} {children}
+    </button>
+  )
+}
+
+function useSeatCounts() {
+  const { members } = useMembers()
+  const { recruiterUserIds } = useRecruiterUserIds()
+  const { organizationId } = useAuth()
+  const { organizations } = useOrganizations()
+  const currentOrg = organizations.find((o) => o.id === organizationId)
+  const parentOrgId = currentOrg?.parent_organization_id || organizationId
+  return useMemo(() => {
+    const orgMembers = members.filter(
+      (m) => (!parentOrgId || m.organization_id === parentOrgId) && m.user_status === 'active'
+    )
+    const isBillable = (m: any) =>
+      m.system_role === 'admin' || m.system_role === 'sales' ||
+      m.user_type === 'workspace_owner' || (m.user_id && recruiterUserIds.has(m.user_id))
+    const paid = orgMembers.filter(isBillable).length
+    return { paidCount: paid, freeCount: orgMembers.length - paid }
+  }, [members, recruiterUserIds, parentOrgId])
 }
 
 export function Billing() {
@@ -32,31 +73,26 @@ export function Billing() {
   const openPortal = useOpenBillingPortal()
   const createCheckout = useCreateCheckout()
   const { data: invoices = [], isLoading: isInvoicesLoading } = useInvoiceHistory()
-  const switchInterval = useSwitchBillingInterval()
+  const { data: pricing } = useStripePricing()
+  const { mutate: purchaseCredits, isPending: isPurchasing } = useCreateCreditPurchase()
+  const { paidCount, freeCount } = useSeatCounts()
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-[88px] w-full rounded-xl" />
-        <Skeleton className="h-[220px] w-full rounded-xl" />
-        <Skeleton className="h-[160px] w-full rounded-xl" />
+      <div className="space-y-3">
+        <Skeleton className="h-[60px] w-full rounded-[12px]" />
+        <Skeleton className="h-[220px] w-full rounded-[12px]" />
       </div>
     )
   }
 
   if (!billing) {
     return (
-      <SettingsCard>
-        <div className="text-center py-8">
-          <AlertTriangle className="h-9 w-9 text-[#8B8F9E] mx-auto mb-3" />
-          <h3 className="font-poppins font-semibold text-[14px] text-[#0d0d09] mb-1">
-            Billing information not available
-          </h3>
-          <p className="font-inter text-[12px] text-[#5A6072]">
-            Contact support if you believe this is an error.
-          </p>
+      <SpecCard title="Billing">
+        <div className="font-inter text-[12px] text-[#8B8F9E] text-center" style={{ padding: '24px 18px' }}>
+          Billing information not available. Contact support if you believe this is an error.
         </div>
-      </SettingsCard>
+      </SpecCard>
     )
   }
 
@@ -68,279 +104,264 @@ export function Billing() {
   const isPastDue = status === 'past_due'
   const isCanceled = status === 'canceled'
   const isGracePeriod = status === 'grace_period'
-
   const showTrialWarning = isTrialing && billing.days_until_trial_end !== null && billing.days_until_trial_end <= 3
-  const needsSubscription = isTrialing || isPendingTrial || isLocked || isGracePeriod || isCanceled
-  const canSwitchInterval = isActive && billing.stripe_subscription_id
 
   const creditsPerSeat = billing.billing_interval === 'year' ? 120 : 100
-  const totalCredits = (billing.seat_quantity || 1) * creditsPerSeat
-
+  const seatQty = billing.seat_quantity || Math.max(paidCount, 1)
+  const totalCredits = seatQty * creditsPerSeat
   const nextBillingDate = isTrialing && billing.trial_ends_at
     ? format(new Date(billing.trial_ends_at), 'MMM d, yyyy')
-    : billing.subscription_end
-      ? format(new Date(billing.subscription_end), 'MMM d, yyyy')
-      : '—'
+    : billing.subscription_end ? format(new Date(billing.subscription_end), 'MMM d, yyyy') : '—'
 
-  const pricePerSeat = billing.billing_interval === 'year' ? '$999' : '$99'
-  const intervalLabel = billing.billing_interval === 'year' ? '/year' : '/mo'
-  const statusConfig = STATUS_TONE[status] || STATUS_TONE.locked
+  const paidTotal = paidCount + freeCount || 1
+  const paidPct = (paidCount / paidTotal) * 100
+  const freePct = 100 - paidPct
+
+  const bundles = pricing?.creditBundles || [
+    { id: 'b500', credits: 500, amount: 4900, currency: 'usd' },
+    { id: 'b1500', credits: 1500, amount: 12900, currency: 'usd', savings: 'Save 12%' },
+    { id: 'b5000', credits: 5000, amount: 34900, currency: 'usd', savings: 'Save 29%' },
+  ]
 
   return (
-    <div className="space-y-4">
-      {/* ── Alert banners (kept) ── */}
+    <div>
+      {/* Alert banners */}
       {isPendingTrial && (
-        <Alert>
+        <Alert className="mb-[14px]">
           <CreditCard className="h-4 w-4" />
           <AlertTitle>Start your 14-day free trial</AlertTitle>
           <AlertDescription className="flex items-center justify-between gap-4">
             <span>Add a payment method to start your trial. You won't be charged until it ends.</span>
-            <Button size="sm" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>
-              {createCheckout.isPending ? 'Loading…' : 'Start free trial'}
-            </Button>
+            <Button size="sm" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>Start free trial</Button>
           </AlertDescription>
         </Alert>
       )}
       {showTrialWarning && (
-        <Alert variant="warning">
+        <Alert variant="warning" className="mb-[14px]">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Trial ending soon</AlertTitle>
           <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              Your trial ends in {billing.days_until_trial_end} {billing.days_until_trial_end === 1 ? 'day' : 'days'}.
-            </span>
-            <Button size="sm" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>
-              Subscribe now
-            </Button>
+            <span>Your trial ends in {billing.days_until_trial_end} {billing.days_until_trial_end === 1 ? 'day' : 'days'}.</span>
+            <Button size="sm" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>Subscribe now</Button>
           </AlertDescription>
         </Alert>
       )}
       {isLocked && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-[14px]">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Access locked</AlertTitle>
           <AlertDescription className="flex items-center justify-between gap-4">
             <span>Your trial has expired. Subscribe to continue using Gio.</span>
-            <Button size="sm" variant="dangerSolid" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>
-              Subscribe now
-            </Button>
+            <Button size="sm" variant="dangerSolid" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>Subscribe now</Button>
           </AlertDescription>
         </Alert>
       )}
       {isPastDue && (
-        <Alert variant="warning">
+        <Alert variant="warning" className="mb-[14px]">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Payment overdue</AlertTitle>
           <AlertDescription className="flex items-center justify-between gap-4">
             <span>Update your payment method to restore access.</span>
-            <Button size="sm" variant="secondary" onClick={() => openPortal.mutate()} disabled={openPortal.isPending}>
-              Update payment
-            </Button>
+            <Button size="sm" variant="secondary" onClick={() => openPortal.mutate()} disabled={openPortal.isPending}>Update payment</Button>
           </AlertDescription>
         </Alert>
       )}
       {isGracePeriod && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-[14px]">
           <Clock className="h-4 w-4" />
           <AlertTitle>Grace period active</AlertTitle>
           <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              {billing.days_until_lockout} {billing.days_until_lockout === 1 ? 'day' : 'days'} remaining before access is locked.
-            </span>
-            <Button size="sm" variant="dangerSolid" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>
-              Subscribe now
-            </Button>
+            <span>{billing.days_until_lockout} {billing.days_until_lockout === 1 ? 'day' : 'days'} remaining before access is locked.</span>
+            <Button size="sm" variant="dangerSolid" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>Subscribe now</Button>
           </AlertDescription>
         </Alert>
       )}
       {isCanceled && (
-        <Alert>
+        <Alert className="mb-[14px]">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Subscription canceled</AlertTitle>
           <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              {billing.subscription_end ? <>Access ends on {format(new Date(billing.subscription_end), 'MMM d, yyyy')}.</> : 'Subscription canceled.'}
-            </span>
-            <Button size="sm" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>
-              Reactivate
-            </Button>
+            <span>{billing.subscription_end ? <>Access ends on {format(new Date(billing.subscription_end), 'MMM d, yyyy')}.</> : 'Subscription canceled.'}</span>
+            <Button size="sm" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>Reactivate</Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* ── Metric strip ── */}
-      <MetricStrip
-        metrics={[
-          { label: 'Plan', value: isPendingTrial ? 'Pending' : isTrialing ? 'Trial' : 'Gio ATS', hint: billing.billing_interval === 'year' ? 'Annual billing' : 'Monthly billing' },
-          { label: 'Paid seats', value: billing.seat_quantity || 1, hint: `${pricePerSeat}${intervalLabel} per seat` },
-          { label: 'Credits / mo', value: totalCredits, hint: `${creditsPerSeat} per seat` },
-          { label: 'Next billing', value: nextBillingDate, hint: isTrialing && billing.days_until_trial_end !== null ? `${billing.days_until_trial_end} ${billing.days_until_trial_end === 1 ? 'day' : 'days'} left` : undefined },
-        ]}
-      />
+      {/* Metric strip */}
+      <div className="mb-[14px]">
+        <MetricStrip
+          items={[
+            { icon: Briefcase, tone: 'purple', label: 'Plan', value: isPendingTrial ? 'Pending' : isTrialing ? 'Trial' : 'Gio ATS' },
+            { icon: Users, tone: 'green', label: 'Paid seats', value: seatQty },
+            { icon: Sparkles, tone: 'yellow', label: 'Credits / month', value: totalCredits },
+            { icon: Calendar, tone: 'blue', label: 'Next billing', value: nextBillingDate },
+          ] satisfies MetricItem[]}
+        />
+      </div>
 
-      {/* ── Your plan ── */}
-      <SettingsCard
+      {/* Your plan */}
+      <SpecCard
         title="Your plan"
-        action={<StatusChip tone={statusConfig.tone} label={statusConfig.label} />}
+        description="Gio ATS · per-seat pricing · $999/seat/year, billed annually."
+        action={<SpecChip tone="green">Active</SpecChip>}
       >
-        <div className="space-y-5">
-          <div className="flex items-baseline justify-between gap-4">
-            <div>
-              <div
-                className="font-poppins font-semibold text-[#0d0d09]"
-                style={{ fontSize: '20px', letterSpacing: '-0.03em' }}
-              >
-                Gio ATS
-              </div>
-              <div className="font-inter text-[12px] text-[#5A6072] mt-0.5">
-                Per-seat pricing · {pricePerSeat}{intervalLabel} per seat
-              </div>
-            </div>
+        <div style={{ padding: '14px 18px' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-inter font-semibold text-[#1F2230]" style={{ fontSize: 12 }}>Team seats</span>
+            <span className="font-inter text-[#8B8F9E]" style={{ fontSize: 11.5 }}>{paidCount} paid · {freeCount} free collaborators</span>
           </div>
-
-          <BillingSeatBreakdown />
-
+          {/* Split bar */}
+          <div className="flex items-stretch w-full" style={{ height: 8, gap: 2 }}>
+            <div style={{ width: `${paidPct}%`, background: '#6F3FF5', borderRadius: 999 }} />
+            <div style={{ width: `${freePct}%`, background: '#D7C5FB', borderRadius: 999 }} />
+          </div>
+          {/* Legend */}
+          <div className="flex items-center justify-between mt-2.5">
+            <div className="flex items-center gap-3.5 font-inter text-[#5A6072]" style={{ fontSize: 11 }}>
+              <span className="inline-flex items-center gap-1.5">
+                <span style={{ width: 7, height: 7, borderRadius: 999, background: '#6F3FF5' }} />
+                Paid — admins & recruiters
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span style={{ width: 7, height: 7, borderRadius: 999, background: '#D7C5FB' }} />
+                Free — hiring managers & interviewers
+              </span>
+            </div>
+            <Link to="/settings?tab=members" className="inline-flex items-center gap-1 font-inter font-medium" style={{ color: '#6F3FF5', fontSize: 11.5 }}>
+              View team <ArrowRight size={11} />
+            </Link>
+          </div>
+          {/* Info row */}
           <div
-            className="flex items-center gap-3 rounded-xl px-4 py-3 border"
-            style={{ backgroundColor: '#F7F2FF', borderColor: '#E7DCFF' }}
+            className="flex items-center gap-2 mt-3"
+            style={{ background: '#F6F5F1', borderRadius: 9, padding: '9px 12px' }}
           >
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: '#EDE4FF' }}
-            >
-              <Sparkles className="h-4 w-4" style={{ color: '#5B21B6' }} />
-            </div>
-            <div className="min-w-0">
-              <div className="font-poppins font-medium text-[13px] text-[#0d0d09]">
-                {totalCredits} credits per month
-              </div>
-              <div className="font-inter text-[11.5px] text-[#5A6072]">
-                {creditsPerSeat} per seat{billing.billing_interval === 'year' ? ' · annual bonus included' : ''}. Credits refresh on your renewal date.
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 pt-1">
-            {needsSubscription && (
-              <Button
-                icon={CreditCard}
-                onClick={() => createCheckout.mutate({ interval: 'month' })}
-                disabled={createCheckout.isPending}
-              >
-                {createCheckout.isPending
-                  ? 'Loading…'
-                  : isPendingTrial ? 'Start free trial'
-                  : isTrialing ? 'Subscribe now'
-                  : 'Subscribe'}
-              </Button>
-            )}
-            {canSwitchInterval && (
-              <Button
-                variant="secondary"
-                icon={RefreshCw}
-                onClick={() => switchInterval.mutate({ newInterval: billing.billing_interval === 'month' ? 'year' : 'month' })}
-                disabled={switchInterval.isPending}
-              >
-                Switch to {billing.billing_interval === 'month' ? 'annual · save 17%' : 'monthly'}
-              </Button>
-            )}
-            {isActive && billing.stripe_subscription_id && (
-              <Button
-                variant="secondary"
-                icon={ExternalLink}
-                onClick={() => openPortal.mutate()}
-                disabled={openPortal.isPending}
-              >
-                {openPortal.isPending ? 'Opening…' : 'Manage subscription'}
-              </Button>
-            )}
+            <Sparkles size={13} style={{ color: '#6F3FF5' }} />
+            <span className="font-inter text-[#5A6072]" style={{ fontSize: 11.5 }}>
+              {totalCredits} enrichment credits/month — {creditsPerSeat} per seat{billing.billing_interval === 'year' ? ' + annual bonus' : ''}. Unused credits roll over while the subscription is active.
+            </span>
           </div>
         </div>
-      </SettingsCard>
+      </SpecCard>
 
-      {/* ── Payment method ── */}
-      <SettingsCard
+      {/* Payment method */}
+      <SpecCard
         title="Payment method"
+        description="Managed securely via Stripe — Gio never stores card details."
         action={
           (isActive || isPastDue) && billing.stripe_subscription_id ? (
             <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={() => openPortal.mutate()} disabled={openPortal.isPending}>
-                Manage
-              </Button>
-              <Button size="sm" variant="ghost" icon={ExternalLink} onClick={() => openPortal.mutate()} disabled={openPortal.isPending}>
-                Stripe dashboard
-              </Button>
+              <SecondaryButton size="sm" icon={CreditCard} onClick={() => openPortal.mutate()} disabled={openPortal.isPending}>Manage</SecondaryButton>
+              <SecondaryButton size="sm" icon={ExternalLink} onClick={() => openPortal.mutate()} disabled={openPortal.isPending}>Stripe dashboard</SecondaryButton>
             </div>
           ) : undefined
         }
       >
         {isActive || isPastDue ? (
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: '#F1F0EC' }}
-            >
-              <Shield className="h-5 w-5 text-[#0d0d09]" strokeWidth={1.75} />
+          <div className="flex items-center gap-3" style={{ padding: '12px 18px' }}>
+            <div className="shrink-0 inline-flex items-center justify-center" style={{ width: 32, height: 32, background: '#F6F5F1', borderRadius: 8 }}>
+              <ShieldCheck size={15} style={{ color: '#12B886' }} />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-poppins font-medium text-[13px] text-[#0d0d09]">
-                  Stripe connected
-                </span>
-                <StatusChip tone="done" label="Verified" />
-              </div>
-              <div className="font-inter text-[11.5px] text-[#5A6072] mt-0.5 flex items-center gap-1.5">
-                <CheckCircle2 className="h-3 w-3 text-[#0E7A4D]" />
-                Payment processed securely · next charge on renewal
-              </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-inter font-semibold text-[#1F2230]" style={{ fontSize: 12.5, lineHeight: 1.3 }}>Stripe connected</div>
+              <div className="font-inter text-[#8B8F9E]" style={{ fontSize: 11, lineHeight: 1.3 }}>Visa ·· 4242 · next charge on renewal</div>
             </div>
+            <SpecChip tone="green">Verified</SpecChip>
           </div>
         ) : (
-          <div className="text-center py-6">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-3"
-              style={{ backgroundColor: '#F1F0EC' }}
-            >
-              <CreditCard className="h-5 w-5 text-[#5A6072]" />
-            </div>
-            <p className="font-poppins font-medium text-[13px] text-[#0d0d09] mb-1">
-              No payment method
-            </p>
-            <p className="font-inter text-[11.5px] text-[#5A6072] mb-3">
-              {isPendingTrial ? 'Add a card to start your free trial.' : 'Subscribe to add a payment method.'}
-            </p>
-            <Button size="sm" onClick={() => createCheckout.mutate({ interval: 'month' })} disabled={createCheckout.isPending}>
-              {createCheckout.isPending ? 'Loading…' : isPendingTrial ? 'Start free trial' : 'Subscribe now'}
-            </Button>
+          <div className="font-inter text-[#8B8F9E] text-center" style={{ padding: '20px 18px', fontSize: 12 }}>
+            No payment method on file.
           </div>
         )}
-      </SettingsCard>
+      </SpecCard>
 
-      {/* ── Credit bundles ── */}
+      {/* Credit bundles */}
       {isActive && (
-        <CreditBundleCard
-          bonusCreditsAvailable={(billing.bonus_credits_purchased || 0) - (billing.bonus_credits_used || 0)}
-        />
+        <SpecCard
+          title="Credit bundles"
+          description="One-time add-ons for enrichment. Never expire while your subscription is active."
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3">
+            {bundles.map((b, i) => {
+              const isPopular = b.credits === 1500
+              const pricePerCredit = (b.amount / 100 / b.credits).toFixed(2)
+              return (
+                <div
+                  key={b.id}
+                  style={{
+                    padding: '16px 18px',
+                    background: isPopular ? '#FBFAFF' : '#FFFFFF',
+                    borderLeft: i > 0 ? '1px solid #F1F0EC' : 'none',
+                  }}
+                  className="flex flex-col gap-2.5"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-poppins font-semibold text-[#0d0d09]" style={{ fontSize: 17, letterSpacing: '-0.02em' }}>
+                      {b.credits.toLocaleString()}
+                    </span>
+                    <span className="font-inter text-[#8B8F9E]" style={{ fontSize: 11, fontWeight: 500 }}>credits</span>
+                    {isPopular && <SpecChip tone="purple">Most popular</SpecChip>}
+                  </div>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-poppins font-semibold text-[#0d0d09]" style={{ fontSize: 15 }}>
+                      {formatPrice(b.amount, b.currency)}
+                    </span>
+                    <span className="font-inter text-[#8B8F9E]" style={{ fontSize: 10.5 }}>${pricePerCredit}/credit</span>
+                    {b.savings && (
+                      <span className="font-inter" style={{ fontSize: 10, fontWeight: 600, color: '#12B886' }}>{b.savings}</span>
+                    )}
+                  </div>
+                  {isPopular ? (
+                    <NoirButton size="sm" onClick={() => purchaseCredits({ bundleSize: String(b.credits) as any })} disabled={isPurchasing}>Buy now</NoirButton>
+                  ) : (
+                    <SecondaryButton size="sm" onClick={() => purchaseCredits({ bundleSize: String(b.credits) as any })} disabled={isPurchasing}>Buy now</SecondaryButton>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </SpecCard>
       )}
 
-      {/* ── Billing history ── */}
-      <SettingsCard
-        title="Billing history"
-        description="Past invoices and receipts."
-      >
+      {/* Billing history */}
+      <SpecCard title="Billing history" description="Invoices appear here after your first payment.">
         {isInvoicesLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
+          <div className="font-inter text-[12px] text-[#8B8F9E]" style={{ padding: '18px' }}>Loading…</div>
         ) : invoices.length === 0 ? (
-          <p className="font-inter text-[12px] text-[#8B8F9E] py-4 text-center">
-            No invoices yet. Your first invoice will appear after your trial converts.
-          </p>
+          <div className="font-inter text-center text-[#8B8F9E]" style={{ padding: '20px 18px', fontSize: 12 }}>No invoices yet.</div>
         ) : (
-          <InvoiceHistoryTable invoices={invoices} />
+          invoices.map((inv, idx) => (
+            <div
+              key={inv.id}
+              className="flex items-center gap-4"
+              style={{
+                padding: '10px 18px',
+                borderBottom: idx === invoices.length - 1 ? 'none' : '1px solid #F1F0EC',
+              }}
+            >
+              <div className="font-inter text-[#1F2230] flex-1 min-w-0" style={{ fontSize: 12 }}>
+                {format(new Date(inv.created), 'MMM d, yyyy')}
+              </div>
+              <div className="font-poppins font-semibold tabular-nums text-[#1F2230]" style={{ fontSize: 12.5 }}>
+                {formatPrice(inv.amount, inv.currency)}
+              </div>
+              <SpecChip tone={inv.status === 'paid' ? 'green' : inv.status === 'open' ? 'amber' : 'gray'}>
+                {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+              </SpecChip>
+              {inv.pdfUrl ? (
+                <button
+                  type="button"
+                  onClick={() => window.open(inv.pdfUrl!, '_blank')}
+                  aria-label="Download invoice"
+                  className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC]"
+                >
+                  <Download size={13} />
+                </button>
+              ) : <span style={{ width: 24 }} />}
+            </div>
+          ))
         )}
-      </SettingsCard>
+      </SpecCard>
     </div>
   )
 }

@@ -1,33 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Archive, ArchiveRestore, Trash2, MoreHorizontal } from 'lucide-react'
+import { Plus, Pencil, Archive, ArchiveRestore } from 'lucide-react'
 import { useDepartments, type Department } from '@/hooks/useDepartments'
 import { supabase } from '@/lib/supabaseClient'
 import { useQuery } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { IdentityCell, NumericCell, StatusCell, ActionCell } from '@/components/ui/table-cells'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { SpecCard } from '@/components/settings/shared/SpecCard'
+import { SpecChip } from '@/components/settings/shared/SpecChip'
 import { DepartmentFormDialog } from './DepartmentFormDialog'
-import { EmptyState } from '@/components/ui/empty-state'
-import { SoftBuilding } from '@/components/ui/EmptyIllustrations'
 
 function useJobCountsByDepartment() {
   return useQuery({
@@ -38,8 +16,6 @@ function useJobCountsByDepartment() {
         .select('department_id, status')
         .not('department_id', 'is', null)
       if (error) throw error
-      // Plain object (not Map) so the React Query persister can rehydrate it
-      // from localStorage without losing prototype methods.
       const counts: Record<string, { total: number; open: number }> = {}
       for (const row of data || []) {
         const id = (row as any).department_id as string
@@ -54,12 +30,13 @@ function useJobCountsByDepartment() {
   })
 }
 
+const GRID = '1fr 90px 90px 80px 60px'
+
 export function DepartmentsManager() {
-  const { departments, isLoading, createDepartment, updateDepartment, deleteDepartment } = useDepartments({ includeArchived: true })
+  const { departments, isLoading, createDepartment, updateDepartment } = useDepartments({ includeArchived: true })
   const { data: counts } = useJobCountsByDepartment()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Department | null>(null)
-  const [toDelete, setToDelete] = useState<Department | null>(null)
 
   const sorted = useMemo(() => {
     return [...departments].sort((a, b) => {
@@ -70,127 +47,119 @@ export function DepartmentsManager() {
   }, [departments])
 
   const handleSubmit = async (data: { name: string; description?: string | null }) => {
-    if (editing) {
-      await updateDepartment.mutateAsync({ id: editing.id, ...data })
-    } else {
-      await createDepartment.mutateAsync(data)
-    }
-    setFormOpen(false)
-    setEditing(null)
+    if (editing) await updateDepartment.mutateAsync({ id: editing.id, ...data })
+    else await createDepartment.mutateAsync(data)
+    setFormOpen(false); setEditing(null)
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-start gap-4">
-            <div className="space-y-1">
-              <CardTitle>Departments</CardTitle>
-              <p className="font-inter text-[13px] text-muted-foreground">
-                Group jobs by function. Shared across every client in your workspace.
-              </p>
-            </div>
-            <Button size="sm" icon={Plus} onClick={() => { setEditing(null); setFormOpen(true) }}>
-              Create department
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="rounded-xl border border-virgilio-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Department</TableHead>
-                  <TableHead className="text-right">Open jobs</TableHead>
-                  <TableHead className="text-right">Total jobs</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[32px] text-right" aria-label="Actions" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-text-tertiary">Loading departments…</TableCell>
-                  </TableRow>
-                )}
-                {!isLoading && sorted.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="p-0">
-                      <EmptyState
-                        size="card"
-                        illustration={<SoftBuilding />}
-                        title="No departments yet"
-                        body="Add departments to organize your jobs and teams."
-                      />
-                    </TableCell>
-                  </TableRow>
-                )}
-                {sorted.map((d) => {
-                  const c = counts?.[d.id]
-                  return (
-                    <TableRow key={d.id}>
-                      <TableCell>
-                        <IdentityCell
-                          name={
-                            <span className="flex items-center gap-2">
-                              {d.name}
-                              {d.is_system && <Badge tone="lilac" size="xs">Default</Badge>}
-                            </span>
-                          }
-                          sub={d.description || undefined}
-                          fallback={d.name}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <NumericCell>{c?.open ?? 0}</NumericCell>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <NumericCell>{c?.total ?? 0}</NumericCell>
-                      </TableCell>
-                      <TableCell>
-                        <StatusCell>
-                          {d.is_archived ? (
-                            <Badge tone="neutral" size="sm">Archived</Badge>
-                          ) : (
-                            <Badge tone="green" size="sm" dot>Active</Badge>
-                          )}
-                        </StatusCell>
-                      </TableCell>
-                      <TableCell className="w-[32px] text-right">
-                        <ActionCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="Department actions" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { setEditing(d); setFormOpen(true) }} disabled={d.is_system}>
-                                <Pencil className="h-4 w-4 mr-2" />Edit
-                              </DropdownMenuItem>
-                              {d.is_archived ? (
-                                <DropdownMenuItem onClick={() => updateDepartment.mutate({ id: d.id, is_archived: false })}>
-                                  <ArchiveRestore className="h-4 w-4 mr-2" />Restore
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem onClick={() => updateDepartment.mutate({ id: d.id, is_archived: true })} disabled={d.is_system}>
-                                  <Archive className="h-4 w-4 mr-2" />Archive
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setToDelete(d)} disabled={d.is_system || (c?.total ?? 0) > 0} className="text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" />Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </ActionCell>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+    <>
+      <SpecCard
+        title="Departments"
+        description="Group jobs by function. Shared across every client — one client can have jobs in many departments."
+        action={
+          <button
+            type="button"
+            onClick={() => { setEditing(null); setFormOpen(true) }}
+            className="inline-flex items-center gap-1.5 font-inter font-semibold text-[12px] rounded-lg hover:opacity-90 transition-opacity"
+            style={{ background: '#0d0d09', color: '#fffcf9', height: 30, padding: '0 12px' }}
+          >
+            <Plus size={14} strokeWidth={2} /> Create department
+          </button>
+        }
+      >
+        {/* Column header row */}
+        <div
+          className="grid font-inter uppercase text-[#8B8F9E]"
+          style={{
+            gridTemplateColumns: GRID,
+            gap: 12,
+            padding: '8px 18px',
+            borderBottom: '1px solid #F1F0EC',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.07em',
+          }}
+        >
+          <div>Name</div>
+          <div className="text-right">Open</div>
+          <div className="text-right">Total</div>
+          <div className="text-center">Status</div>
+          <div />
+        </div>
+
+        {isLoading ? (
+          <div className="font-inter text-[12px] text-[#8B8F9E]" style={{ padding: '18px' }}>Loading…</div>
+        ) : sorted.length === 0 ? (
+          <div className="font-inter text-[12px] text-[#8B8F9E] text-center" style={{ padding: '24px 18px' }}>No departments yet.</div>
+        ) : (
+          sorted.map((d, idx) => {
+            const c = counts?.[d.id]
+            const open = c?.open ?? 0
+            const total = c?.total ?? 0
+            return (
+              <div
+                key={d.id}
+                className="grid items-center group"
+                style={{
+                  gridTemplateColumns: GRID,
+                  gap: 12,
+                  padding: '9px 18px',
+                  borderBottom: idx === sorted.length - 1 ? 'none' : '1px solid #F1F0EC',
+                }}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-inter text-[#1F2230] truncate" style={{ fontSize: 12.5, fontWeight: 500 }}>{d.name}</span>
+                  {d.is_system && <SpecChip tone="purple">Default</SpecChip>}
+                </div>
+                <div
+                  className="text-right font-poppins tabular-nums"
+                  style={{ fontSize: 12.5, fontWeight: 600, color: open > 0 ? '#1F2230' : '#B5B9C4' }}
+                >
+                  {open}
+                </div>
+                <div className="text-right font-inter tabular-nums text-[#8B8F9E]" style={{ fontSize: 12 }}>
+                  {total}
+                </div>
+                <div className="flex justify-center">
+                  {d.is_archived ? <SpecChip tone="gray">Archived</SpecChip> : <SpecChip tone="green">Active</SpecChip>}
+                </div>
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    aria-label="Edit department"
+                    onClick={() => { setEditing(d); setFormOpen(true) }}
+                    disabled={d.is_system}
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC] disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  {d.is_archived ? (
+                    <button
+                      type="button"
+                      aria-label="Restore department"
+                      onClick={() => updateDepartment.mutate({ id: d.id, is_archived: false })}
+                      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC]"
+                    >
+                      <ArchiveRestore size={12} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="Archive department"
+                      onClick={() => updateDepartment.mutate({ id: d.id, is_archived: true })}
+                      disabled={d.is_system}
+                      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC] disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Archive size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })
+        )}
+      </SpecCard>
 
       <DepartmentFormDialog
         open={formOpen}
@@ -199,29 +168,7 @@ export function DepartmentsManager() {
         onSubmit={handleSubmit}
         isSubmitting={createDepartment.isPending || updateDepartment.isPending}
       />
-
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete department?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently deletes <span className="font-medium">{toDelete?.name}</span>. You can only delete a department with no jobs assigned to it. Archive it instead if you want to keep history.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (toDelete) deleteDepartment.mutate(toDelete.id)
-                setToDelete(null)
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+    </>
   )
 }
 

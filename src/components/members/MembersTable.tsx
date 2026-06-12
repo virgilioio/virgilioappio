@@ -1,17 +1,13 @@
 import { useState, useMemo } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { SoftPeople } from '@/components/ui/EmptyIllustrations'
-import { Skeleton, TableSkeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { IdentityCell, StatusCell, ActionCell } from '@/components/ui/table-cells'
+import { Input } from '@/components/ui/input'
+import { SpecCard } from '@/components/settings/shared/SpecCard'
+import { SpecChip, type SpecChipTone } from '@/components/settings/shared/SpecChip'
 import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
 import { MemberDetailSheet } from '@/components/members/MemberDetailSheet'
-import { MoreHorizontal, Plus, Send, UserCheck, UserX, UserPlus, Trash2, Copy, Briefcase, Mail, MailX, Clock } from 'lucide-react'
+import { MoreHorizontal, Send, UserCheck, UserX, UserPlus, Trash2, Copy, Briefcase, Search } from 'lucide-react'
 
 export interface EnrichedMember extends Member {
   seatType?: 'paid' | 'free'
@@ -29,339 +25,227 @@ interface MembersTableProps {
   onAddNew?: () => void
 }
 
-const getRoleBadgeVariant = (role?: EnrichedMember['effectiveRole']) => {
-  switch (role) {
-    case 'Owner': return 'role-owner' as const
-    case 'Admin': return 'role-admin' as const
-    case 'Sales': return 'purple' as const
-    case 'Recruiter': return 'role-recruiter' as const
-    case 'Hiring Manager': return 'role-hiring-manager' as const
-    case 'Interviewer': return 'role-interviewer' as const
-    default: return 'secondary' as const
-  }
+const ROLE_TONE: Record<string, SpecChipTone> = {
+  Owner: 'blue',
+  Admin: 'blue',
+  Sales: 'purple',
+  Recruiter: 'purple',
+  'Hiring Manager': 'amber',
+  Interviewer: 'amber',
 }
 
-const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
-    case 'active': return 'status-active' as const
-    case 'invited': return 'status-invited' as const
-    case 'inactive': return 'status-inactive' as const
-    default: return 'secondary' as const
-  }
+function getDisplayName(m: EnrichedMember) {
+  if (m.user_first_name && m.user_last_name) return `${m.user_first_name} ${m.user_last_name}`
+  if (m.user_first_name) return m.user_first_name
+  return m.user_email || m.invited_email || 'Unknown User'
 }
-
-const AVATAR_COLORS = [
-  'bg-purple-100 text-purple-700',
-  'bg-blue-100 text-blue-700',
-  'bg-cyan-100 text-cyan-700',
-  'bg-orange-100 text-orange-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-pink-100 text-pink-700',
-  'bg-amber-100 text-amber-700',
-  'bg-indigo-100 text-indigo-700',
-]
-
-function getAvatarColor(member: EnrichedMember) {
-  const str = member.user_id || member.id || ''
-  let hash = 0
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+function getDisplayEmail(m: EnrichedMember) {
+  return m.user_email || m.invited_email || ''
 }
-
-function getInitials(member: EnrichedMember) {
-  const first = member.user_first_name?.[0] || ''
-  const last = member.user_last_name?.[0] || ''
+function getInitials(m: EnrichedMember) {
+  const first = m.user_first_name?.[0] || ''
+  const last = m.user_last_name?.[0] || ''
   if (first || last) return `${first}${last}`.toUpperCase()
-  return (member.user_email || member.invited_email || '?')[0].toUpperCase()
+  return (m.user_email || m.invited_email || '?')[0].toUpperCase()
 }
 
 export function MembersTable({
-  members,
-  isLoading,
-  onEdit,
-  onDeactivate,
-  onResendInvitation,
-  onDeleteUser,
-  onManageJobAssignments,
-  onAddNew
+  members, isLoading, onEdit, onDeactivate, onResendInvitation,
+  onDeleteUser, onManageJobAssignments, onAddNew,
 }: MembersTableProps) {
-  const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<string[]>([])
-  const [statusFilter, setStatusFilter] = useState<string[]>([])
-  const [seatFilter, setSeatFilter] = useState<string[]>([])
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [seatFilter, setSeatFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
   const [detailMember, setDetailMember] = useState<EnrichedMember | null>(null)
 
-  const hasActiveFilters = searchTerm || roleFilter.length > 0 || statusFilter.length > 0 || seatFilter.length > 0
-
-  const clearFilters = () => {
-    setSearchTerm('')
-    setRoleFilter([])
-    setStatusFilter([])
-    setSeatFilter([])
-  }
-
-  const seatOptions = useMemo(() => [
-    { value: 'paid', label: 'Paid', count: members.filter(m => m.seatType === 'paid').length },
-    { value: 'free', label: 'Free', count: members.filter(m => m.seatType === 'free').length },
-  ], [members])
-
-  const roleOptions = useMemo(() => {
-    const roles: EnrichedMember['effectiveRole'][] = ['Owner', 'Admin', 'Sales', 'Recruiter', 'Hiring Manager', 'Interviewer']
-    return roles.map(r => ({ value: r!, label: r!, count: members.filter(m => m.effectiveRole === r).length })).filter(o => o.count > 0)
-  }, [members])
-
-  const statusOptions = useMemo(() => [
-    { value: 'active', label: 'Active', count: members.filter(m => m.user_status === 'active').length },
-    { value: 'invited', label: 'Invited', count: members.filter(m => m.user_status === 'invited').length },
-    { value: 'inactive', label: 'Inactive', count: members.filter(m => m.user_status === 'inactive').length },
-  ].filter(o => o.count > 0), [members])
-
-  const getDisplayName = (member: EnrichedMember) => {
-    if (member.user_first_name && member.user_last_name)
-      return `${member.user_first_name} ${member.user_last_name}`
-    if (member.user_first_name) return member.user_first_name
-    return member.user_email || member.invited_email || 'Unknown User'
-  }
-
-  const getDisplayEmail = (member: EnrichedMember) => {
-    return member.user_email || member.invited_email || 'No email available'
-  }
-
-  const getEmailStatusIndicator = (member: EnrichedMember) => {
-    if (member.user_status !== 'invited') return null
-    switch (member.invitation_email_status) {
-      case 'sent':
-      case 'delivered':
-        return <span title="Email sent successfully" className="ml-1"><Mail className="inline h-3.5 w-3.5 text-emerald-600" /></span>
-      case 'failed':
-      case 'bounced':
-        return <span title={`Email failed: ${member.invitation_email_error || 'Unknown error'}`} className="ml-1"><MailX className="inline h-3.5 w-3.5 text-destructive" /></span>
-      case 'pending':
-      default:
-        return <span title="Email pending" className="ml-1"><Clock className="inline h-3.5 w-3.5 text-amber-500" /></span>
+  const filtered = useMemo(() => members.filter(m => {
+    const term = searchTerm.toLowerCase()
+    if (term) {
+      const hay = `${getDisplayName(m)} ${getDisplayEmail(m)}`.toLowerCase()
+      if (!hay.includes(term)) return false
     }
-  }
+    if (roleFilter !== 'all' && m.effectiveRole !== roleFilter) return false
+    if (seatFilter !== 'all' && m.seatType !== seatFilter) return false
+    if (statusFilter !== 'all' && m.user_status !== statusFilter) return false
+    return true
+  }), [members, searchTerm, roleFilter, seatFilter, statusFilter])
 
-  const filteredMembers = useMemo(() => {
-    return members.filter(m => {
-      const name = getDisplayName(m).toLowerCase()
-      const email = (m.user_email || m.invited_email || '').toLowerCase()
-      const term = searchTerm.toLowerCase()
-      const matchesSearch = !searchTerm || name.includes(term) || email.includes(term)
-      const matchesRole = roleFilter.length === 0 || roleFilter.includes(m.effectiveRole || (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager'))
-      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(m.user_status)
-      const matchesSeat = seatFilter.length === 0 || (m.seatType && seatFilter.includes(m.seatType))
-      return matchesSearch && matchesRole && matchesStatus && matchesSeat
-    })
-  }, [members, searchTerm, roleFilter, statusFilter, seatFilter])
-
-  // Selection logic
-  const allFilteredSelected = filteredMembers.length > 0 && filteredMembers.every(m => selectedIds.includes(m.id))
-  const someFilteredSelected = filteredMembers.some(m => selectedIds.includes(m.id))
-
-  const toggleSelectAll = () => {
-    if (allFilteredSelected) {
-      setSelectedIds(prev => prev.filter(id => !filteredMembers.find(m => m.id === id)))
-    } else {
-      const newIds = filteredMembers.map(m => m.id)
-      setSelectedIds(prev => [...new Set([...prev, ...newIds])])
-    }
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  }
-
-  const copyInviteLink = async (member: EnrichedMember) => {
-    if (!member.invite_token) {
-      toast({ title: 'Error', description: 'No invitation token found. Please resend the invitation first.', variant: 'destructive' })
+  const copyInviteLink = async (m: EnrichedMember) => {
+    if (!m.invite_token) {
+      toast({ title: 'Error', description: 'No invitation token. Resend the invite first.', variant: 'destructive' })
       return
     }
-    setCopyingInvite(member.id)
+    setCopyingInvite(m.id)
     try {
-      const inviteUrl = `${window.location.origin}/accept-invite/${member.invite_token}`
-      await navigator.clipboard.writeText(inviteUrl)
-      toast({ title: 'Success', description: 'Invitation link copied to clipboard' })
-    } catch (error) {
-      console.error('Failed to copy invite link:', error)
-      toast({ title: 'Error', description: 'Failed to copy invitation link', variant: 'destructive' })
-    } finally {
-      setCopyingInvite(null)
-    }
+      await navigator.clipboard.writeText(`${window.location.origin}/accept-invite/${m.invite_token}`)
+      toast({ title: 'Copied', description: 'Invitation link copied' })
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to copy', variant: 'destructive' })
+    } finally { setCopyingInvite(null) }
   }
 
-  const handleResendInvitation = async (member: EnrichedMember) => {
-    const email = member.user_email || member.invited_email
-    if (!email) {
-      toast({ title: 'Error', description: 'No email address found for this member', variant: 'destructive' })
-      return
-    }
-    try { await onResendInvitation(member.id, email) } catch (error) { console.error('Failed to resend invitation:', error) }
+  const handleResend = async (m: EnrichedMember) => {
+    const email = m.user_email || m.invited_email
+    if (!email) return
+    try { await onResendInvitation(m.id, email) } catch (e) { console.error(e) }
   }
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Team Members</CardTitle>
-            <Skeleton className="h-10 w-32" />
-          </div>
-        </CardHeader>
-        <CardContent><TableSkeleton rows={5} /></CardContent>
-      </Card>
-    )
+  const filterPillBase = 'h-7 px-3 rounded-full border bg-white font-inter text-[11.5px] text-[#5A6072] hover:bg-[#FAFAF7] outline-none focus:ring-2 focus:ring-virgilio-purple/30 cursor-pointer'
+  const pillStyle: React.CSSProperties = { borderColor: '#E7E8EE' }
+
+  const renderRole = (m: EnrichedMember) => {
+    const role = m.effectiveRole || (m.system_role === 'admin' ? 'Admin' : 'Hiring Manager')
+    return <SpecChip tone={ROLE_TONE[role] ?? 'gray'}>{role}</SpecChip>
+  }
+  const renderSeat = (m: EnrichedMember) => m.seatType ? (
+    <SpecChip tone={m.seatType === 'paid' ? 'purple' : 'gray'}>{m.seatType === 'paid' ? 'Paid' : 'Free'}</SpecChip>
+  ) : null
+  const renderStatus = (m: EnrichedMember) => {
+    if (m.user_status === 'active') return <SpecChip tone="green">Active</SpecChip>
+    if (m.user_status === 'invited') return <SpecChip tone="amber">Invited</SpecChip>
+    return <SpecChip tone="gray">Inactive</SpecChip>
   }
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-start gap-4">
-            <div className="space-y-1">
-              <CardTitle>Team members</CardTitle>
-              <p className="font-inter text-[13px] text-muted-foreground">
-                Paid seats: admins, owners &amp; recruiters. Hiring managers and interviewers are free.
-              </p>
-            </div>
-            {onAddNew && (
-              <Button onClick={onAddNew} className="hidden sm:inline-flex gap-2 shrink-0">
-                <UserPlus className="h-4 w-4" />
-                Add member
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {members.length === 0 ? (
-            <EmptyState
-              size="card"
-              illustration={<SoftPeople />}
-              title="No team members yet"
-              body="Invite your first team member to start collaborating."
-              primary={onAddNew ? (
-                <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddNew}>
-                  Add member
-                </EmptyAction>
-              ) : undefined}
+      <SpecCard
+        title="Team members"
+        description="Paid seats: admins, owners & recruiters. Hiring managers and interviewers are free."
+        action={onAddNew ? (
+          <button
+            type="button"
+            onClick={onAddNew}
+            className="inline-flex items-center gap-1.5 font-inter font-semibold text-[12px] rounded-lg hover:opacity-90 transition-opacity"
+            style={{ background: '#0d0d09', color: '#fffcf9', height: 30, padding: '0 12px' }}
+          >
+            <UserPlus size={14} strokeWidth={2} /> Add member
+          </button>
+        ) : undefined}
+      >
+        {/* Search + filters */}
+        <div className="flex flex-wrap items-center gap-2" style={{ padding: '12px 18px', borderBottom: '1px solid #F1F0EC' }}>
+          <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#8B8F9E]" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search members…"
+              className="h-[30px] pl-8 font-inter text-[12px] rounded-lg"
+              style={{ background: '#F6F5F1', border: 'none' }}
             />
-          ) : (
-            <div className="rounded-xl border border-virgilio-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Member</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Seat</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[32px] text-right" aria-label="Actions" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {members.map((member) => {
-                    const isInactive = member.user_status === 'inactive'
-                    const isInvited = member.user_status === 'invited'
-                    const statusLabel = isInactive ? 'Inactive' : isInvited ? 'Invited' : 'Active'
-                    const displayName = isInvited ? getDisplayEmail(member) : getDisplayName(member)
-                    const sub = isInvited ? 'Invite pending' : getDisplayEmail(member)
-                    return (
-                      <TableRow
-                        key={member.id}
-                        interactive
-                        className={`group cursor-pointer ${isInactive ? 'opacity-60' : ''}`}
-                        onClick={() => setDetailMember(member)}
-                      >
-                        <TableCell>
-                          <IdentityCell
-                            name={displayName}
-                            sub={sub}
-                            src={member.user_avatar_url}
-                            fallback={getInitials(member)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <StatusCell>
-                            <Badge size="sm" variant={isInactive ? 'secondary' : getRoleBadgeVariant(member.effectiveRole)}>
-                              {member.effectiveRole || (member.system_role === 'admin' ? 'Admin' : 'Member')}
-                            </Badge>
-                          </StatusCell>
-                        </TableCell>
-                        <TableCell>
-                          {member.seatType ? (
-                            <StatusCell>
-                              <Badge size="sm" variant={member.seatType === 'paid' ? 'seat-paid' : 'seat-free'}>
-                                {member.seatType === 'paid' ? 'Paid' : 'Free'}
-                              </Badge>
-                            </StatusCell>
-                          ) : <span className="text-text-tertiary">—</span>}
-                        </TableCell>
-                        <TableCell>
-                          <StatusCell>
-                            <Badge size="sm" variant={getStatusBadgeVariant(member.user_status)}>
-                              {statusLabel}
-                            </Badge>
-                          </StatusCell>
-                        </TableCell>
-                        <TableCell className="w-[32px] text-right">
-                          <ActionCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="Member actions" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(member) }}>Edit Member</DropdownMenuItem>
-                                {onManageJobAssignments && member.user_status === 'active' && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onManageJobAssignments(member) }} className="gap-2">
-                                    <Briefcase className="h-4 w-4" />Manage Job Access
-                                  </DropdownMenuItem>
-                                )}
-                                {member.user_status === 'invited' && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleResendInvitation(member) }} className="gap-2">
-                                      <Send className="h-4 w-4" />Resend Invitation
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); copyInviteLink(member) }} disabled={copyingInvite === member.id} className="gap-2">
-                                      <Copy className="h-4 w-4" />{copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {member.user_status === 'active' && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeactivate(member.id) }} className="gap-2">
-                                      <UserX className="h-4 w-4" />Deactivate Member
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {member.user_status === 'inactive' && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(member) }} className="gap-2">
-                                      <UserCheck className="h-4 w-4" />Reactivate Member
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeleteUser(member) }} className="gap-2 text-destructive">
-                                  <Trash2 className="h-4 w-4" />Delete User
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </ActionCell>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+          <select value={seatFilter} onChange={(e) => setSeatFilter(e.target.value)} className={filterPillBase} style={pillStyle}>
+            <option value="all">All seats</option><option value="paid">Paid</option><option value="free">Free</option>
+          </select>
+          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className={filterPillBase} style={pillStyle}>
+            <option value="all">All roles</option><option>Owner</option><option>Admin</option><option>Recruiter</option><option>Hiring Manager</option><option>Interviewer</option><option>Sales</option>
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={filterPillBase} style={pillStyle}>
+            <option value="all">All statuses</option><option value="active">Active</option><option value="invited">Invited</option><option value="inactive">Inactive</option>
+          </select>
+        </div>
 
+        {/* Rows */}
+        {isLoading ? (
+          <div className="font-inter text-[12px] text-[#8B8F9E]" style={{ padding: '18px' }}>Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div className="font-inter text-[12px] text-[#8B8F9E] text-center" style={{ padding: '24px 18px' }}>
+            No team members.
+          </div>
+        ) : (
+          filtered.map((m, idx) => {
+            const isInactive = m.user_status === 'inactive'
+            const isInvited = m.user_status === 'invited'
+            const displayName = isInvited ? getDisplayEmail(m) : getDisplayName(m)
+            const sub = isInvited ? 'Invite pending' : getDisplayEmail(m)
+            return (
+              <div
+                key={m.id}
+                onClick={() => setDetailMember(m)}
+                className={`flex items-center gap-3 cursor-pointer hover:bg-[#FAFAF7] transition-colors ${isInactive ? 'opacity-60' : ''}`}
+                style={{
+                  padding: '10px 18px',
+                  borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid #F1F0EC',
+                }}
+              >
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarImage src={m.user_avatar_url || undefined} />
+                  <AvatarFallback className="text-[10.5px] font-inter font-semibold bg-[#F1F0EC] text-[#5A6072]">
+                    {getInitials(m)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="font-inter font-semibold text-[#1F2230] truncate" style={{ fontSize: 12.5, lineHeight: 1.3 }}>
+                    {displayName}
+                  </div>
+                  {sub && (
+                    <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 10.5, lineHeight: 1.3 }}>
+                      {sub}
+                    </div>
+                  )}
+                </div>
+                <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                  {renderRole(m)}
+                  {renderSeat(m)}
+                  {renderStatus(m)}
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      aria-label="Member actions"
+                      className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-md hover:bg-[#F1F0EC] text-[#8B8F9E]"
+                    >
+                      <MoreHorizontal size={14} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(m) }}>Edit Member</DropdownMenuItem>
+                    {onManageJobAssignments && m.user_status === 'active' && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onManageJobAssignments(m) }} className="gap-2">
+                        <Briefcase className="h-4 w-4" />Manage Job Access
+                      </DropdownMenuItem>
+                    )}
+                    {m.user_status === 'invited' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleResend(m) }} className="gap-2">
+                          <Send className="h-4 w-4" />Resend Invitation
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); copyInviteLink(m) }} disabled={copyingInvite === m.id} className="gap-2">
+                          <Copy className="h-4 w-4" />{copyingInvite === m.id ? 'Copying…' : 'Copy Invite Link'}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {m.user_status === 'active' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeactivate(m.id) }} className="gap-2">
+                          <UserX className="h-4 w-4" />Deactivate Member
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {m.user_status === 'inactive' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(m) }} className="gap-2">
+                          <UserCheck className="h-4 w-4" />Reactivate Member
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeleteUser(m) }} className="gap-2 text-destructive">
+                      <Trash2 className="h-4 w-4" />Delete User
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )
+          })
+        )}
+      </SpecCard>
 
       <MemberDetailSheet
         member={detailMember}
