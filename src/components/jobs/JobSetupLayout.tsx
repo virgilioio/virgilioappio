@@ -4,6 +4,7 @@ import {
   Pencil,
   Globe,
   Activity,
+  History,
   GitBranch,
   Users,
   Bell,
@@ -15,6 +16,7 @@ import {
   Settings2,
   Trash2,
 } from 'lucide-react'
+
 import { formatDistanceToNowStrict } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -76,8 +78,9 @@ const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
 const NAV_QUICK = [
   { id: 'edit-info', label: 'Edit job info', icon: Pencil },
   { id: 'manage-postings', label: 'Manage postings', icon: Globe },
-  { id: 'activity', label: 'Activity log', icon: Activity },
+  { id: 'activity', label: 'Activity log', icon: History },
 ] as const
+
 
 function getInitials(first?: string | null, last?: string | null, email?: string | null) {
   const f = (first || '').trim()
@@ -249,58 +252,70 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   return (
     <div
       ref={scrollRef}
-      className="h-full overflow-auto bg-[#FAFAF7]"
+      className="h-full overflow-auto bg-[#F6F5F1]"
     >
       <div className="mx-auto max-w-[1280px] px-6 sm:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
-          {/* Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-[224px_minmax(0,1fr)] items-start gap-[26px]">
+          {/* Sidebar — flat rail */}
           <aside className="lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100dvh-120px)] lg:overflow-auto">
-            <div className="rounded-2xl border border-virgilio-border bg-white p-4">
-              <div className="px-2 pt-1 pb-3">
-                <div className="font-poppins font-semibold tracking-[-0.04em] text-[18px] text-text-primary">
-                  Job setup<span className="text-virgilio-purple">.</span>
-                </div>
-                <div className="text-[12px] text-text-tertiary truncate">{jobTitle}</div>
+            <div style={{ padding: '0 10px 12px' }}>
+              <div
+                className="font-poppins"
+                style={{ fontSize: 16, fontWeight: 600, color: '#0d0d09', letterSpacing: '-0.03em' }}
+              >
+                Job setup<span style={{ color: '#D7C5FB' }}>.</span>
               </div>
-
-              <NavGroupLabel>Configuration</NavGroupLabel>
-              <nav className="space-y-1">
-                {NAV_CONFIG.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    active={active === item.id}
-                    onClick={() => scrollTo(item.id)}
-                  />
-                ))}
-              </nav>
-
-              <NavGroupLabel className="mt-4">Quick links</NavGroupLabel>
-              <nav className="space-y-1">
-                {NAV_QUICK.map((item) => (
-                  <NavItem
-                    key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    muted
-                    onClick={() => handleQuick(item.id)}
-                  />
-                ))}
-              </nav>
-
-              {lastEdited && (
-                <div className="mt-4 rounded-xl bg-[#EDE4FF] px-3 py-3">
-                  <div className="text-[10px] font-poppins font-semibold tracking-[0.14em] uppercase text-virgilio-purple">
-                    Auto-saved
-                  </div>
-                  <div className="mt-1 text-[12px] text-text-primary leading-snug">
-                    Last edit {lastEdited} ago by {editorName}.
-                  </div>
-                </div>
-              )}
+              <div
+                className="font-inter truncate"
+                style={{ fontSize: 11, color: '#8B8F9E', marginTop: 2 }}
+              >
+                {jobTitle}
+              </div>
             </div>
+
+            <NavGroupLabel>Configuration</NavGroupLabel>
+            <nav className="flex flex-col gap-px">
+              {NAV_CONFIG.map((item) => (
+                <NavItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  active={active === item.id}
+                  onClick={() => scrollTo(item.id)}
+                />
+              ))}
+            </nav>
+
+            <NavGroupLabel>Quick links</NavGroupLabel>
+            <nav className="flex flex-col gap-px">
+              {NAV_QUICK.map((item) => (
+                <NavItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  muted
+                  onClick={() => handleQuick(item.id)}
+                />
+              ))}
+            </nav>
+
+            {lastEdited && (
+              <div
+                className="font-inter"
+                style={{
+                  margin: '14px 10px 0',
+                  borderTop: '1px solid #E7E8EE',
+                  paddingTop: 10,
+                  fontSize: 10.5,
+                  color: '#B5B9C4',
+                  lineHeight: 1.5,
+                }}
+              >
+                Auto-saved · last edit {lastEdited} ago by {editorName}.
+              </div>
+            )}
           </aside>
+
 
           {/* Main column */}
           <main className="space-y-8 min-w-0">
@@ -661,10 +676,15 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 function NavGroupLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={cn(
-        'px-2 pt-2 pb-1.5 text-[10.5px] font-inter font-semibold tracking-[0.14em] uppercase text-[#8B8F9E]',
-        className
-      )}
+      className={cn('font-inter uppercase', className)}
+      style={{
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+        color: '#8B8F9E',
+        padding: '0 10px',
+        margin: '14px 0 5px',
+      }}
     >
       {children}
     </div>
@@ -689,19 +709,31 @@ function NavItem({
       type="button"
       onClick={onClick}
       className={cn(
-        'group w-full flex items-center gap-2.5 rounded-lg px-2.5 h-9 text-left text-[13px] font-poppins font-medium tracking-[-0.005em] transition-colors',
-        active
-          ? 'bg-[#0d0d09] text-[#fffcf9]'
-          : muted
-          ? 'text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary'
-          : 'text-text-primary hover:bg-[#F1F0EC]'
+        'group w-full flex items-center text-left font-inter transition-colors',
+        active ? '' : 'hover:bg-[rgba(13,13,9,0.05)]'
       )}
+      style={{
+        gap: 9,
+        padding: '7px 10px',
+        borderRadius: 8,
+        fontSize: 12.5,
+        fontWeight: active ? 600 : 500,
+        background: active ? '#0d0d09' : 'transparent',
+        color: active ? '#fffcf9' : '#1F2230',
+        opacity: muted && !active ? 0.75 : 1,
+        transition: 'background 140ms ease',
+      }}
     >
-      <Icon className={cn('h-3.5 w-3.5', active ? 'text-[#fffcf9]' : '')} />
+      <Icon
+        size={14}
+        strokeWidth={2}
+        style={{ color: active ? '#fffcf9' : '#5A6072', flexShrink: 0 }}
+      />
       <span className="truncate">{label}</span>
     </button>
   )
 }
+
 
 /* ---------- Role select (compact) ---------- */
 
