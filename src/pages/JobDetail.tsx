@@ -102,7 +102,7 @@ export default function JobDetail() {
   useEffect(() => {
     const onNav = (e: Event) => {
       const detail = (e as CustomEvent).detail
-      if (detail === 'postings' || detail === 'job-setup' || detail === 'pipeline' || detail === 'candidates' || detail === 'sourcing') {
+      if (detail === 'overview' || detail === 'postings' || detail === 'job-setup' || detail === 'pipeline' || detail === 'candidates' || detail === 'sourcing') {
         setActiveTab(detail)
       }
     }
