@@ -157,8 +157,11 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
           tooltip="Number of team members"
         />
       </div>
+      {/* Hiring targets */}
+      <HiringTargetsCard jobId={job.id} />
 
       {/* Required Skills */}
+
       {skills && skills.length > 0 && (
         <Card className="shadow-calendly border-virgilio-border">
           <CardHeader>
