@@ -53,6 +53,7 @@ import { SuggestedCandidatesLoader } from '@/components/sourcing/SuggestedCandid
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { JobBriefingTab } from '@/components/jobs/JobBriefingTab'
+import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { JobSourcingTab } from '@/components/jobs/JobSourcingTab'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -86,7 +87,7 @@ export default function JobDetail() {
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState('pipeline')
+  const [activeTab, setActiveTab] = useState('overview')
   const [showHiringTeamDialog, setShowHiringTeamDialog] = useState(false)
   const [showCreatePostingSheet, setShowCreatePostingSheet] = useState(false)
   
@@ -101,7 +102,7 @@ export default function JobDetail() {
   useEffect(() => {
     const onNav = (e: Event) => {
       const detail = (e as CustomEvent).detail
-      if (detail === 'postings' || detail === 'job-setup' || detail === 'pipeline' || detail === 'candidates' || detail === 'sourcing') {
+      if (detail === 'overview' || detail === 'postings' || detail === 'job-setup' || detail === 'pipeline' || detail === 'candidates' || detail === 'sourcing') {
         setActiveTab(detail)
       }
     }
@@ -961,6 +962,7 @@ export default function JobDetail() {
             const triggerCls = "relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
             const triggers = (
               <>
+                <TabsTrigger value="overview" className={triggerCls}>Overview</TabsTrigger>
                 <TabsTrigger value="pipeline" className={triggerCls}>Pipeline</TabsTrigger>
                 {!isRestrictedViewer && (
                   <TabsTrigger value="candidates" className={triggerCls}>Job Dashboard</TabsTrigger>
@@ -1012,6 +1014,18 @@ export default function JobDetail() {
 
 
           {/* Job Dashboard */}
+          <TabsContent
+            value="overview"
+            className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
+          >
+            <JobOverviewTab
+              jobId={id!}
+              job={job}
+              onEdit={handleEditJob}
+              onNavigate={(t) => setActiveTab(t)}
+            />
+          </TabsContent>
+
           {!isRestrictedViewer && (
             <TabsContent
               value="candidates"

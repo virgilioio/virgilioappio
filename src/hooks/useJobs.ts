@@ -50,6 +50,7 @@ export interface Job {
   include_signing_bonus?: boolean | null
   min_years_experience?: number | null
   max_years_experience?: number | null
+  target_fill_date?: string | null
 }
 
 export interface CreateJobData {
@@ -77,6 +78,7 @@ export interface CreateJobData {
   include_signing_bonus?: boolean
   min_years_experience?: number
   max_years_experience?: number
+  target_fill_date?: string | null
 }
 
 export interface UpdateJobData {
@@ -103,6 +105,7 @@ export interface UpdateJobData {
   include_signing_bonus?: boolean
   min_years_experience?: number | null
   max_years_experience?: number | null
+  target_fill_date?: string | null
 }
 
 // Cached tenant_id per organization to avoid repeated lookups

@@ -78,6 +78,7 @@ export function JobFormSheet({
         include_signing_bonus: job.include_signing_bonus ?? false,
         min_years_experience: job.min_years_experience ?? undefined,
         max_years_experience: job.max_years_experience ?? undefined,
+        target_fill_date: (job as any).target_fill_date ?? undefined,
       })
     } else {
       setJobData({ status: 'draft', currency: 'USD', show_salary_public: true })
@@ -123,6 +124,7 @@ export function JobFormSheet({
       include_signing_bonus: !!src.include_signing_bonus,
       status: src.status || 'draft',
       department_id: src.department_id ?? null,
+      target_fill_date: trimOrNull(src.target_fill_date),
     }
     if (!job && src.organization_id) payload.organization_id = src.organization_id
 

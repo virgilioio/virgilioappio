@@ -20,6 +20,7 @@ import {
   Eye,
   Globe,
   Calendar,
+  CalendarCheck,
   Shield,
   Search,
   Send,
@@ -323,6 +324,19 @@ export function SummaryStep({
             />
             <FieldRow icon={ClipboardList} label="Type" value={<span className="capitalize">{employmentLabel || '—'}</span>} />
             <FieldRow icon={DollarSign} label="Salary" value={formatSalary()} />
+            <FieldRow
+              icon={CalendarCheck}
+              label="Target hire"
+              value={
+                jobData.target_fill_date
+                  ? new Date(jobData.target_fill_date).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : '—'
+              }
+            />
           </div>
 
           {jobData.description && (
