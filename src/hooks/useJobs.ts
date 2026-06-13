@@ -105,6 +105,7 @@ export interface UpdateJobData {
   include_signing_bonus?: boolean
   min_years_experience?: number | null
   max_years_experience?: number | null
+  target_fill_date?: string | null
 }
 
 // Cached tenant_id per organization to avoid repeated lookups
