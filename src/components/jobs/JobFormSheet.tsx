@@ -124,6 +124,7 @@ export function JobFormSheet({
       include_signing_bonus: !!src.include_signing_bonus,
       status: src.status || 'draft',
       department_id: src.department_id ?? null,
+      target_fill_date: trimOrNull(src.target_fill_date),
     }
     if (!job && src.organization_id) payload.organization_id = src.organization_id
 
