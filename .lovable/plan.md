@@ -1,84 +1,57 @@
-# In-job candidate profile rebuild
+# Phase 1 — Schema
 
-A reskin and reorganization of `/jobs/:jobId/candidates/:candidateId`. No data-model or flow changes — all existing wiring (advance, schedule, booking link, email, reject, application switcher, Full profile link, offer composer) is preserved. Terminal-status banners (Offer / Rejected / Hired) are NOT in scope and keep their current behavior.
+Scope: database + Job Setup UI only. No detectors, no LLM, no dashboard replacement yet. Phases 2–3 will land once you share their specs.
 
-## Scope at a glance
+## 1. Migration
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ HERO CARD  (radius 16, 14px 24px 0)                             │
-│  Row 1  ← Back · breadcrumb · — · AI FIT · Advance · Sched · …  │
-│  Row 2  Name. ♥  ·  [stage · 4d in stage]                       │
-│  Row 3  Applying for {job}⌵ · Source · Applied · 👤 Full profile│
-│  Row 4  Tabs (underline sits on card edge)                      │
-├─────────────────────────────────────────────────────────────────┤
-│ STAGE STEPPER CARD  (radius 16, p12)                            │
-├─────────────────────────────────────────────────────────────────┤
-│ BODY   1fr  +  320px sidebar  (gap 16) — per-tab               │
-└─────────────────────────────────────────────────────────────────┘
-```
+Single migration covering all schema changes:
 
-Hero + stepper render IDENTICALLY on every tab; only the body grid swaps.
+**`jobs` — hiring targets**
+- `budget_salary_min numeric`
+- `budget_salary_max numeric`
+- `budget_currency text default 'MXN'`
+- `budget_period text default 'monthly'` (check: `monthly|annual`)
+- `target_fill_date date`
+- `must_have_skills text[] default '{}'`
+- `location_requirement text default 'onsite'` (check: `onsite|hybrid|remote`)
 
-## New primitives (`src/components/candidates/profile/primitives/`)
+All nullable / defaulted so existing jobs keep working; detectors will degrade gracefully.
 
-- `ProfileCard.tsx` — white, radius 14, header (14/20/12 + hairline) with title, optional subtitle, right action slot; body p20. Replaces ad-hoc `<section>` usage in tab bodies.
-- `Sidebar.tsx` — single card (p16) wrapper + `SidebarBlock` (label + optional right action) + `MetaRow` (icon/label/value with hairline) + `FileRow` + `LinkRow`.
-- `StatTile.tsx` — `#FAFAF7` tile: green icon + uppercase label + Poppins 16/600 value (used in Gio job-context card).
-- `BorderedTile.tsx` — generic bordered tile with eyebrow label (NEXT EVENT, INTERVIEWERS).
-- `VerdictChip.tsx` — dot + label, color by verdict (Strong yes/Yes/Lean yes/No/Strong no/Pending).
-- `SegmentBar.tsx` — 5×12 pill bar (filled = noir) for scorecard areas.
+**`stage_events` — append-only log**
+- Columns exactly as specified (`from_stage`, `to_stage`, `occurred_at`, `actor_id`, `reason`, `entry_channel`).
+- Indexes on `(job_id, occurred_at)` and `(candidate_id, job_id)`.
+- GRANT + RLS: tenant-scoped via the `jobs.tenant_id` of the parent job, using the existing `user_has_tenant_access` pattern. Insert allowed to authenticated; updates/deletes blocked (append-only).
+- Backfill: for every row in `job_candidate_associations`, insert an entry event at `created_at` (`from_stage=null`, `to_stage=current_stage`, `reason='backfill'`) and, if status is terminal (`hired|rejected|withdrawn`), a terminal event at `updated_at`.
+- Trigger: `AFTER INSERT OR UPDATE OF current_stage, status ON job_candidate_associations` writes a new `stage_events` row going forward, so we stop relying on snapshots.
 
-## Updated existing primitives
+**`job_briefings` — cache**
+- Exactly as specified: `job_id PK`, `snapshot_hash`, `snapshot jsonb`, `briefing jsonb`, `generated_at`.
+- GRANT + RLS: read for tenant members of the parent job; write restricted to `service_role` (Phase 3 edge function will own writes).
 
-- `ProfileHeroCard.tsx` — relax to spec (no avatar, dot-chip with "{n}d in stage", AI FIT pill restyle, breadcrumb tweak); padding `14px 24px 0` so the tab strip sits flush on the card edge; remove its own `mt-4` wrapper around tabs.
-- `ProfileTabs.tsx` — keep API; visual tweak so count pill matches spec (active = noir/cream, idle = `#F1F0EC`/`#5A6072`).
-- `ProfileStageStrip.tsx` — already 95% correct; tighten chip to spec (radius 10 / p10×12 / Poppins 11.5 / Inter 10.5 line 2; passed = `#D1FAE5`/`#065F46` with `#12B886` circle + white check).
+All three follow the mandated order: CREATE TABLE → GRANT → ENABLE RLS → POLICY.
 
-## Per-tab body + sidebar components
+## 2. UI — "Hiring targets" section in Job Setup
 
-Each tab gets two thin presentational components (`*Body.tsx`, `*Sidebar.tsx`) under `profile/tabs/`. The container `CandidateProfileSheet` continues to own all data hooks and passes props down — no new data flow.
+Add a new section to `JobOverviewTab` (or as a sibling card inside `JobSetupPanel`'s Overview tab — whichever fits the current Setup layout best). One card, Gio foundation, no design surprises:
 
-| Tab | Body components (top→bottom) | Sidebar blocks |
-|---|---|---|
-| Job overview | CurrentStageCard (refit with NEXT EVENT + INTERVIEWERS tiles) · ScorecardsSection · JobContextCard (Gio, conditional) · TopSkillsCard | QuickActions · Application · Job information · Links · Files |
-| Resume | ResumeViewerCard (PDF toolbar + render, padding 0) | File · Parsed by Gio · Actions |
-| Overview | ContactInformationCard · SkillsCard · ProfileSummaryCard (Gio, **fixed markdown rendering**) · ExperienceCard · EducationCard | Tags · Links · Files |
-| Scorecards | SubmittedScorecardsCard · SideBySideComparisonCard (Gio, conditional) | Summary · Verdict distribution · Pending |
-| Activity | ActivityCard (existing `ActivityFeedList` rewrapped) | Filter (functional checkbox filter) · Stats |
-| Emails | EmailsCard (newest expanded inline) · ConversationInsightsCard (Gio, conditional) | Engagement · Activity · Connected inbox |
-| Comments | CommentsCard (existing `CandidateComments` rewrapped in `ProfileCard`) | Mentions · Visible to |
+- Salary range: two numeric inputs + currency `<Select>` (reuse `currencies` constants) + period `<Select>` (Monthly / Annual).
+- Target fill date: `<DatePickerVirgilio>`.
+- Location requirement: segmented `<Select>` Onsite / Hybrid / Remote.
+- Must-have skills: tag input (reuse the skills chip pattern already used elsewhere in the job form — same normalized vocabulary as candidate skills).
 
-Gio cards (job context, scorecard synthesis, email insights), engagement stats, and parsed-resume counts render only when the underlying data exists.
+Fields are all optional; submit goes through the existing `updateJob` path (`useJobs`). No validation beyond min ≤ max when both present.
 
-## Sheet wiring changes (`CandidateProfileSheet.tsx`)
+## 3. Out of scope for this phase
 
-1. Replace lines ~1259-1670 (the `grid lg:grid-cols-3` body) with:
-   ```tsx
-   <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
-     <main>{renderTabBody()}</main>
-     <aside>{renderTabSidebar()}</aside>
-   </div>
-   ```
-2. Move terminal-status tab bodies (offer / rejection-details / onboarding) into `renderTabBody()` unchanged — they already work.
-3. `?tab=…` URL persistence: read `searchParams` on mount, push on tab change (active tab persists in URL). Skips for sheet (non-`asPage`) mode.
-4. Profile-summary fix: anywhere the existing Gio summary prints raw `\n\n` / `**bold**` as plain text, route through `ProfileSummaryMarkdown` (already exists) inside the new `ProfileSummaryCard`.
+- No dashboard changes. `JobAnalyticsDashboard` stays mounted as-is until Phase 3's UI replacement lands.
+- No detectors, no edge function, no briefing UI, no LLM calls.
+- No new types file edits — Supabase types regenerate after the migration is approved.
 
-## Foundation tokens used
+## Verification checklist
 
-All values come from existing tokens where present (`virgilio-purple`, `virgilio-border`, `text-primary/secondary/tertiary`, `pastel-green*`). Spec hexes that aren't already tokens are inlined as Tailwind arbitrary classes (e.g. `bg-[#FAFAF7]`, `border-[#E7E8EE]`, `bg-[#FAF8FF]`) — consistent with the rest of `/profile/*`.
+- Migration approved + applied; `supabase--read_query` confirms columns/tables/indexes exist.
+- Backfill row count ≈ `job_candidate_associations` row count (+ terminal extras).
+- Editing a candidate's stage writes a new `stage_events` row (trigger smoke test via psql).
+- Setup form persists all seven new job fields and re-reads them on reload.
 
-## Explicitly out of scope
-
-- Terminal-status banner content & behavior (Offer/Rejected/Hired) — only their tab bodies get re-wrapped in `ProfileCard`.
-- Data model, hooks, edge functions, RLS.
-- Independent candidate profile (`/candidates/:id`).
-- Mobile layout (consultation-first rules already restrict mobile editing).
-
-## Risks / open questions
-
-- **Email "Engagement / open rate"** — current schema doesn't track opens/clicks. The Engagement sidebar block will render `—` and an "Open tracking not configured" hint rather than fake data. Confirm OK, or hide the block entirely until tracking lands.
-- **Scorecard verdict colors** for "Lean yes" — spec says yellow; existing `VerdictChip` uses neutral. I'll add yellow per spec.
-- **Tab URL persistence** — should this apply only to `asPage` mode (full-page route), or also when the sheet is opened from the pipeline kanban? Plan: full-page only, to avoid clobbering the route when used as a sheet.
-
-Once approved I'll build new primitives + per-tab files in parallel, then wire `CandidateProfileSheet` in a single edit.
+Once you confirm Phase 1 is good, send Phases 2 (detector catalog + payload shapes) and 3 (LLM contract + UI), and I'll build them in order.
