@@ -2696,6 +2696,38 @@ export type Database = {
           },
         ]
       }
+      job_briefings: {
+        Row: {
+          briefing: Json
+          generated_at: string
+          job_id: string
+          snapshot: Json
+          snapshot_hash: string
+        }
+        Insert: {
+          briefing: Json
+          generated_at?: string
+          job_id: string
+          snapshot: Json
+          snapshot_hash: string
+        }
+        Update: {
+          briefing?: Json
+          generated_at?: string
+          job_id?: string
+          snapshot?: Json
+          snapshot_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_briefings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_candidate_associations: {
         Row: {
           added_by: string | null
@@ -3256,6 +3288,10 @@ export type Database = {
         Row: {
           additional_locations: string[]
           auto_generated_skills: Json | null
+          budget_currency: string
+          budget_period: string
+          budget_salary_max: number | null
+          budget_salary_min: number | null
           created_at: string | null
           created_by: string | null
           currency: string | null
@@ -3274,8 +3310,10 @@ export type Database = {
           job_level: string | null
           last_skills_generation: string | null
           location: string | null
+          location_requirement: string
           max_years_experience: number | null
           min_years_experience: number | null
+          must_have_skills: string[]
           normalization_metadata: Json | null
           organization_id: string
           priority_keywords: Json | null
@@ -3287,6 +3325,7 @@ export type Database = {
           standardized_skills: string[] | null
           standardized_title: string | null
           status: Database["public"]["Enums"]["job_status"]
+          target_fill_date: string | null
           tenant_id: string
           title: string
           updated_at: string | null
@@ -3295,6 +3334,10 @@ export type Database = {
         Insert: {
           additional_locations?: string[]
           auto_generated_skills?: Json | null
+          budget_currency?: string
+          budget_period?: string
+          budget_salary_max?: number | null
+          budget_salary_min?: number | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -3313,8 +3356,10 @@ export type Database = {
           job_level?: string | null
           last_skills_generation?: string | null
           location?: string | null
+          location_requirement?: string
           max_years_experience?: number | null
           min_years_experience?: number | null
+          must_have_skills?: string[]
           normalization_metadata?: Json | null
           organization_id: string
           priority_keywords?: Json | null
@@ -3326,6 +3371,7 @@ export type Database = {
           standardized_skills?: string[] | null
           standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
+          target_fill_date?: string | null
           tenant_id: string
           title: string
           updated_at?: string | null
@@ -3334,6 +3380,10 @@ export type Database = {
         Update: {
           additional_locations?: string[]
           auto_generated_skills?: Json | null
+          budget_currency?: string
+          budget_period?: string
+          budget_salary_max?: number | null
+          budget_salary_min?: number | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -3352,8 +3402,10 @@ export type Database = {
           job_level?: string | null
           last_skills_generation?: string | null
           location?: string | null
+          location_requirement?: string
           max_years_experience?: number | null
           min_years_experience?: number | null
+          must_have_skills?: string[]
           normalization_metadata?: Json | null
           organization_id?: string
           priority_keywords?: Json | null
@@ -3365,6 +3417,7 @@ export type Database = {
           standardized_skills?: string[] | null
           standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
+          target_fill_date?: string | null
           tenant_id?: string
           title?: string
           updated_at?: string | null
@@ -5821,6 +5874,50 @@ export type Database = {
             columns: ["job_hiring_stage_id"]
             isOneToOne: false
             referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_events: {
+        Row: {
+          actor_id: string | null
+          candidate_id: string
+          entry_channel: string | null
+          from_stage: string | null
+          id: string
+          job_id: string
+          occurred_at: string
+          reason: string | null
+          to_stage: string
+        }
+        Insert: {
+          actor_id?: string | null
+          candidate_id: string
+          entry_channel?: string | null
+          from_stage?: string | null
+          id?: string
+          job_id: string
+          occurred_at?: string
+          reason?: string | null
+          to_stage: string
+        }
+        Update: {
+          actor_id?: string | null
+          candidate_id?: string
+          entry_channel?: string | null
+          from_stage?: string | null
+          id?: string
+          job_id?: string
+          occurred_at?: string
+          reason?: string | null
+          to_stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
