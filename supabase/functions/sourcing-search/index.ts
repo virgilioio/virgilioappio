@@ -222,13 +222,19 @@ serve(async (req) => {
       .map((c: any) => c.apollo_id)
       .filter(Boolean);
 
+    // Collect linkedin URLs as a safety-net key for collected rows whose apollo_id
+    // may not exactly match what Apollo returned on a subsequent search.
+    const linkedinUrls = dedupedApollo
+      .map((c: any) => c.linkedin_url)
+      .filter(Boolean);
+
     let sameTenantMap = new Map<string, any>();
     let crossTenantMap = new Map<string, any>();
 
     if (apolloIds.length > 0) {
       const { data: collected } = await supabase
         .from('candidates')
-        .select('id, apollo_id, tenant_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current, skills, profile_summary, years_experience')
+        .select('id, apollo_id, tenant_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current, skills, profile_summary, years_experience, apollo_collected_at')
         .in('apollo_id', apolloIds)
         .limit(2000);
 
@@ -242,8 +248,38 @@ serve(async (req) => {
             }
           }
         }
-        console.log(`✅ Collected matches: ${sameTenantMap.size} same-tenant (Internal), ${crossTenantMap.size} cross-tenant (Gio)`);
       }
+
+      // Safety net — for any apollo_id we still didn't match in the same tenant,
+      // try matching by linkedin_url within the same tenant. This catches collected
+      // rows whose apollo_id drifted between searches.
+      const unmatchedApolloIds = apolloIds.filter((id: string) => !sameTenantMap.has(id));
+      if (projectTenantId && unmatchedApolloIds.length > 0 && linkedinUrls.length > 0) {
+        const { data: byLinkedin } = await supabase
+          .from('candidates')
+          .select('id, apollo_id, tenant_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current, skills, profile_summary, years_experience, apollo_collected_at')
+          .eq('tenant_id', projectTenantId)
+          .not('apollo_collected_at', 'is', null)
+          .in('linkedin_url', linkedinUrls)
+          .limit(2000);
+
+        if (byLinkedin && byLinkedin.length > 0) {
+          // Build a linkedin_url → candidate map so we can re-key onto the Apollo row's apollo_id
+          const liMap = new Map<string, any>();
+          for (const c of byLinkedin) {
+            if (c.linkedin_url) liMap.set(c.linkedin_url, c);
+          }
+          for (const c of dedupedApollo) {
+            if (!c.apollo_id || sameTenantMap.has(c.apollo_id)) continue;
+            const match = c.linkedin_url ? liMap.get(c.linkedin_url) : null;
+            if (match) sameTenantMap.set(c.apollo_id, match);
+          }
+        }
+      }
+
+      console.log(`✅ Collected matches: ${sameTenantMap.size} same-tenant (Internal), ${crossTenantMap.size} cross-tenant (Gio), ${apolloIds.length - sameTenantMap.size - crossTenantMap.size} unmatched`);
+    }
+
 
       // Fetch rich data for cross-tenant (Gio) candidates
       if (crossTenantMap.size > 0) {
