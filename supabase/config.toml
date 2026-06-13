@@ -205,3 +205,6 @@ verify_jwt = true
 
 [functions.candidates-nl-search]
 verify_jwt = true
+
+[functions.job-briefing-snapshot]
+verify_jwt = true
