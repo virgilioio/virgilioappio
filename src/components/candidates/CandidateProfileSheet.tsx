@@ -1393,10 +1393,13 @@ const stageHasAutomation = useMemo(() => {
                               </>
                             ) : (
                               <EmptyState
-                                variant="inline"
-                                title="No resume uploaded yet"
-                                description="Upload a resume to auto-extract candidate information"
-                                action={canEditCandidates ? { label: 'Upload Resume', onClick: () => setEditOpen(true), variant: 'secondary' } : undefined}
+                                size="card"
+                                illustration={<SoftPaper />}
+                                title="No resume yet"
+                                body="Upload a resume to auto-extract candidate information."
+                                primary={canEditCandidates ? (
+                                  <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>Upload resume</Button>
+                                ) : undefined}
                               />
                             )
                           ) : (

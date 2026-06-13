@@ -9,6 +9,8 @@ import { RotateCcw, ExternalLink, Download, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { PDFResumeViewer } from './PDFResumeViewer'
 import { DOCXResumeViewer } from './DOCXResumeViewer'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftPaper } from '@/components/ui/EmptyIllustrations'
 
 interface CandidateResumeViewerProps {
   candidateId?: string
@@ -202,11 +204,13 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
 
   if (!effectiveUrl) {
     return (
-      <Card className={className}>
-        <CardContent className="py-8 text-center text-text-secondary">
-          No resume available.
-        </CardContent>
-      </Card>
+      <EmptyState
+        size="card"
+        illustration={<SoftPaper />}
+        title="No resume yet"
+        body="Upload a resume to view it here."
+        className={className}
+      />
     )
   }
 
