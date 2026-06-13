@@ -53,6 +53,7 @@ import { SuggestedCandidatesLoader } from '@/components/sourcing/SuggestedCandid
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { JobBriefingTab } from '@/components/jobs/JobBriefingTab'
+import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { JobSourcingTab } from '@/components/jobs/JobSourcingTab'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 import { ScrollArea } from '@/components/ui/scroll-area'
