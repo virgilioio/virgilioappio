@@ -150,6 +150,7 @@ export function SourcingCandidateTable({
     good: candidates.filter(c => c.match_tier === 'good').length,
     possible: candidates.filter(c => c.match_tier === 'fair' || c.match_tier === 'minimal').length,
     collected: candidates.filter(c =>
+      c.display_source === 'internal' ||
       (c.source === 'apollo' && !!c.candidate_id) ||
       (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
     ).length,
@@ -162,7 +163,8 @@ export function SourcingCandidateTable({
       case 'good': return c.match_tier === 'good'
       case 'possible': return c.match_tier === 'fair' || c.match_tier === 'minimal'
       case 'collected':
-        return (c.source === 'apollo' && !!c.candidate_id) ||
+        return c.display_source === 'internal' ||
+          (c.source === 'apollo' && !!c.candidate_id) ||
           (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
       default: return true
     }
@@ -823,8 +825,9 @@ export function SourcingCandidateTable({
                   if (isInternal) {
                     const mappedId = candidate.apollo_id ? collectedCandidateIdByApollo.get(candidate.apollo_id) : undefined
                     setSelectedCandidateId(candidate.candidate_id || mappedId || candidate.id)
-                    setSelectedApolloId(null)
-                    setSelectedApolloData(null)
+                    // Also pass Apollo context so the rich Apollo preview sheet opens for collected rows
+                    setSelectedApolloId(candidate.apollo_id || null)
+                    setSelectedApolloData(candidate.apollo_id ? (candidate as any) : null)
                     setSelectedPdlData(null)
                     setSheetOpen(true)
                   } else if (isPdl) {

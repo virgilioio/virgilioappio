@@ -351,8 +351,17 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         candidateId={selectedCandidate?.id || null}
-        jobId={selectedCandidate?.job_associations[0]?.job_id || null}
-        context={selectedCandidate?.job_associations.length ? 'job' : 'independent'}
+        apolloId={selectedCandidate?.apollo_id || null}
+        apolloData={selectedCandidate ? {
+          candidate_name: selectedCandidate.candidate_name,
+          current_company: selectedCandidate.company_current || undefined,
+          current_role: selectedCandidate.role_current || undefined,
+          linkedin_url: selectedCandidate.linkedin_url || undefined,
+          email: selectedCandidate.email || undefined,
+          phone: selectedCandidate.phone || undefined,
+          location: [selectedCandidate.location_city, selectedCandidate.location_state, selectedCandidate.location_country].filter(Boolean).join(', ') || undefined,
+        } : undefined}
+        context="sourcing"
         hasPrev={selectedIndex !== null && selectedIndex > 0}
         hasNext={selectedIndex !== null && selectedIndex < savedCandidates.length - 1}
         onNavigatePrev={() => selectedIndex !== null && selectedIndex > 0 && setSelectedIndex(selectedIndex - 1)}
