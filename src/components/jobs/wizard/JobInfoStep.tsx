@@ -297,6 +297,19 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
               />
             </div>
           </div>
+          <div>
+            <FieldLabel>Target hire date</FieldLabel>
+            <div className="mt-2">
+              <DatePickerVirgilio
+                value={jobData.target_fill_date ? parseISO(jobData.target_fill_date) : undefined}
+                onChange={(d) => set('target_fill_date', format(d, 'yyyy-MM-dd'))}
+                placeholder="Pick a date"
+              />
+            </div>
+            <FieldHint>
+              Drives pacing — projected fill on the Job Dashboard is measured against this.
+            </FieldHint>
+          </div>
         </div>
       </SectionCard>
 
