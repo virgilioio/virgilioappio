@@ -1017,11 +1017,13 @@ export default function JobDetail() {
               value="candidates"
               className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
             >
-              <JobAnalyticsDashboard
+              <JobBriefingTab
                 jobId={id!}
-                candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
-                jobCurrency={job.currency || 'USD'}
+                jobTitle={job.title}
+                jobLocation={job.location}
+                companyName={(job as any).organization_name ?? null}
               />
+
             </TabsContent>
           )}
 
