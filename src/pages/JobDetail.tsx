@@ -962,6 +962,7 @@ export default function JobDetail() {
             const triggerCls = "relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
             const triggers = (
               <>
+                <TabsTrigger value="overview" className={triggerCls}>Overview</TabsTrigger>
                 <TabsTrigger value="pipeline" className={triggerCls}>Pipeline</TabsTrigger>
                 {!isRestrictedViewer && (
                   <TabsTrigger value="candidates" className={triggerCls}>Job Dashboard</TabsTrigger>
