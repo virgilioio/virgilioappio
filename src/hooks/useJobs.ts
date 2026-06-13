@@ -78,6 +78,7 @@ export interface CreateJobData {
   include_signing_bonus?: boolean
   min_years_experience?: number
   max_years_experience?: number
+  target_fill_date?: string | null
 }
 
 export interface UpdateJobData {
