@@ -281,48 +281,49 @@ serve(async (req) => {
     }
 
 
-      // Fetch rich data for cross-tenant (Gio) candidates
-      if (crossTenantMap.size > 0) {
-        const crossTenantDbIds = Array.from(crossTenantMap.values()).map((c: any) => c.id);
+    // Fetch rich data for cross-tenant (Gio) candidates
+    if (crossTenantMap.size > 0) {
+      const crossTenantDbIds = Array.from(crossTenantMap.values()).map((c: any) => c.id);
 
-        const [{ data: workExp }, { data: edu }] = await Promise.all([
-          supabase
-            .from('candidate_work_experience')
-            .select('candidate_id, job_title, company_name, start_date, end_date, is_current, location, company_industry, company_size_category')
-            .in('candidate_id', crossTenantDbIds),
-          supabase
-            .from('candidate_education')
-            .select('candidate_id, institution_name, degree_type, field_of_study, start_date, end_date')
-            .in('candidate_id', crossTenantDbIds),
-        ]);
+      const [{ data: workExp }, { data: edu }] = await Promise.all([
+        supabase
+          .from('candidate_work_experience')
+          .select('candidate_id, job_title, company_name, start_date, end_date, is_current, location, company_industry, company_size_category')
+          .in('candidate_id', crossTenantDbIds),
+        supabase
+          .from('candidate_education')
+          .select('candidate_id, institution_name, degree_type, field_of_study, start_date, end_date')
+          .in('candidate_id', crossTenantDbIds),
+      ]);
 
-        // Group by candidate DB id
-        const expByCandidate = new Map<string, any[]>();
-        const eduByCandidate = new Map<string, any[]>();
-        for (const w of (workExp || [])) {
-          if (!expByCandidate.has(w.candidate_id)) expByCandidate.set(w.candidate_id, []);
-          expByCandidate.get(w.candidate_id)!.push({
-            title: w.job_title, company: w.company_name, start_date: w.start_date,
-            end_date: w.end_date, is_current: w.is_current, location: w.location,
-            company_industry: w.company_industry, company_size: w.company_size_category,
-          });
-        }
-        for (const e of (edu || [])) {
-          if (!eduByCandidate.has(e.candidate_id)) eduByCandidate.set(e.candidate_id, []);
-          eduByCandidate.get(e.candidate_id)!.push({
-            school: e.institution_name, degree: e.degree_type, field_of_study: e.field_of_study,
-            start_date: e.start_date, end_date: e.end_date,
-          });
-        }
-
-        // Attach rich data to crossTenantMap entries
-        for (const [apolloId, c] of crossTenantMap.entries()) {
-          c._experience = expByCandidate.get(c.id) || [];
-          c._education = eduByCandidate.get(c.id) || [];
-        }
-        console.log(`✅ Fetched rich data for ${crossTenantMap.size} Gio candidates`);
+      // Group by candidate DB id
+      const expByCandidate = new Map<string, any[]>();
+      const eduByCandidate = new Map<string, any[]>();
+      for (const w of (workExp || [])) {
+        if (!expByCandidate.has(w.candidate_id)) expByCandidate.set(w.candidate_id, []);
+        expByCandidate.get(w.candidate_id)!.push({
+          title: w.job_title, company: w.company_name, start_date: w.start_date,
+          end_date: w.end_date, is_current: w.is_current, location: w.location,
+          company_industry: w.company_industry, company_size: w.company_size_category,
+        });
       }
+      for (const e of (edu || [])) {
+        if (!eduByCandidate.has(e.candidate_id)) eduByCandidate.set(e.candidate_id, []);
+        eduByCandidate.get(e.candidate_id)!.push({
+          school: e.institution_name, degree: e.degree_type, field_of_study: e.field_of_study,
+          start_date: e.start_date, end_date: e.end_date,
+        });
+      }
+
+      // Attach rich data to crossTenantMap entries
+      for (const [apolloId, c] of crossTenantMap.entries()) {
+        c._experience = expByCandidate.get(c.id) || [];
+        c._education = eduByCandidate.get(c.id) || [];
+      }
+      console.log(`✅ Fetched rich data for ${crossTenantMap.size} Gio candidates`);
     }
+
+
 
     // ── Pipeline filter: exclude Internal candidates already in the linked job ──
     let pipelineCandidateIds = new Set<string>();
