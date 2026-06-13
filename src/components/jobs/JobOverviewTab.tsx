@@ -59,7 +59,7 @@ function fmtDate(iso?: string | null) {
 export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTabProps) {
   const { assignments } = useJobAssignments(jobId)
   const { members } = useMembers(true)
-  const { jobPostings } = useJobPostings(jobId)
+  const { postings: jobPostings } = useJobPostings(jobId)
 
   const livePostingsCount = useMemo(
     () => (jobPostings || []).filter((p: any) => p.is_active).length,
