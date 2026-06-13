@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Job } from '@/hooks/useJobs'
 import { getSkillColor } from '@/utils/skillColors'
+import { HiringTargetsCard } from './HiringTargetsCard'
 
 interface JobOverviewTabProps {
   job: Job
@@ -156,8 +157,11 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
           tooltip="Number of team members"
         />
       </div>
+      {/* Hiring targets */}
+      <HiringTargetsCard jobId={job.id} />
 
       {/* Required Skills */}
+
       {skills && skills.length > 0 && (
         <Card className="shadow-calendly border-virgilio-border">
           <CardHeader>
