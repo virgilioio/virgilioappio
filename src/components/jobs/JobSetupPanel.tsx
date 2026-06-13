@@ -25,24 +25,12 @@ export function JobSetupPanel({ jobId, jobTitle, job, onEdit, onArchive }: JobSe
         <CardTitle>Job Setup</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+        <Tabs defaultValue="hiring-team" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="hiring-team">Hiring Team</TabsTrigger>
             <TabsTrigger value="hiring-plan">Hiring Plan</TabsTrigger>
             <TabsTrigger value="job-postings">Job Postings</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="overview" className="mt-6">
-            <JobOverviewTab 
-              job={{
-                ...job,
-                hiring_team: (job.hiring_team as any[]) || []
-              }} 
-              onEdit={onEdit}
-              onArchive={onArchive}
-            />
-          </TabsContent>
           
           <TabsContent value="hiring-team" className="mt-6">
             <HiringTeamTab jobId={jobId} jobTitle={jobTitle} />
