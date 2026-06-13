@@ -93,7 +93,6 @@ export function JobFormSheet({
   const handleSubmit = async () => {
     if (!isValid) return
     const src: any = { ...jobData }
-    if (job) delete src.organization_id
 
     const emptyToNull = (v: any) => (v === '' || v === undefined ? null : v)
     const trimOrNull = (v: any) => {
@@ -126,7 +125,7 @@ export function JobFormSheet({
       department_id: src.department_id ?? null,
       target_fill_date: trimOrNull(src.target_fill_date),
     }
-    if (!job && src.organization_id) payload.organization_id = src.organization_id
+    if (src.organization_id) payload.organization_id = src.organization_id
 
     try {
       await onSubmit(payload)
