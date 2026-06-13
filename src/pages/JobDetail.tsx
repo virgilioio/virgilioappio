@@ -1014,6 +1014,18 @@ export default function JobDetail() {
 
 
           {/* Job Dashboard */}
+          <TabsContent
+            value="overview"
+            className="flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden mt-0"
+          >
+            <JobOverviewTab
+              jobId={id!}
+              job={job}
+              onEdit={handleEditJob}
+              onNavigate={(t) => setActiveTab(t)}
+            />
+          </TabsContent>
+
           {!isRestrictedViewer && (
             <TabsContent
               value="candidates"
