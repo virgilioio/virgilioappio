@@ -87,7 +87,7 @@ export default function JobDetail() {
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [showApplicationReview, setShowApplicationReview] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState('pipeline')
+  const [activeTab, setActiveTab] = useState('overview')
   const [showHiringTeamDialog, setShowHiringTeamDialog] = useState(false)
   const [showCreatePostingSheet, setShowCreatePostingSheet] = useState(false)
   
