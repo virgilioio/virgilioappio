@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { Job } from '@/hooks/useJobs'
 import { getSkillColor } from '@/utils/skillColors'
+import { HiringTargetsCard } from './HiringTargetsCard'
 
 interface JobOverviewTabProps {
   job: Job
