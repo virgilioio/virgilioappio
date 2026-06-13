@@ -51,7 +51,7 @@ interface UniversalCandidateProfileSheetProps {
 export default function UniversalCandidateProfileSheet(props: UniversalCandidateProfileSheetProps) {
   // Auto-detect context if not provided
   const actualContext = props.context || (props.jobId ? 'job' : 'independent')
-  
+
   // PDL candidate (full in-memory data, no DB fetch needed)
   if (props.pdlData) {
     return (
@@ -70,23 +70,36 @@ export default function UniversalCandidateProfileSheet(props: UniversalCandidate
     )
   }
 
-  // If Apollo preview (has apolloId but no candidateId)
-  if (props.apolloId && !props.candidateId) {
+  // Sourcing context with an Apollo id → always open the rich Apollo preview sheet,
+  // even when the candidate has already been collected (candidateId present).
+  if (actualContext === 'sourcing' && props.apolloId) {
     return (
-      <ApolloPreviewSheet 
-        {...props} 
+      <ApolloPreviewSheet
+        {...props}
         onCandidateCollected={(candidateId) => {
           props.onCandidateCollected?.(candidateId, props.apolloId!)
         }}
       />
     )
   }
-  
+
+  // Apollo preview (no candidateId yet) — fall back regardless of context
+  if (props.apolloId && !props.candidateId) {
+    return (
+      <ApolloPreviewSheet
+        {...props}
+        onCandidateCollected={(candidateId) => {
+          props.onCandidateCollected?.(candidateId, props.apolloId!)
+        }}
+      />
+    )
+  }
+
   // If job context, use the existing CandidateProfileSheet (UNCHANGED)
   if (actualContext === 'job' && props.jobId) {
     return <CandidateProfileSheet {...props} jobId={props.jobId} />
   }
-  
-  // Otherwise, use the new IndependentCandidateProfileSheet
+
+  // Otherwise, use the IndependentCandidateProfileSheet
   return <IndependentCandidateProfileSheet {...props} />
 }

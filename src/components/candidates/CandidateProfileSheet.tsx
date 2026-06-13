@@ -25,6 +25,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { EmptyState, InlineEmpty } from '@/components/ui/empty-state'
+import { SoftPaper } from '@/components/ui/EmptyIllustrations'
 
 import { Link, useNavigate } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -1393,10 +1394,13 @@ const stageHasAutomation = useMemo(() => {
                               </>
                             ) : (
                               <EmptyState
-                                variant="inline"
-                                title="No resume uploaded yet"
-                                description="Upload a resume to auto-extract candidate information"
-                                action={canEditCandidates ? { label: 'Upload Resume', onClick: () => setEditOpen(true), variant: 'secondary' } : undefined}
+                                size="card"
+                                illustration={<SoftPaper />}
+                                title="No resume yet"
+                                body="Upload a resume to auto-extract candidate information."
+                                primary={canEditCandidates ? (
+                                  <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>Upload resume</Button>
+                                ) : undefined}
                               />
                             )
                           ) : (

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { InlineEmpty } from "@/components/ui/empty-state";
+import { EmptyState, InlineEmpty } from "@/components/ui/empty-state";
+import { SoftPaper } from "@/components/ui/EmptyIllustrations";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -1012,7 +1013,14 @@ export function ScorecardSheet({
                     ) : resumeUrl ? (
                       <PDFResumeViewer url={resumeUrl} height={65} />
                     ) : (
-                      <div className="p-6"><InlineEmpty text="No resume available." /></div>
+                      <div className="p-6">
+                        <EmptyState
+                          size="card"
+                          illustration={<SoftPaper />}
+                          title="No resume yet"
+                          body="There's no resume on file for this candidate."
+                        />
+                      </div>
                     )}
                   </TabsContent>
                   
