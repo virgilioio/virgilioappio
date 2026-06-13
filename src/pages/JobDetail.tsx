@@ -52,7 +52,7 @@ import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { SuggestedCandidatesLoader } from '@/components/sourcing/SuggestedCandidatesLoader'
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
-import { JobAnalyticsDashboard } from '@/components/jobs/JobAnalyticsDashboard'
+import { JobBriefingTab } from '@/components/jobs/JobBriefingTab'
 import { JobSourcingTab } from '@/components/jobs/JobSourcingTab'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -1017,11 +1017,13 @@ export default function JobDetail() {
               value="candidates"
               className="flex-1 min-h-0 overflow-auto data-[state=inactive]:hidden mt-0"
             >
-              <JobAnalyticsDashboard
+              <JobBriefingTab
                 jobId={id!}
-                candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
-                jobCurrency={job.currency || 'USD'}
+                jobTitle={job.title}
+                jobLocation={job.location}
+                companyName={(job as any).organization_name ?? null}
               />
+
             </TabsContent>
           )}
 

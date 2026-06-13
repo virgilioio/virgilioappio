@@ -208,3 +208,6 @@ verify_jwt = true
 
 [functions.job-briefing-snapshot]
 verify_jwt = true
+
+[functions.generate-job-briefing]
+verify_jwt = true
