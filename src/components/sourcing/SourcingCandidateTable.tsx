@@ -501,12 +501,21 @@ export function SourcingCandidateTable({
 
       // Immediately mark as collected for instant badge display
       setCollectedApolloIds(prev => new Set(prev).add(apolloId))
-      // Capture candidate_id when returned so the row can open as internal immediately
-      const newCandidateId = (data as any)?.candidate_id || (data as any)?.results?.[0]?.candidate_id
+      // Capture candidate_id + real name when returned so the row + sheet update instantly
+      const firstResult = (data as any)?.results?.[0]
+      const newCandidateId = (data as any)?.candidate_id || firstResult?.candidate_id
+      const newCandidateName = firstResult?.candidate_name
       if (newCandidateId) {
         setCollectedCandidateIdByApollo(prev => {
           const next = new Map(prev)
           next.set(apolloId, newCandidateId)
+          return next
+        })
+      }
+      if (newCandidateName) {
+        setCollectedNameByApollo(prev => {
+          const next = new Map(prev)
+          next.set(apolloId, newCandidateName)
           return next
         })
       }
