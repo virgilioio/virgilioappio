@@ -142,6 +142,8 @@ export function SourcingCandidateTable({
   const [collectedApolloIds, setCollectedApolloIds] = useState<Set<string>>(new Set())
   // apollo_id -> candidate_id mapping for session-collected rows, so the sheet can open as internal
   const [collectedCandidateIdByApollo, setCollectedCandidateIdByApollo] = useState<Map<string, string>>(new Map())
+  // apollo_id -> real (un-obfuscated) name returned by enrich-apollo-profile
+  const [collectedNameByApollo, setCollectedNameByApollo] = useState<Map<string, string>>(new Map())
 
   // Segment counts (computed from full candidate set, ignoring segment filter)
   const segmentCounts = {
