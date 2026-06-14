@@ -842,10 +842,11 @@ export function SourcingCandidateTable({
                 const handleRowClick = () => {
                   if (isInternal) {
                     const mappedId = candidate.apollo_id ? collectedCandidateIdByApollo.get(candidate.apollo_id) : undefined
+                    const realName = candidate.apollo_id ? collectedNameByApollo.get(candidate.apollo_id) : undefined
                     setSelectedCandidateId(candidate.candidate_id || mappedId || candidate.id)
                     // Also pass Apollo context so the rich Apollo preview sheet opens for collected rows
                     setSelectedApolloId(candidate.apollo_id || null)
-                    setSelectedApolloData(candidate.apollo_id ? (candidate as any) : null)
+                    setSelectedApolloData(candidate.apollo_id ? { ...(candidate as any), candidate_name: realName || (candidate as any).candidate_name, full_name: realName || (candidate as any).full_name } : null)
                     setSelectedPdlData(null)
                     setSheetOpen(true)
                   } else if (isPdl) {
