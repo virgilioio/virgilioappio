@@ -419,12 +419,19 @@ export function SourcingCandidateTable({
         apolloIds.forEach(id => next.add(id))
         return next
       })
-      // Capture apollo_id -> candidate_id mapping so the sheet can route to internal view immediately
+      // Capture apollo_id -> candidate_id + real name mapping so the sheet can route to internal view immediately
       if (Array.isArray(data?.results)) {
         setCollectedCandidateIdByApollo(prev => {
           const next = new Map(prev)
           for (const r of data.results) {
             if (r?.apollo_id && r?.candidate_id) next.set(r.apollo_id, r.candidate_id)
+          }
+          return next
+        })
+        setCollectedNameByApollo(prev => {
+          const next = new Map(prev)
+          for (const r of data.results) {
+            if (r?.apollo_id && r?.candidate_name) next.set(r.apollo_id, r.candidate_name)
           }
           return next
         })
