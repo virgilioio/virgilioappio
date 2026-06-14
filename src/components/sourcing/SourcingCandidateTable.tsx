@@ -911,8 +911,9 @@ export function SourcingCandidateTable({
                   fitScore >= 55 ? { label: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-200' } :
                   { label: 'text-text-tertiary', bg: 'bg-[#F1F0EC]', ring: 'ring-border' }
 
-                // Initials for avatar
-                const displayName = getDisplayName(candidate)
+                // Initials for avatar — prefer the real name once collected this session
+                const realCollectedName = candidate.apollo_id ? collectedNameByApollo.get(candidate.apollo_id) : undefined
+                const displayName = realCollectedName || getDisplayName(candidate)
                 const initials = displayName
                   .split(/\s+/)
                   .filter(Boolean)
