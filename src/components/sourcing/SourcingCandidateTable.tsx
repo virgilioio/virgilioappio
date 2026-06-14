@@ -142,6 +142,8 @@ export function SourcingCandidateTable({
   const [collectedApolloIds, setCollectedApolloIds] = useState<Set<string>>(new Set())
   // apollo_id -> candidate_id mapping for session-collected rows, so the sheet can open as internal
   const [collectedCandidateIdByApollo, setCollectedCandidateIdByApollo] = useState<Map<string, string>>(new Map())
+  // apollo_id -> real (un-obfuscated) name returned by enrich-apollo-profile
+  const [collectedNameByApollo, setCollectedNameByApollo] = useState<Map<string, string>>(new Map())
 
   // Segment counts (computed from full candidate set, ignoring segment filter)
   const segmentCounts = {
@@ -417,12 +419,19 @@ export function SourcingCandidateTable({
         apolloIds.forEach(id => next.add(id))
         return next
       })
-      // Capture apollo_id -> candidate_id mapping so the sheet can route to internal view immediately
+      // Capture apollo_id -> candidate_id + real name mapping so the sheet can route to internal view immediately
       if (Array.isArray(data?.results)) {
         setCollectedCandidateIdByApollo(prev => {
           const next = new Map(prev)
           for (const r of data.results) {
             if (r?.apollo_id && r?.candidate_id) next.set(r.apollo_id, r.candidate_id)
+          }
+          return next
+        })
+        setCollectedNameByApollo(prev => {
+          const next = new Map(prev)
+          for (const r of data.results) {
+            if (r?.apollo_id && r?.candidate_name) next.set(r.apollo_id, r.candidate_name)
           }
           return next
         })
@@ -492,12 +501,21 @@ export function SourcingCandidateTable({
 
       // Immediately mark as collected for instant badge display
       setCollectedApolloIds(prev => new Set(prev).add(apolloId))
-      // Capture candidate_id when returned so the row can open as internal immediately
-      const newCandidateId = (data as any)?.candidate_id || (data as any)?.results?.[0]?.candidate_id
+      // Capture candidate_id + real name when returned so the row + sheet update instantly
+      const firstResult = (data as any)?.results?.[0]
+      const newCandidateId = (data as any)?.candidate_id || firstResult?.candidate_id
+      const newCandidateName = firstResult?.candidate_name
       if (newCandidateId) {
         setCollectedCandidateIdByApollo(prev => {
           const next = new Map(prev)
           next.set(apolloId, newCandidateId)
+          return next
+        })
+      }
+      if (newCandidateName) {
+        setCollectedNameByApollo(prev => {
+          const next = new Map(prev)
+          next.set(apolloId, newCandidateName)
           return next
         })
       }
@@ -824,10 +842,11 @@ export function SourcingCandidateTable({
                 const handleRowClick = () => {
                   if (isInternal) {
                     const mappedId = candidate.apollo_id ? collectedCandidateIdByApollo.get(candidate.apollo_id) : undefined
+                    const realName = candidate.apollo_id ? collectedNameByApollo.get(candidate.apollo_id) : undefined
                     setSelectedCandidateId(candidate.candidate_id || mappedId || candidate.id)
                     // Also pass Apollo context so the rich Apollo preview sheet opens for collected rows
                     setSelectedApolloId(candidate.apollo_id || null)
-                    setSelectedApolloData(candidate.apollo_id ? (candidate as any) : null)
+                    setSelectedApolloData(candidate.apollo_id ? { ...(candidate as any), candidate_name: realName || (candidate as any).candidate_name, full_name: realName || (candidate as any).full_name } : null)
                     setSelectedPdlData(null)
                     setSheetOpen(true)
                   } else if (isPdl) {
@@ -893,8 +912,9 @@ export function SourcingCandidateTable({
                   fitScore >= 55 ? { label: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-200' } :
                   { label: 'text-text-tertiary', bg: 'bg-[#F1F0EC]', ring: 'ring-border' }
 
-                // Initials for avatar
-                const displayName = getDisplayName(candidate)
+                // Initials for avatar — prefer the real name once collected this session
+                const realCollectedName = candidate.apollo_id ? collectedNameByApollo.get(candidate.apollo_id) : undefined
+                const displayName = realCollectedName || getDisplayName(candidate)
                 const initials = displayName
                   .split(/\s+/)
                   .filter(Boolean)

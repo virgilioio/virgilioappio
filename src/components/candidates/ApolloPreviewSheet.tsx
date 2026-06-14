@@ -374,6 +374,65 @@ export function ApolloPreviewSheet({
     setEnrichedData(null)
   }, [apolloId])
 
+  // Auto-hydrate from DB when an Apollo profile has already been collected.
+  // Without this, opening a previously-collected row shows the obfuscated preview
+  // (because enrichedData is only populated by the in-sheet collect button).
+  useEffect(() => {
+    if (!open || !apolloId || enrichedData) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data: candidateData } = await supabase
+          .from('candidates')
+          .select('id, candidate_name, linkedin_url, email, phone, location_city, location_state, location_country, skills, profile_summary, email_status, bio, contact_emails, contact_phones, role_current, company_current, apollo_collected_at')
+          .eq('apollo_id', apolloId)
+          .maybeSingle()
+        if (cancelled || !candidateData || !candidateData.apollo_collected_at) return
+        const { data: workExp } = await supabase
+          .from('candidate_work_experience')
+          .select('company_name, job_title, start_date, end_date, is_current, description')
+          .eq('candidate_id', candidateData.id)
+          .order('is_current', { ascending: false })
+          .order('start_date', { ascending: false })
+        if (cancelled) return
+        const dbHistory: EmploymentHistoryItem[] = (workExp || []).map((r: any) => ({
+          company: r.company_name || 'Unknown Company',
+          title: r.job_title || '',
+          start_date: r.start_date,
+          end_date: r.end_date,
+          is_current: !!r.is_current,
+          description: r.description || null,
+        }))
+        setCollectedCandidateId(candidateData.id)
+        setEnrichedData({
+          candidate_id: candidateData.id,
+          candidate_name: candidateData.candidate_name,
+          linkedin_url: candidateData.linkedin_url || undefined,
+          email: candidateData.email || undefined,
+          phone: candidateData.phone || undefined,
+          location_city: candidateData.location_city || undefined,
+          location_state: candidateData.location_state || undefined,
+          location_country: candidateData.location_country || undefined,
+          skills: candidateData.skills || undefined,
+          profile_summary: candidateData.profile_summary || undefined,
+          headline: candidateData.bio || null,
+          email_status: candidateData.email_status || null,
+          seniority: null,
+          departments: null,
+          contact_emails: (candidateData.contact_emails as any) || null,
+          contact_phones: (candidateData.contact_phones as any) || null,
+          apollo_collected_at: candidateData.apollo_collected_at,
+          role_current: candidateData.role_current || apolloData?.current_role || null,
+          company_current: candidateData.company_current || apolloData?.current_company || null,
+          employment_history: dbHistory,
+        })
+      } catch (err) {
+        console.warn('[ApolloPreviewSheet] auto-hydrate failed:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [open, apolloId, enrichedData, apolloData?.current_role, apolloData?.current_company])
+
   useEffect(() => {
     if (!enrichedData?.candidate_id || enrichedData?.phone || !apolloData?.has_phone) return
     setPhoneCheckStatus('checking')
@@ -550,8 +609,10 @@ export function ApolloPreviewSheet({
 
   const hasEmailAvailable = apolloData?.has_email ?? false
   const hasPhoneAvailable = apolloData?.has_phone ?? false
-  const isCollected = !!enrichedData
-  const rawName = enrichedData?.candidate_name || apolloData?.candidate_name || apolloData?.full_name || 'Unknown Candidate'
+  const incomingName = apolloData?.candidate_name || apolloData?.full_name
+  const looksRevealed = !!incomingName && !incomingName.includes('*')
+  const isCollected = !!enrichedData || looksRevealed
+  const rawName = enrichedData?.candidate_name || incomingName || 'Unknown Candidate'
   const { first: firstName, lastObfuscated } = splitName(rawName)
   const displayName = isCollected
     ? rawName

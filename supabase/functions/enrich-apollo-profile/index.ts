@@ -292,10 +292,20 @@ serve(async (req) => {
           .is('collected_at', null);
       }
       
+      // Re-fetch the canonical (un-obfuscated) name + linkedin so the client can
+      // patch the row display optimistically without a full search refetch.
+      const { data: existingFull } = await supabase
+        .from('candidates')
+        .select('candidate_name, linkedin_url')
+        .eq('id', existing.id)
+        .maybeSingle();
+
       results.push({
         apollo_id: existing.apollo_id,
         candidate_id: existing.id,
-        already_collected: true
+        already_collected: true,
+        candidate_name: existingFull?.candidate_name ?? null,
+        linkedin_url: existingFull?.linkedin_url ?? null,
       });
     }
 
@@ -557,6 +567,8 @@ serve(async (req) => {
         apollo_id: person.id,
         candidate_id: candidateId,
         already_collected: false,
+        candidate_name: person.name || `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim() || null,
+        linkedin_url: person.linkedin_url || null,
         email: person.email,
         phone: phone,
         // Apollo signals passthrough — not persisted as discrete columns, surfaced in UI
