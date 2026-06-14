@@ -567,6 +567,8 @@ serve(async (req) => {
         apollo_id: person.id,
         candidate_id: candidateId,
         already_collected: false,
+        candidate_name: person.name || `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim() || null,
+        linkedin_url: person.linkedin_url || null,
         email: person.email,
         phone: phone,
         // Apollo signals passthrough — not persisted as discrete columns, surfaced in UI
