@@ -609,8 +609,10 @@ export function ApolloPreviewSheet({
 
   const hasEmailAvailable = apolloData?.has_email ?? false
   const hasPhoneAvailable = apolloData?.has_phone ?? false
-  const isCollected = !!enrichedData
-  const rawName = enrichedData?.candidate_name || apolloData?.candidate_name || apolloData?.full_name || 'Unknown Candidate'
+  const incomingName = apolloData?.candidate_name || apolloData?.full_name
+  const looksRevealed = !!incomingName && !incomingName.includes('*')
+  const isCollected = !!enrichedData || looksRevealed
+  const rawName = enrichedData?.candidate_name || incomingName || 'Unknown Candidate'
   const { first: firstName, lastObfuscated } = splitName(rawName)
   const displayName = isCollected
     ? rawName
