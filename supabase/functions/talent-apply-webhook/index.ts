@@ -51,16 +51,19 @@ Deno.serve(async (req) => {
     const candidateName = applicant.fullName || 'Unknown Applicant'
 
     // Handle resume upload
-    let resumeUrl = null
+    let resumeUrl: string | null = null
+    let resumeBytes: Uint8Array | null = null
+    let resumeOriginalName: string | null = null
     if (applicant.resume) {
       try {
         // Decode base64 resume
-        const resumeData = Uint8Array.from(atob(applicant.resume), c => c.charCodeAt(0))
+        resumeBytes = Uint8Array.from(atob(applicant.resume), c => c.charCodeAt(0))
+        resumeOriginalName = applicant.resumeFilename || `talent-${talentApplicationId}.pdf`
         const resumeFileName = `talent-${talentApplicationId}-${Date.now()}.pdf`
-        
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('resumes')
-          .upload(`${posting.tenant_id}/${resumeFileName}`, resumeData, {
+          .upload(`${posting.tenant_id}/${resumeFileName}`, resumeBytes, {
             contentType: 'application/pdf',
             upsert: false
           })
