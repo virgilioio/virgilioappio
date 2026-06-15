@@ -126,21 +126,33 @@ Deno.serve(async (req) => {
       candidateId = newCandidate.id
       console.log('Created new candidate:', candidateId)
 
-      // Trigger AI resume parsing for new candidates
-      if (resumeUrl) {
-        try {
-          await supabase.functions.invoke('parse-resume', {
-            body: {
-              candidateId,
-              resumeUrl,
-              fileName: applicant.resumeFilename || 'resume.pdf'
-            }
-          })
-          console.log('Triggered AI resume parsing')
-        } catch (error) {
-          console.error('Failed to trigger resume parsing:', error)
+      // Fire-and-forget background AI enrichment (skills + profile summary)
+      // Mirrors public-submit-application flow. parse-resume expects extracted
+      // textContent (not a URL), so we delegate enrichment to enrich-candidate-profile,
+      // which handles fetching/parsing the resume and writes back to the candidate.
+      supabase.functions.invoke('enrich-candidate-profile', {
+        body: {
+          candidateId,
+          resumeUrl,
+          resumeText: '',
+          candidateName,
         }
-      }
+      }).catch(err => console.error('Background enrichment call failed:', err))
+      console.log('🧠 Triggered background enrichment for candidate:', candidateId)
+
+      // Fire-and-forget: pre-generate AI fit insights
+      try {
+        const fitUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-candidate-fit`
+        fetch(fitUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({ candidate_id: candidateId, job_id: posting.job_id }),
+        }).catch(() => {})
+        console.log('🔮 Triggered AI fit analysis for candidate:', candidateId)
+      } catch {}
     }
 
     // Get first stage of job's hiring pipeline
