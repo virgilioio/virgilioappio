@@ -51,16 +51,19 @@ Deno.serve(async (req) => {
     const candidateName = applicant.fullName || 'Unknown Applicant'
 
     // Handle resume upload
-    let resumeUrl = null
+    let resumeUrl: string | null = null
+    let resumeBytes: Uint8Array | null = null
+    let resumeOriginalName: string | null = null
     if (applicant.resume) {
       try {
         // Decode base64 resume
-        const resumeData = Uint8Array.from(atob(applicant.resume), c => c.charCodeAt(0))
+        resumeBytes = Uint8Array.from(atob(applicant.resume), c => c.charCodeAt(0))
+        resumeOriginalName = applicant.resumeFilename || `talent-${talentApplicationId}.pdf`
         const resumeFileName = `talent-${talentApplicationId}-${Date.now()}.pdf`
-        
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('resumes')
-          .upload(`${posting.tenant_id}/${resumeFileName}`, resumeData, {
+          .upload(`${posting.tenant_id}/${resumeFileName}`, resumeBytes, {
             contentType: 'application/pdf',
             upsert: false
           })
@@ -126,21 +129,66 @@ Deno.serve(async (req) => {
       candidateId = newCandidate.id
       console.log('Created new candidate:', candidateId)
 
-      // Trigger AI resume parsing for new candidates
-      if (resumeUrl) {
+      // Also persist the resume as a candidate_attachments record so
+      // enrich-candidate-profile can locate and parse it. enrich downloads
+      // from the 'candidate-attachments' bucket, not 'resumes'.
+      if (resumeBytes && resumeOriginalName) {
         try {
-          await supabase.functions.invoke('parse-resume', {
-            body: {
-              candidateId,
-              resumeUrl,
-              fileName: applicant.resumeFilename || 'resume.pdf'
+          const attachmentPath = `${posting.tenant_id}/${candidateId}/${Date.now()}-${resumeOriginalName}`
+          const { error: attachUploadErr } = await supabase.storage
+            .from('candidate-attachments')
+            .upload(attachmentPath, resumeBytes, {
+              contentType: 'application/pdf',
+              upsert: false,
+            })
+          if (attachUploadErr) {
+            console.error('candidate-attachments upload failed:', attachUploadErr)
+          } else {
+            const { error: attachInsertErr } = await supabase
+              .from('candidate_attachments')
+              .insert({
+                candidate_id: candidateId,
+                file_name: resumeOriginalName,
+                file_url: attachmentPath,
+                file_size_bytes: resumeBytes.length,
+                file_type: 'application/pdf',
+                is_resume: true,
+                uploaded_by: null,
+              })
+            if (attachInsertErr) {
+              console.error('candidate_attachments insert failed:', attachInsertErr)
             }
-          })
-          console.log('Triggered AI resume parsing')
-        } catch (error) {
-          console.error('Failed to trigger resume parsing:', error)
+          }
+        } catch (err) {
+          console.error('Failed to persist candidate attachment:', err)
         }
       }
+
+      // Fire-and-forget background AI enrichment (skills + profile summary).
+      // Mirrors public-submit-application flow. enrich-candidate-profile pulls
+      // the resume from candidate_attachments (above) when resumeText is empty.
+      supabase.functions.invoke('enrich-candidate-profile', {
+        body: {
+          candidateId,
+          resumeText: '',
+          candidateName,
+        }
+      }).catch(err => console.error('Background enrichment call failed:', err))
+      console.log('🧠 Triggered background enrichment for candidate:', candidateId)
+
+      // Fire-and-forget: pre-generate AI fit insights
+      try {
+        const fitUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-candidate-fit`
+        fetch(fitUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({ candidate_id: candidateId, job_id: posting.job_id }),
+        }).catch(() => {})
+        console.log('🔮 Triggered AI fit analysis for candidate:', candidateId)
+      } catch {}
     }
 
     // Get first stage of job's hiring pipeline
