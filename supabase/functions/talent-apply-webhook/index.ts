@@ -129,14 +129,47 @@ Deno.serve(async (req) => {
       candidateId = newCandidate.id
       console.log('Created new candidate:', candidateId)
 
-      // Fire-and-forget background AI enrichment (skills + profile summary)
-      // Mirrors public-submit-application flow. parse-resume expects extracted
-      // textContent (not a URL), so we delegate enrichment to enrich-candidate-profile,
-      // which handles fetching/parsing the resume and writes back to the candidate.
+      // Also persist the resume as a candidate_attachments record so
+      // enrich-candidate-profile can locate and parse it. enrich downloads
+      // from the 'candidate-attachments' bucket, not 'resumes'.
+      if (resumeBytes && resumeOriginalName) {
+        try {
+          const attachmentPath = `${posting.tenant_id}/${candidateId}/${Date.now()}-${resumeOriginalName}`
+          const { error: attachUploadErr } = await supabase.storage
+            .from('candidate-attachments')
+            .upload(attachmentPath, resumeBytes, {
+              contentType: 'application/pdf',
+              upsert: false,
+            })
+          if (attachUploadErr) {
+            console.error('candidate-attachments upload failed:', attachUploadErr)
+          } else {
+            const { error: attachInsertErr } = await supabase
+              .from('candidate_attachments')
+              .insert({
+                candidate_id: candidateId,
+                file_name: resumeOriginalName,
+                file_url: attachmentPath,
+                file_size_bytes: resumeBytes.length,
+                file_type: 'application/pdf',
+                is_resume: true,
+                uploaded_by: null,
+              })
+            if (attachInsertErr) {
+              console.error('candidate_attachments insert failed:', attachInsertErr)
+            }
+          }
+        } catch (err) {
+          console.error('Failed to persist candidate attachment:', err)
+        }
+      }
+
+      // Fire-and-forget background AI enrichment (skills + profile summary).
+      // Mirrors public-submit-application flow. enrich-candidate-profile pulls
+      // the resume from candidate_attachments (above) when resumeText is empty.
       supabase.functions.invoke('enrich-candidate-profile', {
         body: {
           candidateId,
-          resumeUrl,
           resumeText: '',
           candidateName,
         }
