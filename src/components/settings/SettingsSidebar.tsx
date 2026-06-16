@@ -116,6 +116,7 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
       items: [
         { id: 'platform-dashboard', label: 'Dashboard', icon: Gauge, show: true },
         { id: 'platform-job-defaults', label: 'Job defaults', icon: Package, show: true },
+        { id: 'platform-personalization', label: 'Personalization', icon: Palette, show: true },
         { id: 'platform-customers', label: 'SaaS customers', icon: Building2, show: true },
       ],
     },
