@@ -1,10 +1,8 @@
 import * as React from 'react'
-import { useState, useEffect } from 'react'
 import { Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button as ShadButton } from '@/components/ui/button'
 import { TableCell, TableRow } from '@/components/ui/table'
-import { supabase } from '@/lib/supabaseClient'
 import type { LucideIcon } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 
@@ -220,16 +218,6 @@ export function InlineEmpty({ text, action, onAction, className }: InlineEmptyPr
 }
 
 // ── Legacy back-compat (kept rendering close to canonical, mascot fallback)
-export type EmptyStateAssetType =
-  | 'empty-state-organizations'
-  | 'empty-state-jobs'
-  | 'empty-state-candidates'
-  | 'empty-state-members'
-  | 'empty-state-comments'
-  | 'empty-state-attachments'
-  | 'empty-state-templates'
-  | 'empty-state-independent-candidates'
-
 type LegacyVariant = 'page' | 'table-row' | 'chart' | 'inline'
 
 interface LegacyActionProp {
@@ -244,7 +232,6 @@ export interface LegacyEmptyStateProps {
   description?: React.ReactNode
   icon?: LucideIcon
   fallbackIcon?: LucideIcon
-  assetType?: EmptyStateAssetType
   mascot?: boolean
   action?: LegacyActionProp
   secondaryAction?: LegacyActionProp
@@ -278,48 +265,20 @@ const TITLE: Record<LegacyVariant, string> = {
   inline: 'text-[1.38rem] font-semibold tracking-[-0.06em]',
 }
 
-function usePlatformAsset(assetType?: EmptyStateAssetType) {
-  const [url, setUrl] = useState<string | null>(null)
-  useEffect(() => {
-    if (!assetType) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const { data, error } = await supabase
-          .from('platform_assets')
-          .select('file_url')
-          .eq('asset_type', assetType)
-          .eq('is_active', true)
-          .single()
-        if (!cancelled && data && !error) setUrl(data.file_url)
-      } catch {
-        /* fallback */
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [assetType])
-  return url
-}
-
 function LegacyEmptyStateCore({
   variant = 'inline',
   title,
   description,
   icon,
   fallbackIcon,
-  assetType,
   mascot,
   action,
   secondaryAction,
   className,
 }: Omit<LegacyEmptyStateProps, 'colSpan'>) {
   const Icon = icon ?? fallbackIcon
-  const customImage = usePlatformAsset(variant === 'page' ? assetType : undefined)
   const showMascot = mascot ?? (variant === 'page' || variant === 'inline')
   const hasIcon = Boolean(Icon)
-  const hasCustom = Boolean(customImage)
 
   const titleColor = variant === 'chart' ? 'text-virgilio-muted' : 'text-text-primary'
   const descColor = variant === 'chart' ? 'text-virgilio-muted/70' : 'text-text-tertiary'
@@ -332,11 +291,7 @@ function LegacyEmptyStateCore({
         className,
       )}
     >
-      {hasCustom ? (
-        <div className={cn('mb-4 flex items-center justify-center rounded-full overflow-hidden bg-virgilio-purple/10', VISUAL[variant])}>
-          <img src={customImage as string} alt="" className="h-full w-full rounded-full object-cover" />
-        </div>
-      ) : hasIcon ? (
+      {hasIcon ? (
         <div className={cn('mb-4 flex items-center justify-center rounded-full', variant === 'chart' ? '' : 'bg-virgilio-purple/10', VISUAL[variant])}>
           {Icon ? <Icon className={cn(ICON[variant], variant === 'chart' ? 'text-virgilio-muted/30' : 'text-virgilio-purple')} /> : null}
         </div>

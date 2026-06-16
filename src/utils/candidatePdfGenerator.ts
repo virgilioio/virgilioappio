@@ -137,21 +137,7 @@ export const generateCandidatePdf = async ({
 
     const fontsLoaded = await loadCustomFonts()
 
-    // Fetch logo
-    let logoUrl = '/virgilio-logo.png'
-    try {
-      const logoPromise = supabase
-        .from('platform_assets')
-        .select('file_url')
-        .eq('asset_type', 'logo')
-        .eq('is_active', true)
-        .single()
-      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
-      const { data } = await Promise.race([logoPromise, timeout]) as any
-      if (data?.file_url) logoUrl = data.file_url
-    } catch {
-      // keep default
-    }
+    const logoUrl = '/virgilio-logo.png'
 
     // Typography helpers
     const setH1 = () => { pdf.setFontSize(16); pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold') }

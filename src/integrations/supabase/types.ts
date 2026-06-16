@@ -4509,42 +4509,6 @@ export type Database = {
         }
         Relationships: []
       }
-      platform_assets: {
-        Row: {
-          asset_type: string
-          created_at: string
-          file_name: string
-          file_url: string
-          id: string
-          is_active: boolean
-          updated_at: string
-          uploaded_at: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          asset_type: string
-          created_at?: string
-          file_name: string
-          file_url: string
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-          uploaded_at?: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          asset_type?: string
-          created_at?: string
-          file_name?: string
-          file_url?: string
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-          uploaded_at?: string
-          uploaded_by?: string | null
-        }
-        Relationships: []
-      }
       platform_feature_flags: {
         Row: {
           description: string | null
@@ -4563,42 +4527,6 @@ export type Database = {
           flag_name?: string
           is_active?: boolean
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      platform_settings: {
-        Row: {
-          created_at: string
-          description: string | null
-          display_name: string
-          id: string
-          setting_key: string
-          setting_type: string
-          setting_value: string | null
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          display_name: string
-          id?: string
-          setting_key: string
-          setting_type?: string
-          setting_value?: string | null
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          display_name?: string
-          id?: string
-          setting_key?: string
-          setting_type?: string
-          setting_value?: string | null
-          updated_at?: string
-          updated_by?: string | null
         }
         Relationships: []
       }

@@ -116,19 +116,7 @@ export const generateAnalyticsReport = async ({
 
   const fontsLoaded = await loadCustomFonts()
 
-  // Fetch logo
-  let logoUrl = '/virgilio-logo.png'
-  try {
-    const { data: logoData } = await supabase
-      .from('platform_assets')
-      .select('file_url')
-      .eq('asset_type', 'logo')
-      .eq('is_active', true)
-      .single()
-    if (logoData?.file_url) logoUrl = logoData.file_url
-  } catch (error) {
-    console.warn('[Analytics PDF] Failed to fetch logo:', error)
-  }
+  const logoUrl = '/virgilio-logo.png'
 
   // Typography helpers
   const setHeading = (size: number = 11) => {

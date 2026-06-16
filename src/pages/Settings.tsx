@@ -9,7 +9,7 @@ import { DepartmentsManager } from '@/components/settings/DepartmentsManager'
 import { PlatformDashboardV2 } from '@/components/settings/platform/PlatformDashboardV2'
 import { PlatformJobDefaults } from '@/components/settings/platform/PlatformJobDefaults'
 import { PlatformCustomers } from '@/components/settings/platform/PlatformCustomers'
-import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
+
 import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
 import { CustomersTab } from '@/components/settings/tabs/CustomersTab'
 import { Billing } from '@/pages/settings/Billing'
@@ -139,8 +139,6 @@ export default function Settings() {
         return <PlatformDashboardV2 />
       case 'platform-job-defaults':
         return <PlatformJobDefaults />
-      case 'platform-personalization':
-        return <PlatformAssetUploader />
       case 'platform-customers':
         return <PlatformCustomers />
       default:
