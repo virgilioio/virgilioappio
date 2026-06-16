@@ -291,11 +291,25 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         return stageInfo?.job_stages?.stage_type === 'application'
       }).length
 
-      // Active candidates (status = 'active')
-      const activeCandidates = allAssociations.filter(a => a.status === 'active').length
-      
-      // Rejected candidates (status = 'rejected') - all time snapshot
-      const rejectedCandidates = allAssociations.filter(a => a.status === 'rejected').length
+      // Active candidates — INTERPRETATION: "candidates that entered the pipeline as active
+      // within the date range" (event-based, not a current-state snapshot). Associations are
+      // always created in 'active' status, so we count assocs whose created_at ∈ range that
+      // are still active (i.e. weren't immediately moved to rejected/offer/hired/withdrawn).
+      // This represents inflow of net-new active candidates in the period.
+      const activeCandidates = allAssociations.filter(a => {
+        if (a.status !== 'active') return false
+        const createdAt = new Date(a.created_at)
+        return createdAt >= dateRange.startDate && createdAt <= dateRange.endDate
+      }).length
+
+      // Rejected candidates — INTERPRETATION: "candidates rejected within the date range"
+      // (event-based, proxied by updated_at when status flipped to 'rejected'). Matches the
+      // same convention used by totalOffers/totalHires below.
+      const rejectedCandidates = allAssociations.filter(a => {
+        if (a.status !== 'rejected') return false
+        const updatedAt = new Date(a.updated_at)
+        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+      }).length
 
       // Total offers (status = 'offer') within date range
       const totalOffers = allAssociations.filter(a => {
