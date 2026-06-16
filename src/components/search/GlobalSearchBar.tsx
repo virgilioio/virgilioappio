@@ -1,61 +1,128 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
 import { GlobalSearchPanel } from './v2/GlobalSearchPanel'
 import { SearchResultsDialog } from './SearchResultsDialog'
 
-export function GlobalSearchBar() {
+interface GlobalSearchBarProps {
+  collapsible?: boolean
+}
+
+export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [expanded, setExpanded] = useState(!collapsible)
 
   // Cmd+K (and legacy Cmd+/) shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === '/')) {
         e.preventDefault()
-        inputRef.current?.focus()
-        setIsOpen(true)
+        setExpanded(true)
+        // Defer focus until input renders
+        requestAnimationFrame(() => {
+          inputRef.current?.focus()
+          setIsOpen(true)
+        })
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // Collapse on outside click when empty
+  useEffect(() => {
+    if (!collapsible || !expanded) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (wrapperRef.current?.contains(target)) return
+      // Ignore clicks inside the popover content
+      const popoverContent = document.querySelector('[data-radix-popper-content-wrapper]')
+      if (popoverContent?.contains(target)) return
+      if (!query) {
+        setExpanded(false)
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [collapsible, expanded, query])
+
   const handleOpenCandidate = useCallback((id: string) => {
     setIsOpen(false)
     navigate(`/candidates/${id}`)
   }, [navigate])
 
+  const handleExpand = () => {
+    setExpanded(true)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      setIsOpen(true)
+    })
+  }
+
+  const handleCollapse = () => {
+    setQuery('')
+    setIsOpen(false)
+    setExpanded(false)
+  }
+
   return (
     <>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverAnchor asChild>
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted pointer-events-none" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); setIsOpen(true) }}
-              onFocus={() => setIsOpen(true)}
-              placeholder="Search candidates, jobs, companies…"
-              className={cn(
-                'h-9 w-[320px] rounded-lg border border-virgilio-border bg-surface-primary pl-9 pr-12 text-sm font-poppins',
-                'placeholder:text-virgilio-muted transition-all duration-200',
-                'focus:outline-none focus:ring-2 focus:ring-virgilio-purple/30 focus:border-virgilio-purple/50 focus:w-[420px]',
-                'hover:border-virgilio-purple/40'
-              )}
-            />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-virgilio-muted pointer-events-none">
-              <kbd className="px-1.5 py-0.5 bg-virgilio-border/50 rounded font-mono">⌘</kbd>
-              <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">K</kbd>
-            </div>
+          <div ref={wrapperRef} className="relative hidden md:block">
+            {collapsible && !expanded ? (
+              <button
+                type="button"
+                onClick={handleExpand}
+                aria-label="Search"
+                className="h-8 w-8 rounded-full flex items-center justify-center transition-colors hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            ) : (
+              <>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted pointer-events-none" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => { setQuery(e.target.value); setIsOpen(true) }}
+                  onFocus={() => setIsOpen(true)}
+                  placeholder="Search candidates, jobs, companies…"
+                  className={cn(
+                    'h-9 rounded-lg border border-virgilio-border bg-surface-primary pl-9 pr-12 text-sm font-poppins',
+                    'placeholder:text-virgilio-muted transition-all duration-200',
+                    'focus:outline-none focus:ring-2 focus:ring-virgilio-purple/30 focus:border-virgilio-purple/50',
+                    collapsible ? 'w-[260px] focus:w-[320px]' : 'w-[320px] focus:w-[420px]',
+                    'hover:border-virgilio-purple/40'
+                  )}
+                />
+                {collapsible ? (
+                  <button
+                    type="button"
+                    onClick={handleCollapse}
+                    aria-label="Close search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded flex items-center justify-center text-virgilio-muted hover:text-virgilio-text hover:bg-virgilio-border/40"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-virgilio-muted pointer-events-none">
+                    <kbd className="px-1.5 py-0.5 bg-virgilio-border/50 rounded font-mono">⌘</kbd>
+                    <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">K</kbd>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </PopoverAnchor>
 
