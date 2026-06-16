@@ -440,7 +440,6 @@ const getPageNumbers = () => {
   {filteredCandidates.length === 0 ? (
 
           <EmptyState
-            assetType="empty-state-independent-candidates"
             title={candidates.length === 0 ? 'No candidates yet' : 'No candidates match your filters'}
             description={candidates.length === 0 ? 'Add your first candidate to the database' : 'Try adjusting your search or filters'}
             fallbackIcon={FileText}

@@ -19,8 +19,6 @@ import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
-import { useFavicon } from './hooks/useFavicon'
-import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
@@ -88,9 +86,7 @@ if (typeof window !== 'undefined') {
 }
 
 function AppContent() {
-  // Initialize favicon and browser title loading
-  useFavicon()
-  useBrowserTitle()
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
