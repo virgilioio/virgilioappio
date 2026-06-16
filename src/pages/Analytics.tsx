@@ -51,30 +51,44 @@ export default function Analytics() {
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
   const [widgets, setWidgets] = useState<WidgetConfig[]>([])
 
+  const { tenant } = useTenant()
   const { views, defaultView, createView, updateView } = useSavedViews('analytics')
 
-  // One-shot seeder: if this user has no analytics views at all, create the two defaults.
+  // One-shot, TENANT-LEVEL seeder for the shared "Recruiting Overview" default.
+  // INTERPRETATION: this view belongs to the tenant, not the user. We:
+  //   1. Skip if there's any saved analytics view in our local query (own or shared).
+  //   2. Re-check the DB for any tenant-shared "Recruiting Overview" before inserting
+  //      (handles the race where multiple users open Analytics for the first time
+  //      around the same time and our local `views` is still empty).
+  //   3. Insert ONE shared, default view, owned by whoever happens to be first.
+  // We deliberately do NOT seed a per-user "Sourcing & Quality" — users should create
+  // their own private views from scratch (or duplicate the shared default).
   const seededRef = useRef(false)
   useEffect(() => {
     if (seededRef.current) return
-    if (!user) return
+    if (!user || !tenant) return
     if (views.length > 0) return
     seededRef.current = true
-    createView.mutate({
-      name: 'Recruiting Overview',
-      filters: DEFAULT_FILTERS as unknown as Record<string, unknown>,
-      extra_state: { widgets: withFreshIds(SEED_RECRUITING_OVERVIEW) },
-      is_default: true,
-      visibility: 'shared',
-    })
-    createView.mutate({
-      name: 'Sourcing & Quality',
-      filters: DEFAULT_FILTERS as unknown as Record<string, unknown>,
-      extra_state: { widgets: withFreshIds(SEED_SOURCING_QUALITY) },
-      visibility: 'private',
-    })
+    ;(async () => {
+      const { data: existing } = await supabase
+        .from('saved_views')
+        .select('id')
+        .eq('tenant_id', tenant.id)
+        .eq('page_context', 'analytics')
+        .eq('visibility', 'shared')
+        .eq('name', 'Recruiting Overview')
+        .limit(1)
+      if (existing && existing.length > 0) return // another user already seeded this tenant
+      createView.mutate({
+        name: 'Recruiting Overview',
+        filters: DEFAULT_FILTERS as unknown as Record<string, unknown>,
+        extra_state: { widgets: withFreshIds(SEED_RECRUITING_OVERVIEW) },
+        is_default: true,
+        visibility: 'shared',
+      })
+    })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, views.length])
+  }, [user?.id, tenant?.id, views.length])
 
   // Activate default view on first load
   useEffect(() => {
@@ -97,7 +111,7 @@ export default function Analytics() {
     }
   }, [])
 
-  // Persist widget layout + filters + date range whenever they change (debounced via micro-tick).
+  // Persist widget layout + filters + date range whenever they change (debounced).
   const persistTimer = useRef<number | null>(null)
   useEffect(() => {
     if (!activeViewId) return
@@ -121,27 +135,52 @@ export default function Analytics() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widgets, filters, dateRange.startDate, dateRange.endDate, activeViewId])
 
-  // Export PDF — we still need metrics for it
+  // Export PDF — derive everything from real hooks (no hardcoded [] arrays).
   const metrics = useAnalyticsMetrics({ dateRange, ...filters })
+  const stage = useStagePerformanceMetrics(
+    metrics.finalJobIds,
+    dateRange,
+    metrics.finalJobIds.length > 0 && !metrics.isLoading,
+  )
   const [isExporting, setIsExporting] = useState(false)
   const handleExport = async () => {
     setIsExporting(true)
     try {
+      // Derive stage-to-stage conversion from stageDistribution (assumes stages are
+      // ordered by funnel position, which is how useAnalyticsMetrics returns them
+      // when sorted by descending count is overridden — here we rely on funnel order).
+      const sd = metrics.stageDistribution
+      const stageConversions: StageConversion[] = []
+      for (let i = 0; i < sd.length - 1; i++) {
+        const from = sd[i], to = sd[i + 1]
+        stageConversions.push({
+          fromStage: from.name,
+          toStage: to.name,
+          count: to.count,
+          rate: from.count > 0 ? Math.round((to.count / from.count) * 1000) / 10 : 0,
+        })
+      }
       await generateAnalyticsReport({
         data: {
           applications: metrics.applications,
           activeCandidates: metrics.activeCandidates,
-          totalOffers: (metrics as any).totalOffers ?? 0,
-          totalHires: (metrics as any).totalHires ?? 0,
-          interviewsScheduled: (metrics as any).interviewsScheduled ?? 0,
-          interviewsCompleted: (metrics as any).interviewsCompleted ?? 0,
+          totalOffers: metrics.totalOffers,
+          totalHires: metrics.totalHires,
+          interviewsScheduled: metrics.interviewsScheduled,
+          interviewsCompleted: metrics.interviewsCompleted,
           rejectedCandidates: metrics.rejectedCandidates,
           statusDistribution: metrics.statusDistribution,
           stageDistribution: metrics.stageDistribution,
           trendData: metrics.trendData,
+          // interviewsByStage requires joining bookings → assoc → stage which isn't
+          // exposed by any current hook; leaving empty (the PDF section will be skipped)
+          // is preferable to fabricating data. Tracked as a future enhancement.
           interviewsByStage: [],
-          stageConversions: [],
-          avgTimePerStage: [],
+          stageConversions,
+          avgTimePerStage: stage.avgTimePerStage.map(s => ({
+            stageName: s.stageName,
+            avgDays: s.avgDays,
+          })),
         },
         dateRange,
       })
