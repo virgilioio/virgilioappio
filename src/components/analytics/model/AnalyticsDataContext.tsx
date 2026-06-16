@@ -41,10 +41,10 @@ export function AnalyticsDataProvider({ dateRange, filters, children }: Provider
   const stage = useStagePerformanceMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const jobHealth = useJobHealthMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const recruiter = useRecruiterPerformanceMetrics(metrics.finalJobIds, dateRange, hasJobIds)
-  const source = useSourcePerformanceMetrics(metrics.finalJobIds, hasJobIds)
+  const source = useSourcePerformanceMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const interview = useInterviewHealthMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const offer = useOfferAnalyticsMetrics(metrics.finalJobIds, dateRange, hasJobIds)
-  const talent = useTalentInsightsMetrics(metrics.finalJobIds, hasJobIds)
+  const talent = useTalentInsightsMetrics(metrics.finalJobIds, dateRange, hasJobIds)
 
   const value = useMemo<AnalyticsBundle>(
     () => ({ dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent }),

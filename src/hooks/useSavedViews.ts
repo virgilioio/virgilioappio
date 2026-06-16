@@ -22,8 +22,7 @@ export interface SavedView {
   updated_at: string
 }
 
-// Use untyped client for saved_views since visibility is not in generated types yet
-const db = supabase as any
+// visibility column is in the generated types now (migration applied)
 
 export function useSavedViews(pageContext: PageContext) {
   const { user } = useAuth()
@@ -36,13 +35,13 @@ export function useSavedViews(pageContext: PageContext) {
     queryFn: async () => {
       if (!user) return []
       // Fetch own views + shared views in the same tenant (RLS enforces this too)
-      const ownPromise = db
+      const ownPromise = supabase
         .from('saved_views')
         .select('*')
         .eq('user_id', user.id)
         .eq('page_context', pageContext)
       const sharedPromise = tenant
-        ? db
+        ? supabase
             .from('saved_views')
             .select('*')
             .eq('tenant_id', tenant.id)
@@ -74,23 +73,23 @@ export function useSavedViews(pageContext: PageContext) {
     }) => {
       if (!user || !tenant) throw new Error('Not authenticated')
       if (input.is_default) {
-        await db
+        await supabase
           .from('saved_views')
           .update({ is_default: false })
           .eq('user_id', user.id)
           .eq('page_context', pageContext)
           .eq('is_default', true)
       }
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('saved_views')
         .insert({
           user_id: user.id,
           tenant_id: tenant.id,
           page_context: pageContext,
           name: input.name,
-          filters: input.filters,
-          sort_state: input.sort_state ?? null,
-          extra_state: input.extra_state ?? null,
+          filters: input.filters as any,
+          sort_state: (input.sort_state ?? null) as any,
+          extra_state: (input.extra_state ?? null) as any,
           is_default: input.is_default ?? false,
           visibility: input.visibility ?? 'private',
         })
@@ -125,7 +124,7 @@ export function useSavedViews(pageContext: PageContext) {
       if (input.visibility !== undefined) updates.visibility = input.visibility
       if (input.is_default !== undefined) {
         if (input.is_default) {
-          await db
+          await supabase
             .from('saved_views')
             .update({ is_default: false })
             .eq('user_id', user.id)
@@ -134,7 +133,7 @@ export function useSavedViews(pageContext: PageContext) {
         }
         updates.is_default = input.is_default
       }
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('saved_views')
         .update(updates)
         .eq('id', input.id)
@@ -155,7 +154,7 @@ export function useSavedViews(pageContext: PageContext) {
   const deleteView = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not authenticated')
-      const { error } = await db.from('saved_views').delete().eq('id', id).eq('user_id', user.id)
+      const { error } = await supabase.from('saved_views').delete().eq('id', id).eq('user_id', user.id)
       if (error) throw error
     },
     onSuccess: () => {

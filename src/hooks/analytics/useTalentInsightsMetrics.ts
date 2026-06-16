@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
 export interface DistributionItem {
   name: string
@@ -17,10 +18,11 @@ export interface TalentInsightsData {
 
 export function useTalentInsightsMetrics(
   finalJobIds: string[],
+  dateRange: DateRange,
   enabled: boolean
 ): TalentInsightsData {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['analytics-talent-insights', finalJobIds.join(',')],
+    queryKey: ['analytics-talent-insights', finalJobIds.join(','), dateRange.startDate.toISOString(), dateRange.endDate.toISOString()],
     queryFn: async () => {
       if (finalJobIds.length === 0) return {
         seniorityDistribution: [],
@@ -29,11 +31,18 @@ export function useTalentInsightsMetrics(
         experienceDistribution: [],
       }
 
-      // Get candidate IDs from associations
+      // INTERPRETATION: cohort = associations CREATED within the date range.
+      // Talent Insights describes the *cohort of candidates added in the selected window*
+      // by their profile attributes (seniority, skills, geo, experience). Scoping by
+      // assoc.created_at keeps the distribution bounded to the dashboard's date filter.
+      const startISO = dateRange.startDate.toISOString()
+      const endISO = dateRange.endDate.toISOString()
       const { data: assocs, error: aErr } = await supabase
         .from('job_candidate_associations')
         .select('candidate_id')
         .in('job_id', finalJobIds)
+        .gte('created_at', startISO)
+        .lte('created_at', endISO)
       if (aErr) throw aErr
 
       const candidateIds = [...new Set((assocs || []).map(a => a.candidate_id))]

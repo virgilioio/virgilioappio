@@ -56,23 +56,41 @@ export function useRecruiterPerformanceMetrics(
 
       if (userIds.size === 0) return { rows: [] }
 
-      // Get profiles (profiles table uses user_id as PK)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, email')
-        .in('user_id', Array.from(userIds))
+      // Resolve recruiter names with a CHAINED FALLBACK so deleted/deactivated users
+      // still show something meaningful:
+      //   1) profiles.first_name + last_name  → live name
+      //   2) profiles.email                   → live email
+      //   3) members.invited_email            → recovers email when the profile row is gone
+      //      (members.full_name does not exist in this schema; invited_email is the only
+      //       human-readable identifier we keep on members for offboarded users)
+      //   4) "Unknown recruiter"              → last-resort
+      const idList = Array.from(userIds)
+      const [profilesRes, membersRes] = await Promise.all([
+        supabase.from('profiles').select('user_id, first_name, last_name, email').in('user_id', idList),
+        supabase.from('members').select('user_id, invited_email').in('user_id', idList),
+      ])
+      const profileMap = new Map((profilesRes.data || []).map(p => [p.user_id, p]))
+      const memberMap = new Map((membersRes.data || []).map(m => [m.user_id, m]))
 
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]))
+      const resolveName = (userId: string): { name: string; email: string } => {
+        const p = profileMap.get(userId)
+        const fullName = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : ''
+        if (fullName) return { name: fullName, email: p?.email || '' }
+        if (p?.email) return { name: p.email, email: p.email }
+        const m = memberMap.get(userId)
+        if (m?.invited_email) return { name: m.invited_email, email: m.invited_email }
+        return { name: 'Unknown recruiter', email: '' }
+      }
 
       // Aggregate
       const recruiterMap = new Map<string, RecruiterRow>()
       const getOrCreate = (userId: string): RecruiterRow => {
         if (!recruiterMap.has(userId)) {
-          const profile = profileMap.get(userId)
+          const { name, email } = resolveName(userId)
           recruiterMap.set(userId, {
             userId,
-            name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Unknown recruiter' : 'Unknown recruiter',
-            email: profile?.email || '',
+            name,
+            email,
             candidatesAdded: 0,
             activePipeline: 0,
             hires: 0,
