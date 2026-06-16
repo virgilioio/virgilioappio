@@ -78,18 +78,34 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
     <>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverAnchor asChild>
-          <div ref={wrapperRef} className="relative hidden md:block">
-            {collapsible && !expanded ? (
+          <div
+            ref={wrapperRef}
+            className={cn(
+              'relative hidden md:flex items-center justify-end',
+              collapsible ? 'h-8 w-8' : '',
+            )}
+          >
+            {collapsible && (
               <button
                 type="button"
-                onClick={handleExpand}
-                aria-label="Search"
-                className="h-8 w-8 rounded-full flex items-center justify-center transition-colors hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40"
+                onClick={expanded ? handleCollapse : handleExpand}
+                aria-label={expanded ? 'Close search' : 'Search'}
+                className={cn(
+                  'h-8 w-8 rounded-full flex items-center justify-center transition-colors hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40',
+                  expanded && 'relative z-[1]',
+                )}
               >
-                <Search className="h-4 w-4" />
+                {expanded ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
               </button>
-            ) : (
-              <>
+            )}
+            {(!collapsible || expanded) && (
+              <div
+                className={cn(
+                  collapsible
+                    ? 'absolute right-9 top-1/2 -translate-y-1/2 z-[1]'
+                    : 'relative',
+                )}
+              >
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted pointer-events-none" />
                 <input
                   ref={inputRef}
@@ -99,29 +115,22 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
                   onFocus={() => setIsOpen(true)}
                   placeholder="Search candidates, jobs, companies…"
                   className={cn(
-                    'h-9 rounded-lg border border-virgilio-border bg-surface-primary pl-9 pr-12 text-sm font-poppins',
+                    'h-9 rounded-lg border border-virgilio-border pl-9 text-sm font-poppins',
                     'placeholder:text-virgilio-muted transition-all duration-200',
                     'focus:outline-none focus:ring-2 focus:ring-virgilio-purple/30 focus:border-virgilio-purple/50',
-                    collapsible ? 'w-[260px] focus:w-[320px]' : 'w-[320px] focus:w-[420px]',
-                    'hover:border-virgilio-purple/40'
+                    'hover:border-virgilio-purple/40',
+                    collapsible
+                      ? 'w-[320px] pr-3 bg-[#0d0d09] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]'
+                      : 'w-[320px] focus:w-[420px] pr-12 bg-surface-primary',
                   )}
                 />
-                {collapsible ? (
-                  <button
-                    type="button"
-                    onClick={handleCollapse}
-                    aria-label="Close search"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 rounded flex items-center justify-center text-virgilio-muted hover:text-virgilio-text hover:bg-virgilio-border/40"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                ) : (
+                {!collapsible && (
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-virgilio-muted pointer-events-none">
                     <kbd className="px-1.5 py-0.5 bg-virgilio-border/50 rounded font-mono">⌘</kbd>
                     <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">K</kbd>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </PopoverAnchor>
