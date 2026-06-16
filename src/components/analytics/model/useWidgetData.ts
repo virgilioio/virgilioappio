@@ -48,13 +48,11 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
       series = pickTimeSeries(trend, 'active')
       break
     case 'hires':
-      value = b.metrics.totalHires ?? (b.metrics as any).totalHires ?? 0
-      // useAnalyticsMetrics surface doesn't expose totalHires; derive from trendData
-      if (!value) value = trend.reduce((s, p) => s + Number(p.hires ?? 0), 0)
+      value = b.metrics.totalHires
       series = pickTimeSeries(trend, 'hires')
       break
     case 'time_to_hire':
-      value = (b.metrics as any).avgTimeToHire ?? null
+      value = b.metrics.avgTimeToHire
       series = []
       break
     case 'interviews':
