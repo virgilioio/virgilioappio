@@ -2,7 +2,7 @@ import {
   Zap, User, Mail, Clock, Bell,
   Building2, Users, Folder, Plug, CreditCard,
   GitBranch, ListChecks, FileText, Workflow, Globe, Megaphone,
-  Handshake, Building, Gauge, Package,
+  Handshake, Building, Gauge, Package, Palette,
 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
@@ -116,6 +116,7 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
       items: [
         { id: 'platform-dashboard', label: 'Dashboard', icon: Gauge, show: true },
         { id: 'platform-job-defaults', label: 'Job defaults', icon: Package, show: true },
+        { id: 'platform-personalization', label: 'Personalization', icon: Palette, show: true },
         { id: 'platform-customers', label: 'SaaS customers', icon: Building2, show: true },
       ],
     },
