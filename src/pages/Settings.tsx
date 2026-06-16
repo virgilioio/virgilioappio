@@ -139,6 +139,8 @@ export default function Settings() {
         return <PlatformDashboardV2 />
       case 'platform-job-defaults':
         return <PlatformJobDefaults />
+      case 'platform-personalization':
+        return <PlatformAssetUploader />
       case 'platform-customers':
         return <PlatformCustomers />
       default:
