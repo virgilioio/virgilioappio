@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
 export interface SourceRow {
   source: string
@@ -18,18 +19,26 @@ export interface SourcePerformanceData {
 
 export function useSourcePerformanceMetrics(
   finalJobIds: string[],
+  dateRange: DateRange,
   enabled: boolean
 ): SourcePerformanceData {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['analytics-source-perf', finalJobIds.join(',')],
+    queryKey: ['analytics-source-perf', finalJobIds.join(','), dateRange.startDate.toISOString(), dateRange.endDate.toISOString()],
     queryFn: async () => {
       if (finalJobIds.length === 0) return { rows: [] }
 
-      // Get associations with candidate_id
+      // INTERPRETATION: cohort = associations CREATED within the date range.
+      // Source performance is a cohort report ("of candidates added this period, where
+      // did they come from, and how did they convert?"). Scoping by created_at keeps
+      // the breakdown bounded to the selected window.
+      const startISO = dateRange.startDate.toISOString()
+      const endISO = dateRange.endDate.toISOString()
       const { data: assocs, error: aErr } = await supabase
         .from('job_candidate_associations')
         .select('id, candidate_id, status')
         .in('job_id', finalJobIds)
+        .gte('created_at', startISO)
+        .lte('created_at', endISO)
       if (aErr) throw aErr
 
       if (!assocs || assocs.length === 0) return { rows: [] }
