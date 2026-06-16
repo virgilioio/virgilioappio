@@ -274,8 +274,8 @@ export function Header() {
 
         {/* Right: utility cluster */}
         <div className="flex items-center gap-2 text-white">
-          <div className="hidden md:block [&_input]:bg-white/[0.08] [&_input]:border-white/[0.12] [&_input]:text-white [&_input::placeholder]:text-white/50 [&_svg]:text-white/70">
-            <GlobalSearchBar />
+          <div className="hidden md:block [&_input]:bg-white/[0.08] [&_input]:border-white/[0.12] [&_input]:text-white [&_input::placeholder]:text-white/50 [&_svg]:text-white/70 [&_button[aria-label='Search']]:text-white/85 [&_button[aria-label='Search']:hover]:text-white">
+            <GlobalSearchBar collapsible />
           </div>
 
           <GlobalCreateButton />
