@@ -67,7 +67,7 @@ const SaaSCustomerDetail = lazy(() =>
   import('./pages/settings/saas-customers/SaaSCustomerDetail').then(m => ({ default: m.SaaSCustomerDetail }))
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
-const AnalyticsHub = lazy(() => import('./pages/AnalyticsHub'))
+
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
 const SharedList = lazy(() => import('./pages/SharedList'))
 const queryClient = new QueryClient({
@@ -150,7 +150,7 @@ function AppContent() {
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/analytics" element={<Analytics />} />
-            <Route path="/insights" element={<AnalyticsHub />} />
+            <Route path="/insights" element={<Navigate to="/analytics" replace />} />
             <Route path="/talent-intelligence" element={<TalentIntelligence />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
             <Route path="/jobs/:jobId/pipeline" element={<JobDetail />} />
