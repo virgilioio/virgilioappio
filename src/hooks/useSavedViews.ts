@@ -35,13 +35,13 @@ export function useSavedViews(pageContext: PageContext) {
     queryFn: async () => {
       if (!user) return []
       // Fetch own views + shared views in the same tenant (RLS enforces this too)
-      const ownPromise = db
+      const ownPromise = supabase
         .from('saved_views')
         .select('*')
         .eq('user_id', user.id)
         .eq('page_context', pageContext)
       const sharedPromise = tenant
-        ? db
+        ? supabase
             .from('saved_views')
             .select('*')
             .eq('tenant_id', tenant.id)
@@ -73,14 +73,14 @@ export function useSavedViews(pageContext: PageContext) {
     }) => {
       if (!user || !tenant) throw new Error('Not authenticated')
       if (input.is_default) {
-        await db
+        await supabase
           .from('saved_views')
           .update({ is_default: false })
           .eq('user_id', user.id)
           .eq('page_context', pageContext)
           .eq('is_default', true)
       }
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('saved_views')
         .insert({
           user_id: user.id,
@@ -124,7 +124,7 @@ export function useSavedViews(pageContext: PageContext) {
       if (input.visibility !== undefined) updates.visibility = input.visibility
       if (input.is_default !== undefined) {
         if (input.is_default) {
-          await db
+          await supabase
             .from('saved_views')
             .update({ is_default: false })
             .eq('user_id', user.id)
@@ -133,7 +133,7 @@ export function useSavedViews(pageContext: PageContext) {
         }
         updates.is_default = input.is_default
       }
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('saved_views')
         .update(updates)
         .eq('id', input.id)
