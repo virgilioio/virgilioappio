@@ -71,7 +71,7 @@ export function useRecruiterPerformanceMetrics(
           const profile = profileMap.get(userId)
           recruiterMap.set(userId, {
             userId,
-            name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || userId.slice(0, 8) : userId.slice(0, 8),
+            name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Unknown recruiter' : 'Unknown recruiter',
             email: profile?.email || '',
             candidatesAdded: 0,
             activePipeline: 0,

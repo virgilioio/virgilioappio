@@ -52,7 +52,7 @@ export function useJobHealthMetrics(
         const jobAssocs = assocs.filter(a => a.job_id === job.id)
         const active = jobAssocs.filter(a => a.status === 'active').length
         const rejected = jobAssocs.filter(a => a.status === 'rejected').length
-        const offers = jobAssocs.filter(a => a.status === 'offer' || a.offered_at).length
+        const offers = jobAssocs.filter(a => a.status === 'offer').length
         const hired = jobAssocs.filter(a => a.status === 'hired')
         const hires = hired.length
 
