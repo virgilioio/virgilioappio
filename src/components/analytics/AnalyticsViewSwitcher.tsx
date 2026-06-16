@@ -173,7 +173,7 @@ function ViewRow({ view, active, onClick }: { view: SavedView; active: boolean; 
   )
 }
 
-function MiniAction({ icon: Icon, label, onClick, highlight, danger }: { icon: React.ComponentType<{ size?: number }>; label: string; onClick: () => void; highlight?: boolean; danger?: boolean }) {
+function MiniAction({ icon: Icon, label, onClick, highlight, danger }: { icon: any; label: string; onClick: () => void; highlight?: boolean; danger?: boolean }) {
   const cls = danger
     ? 'text-[#FA5252] hover:bg-[#FBE0E0]'
     : highlight
