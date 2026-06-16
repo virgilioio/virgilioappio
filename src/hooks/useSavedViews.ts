@@ -87,9 +87,9 @@ export function useSavedViews(pageContext: PageContext) {
           tenant_id: tenant.id,
           page_context: pageContext,
           name: input.name,
-          filters: input.filters,
-          sort_state: input.sort_state ?? null,
-          extra_state: input.extra_state ?? null,
+          filters: input.filters as any,
+          sort_state: (input.sort_state ?? null) as any,
+          extra_state: (input.extra_state ?? null) as any,
           is_default: input.is_default ?? false,
           visibility: input.visibility ?? 'private',
         })
