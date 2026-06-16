@@ -154,7 +154,7 @@ export function useSavedViews(pageContext: PageContext) {
   const deleteView = useMutation({
     mutationFn: async (id: string) => {
       if (!user) throw new Error('Not authenticated')
-      const { error } = await db.from('saved_views').delete().eq('id', id).eq('user_id', user.id)
+      const { error } = await supabase.from('saved_views').delete().eq('id', id).eq('user_id', user.id)
       if (error) throw error
     },
     onSuccess: () => {
