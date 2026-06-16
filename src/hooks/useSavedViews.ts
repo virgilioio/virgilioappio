@@ -22,8 +22,7 @@ export interface SavedView {
   updated_at: string
 }
 
-// Use untyped client for saved_views since visibility is not in generated types yet
-const db = supabase as any
+// visibility column is in the generated types now (migration applied)
 
 export function useSavedViews(pageContext: PageContext) {
   const { user } = useAuth()
