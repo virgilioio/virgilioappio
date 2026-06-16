@@ -148,14 +148,14 @@ export function Header() {
       icon: BarChart3,
       label: 'Analytics',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
-      section: 'ats',
+      section: 'analytics',
     },
     {
       href: '/talent-intelligence',
       icon: Lightbulb,
       label: 'Intelligence',
       show: isPlatformAdmin || isWorkspaceOwner || isAdmin,
-      section: 'ats',
+      section: 'analytics',
     },
     {
       href: '/crm',

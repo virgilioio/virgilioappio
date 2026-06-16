@@ -8,9 +8,9 @@ import { usePermissions } from '@/hooks/usePermissions'
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'analytics' | 'settings' | 'my-profile' | null
 
-const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar', '/analytics', '/talent-intelligence']
+const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar']
 const CRM_PREFIXES = ['/crm']
-const ANALYTICS_PREFIXES = ['/insights']
+const ANALYTICS_PREFIXES = ['/analytics', '/talent-intelligence', '/insights']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
@@ -73,7 +73,7 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'
   { id: 'home', label: 'Dashboard', Icon: DashboardGlyph, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'ats', label: 'ATS', Icon: AtsGlyph, href: '/jobs', show: (p) => p.canViewJobs },
   { id: 'crm', label: 'CRM', Icon: CrmGlyph, href: '/crm', show: (p) => p.canViewOrganizations },
-  { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/insights', show: (p) => !p.isSalesUser },
+  { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/analytics', show: (p) => !p.isSalesUser },
 ]
 
 // Tile classes — state-aware. The accent shape inside the glyph receives lilac
