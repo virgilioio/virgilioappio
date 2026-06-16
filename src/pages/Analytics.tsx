@@ -59,14 +59,14 @@ export default function Analytics() {
     seededRef.current = true
     createView.mutate({
       name: 'Recruiting Overview',
-      filters: DEFAULT_FILTERS,
+      filters: DEFAULT_FILTERS as unknown as Record<string, unknown>,
       extra_state: { widgets: withFreshIds(SEED_RECRUITING_OVERVIEW) },
       is_default: true,
       visibility: 'shared',
     })
     createView.mutate({
       name: 'Sourcing & Quality',
-      filters: DEFAULT_FILTERS,
+      filters: DEFAULT_FILTERS as unknown as Record<string, unknown>,
       extra_state: { widgets: withFreshIds(SEED_SOURCING_QUALITY) },
       visibility: 'private',
     })
