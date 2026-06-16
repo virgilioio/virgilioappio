@@ -73,6 +73,12 @@ export function useStagePerformanceMetrics(
       })
 
       // === Avg Time per Stage ===
+      // INTERPRETATION: include only stage transitions whose ENTRY (moved_at) fell within
+      // the date range. This makes the metric event-based and bounded — without it, the
+      // average would be computed across the full lifetime of stage history and would
+      // never reflect the selected window.
+      const startMs = dateRange.startDate.getTime()
+      const endMs = dateRange.endDate.getTime()
       const historyByAssoc: Record<string, typeof history> = {}
       ;(history || []).forEach(h => {
         if (!historyByAssoc[h.association_id]) historyByAssoc[h.association_id] = []
@@ -87,9 +93,12 @@ export function useStagePerformanceMetrics(
           if (!cur.to_stage_id || !stageIdToInfo[cur.to_stage_id]) continue
           const stageName = stageIdToInfo[cur.to_stage_id].name
           const enteredAt = new Date(cur.moved_at)
+          const enteredMs = enteredAt.getTime()
+          // Date-scope: skip transitions that entered the stage outside the range
+          if (enteredMs < startMs || enteredMs > endMs) continue
           const nextMove = sorted[i + 1]
           if (nextMove) {
-            const daysIn = (new Date(nextMove.moved_at).getTime() - enteredAt.getTime()) / (1000 * 60 * 60 * 24)
+            const daysIn = (new Date(nextMove.moved_at).getTime() - enteredMs) / (1000 * 60 * 60 * 24)
             if (!timePerStage[stageName]) timePerStage[stageName] = []
             timePerStage[stageName].push(daysIn)
           }
