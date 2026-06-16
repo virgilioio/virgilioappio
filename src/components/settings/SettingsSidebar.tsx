@@ -2,7 +2,7 @@ import {
   Zap, User, Mail, Clock, Bell,
   Building2, Users, Folder, Plug, CreditCard,
   GitBranch, ListChecks, FileText, Workflow, Globe, Megaphone,
-  Handshake, Building, Gauge, Package,
+  Handshake, Building, Gauge, Package, Palette,
 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
