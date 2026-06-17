@@ -8,10 +8,23 @@ import { useJobStages, type JobStage } from '@/hooks/useJobStages'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 
 
+interface HiringPlanUi {
+  selectedTemplate: TemplateId | null
+  rejectOutsideLocations: boolean
+  rejectSalaryAbove: boolean
+  rejectRepeatApplicant: boolean
+  autoScore: boolean
+  autoRejectBelow: boolean
+  autoRejectThreshold: number
+  generateSummary: boolean
+}
+
 interface HiringPlanStepProps {
   jobId: string | null
   onNext: () => void
   onBack: () => void
+  ui: HiringPlanUi
+  onUiChange: (patch: Partial<HiringPlanUi>) => void
 }
 
 /* ---------- Template cards (UI-level preset chooser) ---------- */
