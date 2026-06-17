@@ -206,13 +206,14 @@ export function CandidateFormSheet({
           years_experience: (candidate as any).total_years_experience?.toString() || '',
           referred_by: (candidate as any).referred_by || '',
         })
-        const sanitizedProfile = sanitizeHtmlForEditor(
-          markdownToHtml(candidate.profile_summary || ''),
-        )
-        setProfileSummary(sanitizedProfile)
-        setProfileIsExternalUpdate(true)
+        // Strip any stored HTML so the summary renders as a clean paragraph.
+        const rawSummary = (candidate.profile_summary || '').replace(/<[^>]*>/g, '').trim()
+        setProfileSummary(rawSummary)
         setNotes(candidate.notes || '')
         setSkills(candidate.skills || [])
+        // Edit mode: data is already enriched; mount both states as done.
+        setParseStep(rawSummary || (candidate.skills?.length ?? 0) > 0 ? 'done' : 'idle')
+        setEnrich(rawSummary || (candidate.skills?.length ?? 0) > 0 ? 'done' : 'idle')
       }
     } else if (!candidate && isOpen) {
       setCurrentCandidateId(null)
