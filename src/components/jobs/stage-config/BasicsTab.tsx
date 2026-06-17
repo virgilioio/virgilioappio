@@ -227,7 +227,7 @@ export function BasicsTab({ config, onSave, isSaving }: BasicsTabProps) {
             <Segmented
               value={duration}
               options={DURATIONS}
-              onChange={setDuration}
+              onChange={(v) => setDuration(v as Duration)}
               format={(v) => `${v} min`}
             />
           </div>
