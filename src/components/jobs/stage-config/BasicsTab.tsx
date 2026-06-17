@@ -243,11 +243,11 @@ export function BasicsTab({ config, onSave, isSaving }: BasicsTabProps) {
             <p className="font-inter mb-2" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
               Sets the default location type for scheduling and candidate emails.
             </p>
-            <Segmented<Format>
+            <Segmented
               value={format}
               options={FORMATS.map((f) => f.key)}
-              onChange={setFormat}
-              format={(v) => FORMATS.find((f) => f.key === v)?.label || v}
+              onChange={(v) => setFormat(v as Format)}
+              format={(v) => FORMATS.find((f) => f.key === v)?.label || String(v)}
             />
           </div>
 
