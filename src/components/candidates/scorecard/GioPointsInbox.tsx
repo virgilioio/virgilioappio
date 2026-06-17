@@ -151,8 +151,8 @@ export function GioPointsInbox({
                   <p className="text-[12.5px] font-medium text-[#1F2230] leading-snug">
                     {point.question}
                   </p>
-                  {point.rationale && (
-                    <p className="text-[11px] text-[#8B8F9E] leading-snug">{point.rationale}</p>
+                  {point.reason && (
+                    <p className="text-[11px] text-[#8B8F9E] leading-snug">{point.reason}</p>
                   )}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     {point.priority === 'high' && (
