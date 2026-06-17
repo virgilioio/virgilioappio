@@ -113,7 +113,7 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   React.useEffect(() => {
     const patch: Partial<CreateJobData> = {}
     if (jobData.show_salary_public === undefined) patch.show_salary_public = true
-    if (jobData.status === undefined) patch.status = 'draft'
+    if (jobData.status === undefined) patch.status = 'open'
     if (jobData.currency === undefined) patch.currency = 'USD'
     if (Object.keys(patch).length) onUpdate(patch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -236,7 +236,7 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
               <Segmented
                 ariaLabel="Job status"
                 options={STATUS_OPTIONS}
-                value={(jobData.status as JobStatus) || 'draft'}
+                value={(jobData.status as JobStatus) || 'open'}
                 onChange={(v) => set('status', v)}
               />
             </div>

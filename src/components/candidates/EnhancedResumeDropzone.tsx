@@ -18,6 +18,9 @@ export interface ParsedResumeData {
   linkedinUrl?: string
   location?: string
   profileSummary?: string
+  currentRole?: string
+  currentCompany?: string
+  yearsExperience?: number
 }
 
 interface EnhancedResumeDropzoneProps {

@@ -705,6 +705,22 @@ export function CandidateFormSheet({
                       setProfileIsExternalUpdate(true)
                       count++
                     }
+                    // Professional section — only fill if the user hasn't typed anything.
+                    if (parsed.currentRole && !form.getValues('current_role')) {
+                      form.setValue('current_role', parsed.currentRole)
+                      count++
+                    }
+                    if (parsed.currentCompany && !form.getValues('current_company')) {
+                      form.setValue('current_company', parsed.currentCompany)
+                      count++
+                    }
+                    if (
+                      typeof parsed.yearsExperience === 'number' &&
+                      !form.getValues('years_experience')
+                    ) {
+                      form.setValue('years_experience', String(parsed.yearsExperience))
+                      count++
+                    }
                     setParsedFieldsCount(count)
                   }}
                   onSkillsGenerated={(newSkills: string[]) => {

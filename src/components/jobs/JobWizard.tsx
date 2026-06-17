@@ -181,7 +181,14 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     if (isSubmitting) return null
     setIsSubmitting(true)
     try {
-      const jobResult = await createJob(wizardState.jobData as CreateJobData)
+      // Default status to 'open' when the user completes the wizard through
+      // Step 1 — they clearly intend the job to be live. Explicit Draft/Closed
+      // selections from JobInfoStep are respected.
+      const payload = {
+        ...wizardState.jobData,
+        status: wizardState.jobData.status ?? 'open',
+      } as CreateJobData
+      const jobResult = await createJob(payload)
       const id = (jobResult as any)?.id || 'created'
       setWizardState((prev) => ({ ...prev, createdJobId: id }))
       return { id }
