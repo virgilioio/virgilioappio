@@ -184,16 +184,16 @@ export function ScorecardsTab({ jhsId, jobId, stageName, stageType }: Scorecards
             </p>
           </div>
         </div>
-        <ScorecardQuestionsGenerationPanel
-          jobId={jobId}
-          stageName={stageName}
-          stageType={stageType}
-          existingQuestions={template?.questions || []}
-          onAddQuestions={handleAddMultipleQuestions}
-          isAdding={isAddingMultiple}
-          compact
-        />
       </div>
+
+      <ScorecardQuestionsGenerationPanel
+        jobId={jobId}
+        stageName={stageName}
+        stageType={stageType}
+        existingQuestions={template?.questions || []}
+        onAddQuestions={handleAddMultipleQuestions}
+        isAdding={isAddingMultiple}
+      />
 
       {/* Interview questions intro */}
       <section>
