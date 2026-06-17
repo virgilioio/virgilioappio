@@ -87,6 +87,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LinkedInFilled } from "@/components/icons/LinkedInFilled";
+import { useStageInterviewDefaults } from "@/hooks/useStageInterviewDefaults";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -998,9 +999,8 @@ export function ScorecardSheet({
                     <TabsList>
                       <TabsTrigger value="resume">Resume</TabsTrigger>
                       <TabsTrigger value="application">Application</TabsTrigger>
-                      <TabsTrigger value="interview-details" disabled className="gap-2">
+                      <TabsTrigger value="interview-details">
                         Interview Details
-                        <SoonBadge />
                       </TabsTrigger>
                     </TabsList>
                   </div>
@@ -1032,10 +1032,8 @@ export function ScorecardSheet({
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="interview-details" className="flex-1 overflow-hidden m-0 p-4">
-                    <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                      <p className="text-sm text-muted-foreground">Interview details coming soon</p>
-                    </div>
+                  <TabsContent value="interview-details" className="flex-1 overflow-y-auto m-0 p-6">
+                    <InterviewDetailsTab jhsId={stageInstanceId} />
                   </TabsContent>
                 </Tabs>
               </div>
