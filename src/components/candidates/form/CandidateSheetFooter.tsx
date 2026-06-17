@@ -38,6 +38,7 @@ export function CandidateSheetFooter({
   addedLabel,
   editedLabel,
   onOpenProfile,
+  statusLine,
 }: CandidateSheetFooterProps) {
   return (
     <div
@@ -48,14 +49,16 @@ export function CandidateSheetFooter({
     >
       {mode === 'add' ? (
         <>
-          {typeof dedupeCount === 'number' && dedupeCount > 0 && (
-            <div className="flex items-start gap-1.5 text-xs text-virgilio-muted leading-tight max-w-[240px]">
-              <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" strokeWidth={1.75} />
-              <span>
-                We'll de-duplicate against your existing {dedupeCount.toLocaleString()} candidates.
-              </span>
-            </div>
-          )}
+          {statusLine
+            ? statusLine
+            : typeof dedupeCount === 'number' && dedupeCount > 0 && (
+                <div className="flex items-start gap-1.5 text-xs text-virgilio-muted leading-tight max-w-[240px]">
+                  <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" strokeWidth={1.75} />
+                  <span>
+                    We'll de-duplicate against your existing {dedupeCount.toLocaleString()} candidates.
+                  </span>
+                </div>
+              )}
           <div className="ml-auto flex items-center gap-2">
             <Button type="button" variant="ghost" onClick={onCancel} disabled={isLoading}>
               Cancel
