@@ -294,15 +294,18 @@ export function CandidateFormSheet({
     setProfileSummary('')
     setNotes('')
     setSkills([])
-    setNewSkill('')
     setSelectedJobId('')
     setSelectedStageId('')
     setJobStages([])
     setPendingFiles([])
     setCapturedResumeText('')
-    setShowEnrichmentBanner(false)
     setParsedFieldsCount(0)
-    setShowAllSkills(false)
+    setParseStep('idle')
+    setEnrich('idle')
+    if (enrichTimerRef.current) {
+      clearTimeout(enrichTimerRef.current)
+      enrichTimerRef.current = null
+    }
   }
 
   const validateLinkedInUrl = (url: string) => {
