@@ -260,6 +260,8 @@ export function ScorecardSheet({
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isAiDraft, setIsAiDraft] = useState(false);
+  const gioAdded = useGioAddedQuestions((existing as any)?.gio_added_questions);
+
 
   // Track current values in refs for reliable close-time saving
   const overviewRef = useRef(overview);
@@ -1131,13 +1133,19 @@ export function ScorecardSheet({
 
               {/* Right Panel - Scorecard Form */}
               <div className="w-[50%] overflow-y-auto p-6 space-y-6">
-                {/* Validation Points Panel */}
+                {/* Points to validate — Gio suggestion inbox */}
                 {candidateId && jobId && stageName && (
-                  <ScorecardValidationPoints
+                  <GioPointsInbox
                     candidateId={candidateId}
                     jobId={jobId}
                     associationId={associationId}
                     stageName={stageName}
+                    scorecardId={existing?.id ?? null}
+                    readOnly={isReadOnly}
+                    onAdd={(idx, q) =>
+                      gioAdded.add({ source_point_index: idx, question: q })
+                    }
+                    onRemoveAdded={(idx) => gioAdded.remove(idx)}
                   />
                 )}
                 {/* AI Suggested Rating Banner */}
