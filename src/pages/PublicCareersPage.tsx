@@ -68,9 +68,10 @@ export default function PublicCareersPage() {
         if (se || !s) { setError('Company careers page not found'); setIsLoading(false); return }
         setSettings(s)
 
-        const { data: t } = await supabase
-          .from('tenants').select('id, name').eq('id', s.tenant_id).single()
-        if (t) setTenantInfo(t)
+        const { data: tRows } = await supabase
+          .rpc('get_public_tenant_info', { p_tenant_id: s.tenant_id })
+        const t = Array.isArray(tRows) ? tRows[0] : null
+        if (t) setTenantInfo({ id: t.id, name: t.name })
 
         const { data: p } = await supabase
           .from('job_postings')
