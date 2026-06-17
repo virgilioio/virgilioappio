@@ -209,25 +209,105 @@ export function BasicsTab({ config, onSave, isSaving }: BasicsTabProps) {
       {/* Additional settings */}
       <section>
         <SectionTitle>Additional settings</SectionTitle>
-        <div
-          style={{
-            background: '#FAFAF7',
-            border: '1.5px dashed #E0DDD3',
-            borderRadius: 12,
-            padding: '28px 20px',
-            textAlign: 'center',
-          }}
-        >
-          <p
-            className="font-poppins font-medium"
-            style={{ fontSize: 13.5, color: '#1F2230', margin: 0 }}
-          >
-            More configuration options coming soon
-          </p>
-          <p className="font-inter mt-1" style={{ fontSize: 12.5, color: '#8B8F9E', margin: '6px 0 0' }}>
-            Stage instructions, duration estimates, and more.
-          </p>
-        </div>
+        <p className="font-inter -mt-1 mb-2.5" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
+          Scheduling defaults and team guidance for this stage.
+        </p>
+        <Card>
+          {/* Interview duration */}
+          <div>
+            <label
+              className="block font-inter mb-1"
+              style={{ fontSize: 12, fontWeight: 500, color: '#1F2230' }}
+            >
+              Interview duration
+            </label>
+            <p className="font-inter mb-2" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
+              Default meeting length used when scheduling this stage.
+            </p>
+            <Segmented<Duration>
+              value={duration}
+              options={DURATIONS}
+              onChange={setDuration}
+              format={(v) => `${v} min`}
+            />
+          </div>
+
+          {/* Interview format */}
+          <div className="mt-4">
+            <label
+              className="block font-inter mb-1"
+              style={{ fontSize: 12, fontWeight: 500, color: '#1F2230' }}
+            >
+              Interview format
+            </label>
+            <p className="font-inter mb-2" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
+              Sets the default location type for scheduling and candidate emails.
+            </p>
+            <Segmented<Format>
+              value={format}
+              options={FORMATS.map((f) => f.key)}
+              onChange={setFormat}
+              format={(v) => FORMATS.find((f) => f.key === v)?.label || v}
+            />
+          </div>
+
+          {/* SLA */}
+          <div className="mt-4 pt-3.5" style={{ borderTop: '1px solid #F1F0EC' }}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div
+                  className="font-poppins font-semibold"
+                  style={{ fontSize: 12.5, color: '#1F2230' }}
+                >
+                  Flag slow candidates
+                </div>
+                <p className="font-inter mt-0.5" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
+                  Warn recruiters when someone stays in this stage past the target.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div
+                  className="flex items-center gap-1.5"
+                  style={{ opacity: slaEnabled ? 1 : 0.45 }}
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    value={slaDays}
+                    onChange={(e) => setSlaDays(Math.max(1, Number(e.target.value) || 1))}
+                    disabled={!slaEnabled}
+                    style={{ width: 54, height: 32, borderColor: '#E0DDD3', textAlign: 'center' }}
+                  />
+                  <span className="font-inter" style={{ fontSize: 12, color: '#5A6072' }}>
+                    days
+                  </span>
+                </div>
+                <Switch checked={slaEnabled} onCheckedChange={setSlaEnabled} />
+              </div>
+            </div>
+          </div>
+
+          {/* Stage instructions */}
+          <div className="mt-4">
+            <label
+              className="block font-inter mb-1"
+              style={{ fontSize: 12, fontWeight: 500, color: '#1F2230' }}
+            >
+              Stage instructions{' '}
+              <span style={{ color: '#8B8F9E', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <p className="font-inter mb-2" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
+              Shown to interviewers and recruiters when a candidate reaches this stage.
+            </p>
+            <Textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              rows={3}
+              placeholder="e.g. Confirm salary expectations and work authorization. Keep it to ~20 minutes; focus on motivation and availability."
+              style={{ borderColor: '#E0DDD3' }}
+            />
+          </div>
+        </Card>
       </section>
     </div>
   )
