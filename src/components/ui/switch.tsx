@@ -13,8 +13,8 @@ const Switch = React.forwardRef<
       className
     )}
     style={{
-      backgroundColor: props.checked ? '#7e3eff' : '#e5e7eb',
-      borderColor: props.checked ? '#7e3eff' : '#d1d5db',
+      backgroundColor: props.checked ? '#6F3FF5' : '#D1D0CB',
+      borderColor: props.checked ? '#6F3FF5' : '#D1D0CB',
     }}
     {...props}
     ref={ref}
