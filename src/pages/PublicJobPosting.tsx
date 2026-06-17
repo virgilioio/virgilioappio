@@ -201,13 +201,11 @@ export default function PublicJobPosting() {
       setPosting(p as unknown as Posting)
       setOrganizationName('our company')
 
-      // Fetch tenant data (about and company slug)
-      const { data: tenantData } = await supabase
-        .from('tenants')
-        .select('about, name')
-        .eq('id', (p as any).tenant_id)
-        .maybeSingle()
-      
+      // Fetch tenant data (about and name) via SECURITY DEFINER function
+      const { data: tenantRows } = await supabase
+        .rpc('get_public_tenant_info', { p_tenant_id: (p as any).tenant_id })
+      const tenantData = Array.isArray(tenantRows) ? tenantRows[0] : null
+
       if (tenantData) {
         setTenantAbout(tenantData.about)
         setOrganizationName(tenantData.name) // Use tenant name for consistency

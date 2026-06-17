@@ -141,21 +141,19 @@ export default function PublicBookingPage() {
       
       if (configError) throw configError;
       
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, avatar_url')
-        .eq('user_id', bookingConfig.user_id)
-        .single();
-      
+      const { data: profileRows, error: profileError } = await supabase
+        .rpc('get_public_booking_profile', { p_short_code: shortCode });
+
       if (profileError) {
         console.warn('Failed to load profile:', profileError);
       }
-      
+
+      const profile = Array.isArray(profileRows) ? profileRows[0] : null;
       const fullAvatarUrl = profile?.avatar_url || null;
-      
+
       return {
         ...bookingConfig,
-        profiles: profile 
+        profiles: profile
           ? { ...profile, avatar_url: fullAvatarUrl }
           : { first_name: 'User', last_name: '', avatar_url: null },
       };
