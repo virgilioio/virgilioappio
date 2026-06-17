@@ -28,6 +28,7 @@ import {
   getShortToken,
   resolveBookingToken,
 } from '@/lib/bookingLinkUtils';
+import { useReportSplashReady } from '@/contexts/SplashReadyContext';
 
 // Common timezones for the selector
 const COMMON_TIMEZONES = [
@@ -160,6 +161,10 @@ export default function PublicBookingPage() {
     },
     retry: false,
   });
+
+  // Dismiss the cold-load splash once initial config + token resolution settle.
+  useReportSplashReady(!isLoading && !isResolvingToken);
+
 
   // Fetch event types for this booking config
   const { data: eventTypes = [], isLoading: isLoadingEventTypes } = useQuery({
