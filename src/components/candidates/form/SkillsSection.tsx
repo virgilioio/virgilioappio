@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Sparkles, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CandidateSheetSection } from './CandidateSheetSection'
 import { GeneratingCard } from './GeneratingCard'
@@ -12,6 +13,7 @@ interface SkillsSectionProps {
   onAdd: (skill: string) => void
   onRemove: (skill: string) => void
   maxVisible?: number
+  isEdit?: boolean
 }
 
 const SKILL_VARIANT_TO_TONE: Record<string, any> = {
