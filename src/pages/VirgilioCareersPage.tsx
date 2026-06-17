@@ -67,9 +67,10 @@ export default function VirgilioCareersPage() {
         if (se || !s) { setError('Virgilio careers page is not configured'); setIsLoading(false); return }
         setSettings(s)
 
-        const { data: t } = await supabase
-          .from('tenants').select('id, name').eq('id', VIRGILIO_TENANT_ID).single()
-        if (t) setTenantInfo(t)
+        const { data: tRows } = await supabase
+          .rpc('get_public_tenant_info', { p_tenant_id: VIRGILIO_TENANT_ID })
+        const t = Array.isArray(tRows) ? tRows[0] : null
+        if (t) setTenantInfo({ id: t.id, name: t.name })
 
         const { data: p } = await supabase
           .from('job_postings')
