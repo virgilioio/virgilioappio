@@ -243,12 +243,10 @@ export function useStaleCandidates() {
           continue;
         }
 
-
-        const enteredAt = new Date(row.entered_stage_at!);
-        const daysInStage = differenceInDays(new Date(), enteredAt);
         const daysSinceLastActivity = lastActivity
           ? differenceInDays(new Date(), lastActivity)
           : daysInStage;
+
 
         staleCandidates.push({
           associationId: row.id,
