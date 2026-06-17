@@ -148,6 +148,7 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
                 <BasicsTab
                   config={config}
                   onSave={handleSaveBasics}
+                  onSaveAdditional={handleSaveAdditional}
                   isSaving={updateCustomStageName.isPending}
                 />
               )}
