@@ -99,20 +99,21 @@ export function CandidateFormSheet({
   onOpenProfile,
 }: CandidateFormSheetProps) {
   const [profileSummary, setProfileSummary] = useState('')
-  const [profileIsExternalUpdate, setProfileIsExternalUpdate] = useState(false)
   const [notes, setNotes] = useState('')
   const [skills, setSkills] = useState<string[]>([])
-  const [newSkill, setNewSkill] = useState('')
-  const [showAllSkills, setShowAllSkills] = useState(false)
   const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
   const { user, organizationId } = useAuth()
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [isUploadingResume, setIsUploadingResume] = useState(false)
   const isMountedRef = useRef(true)
   const [capturedResumeText, setCapturedResumeText] = useState<string>('')
-  const [showEnrichmentBanner, setShowEnrichmentBanner] = useState(false)
   const [parsedFieldsCount, setParsedFieldsCount] = useState<number>(0)
   const [shouldResetAfterSubmit, setShouldResetAfterSubmit] = useState(false)
+
+  // Two-stage AI feedback machine.
+  const [parseStep, setParseStep] = useState<'idle' | 'parsing' | 'done'>('idle')
+  const [enrich, setEnrich] = useState<'idle' | 'working' | 'done'>('idle')
+  const enrichTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Job assignment state (only for create mode)
   const [selectedJobId, setSelectedJobId] = useState<string>('')
@@ -135,11 +136,11 @@ export function CandidateFormSheet({
   useEffect(() => {
     return () => {
       isMountedRef.current = false
+      if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
     }
   }, [])
 
-  const { isParsing, parseResume } = useResumeParsing()
-  const { generateSkills, isGenerating } = useSkillsGeneration()
+  const { isParsing, parseResume, parseResumeCoreFields } = useResumeParsing()
 
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
   const [mergeData, setMergeData] = useState<{
