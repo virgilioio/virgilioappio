@@ -1,51 +1,70 @@
-## Problem
+# Rebuild the Add candidate form sheet
 
-1. **Job dropdown correctly hides non-open jobs** — but the wizard defaults new jobs to `status = 'draft'`, so a job the user just "created" through the full wizard stays a draft and is (correctly) excluded from the Add Candidate picker. The wizard already has a status field, but its default is wrong for a user who walked all the way through to the Summary step and clicked the final Create/Publish action — at that point they clearly intend the job to be open, not a draft.
+Restructure `CandidateFormSheet.tsx` around two independent parse states (`parseStep`, `enrich`) and a fixed 6-section order, so that Skills and Profile Summary always read as *AI-generated* (idle hint / generating card / done), never as empty fields the user must fill. Same six sections in Edit mode.
 
-   Confirmed already-correct behavior:
-   - `useJobsForCandidateAssignment` filters `status = 'open'` → keep as-is (don't pollute dropdowns with drafts/closed/archived).
-   - `useJobs.createJob` already persists whatever `status` the wizard hands it via `...jobData`.
-   - When the Add Candidate sheet is opened from inside a job, `CandidateFormSheet` auto-selects that job via the `jobId` prop.
+## Files touched
 
-2. **Professional section is manual.** Resume parsing currently fills name, email, phone, LinkedIn, location, profile summary — but not Current role, Current company, or Years of experience. The data lives in the resume; the user shouldn't have to retype it.
+- `src/components/candidates/CandidateFormSheet.tsx` — section order, state machine, footer status line, save-while-enriching behavior.
+- `src/components/candidates/EnhancedResumeDropzone.tsx` — three visual states (idle dashed / parsing lilac-card with spinner + indeterminate bar / done row with Replace + trash).
+- `src/components/candidates/form/CandidateSheetSection.tsx` — accept right-aligned status badge slot.
+- `src/components/candidates/form/AssignmentRowCard.tsx` — used as-is for Edit mode "Current assignments".
+- NEW `src/components/candidates/form/GeneratingCard.tsx` — shared lilac generating shell (pulsing sparkles + "Running in background" tag + spinner) used by Skills and Profile Summary `working` state. Renders skeleton pills or skeleton lines based on a `variant` prop.
+- NEW `src/components/candidates/form/SkillsSection.tsx` — three-state Skills section (idle input / working pills / done chip cloud with header count badge).
+- NEW `src/components/candidates/form/ProfileSummarySection.tsx` — three-state Summary section (idle hint / working lines / done paragraph + Regenerate).
+- NEW `src/components/candidates/form/ResumeStatusBadge.tsx` — right-aligned status badge for the Résumé section header.
+- NEW `src/components/candidates/form/FooterStatusLine.tsx` — left-side live status line in the footer.
+- `src/index.css` — add the four keyframes (`gioSpin`, `gioBar`, `gioShimmer`, `gioPulse`) and `prefers-reduced-motion` overrides. Add utility classes `.gio-spinner`, `.gio-progress`, `.gio-skeleton`, `.gio-pulse`.
 
-## Plan
+No new tokens, fonts, or radii — reuse the design system already in `index.css`. No DB / RLS / edge-function changes.
 
-### 1. Default the wizard's final-step submission to `status = 'open'`
+## Two-state machine
 
-Keep the dropdown filter strict (`status = 'open'` only). Fix the source instead:
+```ts
+type ParseStep = 'idle' | 'parsing' | 'done'   // contact + professional
+type Enrich    = 'idle' | 'working' | 'done'   // skills + summary
+```
 
-- `src/components/jobs/JobWizard.tsx`: in the submit handler that calls `createJob(wizardState.jobData)` (around line 184), ensure the payload is `{ ...wizardState.jobData, status: wizardState.jobData.status ?? 'open' }`. This only flips the default when the user never touched the status field; if they explicitly set Draft/Closed/etc. in Step 1, we respect that.
-- `src/components/jobs/wizard/JobInfoStep.tsx`: change the displayed default in the status Select from `'draft'` to `'open'` (lines 116, 239 area) so the UI matches what we'll save. Users who want a draft can still pick it explicitly; users who want "Save & exit" without finishing the wizard continue to get a draft via the existing save-as-draft path (unchanged).
-- Do **not** modify `useJobsForCandidateAssignment` — drafts/closed/archived continue to be excluded so the dropdown stays focused on actionable jobs.
+Drive both from the existing resume upload + `useResumeParsing` / `useCandidateEnrichment` hooks. On file drop: `parseStep='parsing'`. When parse hook resolves contact/professional fields: `parseStep='done'` AND `enrich='working'`. When enrichment hook returns skills + summary: `enrich='done'`. Clearing the file resets both to `idle`. (For the visual prototype the spec mentions, the same states are settable via `setTimeout` 1800ms / +3400ms — we'll keep the real hook wiring and only fall back to timers if hooks aren't yet emitting these milestones.)
 
-### 2. AI-parse the Professional fields from the resume
+## Section order (Add and Edit identical)
 
-Extend the existing `parse-resume` edge function and client wiring to return three new fields and apply them to the form.
+1. **Résumé** — header has `ResumeStatusBadge` (idle: lilac sparkles "Gio will auto-fill" · parsing: lilac sparkles "Step 1 · parsing" · done: green dot "N fields auto-filled"). Dropzone renders one of three layouts per spec (dashed idle / lilac parsing row with spinner + `.gio-progress` bar / white done row with Replace + trash).
+2. **Identity** — 2-col: First name*, Last name*, Email* (helper "Used to detect duplicate candidates."), Phone, LinkedIn URL (full width).
+3. **Source & assignment** — 2-col Source* + Referred by; below, optional "Assign to a job" select with talent-pool helper; on select, reveal "Starting stage" chips. Edit mode: swap the picker for a list of `AssignmentRowCard` rows + "Add to a job" header action.
+4. **Professional** — Current role (full), Current company, Years experience (suffix "years"), Location (full), Salary expectations (currency + min/max + period).
+5. **Skills** — `SkillsSection` (idle input / `GeneratingCard variant="pills"` / done chip cloud with "+ N more" and Add skill). Header right-badge "N detected" only when `done`.
+6. **Profile summary** — `ProfileSummarySection` (idle hint / `GeneratingCard variant="lines"` with 4 shimmer lines / done paragraph + "Gio generated" badge + ghost Regenerate).
 
-**Edge function** (`supabase/functions/parse-resume/index.ts`):
-- Add `currentRole`, `currentCompany`, `yearsExperience` (integer) to the `ParseResult` type and to the JSON schema in both `core` and `full` system prompts.
-- Extraction rules:
-  - `currentRole`: most recent job title (top of Experience, or the one marked "Present").
-  - `currentCompany`: company name for that most recent role.
-  - `yearsExperience`: integer total years of professional experience. If not explicitly stated, infer from the earliest professional start date to today, rounded to nearest whole year. Null if unclear (anti-hallucination — never guess).
-- Bump core-mode `max_tokens` from 300 → 500 to fit the additional fields.
+## Footer
 
-**Client type** (`src/hooks/useResumeParsing.ts`):
-- Extend `ParsedResume` with `currentRole?: string`, `currentCompany?: string`, `yearsExperience?: number`. Add them to the `console.log` summary so debugging stays useful.
+- Primary `Add candidate` (with `user-plus` icon) stays enabled whenever required fields are valid — **including while `enrich='working'`**. Saving mid-enrichment persists immediately; the background enrichment job patches skills + summary onto the saved candidate when it returns (uses the existing `triggerBackgroundEnrichment` flow).
+- Secondary `Save & add another`, ghost `Cancel`.
+- Left side: `FooterStatusLine` mapping state → message exactly per spec (parsing / enrich working / done / idle dedup hint).
 
-**Form wiring** — only set when the field is currently empty (never overwrite user input):
-- `src/components/candidates/CandidateFormSheet.tsx`: in the parse-resume `onParsed` handler, call `setValue('current_role', …)`, `setValue('current_company', …)`, `setValue('years_experience', String(…))` when parsed values exist and the corresponding form field is blank.
-- `src/components/candidates/IndependentCandidateForm.tsx`: mirror the same setters in its `onParsed` callback (around lines 240-303).
-- Confirm `src/components/candidates/ApolloPreviewSheet.tsx` and any other consumer of `ParsedResume` doesn't need a matching change.
+## Edit mode differences (data-driven only, same components)
 
-### Out of scope
-- No DB migrations. `current_role` / `current_company` / `years_experience` are already part of the form payload.
-- No change to RLS/role logic in `useJobsForCandidateAssignment` — only the status default in the wizard changes.
-- No change to the "auto-select job when opened from inside a job" behavior — already works.
+- Section 3 renders the "Current assignments" list instead of the assign-to-job picker.
+- Sections 5 and 6 mount in `done` state (skills + summary already on the record); no skeletons.
 
-## Verification
-- Complete the job wizard to Summary and submit → the new job is created with `status = 'open'` and appears immediately in the Add Candidate "Assign to a job" dropdown (both from top-bar "New Candidate" and from inside another job).
-- Save a job as Draft (explicitly) → it does **not** appear in the dropdown. ✔ correct behavior.
-- Open Add Candidate from inside a job → that job is pre-selected (unchanged).
-- Upload a resume in the Add Candidate sheet → Current role / Current company / Years of experience auto-fill alongside the other parsed fields.
+## Animations (added once to `src/index.css`)
+
+```css
+@keyframes gioSpin    { to { transform: rotate(360deg); } }
+@keyframes gioBar     { 0% { left: -40%; } 100% { left: 100%; } }
+@keyframes gioShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+@keyframes gioPulse   { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .gio-spinner, .gio-progress > span, .gio-skeleton, .gio-pulse { animation: none; }
+  .gio-skeleton { background: #EFEAFB; }
+}
+```
+
+Utility classes per spec (spinner = 2px purple ring with top color; progress = 4px lilac track + absolute 40% purple bar; skeleton = three-stop lilac gradient with 400% bg-size; pulse = sparkles opacity loop).
+
+## Explicitly NOT changing
+
+- No edge-function changes; reuse `parse-resume` output already wired (now includes role/company/years from the earlier task).
+- No new tokens, fonts, radii.
+- No reordering only in one mode — both Add and Edit follow the same six-section order.
+- No blocking spinner over the form during enrichment; the form remains fully usable.

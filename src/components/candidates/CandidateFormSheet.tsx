@@ -27,15 +27,10 @@ import { supabase } from '@/lib/supabaseClient'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import type { Candidate } from '@/hooks/useCandidates'
 import { toast } from '@/hooks/use-toast'
-import { getSkillColor } from '@/utils/skillColors'
-import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { sanitizeToE164 } from '@/utils/phoneUtils'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { markdownToHtml } from '@/utils/markdown'
-import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
-import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
 import { useJobsForCandidateAssignment } from '@/hooks/useJobsForCandidateAssignment'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateSources } from '@/hooks/useCandidateSources'
@@ -43,13 +38,17 @@ import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { CandidateMergeDialog } from './CandidateMergeDialog'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
-import { BackgroundEnrichmentBanner } from './BackgroundEnrichmentBanner'
 import { CandidateSheetHeader } from './form/CandidateSheetHeader'
 import { CandidateSheetSection } from './form/CandidateSheetSection'
 import { CandidateSheetFooter } from './form/CandidateSheetFooter'
-import { ParsedResumeChip } from './form/ParsedResumeChip'
 import { AssignmentRowCard } from './form/AssignmentRowCard'
 import { IconInput } from './form/IconInput'
+import { ResumeUploadField } from './form/ResumeUploadField'
+import { ResumeStatusBadge } from './form/ResumeStatusBadge'
+import { SkillsSection } from './form/SkillsSection'
+import { ProfileSummarySection } from './form/ProfileSummarySection'
+import { FooterStatusLine } from './form/FooterStatusLine'
+import type { ParsedResumeData } from './EnhancedResumeDropzone'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
@@ -100,20 +99,21 @@ export function CandidateFormSheet({
   onOpenProfile,
 }: CandidateFormSheetProps) {
   const [profileSummary, setProfileSummary] = useState('')
-  const [profileIsExternalUpdate, setProfileIsExternalUpdate] = useState(false)
   const [notes, setNotes] = useState('')
   const [skills, setSkills] = useState<string[]>([])
-  const [newSkill, setNewSkill] = useState('')
-  const [showAllSkills, setShowAllSkills] = useState(false)
   const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
   const { user, organizationId } = useAuth()
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [isUploadingResume, setIsUploadingResume] = useState(false)
   const isMountedRef = useRef(true)
   const [capturedResumeText, setCapturedResumeText] = useState<string>('')
-  const [showEnrichmentBanner, setShowEnrichmentBanner] = useState(false)
   const [parsedFieldsCount, setParsedFieldsCount] = useState<number>(0)
   const [shouldResetAfterSubmit, setShouldResetAfterSubmit] = useState(false)
+
+  // Two-stage AI feedback machine.
+  const [parseStep, setParseStep] = useState<'idle' | 'parsing' | 'done'>('idle')
+  const [enrich, setEnrich] = useState<'idle' | 'working' | 'done'>('idle')
+  const enrichTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Job assignment state (only for create mode)
   const [selectedJobId, setSelectedJobId] = useState<string>('')
@@ -136,11 +136,11 @@ export function CandidateFormSheet({
   useEffect(() => {
     return () => {
       isMountedRef.current = false
+      if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
     }
   }, [])
 
-  const { isParsing, parseResume } = useResumeParsing()
-  const { generateSkills, isGenerating } = useSkillsGeneration()
+  const { isParsing, parseResume, parseResumeCoreFields } = useResumeParsing()
 
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
   const [mergeData, setMergeData] = useState<{
@@ -206,13 +206,14 @@ export function CandidateFormSheet({
           years_experience: (candidate as any).total_years_experience?.toString() || '',
           referred_by: (candidate as any).referred_by || '',
         })
-        const sanitizedProfile = sanitizeHtmlForEditor(
-          markdownToHtml(candidate.profile_summary || ''),
-        )
-        setProfileSummary(sanitizedProfile)
-        setProfileIsExternalUpdate(true)
+        // Strip any stored HTML so the summary renders as a clean paragraph.
+        const rawSummary = (candidate.profile_summary || '').replace(/<[^>]*>/g, '').trim()
+        setProfileSummary(rawSummary)
         setNotes(candidate.notes || '')
         setSkills(candidate.skills || [])
+        // Edit mode: data is already enriched; mount both states as done.
+        setParseStep(rawSummary || (candidate.skills?.length ?? 0) > 0 ? 'done' : 'idle')
+        setEnrich(rawSummary || (candidate.skills?.length ?? 0) > 0 ? 'done' : 'idle')
       }
     } else if (!candidate && isOpen) {
       setCurrentCandidateId(null)
@@ -293,15 +294,18 @@ export function CandidateFormSheet({
     setProfileSummary('')
     setNotes('')
     setSkills([])
-    setNewSkill('')
     setSelectedJobId('')
     setSelectedStageId('')
     setJobStages([])
     setPendingFiles([])
     setCapturedResumeText('')
-    setShowEnrichmentBanner(false)
     setParsedFieldsCount(0)
-    setShowAllSkills(false)
+    setParseStep('idle')
+    setEnrich('idle')
+    if (enrichTimerRef.current) {
+      clearTimeout(enrichTimerRef.current)
+      enrichTimerRef.current = null
+    }
   }
 
   const validateLinkedInUrl = (url: string) => {
@@ -522,21 +526,122 @@ export function CandidateFormSheet({
     }
   })
 
-  const addSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()])
-      setNewSkill('')
-    }
+  const addSkill = (skill: string) => {
+    const v = skill.trim()
+    if (v && !skills.includes(v)) setSkills([...skills, v])
   }
 
   const removeSkill = (skillToRemove: string) => {
     setSkills(skills.filter((skill) => skill !== skillToRemove))
   }
 
-  const handleSkillKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addSkill()
+  // ── Resume parse pipeline ─────────────────────────────────────────────────
+  const handleResumeFile = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max size is 10 MB', variant: 'destructive' })
+      return
+    }
+    // Reset relevant state
+    setPendingFiles([file])
+    setParsedFieldsCount(0)
+    setParseStep('parsing')
+    setEnrich('idle')
+    if (enrichTimerRef.current) {
+      clearTimeout(enrichTimerRef.current)
+      enrichTimerRef.current = null
+    }
+
+    try {
+      const result = await parseResumeCoreFields(file)
+      if (!isMountedRef.current) return
+      const parsed = result?.parsed as ParsedResumeData | undefined
+      if (result?.resumeText) setCapturedResumeText(result.resumeText)
+      let count = 0
+      if (parsed) {
+        if (parsed.name) {
+          form.setValue('candidate_name', parsed.name)
+          count++
+        }
+        if (parsed.email) {
+          form.setValue('email', parsed.email)
+          count++
+        }
+        if (parsed.phone) {
+          form.setValue('phone', sanitizeToE164(parsed.phone))
+          count++
+        }
+        if (parsed.linkedinUrl) {
+          let normalizedUrl = parsed.linkedinUrl.trim()
+          if (!normalizedUrl.match(/^https?:\/\//i)) normalizedUrl = `https://${normalizedUrl}`
+          form.setValue('linkedin_url', normalizedUrl)
+          count++
+        }
+        if (parsed.location) {
+          const parts = parsed.location.split(',').map((s) => s.trim())
+          if (parts.length === 3) {
+            form.setValue('location_city', parts[0])
+            form.setValue('location_state', parts[1])
+            form.setValue('location_country', parts[2])
+            count += 3
+          } else if (parts.length === 2) {
+            form.setValue('location_city', parts[0])
+            form.setValue('location_country', parts[1])
+            count += 2
+          } else {
+            form.setValue('location_city', parsed.location)
+            count++
+          }
+        }
+        if (parsed.currentRole && !form.getValues('current_role')) {
+          form.setValue('current_role', parsed.currentRole)
+          count++
+        }
+        if (parsed.currentCompany && !form.getValues('current_company')) {
+          form.setValue('current_company', parsed.currentCompany)
+          count++
+        }
+        if (typeof parsed.yearsExperience === 'number' && !form.getValues('years_experience')) {
+          form.setValue('years_experience', String(parsed.yearsExperience))
+          count++
+        }
+        // Profile summary may arrive in core parse; render as plain text.
+        if (parsed.profileSummary) {
+          const plain = parsed.profileSummary.replace(/<[^>]*>/g, '').trim()
+          setProfileSummary(plain)
+          count++
+        }
+      }
+      setParsedFieldsCount(count)
+      setParseStep('done')
+      setEnrich('working')
+      // Server-side enrichment is fire-and-forget; flip UI to "done" after ~3.4s
+      // so users see resolution. Skills/summary patches arrive on the record later.
+      enrichTimerRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return
+        setEnrich('done')
+      }, 3400)
+    } catch (err) {
+      console.error('Resume parse failed:', err)
+      if (!isMountedRef.current) return
+      setParseStep('idle')
+      setEnrich('idle')
+      toast({
+        title: 'Could not parse résumé',
+        description: 'You can still fill the form manually.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const clearResume = () => {
+    setPendingFiles([])
+    setParsedFieldsCount(0)
+    setParseStep('idle')
+    setEnrich('idle')
+    setCapturedResumeText('')
+    if (enrichTimerRef.current) {
+      clearTimeout(enrichTimerRef.current)
+      enrichTimerRef.current = null
     }
   }
 
@@ -587,8 +692,7 @@ export function CandidateFormSheet({
     }
   }, [candidate])
 
-  const visibleSkills = showAllSkills ? skills : skills.slice(0, MAX_VISIBLE_SKILLS)
-  const hiddenSkillsCount = Math.max(0, skills.length - MAX_VISIBLE_SKILLS)
+  // (Skills visibility handled inside SkillsSection)
 
   const isSubmitDisabled =
     isLoading || (!candidate && !jobId && !selectedJobId && !organizationId)
@@ -625,140 +729,34 @@ export function CandidateFormSheet({
 
         <div className="flex-1 overflow-y-auto">
           <form id="candidate-form" onSubmit={handleSubmit} className="px-6 py-6 space-y-7">
-            {/* ── RESUME ──────────────────────────────────────────────── */}
+            {/* ── 1 · RÉSUMÉ ──────────────────────────────────────────── */}
             <CandidateSheetSection
-              label="Resume"
+              label="Résumé"
               rightMeta={
-                isEdit ? (
-                  <span className="font-poppins text-[11px] text-virgilio-muted">
-                    v1 · current
-                  </span>
-                ) : parsedFieldsCount > 0 ? (
-                  <Badge tone="green" dot size="xs">
-                    {parsedFieldsCount} fields auto-filled
-                  </Badge>
-                ) : null
+                <ResumeStatusBadge
+                  parseStep={parseStep}
+                  enrich={enrich}
+                  parsedFieldsCount={parsedFieldsCount}
+                />
               }
             >
-              {!isEdit && pendingFiles.length > 0 ? (
-                <ParsedResumeChip
-                  fileName={pendingFiles[0].name}
-                  metaLine={`${Math.round(pendingFiles[0].size / 1024)} KB · ready to upload${
-                    parsedFieldsCount > 0 ? ` · ${parsedFieldsCount} fields auto-filled` : ''
-                  }`}
-                  parsed={parsedFieldsCount > 0}
-                  onDelete={() => removePendingFile(pendingFiles[0].name, pendingFiles[0].size)}
-                />
-              ) : (
-                <EnhancedResumeDropzone
-                  variant="compact"
-                  onUpload={
-                    candidate
-                      ? (file) => uploadFileForCandidate(candidate.id, file, true)
-                      : undefined
-                  }
-                  onParsed={(parsed: ParsedResumeData) => {
-                    let count = 0
-                    if (parsed.name) {
-                      form.setValue('candidate_name', parsed.name)
-                      count++
-                    }
-                    if (parsed.email) {
-                      form.setValue('email', parsed.email)
-                      count++
-                    }
-                    if (parsed.phone) {
-                      form.setValue('phone', sanitizeToE164(parsed.phone))
-                      count++
-                    }
-                    if (parsed.linkedinUrl) {
-                      let normalizedUrl = parsed.linkedinUrl.trim()
-                      if (!normalizedUrl.match(/^https?:\/\//i)) {
-                        normalizedUrl = `https://${normalizedUrl}`
-                      }
-                      form.setValue('linkedin_url', normalizedUrl)
-                      count++
-                    }
-                    if (parsed.location) {
-                      const parts = parsed.location.split(',').map((s) => s.trim())
-                      if (parts.length === 3) {
-                        form.setValue('location_city', parts[0])
-                        form.setValue('location_state', parts[1])
-                        form.setValue('location_country', parts[2])
-                        count += 3
-                      } else if (parts.length === 2) {
-                        form.setValue('location_city', parts[0])
-                        form.setValue('location_country', parts[1])
-                        count += 2
-                      } else {
-                        form.setValue('location_city', parsed.location)
-                        count++
-                      }
-                    }
-                    if (parsed.profileSummary) {
-                      const html = sanitizeHtmlForEditor(
-                        parsed.profileSummary.includes('<')
-                          ? parsed.profileSummary
-                          : markdownToHtml(parsed.profileSummary),
-                      )
-                      setProfileSummary(html)
-                      setProfileIsExternalUpdate(true)
-                      count++
-                    }
-                    // Professional section — only fill if the user hasn't typed anything.
-                    if (parsed.currentRole && !form.getValues('current_role')) {
-                      form.setValue('current_role', parsed.currentRole)
-                      count++
-                    }
-                    if (parsed.currentCompany && !form.getValues('current_company')) {
-                      form.setValue('current_company', parsed.currentCompany)
-                      count++
-                    }
-                    if (
-                      typeof parsed.yearsExperience === 'number' &&
-                      !form.getValues('years_experience')
-                    ) {
-                      form.setValue('years_experience', String(parsed.yearsExperience))
-                      count++
-                    }
-                    setParsedFieldsCount(count)
-                  }}
-                  onSkillsGenerated={(newSkills: string[]) => {
-                    setSkills((prev) => [...new Set([...prev, ...newSkills])])
-                    setParsedFieldsCount((c) => c + newSkills.length)
-                  }}
-                  isUploading={isUploadingResume}
-                  candidateId={candidate?.id}
-                  candidateName={form.watch('candidate_name')}
-                  autoGenerateSkills={!!candidate}
-                  showUpload={!!candidate}
-                  parseOnly={!candidate}
-                  useTwoStageAI={!candidate}
-                  onFileCaptured={(file) => {
-                    if (!candidate) addPendingFile(file)
-                  }}
-                  onResumeTextCaptured={(text) => {
-                    if (!candidate) {
-                      setCapturedResumeText(text)
-                      setShowEnrichmentBanner(true)
-                    }
-                  }}
-                />
-              )}
-
-              {!candidate && showEnrichmentBanner && capturedResumeText && (
-                <BackgroundEnrichmentBanner
-                  isVisible={true}
-                  onDismiss={() => setShowEnrichmentBanner(false)}
-                />
-              )}
+              <ResumeUploadField
+                parseStep={parseStep}
+                enrich={enrich}
+                fileName={pendingFiles[0]?.name}
+                fileSizeBytes={pendingFiles[0]?.size}
+                parsedFieldsCount={parsedFieldsCount}
+                onFile={handleResumeFile}
+                onReplace={handleResumeFile}
+                onClear={clearResume}
+              />
             </CandidateSheetSection>
 
-            {/* ── IDENTITY ────────────────────────────────────────────── */}
+            {/* ── 2 · IDENTITY ────────────────────────────────────────── */}
             <CandidateSheetSection label="Identity">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
-                  label="Name"
+                  label="First name"
                   required
                   error={form.formState.errors.candidate_name?.message}
                   htmlFor="candidate_name"
@@ -766,11 +764,24 @@ export function CandidateFormSheet({
                   <Input
                     id="candidate_name"
                     {...form.register('candidate_name', { required: 'Name is required' })}
-                    placeholder="Lena Park"
+                    placeholder="Lena"
                   />
                 </FormField>
 
-                <FormField label="Email" required htmlFor="email" helpText={isEdit ? 'Changing this will not affect existing conversation threads.' : 'Used to detect duplicate candidates.'}>
+                <FormField label="Last name" htmlFor="last_name">
+                  <Input id="last_name" placeholder="Park" />
+                </FormField>
+
+                <FormField
+                  label="Email"
+                  required
+                  htmlFor="email"
+                  helpText={
+                    isEdit
+                      ? 'Changing this will not affect existing conversation threads.'
+                      : 'Used to detect duplicate candidates.'
+                  }
+                >
                   <IconInput
                     id="email"
                     type="email"
@@ -789,209 +800,34 @@ export function CandidateFormSheet({
                   />
                 </FormField>
 
-                <FormField
-                  label="LinkedIn URL"
-                  htmlFor="linkedin_url"
-                  helpText="Optional"
-                  error={form.formState.errors.linkedin_url?.message}
-                >
-                  <IconInput
-                    id="linkedin_url"
-                    icon={AtSign}
-                    {...form.register('linkedin_url', { validate: validateLinkedInUrl })}
-                    placeholder="linkedin.com/in/username"
-                  />
-                </FormField>
-              </div>
-            </CandidateSheetSection>
-
-            {/* ── PROFESSIONAL ────────────────────────────────────────── */}
-            <CandidateSheetSection label="Professional">
-              <FormField label="Current role" htmlFor="current_role">
-                <IconInput
-                  id="current_role"
-                  icon={Briefcase}
-                  {...form.register('current_role')}
-                  placeholder="Senior Product Designer"
-                />
-              </FormField>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="Current company" htmlFor="current_company">
-                  <IconInput
-                    id="current_company"
-                    icon={Building2}
-                    {...form.register('current_company')}
-                    placeholder="Linear"
-                  />
-                </FormField>
-
-                <FormField label="Years experience" htmlFor="years_experience">
-                  <IconInput
-                    id="years_experience"
-                    type="number"
-                    {...form.register('years_experience')}
-                    placeholder="7"
-                    trailing="years"
-                  />
-                </FormField>
-              </div>
-
-              <FormField label="Location" htmlFor="location_city">
-                <IconInput
-                  id="location_city"
-                  icon={MapPin}
-                  {...form.register('location_city')}
-                  placeholder="Brooklyn, NY"
-                />
-              </FormField>
-              {/* Hidden persistence for legacy state/country split */}
-              <input type="hidden" {...form.register('location_state')} />
-              <input type="hidden" {...form.register('location_country')} />
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-virgilio-text">
-                  Salary expectations{' '}
-                  <span className="font-normal text-virgilio-muted">(optional)</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <CurrencySelect
-                    value={form.watch('salary_currency')}
-                    onChange={(value) => form.setValue('salary_currency', value)}
-                  />
-                  <IconInput
-                    type="number"
-                    icon={DollarSign}
-                    {...form.register('salary_amount')}
-                    placeholder="185,000"
-                  />
-                  <IconInput
-                    type="number"
-                    icon={DollarSign}
-                    {...form.register('salary_amount_max')}
-                    placeholder="210,000"
-                  />
-                  <Select
-                    value={form.watch('salary_period')}
-                    onValueChange={(value) => form.setValue('salary_period', value)}
+                <div className="sm:col-span-2">
+                  <FormField
+                    label="LinkedIn URL"
+                    htmlFor="linkedin_url"
+                    helpText="Optional"
+                    error={form.formState.errors.linkedin_url?.message}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hourly">/ hour</SelectItem>
-                      <SelectItem value="daily">/ day</SelectItem>
-                      <SelectItem value="monthly">/ month</SelectItem>
-                      <SelectItem value="annually">/ year</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <IconInput
+                      id="linkedin_url"
+                      icon={AtSign}
+                      {...form.register('linkedin_url', { validate: validateLinkedInUrl })}
+                      placeholder="linkedin.com/in/username"
+                    />
+                  </FormField>
                 </div>
               </div>
             </CandidateSheetSection>
 
-            {/* ── SKILLS ──────────────────────────────────────────────── */}
+            {/* ── 3 · SOURCE & ASSIGNMENT (add) / SOURCE + ASSIGNMENTS (edit) ─ */}
             <CandidateSheetSection
-              label="Skills"
-              rightMeta={
-                skills.length > 0 ? (
-                  <Badge tone={isEdit ? 'neutral' : 'green'} size="xs">
-                    {skills.length} {isEdit ? 'total' : 'detected'}
-                  </Badge>
-                ) : null
-              }
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                {visibleSkills.map((skill) => (
-                  <Badge
-                    key={skill}
-                    tone={SKILL_VARIANT_TO_TONE[getSkillColor(skill)] || 'neutral'}
-                    size="md"
-                    onRemove={() => removeSkill(skill)}
-                  >
-                    {skill}
-                  </Badge>
-                ))}
-                {!showAllSkills && hiddenSkillsCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllSkills(true)}
-                    className="inline-flex h-badge-md items-center rounded-full bg-muted px-[11px] text-[12px] font-inter font-medium text-virgilio-muted hover:bg-virgilio-border/60 transition-colors"
-                  >
-                    + {hiddenSkillsCount} more
-                  </button>
-                )}
-                <input
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  onKeyPress={handleSkillKeyPress}
-                  onBlur={() => newSkill.trim() && addSkill()}
-                  placeholder="Add skill…"
-                  className="flex-1 min-w-[120px] h-badge-md bg-transparent px-2 text-[12px] font-inter text-virgilio-text placeholder:text-virgilio-muted focus:outline-none"
-                />
-              </div>
-
-              <SkillsGenerationPanel
-                profileSummary={profileSummary}
-                candidateName={form.watch('candidate_name')}
-                existingSkills={skills}
-                onSkillsAccepted={(newSkills) => {
-                  setSkills((prev) => [...new Set([...prev, ...newSkills])])
-                }}
-              />
-            </CandidateSheetSection>
-
-            {/* ── PROFILE SUMMARY (kept; outside mockup crops) ───────── */}
-            <CandidateSheetSection label="Profile summary" bare>
-              <div className="rounded-xl ring-1 ring-virgilio-border/60 bg-background p-4">
-                <RichTextEditor
-                  key={`profile-${candidate?.id || 'new'}`}
-                  value={profileSummary}
-                  onChange={setProfileSummary}
-                  placeholder="Add a brief overview of the candidate's background, experience, and key qualifications…"
-                  minHeight="180px"
-                  isExternalUpdate={profileIsExternalUpdate}
-                  onExternalUpdateComplete={() => setProfileIsExternalUpdate(false)}
-                />
-              </div>
-            </CandidateSheetSection>
-
-            {/* ── CURRENT ASSIGNMENTS (edit only) ─────────────────────── */}
-            {isEdit && (
-              <CandidateSheetSection
-                label="Current assignments"
-                action={
+              label={isEdit ? 'Source & assignment' : 'Source & assignment'}
+              action={
+                isEdit ? (
                   <Button type="button" variant="ghost" size="sm" icon={Plus}>
                     Add to a job
                   </Button>
-                }
-              >
-                {jobAssociations.length === 0 ? (
-                  <p className="text-sm text-virgilio-muted">
-                    Not currently assigned to any job pipeline.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {jobAssociations.map((a) => (
-                      <AssignmentRowCard
-                        key={a.id}
-                        jobTitle={a.job?.title || 'Untitled job'}
-                        department={a.job?.organization?.name || null}
-                        stageName={a.status || null}
-                        stageTone="purple"
-                      />
-                    ))}
-                  </div>
-                )}
-                <p className="flex items-center gap-1.5 text-xs text-virgilio-muted pt-1">
-                  <span aria-hidden>ⓘ</span>
-                  Removing every job returns this candidate to the talent pool as independent.
-                </p>
-              </CandidateSheetSection>
-            )}
-
-            {/* ── SOURCE & ASSIGNMENT (add) / SOURCE (edit) ──────────── */}
-            <CandidateSheetSection
-              label={isEdit ? 'Source' : 'Source & assignment'}
+                ) : undefined
+              }
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
@@ -1029,12 +865,36 @@ export function CandidateFormSheet({
                 </FormField>
               </div>
 
-              {!isEdit && (
+              {isEdit ? (
+                <>
+                  {jobAssociations.length === 0 ? (
+                    <p className="text-sm text-virgilio-muted">
+                      Not currently assigned to any job pipeline.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {jobAssociations.map((a) => (
+                        <AssignmentRowCard
+                          key={a.id}
+                          jobTitle={a.job?.title || 'Untitled job'}
+                          department={a.job?.organization?.name || null}
+                          stageName={a.status || null}
+                          stageTone="purple"
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <p className="flex items-center gap-1.5 text-xs text-virgilio-muted pt-1">
+                    <span aria-hidden>ⓘ</span>
+                    Removing every job returns this candidate to the talent pool as independent.
+                  </p>
+                </>
+              ) : (
                 <>
                   <FormField
                     label="Assign to a job"
                     htmlFor="job_assignment"
-                    helpText="Optional — added to this job's pipeline at the stage below."
+                    helpText="Optional — leave blank to keep the candidate in your talent pool."
                   >
                     <SearchableSelect
                       options={availableJobs.map((job) => ({
@@ -1087,6 +947,115 @@ export function CandidateFormSheet({
                 </>
               )}
             </CandidateSheetSection>
+
+            {/* ── 4 · PROFESSIONAL ────────────────────────────────────── */}
+            <CandidateSheetSection label="Professional">
+              <FormField label="Current role" htmlFor="current_role">
+                <IconInput
+                  id="current_role"
+                  icon={Briefcase}
+                  {...form.register('current_role')}
+                  placeholder="Senior Product Designer"
+                />
+              </FormField>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField label="Current company" htmlFor="current_company">
+                  <IconInput
+                    id="current_company"
+                    icon={Building2}
+                    {...form.register('current_company')}
+                    placeholder="Linear"
+                  />
+                </FormField>
+
+                <FormField label="Years experience" htmlFor="years_experience">
+                  <IconInput
+                    id="years_experience"
+                    type="number"
+                    {...form.register('years_experience')}
+                    placeholder="7"
+                    trailing="years"
+                  />
+                </FormField>
+              </div>
+
+              <FormField label="Location" htmlFor="location_city">
+                <IconInput
+                  id="location_city"
+                  icon={MapPin}
+                  {...form.register('location_city')}
+                  placeholder="Brooklyn, NY"
+                />
+              </FormField>
+              <input type="hidden" {...form.register('location_state')} />
+              <input type="hidden" {...form.register('location_country')} />
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-virgilio-text">
+                  Salary expectations{' '}
+                  <span className="font-normal text-virgilio-muted">(optional)</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <CurrencySelect
+                    value={form.watch('salary_currency')}
+                    onChange={(value) => form.setValue('salary_currency', value)}
+                  />
+                  <IconInput
+                    type="number"
+                    icon={DollarSign}
+                    {...form.register('salary_amount')}
+                    placeholder="185,000"
+                  />
+                  <IconInput
+                    type="number"
+                    icon={DollarSign}
+                    {...form.register('salary_amount_max')}
+                    placeholder="210,000"
+                  />
+                  <Select
+                    value={form.watch('salary_period')}
+                    onValueChange={(value) => form.setValue('salary_period', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">/ hour</SelectItem>
+                      <SelectItem value="daily">/ day</SelectItem>
+                      <SelectItem value="monthly">/ month</SelectItem>
+                      <SelectItem value="annually">/ year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CandidateSheetSection>
+
+            {/* ── 5 · SKILLS ──────────────────────────────────────────── */}
+            <SkillsSection
+              enrich={enrich}
+              skills={skills}
+              onAdd={addSkill}
+              onRemove={removeSkill}
+            />
+
+            {/* ── 6 · PROFILE SUMMARY ─────────────────────────────────── */}
+            <ProfileSummarySection
+              enrich={enrich}
+              summary={profileSummary}
+              onRegenerate={
+                capturedResumeText
+                  ? () => {
+                      setEnrich('working')
+                      if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
+                      enrichTimerRef.current = setTimeout(() => {
+                        if (!isMountedRef.current) return
+                        setEnrich('done')
+                      }, 3400)
+                    }
+                  : undefined
+              }
+            />
           </form>
         </div>
 
@@ -1100,11 +1069,19 @@ export function CandidateFormSheet({
             /* native submit via form id */
           }}
           dedupeCount={null}
+          statusLine={
+            !isEdit ? (
+              <FooterStatusLine
+                parseStep={parseStep}
+                enrich={enrich}
+                parsedFieldsCount={parsedFieldsCount}
+              />
+            ) : undefined
+          }
           onSaveAndAddAnother={
             !isEdit
               ? () => {
                   setShouldResetAfterSubmit(true)
-                  // Trigger the form's submit programmatically
                   const formEl = document.getElementById('candidate-form') as HTMLFormElement | null
                   formEl?.requestSubmit()
                 }
@@ -1114,6 +1091,7 @@ export function CandidateFormSheet({
           editedLabel={editedLabel}
           onOpenProfile={onOpenProfile}
         />
+
       </SheetContent>
 
       {mergeData && (
