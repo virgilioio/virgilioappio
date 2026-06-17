@@ -182,7 +182,13 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
                 style={{ fontSize: 12, color: '#8B8F9E' }}
               >
                 <Check className="h-3.5 w-3.5" style={{ color: '#12B886' }} />
-                <span>Auto-saved · last edit 8 days ago by you</span>
+                <span>
+                  {updateAdditionalSettings.isPending
+                    ? 'Saving…'
+                    : lastSavedAt
+                      ? `Auto-saved · ${formatDistanceToNow(lastSavedAt, { addSuffix: true })}`
+                      : 'Auto-saved'}
+                </span>
               </div>
               <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)}>
                 Close
