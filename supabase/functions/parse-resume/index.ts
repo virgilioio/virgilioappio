@@ -94,6 +94,9 @@ type ParseResult = {
   linkedinUrl?: string;
   location?: string;
   profileSummary?: string;
+  currentRole?: string;
+  currentCompany?: string;
+  yearsExperience?: number;
 };
 
 function extractEmail(text: string): string | undefined {
@@ -159,10 +162,10 @@ async function aiExtractCoreFields(text: string, fileName?: string): Promise<Par
     };
   }
 
-  const systemPrompt = `You are an expert ATS resume parser. Extract ONLY contact information from this resume.
+  const systemPrompt = `You are an expert ATS resume parser. Extract contact and current-role information from this resume.
 
 Return ONLY valid JSON with these exact fields:
-{"name": "string or null", "email": "string or null", "phone": "string or null", "linkedinUrl": "string or null", "location": "string or null"}
+{"name": "string or null", "email": "string or null", "phone": "string or null", "linkedinUrl": "string or null", "location": "string or null", "currentRole": "string or null", "currentCompany": "string or null", "yearsExperience": number or null}
 
 EXTRACTION RULES:
 - name: Full name of the candidate. Look at the very top of the resume, headers, and any "Name:" fields.
@@ -170,9 +173,12 @@ EXTRACTION RULES:
 - phone: Phone number in E.164 format with country code, no spaces or dashes (e.g., +5213332555660, +14155551234). Always include country code based on resume context/location.
 - linkedinUrl: Full LinkedIn profile URL. Check headers, footers, contact sections. Format as https://linkedin.com/in/username
 - location: Current location as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico" or "San Francisco, CA, United States")
+- currentRole: The candidate's most recent job title (top of the Experience section, or the role marked "Present"/"Current"). Just the title, e.g. "Senior Product Manager".
+- currentCompany: The company name for that most recent role. Just the company name, no city/dates.
+- yearsExperience: Integer total years of professional experience. If not explicitly stated, infer from the earliest professional start date to today, rounded to the nearest whole year. Null if you cannot determine it with confidence — DO NOT GUESS.
 
 BE THOROUGH: Check ALL sections including headers, footers, sidebars, and contact blocks.
-If a field is not found, set it to null.
+If a field is not found, set it to null. Never invent data.
 Return ONLY the JSON object, no markdown, no commentary.`;
 
   console.log(`[parse-resume] Core AI extraction starting for: ${fileName || 'unknown'}`);
@@ -192,7 +198,7 @@ Return ONLY the JSON object, no markdown, no commentary.`;
           { role: 'user', content: `Filename: ${fileName || 'resume.pdf'}\n\nResume text:\n${text.slice(0, 6000)}` },
         ],
         temperature: 0.1,
-        max_tokens: 300, // Small response = fast
+        max_tokens: 500, // Room for the extra current-role fields
       }),
     });
 
@@ -274,7 +280,7 @@ async function aiExtractFull(text: string, fileName?: string): Promise<ParseResu
 
   const system = `You are an expert ATS resume parser.
 Return ONLY valid JSON with these exact fields:
-{name: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional}
+{name: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional, currentRole: string|optional, currentCompany: string|optional, yearsExperience: number|optional}
 
 CRITICAL: Extract ALL available fields. Do not omit fields even if confidence is medium.
 
@@ -283,6 +289,9 @@ CRITICAL: Extract ALL available fields. Do not omit fields even if confidence is
 - phone: a primary phone in E.164 format with country code, no spaces or dashes (e.g., +5213332555660). Always include country code.
 - linkedinUrl: IMPORTANT - Full LinkedIn profile URL if present anywhere in the resume (e.g., https://linkedin.com/in/username). Check headers, contact sections, and links carefully.
 - location: IMPORTANT - Current location formatted as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico" or "San Francisco, CA, United States"). Extract from any location field in the resume.
+- currentRole: The candidate's most recent job title (top of the Experience section, or the role marked "Present"/"Current"). Just the title.
+- currentCompany: The company name for that most recent role. Just the company name.
+- yearsExperience: Integer total years of professional experience. If not explicitly stated, infer from the earliest professional start date to today, rounded to the nearest whole year. Omit if you cannot determine with confidence — never guess.
 - profileSummary: A comprehensive, detailed professional profile in Spanish (aim for 200-300 words).
   Use rich markdown formatting: **bold** for headings/key skills, *italic* for emphasis, bullet lists for achievements.
   Structure with clear sections: opening statement, experience highlights, key competencies, notable achievements.

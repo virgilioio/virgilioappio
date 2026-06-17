@@ -15,6 +15,9 @@ export type ParsedResume = {
   linkedinUrl?: string;
   location?: string;
   profileSummary?: string;
+  currentRole?: string;
+  currentCompany?: string;
+  yearsExperience?: number;
 };
 
 export type ParseMode = 'core' | 'full';

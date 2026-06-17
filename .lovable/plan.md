@@ -1,56 +1,51 @@
-## Diagnosis
+## Problem
 
-When you click **Edit step 2** from the Summary, `JobWizard` simply sets `currentStep` back to 2 — `wizardState.jobData` is preserved, and DB-backed data (pipeline stages, team assignments, posting fields) is reloaded from the database. So the *core* data is not actually gone.
+1. **Job dropdown correctly hides non-open jobs** — but the wizard defaults new jobs to `status = 'draft'`, so a job the user just "created" through the full wizard stays a draft and is (correctly) excluded from the Add Candidate picker. The wizard already has a status field, but its default is wrong for a user who walked all the way through to the Summary step and clicked the final Create/Publish action — at that point they clearly intend the job to be open, not a draft.
 
-What **does** get wiped is the in-component UI state for steps 2 and 3, which today lives in plain `useState` hooks inside those step components. When you navigate away to the Summary, the step unmounts; when you come back via "Edit step X", it remounts and those `useState` values reset to their defaults — so it *looks* like everything was cleared.
+   Confirmed already-correct behavior:
+   - `useJobsForCandidateAssignment` filters `status = 'open'` → keep as-is (don't pollute dropdowns with drafts/closed/archived).
+   - `useJobs.createJob` already persists whatever `status` the wizard hands it via `...jobData`.
+   - When the Add Candidate sheet is opened from inside a job, `CandidateFormSheet` auto-selects that job via the `jobId` prop.
 
-Specifically, the following are lost on remount:
+2. **Professional section is manual.** Resume parsing currently fills name, email, phone, LinkedIn, location, profile summary — but not Current role, Current company, or Years of experience. The data lives in the resume; the user shouldn't have to retype it.
 
-**Step 2 — Hiring plan** (`HiringPlanStep.tsx`)
-- `selectedTemplate` — the highlighted template card (Workspace default / Lean tech / Exec)
-- `rejectOutsideLocations`, `rejectSalaryAbove`, `rejectRepeatApplicant` — auto-rejection toggles
-- `autoScore`, `autoRejectBelow`, `autoRejectThreshold`, `generateSummary` — AI auto-screen toggles
+## Plan
 
-(The actual pipeline stages in `HiringPlanTab` are DB-backed and reload correctly, but the template card no longer shows as selected, which is the strongest "this was wiped" signal.)
+### 1. Default the wizard's final-step submission to `status = 'open'`
 
-**Step 3 — Hiring team** (`HiringTeamStep.tsx`)
-- `reportsToId`, `coordinatorId`
-- `notifyOnApplications`, `dailyDigest`, `notifyStageMoves`
-- `memberSearch`
+Keep the dropdown filter strict (`status = 'open'` only). Fix the source instead:
 
-(Assignments themselves are DB-backed via `useJobAssignments` and reload correctly.)
+- `src/components/jobs/JobWizard.tsx`: in the submit handler that calls `createJob(wizardState.jobData)` (around line 184), ensure the payload is `{ ...wizardState.jobData, status: wizardState.jobData.status ?? 'open' }`. This only flips the default when the user never touched the status field; if they explicitly set Draft/Closed/etc. in Step 1, we respect that.
+- `src/components/jobs/wizard/JobInfoStep.tsx`: change the displayed default in the status Select from `'draft'` to `'open'` (lines 116, 239 area) so the UI matches what we'll save. Users who want a draft can still pick it explicitly; users who want "Save & exit" without finishing the wizard continue to get a draft via the existing save-as-draft path (unchanged).
+- Do **not** modify `useJobsForCandidateAssignment` — drafts/closed/archived continue to be excluded so the dropdown stays focused on actionable jobs.
 
-Step 1 is fully controlled via `wizardState.jobData`, and Step 4 saves its posting on "Continue", so neither of those should lose data on remount — the user's report matches the Step 2/3 local-state pattern.
+### 2. AI-parse the Professional fields from the resume
 
-## Fix
+Extend the existing `parse-resume` edge function and client wiring to return three new fields and apply them to the form.
 
-Lift the local UI state of Steps 2 and 3 into `JobWizard`'s `wizardState`, then pass it down as controlled props. This is exactly the same pattern Step 1 already uses (`jobData` + `onUpdate`), and it survives unmount/remount because the parent never unmounts during step navigation.
+**Edge function** (`supabase/functions/parse-resume/index.ts`):
+- Add `currentRole`, `currentCompany`, `yearsExperience` (integer) to the `ParseResult` type and to the JSON schema in both `core` and `full` system prompts.
+- Extraction rules:
+  - `currentRole`: most recent job title (top of Experience, or the one marked "Present").
+  - `currentCompany`: company name for that most recent role.
+  - `yearsExperience`: integer total years of professional experience. If not explicitly stated, infer from the earliest professional start date to today, rounded to nearest whole year. Null if unclear (anti-hallucination — never guess).
+- Bump core-mode `max_tokens` from 300 → 500 to fit the additional fields.
 
-### Changes
+**Client type** (`src/hooks/useResumeParsing.ts`):
+- Extend `ParsedResume` with `currentRole?: string`, `currentCompany?: string`, `yearsExperience?: number`. Add them to the `console.log` summary so debugging stays useful.
 
-1. **`src/components/jobs/JobWizard.tsx`**
-   - Extend `WizardState` with two new sub-objects:
-     - `hiringPlanUi: { selectedTemplate, rejectOutsideLocations, rejectSalaryAbove, rejectRepeatApplicant, autoScore, autoRejectBelow, autoRejectThreshold, generateSummary }`
-     - `hiringTeamUi: { reportsToId, coordinatorId, notifyOnApplications, dailyDigest, notifyStageMoves, memberSearch }`
-   - Initialize them in `seedData`/`resetWizard` with the current defaults.
-   - Add `updateHiringPlanUi` / `updateHiringTeamUi` helpers (shallow merge, same shape as `updateJobData`).
-   - Pass `value` + `onChange` props into `<HiringPlanStep>` and `<HiringTeamStep>`.
-
-2. **`src/components/jobs/wizard/HiringPlanStep.tsx`**
-   - Replace the seven `useState` declarations listed above with controlled props from the parent.
-   - Keep `applyingTemplate` and `planVersion` as local state (they're transient — in-flight save indicator and HiringPlanTab remount key — and don't represent user choices to preserve).
-
-3. **`src/components/jobs/wizard/HiringTeamStep.tsx`**
-   - Replace the six `useState` declarations listed above with controlled props from the parent.
-   - `memberSearch` can stay local if we want the search box to clear on revisit; safer to lift it too for full consistency.
+**Form wiring** — only set when the field is currently empty (never overwrite user input):
+- `src/components/candidates/CandidateFormSheet.tsx`: in the parse-resume `onParsed` handler, call `setValue('current_role', …)`, `setValue('current_company', …)`, `setValue('years_experience', String(…))` when parsed values exist and the corresponding form field is blank.
+- `src/components/candidates/IndependentCandidateForm.tsx`: mirror the same setters in its `onParsed` callback (around lines 240-303).
+- Confirm `src/components/candidates/ApolloPreviewSheet.tsx` and any other consumer of `ParsedResume` doesn't need a matching change.
 
 ### Out of scope
+- No DB migrations. `current_role` / `current_company` / `years_experience` are already part of the form payload.
+- No change to RLS/role logic in `useJobsForCandidateAssignment` — only the status default in the wizard changes.
+- No change to the "auto-select job when opened from inside a job" behavior — already works.
 
-- No DB schema changes. These fields are still "UI only, wired to backend in a follow-up" per the existing code comments — this plan just makes them survive in-session navigation, which is what the user reported.
-- Resuming a draft from Jobs → Drafts after closing the wizard will still start these toggles at their defaults (unchanged behavior). If you want them to persist across sessions too, that's a separate follow-up that requires backend columns.
-
-### Validation
-
-- Open the wizard, fill Step 1, advance to Step 2, pick "Lean tech hire", flip a couple of auto-rejection toggles, advance through Steps 3, 4 to Summary.
-- From Summary, click **Edit step 2** → template card should still be highlighted, toggles should still match what you set.
-- Repeat for Step 3 (assign a member, change notification toggles, go to Summary, Edit step 3).
+## Verification
+- Complete the job wizard to Summary and submit → the new job is created with `status = 'open'` and appears immediately in the Add Candidate "Assign to a job" dropdown (both from top-bar "New Candidate" and from inside another job).
+- Save a job as Draft (explicitly) → it does **not** appear in the dropdown. ✔ correct behavior.
+- Open Add Candidate from inside a job → that job is pre-selected (unchanged).
+- Upload a resume in the Add Candidate sheet → Current role / Current company / Years of experience auto-fill alongside the other parsed fields.
