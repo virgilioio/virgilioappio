@@ -1961,6 +1961,7 @@ const stageHasAutomation = useMemo(() => {
           candidateEmail={candidate.email || ''}
           candidatePhone={candidate.phone}
           organizationId={organizationId}
+          jhsId={currentStageId}
         />
       )}
     </div>

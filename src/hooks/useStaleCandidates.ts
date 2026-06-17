@@ -53,8 +53,12 @@ export function useStaleCandidates() {
       thresholdDate.setDate(thresholdDate.getDate() - STALE_THRESHOLD_DAYS);
       const now = new Date().toISOString();
 
-      // Step 1: Get potential stale candidates (by entered_stage_at)
-      // Also fetch booking_link_sent_at and whatsapp_template_sent_at from the association
+      // Step 1: Get potential stale candidates.
+      // A candidate is potentially stale if EITHER:
+      //  - their entered_stage_at is older than the global activity threshold, OR
+      //  - their stage has SLA enabled and they're past its sla_days target.
+      // We fetch the union by querying broadly (all active, with entered_stage_at set)
+      // and filter in JS using each row's per-stage SLA setting.
       let query = supabase
         .from('job_candidate_associations')
         .select(`
@@ -69,6 +73,8 @@ export function useStaleCandidates() {
           jobs!inner(id, title, deleted_at),
           job_hiring_stages!inner(
             id,
+            sla_enabled,
+            sla_days,
             job_stages!inner(stage_name, stage_type)
           )
         `)
@@ -76,9 +82,8 @@ export function useStaleCandidates() {
         .is('jobs.deleted_at', null)
         .not('current_stage_id', 'is', null)
         .not('entered_stage_at', 'is', null)
-        .lt('entered_stage_at', thresholdDate.toISOString())
         .order('entered_stage_at', { ascending: true })
-        .limit(100);
+        .limit(300);
 
       if (assignedJobIds) {
         query = query.in('job_id', assignedJobIds);
@@ -191,6 +196,22 @@ export function useStaleCandidates() {
           continue;
         }
 
+        const enteredAt = new Date(row.entered_stage_at!);
+        const daysInStage = differenceInDays(new Date(), enteredAt);
+
+        // Per-stage SLA target (additive trigger)
+        const slaEnabled = !!stage?.sla_enabled;
+        const slaDays = typeof stage?.sla_days === 'number' ? stage.sla_days : null;
+        const slaBreached = slaEnabled && slaDays != null && daysInStage > slaDays;
+
+        // Global activity-based potential staleness
+        const enteredBeforeThreshold = enteredAt.getTime() < thresholdDate.getTime();
+
+        // If neither rule applies for this row, drop it
+        if (!slaBreached && !enteredBeforeThreshold) {
+          continue;
+        }
+
         // Skip if has upcoming confirmed booking
         if (candidatesWithBookings.has(`${row.candidate_id}-${row.job_id}`)) {
           continue;
@@ -216,16 +237,16 @@ export function useStaleCandidates() {
           latestBookingByKey.get(key) ?? null,
         );
 
-        // If last activity is within threshold, candidate is NOT stale
-        if (lastActivity && lastActivity.getTime() > thresholdMs) {
+        // For the activity-based path only, suppress if recent activity is within threshold.
+        // SLA-breached rows are always surfaced regardless of recent activity.
+        if (!slaBreached && lastActivity && lastActivity.getTime() > thresholdMs) {
           continue;
         }
 
-        const enteredAt = new Date(row.entered_stage_at!);
-        const daysInStage = differenceInDays(new Date(), enteredAt);
         const daysSinceLastActivity = lastActivity
           ? differenceInDays(new Date(), lastActivity)
           : daysInStage;
+
 
         staleCandidates.push({
           associationId: row.id,

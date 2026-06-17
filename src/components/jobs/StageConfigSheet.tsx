@@ -13,6 +13,7 @@ import { ScorecardsTab } from './stage-config/ScorecardsTab'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { cn } from '@/lib/utils'
+import { formatDistanceToNow } from 'date-fns'
 
 interface StageConfigSheetProps {
   open: boolean
@@ -31,9 +32,10 @@ const TABS: { key: TabKey; label: string }[] = [
 ]
 
 export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConfigSheetProps) {
-  const { loadStageConfig, updateCustomStageName, isLoading } = useStageConfiguration()
+  const { loadStageConfig, updateCustomStageName, updateAdditionalSettings, isLoading } = useStageConfiguration()
   const [config, setConfig] = useState<StageConfiguration | null>(null)
   const [activeTab, setActiveTab] = useState<TabKey>('scorecards')
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
 
   const { data: job } = useQuery({
     queryKey: ['job-org-context', jobId],
@@ -51,7 +53,10 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
 
   useEffect(() => {
     if (open && jhsId) {
-      loadStageConfig(jhsId).then(setConfig).catch(console.error)
+      loadStageConfig(jhsId).then((c) => {
+        setConfig(c)
+        setLastSavedAt(c.updatedAt ? new Date(c.updatedAt) : null)
+      }).catch(console.error)
     }
   }, [open, jhsId])
 
@@ -60,6 +65,21 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
     await updateCustomStageName.mutateAsync({ jhsId, customName })
     const updated = await loadStageConfig(jhsId)
     setConfig(updated)
+    setLastSavedAt(new Date())
+  }
+
+  const handleSaveAdditional = async (payload: Parameters<typeof updateAdditionalSettings.mutateAsync>[0]['payload']) => {
+    if (!jhsId) return
+    await updateAdditionalSettings.mutateAsync({ jhsId, payload })
+    setConfig((prev) => prev ? {
+      ...prev,
+      interviewDurationMinutes: payload.interviewDurationMinutes,
+      interviewFormat: payload.interviewFormat,
+      slaEnabled: payload.slaEnabled,
+      slaDays: payload.slaDays,
+      stageInstructions: payload.stageInstructions,
+    } : prev)
+    setLastSavedAt(new Date())
   }
 
   return (
@@ -129,6 +149,7 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
                 <BasicsTab
                   config={config}
                   onSave={handleSaveBasics}
+                  onSaveAdditional={handleSaveAdditional}
                   isSaving={updateCustomStageName.isPending}
                 />
               )}
@@ -162,7 +183,13 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
                 style={{ fontSize: 12, color: '#8B8F9E' }}
               >
                 <Check className="h-3.5 w-3.5" style={{ color: '#12B886' }} />
-                <span>Auto-saved · last edit 8 days ago by you</span>
+                <span>
+                  {updateAdditionalSettings.isPending
+                    ? 'Saving…'
+                    : lastSavedAt
+                      ? `Auto-saved · ${formatDistanceToNow(lastSavedAt, { addSuffix: true })}`
+                      : 'Auto-saved'}
+                </span>
               </div>
               <Button variant="secondary" size="sm" onClick={() => onOpenChange(false)}>
                 Close

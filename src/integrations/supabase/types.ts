@@ -2917,10 +2917,15 @@ export type Database = {
           created_by: string | null
           custom_stage_name: string | null
           id: string
+          interview_duration_minutes: number | null
+          interview_format: string | null
           interviewer_scheduling_mode: string
           job_id: string
           position: number
+          sla_days: number | null
+          sla_enabled: boolean
           stage_id: string
+          stage_instructions: string | null
           updated_at: string
         }
         Insert: {
@@ -2928,10 +2933,15 @@ export type Database = {
           created_by?: string | null
           custom_stage_name?: string | null
           id?: string
+          interview_duration_minutes?: number | null
+          interview_format?: string | null
           interviewer_scheduling_mode?: string
           job_id: string
           position: number
+          sla_days?: number | null
+          sla_enabled?: boolean
           stage_id: string
+          stage_instructions?: string | null
           updated_at?: string
         }
         Update: {
@@ -2939,10 +2949,15 @@ export type Database = {
           created_by?: string | null
           custom_stage_name?: string | null
           id?: string
+          interview_duration_minutes?: number | null
+          interview_format?: string | null
           interviewer_scheduling_mode?: string
           job_id?: string
           position?: number
+          sla_days?: number | null
+          sla_enabled?: boolean
           stage_id?: string
+          stage_instructions?: string | null
           updated_at?: string
         }
         Relationships: [

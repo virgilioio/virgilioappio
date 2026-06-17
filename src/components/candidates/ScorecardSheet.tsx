@@ -87,6 +87,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LinkedInFilled } from "@/components/icons/LinkedInFilled";
+import { useStageInterviewDefaults } from "@/hooks/useStageInterviewDefaults";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -113,6 +114,94 @@ interface QuestionResponse {
   questionId: string;
   answerText?: string;
   answerOptions?: string[];
+}
+
+function InterviewDetailsTab({ jhsId }: { jhsId: string }) {
+  const { data, isLoading } = useStageInterviewDefaults(jhsId);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  const formatLabel = data?.interviewFormat
+    ? { video: 'Video call', phone: 'Phone', onsite: 'On-site' }[data.interviewFormat]
+    : null;
+  const hasAny =
+    !!data &&
+    (data.stageInstructions || data.interviewDurationMinutes || data.interviewFormat || data.slaEnabled);
+  if (!hasAny) {
+    return (
+      <div className="py-10">
+        <InlineEmpty text="No interview details configured for this stage yet." />
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {data?.stageInstructions && (
+        <div
+          style={{
+            background: '#FAF8FF',
+            border: '1px solid #EDE4FF',
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
+          <div
+            className="font-poppins font-semibold mb-1.5"
+            style={{ fontSize: 12.5, color: '#5B21B6', letterSpacing: '-0.01em' }}
+          >
+            Stage instructions
+          </div>
+          <p
+            className="font-inter whitespace-pre-wrap"
+            style={{ fontSize: 13, lineHeight: 1.55, color: '#1F2230' }}
+          >
+            {data.stageInstructions}
+          </p>
+        </div>
+      )}
+      {(data?.interviewDurationMinutes || formatLabel || data?.slaEnabled) && (
+        <div
+          style={{
+            background: '#FFFFFF',
+            border: '1px solid #E7E8EE',
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
+          <div
+            className="font-poppins font-semibold mb-3"
+            style={{ fontSize: 10.5, color: '#8B8F9E', letterSpacing: '0.04em', textTransform: 'uppercase' }}
+          >
+            Stage defaults
+          </div>
+          <dl className="grid grid-cols-2 gap-3 font-inter" style={{ fontSize: 12.5, color: '#1F2230' }}>
+            {data?.interviewDurationMinutes && (
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide" style={{ color: '#8B8F9E' }}>Duration</dt>
+                <dd style={{ fontWeight: 500 }}>{data.interviewDurationMinutes} min</dd>
+              </div>
+            )}
+            {formatLabel && (
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide" style={{ color: '#8B8F9E' }}>Format</dt>
+                <dd style={{ fontWeight: 500 }}>{formatLabel}</dd>
+              </div>
+            )}
+            {data?.slaEnabled && data?.slaDays && (
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide" style={{ color: '#8B8F9E' }}>SLA target</dt>
+                <dd style={{ fontWeight: 500 }}>Flag after {data.slaDays} days</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const ratingOptions: { value: ScoreRating; label: string }[] = [
@@ -998,9 +1087,8 @@ export function ScorecardSheet({
                     <TabsList>
                       <TabsTrigger value="resume">Resume</TabsTrigger>
                       <TabsTrigger value="application">Application</TabsTrigger>
-                      <TabsTrigger value="interview-details" disabled className="gap-2">
+                      <TabsTrigger value="interview-details">
                         Interview Details
-                        <SoonBadge />
                       </TabsTrigger>
                     </TabsList>
                   </div>
@@ -1032,10 +1120,8 @@ export function ScorecardSheet({
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="interview-details" className="flex-1 overflow-hidden m-0 p-4">
-                    <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                      <p className="text-sm text-muted-foreground">Interview details coming soon</p>
-                    </div>
+                  <TabsContent value="interview-details" className="flex-1 overflow-y-auto m-0 p-6">
+                    <InterviewDetailsTab jhsId={stageInstanceId} />
                   </TabsContent>
                 </Tabs>
               </div>

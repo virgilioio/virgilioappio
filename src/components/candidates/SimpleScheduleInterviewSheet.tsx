@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useStageInterviewDefaults } from '@/hooks/useStageInterviewDefaults';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -270,6 +271,9 @@ interface SimpleScheduleInterviewSheetProps {
   candidateEmail: string;
   candidatePhone?: string;
   organizationId: string;
+  /** Optional job_hiring_stages.id — when provided, the stage's configured
+   *  interview duration and format are used as defaults. */
+  jhsId?: string | null;
 }
 
 export function SimpleScheduleInterviewSheet({
@@ -280,9 +284,11 @@ export function SimpleScheduleInterviewSheet({
   candidateEmail,
   candidatePhone,
   organizationId,
+  jhsId,
 }: SimpleScheduleInterviewSheetProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const stageDefaults = useStageInterviewDefaults(jhsId);
   const [selectedInterviewer, setSelectedInterviewer] = useState<TeamInterviewer | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -293,6 +299,26 @@ export function SimpleScheduleInterviewSheet({
   const [customEventTitle, setCustomEventTitle] = useState('');
   const [guestEmails, setGuestEmails] = useState<string[]>([]);
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Apply per-stage defaults once they load (only if the user hasn't picked a slot yet)
+  useEffect(() => {
+    const d = stageDefaults.data;
+    if (!d || selectedSlot) return;
+    if (d.interviewDurationMinutes) {
+      setSelectedDuration(d.interviewDurationMinutes);
+    }
+    // Map interview_format → meeting_type_preference (phone/onsite ⇒ custom location)
+    if (d.interviewFormat === 'phone') {
+      setMeetingType('custom');
+      if (!customLocation) setCustomLocation('Phone call');
+    } else if (d.interviewFormat === 'onsite') {
+      setMeetingType('custom');
+      if (!customLocation) setCustomLocation('On-site');
+    } else if (d.interviewFormat === 'video') {
+      setMeetingType('google_meet');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageDefaults.data]);
 
   // Fetch availability for selected interviewer
   const monthStart = startOfMonth(currentMonth);

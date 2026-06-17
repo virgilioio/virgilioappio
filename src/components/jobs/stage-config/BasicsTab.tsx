@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Check, Loader2, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { StageConfiguration } from '@/hooks/useStageConfiguration'
+import type { StageConfiguration, AdditionalSettingsPayload } from '@/hooks/useStageConfiguration'
 
 interface BasicsTabProps {
   config: StageConfiguration
   onSave: (customName: string | null) => Promise<void>
+  onSaveAdditional: (payload: AdditionalSettingsPayload) => Promise<void>
   isSaving: boolean
 }
 
@@ -94,18 +95,38 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   )
 }
 
-export function BasicsTab({ config, onSave, isSaving }: BasicsTabProps) {
+export function BasicsTab({ config, onSave, onSaveAdditional, isSaving }: BasicsTabProps) {
   const [customName, setCustomName] = useState(config.customStageName || '')
   const [hasChanges, setHasChanges] = useState(false)
-  const [duration, setDuration] = useState<Duration>(45)
-  const [format, setFormat] = useState<Format>('video')
-  const [slaEnabled, setSlaEnabled] = useState(true)
-  const [slaDays, setSlaDays] = useState(5)
-  const [instructions, setInstructions] = useState('')
+  const [duration, setDuration] = useState<Duration>((config.interviewDurationMinutes as Duration) || 45)
+  const [format, setFormat] = useState<Format>(config.interviewFormat || 'video')
+  const [slaEnabled, setSlaEnabled] = useState(config.slaEnabled)
+  const [slaDays, setSlaDays] = useState(config.slaDays ?? 5)
+  const [instructions, setInstructions] = useState(config.stageInstructions || '')
+  const skipFirstAutosave = useRef(true)
 
   useEffect(() => {
     setHasChanges(customName.trim() !== (config.customStageName || ''))
   }, [customName, config.customStageName])
+
+  // Debounced auto-save for additional settings
+  useEffect(() => {
+    if (skipFirstAutosave.current) {
+      skipFirstAutosave.current = false
+      return
+    }
+    const handle = setTimeout(() => {
+      onSaveAdditional({
+        interviewDurationMinutes: duration,
+        interviewFormat: format,
+        slaEnabled,
+        slaDays: slaEnabled ? Math.max(1, slaDays) : null,
+        stageInstructions: instructions,
+      }).catch(() => {})
+    }, 600)
+    return () => clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duration, format, slaEnabled, slaDays, instructions])
 
   const handleSave = async () => {
     await onSave(customName.trim() || null)
