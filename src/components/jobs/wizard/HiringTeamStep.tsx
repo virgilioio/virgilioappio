@@ -46,7 +46,7 @@ const SCOPE_BY_ROLE: Record<JobAssignmentRole, string> = {
   interviewer: 'Interviewer · scorecards',
 }
 
-export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
+export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: HiringTeamStepProps) {
   const { members, isLoading: membersLoading } = useMembers(true)
   const {
     assignments,
@@ -56,13 +56,15 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
     isLoading: assignmentsLoading,
   } = useJobAssignments(jobId || undefined)
 
-  // Local-only fields (no backend column yet)
-  const [reportsToId, setReportsToId] = useState<string>('')
-  const [coordinatorId, setCoordinatorId] = useState<string>('__same__')
-  const [notifyOnApplications, setNotifyOnApplications] = useState(true)
-  const [dailyDigest, setDailyDigest] = useState(true)
-  const [notifyStageMoves, setNotifyStageMoves] = useState(false)
-  const [memberSearch, setMemberSearch] = useState('')
+  // Local-only fields (no backend column yet) — lifted to wizard state so they
+  // survive remount when the user re-enters this step via "Edit step 3".
+  const { reportsToId, coordinatorId, notifyOnApplications, dailyDigest, notifyStageMoves, memberSearch } = ui
+  const setReportsToId = (v: string) => onUiChange({ reportsToId: v })
+  const setCoordinatorId = (v: string) => onUiChange({ coordinatorId: v })
+  const setNotifyOnApplications = (v: boolean) => onUiChange({ notifyOnApplications: v })
+  const setDailyDigest = (v: boolean) => onUiChange({ dailyDigest: v })
+  const setNotifyStageMoves = (v: boolean) => onUiChange({ notifyStageMoves: v })
+  const setMemberSearch = (v: string) => onUiChange({ memberSearch: v })
 
 
   const memberOptions = useMemo(
