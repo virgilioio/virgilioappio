@@ -692,8 +692,7 @@ export function CandidateFormSheet({
     }
   }, [candidate])
 
-  const visibleSkills = showAllSkills ? skills : skills.slice(0, MAX_VISIBLE_SKILLS)
-  const hiddenSkillsCount = Math.max(0, skills.length - MAX_VISIBLE_SKILLS)
+  // (Skills visibility handled inside SkillsSection)
 
   const isSubmitDisabled =
     isLoading || (!candidate && !jobId && !selectedJobId && !organizationId)
