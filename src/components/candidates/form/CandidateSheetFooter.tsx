@@ -17,6 +17,8 @@ interface CandidateSheetFooterProps {
   addedLabel?: string
   editedLabel?: string
   onOpenProfile?: () => void
+  /** Optional left-side live status line (overrides the default dedupe hint in add mode). */
+  statusLine?: React.ReactNode
 }
 
 /**
