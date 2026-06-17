@@ -97,6 +97,11 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
 export function BasicsTab({ config, onSave, isSaving }: BasicsTabProps) {
   const [customName, setCustomName] = useState(config.customStageName || '')
   const [hasChanges, setHasChanges] = useState(false)
+  const [duration, setDuration] = useState<Duration>(45)
+  const [format, setFormat] = useState<Format>('video')
+  const [slaEnabled, setSlaEnabled] = useState(true)
+  const [slaDays, setSlaDays] = useState(5)
+  const [instructions, setInstructions] = useState('')
 
   useEffect(() => {
     setHasChanges(customName.trim() !== (config.customStageName || ''))
