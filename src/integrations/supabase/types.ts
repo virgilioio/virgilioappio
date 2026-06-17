@@ -7057,6 +7057,22 @@ export type Database = {
         }[]
       }
       get_platform_tenant_id: { Args: never; Returns: string }
+      get_public_booking_profile: {
+        Args: { p_short_code: string }
+        Returns: {
+          avatar_url: string
+          first_name: string
+          last_name: string
+        }[]
+      }
+      get_public_tenant_info: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          about: string
+          id: string
+          name: string
+        }[]
+      }
       get_stage_deletion_impact: {
         Args: { stage_id_param: string }
         Returns: {
