@@ -1,5 +1,6 @@
 import React from 'react'
 import { Sparkles, RefreshCw } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CandidateSheetSection } from './CandidateSheetSection'
 import { GeneratingCard } from './GeneratingCard'
@@ -11,6 +12,7 @@ interface ProfileSummarySectionProps {
   /** Plain-text summary used for the done state. */
   summary: string
   onRegenerate?: () => void
+  isEdit?: boolean
 }
 
 /**
@@ -23,24 +25,50 @@ export function ProfileSummarySection({
   enrich,
   summary,
   onRegenerate,
+  isEdit = false,
 }: ProfileSummarySectionProps) {
-  const rightMeta =
-    enrich === 'done' && summary ? (
-      <div className="flex items-center gap-2">
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 h-[18px] font-poppins text-[10.5px] font-semibold"
-          style={{ background: '#EDE4FF', color: '#5B21B6' }}
-        >
-          <Sparkles className="h-3 w-3" strokeWidth={1.75} />
-          Gio generated
-        </span>
-        {onRegenerate && (
-          <Button type="button" variant="ghost" size="sm" icon={RefreshCw} onClick={onRegenerate}>
-            Regenerate
-          </Button>
-        )}
-      </div>
-    ) : null
+  let rightMeta: React.ReactNode = null
+
+  if (isEdit) {
+    if (enrich !== 'working') {
+      rightMeta = (
+        <div className="flex items-center gap-[6px]">
+          <Badge tone="lilac" size="xs" icon={Sparkles}>
+            Gio generated
+          </Badge>
+          <Badge tone="neutral" size="xs" icon={RefreshCw}>
+            Re-runs on new CV
+          </Badge>
+          {onRegenerate && (
+            <Button type="button" variant="ghost" size="sm" icon={RefreshCw} onClick={onRegenerate}>
+              Regenerate
+            </Button>
+          )}
+        </div>
+      )
+    }
+  } else {
+    if (enrich === 'idle') {
+      rightMeta = (
+        <Badge tone="lilac" size="xs" icon={Sparkles}>
+          Gio fills automatically
+        </Badge>
+      )
+    } else if (enrich === 'done' && summary) {
+      rightMeta = (
+        <div className="flex items-center gap-2">
+          <Badge tone="lilac" size="xs" icon={Sparkles}>
+            Gio generated
+          </Badge>
+          {onRegenerate && (
+            <Button type="button" variant="ghost" size="sm" icon={RefreshCw} onClick={onRegenerate}>
+              Regenerate
+            </Button>
+          )}
+        </div>
+      )
+    }
+  }
 
   return (
     <CandidateSheetSection label="Profile summary" rightMeta={rightMeta}>
