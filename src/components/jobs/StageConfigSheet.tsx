@@ -13,6 +13,7 @@ import { ScorecardsTab } from './stage-config/ScorecardsTab'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { cn } from '@/lib/utils'
+import { formatDistanceToNow } from 'date-fns'
 
 interface StageConfigSheetProps {
   open: boolean
