@@ -1,14 +1,70 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { Check, Loader2, RotateCcw } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { StageConfiguration } from '@/hooks/useStageConfiguration'
 
 interface BasicsTabProps {
   config: StageConfiguration
   onSave: (customName: string | null) => Promise<void>
   isSaving: boolean
+}
+
+type Duration = 15 | 30 | 45 | 60 | 90
+type Format = 'video' | 'phone' | 'onsite'
+
+const DURATIONS: Duration[] = [15, 30, 45, 60, 90]
+const FORMATS: { key: Format; label: string }[] = [
+  { key: 'video', label: 'Video call' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'onsite', label: 'On-site' },
+]
+
+function Segmented<T extends string | number>({
+  value,
+  options,
+  onChange,
+  format,
+}: {
+  value: T
+  options: T[]
+  onChange: (v: T) => void
+  format?: (v: T) => string
+}) {
+  return (
+    <div
+      className="flex w-full"
+      style={{ background: '#F1F0EC', borderRadius: 8, padding: 2 }}
+    >
+      {options.map((opt) => {
+        const active = opt === value
+        return (
+          <button
+            key={String(opt)}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={cn(
+              'flex-1 font-poppins font-medium transition-all',
+              active ? 'text-[#1F2230]' : 'text-[#5A6072] hover:text-[#1F2230]'
+            )}
+            style={{
+              fontSize: 12,
+              padding: '6px 8px',
+              borderRadius: 6,
+              background: active ? '#fff' : 'transparent',
+              boxShadow: active ? '0 1px 2px rgba(13,13,9,0.06)' : 'none',
+            }}
+          >
+            {format ? format(opt) : opt}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
