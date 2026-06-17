@@ -224,7 +224,7 @@ export function BasicsTab({ config, onSave, isSaving }: BasicsTabProps) {
             <p className="font-inter mb-2" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
               Default meeting length used when scheduling this stage.
             </p>
-            <Segmented<Duration>
+            <Segmented
               value={duration}
               options={DURATIONS}
               onChange={setDuration}
