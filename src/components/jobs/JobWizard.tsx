@@ -292,6 +292,8 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
             jobId={wizardState.createdJobId}
             onNext={handleNextStep}
             onBack={handlePrevStep}
+            ui={wizardState.hiringPlanUi}
+            onUiChange={updateHiringPlanUi}
           />
         )
       case 3:
@@ -300,6 +302,8 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
             jobId={wizardState.createdJobId}
             onNext={handleNextStep}
             onBack={handlePrevStep}
+            ui={wizardState.hiringTeamUi}
+            onUiChange={updateHiringTeamUi}
           />
         )
       case 4:
