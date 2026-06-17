@@ -28,6 +28,7 @@ import {
   getShortToken,
   resolveBookingToken,
 } from '@/lib/bookingLinkUtils';
+import { useReportSplashReady } from '@/contexts/SplashReadyContext';
 
 // Common timezones for the selector
 const COMMON_TIMEZONES = [
