@@ -17,10 +17,21 @@ import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignm
 import { useMembers } from '@/hooks/useMembers'
 import { SectionCard, FieldLabel, FieldHint, ToggleRow, MemberAvatar, RoleCard, InfoLink } from './_parts'
 
+interface HiringTeamUi {
+  reportsToId: string
+  coordinatorId: string
+  notifyOnApplications: boolean
+  dailyDigest: boolean
+  notifyStageMoves: boolean
+  memberSearch: string
+}
+
 interface HiringTeamStepProps {
   jobId: string | null
   onNext: () => void
   onBack: () => void
+  ui: HiringTeamUi
+  onUiChange: (patch: Partial<HiringTeamUi>) => void
 }
 
 const DB_ROLE_LABEL: Record<JobAssignmentRole, string> = {
