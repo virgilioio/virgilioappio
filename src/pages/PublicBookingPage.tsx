@@ -162,6 +162,10 @@ export default function PublicBookingPage() {
     retry: false,
   });
 
+  // Dismiss the cold-load splash once initial config + token resolution settle.
+  useReportSplashReady(!isLoading && !isResolvingToken);
+
+
   // Fetch event types for this booking config
   const { data: eventTypes = [], isLoading: isLoadingEventTypes } = useQuery({
     queryKey: ['public-event-types', config?.id],
