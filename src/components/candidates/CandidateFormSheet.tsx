@@ -1044,6 +1044,7 @@ export function CandidateFormSheet({
             <ProfileSummarySection
               enrich={enrich}
               summary={profileSummary}
+              isEdit={isEdit}
               onRegenerate={
                 capturedResumeText
                   ? () => {
