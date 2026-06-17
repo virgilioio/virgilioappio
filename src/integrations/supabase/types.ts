@@ -3125,6 +3125,7 @@ export type Database = {
           created_at: string
           created_by: string
           general_overview: string | null
+          gio_added_questions: Json
           id: string
           is_ai_draft: boolean | null
           job_id: string
@@ -3140,6 +3141,7 @@ export type Database = {
           created_at?: string
           created_by: string
           general_overview?: string | null
+          gio_added_questions?: Json
           id?: string
           is_ai_draft?: boolean | null
           job_id: string
@@ -3155,6 +3157,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           general_overview?: string | null
+          gio_added_questions?: Json
           id?: string
           is_ai_draft?: boolean | null
           job_id?: string

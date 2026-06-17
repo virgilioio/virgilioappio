@@ -75,6 +75,9 @@ import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CandidateApplicationResponses } from "@/components/candidates/CandidateApplicationResponses";
 import { ScorecardValidationPoints } from "./ScorecardValidationPoints";
+import { GioPointsInbox } from "./scorecard/GioPointsInbox";
+import { AddedFromGioBlock } from "./scorecard/AddedFromGioBlock";
+import { useGioAddedQuestions } from "@/hooks/useGioAddedQuestions";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import {
   AlertDialog,
@@ -257,6 +260,8 @@ export function ScorecardSheet({
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isAiDraft, setIsAiDraft] = useState(false);
+  const gioAdded = useGioAddedQuestions((existing as any)?.gio_added_questions);
+
 
   // Track current values in refs for reliable close-time saving
   const overviewRef = useRef(overview);
@@ -719,6 +724,15 @@ export function ScorecardSheet({
         scorecardId = latestScorecard?.id;
       }
 
+      // Persist Gio-added questions + their answers on the scorecard row.
+      if (scorecardId) {
+        try {
+          await gioAdded.persist(scorecardId);
+        } catch (e) {
+          console.warn('Failed to persist gio_added_questions', e);
+        }
+      }
+
       if (scorecardId && questions.length > 0) {
         await supabase
           .from('scorecard_question_responses')
@@ -1128,13 +1142,19 @@ export function ScorecardSheet({
 
               {/* Right Panel - Scorecard Form */}
               <div className="w-[50%] overflow-y-auto p-6 space-y-6">
-                {/* Validation Points Panel */}
+                {/* Points to validate — Gio suggestion inbox */}
                 {candidateId && jobId && stageName && (
-                  <ScorecardValidationPoints
+                  <GioPointsInbox
                     candidateId={candidateId}
                     jobId={jobId}
                     associationId={associationId}
                     stageName={stageName}
+                    scorecardId={existing?.id ?? null}
+                    readOnly={isReadOnly}
+                    onAdd={(idx, q) =>
+                      gioAdded.add({ source_point_index: idx, question: q })
+                    }
+                    onRemoveAdded={(idx) => gioAdded.remove(idx)}
                   />
                 )}
                 {/* AI Suggested Rating Banner */}
@@ -1248,12 +1268,39 @@ export function ScorecardSheet({
                   </RadioGroup>
                 </div>
 
-                {!loadingQuestions && questions.length > 0 && (
+                {(!loadingQuestions && questions.length > 0) || gioAdded.items.length > 0 ? (
                   <div className="space-y-6 border-t border-virgilio-border pt-6">
                     <h3 className="text-base font-semibold text-virgilio-text">Interview Questions</h3>
                     {questions.map(renderQuestion)}
+                    {gioAdded.items.map((q) => (
+                      <AddedFromGioBlock
+                        key={q.id}
+                        item={q}
+                        readOnly={isReadOnly}
+                        onAnswerChange={gioAdded.setAnswer}
+                        onRemove={(idx) => {
+                          gioAdded.remove(idx);
+                          // Revert decision so it returns to the inbox.
+                          import('@/lib/supabaseClient').then(({ supabase }) =>
+                            supabase
+                              .from('validation_point_resolutions')
+                              .upsert(
+                                {
+                                  association_id: associationId,
+                                  point_index: idx,
+                                  point_question: q.question,
+                                  status: 'dismissed',
+                                  resolved_in_stage: stageName ?? '',
+                                  resolved_at: new Date().toISOString(),
+                                } as any,
+                                { onConflict: 'association_id,point_index' }
+                              )
+                          );
+                        }}
+                      />
+                    ))}
                   </div>
-                )}
+                ) : null}
 
                 <div className="space-y-2 border-t border-virgilio-border pt-6">
                   <div className="mb-2">
