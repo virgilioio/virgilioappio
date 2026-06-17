@@ -248,3 +248,17 @@ export const SoftFind = () => (
     <circle cx="116" cy="89" r="5" fill="#46B86A" />
   </SSvg>
 )
+
+// 15 · Envelope — create / empty automations
+export const SoftEnvelope = () => (
+  <SSvg>
+    <Blob fill="#F0E9FF" />
+    <ellipse cx="95" cy="116" rx="42" ry="5" fill="#000" opacity="0.05" />
+    <rect x="46" y="58" width="98" height="58" rx="8" fill="#D7C5FB" />
+    <path d="M46 66 L95 100 L144 66" fill="none" stroke="#B79BF0" strokeWidth="3" strokeLinejoin="round" />
+    <path d="M46 66 L95 100 L144 66 L144 74 L95 108 L46 74 Z" fill="#fff" fillOpacity="0.7" />
+    <circle cx="140" cy="60" r="11" fill="#6F3FF5" />
+    <path d="M140 55 v10 M135 60 h10" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
+    <Spark x={58} y={50} s={6.5} />
+  </SSvg>
+)
