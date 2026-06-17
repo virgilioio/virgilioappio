@@ -526,21 +526,122 @@ export function CandidateFormSheet({
     }
   })
 
-  const addSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()])
-      setNewSkill('')
-    }
+  const addSkill = (skill: string) => {
+    const v = skill.trim()
+    if (v && !skills.includes(v)) setSkills([...skills, v])
   }
 
   const removeSkill = (skillToRemove: string) => {
     setSkills(skills.filter((skill) => skill !== skillToRemove))
   }
 
-  const handleSkillKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addSkill()
+  // ── Resume parse pipeline ─────────────────────────────────────────────────
+  const handleResumeFile = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max size is 10 MB', variant: 'destructive' })
+      return
+    }
+    // Reset relevant state
+    setPendingFiles([file])
+    setParsedFieldsCount(0)
+    setParseStep('parsing')
+    setEnrich('idle')
+    if (enrichTimerRef.current) {
+      clearTimeout(enrichTimerRef.current)
+      enrichTimerRef.current = null
+    }
+
+    try {
+      const result = await parseResumeCoreFields(file)
+      if (!isMountedRef.current) return
+      const parsed = result?.parsed as ParsedResumeData | undefined
+      if (result?.resumeText) setCapturedResumeText(result.resumeText)
+      let count = 0
+      if (parsed) {
+        if (parsed.name) {
+          form.setValue('candidate_name', parsed.name)
+          count++
+        }
+        if (parsed.email) {
+          form.setValue('email', parsed.email)
+          count++
+        }
+        if (parsed.phone) {
+          form.setValue('phone', sanitizeToE164(parsed.phone))
+          count++
+        }
+        if (parsed.linkedinUrl) {
+          let normalizedUrl = parsed.linkedinUrl.trim()
+          if (!normalizedUrl.match(/^https?:\/\//i)) normalizedUrl = `https://${normalizedUrl}`
+          form.setValue('linkedin_url', normalizedUrl)
+          count++
+        }
+        if (parsed.location) {
+          const parts = parsed.location.split(',').map((s) => s.trim())
+          if (parts.length === 3) {
+            form.setValue('location_city', parts[0])
+            form.setValue('location_state', parts[1])
+            form.setValue('location_country', parts[2])
+            count += 3
+          } else if (parts.length === 2) {
+            form.setValue('location_city', parts[0])
+            form.setValue('location_country', parts[1])
+            count += 2
+          } else {
+            form.setValue('location_city', parsed.location)
+            count++
+          }
+        }
+        if (parsed.currentRole && !form.getValues('current_role')) {
+          form.setValue('current_role', parsed.currentRole)
+          count++
+        }
+        if (parsed.currentCompany && !form.getValues('current_company')) {
+          form.setValue('current_company', parsed.currentCompany)
+          count++
+        }
+        if (typeof parsed.yearsExperience === 'number' && !form.getValues('years_experience')) {
+          form.setValue('years_experience', String(parsed.yearsExperience))
+          count++
+        }
+        // Profile summary may arrive in core parse; render as plain text.
+        if (parsed.profileSummary) {
+          const plain = parsed.profileSummary.replace(/<[^>]*>/g, '').trim()
+          setProfileSummary(plain)
+          count++
+        }
+      }
+      setParsedFieldsCount(count)
+      setParseStep('done')
+      setEnrich('working')
+      // Server-side enrichment is fire-and-forget; flip UI to "done" after ~3.4s
+      // so users see resolution. Skills/summary patches arrive on the record later.
+      enrichTimerRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return
+        setEnrich('done')
+      }, 3400)
+    } catch (err) {
+      console.error('Resume parse failed:', err)
+      if (!isMountedRef.current) return
+      setParseStep('idle')
+      setEnrich('idle')
+      toast({
+        title: 'Could not parse résumé',
+        description: 'You can still fill the form manually.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const clearResume = () => {
+    setPendingFiles([])
+    setParsedFieldsCount(0)
+    setParseStep('idle')
+    setEnrich('idle')
+    setCapturedResumeText('')
+    if (enrichTimerRef.current) {
+      clearTimeout(enrichTimerRef.current)
+      enrichTimerRef.current = null
     }
   }
 
