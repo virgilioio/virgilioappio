@@ -126,6 +126,8 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     createdJobId: null,
     jobData: seedData(),
     hasPosting: false,
+    hiringPlanUi: { ...DEFAULT_HIRING_PLAN_UI },
+    hiringTeamUi: { ...DEFAULT_HIRING_TEAM_UI },
   })
 
   const { createJob } = useJobs()
@@ -153,7 +155,15 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
       createdJobId: null,
       jobData: seedData(),
       hasPosting: false,
+      hiringPlanUi: { ...DEFAULT_HIRING_PLAN_UI },
+      hiringTeamUi: { ...DEFAULT_HIRING_TEAM_UI },
     })
+
+  const updateHiringPlanUi = (patch: Partial<HiringPlanUiState>) =>
+    setWizardState((prev) => ({ ...prev, hiringPlanUi: { ...prev.hiringPlanUi, ...patch } }))
+
+  const updateHiringTeamUi = (patch: Partial<HiringTeamUiState>) =>
+    setWizardState((prev) => ({ ...prev, hiringTeamUi: { ...prev.hiringTeamUi, ...patch } }))
 
   useEffect(() => {
     if (!isOpen) resetWizard()
