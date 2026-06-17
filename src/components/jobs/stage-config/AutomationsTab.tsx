@@ -8,7 +8,7 @@ import { useStageAutomations, type StageAutomation } from '@/hooks/useStageAutom
 import { AutomationFormSheet } from './AutomationFormSheet';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state';
-import { SoftPaper } from '@/components/ui/EmptyIllustrations';
+import { SoftEnvelope } from '@/components/ui/EmptyIllustrations';
 
 interface AutomationsTabProps {
   jhsId: string;
@@ -45,23 +45,28 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
   
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start gap-4">
         <div>
-          <h3 className="text-lg font-medium">Email Automations</h3>
-          <p className="text-sm text-muted-foreground">
-            Automatically send emails when candidates enter or exit this stage
+          <h3
+            className="font-poppins font-semibold"
+            style={{ fontSize: 12.5, color: '#8B8F9E', letterSpacing: '0.04em', textTransform: 'uppercase' }}
+          >
+            Email automations
+          </h3>
+          <p className="font-inter mt-1" style={{ fontSize: 12.5, color: '#5A6072' }}>
+            Automatically send emails when candidates enter or exit this stage.
           </p>
         </div>
-        <Button onClick={handleOpenCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Automation
+        <Button onClick={handleOpenCreate} size="sm">
+          <Plus className="h-4 w-4 mr-1.5" />
+          Add automation
         </Button>
       </div>
       
       {automations.length === 0 ? (
         <EmptyState
           size="card"
-          illustration={<SoftPaper />}
+          illustration={<SoftEnvelope />}
           title="No automations yet"
           body="Create your first automation to start engaging candidates automatically."
           primary={

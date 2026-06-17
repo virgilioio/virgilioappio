@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, MessageSquareText, AlertCircle, RefreshCw, Lock, Globe } from 'lucide-react'
+import { Plus, MessageSquareText, AlertCircle, RefreshCw, Lock, Globe, Sparkles } from 'lucide-react'
 import { useScorecardsConfiguration, type InterviewQuestion, type ScorecardVisibility } from '@/hooks/useScorecardsConfiguration'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { InterviewQuestionForm } from './InterviewQuestionForm'
 import { InterviewQuestionsList } from './InterviewQuestionsList'
 import { ScorecardQuestionsGenerationPanel } from './ScorecardQuestionsGenerationPanel'
@@ -126,46 +126,66 @@ export function ScorecardsTab({ jhsId, jobId, stageName, stageType }: Scorecards
 
   return (
     <div className="space-y-6">
-      {/* Visibility Toggle */}
-      <div className="bg-gradient-to-b from-muted/50 to-transparent border border-border/50 rounded-lg p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-muted">
-              {isPublic ? (
-                <Globe className="h-5 w-5 text-virgilio-purple" />
-              ) : (
-                <Lock className="h-5 w-5 text-muted-foreground" />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-semibold text-foreground">
-                  Scorecard Visibility
-                </h4>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  isPublic
-                    ? 'bg-virgilio-purple/10 text-virgilio-purple'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {isPublic ? 'Public' : 'Private'}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {isPublic
-                  ? 'All team members with access to this job can view scorecard responses and recommendations.'
-                  : 'Only the interviewer who submitted and admins/recruiters can view scorecard responses.'}
-              </p>
-            </div>
+      {/* Visibility row */}
+      <div
+        className="flex items-center justify-between gap-4"
+        style={{ background: '#fff', border: '1px solid #E7E8EE', borderRadius: 12, padding: 16 }}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className="flex items-center justify-center shrink-0"
+            style={{ width: 40, height: 40, background: '#F1F0EC', borderRadius: 10 }}
+          >
+            {isPublic ? (
+              <Globe className="h-5 w-5" style={{ color: '#5A6072' }} />
+            ) : (
+              <Lock className="h-5 w-5" style={{ color: '#5A6072' }} />
+            )}
           </div>
-          <Switch
-            checked={isPublic}
-            onCheckedChange={handleVisibilityToggle}
-            disabled={updateVisibility.isPending}
-          />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h4 className="font-poppins font-semibold" style={{ fontSize: 13, color: '#0d0d09' }}>
+                Scorecard visibility
+              </h4>
+              <Badge tone="neutral" size="xs">{isPublic ? 'Public' : 'Private'}</Badge>
+            </div>
+            <p className="font-inter mt-0.5" style={{ fontSize: 12.5, color: '#5A6072' }}>
+              {isPublic
+                ? 'All team members with access to this job can view scorecard responses.'
+                : 'Only the interviewer who submitted and admins/recruiters can view scorecard responses.'}
+            </p>
+          </div>
+        </div>
+        <Switch
+          checked={isPublic}
+          onCheckedChange={handleVisibilityToggle}
+          disabled={updateVisibility.isPending}
+        />
+      </div>
+
+      {/* AI Question Generator card */}
+      <div
+        className="flex items-center justify-between gap-4"
+        style={{ background: '#FAF8FF', border: '1px solid #EDE4FF', borderRadius: 12, padding: 16 }}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className="flex items-center justify-center shrink-0"
+            style={{ width: 40, height: 40, background: '#EDE4FF', borderRadius: 10 }}
+          >
+            <Sparkles className="h-5 w-5" style={{ color: '#6F3FF5' }} />
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-poppins font-semibold" style={{ fontSize: 13, color: '#0d0d09' }}>
+              AI question generator
+            </h4>
+            <p className="font-inter mt-0.5" style={{ fontSize: 12.5, color: '#5A6072' }}>
+              Generate tailored interview questions for the "{stageName}" stage.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* AI Question Generator */}
       <ScorecardQuestionsGenerationPanel
         jobId={jobId}
         stageName={stageName}
@@ -175,36 +195,38 @@ export function ScorecardsTab({ jhsId, jobId, stageName, stageType }: Scorecards
         isAdding={isAddingMultiple}
       />
 
-      {/* Header Info */}
-      <div className="bg-gradient-to-b from-virgilio-purple/5 to-transparent border border-virgilio-border/50 rounded-lg p-6">
-        <div className="flex items-start gap-4">
-          <div className="bg-virgilio-purple/10 p-3 rounded-lg">
-            <MessageSquareText className="h-6 w-6 text-virgilio-purple" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-virgilio-text mb-2">
-              Interview Questions
-            </h3>
-            <p className="text-sm text-virgilio-muted mb-3">
-              Configure interview questions that will be presented to interviewers when they submit scorecards for this stage. These questions help standardize the evaluation process.
+      {/* Interview questions intro */}
+      <section>
+        <h3
+          className="font-poppins font-semibold mb-2.5"
+          style={{ fontSize: 12.5, color: '#8B8F9E', letterSpacing: '0.04em', textTransform: 'uppercase' }}
+        >
+          Interview questions
+        </h3>
+        <div style={{ background: '#fff', border: '1px solid #E7E8EE', borderRadius: 12, padding: 16 }}>
+          <p className="font-inter" style={{ fontSize: 12.5, color: '#5A6072' }}>
+            Presented to interviewers when they submit scorecards for this stage — they standardize evaluation.
+          </p>
+          <div
+            className="flex items-start gap-2 mt-3"
+            style={{ background: '#FAF8FF', border: '1px solid #EDE4FF', borderRadius: 10, padding: 12 }}
+          >
+            <MessageSquareText className="h-4 w-4 shrink-0 mt-0.5" style={{ color: '#6F3FF5' }} />
+            <p className="font-inter" style={{ fontSize: 12.5, color: '#5B21B6' }}>
+              <strong>Note:</strong> All scorecards automatically include a "Key Takeaways" section with rich-text support for comprehensive notes.
             </p>
-            <div className="bg-white border border-virgilio-border/30 rounded-md p-3">
-              <p className="text-xs text-virgilio-muted">
-                <strong className="text-virgilio-text">Note:</strong> All scorecards automatically include a "Key Takeaways" section with rich text support for comprehensive notes.
-              </p>
-            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Add Question Button */}
       <div className="flex justify-between items-center">
-        <h4 className="text-base font-semibold text-virgilio-text">
-          Interview Questions {template?.questions.length ? `(${template.questions.length})` : ''}
+        <h4 className="font-poppins font-semibold" style={{ fontSize: 14, color: '#0d0d09' }}>
+          Interview questions {template?.questions.length ? `(${template.questions.length})` : '(0)'}
         </h4>
         <Button onClick={handleAddClick} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Interview Question
+          <Plus className="h-4 w-4 mr-1.5" />
+          Add interview question
         </Button>
       </div>
 
