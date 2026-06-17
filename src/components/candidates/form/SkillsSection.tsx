@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Sparkles, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CandidateSheetSection } from './CandidateSheetSection'
 import { GeneratingCard } from './GeneratingCard'
@@ -12,6 +13,7 @@ interface SkillsSectionProps {
   onAdd: (skill: string) => void
   onRemove: (skill: string) => void
   maxVisible?: number
+  isEdit?: boolean
 }
 
 const SKILL_VARIANT_TO_TONE: Record<string, any> = {
@@ -29,6 +31,7 @@ export function SkillsSection({
   onAdd,
   onRemove,
   maxVisible = 8,
+  isEdit = false,
 }: SkillsSectionProps) {
   const [newSkill, setNewSkill] = useState('')
   const [showAll, setShowAll] = useState(false)
@@ -44,12 +47,36 @@ export function SkillsSection({
   const visible = showAll ? skills : skills.slice(0, maxVisible)
   const hidden = Math.max(0, skills.length - maxVisible)
 
-  const rightMeta =
-    enrich === 'done' && skills.length > 0 ? (
-      <Badge tone="green" dot size="xs">
-        {skills.length} detected
-      </Badge>
-    ) : null
+  let rightMeta: React.ReactNode = null
+
+  if (isEdit) {
+    if (enrich !== 'working') {
+      rightMeta = (
+        <div className="flex items-center gap-[6px]">
+          <Badge tone="lilac" size="xs" icon={Sparkles}>
+            Gio detected
+          </Badge>
+          <Badge tone="neutral" size="xs" icon={RefreshCw}>
+            Re-runs on new CV
+          </Badge>
+        </div>
+      )
+    }
+  } else {
+    if (enrich === 'idle') {
+      rightMeta = (
+        <Badge tone="lilac" size="xs" icon={Sparkles}>
+          Gio fills automatically
+        </Badge>
+      )
+    } else if (enrich === 'done' && skills.length > 0) {
+      rightMeta = (
+        <Badge tone="green" dot size="xs">
+          {skills.length} detected
+        </Badge>
+      )
+    }
+  }
 
   return (
     <CandidateSheetSection label="Skills" rightMeta={rightMeta}>

@@ -1037,12 +1037,14 @@ export function CandidateFormSheet({
               skills={skills}
               onAdd={addSkill}
               onRemove={removeSkill}
+              isEdit={isEdit}
             />
 
             {/* ── 6 · PROFILE SUMMARY ─────────────────────────────────── */}
             <ProfileSummarySection
               enrich={enrich}
               summary={profileSummary}
+              isEdit={isEdit}
               onRegenerate={
                 capturedResumeText
                   ? () => {
