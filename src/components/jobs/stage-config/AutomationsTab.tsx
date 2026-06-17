@@ -61,7 +61,7 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
       {automations.length === 0 ? (
         <EmptyState
           size="card"
-          illustration={<SoftPaper />}
+          illustration={<SoftEnvelope />}
           title="No automations yet"
           body="Create your first automation to start engaging candidates automatically."
           primary={
