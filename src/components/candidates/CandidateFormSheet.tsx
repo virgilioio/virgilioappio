@@ -1037,6 +1037,7 @@ export function CandidateFormSheet({
               skills={skills}
               onAdd={addSkill}
               onRemove={removeSkill}
+              isEdit={isEdit}
             />
 
             {/* ── 6 · PROFILE SUMMARY ─────────────────────────────────── */}
