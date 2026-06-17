@@ -20,6 +20,8 @@ export interface ScorecardRow {
   is_ai_draft?: boolean;
   ai_suggested_rating?: string | null;
   source_booking_id?: string | null;
+  // Gio suggestion inbox: questions the reviewer accepted from Gio's suggestions.
+  gio_added_questions?: unknown;
 }
 
 export function useMyScorecards(associationId?: string | null) {
