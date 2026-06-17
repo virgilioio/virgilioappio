@@ -75,6 +75,9 @@ import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CandidateApplicationResponses } from "@/components/candidates/CandidateApplicationResponses";
 import { ScorecardValidationPoints } from "./ScorecardValidationPoints";
+import { GioPointsInbox } from "./scorecard/GioPointsInbox";
+import { AddedFromGioBlock } from "./scorecard/AddedFromGioBlock";
+import { useGioAddedQuestions } from "@/hooks/useGioAddedQuestions";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import {
   AlertDialog,
