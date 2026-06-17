@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useStageInterviewDefaults } from '@/hooks/useStageInterviewDefaults';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
