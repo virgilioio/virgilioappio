@@ -18,12 +18,54 @@ interface JobWizardProps {
   initialData?: Partial<CreateJobData> & { sourceJobTitle?: string }
 }
 
+export interface HiringPlanUiState {
+  selectedTemplate: 'workspace_default' | 'lean_tech' | 'exec_leadership' | null
+  rejectOutsideLocations: boolean
+  rejectSalaryAbove: boolean
+  rejectRepeatApplicant: boolean
+  autoScore: boolean
+  autoRejectBelow: boolean
+  autoRejectThreshold: number
+  generateSummary: boolean
+}
+
+export interface HiringTeamUiState {
+  reportsToId: string
+  coordinatorId: string
+  notifyOnApplications: boolean
+  dailyDigest: boolean
+  notifyStageMoves: boolean
+  memberSearch: string
+}
+
+const DEFAULT_HIRING_PLAN_UI: HiringPlanUiState = {
+  selectedTemplate: null,
+  rejectOutsideLocations: true,
+  rejectSalaryAbove: true,
+  rejectRepeatApplicant: false,
+  autoScore: true,
+  autoRejectBelow: true,
+  autoRejectThreshold: 35,
+  generateSummary: true,
+}
+
+const DEFAULT_HIRING_TEAM_UI: HiringTeamUiState = {
+  reportsToId: '',
+  coordinatorId: '__same__',
+  notifyOnApplications: true,
+  dailyDigest: true,
+  notifyStageMoves: false,
+  memberSearch: '',
+}
+
 interface WizardState {
   currentStep: number
   isComplete: boolean
   createdJobId: string | null
   jobData: Partial<CreateJobData>
   hasPosting: boolean
+  hiringPlanUi: HiringPlanUiState
+  hiringTeamUi: HiringTeamUiState
 }
 
 const STEPS = [
@@ -84,6 +126,8 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     createdJobId: null,
     jobData: seedData(),
     hasPosting: false,
+    hiringPlanUi: { ...DEFAULT_HIRING_PLAN_UI },
+    hiringTeamUi: { ...DEFAULT_HIRING_TEAM_UI },
   })
 
   const { createJob } = useJobs()
@@ -111,7 +155,15 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
       createdJobId: null,
       jobData: seedData(),
       hasPosting: false,
+      hiringPlanUi: { ...DEFAULT_HIRING_PLAN_UI },
+      hiringTeamUi: { ...DEFAULT_HIRING_TEAM_UI },
     })
+
+  const updateHiringPlanUi = (patch: Partial<HiringPlanUiState>) =>
+    setWizardState((prev) => ({ ...prev, hiringPlanUi: { ...prev.hiringPlanUi, ...patch } }))
+
+  const updateHiringTeamUi = (patch: Partial<HiringTeamUiState>) =>
+    setWizardState((prev) => ({ ...prev, hiringTeamUi: { ...prev.hiringTeamUi, ...patch } }))
 
   useEffect(() => {
     if (!isOpen) resetWizard()
@@ -240,6 +292,8 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
             jobId={wizardState.createdJobId}
             onNext={handleNextStep}
             onBack={handlePrevStep}
+            ui={wizardState.hiringPlanUi}
+            onUiChange={updateHiringPlanUi}
           />
         )
       case 3:
@@ -248,6 +302,8 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
             jobId={wizardState.createdJobId}
             onNext={handleNextStep}
             onBack={handlePrevStep}
+            ui={wizardState.hiringTeamUi}
+            onUiChange={updateHiringTeamUi}
           />
         )
       case 4:

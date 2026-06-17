@@ -8,10 +8,23 @@ import { useJobStages, type JobStage } from '@/hooks/useJobStages'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 
 
+interface HiringPlanUi {
+  selectedTemplate: TemplateId | null
+  rejectOutsideLocations: boolean
+  rejectSalaryAbove: boolean
+  rejectRepeatApplicant: boolean
+  autoScore: boolean
+  autoRejectBelow: boolean
+  autoRejectThreshold: number
+  generateSummary: boolean
+}
+
 interface HiringPlanStepProps {
   jobId: string | null
   onNext: () => void
   onBack: () => void
+  ui: HiringPlanUi
+  onUiChange: (patch: Partial<HiringPlanUi>) => void
 }
 
 /* ---------- Template cards (UI-level preset chooser) ---------- */
@@ -114,23 +127,30 @@ function GioRecommendsChip({ label = 'Gio recommends' }: { label?: string }) {
   )
 }
 
-export function HiringPlanStep({ jobId }: HiringPlanStepProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(null)
+export function HiringPlanStep({ jobId, ui, onUiChange }: HiringPlanStepProps) {
+  const {
+    selectedTemplate,
+    rejectOutsideLocations,
+    rejectSalaryAbove,
+    rejectRepeatApplicant,
+    autoScore,
+    autoRejectBelow,
+    autoRejectThreshold,
+    generateSummary,
+  } = ui
+  const setSelectedTemplate = (v: TemplateId | null) => onUiChange({ selectedTemplate: v })
+  const setRejectOutsideLocations = (v: boolean) => onUiChange({ rejectOutsideLocations: v })
+  const setRejectSalaryAbove = (v: boolean) => onUiChange({ rejectSalaryAbove: v })
+  const setRejectRepeatApplicant = (v: boolean) => onUiChange({ rejectRepeatApplicant: v })
+  const setAutoScore = (v: boolean) => onUiChange({ autoScore: v })
+  const setAutoRejectBelow = (v: boolean) => onUiChange({ autoRejectBelow: v })
+  const setAutoRejectThreshold = (v: number) => onUiChange({ autoRejectThreshold: v })
+  const setGenerateSummary = (v: boolean) => onUiChange({ generateSummary: v })
+
   const [applyingTemplate, setApplyingTemplate] = useState<TemplateId | null>(null)
   const [planVersion, setPlanVersion] = useState(0) // bump → remount HiringPlanTab
   const { stages: libraryStages, isLoading: stagesLoading } = useJobStages()
   const { saveHiringPlan } = useJobHiringPlan()
-
-  // Auto-rejection rules (UI state — wired to backend in a follow-up)
-  const [rejectOutsideLocations, setRejectOutsideLocations] = useState(true)
-  const [rejectSalaryAbove, setRejectSalaryAbove] = useState(true)
-  const [rejectRepeatApplicant, setRejectRepeatApplicant] = useState(false)
-
-  // AI auto-screen
-  const [autoScore, setAutoScore] = useState(true)
-  const [autoRejectBelow, setAutoRejectBelow] = useState(true)
-  const [autoRejectThreshold, setAutoRejectThreshold] = useState(35)
-  const [generateSummary, setGenerateSummary] = useState(true)
 
   const applyTemplate = async (template: (typeof TEMPLATES)[number]) => {
     if (!jobId) {

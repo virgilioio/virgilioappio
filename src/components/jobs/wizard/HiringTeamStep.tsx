@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -17,10 +17,21 @@ import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignm
 import { useMembers } from '@/hooks/useMembers'
 import { SectionCard, FieldLabel, FieldHint, ToggleRow, MemberAvatar, RoleCard, InfoLink } from './_parts'
 
+interface HiringTeamUi {
+  reportsToId: string
+  coordinatorId: string
+  notifyOnApplications: boolean
+  dailyDigest: boolean
+  notifyStageMoves: boolean
+  memberSearch: string
+}
+
 interface HiringTeamStepProps {
   jobId: string | null
   onNext: () => void
   onBack: () => void
+  ui: HiringTeamUi
+  onUiChange: (patch: Partial<HiringTeamUi>) => void
 }
 
 const DB_ROLE_LABEL: Record<JobAssignmentRole, string> = {
@@ -35,7 +46,7 @@ const SCOPE_BY_ROLE: Record<JobAssignmentRole, string> = {
   interviewer: 'Interviewer · scorecards',
 }
 
-export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
+export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: HiringTeamStepProps) {
   const { members, isLoading: membersLoading } = useMembers(true)
   const {
     assignments,
@@ -45,13 +56,15 @@ export function HiringTeamStep({ jobId, onNext, onBack }: HiringTeamStepProps) {
     isLoading: assignmentsLoading,
   } = useJobAssignments(jobId || undefined)
 
-  // Local-only fields (no backend column yet)
-  const [reportsToId, setReportsToId] = useState<string>('')
-  const [coordinatorId, setCoordinatorId] = useState<string>('__same__')
-  const [notifyOnApplications, setNotifyOnApplications] = useState(true)
-  const [dailyDigest, setDailyDigest] = useState(true)
-  const [notifyStageMoves, setNotifyStageMoves] = useState(false)
-  const [memberSearch, setMemberSearch] = useState('')
+  // Local-only fields (no backend column yet) — lifted to wizard state so they
+  // survive remount when the user re-enters this step via "Edit step 3".
+  const { reportsToId, coordinatorId, notifyOnApplications, dailyDigest, notifyStageMoves, memberSearch } = ui
+  const setReportsToId = (v: string) => onUiChange({ reportsToId: v })
+  const setCoordinatorId = (v: string) => onUiChange({ coordinatorId: v })
+  const setNotifyOnApplications = (v: boolean) => onUiChange({ notifyOnApplications: v })
+  const setDailyDigest = (v: boolean) => onUiChange({ dailyDigest: v })
+  const setNotifyStageMoves = (v: boolean) => onUiChange({ notifyStageMoves: v })
+  const setMemberSearch = (v: string) => onUiChange({ memberSearch: v })
 
 
   const memberOptions = useMemo(
