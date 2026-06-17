@@ -1,70 +1,88 @@
-# Rebuild the Add candidate form sheet
+## Goal
 
-Restructure `CandidateFormSheet.tsx` around two independent parse states (`parseStep`, `enrich`) and a fixed 6-section order, so that Skills and Profile Summary always read as *AI-generated* (idle hint / generating card / done), never as empty fields the user must fill. Same six sections in Edit mode.
+Make the Configure Stage → **Basics → Additional settings** controls real: persist them, apply them where they matter, and surface stage instructions in the scorecard sheet's Interview Details tab.
+
+## Current state (verified)
+
+- `job_hiring_stages` columns: `id, job_id, stage_id, position, custom_stage_name, interviewer_scheduling_mode` — nothing else.
+- `BasicsTab.tsx` holds `duration / format / slaEnabled / slaDays / instructions` in local `useState` only. No save, no read.
+- `useStageConfiguration` only loads/saves `custom_stage_name`.
+- Scheduling code (booking flow, `useMinimumDuration`, `InterviewDurationSelector`) does not look at any per-stage duration today.
+- Stale-candidate detection (`useStaleCandidates`) uses a global activity-based heuristic — no per-stage SLA target.
+- `ScorecardSheet.tsx` has an "Interview Details" section but never reads stage instructions.
+
+## Scope of this plan
+
+Wire all four controls end-to-end. No new tabs, no new visual design — only persistence and the downstream effects listed below.
+
+### 1. Schema (migration)
+
+Add columns to `public.job_hiring_stages`:
+
+- `interview_duration_minutes int` — nullable; allowed values 15/30/45/60/90 (enforced by trigger, not CHECK, per project rules).
+- `interview_format text` — nullable; one of `video | phone | onsite`.
+- `sla_enabled boolean not null default false`.
+- `sla_days int` — nullable; positive when `sla_enabled = true` (trigger-enforced).
+- `stage_instructions text` — nullable.
+
+Existing RLS already covers the table; no policy changes required. No GRANT changes (table already granted).
+
+### 2. Hook layer
+
+Extend `useStageConfiguration`:
+
+- `StageConfiguration` interface gains the five fields above.
+- `loadStageConfig` selects the new columns.
+- Add `updateAdditionalSettings` mutation that patches all five in one call.
+- Invalidate `job-hiring-plan`, `stage-config`, and a new `stage-config-by-job` key used by the scorecard sheet.
+
+### 3. BasicsTab UI
+
+- Initialize the four pieces of state from `config` (fall back to defaults: 45 min, video, SLA off / 5 days, empty instructions) instead of hardcoded values.
+- Add a single auto-save trigger: debounce (~600 ms) any change to duration/format/sla/instructions and call `updateAdditionalSettings`. The sheet footer's "Auto-saved · last edit…" line already exists — drive it from the mutation timestamp.
+- Keep all visual tokens unchanged.
+
+### 4. Downstream effects
+
+**Interview duration**
+
+- New hook `useStageInterviewDuration(jhsId)` reads the per-stage value.
+- `InterviewDurationSelector` (used when scheduling from a candidate at a given stage) accepts an optional `defaultDurationMinutes` prop and preselects the stage value when present; falls back to current behavior otherwise.
+- The scheduling entry points that know the stage (`ScheduleInterviewDialog` / quick-schedule) pass `jhsId` so the duration is honored.
+
+**Interview format**
+
+- Same hook returns `format`. Scheduling flow uses it to preselect the location type in the new booking it creates (`scheduled_bookings.location_type`). No UI redesign — just default selection.
+
+**Flag slow candidates (SLA)**
+
+- Extend `useStaleCandidates` (and the pipeline's per-card "stale" indicator) so that, when a `job_candidate_associations` row has been in its current stage for `> sla_days` AND the stage has `sla_enabled = true`, it is flagged "slow at this stage". Days-in-stage already exists via `job_candidate_stage_history`.
+- The stale badge/icon already used on candidate cards is reused — no new visuals; only an additional reason source.
+
+**Stage instructions in the scorecard's Interview Details tab**
+
+- `ScorecardSheet.tsx` already knows the candidate's stage (`jhsId`). Fetch `stage_instructions` via the new hook and, when non-empty, render a lilac note card (`#FAF8FF`, `1px #EDE4FF`, radius 12) inside the existing "Interview Details" section, above the existing content. Title "Stage instructions" (Poppins 12.5/600), body Inter 13/1.55 `#1F2230`. No card when instructions are empty.
+
+### 5. Out of scope (explicitly)
+
+- Editing the scheduling/availability windows themselves.
+- Surfacing the duration/format in candidate-facing booking emails (already templated; only the underlying booking value changes).
+- Any new tab, badge, or illustration.
+- Backfilling existing stages — defaults are fine.
 
 ## Files touched
 
-- `src/components/candidates/CandidateFormSheet.tsx` — section order, state machine, footer status line, save-while-enriching behavior.
-- `src/components/candidates/EnhancedResumeDropzone.tsx` — three visual states (idle dashed / parsing lilac-card with spinner + indeterminate bar / done row with Replace + trash).
-- `src/components/candidates/form/CandidateSheetSection.tsx` — accept right-aligned status badge slot.
-- `src/components/candidates/form/AssignmentRowCard.tsx` — used as-is for Edit mode "Current assignments".
-- NEW `src/components/candidates/form/GeneratingCard.tsx` — shared lilac generating shell (pulsing sparkles + "Running in background" tag + spinner) used by Skills and Profile Summary `working` state. Renders skeleton pills or skeleton lines based on a `variant` prop.
-- NEW `src/components/candidates/form/SkillsSection.tsx` — three-state Skills section (idle input / working pills / done chip cloud with header count badge).
-- NEW `src/components/candidates/form/ProfileSummarySection.tsx` — three-state Summary section (idle hint / working lines / done paragraph + Regenerate).
-- NEW `src/components/candidates/form/ResumeStatusBadge.tsx` — right-aligned status badge for the Résumé section header.
-- NEW `src/components/candidates/form/FooterStatusLine.tsx` — left-side live status line in the footer.
-- `src/index.css` — add the four keyframes (`gioSpin`, `gioBar`, `gioShimmer`, `gioPulse`) and `prefers-reduced-motion` overrides. Add utility classes `.gio-spinner`, `.gio-progress`, `.gio-skeleton`, `.gio-pulse`.
+- `supabase/migrations/<new>.sql` — schema + validation trigger.
+- `src/hooks/useStageConfiguration.ts` — load + save + types.
+- `src/hooks/useStageInterviewDefaults.ts` — new, small read-only hook used by scheduling and the scorecard sheet.
+- `src/components/jobs/stage-config/BasicsTab.tsx` — bind state to config, debounced auto-save.
+- `src/components/jobs/StageConfigSheet.tsx` — pass real last-edit timestamp into the footer.
+- `src/components/scheduling/InterviewDurationSelector.tsx` (+ its callers) — accept and honor `defaultDurationMinutes` / default `location_type`.
+- `src/hooks/useStaleCandidates.ts` — add per-stage SLA rule.
+- `src/components/candidates/ScorecardSheet.tsx` — render Stage instructions inside Interview Details when present.
 
-No new tokens, fonts, or radii — reuse the design system already in `index.css`. No DB / RLS / edge-function changes.
+## Risks / things to confirm with you
 
-## Two-state machine
-
-```ts
-type ParseStep = 'idle' | 'parsing' | 'done'   // contact + professional
-type Enrich    = 'idle' | 'working' | 'done'   // skills + summary
-```
-
-Drive both from the existing resume upload + `useResumeParsing` / `useCandidateEnrichment` hooks. On file drop: `parseStep='parsing'`. When parse hook resolves contact/professional fields: `parseStep='done'` AND `enrich='working'`. When enrichment hook returns skills + summary: `enrich='done'`. Clearing the file resets both to `idle`. (For the visual prototype the spec mentions, the same states are settable via `setTimeout` 1800ms / +3400ms — we'll keep the real hook wiring and only fall back to timers if hooks aren't yet emitting these milestones.)
-
-## Section order (Add and Edit identical)
-
-1. **Résumé** — header has `ResumeStatusBadge` (idle: lilac sparkles "Gio will auto-fill" · parsing: lilac sparkles "Step 1 · parsing" · done: green dot "N fields auto-filled"). Dropzone renders one of three layouts per spec (dashed idle / lilac parsing row with spinner + `.gio-progress` bar / white done row with Replace + trash).
-2. **Identity** — 2-col: First name*, Last name*, Email* (helper "Used to detect duplicate candidates."), Phone, LinkedIn URL (full width).
-3. **Source & assignment** — 2-col Source* + Referred by; below, optional "Assign to a job" select with talent-pool helper; on select, reveal "Starting stage" chips. Edit mode: swap the picker for a list of `AssignmentRowCard` rows + "Add to a job" header action.
-4. **Professional** — Current role (full), Current company, Years experience (suffix "years"), Location (full), Salary expectations (currency + min/max + period).
-5. **Skills** — `SkillsSection` (idle input / `GeneratingCard variant="pills"` / done chip cloud with "+ N more" and Add skill). Header right-badge "N detected" only when `done`.
-6. **Profile summary** — `ProfileSummarySection` (idle hint / `GeneratingCard variant="lines"` with 4 shimmer lines / done paragraph + "Gio generated" badge + ghost Regenerate).
-
-## Footer
-
-- Primary `Add candidate` (with `user-plus` icon) stays enabled whenever required fields are valid — **including while `enrich='working'`**. Saving mid-enrichment persists immediately; the background enrichment job patches skills + summary onto the saved candidate when it returns (uses the existing `triggerBackgroundEnrichment` flow).
-- Secondary `Save & add another`, ghost `Cancel`.
-- Left side: `FooterStatusLine` mapping state → message exactly per spec (parsing / enrich working / done / idle dedup hint).
-
-## Edit mode differences (data-driven only, same components)
-
-- Section 3 renders the "Current assignments" list instead of the assign-to-job picker.
-- Sections 5 and 6 mount in `done` state (skills + summary already on the record); no skeletons.
-
-## Animations (added once to `src/index.css`)
-
-```css
-@keyframes gioSpin    { to { transform: rotate(360deg); } }
-@keyframes gioBar     { 0% { left: -40%; } 100% { left: 100%; } }
-@keyframes gioShimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
-@keyframes gioPulse   { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .gio-spinner, .gio-progress > span, .gio-skeleton, .gio-pulse { animation: none; }
-  .gio-skeleton { background: #EFEAFB; }
-}
-```
-
-Utility classes per spec (spinner = 2px purple ring with top color; progress = 4px lilac track + absolute 40% purple bar; skeleton = three-stop lilac gradient with 400% bg-size; pulse = sparkles opacity loop).
-
-## Explicitly NOT changing
-
-- No edge-function changes; reuse `parse-resume` output already wired (now includes role/company/years from the earlier task).
-- No new tokens, fonts, radii.
-- No reordering only in one mode — both Add and Edit follow the same six-section order.
-- No blocking spinner over the form during enrichment; the form remains fully usable.
+1. **Stale logic precedence** — should per-stage SLA *replace* the current activity heuristic, or be *additive* (a candidate is stale if either rule fires)? I'd default to **additive**.
+2. **Format → booking location** — only preselect for new bookings created after the change. Existing bookings stay as-is. OK?
+3. **Where the duration is honored** — only the in-app scheduling dialogs you launch from a candidate at that stage. Public booking pages have their own event-type duration and are out of scope unless you want them included.
