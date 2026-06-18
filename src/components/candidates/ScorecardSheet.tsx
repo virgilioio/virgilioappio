@@ -1183,63 +1183,126 @@ export function ScorecardSheet({
                     onRemoveAdded={(idx) => gioAdded.remove(idx)}
                   />
                 )}
-                {/* AI Suggested Rating Banner */}
+                {/* AI Suggested Rating Banner — Lilac emphasis */}
                 {isAiDraft && aiSuggestedRating && (
-                  <div className="rounded-lg overflow-hidden bg-pastel-purple/30 border border-pastel-purple/50">
-                    {/* Header row */}
-                    <div className="p-3 flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <img src={gioAiBannerIcon} alt="Gio" className="h-10 shrink-0" />
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">AI Suggested Rating: {aiSuggestedRating}</p>
-                          <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
-                        </div>
+                  <div
+                    className="relative rounded-[14px]"
+                    style={{ background: "#EDE4FF", border: "1px solid #DCC9FA" }}
+                  >
+                    {/* Header row (single line, exact spec) */}
+                    <div className="flex items-center gap-[14px] px-4 py-[15px]">
+                      {/* Logo tile with Gio ATS mark */}
+                      <div
+                        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[13px] bg-white"
+                        style={{ boxShadow: "0 1px 2px rgba(91,33,182,0.12)" }}
+                        aria-hidden="true"
+                      >
+                        <svg viewBox="0 0 48 48" width="28" height="28" aria-hidden="true">
+                          <circle cx="24" cy="19.4" r="9.9" fill="#0d0d09" />
+                          <rect x="20.7" y="29.9" width="13.2" height="8.8" rx="4.4" fill="#D7C5FB" />
+                        </svg>
                       </div>
-                      {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
-                        <Button size="sm" variant="virgilio" onClick={handleAcceptAiSuggestion}>
-                          Apply Suggestion
-                        </Button>
-                      )}
-                    </div>
-                    {/* Collapsible analysis section */}
-                    {aiAnalysis && (
-                      <>
-                        <div className="w-full px-4 py-2 flex items-center justify-between border-t border-pastel-purple/30">
-                          <button
-                            type="button"
-                            onClick={() => setShowAnalysis(!showAnalysis)}
-                            className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+
+                      {/* Copy */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="font-poppins"
+                            style={{ fontSize: 14, fontWeight: 600, color: "#3B1E78" }}
                           >
-                            {showAnalysis ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                            {showAnalysis ? 'Hide analysis' : 'Show analysis'}
-                          </button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyToClipboard(aiAnalysis, 'Analysis copied to clipboard');
+                            AI suggested rating: {aiSuggestedRating}
+                          </span>
+                          <span
+                            className="font-inter"
+                            style={{
+                              fontWeight: 700,
+                              fontSize: "9.5px",
+                              letterSpacing: "0.06em",
+                              textTransform: "uppercase",
+                              color: "#6F3FF5",
+                              background: "#fff",
+                              border: "1px solid #DCC9FA",
+                              borderRadius: 999,
+                              padding: "2px 7px",
+                              lineHeight: 1,
                             }}
                           >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
+                            Gio
+                          </span>
                         </div>
-                        {showAnalysis && (
-                          <div className="px-4 pb-4 border-t border-pastel-purple/30">
-                            <div className="max-h-80 overflow-y-auto pt-3">
-                              <ProfileSummaryMarkdown
-                                content={normalizeAiAnalysis(aiAnalysis)}
-                                className="[&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_p]:text-muted-foreground [&_li]:text-muted-foreground [&_strong]:text-foreground [&_hr]:border-pastel-purple/30"
-                              />
-                            </div>
+                        <p
+                          className="font-inter"
+                          style={{ marginTop: 3, fontSize: 12, color: "#5B21B6", opacity: 0.85 }}
+                        >
+                          Based on interview transcript analysis.
+                        </p>
+                      </div>
+
+                      {/* Primary action */}
+                      {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
+                        <button
+                          type="button"
+                          onClick={handleAcceptAiSuggestion}
+                          className="font-poppins inline-flex shrink-0 items-center gap-[6px] rounded-lg"
+                          style={{
+                            background: "#0d0d09",
+                            color: "#fffcf9",
+                            height: 28,
+                            padding: "0 10px",
+                            fontWeight: 500,
+                            fontSize: 12,
+                          }}
+                        >
+                          <Sparkles size={13} />
+                          Apply suggestion
+                        </button>
+                      )}
+
+                      {/* Collapsible toggle (replaces dismiss; same ghost icon-button styling) */}
+                      {aiAnalysis && (
+                        <button
+                          type="button"
+                          aria-label={showAnalysis ? "Hide analysis" : "Show analysis"}
+                          aria-expanded={showAnalysis}
+                          onClick={() => setShowAnalysis(!showAnalysis)}
+                          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-transparent hover:bg-white/40 transition-colors"
+                          style={{ color: "#7C5BC2" }}
+                        >
+                          {showAnalysis ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Collapsible analysis */}
+                    {aiAnalysis && showAnalysis && (
+                      <div style={{ borderTop: "1px solid #DCC9FA" }}>
+                        <div className="flex items-center justify-end px-4 py-2">
+                          <button
+                            type="button"
+                            aria-label="Copy analysis"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(aiAnalysis, "Analysis copied to clipboard");
+                            }}
+                            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-transparent hover:bg-white/40 transition-colors"
+                            style={{ color: "#7C5BC2" }}
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                        <div className="px-4 pb-4">
+                          <div className="max-h-80 overflow-y-auto">
+                            <ProfileSummaryMarkdown
+                              content={normalizeAiAnalysis(aiAnalysis)}
+                              className="[&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_p]:text-[#5B21B6] [&_li]:text-[#5B21B6] [&_strong]:text-[#3B1E78] [&_hr]:border-[#DCC9FA]"
+                            />
                           </div>
-                        )}
-                      </>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
+
 
                 <FormSectionCard title="Overall rating">
                   <OverallRatingPills
