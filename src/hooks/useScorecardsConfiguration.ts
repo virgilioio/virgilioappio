@@ -2,8 +2,66 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import {
+  DollarSign, MapPin, Phone, Linkedin, Briefcase, Building2, Users,
+  Type, AlignLeft, Hash, Mail, Link2, Calendar as CalendarIcon, List, ListChecks,
+  ToggleLeft, FileText, MessageSquare,
+} from 'lucide-react'
+import type { ComponentType } from 'react'
 
-export type AnswerType = 'text' | 'yes_no' | 'single_select' | 'multi_select' | 'salary_expectations'
+export type AnswerType =
+  // smart fields
+  | 'salary_expectations' | 'location' | 'phone' | 'linkedin'
+  | 'employment_type' | 'work_location' | 'recruiter'
+  // basic types
+  | 'text' | 'longtext' | 'number' | 'email' | 'url' | 'date'
+  | 'single_select' | 'multi_select' | 'yes_no' | 'file'
+
+export interface ScorecardFieldDef {
+  type: AnswerType
+  label: string
+  icon: ComponentType<{ className?: string }>
+  hint?: string
+  /** Default question text used when the type is selected (smart fields only). */
+  defaultQuestion?: string
+  /** Candidate column synced on submit, if any. */
+  syncTarget?: 'salary' | 'phone' | 'linkedin' | 'location'
+}
+
+/** Smart fields (mirrors ApplicationFormBuilder.SMART_FIELDS, identifiers adapted to scorecard answer_type). */
+export const SCORECARD_SMART_FIELDS: ScorecardFieldDef[] = [
+  { type: 'salary_expectations', label: 'Salary expectations', icon: DollarSign, hint: 'Currency-aware',                    defaultQuestion: "What are the candidate's salary expectations?",       syncTarget: 'salary' },
+  { type: 'location',            label: 'Location',            icon: MapPin,     hint: 'City · state · country',            defaultQuestion: 'Where is the candidate based?',                       syncTarget: 'location' },
+  { type: 'phone',               label: 'Phone',               icon: Phone,      hint: 'International format',              defaultQuestion: "What is the candidate's phone number?",               syncTarget: 'phone' },
+  { type: 'linkedin',            label: 'LinkedIn',            icon: Linkedin,   hint: 'Profile URL',                       defaultQuestion: "What is the candidate's LinkedIn profile URL?",       syncTarget: 'linkedin' },
+  { type: 'employment_type',     label: 'Employment type',     icon: Briefcase,  hint: 'Full-time · part-time · contract',  defaultQuestion: "What is the candidate's preferred employment type?" },
+  { type: 'work_location',       label: 'Work location',       icon: Building2,  hint: 'Remote · hybrid · on-site',         defaultQuestion: "What is the candidate's preferred work arrangement?" },
+  { type: 'recruiter',           label: 'Preferred recruiter', icon: Users,      hint: 'Team member assignment',            defaultQuestion: 'Which recruiter should this candidate be routed to?' },
+]
+
+/** Basic types (mirrors ApplicationFormBuilder.BASIC_TYPES; multi_select kept for backward compatibility). */
+export const SCORECARD_BASIC_TYPES: ScorecardFieldDef[] = [
+  { type: 'text',          label: 'Short text',    icon: Type },
+  { type: 'longtext',      label: 'Long text',     icon: AlignLeft },
+  { type: 'number',        label: 'Number',        icon: Hash },
+  { type: 'email',         label: 'Email',         icon: Mail },
+  { type: 'url',           label: 'URL',           icon: Link2 },
+  { type: 'date',          label: 'Date',          icon: CalendarIcon },
+  { type: 'single_select', label: 'Single select', icon: List },
+  { type: 'multi_select',  label: 'Multi select',  icon: ListChecks },
+  { type: 'yes_no',        label: 'Yes / No',      icon: ToggleLeft },
+  { type: 'file',          label: 'File upload',   icon: FileText },
+]
+
+export const SCORECARD_SMART_FIELD_TYPES = new Set<AnswerType>(SCORECARD_SMART_FIELDS.map(s => s.type))
+
+const SCORECARD_TYPE_DEF: Record<AnswerType, ScorecardFieldDef> = Object.fromEntries(
+  [...SCORECARD_SMART_FIELDS, ...SCORECARD_BASIC_TYPES].map(d => [d.type, d])
+) as Record<AnswerType, ScorecardFieldDef>
+
+export function getScorecardTypeDef(t: AnswerType): ScorecardFieldDef {
+  return SCORECARD_TYPE_DEF[t] ?? { type: t, label: String(t), icon: MessageSquare }
+}
 
 export interface SelectOption {
   value: string
