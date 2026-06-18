@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -13,8 +13,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, DollarSign, Link2 } from 'lucide-react'
-import type { InterviewQuestion, AnswerType, SelectOption, SalaryConfig } from '@/hooks/useScorecardsConfiguration'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Plus, X, Link2, Sparkles, ChevronDown, RefreshCw } from 'lucide-react'
+import type { InterviewQuestion, AnswerType, SelectOption } from '@/hooks/useScorecardsConfiguration'
+import {
+  SCORECARD_SMART_FIELDS,
+  SCORECARD_BASIC_TYPES,
+  SCORECARD_SMART_FIELD_TYPES,
+  getScorecardTypeDef,
+} from '@/hooks/useScorecardsConfiguration'
 import { useSubmitShortcut } from '@/hooks/useSubmitShortcut'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
@@ -35,6 +49,14 @@ const PERIODS = [
   { value: 'monthly', label: 'Monthly' },
   { value: 'annually', label: 'Annually' },
 ]
+
+/** Smart fields whose answer auto-syncs back to the candidate profile. */
+const SYNC_LABELS: Partial<Record<AnswerType, string>> = {
+  salary_expectations: 'Syncs to Candidate Profile · salary',
+  phone: 'Syncs to Candidate Profile · phone',
+  linkedin: 'Syncs to Candidate Profile · LinkedIn',
+  location: 'Syncs to Candidate Profile · location',
+}
 
 export function InterviewQuestionForm({
   open,
@@ -87,32 +109,42 @@ export function InterviewQuestionForm({
       setIsRequired(true)
       setSelectOptions([{ value: '', label: '' }, { value: '', label: '' }])
       setNotesForInterviewer('')
-      // Set default currency from job
       setSalaryCurrency(job?.currency || 'USD')
       setSalaryPeriod('annually')
     }
   }, [existingQuestion, open, job?.currency])
 
-  const handleSave = () => {
-    const isSalaryType = answerType === 'salary_expectations'
-    
-    if (!isSalaryType && !questionText.trim()) {
-      return
-    }
+  const isSmart = SCORECARD_SMART_FIELD_TYPES.has(answerType)
+  const isSalaryType = answerType === 'salary_expectations'
+  const isSelectType = answerType === 'single_select' || answerType === 'multi_select'
+  const syncLabel = SYNC_LABELS[answerType]
 
-    if ((answerType === 'single_select' || answerType === 'multi_select')) {
+  // For smart fields, the question text is fixed (the type IS the question).
+  const lockedQuestion = isSmart ? (getScorecardTypeDef(answerType).defaultQuestion || '') : null
+
+  const handleTypeChange = (next: AnswerType) => {
+    setAnswerType(next)
+    if (SCORECARD_SMART_FIELD_TYPES.has(next)) {
+      const def = getScorecardTypeDef(next)
+      if (def.defaultQuestion) setQuestionText(def.defaultQuestion)
+    }
+  }
+
+  const handleSave = () => {
+    const effectiveText = lockedQuestion ?? questionText.trim()
+    if (!effectiveText) return
+
+    if (isSelectType) {
       const validOptions = selectOptions.filter(opt => opt.value.trim() && opt.label.trim())
-      if (validOptions.length < 2) {
-        return
-      }
+      if (validOptions.length < 2) return
     }
 
     const question: Omit<InterviewQuestion, 'id'> = {
-      question_text: isSalaryType ? "What are the candidate's salary expectations?" : questionText.trim(),
+      question_text: effectiveText,
       answer_type: answerType,
       is_required: isRequired,
       display_order: existingQuestion?.display_order || nextDisplayOrder,
-      select_options: (answerType === 'single_select' || answerType === 'multi_select')
+      select_options: isSelectType
         ? selectOptions.filter(opt => opt.value.trim() && opt.label.trim())
         : undefined,
       notes_for_interviewer: notesForInterviewer.trim() || undefined,
@@ -122,28 +154,24 @@ export function InterviewQuestionForm({
     onSave(question)
   }
 
-  const addOption = () => {
-    setSelectOptions([...selectOptions, { value: '', label: '' }])
-  }
-
+  const addOption = () => setSelectOptions([...selectOptions, { value: '', label: '' }])
   const removeOption = (index: number) => {
-    if (selectOptions.length > 2) {
-      setSelectOptions(selectOptions.filter((_, i) => i !== index))
-    }
+    if (selectOptions.length > 2) setSelectOptions(selectOptions.filter((_, i) => i !== index))
   }
-
   const updateOption = (index: number, field: 'value' | 'label', value: string) => {
     const updated = [...selectOptions]
     updated[index][field] = value
     setSelectOptions(updated)
   }
 
-  const isSalaryType = answerType === 'salary_expectations'
-  const isSelectType = answerType === 'single_select' || answerType === 'multi_select'
   const validOptions = isSelectType ? selectOptions.filter(opt => opt.value.trim() && opt.label.trim()) : []
-  const canSave = isSalaryType || (questionText.trim() && (!isSelectType || validOptions.length >= 2))
+  const canSave = (lockedQuestion || questionText.trim()) && (!isSelectType || validOptions.length >= 2)
 
   const handleKeyDown = useSubmitShortcut(handleSave, { disabled: !canSave || isSaving })
+
+  // Render the selected type's icon + label inside the trigger.
+  const selectedDef = useMemo(() => getScorecardTypeDef(answerType), [answerType])
+  const SelectedIcon = selectedDef.icon
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -158,83 +186,119 @@ export function InterviewQuestionForm({
         </SheetHeader>
 
         <div className="space-y-6 mt-6">
-          {/* Answer Type - Moved to top */}
+          {/* Question Type — matches the application-form "Add question" dropdown */}
           <div className="space-y-2">
             <Label htmlFor="answer-type">
               Question Type <span className="text-destructive">*</span>
             </Label>
-            <Select value={answerType} onValueChange={(value) => setAnswerType(value as AnswerType)}>
-              <SelectTrigger id="answer-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="text">Text (Long Answer)</SelectItem>
-                <SelectItem value="yes_no">Yes/No</SelectItem>
-                <SelectItem value="single_select">Single Select</SelectItem>
-                <SelectItem value="multi_select">Multi Select</SelectItem>
-                <SelectItem value="salary_expectations">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-virgilio-purple" />
-                    Salary Expectations
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  id="answer-type"
+                  type="button"
+                  className="flex h-[var(--input-height)] w-full items-center justify-between rounded-brand border border-border bg-surface-primary px-3 py-2 text-sm ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30 transition-colors duration-150 hover:bg-[hsl(var(--menu-hover))]"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <SelectedIcon className="h-3.5 w-3.5 text-text-tertiary shrink-0" />
+                    <span className="truncate">{selectedDef.label}</span>
+                    {SCORECARD_SMART_FIELD_TYPES.has(answerType) && (
+                      <Badge tone="lilac" size="xs">Smart</Badge>
+                    )}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={8} className="w-[320px]">
+                <DropdownMenuLabel className="flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-virgilio-purple" />
+                  Smart fields
+                </DropdownMenuLabel>
+                {SCORECARD_SMART_FIELDS.map((sf) => {
+                  const Icon = sf.icon
+                  return (
+                    <DropdownMenuItem key={sf.type} onSelect={() => handleTypeChange(sf.type)}>
+                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                      <span className="flex-1 truncate">{sf.label}</span>
+                      <Badge tone="lilac" size="xs">Smart</Badge>
+                    </DropdownMenuItem>
+                  )
+                })}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Basic question types</DropdownMenuLabel>
+                {SCORECARD_BASIC_TYPES.map((bt) => {
+                  const Icon = bt.icon
+                  return (
+                    <DropdownMenuItem key={bt.type} onSelect={() => handleTypeChange(bt.type)}>
+                      <Icon className="h-3.5 w-3.5 text-text-tertiary" />
+                      <span className="flex-1 truncate">{bt.label}</span>
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {selectedDef.hint && (
+              <p className="text-xs text-virgilio-muted">{selectedDef.hint}</p>
+            )}
           </div>
 
-          {/* Salary Configuration - shown for salary_expectations type */}
-          {isSalaryType && (
-            <div className="space-y-4 p-4 bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg">
+          {/* Sync-to-profile banner (smart fields with a candidate target) */}
+          {syncLabel && (
+            <div className="space-y-3 p-4 bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg">
               <div className="flex items-center gap-2 text-virgilio-purple">
-                <Link2 className="h-4 w-4" />
-                <span className="text-sm font-medium">Syncs to Candidate Profile</span>
+                <RefreshCw className="h-4 w-4" />
+                <span className="text-sm font-medium">{syncLabel}</span>
               </div>
-              
               <div className="bg-white border border-virgilio-border/50 rounded-md p-3">
                 <p className="text-sm text-virgilio-text font-medium mb-1">
-                  "What are the candidate's salary expectations?"
+                  "{lockedQuestion}"
                 </p>
                 <p className="text-xs text-virgilio-muted">
-                  This question is pre-set. Answers will automatically update the candidate's salary expectations field.
+                  This question is pre-set. Answers will automatically update the candidate's profile.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="salary-currency">Currency</Label>
-                  <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} />
+              {isSalaryType && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="salary-currency">Currency</Label>
+                    <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="salary-period">Period</Label>
+                    <Select value={salaryPeriod} onValueChange={(v) => setSalaryPeriod(v as 'hourly' | 'monthly' | 'annually')}>
+                      <SelectTrigger id="salary-period">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PERIODS.map(period => (
+                          <SelectItem key={period.value} value={period.value}>{period.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+              )}
+            </div>
+          )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="salary-period">Period</Label>
-                  <Select value={salaryPeriod} onValueChange={(v) => setSalaryPeriod(v as 'hourly' | 'monthly' | 'annually')}>
-                    <SelectTrigger id="salary-period">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PERIODS.map(period => (
-                        <SelectItem key={period.value} value={period.value}>
-                          {period.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Smart-but-no-sync banner (employment_type / work_location / recruiter) */}
+          {isSmart && !syncLabel && lockedQuestion && (
+            <div className="space-y-2 p-4 bg-virgilio-purple/5 border border-virgilio-purple/20 rounded-lg">
+              <div className="flex items-center gap-2 text-virgilio-purple">
+                <Sparkles className="h-4 w-4" />
+                <span className="text-sm font-medium">Smart field</span>
               </div>
-
-              <div className="flex gap-2">
-                <Badge variant="outline" className="bg-white">
-                  {salaryCurrency}
-                </Badge>
-                <Badge variant="outline" className="bg-white capitalize">
-                  {salaryPeriod}
-                </Badge>
+              <div className="bg-white border border-virgilio-border/50 rounded-md p-3">
+                <p className="text-sm text-virgilio-text font-medium mb-1">"{lockedQuestion}"</p>
+                <p className="text-xs text-virgilio-muted">
+                  This question is pre-set. {selectedDef.hint}
+                </p>
               </div>
             </div>
           )}
 
-          {/* Question Text - hidden for salary_expectations */}
-          {!isSalaryType && (
+          {/* Free-form question text — hidden for smart fields */}
+          {!isSmart && (
             <div className="space-y-2">
               <Label htmlFor="question-text">
                 Question <span className="text-destructive">*</span>
@@ -298,7 +362,7 @@ export function InterviewQuestionForm({
             </div>
           )}
 
-          {/* Notes for Interviewer - shown for all types */}
+          {/* Notes for Interviewer */}
           <div className="space-y-2">
             <Label htmlFor="notes-for-interviewer">
               Notes for Interviewer (Optional)
