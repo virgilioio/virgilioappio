@@ -111,10 +111,11 @@ interface StageScorecardProps {
   currentUserId?: string;
   onOpenFullSheet: (scorecardId: string) => void;
   onDismissAiDraft: (scorecardId: string) => Promise<void>;
+  refreshNonce?: number;
 }
 
-function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet, onDismissAiDraft }: StageScorecardProps) {
-  const { scorecards, loading, refetch } = useAllStageScorecards(stageInstanceId, associationId);
+function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet, onDismissAiDraft, refreshNonce }: StageScorecardProps) {
+  const { scorecards, loading, refetch } = useAllStageScorecards(stageInstanceId, associationId, refreshNonce);
 
   const handleDismiss = async (scorecardId: string) => {
     await onDismissAiDraft(scorecardId);
