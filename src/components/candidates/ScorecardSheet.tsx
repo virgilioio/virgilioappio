@@ -888,20 +888,61 @@ export function ScorecardSheet({
 
       case 'score_1_5':
         return (
-          <div key={question.id} className="space-y-2">
-            <Label>
-              {question.question_text}
-              {question.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            {question.notes_for_interviewer && (
-              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
-            )}
-            <OverallRatingPills
+          <div
+            key={question.id}
+            style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #F1F0EC' }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                gap: 12,
+                marginBottom: 10,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#1F2230',
+                  lineHeight: 1.45,
+                }}
+              >
+                {question.question_text}
+                {question.is_required && <span className="text-destructive ml-1">*</span>}
+              </div>
+              <div
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 11,
+                  color: '#8B8F9E',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Score · 1–5
+              </div>
+            </div>
+            <ScoreFivePills
               value={(response?.answerText as any) || ''}
               onChange={(v) => handleResponseChange(question.id, { answerText: v })}
               disabled={isReadOnly}
-              compact
             />
+            {question.notes_for_interviewer && (
+              <p
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 11,
+                  fontStyle: 'italic',
+                  color: '#8B8F9E',
+                  lineHeight: 1.5,
+                  marginTop: 12,
+                }}
+              >
+                {question.notes_for_interviewer}
+              </p>
+            )}
           </div>
         );
 
