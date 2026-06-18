@@ -804,6 +804,9 @@ export function ScorecardSheet({
               .eq('id', assoc.candidate_id);
           }
         }
+      }
+
+
 
       // Clear AI draft flag for newly created scorecards (no existing.id at save time)
       if (isAiDraft && scorecardId && scorecardId !== existing?.id) {
