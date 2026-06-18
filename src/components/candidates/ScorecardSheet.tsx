@@ -996,7 +996,7 @@ export function ScorecardSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={handleSheetDismiss}>
-        <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1400px] sm:max-w-[1400px] p-0 bg-[#FAFAF7]">
+        <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1190px] sm:max-w-[1190px] p-0 bg-[#FAFAF7]">
           <div className="flex h-full flex-col">
             <SheetHeader className="p-6 border-b border-[#E7E8EE] bg-white">
               <div className="flex items-center justify-between">
