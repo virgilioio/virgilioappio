@@ -1500,57 +1500,18 @@ const stageHasAutomation = useMemo(() => {
 
                     {/* Scorecards Tab */}
                     {activeTab === 'scorecards' && (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle>Scorecards</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {planStages.filter(p => supportsScorecard(p.stage.stage_type)).length === 0 ? (
-                            <InlineEmpty text="No scorecard-enabled stages." />
-                          ) : (
-                            [...planStages]
-                              .sort((a, b) => a.position - b.position)
-                              .filter(p => supportsScorecard(p.stage.stage_type))
-                              .map((opt) => (
-                                <div key={opt.jhsId} className="border border-virgilio-border rounded-lg p-4 space-y-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="font-poppins font-medium text-[13.5px] text-text-primary">{opt.stage.stage_name}</div>
-                                    {associationId && (!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
-                                      <Button
-                                        variant={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'purple' : 'secondary'}
-                                        size="sm"
-                                        icon={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? Sparkles : Star}
-                                        onClick={() => {
-                                          setScoreStageInstId(opt.jhsId)
-                                          setScoreStageName(opt.stage.stage_name)
-                                          setScoreOpen(true)
-                                        }}
-                                      >
-                                        {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'AI Draft' : 'Add'}
-                                      </Button>
-                                    )}
-                                  </div>
-                                  {associationId && (
-                                    <StageScorecards 
-                                      stageInstanceId={opt.jhsId}
-                                      associationId={associationId}
-                                      currentUserId={user?.id}
-                                      onOpenFullSheet={(scorecardId) => {
-                                        setScoreStageInstId(opt.jhsId)
-                                        setScoreStageName(opt.stage.stage_name)
-                                        setViewingScorecardId(scorecardId)
-                                        setScoreOpen(true)
-                                        onScorecardChange?.(scorecardId, opt.jhsId)
-                                      }}
-                                      onDismissAiDraft={handleDismissAiDraft}
-                                      refreshNonce={scorecardsRefreshNonce}
-                                    />
-                                  )}
-                                </div>
-                              ))
-                          )}
-                        </CardContent>
-                      </Card>
+                      <ScorecardsTabContent
+                        onAddMine={() => {
+                          const firstScorecardStage = [...planStages]
+                            .sort((a, b) => a.position - b.position)
+                            .find((p) => supportsScorecard(p.stage.stage_type))
+                          if (firstScorecardStage) {
+                            setScoreStageInstId(firstScorecardStage.jhsId)
+                            setScoreStageName(firstScorecardStage.stage.stage_name)
+                            setScoreOpen(true)
+                          }
+                        }}
+                      />
                     )}
 
                     {/* Activity Tab */}
