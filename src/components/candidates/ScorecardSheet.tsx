@@ -82,6 +82,7 @@ import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import { FormSectionCard } from "./scorecard/FormSectionCard";
 import { OverallRatingPills } from "./scorecard/OverallRatingPills";
 import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
+import { AiSuggestedRatingCard } from "./scorecard/AiSuggestedRatingCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1114,7 +1115,7 @@ export function ScorecardSheet({
 
             <div className="flex-1 overflow-hidden flex">
               {/* Left Panel - Resume with Tabs */}
-              <div className="w-full lg:w-[45%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
+              <div className="w-full lg:w-[53%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
                 <Tabs defaultValue="resume" className="flex flex-col h-full">
                   <div className="p-4 shrink-0">
                     <TabsList className="bg-[#F1F0EC] rounded-full p-1 h-auto gap-1">
@@ -1167,7 +1168,7 @@ export function ScorecardSheet({
               </div>
 
               {/* Right Panel - Scorecard Form */}
-              <div className="w-full lg:w-[55%] overflow-y-auto p-6 space-y-6 bg-[#FAFAF7]">
+              <div className="w-full lg:w-[47%] overflow-y-auto p-6 space-y-6 bg-[#FAFAF7]">
                 {/* Points to validate — Gio suggestion inbox */}
                 {candidateId && jobId && stageName && (
                   <GioPointsInbox
@@ -1183,124 +1184,16 @@ export function ScorecardSheet({
                     onRemoveAdded={(idx) => gioAdded.remove(idx)}
                   />
                 )}
-                {/* AI Suggested Rating Banner — Lilac emphasis */}
-                {isAiDraft && aiSuggestedRating && (
-                  <div
-                    className="relative rounded-[14px]"
-                    style={{ background: "#EDE4FF", border: "1px solid #DCC9FA" }}
-                  >
-                    {/* Header row (single line, exact spec) */}
-                    <div className="flex items-center gap-[14px] px-4 py-[15px]">
-                      {/* Logo tile with Gio ATS mark */}
-                      <div
-                        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[13px] bg-white"
-                        style={{ boxShadow: "0 1px 2px rgba(91,33,182,0.12)" }}
-                        aria-hidden="true"
-                      >
-                        <svg viewBox="0 0 48 48" width="28" height="28" aria-hidden="true">
-                          <circle cx="24" cy="19.4" r="9.9" fill="#0d0d09" />
-                          <rect x="20.7" y="29.9" width="13.2" height="8.8" rx="4.4" fill="#D7C5FB" />
-                        </svg>
-                      </div>
-
-                      {/* Copy */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="font-poppins"
-                            style={{ fontSize: 14, fontWeight: 600, color: "#3B1E78" }}
-                          >
-                            AI suggested rating: {aiSuggestedRating}
-                          </span>
-                          <span
-                            className="font-inter"
-                            style={{
-                              fontWeight: 700,
-                              fontSize: "9.5px",
-                              letterSpacing: "0.06em",
-                              textTransform: "uppercase",
-                              color: "#6F3FF5",
-                              background: "#fff",
-                              border: "1px solid #DCC9FA",
-                              borderRadius: 999,
-                              padding: "2px 7px",
-                              lineHeight: 1,
-                            }}
-                          >
-                            Gio
-                          </span>
-                        </div>
-                        <p
-                          className="font-inter"
-                          style={{ marginTop: 3, fontSize: 12, color: "#5B21B6", opacity: 0.85 }}
-                        >
-                          Based on interview transcript analysis.
-                        </p>
-                      </div>
-
-                      {/* Primary action */}
-                      {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
-                        <button
-                          type="button"
-                          onClick={handleAcceptAiSuggestion}
-                          className="font-poppins inline-flex shrink-0 items-center gap-[6px] rounded-lg"
-                          style={{
-                            background: "#0d0d09",
-                            color: "#fffcf9",
-                            height: 28,
-                            padding: "0 10px",
-                            fontWeight: 500,
-                            fontSize: 12,
-                          }}
-                        >
-                          <Sparkles size={13} />
-                          Apply suggestion
-                        </button>
-                      )}
-
-                      {/* Collapsible toggle (replaces dismiss; same ghost icon-button styling) */}
-                      {aiAnalysis && (
-                        <button
-                          type="button"
-                          aria-label={showAnalysis ? "Hide analysis" : "Show analysis"}
-                          aria-expanded={showAnalysis}
-                          onClick={() => setShowAnalysis(!showAnalysis)}
-                          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-transparent hover:bg-white/40 transition-colors"
-                          style={{ color: "#7C5BC2" }}
-                        >
-                          {showAnalysis ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Collapsible analysis */}
-                    {aiAnalysis && showAnalysis && (
-                      <div style={{ borderTop: "1px solid #DCC9FA" }}>
-                        <div className="flex items-center justify-end px-4 py-2">
-                          <button
-                            type="button"
-                            aria-label="Copy analysis"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyToClipboard(aiAnalysis, "Analysis copied to clipboard");
-                            }}
-                            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-transparent hover:bg-white/40 transition-colors"
-                            style={{ color: "#7C5BC2" }}
-                          >
-                            <Copy size={14} />
-                          </button>
-                        </div>
-                        <div className="px-4 pb-4">
-                          <div className="max-h-80 overflow-y-auto">
-                            <ProfileSummaryMarkdown
-                              content={normalizeAiAnalysis(aiAnalysis)}
-                              className="[&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs [&_p]:text-[#5B21B6] [&_li]:text-[#5B21B6] [&_strong]:text-[#3B1E78] [&_hr]:border-[#DCC9FA]"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                {/* AI Suggested Rating — structured lilac card */}
+                {isAiDraft && aiSuggestedRating && aiAnalysis && (
+                  <AiSuggestedRatingCard
+                    verdictLabel={aiSuggestedRating}
+                    analysis={aiAnalysis}
+                    normalizedMarkdown={normalizeAiAnalysis(aiAnalysis)}
+                    applied={aiRatingToScoreRating[aiSuggestedRating] === rating}
+                    onApply={handleAcceptAiSuggestion}
+                    disabled={isReadOnly}
+                  />
                 )}
 
 
