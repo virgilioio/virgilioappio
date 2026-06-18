@@ -1,111 +1,42 @@
-import { useState } from 'react'
 import { BarChart3, Plus, Sparkles } from 'lucide-react'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { toast } from '@/hooks/use-toast'
+import { EmptyState } from '@/components/ui/empty-state'
 
-type Verdict =
+export type SubmittedVerdict =
   | { label: 'Strong yes'; tone: 'green' }
   | { label: 'Yes'; tone: 'green' }
-  | { label: 'Lean yes'; tone: 'yellow' }
-  | { label: 'Lean no'; tone: 'orange' }
-  | { label: 'Strong no'; tone: 'red' }
+  | { label: 'No'; tone: 'red' }
+  | { label: 'Definitely no'; tone: 'red' }
 
-interface PanelistScorecard {
+export interface SubmittedScorecardRow {
   id: string
   name: string
-  role: string
-  meta: string
-  verdict: Verdict
-  scores: { label: string; value: number }[]
-  feedback: string
+  meta?: string | null
+  verdict: SubmittedVerdict | null
+  feedback?: string | null
+  isMine?: boolean
 }
-
-const SUBMITTED: PanelistScorecard[] = [
-  {
-    id: 'tb',
-    name: 'Tom Bell',
-    role: 'Hiring manager',
-    meta: 'May 12 · Onsite Day 1',
-    verdict: { label: 'Strong yes', tone: 'green' },
-    scores: [
-      { label: 'Craft', value: 5 },
-      { label: 'Systems thinking', value: 5 },
-      { label: 'Communication', value: 5 },
-      { label: 'Culture', value: 4 },
-    ],
-    feedback:
-      'Best portfolio for this role in months. Linear case study maps 1:1 to the nav refresh.',
-  },
-  {
-    id: 'al',
-    name: 'An Le',
-    role: 'Panel · Design',
-    meta: 'May 12 · Onsite Day 1',
-    verdict: { label: 'Yes', tone: 'green' },
-    scores: [
-      { label: 'Craft', value: 5 },
-      { label: 'Systems thinking', value: 4 },
-      { label: 'Communication', value: 4 },
-      { label: 'Culture', value: 4 },
-    ],
-    feedback:
-      'Strong systems thinking and craft. Some concerns about stakeholder management at scale.',
-  },
-  {
-    id: 'jk',
-    name: 'Jo Khan',
-    role: 'Panel · Design',
-    meta: 'May 12 · Onsite Day 1',
-    verdict: { label: 'Lean yes', tone: 'yellow' },
-    scores: [
-      { label: 'Craft', value: 5 },
-      { label: 'Systems thinking', value: 4 },
-      { label: 'Communication', value: 3 },
-      { label: 'Culture', value: 4 },
-    ],
-    feedback:
-      "Solid craft. Would've liked more leadership examples — she has them, just didn't surface in our 45 min.",
-  },
-]
 
 function initials(name: string) {
   return name
-    .split(' ')
+    .split(/\s+/)
     .map((p) => p[0])
+    .filter(Boolean)
     .join('')
     .slice(0, 2)
     .toUpperCase()
 }
 
-function SegmentBar({ value, max = 5 }: { value: number; max?: number }) {
+function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean }) {
+  const cleanFeedback = p.feedback
+    ? p.feedback.replace(/<[^>]+>/g, '').trim()
+    : ''
   return (
-    <div className="flex items-center gap-[3px]">
-      {Array.from({ length: max }).map((_, i) => (
-        <span
-          key={i}
-          className={cn(
-            'h-1 w-3 rounded-full',
-            i < value ? 'bg-[#0d0d09]' : 'bg-[#E7E8EE]',
-          )}
-        />
-      ))}
-    </div>
-  )
-}
-
-function PanelistRow({ p, isLast }: { p: PanelistScorecard; isLast: boolean }) {
-  return (
-    <div
-      className={cn(
-        'px-5 py-4',
-        !isLast && 'border-b border-[#F1F0EC]',
-      )}
-    >
-      {/* Header line */}
+    <div className={cn('px-5 py-4', !isLast && 'border-b border-[#F1F0EC]')}>
       <div className="flex items-start gap-3">
         <Avatar className="h-9 w-9 shrink-0">
           <AvatarFallback className="bg-[#FAFAF7] text-[#5A6072] font-poppins font-semibold text-[12px]">
@@ -117,160 +48,128 @@ function PanelistRow({ p, isLast }: { p: PanelistScorecard; isLast: boolean }) {
             <span className="font-poppins font-semibold text-[13.5px] tracking-[-0.005em] text-[#1F2230]">
               {p.name}
             </span>
-            <Badge tone="neutral" size="xs">
-              {p.role}
-            </Badge>
+            {p.isMine && (
+              <Badge tone="lilac" size="xs">
+                You
+              </Badge>
+            )}
           </div>
-          <div className="font-inter text-[11.5px] text-[#8B8F9E] mt-0.5">
-            {p.meta}
-          </div>
+          {p.meta && (
+            <div className="font-inter text-[11.5px] text-[#8B8F9E] mt-0.5">
+              {p.meta}
+            </div>
+          )}
         </div>
-        <Badge tone={p.verdict.tone} size="md" dot>
-          {p.verdict.label}
-        </Badge>
+        {p.verdict && (
+          <Badge tone={p.verdict.tone} size="md" dot>
+            {p.verdict.label}
+          </Badge>
+        )}
       </div>
 
-      {/* Area scores grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-        {p.scores.map((s) => (
-          <div
-            key={s.label}
-            className="bg-[#FAFAF7] border border-[#F1F0EC] rounded-lg p-2.5"
-          >
-            <div className="font-inter font-medium text-[10.5px] tracking-[0.06em] uppercase text-[#8B8F9E]">
-              {s.label}
-            </div>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <SegmentBar value={s.value} />
-              <div className="font-poppins font-semibold text-[13px] text-[#0d0d09] tabular-nums">
-                {s.value}
-                <span className="text-[#8B8F9E]">/5</span>
-              </div>
-            </div>
+      {cleanFeedback && (
+        <div className="mt-3 bg-white border border-[#E7E8EE] rounded-[10px] p-3">
+          <div className="font-inter font-medium text-[10.5px] tracking-[0.06em] uppercase text-[#8B8F9E]">
+            Written feedback
           </div>
-        ))}
-      </div>
-
-      {/* Written feedback */}
-      <div className="mt-3 bg-white border border-[#E7E8EE] rounded-[10px] p-3">
-        <div className="font-inter font-medium text-[10.5px] tracking-[0.06em] uppercase text-[#8B8F9E]">
-          Written feedback
+          <p className="mt-1 font-inter text-[12.5px] leading-[1.6] text-[#1F2230]">
+            “{cleanFeedback}”
+          </p>
         </div>
-        <p className="mt-1 font-inter text-[12.5px] leading-[1.6] text-[#1F2230]">
-          “{p.feedback}”
-        </p>
-      </div>
+      )}
     </div>
   )
 }
 
 export interface ScorecardsTabContentProps {
+  submitted: SubmittedScorecardRow[]
+  pendingCount: number
   onCompare?: () => void
   onAddMine?: () => void
 }
 
 export function ScorecardsTabContent({
+  submitted,
+  pendingCount,
   onCompare,
   onAddMine,
 }: ScorecardsTabContentProps) {
+  const total = submitted.length + pendingCount
+  const subtitle =
+    total === 0
+      ? 'No scorecards yet'
+      : `${submitted.length} of ${total} panelist${total === 1 ? '' : 's'} submitted`
+
+  const canCompare = submitted.length >= 2
+
   return (
     <div className="space-y-4">
-      {/* Card 1 · Submitted scorecards */}
       <ProfileCard
         title="Submitted scorecards"
-        subtitle="3 of 5 panelists have submitted · panel debrief is scheduled for Thu 4:00 PM"
+        subtitle={subtitle}
         bodyPadding="none"
         action={
           <>
-            <Button variant="secondary" size="sm" icon={BarChart3} onClick={onCompare}>
-              Compare side-by-side
-            </Button>
-            <Button variant="primary" size="sm" icon={Plus} onClick={onAddMine}>
-              My scorecard
-            </Button>
+            {canCompare && (
+              <Button variant="secondary" size="sm" icon={BarChart3} onClick={onCompare}>
+                Compare side-by-side
+              </Button>
+            )}
+            {onAddMine && (
+              <Button variant="primary" size="sm" icon={Plus} onClick={onAddMine}>
+                My scorecard
+              </Button>
+            )}
           </>
         }
       >
-        <div>
-          {SUBMITTED.map((p, i) => (
-            <PanelistRow
-              key={p.id}
-              p={p}
-              isLast={i === SUBMITTED.length - 1}
+        {submitted.length === 0 ? (
+          <div className="px-5 py-8">
+            <EmptyState
+              variant="inline"
+              title="No scorecards submitted yet"
+              description={
+                pendingCount > 0
+                  ? `${pendingCount} panelist${pendingCount === 1 ? '' : 's'} pending`
+                  : 'Add the first scorecard for this stage.'
+              }
             />
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div>
+            {submitted.map((p, i) => (
+              <PanelistRow key={p.id} p={p} isLast={i === submitted.length - 1} />
+            ))}
+          </div>
+        )}
       </ProfileCard>
 
-      {/* Card 2 · Side-by-side comparison */}
-      <ProfileCard
-        title="Side-by-side comparison"
-        action={
-          <Badge tone="purple" size="sm" icon={Sparkles}>
-            Gio synthesis
-          </Badge>
-        }
-      >
-        <div className="bg-[#FAF8FF] border border-[#EDE4FF] rounded-[10px] p-3 font-inter text-[12.5px] leading-[1.6] text-[#1F2230]">
-          <span className="font-semibold">Consensus:</span> all 3 panelists rate
-          craft at 5/5. Communication is split — Tom (5), An (4), Jo (3) —
-          suggesting a follow-up to test stakeholder scenarios before the offer.
-        </div>
-      </ProfileCard>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sidebar pending row with nudge state
-
-export interface ScorecardsPendingPanelist {
-  id: string
-  name: string
-  role: string
-}
-
-export const PENDING_PANELISTS: ScorecardsPendingPanelist[] = [
-  { id: 'mr', name: 'Maya Reyes', role: 'Recruiter' },
-  { id: 'ky', name: 'Karl Yu', role: 'Panel · Eng' },
-]
-
-export function PendingNudgeRow({ row }: { row: ScorecardsPendingPanelist }) {
-  const [nudged, setNudged] = useState(false)
-  return (
-    <div className="flex items-center gap-2 bg-[#FAFAF7] border border-[#F1F0EC] rounded-lg px-2.5 py-2">
-      <Avatar className="h-6 w-6 shrink-0">
-        <AvatarFallback className="bg-white border border-[#F1F0EC] text-[#5A6072] font-poppins font-semibold text-[10px]">
-          {initials(row.name)}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <div className="font-inter font-medium text-[11.5px] text-[#1F2230] truncate">
-          {row.name}
-        </div>
-        <div className="font-inter text-[10.5px] text-[#8B8F9E] truncate">
-          {row.role}
-        </div>
-      </div>
-      {nudged ? (
-        <span className="font-inter text-[11px] text-[#5A6072] px-2">
-          Nudged
-        </span>
-      ) : (
-        <Button
-          variant="purple"
-          size="sm"
-          onClick={() => {
-            setNudged(true)
-            toast({
-              title: 'Nudge sent',
-              description: `Reminder sent to ${row.name}.`,
-            })
-          }}
+      {submitted.length >= 2 && (
+        <ProfileCard
+          title="Side-by-side comparison"
+          action={
+            <Badge tone="purple" size="sm" icon={Sparkles}>
+              Gio synthesis
+            </Badge>
+          }
         >
-          Nudge
-        </Button>
+          <div className="bg-[#FAF8FF] border border-[#EDE4FF] rounded-[10px] p-3 font-inter text-[12.5px] leading-[1.6] text-[#1F2230]">
+            {summarize(submitted)}
+          </div>
+        </ProfileCard>
       )}
     </div>
   )
+}
+
+function summarize(rows: SubmittedScorecardRow[]): string {
+  const counts: Record<string, number> = {}
+  for (const r of rows) {
+    const k = r.verdict?.label ?? 'Pending'
+    counts[k] = (counts[k] || 0) + 1
+  }
+  const parts = Object.entries(counts).map(
+    ([label, n]) => `${n} ${label.toLowerCase()}`,
+  )
+  return `Across ${rows.length} submitted scorecard${rows.length === 1 ? '' : 's'}: ${parts.join(' · ')}.`
 }
