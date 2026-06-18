@@ -6,12 +6,20 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftRosette } from '@/components/ui/EmptyIllustrations'
+import { RATING_META } from '@/lib/scorecardRatings'
+import type { ScoreRating } from '@/hooks/useScorecards'
 
 export type SubmittedVerdict =
   | { label: 'Strong yes'; tone: 'green' }
   | { label: 'Yes'; tone: 'green' }
   | { label: 'No'; tone: 'red' }
   | { label: 'Definitely no'; tone: 'red' }
+
+export interface SubmittedQuestionScore {
+  questionId: string
+  questionText: string
+  rating: ScoreRating
+}
 
 export interface SubmittedScorecardRow {
   id: string
@@ -20,6 +28,16 @@ export interface SubmittedScorecardRow {
   verdict: SubmittedVerdict | null
   feedback?: string | null
   isMine?: boolean
+  scores?: SubmittedQuestionScore[]
+}
+
+// Verdict-distribution palette (matches Scorecards Summary sidebar).
+const VERDICT_BAR_COLOR: Record<ScoreRating, string> = {
+  strong_no: '#EF4444',
+  lean_no: '#F97316',
+  lean_yes: '#F59E0B',
+  yes: '#12B886',
+  strong_yes: '#12B886',
 }
 
 function initials(name: string) {
@@ -32,10 +50,79 @@ function initials(name: string) {
     .toUpperCase()
 }
 
+function ScoreQuestionCard({ score }: { score: SubmittedQuestionScore }) {
+  const n = RATING_META[score.rating]?.numeric ?? 0
+  const color = VERDICT_BAR_COLOR[score.rating] ?? '#12B886'
+  return (
+    <div
+      style={{
+        background: '#FAFAF7',
+        border: '1px solid #F1F0EC',
+        borderRadius: 10,
+        padding: '12px 14px',
+      }}
+    >
+      <div
+        title={score.questionText}
+        style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: 10.5,
+          fontWeight: 600,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: '#8B8F9E',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {score.questionText}
+      </div>
+      <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <span
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: 2,
+              background: i <= n ? color : '#E7E8EE',
+            }}
+          />
+        ))}
+      </div>
+      <div
+        style={{
+          marginTop: 10,
+          fontFamily: 'Poppins, sans-serif',
+          fontWeight: 600,
+          fontSize: 16,
+          color: '#1F2230',
+          lineHeight: 1,
+        }}
+      >
+        {n}
+        <span
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 500,
+            fontSize: 12,
+            color: '#8B8F9E',
+            marginLeft: 2,
+          }}
+        >
+          /5
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean }) {
   const cleanFeedback = p.feedback
     ? p.feedback.replace(/<[^>]+>/g, '').trim()
     : ''
+  const scores = p.scores ?? []
   return (
     <div className={cn('px-5 py-4', !isLast && 'border-b border-[#F1F0EC]')}>
       <div className="flex items-start gap-3">
@@ -67,6 +154,21 @@ function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean 
           </Badge>
         )}
       </div>
+
+      {scores.length > 0 && (
+        <div
+          style={{
+            marginTop: 14,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: 10,
+          }}
+        >
+          {scores.map((s) => (
+            <ScoreQuestionCard key={s.questionId} score={s} />
+          ))}
+        </div>
+      )}
 
       {cleanFeedback && (
         <div className="mt-3 bg-white border border-[#E7E8EE] rounded-[10px] p-3">

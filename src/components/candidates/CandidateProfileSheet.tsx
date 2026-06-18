@@ -286,6 +286,7 @@ const submittedScorecardRows: SubmittedScorecardRow[] = useMemo(() => {
       verdict: ratingToVerdict(s.rating),
       feedback: s.general_overview,
       isMine: s.created_by === user?.id,
+      scores: (s as any).criterion_scores ?? [],
     }))
 }, [activeStageScorecards, activeStageOption, user?.id])
 
