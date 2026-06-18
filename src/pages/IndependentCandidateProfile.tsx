@@ -24,6 +24,8 @@ import {
   ProfileSidebar, SidebarBlock, MetaRow, LinkRow, FileRow,
 } from '@/components/candidates/profile/primitives/ProfileSidebar'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
+import { ContactPair, PhoneContactPair } from '@/components/candidates/profile/primitives/ContactPair'
+import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
