@@ -1351,6 +1351,7 @@ const stageHasAutomation = useMemo(() => {
                                 setScoreOpen(true)
                               }}
                               onDismissAiDraft={handleDismissAiDraft}
+                              refreshNonce={scorecardsRefreshNonce}
                             />
                           )}
 
@@ -1540,6 +1541,7 @@ const stageHasAutomation = useMemo(() => {
                                         onScorecardChange?.(scorecardId, opt.jhsId)
                                       }}
                                       onDismissAiDraft={handleDismissAiDraft}
+                                      refreshNonce={scorecardsRefreshNonce}
                                     />
                                   )}
                                 </div>
