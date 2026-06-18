@@ -129,6 +129,7 @@ function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpen
     <ExpandableScoreDisplay
       scorecards={scorecards}
       currentUserId={currentUserId}
+      stageInstanceId={stageInstanceId}
       onOpenFullSheet={onOpenFullSheet}
       onDismissAiDraft={handleDismiss}
     />
