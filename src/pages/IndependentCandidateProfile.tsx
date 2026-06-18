@@ -612,7 +612,7 @@ export default function IndependentCandidateProfile() {
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                         <ContactPair icon={Mail} label="Email" value={candidate.email || null} />
-                        <ContactPair icon={Phone} label="Phone" value={candidate.phone || null} />
+                        <PhoneContactPair icon={Phone} phone={candidate.phone} whatsAppEnabled={whatsAppEnabled} />
                         <ContactPair icon={MapPin} label="Location" value={location || null} />
                         <ContactPair icon={DollarSign} label="Salary expectations" value={salary} />
                         <ContactPair icon={Info} label="Work authorization" value={(candidate as any).work_authorization || null} />
