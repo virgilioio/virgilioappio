@@ -79,7 +79,7 @@ import { GioPointsInbox } from "./scorecard/GioPointsInbox";
 import { AddedFromGioBlock } from "./scorecard/AddedFromGioBlock";
 import { useGioAddedQuestions } from "@/hooks/useGioAddedQuestions";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
-import { FormSectionCard } from "./scorecard/FormSectionCard";
+import { CandidateSheetSection } from "./form/CandidateSheetSection";
 import { OverallRatingPills } from "./scorecard/OverallRatingPills";
 import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
 import { AiSuggestedRatingCard } from "./scorecard/AiSuggestedRatingCard";
@@ -1197,19 +1197,16 @@ export function ScorecardSheet({
                 )}
 
 
-                <FormSectionCard title="Overall rating">
+                <CandidateSheetSection label="OVERALL RATING">
                   <OverallRatingPills
                     value={rating}
                     onChange={(v) => setRating(v)}
                     disabled={isReadOnly}
                   />
-                </FormSectionCard>
+                </CandidateSheetSection>
 
                 {(!loadingQuestions && questions.length > 0) || gioAdded.items.length > 0 ? (
-                  <FormSectionCard
-                    title="Interview questions"
-                    subtitle="Answer the questions configured for this stage."
-                  >
+                  <CandidateSheetSection label="INTERVIEW QUESTIONS">
                     <div className="space-y-6">
                       {questions.map(renderQuestion)}
                       {gioAdded.items.map((q) => (
@@ -1240,7 +1237,7 @@ export function ScorecardSheet({
                         />
                       ))}
                     </div>
-                  </FormSectionCard>
+                  </CandidateSheetSection>
                 ) : null}
 
                 <KeyTakeawaysCard
