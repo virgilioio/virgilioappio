@@ -1114,15 +1114,22 @@ export function ScorecardSheet({
 
             <div className="flex-1 overflow-hidden flex">
               {/* Left Panel - Resume with Tabs */}
-              <div className="w-[50%] border-r border-virgilio-border flex flex-col">
+              <div className="w-full lg:w-[45%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
                 <Tabs defaultValue="resume" className="flex flex-col h-full">
-                  <div className="p-4 border-b border-virgilio-border shrink-0">
-                    <TabsList>
-                      <TabsTrigger value="resume">Resume</TabsTrigger>
-                      <TabsTrigger value="application">Application</TabsTrigger>
-                      <TabsTrigger value="interview-details">
-                        Interview Details
-                      </TabsTrigger>
+                  <div className="p-4 shrink-0">
+                    <TabsList className="bg-[#F1F0EC] rounded-full p-1 h-auto gap-1">
+                      <TabsTrigger
+                        value="resume"
+                        className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                      >Resume</TabsTrigger>
+                      <TabsTrigger
+                        value="application"
+                        className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                      >Application</TabsTrigger>
+                      <TabsTrigger
+                        value="interview-details"
+                        className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                      >Interview Details</TabsTrigger>
                     </TabsList>
                   </div>
                   
