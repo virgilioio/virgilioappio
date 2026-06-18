@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { SoonBadge } from "@/components/ui/soon-badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy, Lock, Globe } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy, Lock, Globe, Check, Info, RefreshCw } from "lucide-react";
 import { copyToClipboard } from "@/utils/clipboard";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
@@ -79,6 +79,9 @@ import { GioPointsInbox } from "./scorecard/GioPointsInbox";
 import { AddedFromGioBlock } from "./scorecard/AddedFromGioBlock";
 import { useGioAddedQuestions } from "@/hooks/useGioAddedQuestions";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
+import { FormSectionCard } from "./scorecard/FormSectionCard";
+import { OverallRatingPills } from "./scorecard/OverallRatingPills";
+import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -952,13 +955,18 @@ export function ScorecardSheet({
         };
         
         return (
-          <div key={question.id} className="space-y-3 p-4 bg-green-50/50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              <Label className="text-green-800 font-medium">
-                {question.question_text}
-                {question.is_required && <span className="text-destructive ml-1">*</span>}
-              </Label>
+          <div key={question.id} className="space-y-3 p-4 bg-[#F4FBF6] border border-[#BBE3C9] rounded-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <DollarSign className="h-4 w-4 text-[#0F8A56] shrink-0" />
+                <Label className="text-[#0F5B3A] font-medium">
+                  {question.question_text}
+                  {question.is_required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-white border border-[#BBE3C9] px-2 py-0.5 text-[10.5px] font-medium text-[#0F8A56] shrink-0">
+                <RefreshCw className="h-3 w-3" /> Syncs to profile
+              </span>
             </div>
             {question.notes_for_interviewer && (
               <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
@@ -971,7 +979,7 @@ export function ScorecardSheet({
                 value={response?.answerText || ''}
                 onChange={(e) => handleResponseChange(question.id, { answerText: e.target.value })}
                 disabled={isReadOnly}
-                className="max-w-[200px]"
+                className="max-w-[200px] bg-white"
               />
               <Badge variant="outline" className="bg-white font-mono">
                 {question.salary_config?.currency || 'USD'}
@@ -980,9 +988,6 @@ export function ScorecardSheet({
                 {formatPeriod(question.salary_config?.period || 'annually')}
               </Badge>
             </div>
-            <p className="text-xs text-green-600">
-              This answer will update the candidate's salary expectations on their profile.
-            </p>
           </div>
         );
     }
@@ -991,13 +996,27 @@ export function ScorecardSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={handleSheetDismiss}>
-        <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1400px] sm:max-w-[1400px] p-0">
+        <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1400px] sm:max-w-[1400px] p-0 bg-[#FAFAF7]">
           <div className="flex h-full flex-col">
-            <SheetHeader className="p-6 border-b">
+            <SheetHeader className="p-6 border-b border-[#E7E8EE] bg-white">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1.5">
+                  <div
+                    className="font-poppins font-semibold uppercase text-[#6F3FF5]"
+                    style={{ fontSize: 10.5, letterSpacing: '0.08em' }}
+                  >
+                    Scorecard
+                  </div>
                   <div className="flex items-center gap-3">
-                    <SheetTitle>Scorecard{stageName ? ` • ${stageName}` : ""}</SheetTitle>
+                    <SheetTitle asChild>
+                      <h2
+                        className="font-poppins font-semibold text-[#0F1222] m-0"
+                        style={{ fontSize: 20, letterSpacing: '-0.035em', lineHeight: 1.15 }}
+                      >
+                        {stageName || 'Scorecard'}
+                        <span className="text-[#D7C5FB]">.</span>
+                      </h2>
+                    </SheetTitle>
                     {isAiDraft && (
                       <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 gap-1">
                         <Sparkles className="h-3 w-3" />
@@ -1005,8 +1024,8 @@ export function ScorecardSheet({
                       </Badge>
                     )}
                     {hasDraft && (
-                      <Badge variant="outline" className="text-xs text-muted-foreground">
-                        Draft saved
+                      <Badge variant="outline" className="text-xs text-[#0F8A56] bg-[#F4FBF6] border-[#BBE3C9] gap-1">
+                        <Check className="h-3 w-3" /> Draft saved
                       </Badge>
                     )}
                     <Badge
@@ -1095,15 +1114,22 @@ export function ScorecardSheet({
 
             <div className="flex-1 overflow-hidden flex">
               {/* Left Panel - Resume with Tabs */}
-              <div className="w-[50%] border-r border-virgilio-border flex flex-col">
+              <div className="w-full lg:w-[45%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
                 <Tabs defaultValue="resume" className="flex flex-col h-full">
-                  <div className="p-4 border-b border-virgilio-border shrink-0">
-                    <TabsList>
-                      <TabsTrigger value="resume">Resume</TabsTrigger>
-                      <TabsTrigger value="application">Application</TabsTrigger>
-                      <TabsTrigger value="interview-details">
-                        Interview Details
-                      </TabsTrigger>
+                  <div className="p-4 shrink-0">
+                    <TabsList className="bg-[#F1F0EC] rounded-full p-1 h-auto gap-1">
+                      <TabsTrigger
+                        value="resume"
+                        className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                      >Resume</TabsTrigger>
+                      <TabsTrigger
+                        value="application"
+                        className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                      >Application</TabsTrigger>
+                      <TabsTrigger
+                        value="interview-details"
+                        className="rounded-full px-3 py-1.5 text-[12.5px] data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                      >Interview Details</TabsTrigger>
                     </TabsList>
                   </div>
                   
@@ -1141,7 +1167,7 @@ export function ScorecardSheet({
               </div>
 
               {/* Right Panel - Scorecard Form */}
-              <div className="w-[50%] overflow-y-auto p-6 space-y-6">
+              <div className="w-full lg:w-[55%] overflow-y-auto p-6 space-y-6 bg-[#FAFAF7]">
                 {/* Points to validate — Gio suggestion inbox */}
                 {candidateId && jobId && stageName && (
                   <GioPointsInbox
@@ -1215,150 +1241,92 @@ export function ScorecardSheet({
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Overall rating</div>
-                  <RadioGroup
-                    className="grid grid-cols-4 gap-3"
+                <FormSectionCard title="Overall rating">
+                  <OverallRatingPills
                     value={rating}
-                    onValueChange={(v) => setRating(v as ScoreRating)}
+                    onChange={(v) => setRating(v)}
                     disabled={isReadOnly}
-                  >
-                    {ratingOptions.map((opt) => {
-                      const active = rating === opt.value;
-                      const base =
-                        opt.value === "definitely_no"
-                          ? `text-white ${active ? "ring-2" : ""}`
-                          : opt.value === "no"
-                          ? `text-white ${active ? "ring-2" : ""}`
-                          : opt.value === "strong_yes"
-                          ? `text-white ${active ? "ring-2" : ""}`
-                          : `text-white ${active ? "ring-2" : ""}`;
-                      
-                      const colorStyles =
-                        opt.value === "definitely_no"
-                          ? { backgroundColor: '#FA5252', borderColor: '#FA5252', ringColor: active ? '#FA5252' : undefined }
-                          : opt.value === "no"
-                          ? { backgroundColor: '#FA8F8F', borderColor: '#FA8F8F', ringColor: active ? '#FA8F8F' : undefined }
-                          : opt.value === "strong_yes"
-                          ? { backgroundColor: '#6F3FF5', borderColor: '#6F3FF5', ringColor: active ? '#6F3FF5' : undefined }
-                          : { backgroundColor: '#9B7BF7', borderColor: '#9B7BF7', ringColor: active ? '#9B7BF7' : undefined };
-
-                      return (
-                        <Label
-                          key={opt.value}
-                          htmlFor={`rating-${opt.value}`}
-                          className={`
-                            flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 cursor-pointer
-                            transition-all duration-200
-                            ${base}
-                          `}
-                          style={colorStyles}
-                        >
-                          <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} className="sr-only" />
-                          <div className="flex items-center gap-1">
-                            {opt.value === "definitely_no" && <ThumbsDown className="h-4 w-4" />}
-                            {opt.value === "no" && <Octagon className="h-4 w-4" />}
-                            {opt.value === "yes" && <ThumbsUp className="h-4 w-4" />}
-                            {opt.value === "strong_yes" && <Star className="h-4 w-4" />}
-                            <span className="text-sm font-medium">{opt.label}</span>
-                          </div>
-                        </Label>
-                      );
-                    })}
-                  </RadioGroup>
-                </div>
+                  />
+                </FormSectionCard>
 
                 {(!loadingQuestions && questions.length > 0) || gioAdded.items.length > 0 ? (
-                  <div className="space-y-6 border-t border-virgilio-border pt-6">
-                    <h3 className="text-base font-semibold text-virgilio-text">Interview Questions</h3>
-                    {questions.map(renderQuestion)}
-                    {gioAdded.items.map((q) => (
-                      <AddedFromGioBlock
-                        key={q.id}
-                        item={q}
-                        readOnly={isReadOnly}
-                        onAnswerChange={gioAdded.setAnswer}
-                        onRemove={(idx) => {
-                          gioAdded.remove(idx);
-                          // Revert decision so it returns to the inbox.
-                          import('@/lib/supabaseClient').then(({ supabase }) =>
-                            supabase
-                              .from('validation_point_resolutions')
-                              .upsert(
-                                {
-                                  association_id: associationId,
-                                  point_index: idx,
-                                  point_question: q.question,
-                                  status: 'dismissed',
-                                  resolved_in_stage: stageName ?? '',
-                                  resolved_at: new Date().toISOString(),
-                                } as any,
-                                { onConflict: 'association_id,point_index' }
-                              )
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <FormSectionCard
+                    title="Interview questions"
+                    subtitle="Answer the questions configured for this stage."
+                  >
+                    <div className="space-y-6">
+                      {questions.map(renderQuestion)}
+                      {gioAdded.items.map((q) => (
+                        <AddedFromGioBlock
+                          key={q.id}
+                          item={q}
+                          readOnly={isReadOnly}
+                          onAnswerChange={gioAdded.setAnswer}
+                          onRemove={(idx) => {
+                            gioAdded.remove(idx);
+                            // Revert decision so it returns to the inbox.
+                            import('@/lib/supabaseClient').then(({ supabase }) =>
+                              supabase
+                                .from('validation_point_resolutions')
+                                .upsert(
+                                  {
+                                    association_id: associationId,
+                                    point_index: idx,
+                                    point_question: q.question,
+                                    status: 'dismissed',
+                                    resolved_in_stage: stageName ?? '',
+                                    resolved_at: new Date().toISOString(),
+                                  } as any,
+                                  { onConflict: 'association_id,point_index' }
+                                )
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </FormSectionCard>
                 ) : null}
 
-                <div className="space-y-2 border-t border-virgilio-border pt-6">
-                  <div className="mb-2">
-                    <Label htmlFor="overview" className="text-base font-semibold">
-                      Key Takeaways
-                    </Label>
-                    <p className="text-sm text-virgilio-muted mt-1">
-                      Provide comprehensive notes about your interview with this candidate
-                    </p>
-                  </div>
-                  
-                  <RichTextEditor
-                    value={overview}
-                    onChange={setOverview}
-                    placeholder="Share your key takeaways and observations..."
-                  />
-                  
-                  {!isReadOnly && (
-                    <div className="flex justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handlePolishNotes}
-                        disabled={isPolishing || !overview.trim()}
-                        className="gap-2"
-                      >
-                        {isPolishing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Polishing...
-                          </>
-                        ) : (
-                          <>
-                            <img src={gioIcon} alt="Gio" className="h-4 w-4" />
-                            Polish Notes
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <KeyTakeawaysCard
+                  value={overview}
+                  onChange={setOverview}
+                  onPolish={handlePolishNotes}
+                  isPolishing={isPolishing}
+                  disabled={isReadOnly}
+                />
               </div>
             </div>
 
-            <div className="p-6 border-t">
-              <div className="flex justify-end gap-3">
-                {isReadOnly && !editMode ? (
-                  <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-                ) : (
-                  <>
-                    <Button variant="outline" onClick={handleCancelClick} disabled={saving}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSave} disabled={saving}>
-                      {saving ? "Saving..." : existing ? "Update Scorecard" : "Submit Scorecard"}
-                    </Button>
-                  </>
-                )}
+            <div className="p-6 border-t border-[#E7E8EE] bg-white">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[12.5px] text-[#5A6072] font-inter">
+                  <Info className="h-3.5 w-3.5 text-[#8B8F9E]" />
+                  <span>Drafts stay private until you submit.</span>
+                </div>
+                <div className="flex justify-end gap-3">
+                  {isReadOnly && !editMode ? (
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                  ) : (
+                    <>
+                      <Button variant="outline" onClick={handleCancelClick} disabled={saving}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSave} disabled={saving} className="gap-2">
+                        {saving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Saving…
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-4 w-4" />
+                            {existing ? 'Update scorecard' : 'Submit scorecard'}
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
