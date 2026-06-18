@@ -1115,7 +1115,7 @@ export function ScorecardSheet({
 
             <div className="flex-1 overflow-hidden flex">
               {/* Left Panel - Resume with Tabs */}
-              <div className="w-full lg:w-[45%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
+              <div className="w-full lg:w-[53%] border-r border-[#E7E8EE] bg-[#FAFAF7] flex flex-col">
                 <Tabs defaultValue="resume" className="flex flex-col h-full">
                   <div className="p-4 shrink-0">
                     <TabsList className="bg-[#F1F0EC] rounded-full p-1 h-auto gap-1">
