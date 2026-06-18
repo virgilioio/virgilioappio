@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import {
   DollarSign, MapPin, Phone, Linkedin, Briefcase, Building2, Users,
   Type, AlignLeft, Hash, Mail, Link2, Calendar as CalendarIcon, List, ListChecks,
-  ToggleLeft, FileText, MessageSquare,
+  ToggleLeft, FileText, MessageSquare, Star,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 
@@ -15,7 +15,7 @@ export type AnswerType =
   | 'employment_type' | 'work_location' | 'recruiter'
   // basic types
   | 'text' | 'longtext' | 'number' | 'email' | 'url' | 'date'
-  | 'single_select' | 'multi_select' | 'yes_no' | 'file'
+  | 'single_select' | 'multi_select' | 'yes_no' | 'file' | 'score_1_5'
 
 export interface ScorecardFieldDef {
   type: AnswerType
@@ -41,6 +41,7 @@ export const SCORECARD_SMART_FIELDS: ScorecardFieldDef[] = [
 
 /** Basic types (mirrors ApplicationFormBuilder.BASIC_TYPES; multi_select kept for backward compatibility). */
 export const SCORECARD_BASIC_TYPES: ScorecardFieldDef[] = [
+  { type: 'score_1_5',     label: 'Score (1–5)',   icon: Star, hint: 'Strong no → Strong yes' },
   { type: 'text',          label: 'Short text',    icon: Type },
   { type: 'longtext',      label: 'Long text',     icon: AlignLeft },
   { type: 'number',        label: 'Number',        icon: Hash },
