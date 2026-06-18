@@ -1,10 +1,13 @@
-import { ArrowLeft, ArrowRight, Calendar, ChevronLeft, ChevronRight, Heart, Mail, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Calendar, ChevronLeft, ChevronRight, Copy, Heart, Mail, Phone, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { Button } from '@/components/ui/button'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import { ApplicationSwitcher } from '@/components/candidates/profile/ApplicationSwitcher'
+import { copyToClipboard } from '@/utils/clipboard'
+import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 
 interface ProfileHeroCardProps {
   candidateName: string
