@@ -7446,7 +7446,14 @@ export type Database = {
         | "hourly"
       queue_status: "pending" | "sent" | "failed" | "cancelled"
       rejection_category: "recruiter_rejected" | "candidate_declined"
-      score_rating: "definitely_no" | "no" | "yes" | "strong_yes"
+      score_rating:
+        | "definitely_no"
+        | "no"
+        | "yes"
+        | "strong_yes"
+        | "strong_no"
+        | "lean_no"
+        | "lean_yes"
       seniority_level_enum:
         | "entry"
         | "junior"
@@ -7727,7 +7734,15 @@ export const Constants = {
       ],
       queue_status: ["pending", "sent", "failed", "cancelled"],
       rejection_category: ["recruiter_rejected", "candidate_declined"],
-      score_rating: ["definitely_no", "no", "yes", "strong_yes"],
+      score_rating: [
+        "definitely_no",
+        "no",
+        "yes",
+        "strong_yes",
+        "strong_no",
+        "lean_no",
+        "lean_yes",
+      ],
       seniority_level_enum: [
         "entry",
         "junior",
