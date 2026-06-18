@@ -555,7 +555,7 @@ export function ScorecardSheet({
           const formattedQuestions: InterviewQuestion[] = questionsData.map(q => ({
             id: q.id,
             question_text: q.question_text,
-            answer_type: q.answer_type as 'text' | 'yes_no' | 'single_select' | 'multi_select' | 'salary_expectations',
+            answer_type: q.answer_type as InterviewQuestion['answer_type'],
             is_required: q.is_required,
             display_order: q.display_order,
             select_options: (q.select_options as unknown) as SelectOption[] | undefined,
