@@ -987,6 +987,91 @@ export function ScorecardSheet({
             </div>
           </div>
         );
+
+      default: {
+        // Generic renderer for the new smart + basic types.
+        const t = question.answer_type;
+        const longBasic = t === 'longtext';
+        const inputType =
+          t === 'number' ? 'number' :
+          t === 'email' ? 'email' :
+          t === 'url' || t === 'linkedin' ? 'url' :
+          t === 'date' ? 'date' :
+          t === 'phone' ? 'tel' :
+          t === 'file' ? 'file' :
+          'text';
+
+        const placeholder =
+          t === 'phone' ? '+1 555 123 4567' :
+          t === 'linkedin' ? 'https://linkedin.com/in/…' :
+          t === 'location' ? 'City, state, country' :
+          t === 'recruiter' ? 'Team member name' :
+          t === 'url' ? 'https://…' :
+          t === 'email' ? 'name@example.com' :
+          'Enter your answer...';
+
+        // Predefined options for employment_type / work_location.
+        const presetOptions: { value: string; label: string }[] | null =
+          t === 'employment_type' ? [
+            { value: 'full_time', label: 'Full-time' },
+            { value: 'part_time', label: 'Part-time' },
+            { value: 'contract', label: 'Contract' },
+            { value: 'internship', label: 'Internship' },
+            { value: 'temporary', label: 'Temporary' },
+          ] :
+          t === 'work_location' ? [
+            { value: 'remote', label: 'Remote' },
+            { value: 'hybrid', label: 'Hybrid' },
+            { value: 'onsite', label: 'On-site' },
+          ] : null;
+
+        return (
+          <div key={question.id} className="space-y-2">
+            <Label htmlFor={`question-${question.id}`}>
+              {question.question_text}
+              {question.is_required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
+            {longBasic ? (
+              <Textarea
+                id={`question-${question.id}`}
+                value={response?.answerText || ''}
+                onChange={(e) => handleResponseChange(question.id, { answerText: e.target.value })}
+                disabled={isReadOnly}
+                rows={4}
+                placeholder={placeholder}
+              />
+            ) : presetOptions ? (
+              <RadioGroup
+                value={response?.answerText || ''}
+                onValueChange={(value) => handleResponseChange(question.id, { answerText: value })}
+                disabled={isReadOnly}
+                className="space-y-2"
+              >
+                {presetOptions.map((opt) => (
+                  <div key={opt.value} className="flex items-center space-x-2">
+                    <RadioGroupItem value={opt.value} id={`${question.id}-${opt.value}`} />
+                    <Label htmlFor={`${question.id}-${opt.value}`} className="cursor-pointer">
+                      {opt.label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            ) : (
+              <Input
+                id={`question-${question.id}`}
+                type={inputType}
+                value={response?.answerText || ''}
+                onChange={(e) => handleResponseChange(question.id, { answerText: e.target.value })}
+                disabled={isReadOnly}
+                placeholder={placeholder}
+              />
+            )}
+          </div>
+        );
+      }
     }
   };
 
