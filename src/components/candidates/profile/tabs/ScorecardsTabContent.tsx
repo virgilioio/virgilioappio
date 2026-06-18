@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SoftRosette } from '@/components/ui/EmptyIllustrations'
 
 export type SubmittedVerdict =
   | { label: 'Strong yes'; tone: 'green' }
