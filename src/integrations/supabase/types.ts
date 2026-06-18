@@ -7417,6 +7417,7 @@ export type Database = {
         | "single_select"
         | "multi_select"
         | "salary_expectations"
+        | "score_1_5"
       job_assignment_role: "recruiter" | "hiring_manager" | "interviewer"
       job_employment_type:
         | "full_time"
@@ -7701,6 +7702,7 @@ export const Constants = {
         "single_select",
         "multi_select",
         "salary_expectations",
+        "score_1_5",
       ],
       job_assignment_role: ["recruiter", "hiring_manager", "interviewer"],
       job_employment_type: [
