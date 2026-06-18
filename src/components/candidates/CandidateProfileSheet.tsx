@@ -34,6 +34,7 @@ import { getSkillColor } from '@/utils/skillColors'
 import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
 import { useMyScorecards } from '@/hooks/useScorecards'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
+import { useAssociationScorecardSummary } from '@/hooks/useAssociationScorecardSummary'
 import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
 import { StageBookingsList } from '@/components/candidates/StageBookingsList'
 import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
@@ -242,6 +243,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 // Bump to force per-stage useAllStageScorecards instances to refetch after a save/delete.
 const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
+const scorecardSummary = useAssociationScorecardSummary(associationId, scorecardsRefreshNonce)
 
 // Dismiss AI draft scorecard
 const handleDismissAiDraft = async (scorecardId: string) => {
@@ -1769,13 +1771,13 @@ const stageHasAutomation = useMemo(() => {
                           case 'scorecards':
                             return (
                               <ScorecardsSidebar
-                                average={null}
-                                panelistCount={Object.keys(myScorecardsByStage || {}).length}
+                                average={scorecardSummary.average}
+                                panelistCount={scorecardSummary.panelistCount}
                                 verdictBreakdown={[
-                                  { label: 'Strong yes', tone: 'green', count: 0 },
-                                  { label: 'Yes', tone: 'green', count: 0 },
-                                  { label: 'Lean yes', tone: 'yellow', count: 0 },
-                                  { label: 'No', tone: 'red', count: 0 },
+                                  { label: 'Strong Yes',    tone: 'green', count: scorecardSummary.counts.strong_yes },
+                                  { label: 'Yes',           tone: 'green', count: scorecardSummary.counts.yes },
+                                  { label: 'No',            tone: 'red',   count: scorecardSummary.counts.no },
+                                  { label: 'Definitely No', tone: 'red',   count: scorecardSummary.counts.definitely_no },
                                 ]}
                                 pending={[]}
                               />
