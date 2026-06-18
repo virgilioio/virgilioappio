@@ -93,6 +93,7 @@ import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileA
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
+import { ScorecardsTabContent, PENDING_PANELISTS, PendingNudgeRow } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
 import {
   JobOverviewSidebar,
   ResumeSidebar,
