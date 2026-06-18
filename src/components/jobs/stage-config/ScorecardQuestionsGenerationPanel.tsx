@@ -208,7 +208,7 @@ export function ScorecardQuestionsGenerationPanel({
                           variant="outline" 
                           className="shrink-0 text-xs"
                         >
-                          {question.answer_type === 'yes_no' ? 'Yes/No' : 'Text'}
+                          {getScorecardTypeDef(question.answer_type).label}
                         </Badge>
                       </div>
                       
