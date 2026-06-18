@@ -243,56 +243,68 @@ export function OverviewSidebar(p: OverviewSidebarProps) {
   )
 }
 
+export type ScorecardVerdictTone = 'green' | 'yellow' | 'orange' | 'red' | 'neutral'
+
 export interface ScorecardsSidebarProps {
   average: number | null
   panelistCount: number
-  verdictBreakdown: { label: string; tone: 'green' | 'yellow' | 'red' | 'neutral'; count: number }[]
+  verdictBreakdown: { label: string; tone: ScorecardVerdictTone; count: number }[]
   pending: { id: string; name: string; role?: string | null; onNudge?: () => void }[]
 }
+
+const VERDICT_DOT_BG: Record<ScorecardVerdictTone, string> = {
+  green: 'bg-[#12B886]',
+  yellow: 'bg-[#F59E0B]',
+  orange: 'bg-[#F97316]',
+  red: 'bg-[#EF4444]',
+  neutral: 'bg-[#8B8F9E]',
+}
+
 export function ScorecardsSidebar(p: ScorecardsSidebarProps) {
   const total = p.verdictBreakdown.reduce((s, b) => s + b.count, 0) || 1
+  const filledStars = p.average != null ? Math.round(p.average) : 0
   return (
     <ProfileSidebar>
       <SidebarBlock label="Summary">
-        <div className="flex flex-col items-center text-center py-2">
-          <div className="font-poppins font-semibold text-[48px] leading-none text-emerald-600 tabular-nums">
-            {p.average != null ? `${p.average.toFixed(1)}` : '—'}
-            {p.average != null && <span className="text-[#8B8F9E] text-[24px]">/4</span>}
+        <div className="flex flex-col items-center text-center pt-3 pb-4">
+          <div className="font-poppins font-semibold text-[48px] leading-none tracking-[-0.05em] text-[#12B886] tabular-nums">
+            {p.average != null ? p.average.toFixed(1) : '—'}
+            <span className="text-[18px] font-medium tracking-normal text-[#5A6072]">/5</span>
           </div>
           <div className="font-inter text-[11.5px] text-[#5A6072] mt-2">
             Across {p.panelistCount} panelist{p.panelistCount === 1 ? '' : 's'}
           </div>
-          <div className="flex gap-0.5 mt-2 text-amber-400">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Star
-                key={i}
-                className="h-3.5 w-3.5"
-                fill={p.average != null && i < Math.round(p.average) ? 'currentColor' : 'none'}
-                stroke="currentColor"
-              />
-            ))}
+          <div className="flex gap-1 mt-2.5">
+            {Array.from({ length: 5 }).map((_, i) => {
+              const filled = i < filledStars
+              return (
+                <Star
+                  key={i}
+                  className={filled ? 'h-3.5 w-3.5 text-[#F59E0B]' : 'h-3.5 w-3.5 text-[#E7E8EE]'}
+                  fill={filled ? '#F59E0B' : 'none'}
+                  stroke="currentColor"
+                />
+              )
+            })}
           </div>
         </div>
       </SidebarBlock>
       <SidebarBlock label="Verdict distribution">
-        <div className="space-y-2">
+        <div className="space-y-[7px]">
           {p.verdictBreakdown.map((b) => {
             const pct = Math.round((b.count / total) * 100)
-            const fill =
-              b.tone === 'green'
-                ? 'bg-emerald-500'
-                : b.tone === 'yellow'
-                ? 'bg-amber-400'
-                : b.tone === 'red'
-                ? 'bg-red-500'
-                : 'bg-[#8B8F9E]'
             return (
-              <div key={b.label} className="flex items-center gap-2 text-[11.5px]">
-                <span className="font-inter text-[#5A6072] min-w-[70px]">{b.label}</span>
-                <div className="flex-1 h-1.5 bg-[#F1F0EC] rounded-full overflow-hidden">
-                  <div className={`h-full ${fill}`} style={{ width: `${pct}%` }} />
+              <div key={b.label} className="flex items-center gap-2">
+                <Badge tone={b.tone === 'orange' ? 'orange' : b.tone} size="xs" dot>
+                  {b.label}
+                </Badge>
+                <div className="flex-1 h-1 bg-[#F1F0EC] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${VERDICT_DOT_BG[b.tone]}`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
-                <span className="font-poppins text-[11px] text-[#1F2230] tabular-nums w-4 text-right">
+                <span className="font-inter text-[11px] font-medium text-[#1F2230] tabular-nums w-4 text-right">
                   {b.count}
                 </span>
               </div>
@@ -306,19 +318,19 @@ export function ScorecardsSidebar(p: ScorecardsSidebarProps) {
             {p.pending.map((row) => (
               <div
                 key={row.id}
-                className="flex items-center gap-2 bg-[#FAFAF7] rounded-md p-2"
+                className="flex items-center gap-2 bg-[#FAFAF7] border border-[#F1F0EC] rounded-lg px-2.5 py-2"
               >
-                <div className="h-7 w-7 rounded-full bg-[#EDE4FF] text-virgilio-purple inline-flex items-center justify-center font-poppins font-semibold text-[11px] shrink-0">
+                <div className="h-6 w-6 rounded-full bg-white border border-[#F1F0EC] text-[#5A6072] inline-flex items-center justify-center font-poppins font-semibold text-[10px] shrink-0">
                   {row.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-inter text-[12px] font-medium text-[#1F2230] truncate">{row.name}</div>
+                  <div className="font-inter text-[11.5px] font-medium text-[#1F2230] truncate">{row.name}</div>
                   {row.role && (
                     <div className="font-inter text-[10.5px] text-[#8B8F9E] truncate">{row.role}</div>
                   )}
                 </div>
                 {row.onNudge && (
-                  <Button variant="purple" size="xs" onClick={row.onNudge}>
+                  <Button variant="purple" size="sm" onClick={row.onNudge}>
                     Nudge
                   </Button>
                 )}

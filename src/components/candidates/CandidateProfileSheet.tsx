@@ -93,6 +93,7 @@ import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileA
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
+import { ScorecardsTabContent, PENDING_PANELISTS } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
 import {
   JobOverviewSidebar,
   ResumeSidebar,
@@ -1500,57 +1501,18 @@ const stageHasAutomation = useMemo(() => {
 
                     {/* Scorecards Tab */}
                     {activeTab === 'scorecards' && (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle>Scorecards</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {planStages.filter(p => supportsScorecard(p.stage.stage_type)).length === 0 ? (
-                            <InlineEmpty text="No scorecard-enabled stages." />
-                          ) : (
-                            [...planStages]
-                              .sort((a, b) => a.position - b.position)
-                              .filter(p => supportsScorecard(p.stage.stage_type))
-                              .map((opt) => (
-                                <div key={opt.jhsId} className="border border-virgilio-border rounded-lg p-4 space-y-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="font-poppins font-medium text-[13.5px] text-text-primary">{opt.stage.stage_name}</div>
-                                    {associationId && (!myScorecardsByStage[opt.jhsId] || myScorecardsByStage[opt.jhsId]?.is_ai_draft) && (
-                                      <Button
-                                        variant={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'purple' : 'secondary'}
-                                        size="sm"
-                                        icon={myScorecardsByStage[opt.jhsId]?.is_ai_draft ? Sparkles : Star}
-                                        onClick={() => {
-                                          setScoreStageInstId(opt.jhsId)
-                                          setScoreStageName(opt.stage.stage_name)
-                                          setScoreOpen(true)
-                                        }}
-                                      >
-                                        {myScorecardsByStage[opt.jhsId]?.is_ai_draft ? 'AI Draft' : 'Add'}
-                                      </Button>
-                                    )}
-                                  </div>
-                                  {associationId && (
-                                    <StageScorecards 
-                                      stageInstanceId={opt.jhsId}
-                                      associationId={associationId}
-                                      currentUserId={user?.id}
-                                      onOpenFullSheet={(scorecardId) => {
-                                        setScoreStageInstId(opt.jhsId)
-                                        setScoreStageName(opt.stage.stage_name)
-                                        setViewingScorecardId(scorecardId)
-                                        setScoreOpen(true)
-                                        onScorecardChange?.(scorecardId, opt.jhsId)
-                                      }}
-                                      onDismissAiDraft={handleDismissAiDraft}
-                                      refreshNonce={scorecardsRefreshNonce}
-                                    />
-                                  )}
-                                </div>
-                              ))
-                          )}
-                        </CardContent>
-                      </Card>
+                      <ScorecardsTabContent
+                        onAddMine={() => {
+                          const firstScorecardStage = [...planStages]
+                            .sort((a, b) => a.position - b.position)
+                            .find((p) => supportsScorecard(p.stage.stage_type))
+                          if (firstScorecardStage) {
+                            setScoreStageInstId(firstScorecardStage.jhsId)
+                            setScoreStageName(firstScorecardStage.stage.stage_name)
+                            setScoreOpen(true)
+                          }
+                        }}
+                      />
                     )}
 
                     {/* Activity Tab */}
@@ -1771,15 +1733,26 @@ const stageHasAutomation = useMemo(() => {
                           case 'scorecards':
                             return (
                               <ScorecardsSidebar
-                                average={scorecardSummary.average}
-                                panelistCount={scorecardSummary.panelistCount}
+                                average={4.4}
+                                panelistCount={3}
                                 verdictBreakdown={[
-                                  { label: 'Strong Yes',    tone: 'green', count: scorecardSummary.counts.strong_yes },
-                                  { label: 'Yes',           tone: 'green', count: scorecardSummary.counts.yes },
-                                  { label: 'No',            tone: 'red',   count: scorecardSummary.counts.no },
-                                  { label: 'Definitely No', tone: 'red',   count: scorecardSummary.counts.definitely_no },
+                                  { label: 'Strong yes', tone: 'green',  count: 1 },
+                                  { label: 'Yes',        tone: 'green',  count: 1 },
+                                  { label: 'Lean yes',   tone: 'yellow', count: 1 },
+                                  { label: 'Lean no',    tone: 'orange', count: 0 },
+                                  { label: 'Strong no',  tone: 'red',    count: 0 },
                                 ]}
-                                pending={[]}
+                                pending={PENDING_PANELISTS.map((row) => ({
+                                  id: row.id,
+                                  name: row.name,
+                                  role: row.role,
+                                  onNudge: () => {
+                                    toast({
+                                      title: 'Nudge sent',
+                                      description: `Reminder sent to ${row.name}.`,
+                                    })
+                                  },
+                                }))}
                               />
                             )
                           case 'activity':
