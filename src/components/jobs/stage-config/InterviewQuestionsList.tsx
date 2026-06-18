@@ -31,8 +31,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { GripVertical, Edit, Trash2, Type, CheckCircle2, List, ListChecks, DollarSign, Link2, MessageSquare } from 'lucide-react'
+import { GripVertical, Edit, Trash2, Type, Link2, MessageSquare } from 'lucide-react'
 import type { InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
+import { getScorecardTypeDef, SCORECARD_SMART_FIELD_TYPES } from '@/hooks/useScorecardsConfiguration'
 import { cn } from '@/lib/utils'
 
 interface InterviewQuestionsListProps {
