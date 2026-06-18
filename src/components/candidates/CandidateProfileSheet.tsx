@@ -1733,15 +1733,26 @@ const stageHasAutomation = useMemo(() => {
                           case 'scorecards':
                             return (
                               <ScorecardsSidebar
-                                average={scorecardSummary.average}
-                                panelistCount={scorecardSummary.panelistCount}
+                                average={4.4}
+                                panelistCount={3}
                                 verdictBreakdown={[
-                                  { label: 'Strong Yes',    tone: 'green', count: scorecardSummary.counts.strong_yes },
-                                  { label: 'Yes',           tone: 'green', count: scorecardSummary.counts.yes },
-                                  { label: 'No',            tone: 'red',   count: scorecardSummary.counts.no },
-                                  { label: 'Definitely No', tone: 'red',   count: scorecardSummary.counts.definitely_no },
+                                  { label: 'Strong yes', tone: 'green',  count: 1 },
+                                  { label: 'Yes',        tone: 'green',  count: 1 },
+                                  { label: 'Lean yes',   tone: 'yellow', count: 1 },
+                                  { label: 'Lean no',    tone: 'orange', count: 0 },
+                                  { label: 'Strong no',  tone: 'red',    count: 0 },
                                 ]}
-                                pending={[]}
+                                pending={PENDING_PANELISTS.map((row) => ({
+                                  id: row.id,
+                                  name: row.name,
+                                  role: row.role,
+                                  onNudge: () => {
+                                    toast({
+                                      title: 'Nudge sent',
+                                      description: `Reminder sent to ${row.name}.`,
+                                    })
+                                  },
+                                }))}
                               />
                             )
                           case 'activity':
