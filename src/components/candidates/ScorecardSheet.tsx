@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { triggerFitAnalysis } from "@/utils/triggerFitAnalysis";
 import type { InterviewQuestion, SelectOption, SalaryConfig, ScorecardVisibility } from "@/hooks/useScorecardsConfiguration";
-import { OverallRatingPills } from "./scorecard/OverallRatingPills";
 import { RATING_VALUES } from "@/lib/scorecardRatings";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
@@ -687,6 +686,8 @@ export function ScorecardSheet({
       const t = question.answer_type;
       if (t === 'multi_select') {
         if (!response.answerOptions || response.answerOptions.length === 0) return false;
+      } else if (t === 'score_1_5') {
+        if (!response.answerText || !(RATING_VALUES as string[]).includes(response.answerText)) return false;
       } else {
         // text, longtext, number, email, url, date, single_select, yes_no, file,
         // salary_expectations, phone, linkedin, location, employment_type, work_location, recruiter
@@ -881,6 +882,25 @@ export function ScorecardSheet({
               disabled={isReadOnly}
               rows={4}
               placeholder="Enter your answer..."
+            />
+          </div>
+        );
+
+      case 'score_1_5':
+        return (
+          <div key={question.id} className="space-y-2">
+            <Label>
+              {question.question_text}
+              {question.is_required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
+            <OverallRatingPills
+              value={(response?.answerText as any) || ''}
+              onChange={(v) => handleResponseChange(question.id, { answerText: v })}
+              disabled={isReadOnly}
+              compact
             />
           </div>
         );
