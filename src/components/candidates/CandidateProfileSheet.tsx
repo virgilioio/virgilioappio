@@ -243,6 +243,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 // Bump to force per-stage useAllStageScorecards instances to refetch after a save/delete.
 const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
+const scorecardSummary = useAssociationScorecardSummary(associationId, scorecardsRefreshNonce)
 
 // Dismiss AI draft scorecard
 const handleDismissAiDraft = async (scorecardId: string) => {
