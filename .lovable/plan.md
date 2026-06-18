@@ -1,50 +1,81 @@
-## Goal
-Match the job wizard / add-candidate sheet exactly by reusing the existing `CandidateSheetSection` primitive for every right-pane section of the Scorecard sheet. Pull titles out of the white cards. Stop wrapping per-point rows in a cream tile. Stop tinting the Key takeaways editor. Aesthetic-only.
+## Root cause
 
-## Source of truth (already in the codebase — do not reinvent)
+Submitted scorecards stop appearing in **Job Overview → Scorecards card** and **Scorecards tab → per-stage card** because both card components own their own `useAllStageScorecards(...)` instance. That hook fetches once on mount and is **not refetched** when `ScorecardSheet` saves.
 
-`src/components/candidates/form/CandidateSheetSection.tsx`:
-- Uppercase Poppins 11.5/600, tracking 0.06em, `text-virgilio-text` label **outside** the card.
-- Optional `rightMeta` + `action` on the same row.
-- Card: `rounded-xl ring-1 ring-virgilio-border/60 bg-white p-6 space-y-5`.
-- `bare` prop renders children without the card chrome.
+In `CandidateProfileSheet.tsx`, the save handler (line 1856-1861) only calls `refetchScorecards()`, which is the `useMyScorecards` refetch (drives the "Add / AI Draft" button state). The two card components keep their stale snapshot:
 
-The job wizard and Add/Edit candidate sheets use this exact component. The Scorecard sheet must do the same.
+- `StageScorecardsCard` (Job Overview tab, used at line 1332) → its own `useAllStageScorecards` hook.
+- `StageScorecards` wrapper around `ExpandableScoreDisplay` (Scorecards tab, used at line 1526) → its own `useAllStageScorecards` hook.
 
-## Changes
+Result: a freshly submitted scorecard exists in `job_stage_scorecards` with `is_ai_draft = false` and a real `rating`, but neither card sees it until the profile sheet is reopened.
 
-### 1. Replace `FormSectionCard` usage with `CandidateSheetSection`
-In `src/components/candidates/ScorecardSheet.tsx`:
+Secondary bug in `src/hooks/useAllStageScorecards.ts` lines 35-38:
 
-- Swap the import `FormSectionCard` → `CandidateSheetSection` (from `@/components/candidates/form/CandidateSheetSection`).
-- Map props: `title` → `label`, `subtitle` → drop (this primitive is title-only, matching the wizard), `action` → `action`.
-- Apply to: **Overall rating**, **Interview questions** sections.
-- For **Key takeaways**, also use `CandidateSheetSection` with `action={<Polish notes button>}`, and pass the editor via `bare` so the rich-text-editor renders without an extra inner card (or keep the card wrapper — match whichever the wizard uses; I will mirror the wizard's rich-text pattern verbatim once I open it in build mode).
+```ts
+const isAdminOrRecruiter = permissions.isAdmin || permissions.isPlatformAdmin ||
+  (permissions as any).isWorkspaceOwner !== undefined
+    ? !!(permissions as any).canManageMembers
+    : false;
+```
 
-### 2. Update `KeyTakeawaysCard.tsx`
-Switch from `FormSectionCard` to `CandidateSheetSection`. Keep the "Polish notes" ghost-purple button in the `action` slot. Ensure the `RichTextEditor` root is white (no cream/lilac wrapper); rely on the section card's white surface.
+`||` binds tighter than `?:`, so this collapses to `!!canManageMembers` for nearly every user (because `isWorkspaceOwner !== undefined` is almost always true). That breaks the visibility filter on `public` scorecard templates — teammates' submissions can be silently hidden.
 
-### 3. Rebuild `GioPointsInbox.tsx` chrome to match
-Stop using the `Collapsible` as the card itself. Instead:
+## Fix plan
 
-- Outer: `<CandidateSheetSection label="POINTS TO VALIDATE" action={<chip + chevron toggle>}>`.
-- Inside the white card body, render the list directly. Each pending row:
-  - Plain white background (no `bg-[#FAFAF7]`, no `border-[#F1F0EC]` wrapper).
-  - Rows separated by a top hairline `border-t border-virgilio-border/60` (skip on first row).
-  - Keep the 26px lilac `#EDE4FF` sparkles tile, question, rationale, priority chip, stage arrow, Dismiss + Add to scorecard buttons.
-- Subtitle copy ("Gio flagged these from the résumé and job description…") is dropped to match the wizard's label-only pattern. If the user wants the helper line, it can live as the first muted line inside the card; default plan: drop it for consistency.
-- When collapsed, the section renders only the label row (use the section's `bare` mode with the header rendered manually, or conditionally omit the children's card — pick whichever keeps the visual identical to other collapsible wizard sections).
+### 1. Refresh per-stage card lists after every scorecard save/delete
 
-### 4. Delete unused
-Remove `src/components/candidates/scorecard/FormSectionCard.tsx` once it has no remaining importers. (It was a duplicate of `CandidateSheetSection` — that's the root cause of the drift.)
+In `src/components/candidates/CandidateProfileSheet.tsx`:
 
-### 5. Verify
-- All four right-pane sections (Points to validate, Overall rating, Interview questions, Key takeaways) render with the **same** uppercase label-above-card chrome as the job wizard and Add/Edit candidate sheet.
-- Points to validate rows are plain white separated by hairlines; lilac sparkles tile stays.
-- Key takeaways editor surface is white.
-- AI suggested rating card (lilac, between Points to validate and Overall rating) and pane split (53/47) remain unchanged.
+- Add a `scorecardsRefreshNonce` state (number, starts at 0).
+- Bump it in the `ScorecardSheet` `onSubmit` and `onDelete` handlers (right after `refetchScorecards()`), and also after the existing `handleDismissAiDraft` flow.
+- Pass `refreshNonce={scorecardsRefreshNonce}` to:
+  - `<StageScorecardsCard … />` at line 1332 (Job Overview tab).
+  - `<StageScorecards … />` at line 1526 (Scorecards tab wrapper).
+
+In `src/components/candidates/profile/StageScorecardsCard.tsx`:
+
+- Accept an optional `refreshNonce?: number` prop.
+- Wire it as a dependency of the internal `useAllStageScorecards` fetch by either (a) calling `refetch()` in a `useEffect([refreshNonce])`, or (b) passing the nonce into the hook via a new optional `refreshKey` parameter that's added to its `useEffect` dep list.
+
+In `CandidateProfileSheet.tsx`'s inline `StageScorecards` component (lines 108-137):
+
+- Accept `refreshNonce?: number` and call `refetch()` in a `useEffect([refreshNonce])`.
+
+Approach (b) — add an optional `refreshKey?: number | string` parameter to `useAllStageScorecards` — is preferred: it's one line in the hook, both consumers just forward the prop, and behavior stays inside the hook.
+
+### 2. Fix the visibility-filter precedence bug
+
+In `src/hooks/useAllStageScorecards.ts`:
+
+Replace lines 35-38 with explicit parentheses and the actual intent:
+
+```ts
+const isAdminOrRecruiter =
+  permissions.isAdmin ||
+  permissions.isPlatformAdmin ||
+  !!(permissions as any).isWorkspaceOwner ||
+  !!(permissions as any).canManageMembers;
+```
+
+This restores the "admins, owners, and recruiters see all submitted scorecards on a `public` template" behavior so that on multi-reviewer stages, the freshly-submitted card from another teammate also surfaces.
+
+### 3. Verification
+
+After the change, with the sheet open:
+
+- Submit a scorecard from `ScorecardSheet` → the row appears immediately in the Job Overview tab's Scorecards card (correct rating badge, author, snippet) and in the Scorecards tab's per-stage block.
+- Edit and re-save the rating → both surfaces show the updated rating without remounting the sheet.
+- Delete a scorecard → it disappears from both surfaces.
+- The AI-draft banner still works: submitting an AI draft flips `is_ai_draft=false` (already handled in `ScorecardSheet.handleSave`) and the row migrates from the lilac banner into the human-submitted list.
+
+## Files touched
+
+- `src/hooks/useAllStageScorecards.ts` — add optional `refreshKey` param threaded into the fetch effect; fix `isAdminOrRecruiter` precedence.
+- `src/components/candidates/profile/StageScorecardsCard.tsx` — accept and forward `refreshNonce`.
+- `src/components/candidates/CandidateProfileSheet.tsx` — add `scorecardsRefreshNonce` state, bump it after submit/delete/dismiss-AI, pass it to both card surfaces; also forward it through the inline `StageScorecards` wrapper.
 
 ## Non-goals
-- No new tokens, fonts, or color values.
-- No backend, data, or behavior changes.
-- No edits to the AI suggested rating card or rating pills.
+
+- No DB schema changes. `job_stage_scorecards.is_ai_draft` already flips correctly inside `ScorecardSheet.handleSave`.
+- No restyle of the cards — only the data-freshness wiring and the precedence bug.
+- No changes to `ExpandableScoreDisplay`'s render shape — it receives the (now fresh) `scorecards` array as before.
