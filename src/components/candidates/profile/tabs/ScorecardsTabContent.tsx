@@ -29,6 +29,7 @@ export interface SubmittedScorecardRow {
   feedback?: string | null
   isMine?: boolean
   scores?: SubmittedQuestionScore[]
+  submittedAt?: string | null
 }
 
 // Verdict-distribution palette (matches Scorecards Summary sidebar).
