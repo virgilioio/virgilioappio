@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { logActivity } from "@/lib/activityLogger";
 
-export type ScoreRating = "definitely_no" | "no" | "yes" | "strong_yes";
+export type ScoreRating = "strong_no" | "lean_no" | "lean_yes" | "yes" | "strong_yes";
 
 export interface ScorecardRow {
   id: string;
