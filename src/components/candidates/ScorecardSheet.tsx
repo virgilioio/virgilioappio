@@ -82,6 +82,7 @@ import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import { FormSectionCard } from "./scorecard/FormSectionCard";
 import { OverallRatingPills } from "./scorecard/OverallRatingPills";
 import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
+import { AiSuggestedRatingCard } from "./scorecard/AiSuggestedRatingCard";
 import {
   AlertDialog,
   AlertDialogAction,
