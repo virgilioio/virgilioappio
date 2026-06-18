@@ -955,13 +955,18 @@ export function ScorecardSheet({
         };
         
         return (
-          <div key={question.id} className="space-y-3 p-4 bg-green-50/50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              <Label className="text-green-800 font-medium">
-                {question.question_text}
-                {question.is_required && <span className="text-destructive ml-1">*</span>}
-              </Label>
+          <div key={question.id} className="space-y-3 p-4 bg-[#F4FBF6] border border-[#BBE3C9] rounded-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <DollarSign className="h-4 w-4 text-[#0F8A56] shrink-0" />
+                <Label className="text-[#0F5B3A] font-medium">
+                  {question.question_text}
+                  {question.is_required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-white border border-[#BBE3C9] px-2 py-0.5 text-[10.5px] font-medium text-[#0F8A56] shrink-0">
+                <RefreshCw className="h-3 w-3" /> Syncs to profile
+              </span>
             </div>
             {question.notes_for_interviewer && (
               <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
@@ -974,7 +979,7 @@ export function ScorecardSheet({
                 value={response?.answerText || ''}
                 onChange={(e) => handleResponseChange(question.id, { answerText: e.target.value })}
                 disabled={isReadOnly}
-                className="max-w-[200px]"
+                className="max-w-[200px] bg-white"
               />
               <Badge variant="outline" className="bg-white font-mono">
                 {question.salary_config?.currency || 'USD'}
@@ -983,9 +988,6 @@ export function ScorecardSheet({
                 {formatPeriod(question.salary_config?.period || 'annually')}
               </Badge>
             </div>
-            <p className="text-xs text-green-600">
-              This answer will update the candidate's salary expectations on their profile.
-            </p>
           </div>
         );
     }
