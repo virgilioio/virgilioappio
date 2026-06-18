@@ -67,36 +67,9 @@ function SortableQuestionItem({
     opacity: isDragging ? 0 : undefined,
   }
 
-  const getAnswerTypeIcon = () => {
-    switch (question.answer_type) {
-      case 'text':
-        return <Type className="h-4 w-4" />
-      case 'yes_no':
-        return <CheckCircle2 className="h-4 w-4" />
-      case 'single_select':
-        return <List className="h-4 w-4" />
-      case 'multi_select':
-        return <ListChecks className="h-4 w-4" />
-      case 'salary_expectations':
-        return <DollarSign className="h-4 w-4" />
-    }
-  }
-
-  const getAnswerTypeLabel = () => {
-    switch (question.answer_type) {
-      case 'text':
-        return 'Text'
-      case 'yes_no':
-        return 'Yes/No'
-      case 'single_select':
-        return 'Single Select'
-      case 'multi_select':
-        return 'Multi Select'
-      case 'salary_expectations':
-        return 'Salary Expectations'
-    }
-  }
-
+  const typeDef = getScorecardTypeDef(question.answer_type)
+  const TypeIcon = typeDef.icon
+  const isSmart = SCORECARD_SMART_FIELD_TYPES.has(question.answer_type)
   const isSalaryType = question.answer_type === 'salary_expectations'
 
   return (
