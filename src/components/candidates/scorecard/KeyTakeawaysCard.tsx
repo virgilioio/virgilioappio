@@ -1,7 +1,7 @@
 import { Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
-import { FormSectionCard } from './FormSectionCard'
+import { CandidateSheetSection } from '../form/CandidateSheetSection'
 
 interface Props {
   value: string
@@ -12,8 +12,9 @@ interface Props {
 }
 
 /**
- * Key takeaways card — wraps the RichTextEditor and exposes the Polish notes
- * action in the card header (ghost purple, sparkles icon) per the spec.
+ * Key takeaways — uses the shared CandidateSheetSection chrome (uppercase
+ * label outside, white card inside) to stay aligned with the job wizard and
+ * Add/Edit candidate sheets. Polish notes lives in the section action slot.
  */
 export function KeyTakeawaysCard({ value, onChange, onPolish, isPolishing, disabled }: Props) {
   const polishDisabled = disabled || isPolishing || !value?.trim()
@@ -41,16 +42,12 @@ export function KeyTakeawaysCard({ value, onChange, onPolish, isPolishing, disab
   ) : undefined
 
   return (
-    <FormSectionCard
-      title="Key takeaways"
-      subtitle="Comprehensive notes about your interview with this candidate."
-      action={action}
-    >
+    <CandidateSheetSection label="KEY TAKEAWAYS" action={action}>
       <RichTextEditor
         value={value}
         onChange={onChange}
         placeholder="Share your key takeaways and observations…"
       />
-    </FormSectionCard>
+    </CandidateSheetSection>
   )
 }

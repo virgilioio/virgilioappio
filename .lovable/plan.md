@@ -1,85 +1,50 @@
-## Scope
+## Goal
+Match the job wizard / add-candidate sheet exactly by reusing the existing `CandidateSheetSection` primitive for every right-pane section of the Scorecard sheet. Pull titles out of the white cards. Stop wrapping per-point rows in a cream tile. Stop tinting the Key takeaways editor. Aesthetic-only.
 
-Visual-only pass on the Scorecard sheet to match Foundation (§0), Chrome (§1), Left pane (§2), Overall rating (§4), Interview questions (§5), Key takeaways (§6). **No functionality, no backend, no data-source changes.** All existing handlers, state, hooks, persistence, and writebacks stay byte-identical — only JSX wrapping, class names, copy, icons, and tokens change.
+## Source of truth (already in the codebase — do not reinvent)
 
-## What's currently off vs. the spec
+`src/components/candidates/form/CandidateSheetSection.tsx`:
+- Uppercase Poppins 11.5/600, tracking 0.06em, `text-virgilio-text` label **outside** the card.
+- Optional `rightMeta` + `action` on the same row.
+- Card: `rounded-xl ring-1 ring-virgilio-border/60 bg-white p-6 space-y-5`.
+- `bare` prop renders children without the card chrome.
 
-**Chrome (§1)**
-- No purple `SCORECARD` eyebrow above the title.
-- Title is `Scorecard • Recruiter Screening` — should be `Recruiter Screening` (Poppins 20/600, ls −0.035em) with a lilac `.` period.
-- "Draft saved" chip has no green check icon.
-- Sub-line styling is inline-row, not a quiet "Name · Role" muted line under the title.
-- Footer is missing the left "info · Drafts stay private until you submit." helper; primary button says "Submit Scorecard"/"Update Scorecard" instead of "Submit scorecard" + `check` icon.
-- Sheet body uses default white; spec is `#FAFAF7`.
-- Public/Private chip stays exactly as it is — display-only, read from `scorecardVisibility`. (Toggle lives in Configure Stage → Scorecard, not here.)
+The job wizard and Add/Edit candidate sheets use this exact component. The Scorecard sheet must do the same.
 
-**Left pane (§2)**
-- 50/50 split today. I'll go **45/55** (left/right): a hair tighter than the spec's 44/56 to give the questions+takeaways column the breathing room it actually needs at common laptop widths (1280–1440), while still keeping the résumé/application readable. Standard pattern for read-context + action-form sheets.
-- Left pane has no `#FAFAF7` bg + right hairline.
-- Tab row isn't a segmented pill (track `#F1F0EC`, active = white pill + soft shadow).
+## Changes
 
-**Overall rating (§4)** — wrong visual model
-- All four pills always filled. Spec: outline default (white, `1px #E0DDD3`, `#5A6072` text, `#8B8F9E` icon); only the **selected** pill fills.
-- Fill colors wrong: currently `#FA5252` / `#FA8F8F` / `#9B7BF7` / `#6F3FF5`. Spec: `#C9554C/white` · `#E7ABA4/#7A2E27` (intentionally light) · `#C8B9F0/#3B2A6B` · `#6F3FF5/white`.
-- Icons wrong (uses `Octagon` for No; spec is `x-circle`).
-- No "others fade to 0.65 on selection" behavior.
-- No height:46 / radius:10 commitment.
+### 1. Replace `FormSectionCard` usage with `CandidateSheetSection`
+In `src/components/candidates/ScorecardSheet.tsx`:
 
-**Interview questions (§5)**
-- Not wrapped as a FormSection card. Today it's a flat divider section.
-- Heading copy: `Interview Questions` → `Interview questions`. No subtitle "Answer the questions configured for this stage."
-- Salary sub-card already uses green-card styling; needs the spec's "Syncs to profile" badge with `refresh-cw` icon.
+- Swap the import `FormSectionCard` → `CandidateSheetSection` (from `@/components/candidates/form/CandidateSheetSection`).
+- Map props: `title` → `label`, `subtitle` → drop (this primitive is title-only, matching the wizard), `action` → `action`.
+- Apply to: **Overall rating**, **Interview questions** sections.
+- For **Key takeaways**, also use `CandidateSheetSection` with `action={<Polish notes button>}`, and pass the editor via `bare` so the rich-text-editor renders without an extra inner card (or keep the card wrapper — match whichever the wizard uses; I will mirror the wizard's rich-text pattern verbatim once I open it in build mode).
 
-**Key takeaways (§6)**
-- Not wrapped as a FormSection card.
-- Polish-notes button is below the editor as an outline button; spec is **header action**, ghost purple with `sparkles`.
-- Heading copy + subtitle don't match.
+### 2. Update `KeyTakeawaysCard.tsx`
+Switch from `FormSectionCard` to `CandidateSheetSection`. Keep the "Polish notes" ghost-purple button in the `action` slot. Ensure the `RichTextEditor` root is white (no cream/lilac wrapper); rely on the section card's white surface.
 
-**Foundation tokens (§0)**
-- Add missing scorecard-surface tokens as HSL semantic vars in `index.css` + Tailwind aliases in `tailwind.config.ts`: `#FAFAF7` sheet body, `#E7E8EE` card border, `#E0DDD3` field-inner border, `#F1F0EC` hairline / soft-fill, `#EDE4FF` lilac-fill, `#D7C5FB` lilac, `#5B21B6` deep-purple, `#F4FBF6`/`#BBE3C9` green-card.
-- Convert the inline hex values in `GioPointsInbox.tsx` and `AddedFromGioBlock.tsx` to these tokens. No visual change, hygiene only.
+### 3. Rebuild `GioPointsInbox.tsx` chrome to match
+Stop using the `Collapsible` as the card itself. Instead:
 
-## What I'll change
+- Outer: `<CandidateSheetSection label="POINTS TO VALIDATE" action={<chip + chevron toggle>}>`.
+- Inside the white card body, render the list directly. Each pending row:
+  - Plain white background (no `bg-[#FAFAF7]`, no `border-[#F1F0EC]` wrapper).
+  - Rows separated by a top hairline `border-t border-virgilio-border/60` (skip on first row).
+  - Keep the 26px lilac `#EDE4FF` sparkles tile, question, rationale, priority chip, stage arrow, Dismiss + Add to scorecard buttons.
+- Subtitle copy ("Gio flagged these from the résumé and job description…") is dropped to match the wizard's label-only pattern. If the user wants the helper line, it can live as the first muted line inside the card; default plan: drop it for consistency.
+- When collapsed, the section renders only the label row (use the section's `bare` mode with the header rendered manually, or conditionally omit the children's card — pick whichever keeps the visual identical to other collapsible wizard sections).
 
-1. **Tokens** — `src/index.css`, `tailwind.config.ts`. Add the HSL vars + Tailwind aliases (`bg-sheet-body`, `border-card-hairline`, `border-field-inner`, `bg-soft-fill`, `bg-lilac-fill`, `border-lilac`, `text-deep-purple`, `bg-green-card`, `border-green-card`).
+### 4. Delete unused
+Remove `src/components/candidates/scorecard/FormSectionCard.tsx` once it has no remaining importers. (It was a duplicate of `CandidateSheetSection` — that's the root cause of the drift.)
 
-2. **New presentational components** under `src/components/candidates/scorecard/`:
-   - `FormSectionCard.tsx` — white card, `border-card-hairline`, `rounded-xl`, p-4, optional header (title Poppins 15/600, optional subtitle Inter 12.5 muted, optional right-side action slot). Pure wrapper, no state.
-   - `OverallRatingPills.tsx` — drop-in replacement for the inline rating RadioGroup. Same props (`value`, `onChange`, `disabled`) so the parent's state, draft-save effect, and submit validation all keep working unchanged. Renders 4 outline pills (h-[46px], rounded-[10px]); on select, selected pill fills with its spec color and the other three drop to opacity 0.65. Icons: `ThumbsDown`, `XCircle`, `ThumbsUp`, `Star`. Spec fill colors are hard-coded with comments (brand accents, not themable). Click-again-to-clear preserved (same behavior as today).
-   - `KeyTakeawaysCard.tsx` — wraps the existing `RichTextEditor` instance with the same `value`/`onChange` props, moves the Polish Notes button into the card header (ghost purple, `sparkles` icon). All Polish handler logic stays in `ScorecardSheet.tsx` and is passed in as a prop.
+### 5. Verify
+- All four right-pane sections (Points to validate, Overall rating, Interview questions, Key takeaways) render with the **same** uppercase label-above-card chrome as the job wizard and Add/Edit candidate sheet.
+- Points to validate rows are plain white separated by hairlines; lilac sparkles tile stays.
+- Key takeaways editor surface is white.
+- AI suggested rating card (lilac, between Points to validate and Overall rating) and pane split (53/47) remain unchanged.
 
-3. **Sheet chrome edits in `ScorecardSheet.tsx`** (JSX + class names only)
-   - Header: replace the `SheetTitle` block with `eyebrow + title-with-lilac-period + muted sub-line` composition.
-   - Draft chip: add green `Check` icon.
-   - Public/Private chip: **untouched** (display only, no click handler added).
-   - Body bg → `bg-sheet-body`.
-   - Pane split → `lg:w-[45%]` / `lg:w-[55%]`; left pane gets `bg-sheet-body border-r border-card-hairline`. Below `lg` falls back to existing single-column behavior.
-   - Tabs row → segmented pill (track `bg-soft-fill rounded-full p-1`, active item `bg-white shadow-sm rounded-full`).
-   - Footer: left helper text (`Info` icon + "Drafts stay private until you submit."); primary CTA → "Submit scorecard" + `Check` icon.
-
-4. **Interview questions card**
-   - Wrap the existing `{questions.map(renderQuestion)}` block in `FormSectionCard` with title "Interview questions" + subtitle "Answer the questions configured for this stage."
-   - Inside the salary sub-card render, add the `RefreshCw` + "Syncs to profile" green badge above the input row. The existing salary input, `salary_config`, and profile-writeback logic stay untouched.
-
-5. **Replace the rating + key-takeaways JSX**
-   - Swap the inline `RadioGroup` with `<OverallRatingPills value={rating} onChange={setRating} disabled={isReadOnly} />`.
-   - Swap the inline Key-takeaways block with `<KeyTakeawaysCard value={overview} onChange={setOverview} onPolish={handlePolishNotes} isPolishing={isPolishing} disabled={isReadOnly} />`.
-
-## What is NOT changing (explicit)
-
-- No DB schema, no migrations, no edge functions.
-- No new state, no new hooks, no removed hooks.
-- `handleSave`, `handlePolishNotes`, `handleSheetDismiss`, draft persistence, gio_added_questions persistence, salary writeback, validation-point resolution writes — all untouched.
-- Public/Private toggle behavior — not added; chip stays display-only.
-- AI Suggested Rating banner, RecommendedNextStepsDialog, status/offer/hired banners, Rejection / Onboarding tabs, Hire Summary cards, GioPointsInbox behavior, AddedFromGioBlock behavior — unchanged.
-
-## Files touched
-
-- `src/index.css` — add ~10 HSL tokens.
-- `tailwind.config.ts` — Tailwind aliases.
-- `src/components/candidates/scorecard/FormSectionCard.tsx` *(new)*
-- `src/components/candidates/scorecard/OverallRatingPills.tsx` *(new)*
-- `src/components/candidates/scorecard/KeyTakeawaysCard.tsx` *(new)*
-- `src/components/candidates/scorecard/GioPointsInbox.tsx` — hex → tokens only.
-- `src/components/candidates/scorecard/AddedFromGioBlock.tsx` — hex → tokens only.
-- `src/components/candidates/ScorecardSheet.tsx` — JSX/class/copy edits only: header, footer, pane split, tabs styling, Interview-questions wrap, swap rating block, swap key-takeaways block.
+## Non-goals
+- No new tokens, fonts, or color values.
+- No backend, data, or behavior changes.
+- No edits to the AI suggested rating card or rating pills.
