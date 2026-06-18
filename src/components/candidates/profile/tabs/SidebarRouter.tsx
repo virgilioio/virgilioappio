@@ -257,13 +257,13 @@ export function ScorecardsSidebar(p: ScorecardsSidebarProps) {
         <div className="flex flex-col items-center text-center py-2">
           <div className="font-poppins font-semibold text-[48px] leading-none text-emerald-600 tabular-nums">
             {p.average != null ? `${p.average.toFixed(1)}` : '—'}
-            {p.average != null && <span className="text-[#8B8F9E] text-[24px]">/5</span>}
+            {p.average != null && <span className="text-[#8B8F9E] text-[24px]">/4</span>}
           </div>
           <div className="font-inter text-[11.5px] text-[#5A6072] mt-2">
             Across {p.panelistCount} panelist{p.panelistCount === 1 ? '' : 's'}
           </div>
           <div className="flex gap-0.5 mt-2 text-amber-400">
-            {Array.from({ length: 5 }).map((_, i) => (
+            {Array.from({ length: 4 }).map((_, i) => (
               <Star
                 key={i}
                 className="h-3.5 w-3.5"
