@@ -996,13 +996,27 @@ export function ScorecardSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={handleSheetDismiss}>
-        <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1400px] sm:max-w-[1400px] p-0">
+        <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1400px] sm:max-w-[1400px] p-0 bg-[#FAFAF7]">
           <div className="flex h-full flex-col">
-            <SheetHeader className="p-6 border-b">
+            <SheetHeader className="p-6 border-b border-[#E7E8EE] bg-white">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1.5">
+                  <div
+                    className="font-poppins font-semibold uppercase text-[#6F3FF5]"
+                    style={{ fontSize: 10.5, letterSpacing: '0.08em' }}
+                  >
+                    Scorecard
+                  </div>
                   <div className="flex items-center gap-3">
-                    <SheetTitle>Scorecard{stageName ? ` • ${stageName}` : ""}</SheetTitle>
+                    <SheetTitle asChild>
+                      <h2
+                        className="font-poppins font-semibold text-[#0F1222] m-0"
+                        style={{ fontSize: 20, letterSpacing: '-0.035em', lineHeight: 1.15 }}
+                      >
+                        {stageName || 'Scorecard'}
+                        <span className="text-[#D7C5FB]">.</span>
+                      </h2>
+                    </SheetTitle>
                     {isAiDraft && (
                       <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 gap-1">
                         <Sparkles className="h-3 w-3" />
@@ -1010,8 +1024,8 @@ export function ScorecardSheet({
                       </Badge>
                     )}
                     {hasDraft && (
-                      <Badge variant="outline" className="text-xs text-muted-foreground">
-                        Draft saved
+                      <Badge variant="outline" className="text-xs text-[#0F8A56] bg-[#F4FBF6] border-[#BBE3C9] gap-1">
+                        <Check className="h-3 w-3" /> Draft saved
                       </Badge>
                     )}
                     <Badge
