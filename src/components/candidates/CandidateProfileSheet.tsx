@@ -1218,6 +1218,10 @@ const stageHasAutomation = useMemo(() => {
                       appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                       currentStageName={currentStage?.stage.stage_name || null}
                       daysInStage={daysInStage}
+                      email={candidate.email || null}
+                      phone={candidate.phone || null}
+                      whatsAppEnabled={whatsAppEnabled}
+                      onWhatsAppClick={handleWhatsAppClick}
                       isFavorite={isFavorite}
                       onToggleFavorite={jobId ? handleToggleFavorite : undefined}
                       onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
