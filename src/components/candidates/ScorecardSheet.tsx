@@ -779,7 +779,31 @@ export function ScorecardSheet({
             }
           }
         }
-      }
+
+        // Sync smart-field answers (phone / linkedin / location) to candidate profile.
+        const syncMap: Partial<Record<string, Record<string, any>>> = {};
+        for (const q of questions) {
+          const r = responses[q.id];
+          const val = r?.answerText?.trim();
+          if (!val) continue;
+          if (q.answer_type === 'phone') syncMap['phone'] = { phone: val };
+          else if (q.answer_type === 'linkedin') syncMap['linkedin'] = { linkedin_url: val };
+          else if (q.answer_type === 'location') syncMap['location'] = { location_city: val };
+        }
+        const profilePatch = Object.assign({}, ...Object.values(syncMap));
+        if (Object.keys(profilePatch).length > 0) {
+          const { data: assoc } = await supabase
+            .from('job_candidate_associations')
+            .select('candidate_id')
+            .eq('id', associationId)
+            .single();
+          if (assoc) {
+            await supabase
+              .from('candidates')
+              .update(profilePatch)
+              .eq('id', assoc.candidate_id);
+          }
+        }
 
       // Clear AI draft flag for newly created scorecards (no existing.id at save time)
       if (isAiDraft && scorecardId && scorecardId !== existing?.id) {
