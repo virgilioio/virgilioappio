@@ -677,17 +677,13 @@ export function ScorecardSheet({
       const response = responses[question.id];
       if (!response) return false;
 
-      if (question.answer_type === 'text' && !response.answerText?.trim()) {
-        return false;
-      }
-      if ((question.answer_type === 'single_select' || question.answer_type === 'yes_no') && !response.answerText) {
-        return false;
-      }
-      if (question.answer_type === 'multi_select' && (!response.answerOptions || response.answerOptions.length === 0)) {
-        return false;
-      }
-      if (question.answer_type === 'salary_expectations' && !response.answerText?.trim()) {
-        return false;
+      const t = question.answer_type;
+      if (t === 'multi_select') {
+        if (!response.answerOptions || response.answerOptions.length === 0) return false;
+      } else {
+        // text, longtext, number, email, url, date, single_select, yes_no, file,
+        // salary_expectations, phone, linkedin, location, employment_type, work_location, recruiter
+        if (!response.answerText?.trim()) return false;
       }
     }
     return true;
