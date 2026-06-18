@@ -28,24 +28,14 @@ interface StageScorecardsCardProps {
   refreshNonce?: number
 }
 
-const RATING_LABEL: Record<string, string> = {
-  strong_yes: 'Strong yes',
-  yes: 'Yes',
-  no: 'No',
-  definitely_no: 'Definitely no',
+import { ratingLabel as sharedRatingLabel, ratingTone as sharedRatingTone, RATING_META, coerceRating } from '@/lib/scorecardRatings'
+
+function ratingTone(r?: string | null): 'green' | 'yellow' | 'orange' | 'red' | 'neutral' {
+  return sharedRatingTone(r)
 }
 
-function ratingTone(r?: string | null): 'green' | 'yellow' | 'red' | 'neutral' {
-  switch (r) {
-    case 'strong_yes':
-    case 'yes':
-      return 'green'
-    case 'no':
-    case 'definitely_no':
-      return 'red'
-    default:
-      return 'neutral'
-  }
+function ratingLabel(r?: string | null): string {
+  return sharedRatingLabel(r)
 }
 
 function timeAgoConcise(iso?: string | null): string {

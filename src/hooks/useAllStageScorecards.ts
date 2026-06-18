@@ -5,6 +5,12 @@ import { usePermissions } from "@/hooks/usePermissions";
 import type { ScoreRating } from "./useScorecards";
 import type { ScorecardVisibility } from "./useScorecardsConfiguration";
 
+export interface ScorecardCriterionScore {
+  questionId: string;
+  questionText: string;
+  rating: ScoreRating;
+}
+
 export interface ScorecardWithAuthor {
   id: string;
   association_id: string;
@@ -22,6 +28,8 @@ export interface ScorecardWithAuthor {
   is_ai_draft?: boolean;
   ai_suggested_rating?: string | null;
   source_booking_id?: string | null;
+  /** Per-criterion 1–5 scores derived from score_1_5 question responses. */
+  criterion_scores?: ScorecardCriterionScore[];
 }
 
 export function useAllStageScorecards(
@@ -67,6 +75,27 @@ export function useAllStageScorecards(
 
       if (scorecardsError) throw scorecardsError;
 
+      const scorecardIds = (scorecardsData || []).map((s: any) => s.id);
+
+      // Fetch per-criterion (score_1_5) responses across all scorecards in one batch.
+      let responsesByScorecard: Record<string, ScorecardCriterionScore[]> = {};
+      if (scorecardIds.length > 0) {
+        const { data: respData } = await supabase
+          .from("scorecard_question_responses")
+          .select("scorecard_id, question_id, answer_text, scorecard_interview_questions(question_text, answer_type)")
+          .in("scorecard_id", scorecardIds);
+
+        for (const row of (respData || []) as any[]) {
+          const q = row.scorecard_interview_questions;
+          if (!q || q.answer_type !== 'score_1_5' || !row.answer_text) continue;
+          (responsesByScorecard[row.scorecard_id] ||= []).push({
+            questionId: row.question_id,
+            questionText: q.question_text,
+            rating: row.answer_text as ScoreRating,
+          });
+        }
+      }
+
       // Get author information for each scorecard
       const scorecardsWithAuthors = await Promise.all(
         (scorecardsData || []).map(async (scorecard) => {
@@ -82,12 +111,14 @@ export function useAllStageScorecards(
                 ? `${authorData[0].first_name} ${authorData[0].last_name}` 
                 : null,
               author_email: authorData?.[0]?.email || null,
+              criterion_scores: responsesByScorecard[scorecard.id] || [],
             } as ScorecardWithAuthor;
           } catch {
             return {
               ...scorecard,
               author_name: null,
               author_email: null,
+              criterion_scores: responsesByScorecard[scorecard.id] || [],
             } as ScorecardWithAuthor;
           }
         })
