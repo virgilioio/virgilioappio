@@ -454,7 +454,8 @@ export default function IndependentCandidateProfile() {
                             <a href={`mailto:${candidate.email}`} className="text-virgilio-purple hover:underline">{candidate.email}</a>
                           ) : null}
                         />
-                        <ContactPair icon={Phone} label="Phone" value={candidate.phone || null} />
+                        <PhoneContactPair icon={Phone} phone={candidate.phone} whatsAppEnabled={whatsAppEnabled} />
+
                         <ContactPair icon={MapPin} label="Location" value={location || null} />
                         <ContactPair icon={DollarSign} label="Salary expectations" value={salary} />
                       </div>
