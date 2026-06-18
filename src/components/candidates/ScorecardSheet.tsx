@@ -1297,20 +1297,36 @@ export function ScorecardSheet({
               </div>
             </div>
 
-            <div className="p-6 border-t">
-              <div className="flex justify-end gap-3">
-                {isReadOnly && !editMode ? (
-                  <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-                ) : (
-                  <>
-                    <Button variant="outline" onClick={handleCancelClick} disabled={saving}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSave} disabled={saving}>
-                      {saving ? "Saving..." : existing ? "Update Scorecard" : "Submit Scorecard"}
-                    </Button>
-                  </>
-                )}
+            <div className="p-6 border-t border-[#E7E8EE] bg-white">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[12.5px] text-[#5A6072] font-inter">
+                  <Info className="h-3.5 w-3.5 text-[#8B8F9E]" />
+                  <span>Drafts stay private until you submit.</span>
+                </div>
+                <div className="flex justify-end gap-3">
+                  {isReadOnly && !editMode ? (
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                  ) : (
+                    <>
+                      <Button variant="outline" onClick={handleCancelClick} disabled={saving}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSave} disabled={saving} className="gap-2">
+                        {saving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Saving…
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-4 w-4" />
+                            {existing ? 'Update scorecard' : 'Submit scorecard'}
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
