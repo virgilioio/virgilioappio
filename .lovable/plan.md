@@ -1,73 +1,142 @@
 ## Goal
 
-Make the **Question Type** dropdown in *Configure Stage → Scorecards → Add interview question* visually identical to the "+ Add question" menu in the Job Wizard → Job posting → Application form, with the same two sections — **Smart fields** and **Basic question types** — icons on the left, lilac "Smart" badge on the right for smart items. Drop the "From your library" section (these are interview questions, not application-form fields).
+Introduce a 5-level scoring system (**Strong no · Lean no · Lean yes · Yes · Strong yes**) that powers:
 
-The new options aren't just visual — they become real, working interview answer types end-to-end (configure → scorecard fill → save).
+1. A new **basic question type** "Score (1–5)" for scorecards.
+2. The **Overall Rating** pills inside the Scorecard sheet (replaces today's 4-level Definitely no / No / Yes / Strong yes).
+3. Per-criterion **score cards** rendered in the in-job candidate profile › *Scorecards › Submitted scorecards* (the CRAFT 5/5, SYSTEMS THINKING 5/5… blocks from the reference screenshot).
 
-## Scope
+---
 
-### 1. Shared answer-type catalog (`src/hooks/useScorecardsConfiguration.ts`)
+## Rating model
 
-Extend `AnswerType` to the full Gio set, reusing the same identifiers as `ApplicationFormBuilder` so the icon map and labels stay consistent:
+Canonical values (in display order, weakest → strongest):
 
-- **Smart fields:** `salary_expectations` (existing), `location`, `phone`, `linkedin`, `employment_type`, `work_location`, `recruiter`
-- **Basic types:** `text` (Short text), `longtext` (Long text), `number`, `email`, `url`, `date`, `single_select`, `yes_no`, `file`, plus existing `multi_select`
+| value        | label       | color (hex)        |
+|--------------|-------------|--------------------|
+| `strong_no`  | Strong no   | `#C9554C` (red)    |
+| `lean_no`    | Lean no     | `#E7ABA4` (peach)  |
+| `lean_yes`   | Lean yes    | `#F5C16C` (amber)  |
+| `yes`        | Yes         | `#C8B9F0` (lilac)  |
+| `strong_yes` | Strong yes  | `#6F3FF5` (purple) |
 
-No DB migration — `scorecard_interview_questions.answer_type` is a free text column with no check/enum, confirmed via schema query.
+Numeric mapping for 1–5 score: `strong_no=1, lean_no=2, lean_yes=3, yes=4, strong_yes=5`.
 
-Export a single source-of-truth list (`SCORECARD_SMART_FIELDS`, `SCORECARD_BASIC_TYPES`) with `{ type, label, icon, hint?, description? }`, mirroring the structure in `ApplicationFormBuilder.tsx` so both menus stay visually identical.
+---
 
-### 2. Rebuild the Question Type field (`InterviewQuestionForm.tsx`)
+## 1 · Database migration
 
-Replace the current `<Select>` with the exact dropdown chrome used in the application-form builder:
+Extend the existing `score_rating` enum and migrate legacy rows so the UI never has to show the deprecated labels.
 
-- `DropdownMenu` + `DropdownMenuTrigger` styled to look like a Select trigger (32h, hairline border, chevron right, shows selected icon + label).
-- `DropdownMenuContent align="start" sideOffset={8} className="w-[320px]"` — same width and chrome.
-- Section 1 — `DropdownMenuLabel` with `Sparkles` icon: **"Smart fields"**, then each smart item: icon (3.5 × 3.5, `text-text-tertiary`), label, `<Badge tone="lilac" size="xs">Smart</Badge>` on the right.
-- `DropdownMenuSeparator`.
-- Section 2 — `DropdownMenuLabel`: **"Basic question types"**, then each basic item: icon + label.
-- No "From your library" section.
+```sql
+ALTER TYPE score_rating ADD VALUE IF NOT EXISTS 'strong_no';
+ALTER TYPE score_rating ADD VALUE IF NOT EXISTS 'lean_no';
+ALTER TYPE score_rating ADD VALUE IF NOT EXISTS 'lean_yes';
 
-### 3. Salary-style sync hint for new smart fields
+-- Migrate legacy values to the new 5-level model
+UPDATE scorecards SET rating = 'strong_no' WHERE rating = 'definitely_no';
+UPDATE scorecards SET rating = 'lean_no'  WHERE rating = 'no';
+-- (yes / strong_yes are unchanged)
+```
 
-Today the form shows a "Syncs to Candidate Profile" lilac block only for `salary_expectations`. Generalize it: when the selected type is any smart field that maps to a candidate-profile field (location, phone, linkedin, employment_type, work_location), show the same lilac sync banner with the relevant label. `recruiter` shows a different hint ("Routes the candidate to a recruiter"). For non-smart types, no banner.
+`definitely_no` and `no` remain in the enum (Postgres can't drop enum values cleanly) but are no longer surfaced in the UI.
 
-For these new smart types the question text is auto-set (like salary today) and the free-text question textarea is hidden — the type *is* the question.
+Per-question scores reuse the existing `scorecard_question_responses.answer_text` column — we store the canonical string (e.g. `"strong_yes"`). No schema change needed for question responses.
 
-### 4. Render the new answer types when interviewers fill the scorecard (`src/components/candidates/ScorecardSheet.tsx`)
+---
 
-Extend the `switch (question.answer_type)` block (~L836) and the validation block (~L680) with renderers/validators for the new types:
+## 2 · Shared rating catalogue
 
-- `text` (existing) and `longtext` → Textarea
-- `number` → numeric Input
-- `email` / `url` → Input with the corresponding type + light client validation
-- `date` → `DatePickerVirgilio`
-- `phone` → phone Input
-- `linkedin` → URL Input (LinkedIn icon affordance)
-- `location` → free-text Input (location autocomplete is out of scope here)
-- `employment_type`, `work_location` → Select using the same option lists as the application-form smart fields
-- `recruiter` → Select of workspace members
-- `file` → file upload using the existing candidate-attachment storage helper
-- `single_select` / `multi_select` / `yes_no` / `salary_expectations` — unchanged
+New file `src/lib/scorecardRatings.ts` exporting:
 
-Also extend the post-submit "sync to candidate profile" logic next to the existing salary sync (~L760) so answers to the new smart types update the matching candidate column (phone, linkedin, location, employment_type, work_location, recruiter).
+- `RATING_VALUES` ordered array of 5 values.
+- `RATING_META: Record<ScoreRating, { label; numeric: 1-5; bg; text; icon }>` (single source of truth for label/color/icon used by pills, badges, and criterion cards).
+- `ratingTone()` and `ratingLabel()` helpers.
 
-### 5. Question list display (`InterviewQuestionsList.tsx`)
+Update `src/hooks/useScorecards.ts`:
 
-Add icons + labels for the new types in `getAnswerTypeIcon` / `getAnswerTypeLabel` so the configured-questions list shows the correct chip per type, reusing the shared icon map from step 1.
+```ts
+export type ScoreRating =
+  | 'strong_no' | 'lean_no' | 'lean_yes' | 'yes' | 'strong_yes'
+```
+
+---
+
+## 3 · New basic question type: Score (1–5)
+
+`src/hooks/useScorecardsConfiguration.ts`
+
+- Extend `AnswerType` with `'score_1_5'`.
+- Add to `SCORECARD_BASIC_TYPES`: `{ type: 'score_1_5', label: 'Score (1–5)', icon: Star, hint: 'Strong no → Strong yes' }`.
+- No config UI needed beyond label + required toggle (mirrors `yes_no`).
+
+`src/components/jobs/stage-config/InterviewQuestionsList.tsx` — already picks icon/label from the catalogue, so the new type renders automatically.
+
+---
+
+## 4 · Render the 1–5 score in the Scorecard sheet
+
+`src/components/candidates/ScorecardSheet.tsx` question renderer:
+
+- Add a `score_1_5` branch that renders a compact horizontal row of 5 pills (same component family as `OverallRatingPills` but smaller — `h-9`, label hidden on narrow widths, tooltip shows full label) bound to `responses[questionId].answerText`.
+- Validation: when `is_required`, accept any of the 5 enum strings.
+
+---
+
+## 5 · Update Overall Rating pills to 5 levels
+
+`src/components/candidates/scorecard/OverallRatingPills.tsx`
+
+- Replace the 4-pill array with the 5-pill array from `RATING_META`.
+- Switch grid to `grid-cols-5`.
+- Icons: ThumbsDown (strong_no), Frown (lean_no), Meh (lean_yes), ThumbsUp (yes), Star (strong_yes).
+
+`ScorecardSheet.tsx`:
+- Update internal `ratingOptions` array and the `aiRatingToScoreRating` map to the new 5 values (`"Lean Yes" → 'lean_yes'`, `"Lean No" → 'lean_no'`, `"Strong No" → 'strong_no'`).
+- Default rating for new scorecards stays `'yes'`.
+
+---
+
+## 6 · Submitted scorecards — criterion cards
+
+`src/components/candidates/profile/StageScorecardsCard.tsx`
+
+- Update `RATING_LABEL` and `ratingTone` to cover all 5 values (lean_yes → yellow, lean_no → orange).
+- Verdict pill colours now read from `RATING_META`.
+- For each submitted scorecard, fetch its `scorecard_question_responses` joined to `scorecard_interview_questions` (already wired via `useAllStageScorecards` — extend the hook if not).
+- Below each panelist's verdict, render a responsive grid of **criterion cards** for every `score_1_5` question:
+
+  ```
+  ┌──────────────────────┐
+  │ CRAFT                │   ← question_text, uppercase 10.5px label
+  │ ━━━━━━━━━━━━━━━━     │   ← 5 dashes; the first N coloured with the
+  │ 5/5                  │     rating colour, remainder neutral
+  └──────────────────────┘
+  ```
+
+  Card spec: white bg, `#E7E8EE` border, radius 12, padding 16, Poppins 13/700 for "N/5", dashes built with 5 spans of 4px height.
+
+- Verdict distribution sidebar (already designed for 5 levels in the screenshot) becomes accurate automatically once ratings are 5-level.
+
+---
+
+## 7 · Touch-ups
+
+- `RecommendedNextStepsDialog`, `ExpandableScoreDisplay`, `useAssociationScorecardSummary`, `CandidateProfileSheet`: update any hard-coded `'definitely_no' | 'no'` references to the new vocabulary (search-and-replace using the shared `RATING_META`).
+- Seed/demo data: replace any future seeds that still use `definitely_no` (no data fix required — migration handles existing rows).
+
+---
 
 ## Out of scope
 
-- "From your library" section in this dropdown — explicitly removed per request.
-- Changing the application-form builder.
-- AI question generation (`ScorecardQuestionsGenerationPanel`) — it already only emits `text` / `yes_no`; left as-is.
-- Location autocomplete inside the scorecard fill view.
+- Per-criterion weighting / aggregate score math beyond simple average.
+- Configurable rating scales (always 5).
+- Backfilling historical `scorecards.general_overview` text.
 
-## Files touched
+---
 
-- `src/hooks/useScorecardsConfiguration.ts` — extend `AnswerType`, export shared catalogs.
-- `src/components/jobs/stage-config/InterviewQuestionForm.tsx` — rebuild the Question Type field, generalize the sync banner.
-- `src/components/jobs/stage-config/InterviewQuestionsList.tsx` — icon/label map for new types.
-- `src/components/candidates/ScorecardSheet.tsx` — render + validate + sync new types.
+## Technical notes
 
-No new files, no new migrations.
+- Enum extension via `ALTER TYPE ... ADD VALUE` must run outside a transaction; the migration tool handles this by splitting statements.
+- Keeping `definitely_no` / `no` enum values avoids brittle enum-rewrite migrations; UI maps them through `RATING_META` (which marks them as legacy → coerced to `strong_no` / `lean_no` for display) as a safety net in case any row escapes the UPDATE.
+- All colour/label literals live in `src/lib/scorecardRatings.ts` so future tweaks are one-file edits.
