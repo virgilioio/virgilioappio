@@ -191,7 +191,7 @@ export function useScorecardsConfiguration(jhsId: string | null) {
         .insert({
           scorecard_template_id: template.id,
           question_text: question.question_text,
-          answer_type: question.answer_type,
+          answer_type: question.answer_type as any,
           is_required: question.is_required,
           display_order: question.display_order,
           select_options: question.select_options as any || null,
