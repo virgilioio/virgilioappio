@@ -1241,133 +1241,59 @@ export function ScorecardSheet({
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Overall rating</div>
-                  <RadioGroup
-                    className="grid grid-cols-4 gap-3"
+                <FormSectionCard title="Overall rating">
+                  <OverallRatingPills
                     value={rating}
-                    onValueChange={(v) => setRating(v as ScoreRating)}
+                    onChange={(v) => setRating(v)}
                     disabled={isReadOnly}
-                  >
-                    {ratingOptions.map((opt) => {
-                      const active = rating === opt.value;
-                      const base =
-                        opt.value === "definitely_no"
-                          ? `text-white ${active ? "ring-2" : ""}`
-                          : opt.value === "no"
-                          ? `text-white ${active ? "ring-2" : ""}`
-                          : opt.value === "strong_yes"
-                          ? `text-white ${active ? "ring-2" : ""}`
-                          : `text-white ${active ? "ring-2" : ""}`;
-                      
-                      const colorStyles =
-                        opt.value === "definitely_no"
-                          ? { backgroundColor: '#FA5252', borderColor: '#FA5252', ringColor: active ? '#FA5252' : undefined }
-                          : opt.value === "no"
-                          ? { backgroundColor: '#FA8F8F', borderColor: '#FA8F8F', ringColor: active ? '#FA8F8F' : undefined }
-                          : opt.value === "strong_yes"
-                          ? { backgroundColor: '#6F3FF5', borderColor: '#6F3FF5', ringColor: active ? '#6F3FF5' : undefined }
-                          : { backgroundColor: '#9B7BF7', borderColor: '#9B7BF7', ringColor: active ? '#9B7BF7' : undefined };
-
-                      return (
-                        <Label
-                          key={opt.value}
-                          htmlFor={`rating-${opt.value}`}
-                          className={`
-                            flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 cursor-pointer
-                            transition-all duration-200
-                            ${base}
-                          `}
-                          style={colorStyles}
-                        >
-                          <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} className="sr-only" />
-                          <div className="flex items-center gap-1">
-                            {opt.value === "definitely_no" && <ThumbsDown className="h-4 w-4" />}
-                            {opt.value === "no" && <Octagon className="h-4 w-4" />}
-                            {opt.value === "yes" && <ThumbsUp className="h-4 w-4" />}
-                            {opt.value === "strong_yes" && <Star className="h-4 w-4" />}
-                            <span className="text-sm font-medium">{opt.label}</span>
-                          </div>
-                        </Label>
-                      );
-                    })}
-                  </RadioGroup>
-                </div>
+                  />
+                </FormSectionCard>
 
                 {(!loadingQuestions && questions.length > 0) || gioAdded.items.length > 0 ? (
-                  <div className="space-y-6 border-t border-virgilio-border pt-6">
-                    <h3 className="text-base font-semibold text-virgilio-text">Interview Questions</h3>
-                    {questions.map(renderQuestion)}
-                    {gioAdded.items.map((q) => (
-                      <AddedFromGioBlock
-                        key={q.id}
-                        item={q}
-                        readOnly={isReadOnly}
-                        onAnswerChange={gioAdded.setAnswer}
-                        onRemove={(idx) => {
-                          gioAdded.remove(idx);
-                          // Revert decision so it returns to the inbox.
-                          import('@/lib/supabaseClient').then(({ supabase }) =>
-                            supabase
-                              .from('validation_point_resolutions')
-                              .upsert(
-                                {
-                                  association_id: associationId,
-                                  point_index: idx,
-                                  point_question: q.question,
-                                  status: 'dismissed',
-                                  resolved_in_stage: stageName ?? '',
-                                  resolved_at: new Date().toISOString(),
-                                } as any,
-                                { onConflict: 'association_id,point_index' }
-                              )
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
+                  <FormSectionCard
+                    title="Interview questions"
+                    subtitle="Answer the questions configured for this stage."
+                  >
+                    <div className="space-y-6">
+                      {questions.map(renderQuestion)}
+                      {gioAdded.items.map((q) => (
+                        <AddedFromGioBlock
+                          key={q.id}
+                          item={q}
+                          readOnly={isReadOnly}
+                          onAnswerChange={gioAdded.setAnswer}
+                          onRemove={(idx) => {
+                            gioAdded.remove(idx);
+                            // Revert decision so it returns to the inbox.
+                            import('@/lib/supabaseClient').then(({ supabase }) =>
+                              supabase
+                                .from('validation_point_resolutions')
+                                .upsert(
+                                  {
+                                    association_id: associationId,
+                                    point_index: idx,
+                                    point_question: q.question,
+                                    status: 'dismissed',
+                                    resolved_in_stage: stageName ?? '',
+                                    resolved_at: new Date().toISOString(),
+                                  } as any,
+                                  { onConflict: 'association_id,point_index' }
+                                )
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </FormSectionCard>
                 ) : null}
 
-                <div className="space-y-2 border-t border-virgilio-border pt-6">
-                  <div className="mb-2">
-                    <Label htmlFor="overview" className="text-base font-semibold">
-                      Key Takeaways
-                    </Label>
-                    <p className="text-sm text-virgilio-muted mt-1">
-                      Provide comprehensive notes about your interview with this candidate
-                    </p>
-                  </div>
-                  
-                  <RichTextEditor
-                    value={overview}
-                    onChange={setOverview}
-                    placeholder="Share your key takeaways and observations..."
-                  />
-                  
-                  {!isReadOnly && (
-                    <div className="flex justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handlePolishNotes}
-                        disabled={isPolishing || !overview.trim()}
-                        className="gap-2"
-                      >
-                        {isPolishing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Polishing...
-                          </>
-                        ) : (
-                          <>
-                            <img src={gioIcon} alt="Gio" className="h-4 w-4" />
-                            Polish Notes
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <KeyTakeawaysCard
+                  value={overview}
+                  onChange={setOverview}
+                  onPolish={handlePolishNotes}
+                  isPolishing={isPolishing}
+                  disabled={isReadOnly}
+                />
               </div>
             </div>
 
