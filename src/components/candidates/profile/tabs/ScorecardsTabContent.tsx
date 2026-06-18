@@ -125,17 +125,16 @@ export function ScorecardsTabContent({
         }
       >
         {submitted.length === 0 ? (
-          <div className="px-5 py-8">
-            <EmptyState
-              variant="inline"
-              title="No scorecards submitted yet"
-              description={
-                pendingCount > 0
-                  ? `${pendingCount} panelist${pendingCount === 1 ? '' : 's'} pending`
-                  : 'Add the first scorecard for this stage.'
-              }
-            />
-          </div>
+          <EmptyState
+            size="card"
+            illustration={<SoftRosette />}
+            title="No scorecards submitted yet"
+            body={
+              pendingCount > 0
+                ? `${pendingCount} panelist${pendingCount === 1 ? '' : 's'} pending`
+                : 'Add the first scorecard for this stage.'
+            }
+          />
         ) : (
           <div>
             {submitted.map((p, i) => (
