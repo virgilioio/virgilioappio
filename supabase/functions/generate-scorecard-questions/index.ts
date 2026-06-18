@@ -88,7 +88,11 @@ Emphasize different dimensions based on the interview stage while keeping questi
 - Include practical "notes for interviewer" with specific signals to look for, red flags to watch out for, and follow-up prompts
 - Make questions specific to the job title and description - avoid generic questions that could apply to any role
 - Do NOT repeat or closely paraphrase existing questions
-- Use "text" answer type for open-ended questions; "yes_no" only for simple screening questions (like "Are you authorized to work in this country?")
+- Choose the answer type that best fits each question:
+  - "text" — open-ended behavioral/STAR questions where the interviewer captures a narrative answer.
+  - "yes_no" — simple binary screening questions only (e.g. "Are you authorized to work in this country?"). Use sparingly.
+  - "score_1_5" — rateable competency / trait questions where the interviewer scores the candidate on a 1–5 scale (1 = strong no, 5 = strong yes). Phrase these as something to rate, e.g. "Rate the depth of the candidate's React expertise", "Rate communication clarity", "Rate cultural alignment with our values". Prefer this type for Competency/Skills, Knowledge, and Cultural Fit dimensions where a calibrated rating is more useful than free text.
+- Aim for a healthy mix: when the stage emphasizes competencies, skills, knowledge, or cultural fit (e.g. Technical, Panel, Assessment, Phone Screen), include 2–4 "score_1_5" questions alongside open-ended "text" questions.
 - Keep questions concise but meaningful - each question should have a clear purpose tied to the evaluation dimensions`;
 
     // Build the user prompt
