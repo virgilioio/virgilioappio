@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { SoonBadge } from "@/components/ui/soon-badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy, Lock, Globe } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy, Lock, Globe, Check, Info, RefreshCw } from "lucide-react";
 import { copyToClipboard } from "@/utils/clipboard";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
@@ -79,6 +79,9 @@ import { GioPointsInbox } from "./scorecard/GioPointsInbox";
 import { AddedFromGioBlock } from "./scorecard/AddedFromGioBlock";
 import { useGioAddedQuestions } from "@/hooks/useGioAddedQuestions";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
+import { FormSectionCard } from "./scorecard/FormSectionCard";
+import { OverallRatingPills } from "./scorecard/OverallRatingPills";
+import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
 import {
   AlertDialog,
   AlertDialogAction,
