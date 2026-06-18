@@ -158,8 +158,8 @@ Generate 5-8 tailored interview questions with interviewer notes.`;
                         },
                         answer_type: {
                           type: "string",
-                          enum: ["text", "yes_no"],
-                          description: "Use 'text' for open-ended questions, 'yes_no' only for simple screening questions",
+                          enum: ["text", "yes_no", "score_1_5"],
+                          description: "Use 'text' for open-ended questions, 'yes_no' only for simple binary screening, 'score_1_5' for rateable competency/skill/cultural-fit questions scored on a 1-5 scale",
                         },
                         suggested_reason: {
                           type: "string",
