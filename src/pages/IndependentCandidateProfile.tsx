@@ -302,20 +302,8 @@ export default function IndependentCandidateProfile() {
     </ProfileSidebar>
   )
 
-  // ───── Contact-pair primitive (kept local to this page) ─────
-  const ContactPair = ({ icon: Icon, label, value }: { icon: any; label: string; value: React.ReactNode }) => (
-    <div className="flex items-start gap-3 min-w-0">
-      <div className="h-8 w-8 rounded-[9px] bg-[#FAFAF7] flex items-center justify-center shrink-0">
-        <Icon className="h-4 w-4 text-[#5A6072]" />
-      </div>
-      <div className="min-w-0">
-        <div className="font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E]">{label}</div>
-        <div className="font-inter text-[13px] font-medium text-[#1F2230] truncate mt-0.5">
-          {value || <span className="text-[#8B8F9E]">—</span>}
-        </div>
-      </div>
-    </div>
-  )
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
+
 
   return (
     <AuthGate>
