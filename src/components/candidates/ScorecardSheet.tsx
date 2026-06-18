@@ -555,7 +555,7 @@ export function ScorecardSheet({
           const formattedQuestions: InterviewQuestion[] = questionsData.map(q => ({
             id: q.id,
             question_text: q.question_text,
-            answer_type: q.answer_type as 'text' | 'yes_no' | 'single_select' | 'multi_select' | 'salary_expectations',
+            answer_type: q.answer_type as InterviewQuestion['answer_type'],
             is_required: q.is_required,
             display_order: q.display_order,
             select_options: (q.select_options as unknown) as SelectOption[] | undefined,
@@ -677,17 +677,13 @@ export function ScorecardSheet({
       const response = responses[question.id];
       if (!response) return false;
 
-      if (question.answer_type === 'text' && !response.answerText?.trim()) {
-        return false;
-      }
-      if ((question.answer_type === 'single_select' || question.answer_type === 'yes_no') && !response.answerText) {
-        return false;
-      }
-      if (question.answer_type === 'multi_select' && (!response.answerOptions || response.answerOptions.length === 0)) {
-        return false;
-      }
-      if (question.answer_type === 'salary_expectations' && !response.answerText?.trim()) {
-        return false;
+      const t = question.answer_type;
+      if (t === 'multi_select') {
+        if (!response.answerOptions || response.answerOptions.length === 0) return false;
+      } else {
+        // text, longtext, number, email, url, date, single_select, yes_no, file,
+        // salary_expectations, phone, linkedin, location, employment_type, work_location, recruiter
+        if (!response.answerText?.trim()) return false;
       }
     }
     return true;
@@ -783,7 +779,34 @@ export function ScorecardSheet({
             }
           }
         }
+
+        // Sync smart-field answers (phone / linkedin / location) to candidate profile.
+        const syncMap: Partial<Record<string, Record<string, any>>> = {};
+        for (const q of questions) {
+          const r = responses[q.id];
+          const val = r?.answerText?.trim();
+          if (!val) continue;
+          if (q.answer_type === 'phone') syncMap['phone'] = { phone: val };
+          else if (q.answer_type === 'linkedin') syncMap['linkedin'] = { linkedin_url: val };
+          else if (q.answer_type === 'location') syncMap['location'] = { location_city: val };
+        }
+        const profilePatch = Object.assign({}, ...Object.values(syncMap));
+        if (Object.keys(profilePatch).length > 0) {
+          const { data: assoc } = await supabase
+            .from('job_candidate_associations')
+            .select('candidate_id')
+            .eq('id', associationId)
+            .single();
+          if (assoc) {
+            await supabase
+              .from('candidates')
+              .update(profilePatch)
+              .eq('id', assoc.candidate_id);
+          }
+        }
       }
+
+
 
       // Clear AI draft flag for newly created scorecards (no existing.id at save time)
       if (isAiDraft && scorecardId && scorecardId !== existing?.id) {
@@ -991,6 +1014,91 @@ export function ScorecardSheet({
             </div>
           </div>
         );
+
+      default: {
+        // Generic renderer for the new smart + basic types.
+        const t = question.answer_type;
+        const longBasic = t === 'longtext';
+        const inputType =
+          t === 'number' ? 'number' :
+          t === 'email' ? 'email' :
+          t === 'url' || t === 'linkedin' ? 'url' :
+          t === 'date' ? 'date' :
+          t === 'phone' ? 'tel' :
+          t === 'file' ? 'file' :
+          'text';
+
+        const placeholder =
+          t === 'phone' ? '+1 555 123 4567' :
+          t === 'linkedin' ? 'https://linkedin.com/in/…' :
+          t === 'location' ? 'City, state, country' :
+          t === 'recruiter' ? 'Team member name' :
+          t === 'url' ? 'https://…' :
+          t === 'email' ? 'name@example.com' :
+          'Enter your answer...';
+
+        // Predefined options for employment_type / work_location.
+        const presetOptions: { value: string; label: string }[] | null =
+          t === 'employment_type' ? [
+            { value: 'full_time', label: 'Full-time' },
+            { value: 'part_time', label: 'Part-time' },
+            { value: 'contract', label: 'Contract' },
+            { value: 'internship', label: 'Internship' },
+            { value: 'temporary', label: 'Temporary' },
+          ] :
+          t === 'work_location' ? [
+            { value: 'remote', label: 'Remote' },
+            { value: 'hybrid', label: 'Hybrid' },
+            { value: 'onsite', label: 'On-site' },
+          ] : null;
+
+        return (
+          <div key={question.id} className="space-y-2">
+            <Label htmlFor={`question-${question.id}`}>
+              {question.question_text}
+              {question.is_required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            {question.notes_for_interviewer && (
+              <p className="text-sm text-muted-foreground italic">{question.notes_for_interviewer}</p>
+            )}
+            {longBasic ? (
+              <Textarea
+                id={`question-${question.id}`}
+                value={response?.answerText || ''}
+                onChange={(e) => handleResponseChange(question.id, { answerText: e.target.value })}
+                disabled={isReadOnly}
+                rows={4}
+                placeholder={placeholder}
+              />
+            ) : presetOptions ? (
+              <RadioGroup
+                value={response?.answerText || ''}
+                onValueChange={(value) => handleResponseChange(question.id, { answerText: value })}
+                disabled={isReadOnly}
+                className="space-y-2"
+              >
+                {presetOptions.map((opt) => (
+                  <div key={opt.value} className="flex items-center space-x-2">
+                    <RadioGroupItem value={opt.value} id={`${question.id}-${opt.value}`} />
+                    <Label htmlFor={`${question.id}-${opt.value}`} className="cursor-pointer">
+                      {opt.label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            ) : (
+              <Input
+                id={`question-${question.id}`}
+                type={inputType}
+                value={response?.answerText || ''}
+                onChange={(e) => handleResponseChange(question.id, { answerText: e.target.value })}
+                disabled={isReadOnly}
+                placeholder={placeholder}
+              />
+            )}
+          </div>
+        );
+      }
     }
   };
 

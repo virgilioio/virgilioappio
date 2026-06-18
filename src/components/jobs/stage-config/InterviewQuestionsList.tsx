@@ -31,8 +31,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { GripVertical, Edit, Trash2, Type, CheckCircle2, List, ListChecks, DollarSign, Link2, MessageSquare } from 'lucide-react'
+import { GripVertical, Edit, Trash2, Type, Link2, MessageSquare } from 'lucide-react'
 import type { InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
+import { getScorecardTypeDef, SCORECARD_SMART_FIELD_TYPES } from '@/hooks/useScorecardsConfiguration'
 import { cn } from '@/lib/utils'
 
 interface InterviewQuestionsListProps {
@@ -66,36 +67,9 @@ function SortableQuestionItem({
     opacity: isDragging ? 0 : undefined,
   }
 
-  const getAnswerTypeIcon = () => {
-    switch (question.answer_type) {
-      case 'text':
-        return <Type className="h-4 w-4" />
-      case 'yes_no':
-        return <CheckCircle2 className="h-4 w-4" />
-      case 'single_select':
-        return <List className="h-4 w-4" />
-      case 'multi_select':
-        return <ListChecks className="h-4 w-4" />
-      case 'salary_expectations':
-        return <DollarSign className="h-4 w-4" />
-    }
-  }
-
-  const getAnswerTypeLabel = () => {
-    switch (question.answer_type) {
-      case 'text':
-        return 'Text'
-      case 'yes_no':
-        return 'Yes/No'
-      case 'single_select':
-        return 'Single Select'
-      case 'multi_select':
-        return 'Multi Select'
-      case 'salary_expectations':
-        return 'Salary Expectations'
-    }
-  }
-
+  const typeDef = getScorecardTypeDef(question.answer_type)
+  const TypeIcon = typeDef.icon
+  const isSmart = SCORECARD_SMART_FIELD_TYPES.has(question.answer_type)
   const isSalaryType = question.answer_type === 'salary_expectations'
 
   return (
@@ -121,10 +95,15 @@ function SortableQuestionItem({
         <div className="flex flex-wrap items-center gap-2 mt-2">
           <Badge variant="outline" className={cn(
             "text-xs border-virgilio-purple/30",
-            isSalaryType ? "bg-green-500/10 text-green-700 border-green-300" : "bg-virgilio-purple/10 text-virgilio-purple"
+            isSalaryType ? "bg-green-500/10 text-green-700 border-green-300" :
+            isSmart ? "bg-[#EDE4FF] text-virgilio-purple border-[#D7C5FB]" :
+            "bg-virgilio-purple/10 text-virgilio-purple"
           )}>
-            {getAnswerTypeIcon()}
-            <span className="ml-1">{getAnswerTypeLabel()}</span>
+            <TypeIcon className="h-4 w-4" />
+            <span className="ml-1">{typeDef.label}</span>
+            {isSmart && !isSalaryType && (
+              <span className="ml-1.5 text-[10px] uppercase tracking-wide opacity-70">Smart</span>
+            )}
           </Badge>
           
           {question.is_required && (
