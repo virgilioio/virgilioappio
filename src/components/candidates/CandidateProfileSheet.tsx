@@ -93,7 +93,8 @@ import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileA
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
-import { ScorecardsTabContent, PENDING_PANELISTS } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
+import { ScorecardsTabContent, type SubmittedScorecardRow, type SubmittedVerdict } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
+import { useStagePendingPanelists } from '@/hooks/useStagePendingPanelists'
 import {
   JobOverviewSidebar,
   ResumeSidebar,
