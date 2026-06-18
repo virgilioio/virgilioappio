@@ -12,6 +12,9 @@ import type { ScoreRating } from '@/hooks/useScorecards'
 export type SubmittedVerdict =
   | { label: 'Strong yes'; tone: 'green' }
   | { label: 'Yes'; tone: 'green' }
+  | { label: 'Lean yes'; tone: 'yellow' }
+  | { label: 'Lean no'; tone: 'orange' }
+  | { label: 'Strong no'; tone: 'red' }
   | { label: 'No'; tone: 'red' }
   | { label: 'Definitely no'; tone: 'red' }
 
