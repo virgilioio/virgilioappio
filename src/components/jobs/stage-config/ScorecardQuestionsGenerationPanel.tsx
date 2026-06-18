@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Sparkles, Loader2, Plus, ChevronDown, ChevronUp, Lightbulb, MessageSquare } from 'lucide-react'
 import { useScorecardQuestionsGeneration, type GeneratedQuestion } from '@/hooks/useScorecardQuestionsGeneration'
-import type { InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
+import { getScorecardTypeDef, type InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
 
 interface ScorecardQuestionsGenerationPanelProps {
   jobId: string
