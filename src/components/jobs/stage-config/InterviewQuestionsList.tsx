@@ -95,10 +95,15 @@ function SortableQuestionItem({
         <div className="flex flex-wrap items-center gap-2 mt-2">
           <Badge variant="outline" className={cn(
             "text-xs border-virgilio-purple/30",
-            isSalaryType ? "bg-green-500/10 text-green-700 border-green-300" : "bg-virgilio-purple/10 text-virgilio-purple"
+            isSalaryType ? "bg-green-500/10 text-green-700 border-green-300" :
+            isSmart ? "bg-[#EDE4FF] text-virgilio-purple border-[#D7C5FB]" :
+            "bg-virgilio-purple/10 text-virgilio-purple"
           )}>
-            {getAnswerTypeIcon()}
-            <span className="ml-1">{getAnswerTypeLabel()}</span>
+            <TypeIcon className="h-4 w-4" />
+            <span className="ml-1">{typeDef.label}</span>
+            {isSmart && !isSalaryType && (
+              <span className="ml-1.5 text-[10px] uppercase tracking-wide opacity-70">Smart</span>
+            )}
           </Badge>
           
           {question.is_required && (
