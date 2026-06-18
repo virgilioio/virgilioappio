@@ -82,6 +82,7 @@ import { useGioAddedQuestions } from "@/hooks/useGioAddedQuestions";
 import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import { CandidateSheetSection } from "./form/CandidateSheetSection";
 import { OverallRatingPills } from "./scorecard/OverallRatingPills";
+import { ScoreFivePills } from "./scorecard/ScoreFivePills";
 import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
 import { AiSuggestedRatingCard } from "./scorecard/AiSuggestedRatingCard";
 import {
