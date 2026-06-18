@@ -93,7 +93,8 @@ import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileA
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
-import { ScorecardsTabContent, PENDING_PANELISTS } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
+import { ScorecardsTabContent, type SubmittedScorecardRow, type SubmittedVerdict } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
+import { useStagePendingPanelists } from '@/hooks/useStagePendingPanelists'
 import {
   JobOverviewSidebar,
   ResumeSidebar,
@@ -245,6 +246,48 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
 const scorecardSummary = useAssociationScorecardSummary(associationId, scorecardsRefreshNonce)
+
+// Active stage for the Scorecards tab + sidebar (real data wiring)
+const activeStageOption = useMemo(() => {
+  if (!currentStageId) return null
+  const sorted = [...planStages].sort((a, b) => a.position - b.position)
+  return sorted.find(s => s.jhsId === currentStageId) ?? null
+}, [planStages, currentStageId])
+const activeStageInstanceId = activeStageOption?.jhsId ?? null
+
+const { scorecards: activeStageScorecards } = useAllStageScorecards(
+  activeStageInstanceId,
+  associationId,
+  scorecardsRefreshNonce,
+)
+const { pending: pendingPanelists } = useStagePendingPanelists(
+  activeStageInstanceId,
+  associationId,
+  scorecardsRefreshNonce,
+)
+
+const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
+  switch (r) {
+    case 'strong_yes': return { label: 'Strong yes', tone: 'green' }
+    case 'yes':        return { label: 'Yes', tone: 'green' }
+    case 'no':         return { label: 'No', tone: 'red' }
+    case 'definitely_no': return { label: 'Definitely no', tone: 'red' }
+    default: return null
+  }
+}
+
+const submittedScorecardRows: SubmittedScorecardRow[] = useMemo(() => {
+  return activeStageScorecards
+    .filter(s => !s.is_ai_draft && !!s.rating)
+    .map(s => ({
+      id: s.id,
+      name: s.author_name || s.author_email || 'Reviewer',
+      meta: activeStageOption?.stage.stage_name ?? null,
+      verdict: ratingToVerdict(s.rating),
+      feedback: s.general_overview,
+      isMine: s.created_by === user?.id,
+    }))
+}, [activeStageScorecards, activeStageOption, user?.id])
 
 // Dismiss AI draft scorecard
 const handleDismissAiDraft = async (scorecardId: string) => {
@@ -1502,10 +1545,14 @@ const stageHasAutomation = useMemo(() => {
                     {/* Scorecards Tab */}
                     {activeTab === 'scorecards' && (
                       <ScorecardsTabContent
+                        submitted={submittedScorecardRows}
+                        pendingCount={pendingPanelists.length}
                         onAddMine={() => {
-                          const firstScorecardStage = [...planStages]
-                            .sort((a, b) => a.position - b.position)
-                            .find((p) => supportsScorecard(p.stage.stage_type))
+                          const firstScorecardStage = activeStageOption && supportsScorecard(activeStageOption.stage.stage_type)
+                            ? activeStageOption
+                            : [...planStages]
+                                .sort((a, b) => a.position - b.position)
+                                .find((p) => supportsScorecard(p.stage.stage_type))
                           if (firstScorecardStage) {
                             setScoreStageInstId(firstScorecardStage.jhsId)
                             setScoreStageName(firstScorecardStage.stage.stage_name)
@@ -1733,19 +1780,18 @@ const stageHasAutomation = useMemo(() => {
                           case 'scorecards':
                             return (
                               <ScorecardsSidebar
-                                average={4.4}
-                                panelistCount={3}
+                                average={scorecardSummary.average}
+                                panelistCount={scorecardSummary.panelistCount}
                                 verdictBreakdown={[
-                                  { label: 'Strong yes', tone: 'green',  count: 1 },
-                                  { label: 'Yes',        tone: 'green',  count: 1 },
-                                  { label: 'Lean yes',   tone: 'yellow', count: 1 },
-                                  { label: 'Lean no',    tone: 'orange', count: 0 },
-                                  { label: 'Strong no',  tone: 'red',    count: 0 },
+                                  { label: 'Strong yes',   tone: 'green', count: scorecardSummary.counts.strong_yes },
+                                  { label: 'Yes',          tone: 'green', count: scorecardSummary.counts.yes },
+                                  { label: 'No',           tone: 'red',   count: scorecardSummary.counts.no },
+                                  { label: 'Definitely no', tone: 'red',  count: scorecardSummary.counts.definitely_no },
                                 ]}
-                                pending={PENDING_PANELISTS.map((row) => ({
-                                  id: row.id,
+                                pending={pendingPanelists.map((row) => ({
+                                  id: row.userId,
                                   name: row.name,
-                                  role: row.role,
+                                  role: row.role ?? null,
                                   onNudge: () => {
                                     toast({
                                       title: 'Nudge sent',
