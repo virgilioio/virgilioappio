@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Sparkles, Loader2, Plus, ChevronDown, ChevronUp, Lightbulb, MessageSquare } from 'lucide-react'
 import { useScorecardQuestionsGeneration, type GeneratedQuestion } from '@/hooks/useScorecardQuestionsGeneration'
-import type { InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
+import { getScorecardTypeDef, type InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
 
 interface ScorecardQuestionsGenerationPanelProps {
   jobId: string
@@ -208,7 +208,7 @@ export function ScorecardQuestionsGenerationPanel({
                           variant="outline" 
                           className="shrink-0 text-xs"
                         >
-                          {question.answer_type === 'yes_no' ? 'Yes/No' : 'Text'}
+                          {getScorecardTypeDef(question.answer_type).label}
                         </Badge>
                       </div>
                       

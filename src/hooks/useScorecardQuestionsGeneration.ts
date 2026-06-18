@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 export interface GeneratedQuestion {
   question_text: string
   notes_for_interviewer: string
-  answer_type: 'text' | 'yes_no'
+  answer_type: 'text' | 'yes_no' | 'score_1_5'
   suggested_reason: string
 }
 
