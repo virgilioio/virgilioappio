@@ -1168,7 +1168,7 @@ export function ScorecardSheet({
               </div>
 
               {/* Right Panel - Scorecard Form */}
-              <div className="w-full lg:w-[55%] overflow-y-auto p-6 space-y-6 bg-[#FAFAF7]">
+              <div className="w-full lg:w-[47%] overflow-y-auto p-6 space-y-6 bg-[#FAFAF7]">
                 {/* Points to validate — Gio suggestion inbox */}
                 {candidateId && jobId && stageName && (
                   <GioPointsInbox
