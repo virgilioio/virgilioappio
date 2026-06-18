@@ -1,0 +1,1 @@
+ALTER TYPE public.interview_answer_type ADD VALUE IF NOT EXISTS 'score_1_5';
