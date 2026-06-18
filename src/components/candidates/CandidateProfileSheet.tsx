@@ -1142,14 +1142,18 @@ const stageHasAutomation = useMemo(() => {
 
   const scoreLabel = (value?: string) => {
     switch (value) {
+      case 'strong_no':
       case 'definitely_no':
-        return 'Definitely No'
+        return 'Strong no'
+      case 'lean_no':
       case 'no':
-        return 'No'
+        return 'Lean no'
+      case 'lean_yes':
+        return 'Lean yes'
       case 'yes':
         return 'Yes'
       case 'strong_yes':
-        return 'Strong Yes'
+        return 'Strong yes'
       default:
         return '—'
     }
@@ -1783,10 +1787,11 @@ const stageHasAutomation = useMemo(() => {
                                 average={scorecardSummary.average}
                                 panelistCount={scorecardSummary.panelistCount}
                                 verdictBreakdown={[
-                                  { label: 'Strong yes',   tone: 'green', count: scorecardSummary.counts.strong_yes },
-                                  { label: 'Yes',          tone: 'green', count: scorecardSummary.counts.yes },
-                                  { label: 'No',           tone: 'red',   count: scorecardSummary.counts.no },
-                                  { label: 'Definitely no', tone: 'red',  count: scorecardSummary.counts.definitely_no },
+                                  { label: 'Strong yes', tone: 'green',  count: scorecardSummary.counts.strong_yes },
+                                  { label: 'Yes',        tone: 'green',  count: scorecardSummary.counts.yes },
+                                  { label: 'Lean yes',   tone: 'yellow', count: scorecardSummary.counts.lean_yes },
+                                  { label: 'Lean no',    tone: 'orange', count: scorecardSummary.counts.lean_no },
+                                  { label: 'Strong no',  tone: 'red',    count: scorecardSummary.counts.strong_no },
                                 ]}
                                 pending={pendingPanelists.map((row) => ({
                                   id: row.userId,
