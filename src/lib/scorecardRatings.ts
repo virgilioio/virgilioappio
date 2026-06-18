@@ -11,7 +11,7 @@ export interface RatingMeta {
   bg: string
   text: string
   tone: RatingTone
-  icon: ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string; style?: React.CSSProperties }>
 }
 
 /** Canonical 5-level rating model (weakest → strongest). */

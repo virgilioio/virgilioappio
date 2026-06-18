@@ -3,23 +3,19 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { ScoreRating } from "./useScorecards";
+import { RATING_META, coerceRating } from "@/lib/scorecardRatings";
 
 export interface ScorecardSummary {
-  counts: { strong_yes: number; yes: number; no: number; definitely_no: number };
+  counts: { strong_yes: number; yes: number; lean_yes: number; lean_no: number; strong_no: number };
   filledCount: number;
   panelistCount: number;
-  /** Average on a 4-point scale. Null when no submitted scorecards. */
+  /** Average on a 5-point scale. Null when no submitted scorecards. */
   average: number | null;
   loading: boolean;
   error: string | null;
 }
 
-const RATING_SCORE: Record<ScoreRating, number> = {
-  strong_yes: 4,
-  yes: 3,
-  no: 2,
-  definitely_no: 1,
-};
+const EMPTY_COUNTS = { strong_yes: 0, yes: 0, lean_yes: 0, lean_no: 0, strong_no: 0 };
 
 export function useAssociationScorecardSummary(
   associationId?: string | null,
@@ -29,7 +25,7 @@ export function useAssociationScorecardSummary(
   const permissions = usePermissions();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [counts, setCounts] = useState({ strong_yes: 0, yes: 0, no: 0, definitely_no: 0 });
+  const [counts, setCounts] = useState({ ...EMPTY_COUNTS });
   const [panelistCount, setPanelistCount] = useState(0);
   const [average, setAverage] = useState<number | null>(null);
 
@@ -43,7 +39,7 @@ export function useAssociationScorecardSummary(
     let cancelled = false;
     (async () => {
       if (!associationId) {
-        setCounts({ strong_yes: 0, yes: 0, no: 0, definitely_no: 0 });
+        setCounts({ ...EMPTY_COUNTS });
         setPanelistCount(0);
         setAverage(null);
         return;
@@ -65,17 +61,17 @@ export function useAssociationScorecardSummary(
         if (qErr) throw qErr;
         if (cancelled) return;
 
-        const next = { strong_yes: 0, yes: 0, no: 0, definitely_no: 0 };
+        const next = { ...EMPTY_COUNTS };
         const panelists = new Set<string>();
         let sum = 0;
         let n = 0;
 
         for (const row of data || []) {
           if ((row as any).is_ai_draft) continue;
-          const rating = (row as any).rating as ScoreRating | null;
-          if (!rating || !(rating in next)) continue;
+          const rating = coerceRating((row as any).rating);
+          if (!rating) continue;
           next[rating] += 1;
-          sum += RATING_SCORE[rating];
+          sum += RATING_META[rating].numeric;
           n += 1;
           if ((row as any).created_by) panelists.add((row as any).created_by);
         }
@@ -95,7 +91,8 @@ export function useAssociationScorecardSummary(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [associationId, user?.id, isAdminOrRecruiter, refreshKey]);
 
-  const filledCount = counts.strong_yes + counts.yes + counts.no + counts.definitely_no;
+  const filledCount =
+    counts.strong_yes + counts.yes + counts.lean_yes + counts.lean_no + counts.strong_no;
 
   return { counts, filledCount, panelistCount, average, loading, error };
 }

@@ -16,10 +16,11 @@ interface ExpandableScoreDisplayProps {
 }
 
 const ratingOptions = [
-  { value: "definitely_no" as ScoreRating, label: "Definitely No", variant: "destructive" as const },
-  { value: "no" as ScoreRating, label: "No", variant: "destructive" as const },
-  { value: "yes" as ScoreRating, label: "Yes", variant: "default" as const },
-  { value: "strong_yes" as ScoreRating, label: "Strong Yes", variant: "default" as const },
+  { value: "strong_no" as ScoreRating,  label: "Strong no",  variant: "destructive" as const },
+  { value: "lean_no" as ScoreRating,    label: "Lean no",    variant: "destructive" as const },
+  { value: "lean_yes" as ScoreRating,   label: "Lean yes",   variant: "secondary" as const },
+  { value: "yes" as ScoreRating,        label: "Yes",        variant: "default" as const },
+  { value: "strong_yes" as ScoreRating, label: "Strong yes", variant: "default" as const },
 ];
 
 function dismissalKey(userId: string | undefined, stageId: string | undefined, draftId: string) {

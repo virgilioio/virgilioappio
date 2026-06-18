@@ -212,17 +212,22 @@ function InterviewDetailsTab({ jhsId }: { jhsId: string }) {
 }
 
 const ratingOptions: { value: ScoreRating; label: string }[] = [
-  { value: "definitely_no", label: "Definitely No" },
-  { value: "no", label: "No" },
-  { value: "yes", label: "Yes" },
-  { value: "strong_yes", label: "Strong Yes" },
+  { value: "strong_no", label: "Strong no" },
+  { value: "lean_no",   label: "Lean no" },
+  { value: "lean_yes",  label: "Lean yes" },
+  { value: "yes",       label: "Yes" },
+  { value: "strong_yes",label: "Strong yes" },
 ];
 
 const aiRatingToScoreRating: Record<string, ScoreRating> = {
   "Strong Yes": "strong_yes",
   "Yes": "yes",
-  "No": "no",
-  "Definitely No": "definitely_no",
+  "Lean Yes": "lean_yes",
+  "Lean No": "lean_no",
+  "Strong No": "strong_no",
+  // legacy AI labels
+  "No": "lean_no",
+  "Definitely No": "strong_no",
 };
 
 export function ScorecardSheet({

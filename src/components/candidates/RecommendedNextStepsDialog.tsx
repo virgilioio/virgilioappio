@@ -35,10 +35,11 @@ interface RecommendedNextStepsDialogProps {
 }
 
 const ratingLabels: Record<ScoreRating, string> = {
-  definitely_no: "Definitely No",
-  no: "No",
+  strong_no: "Strong no",
+  lean_no: "Lean no",
+  lean_yes: "Lean yes",
   yes: "Yes",
-  strong_yes: "Strong Yes",
+  strong_yes: "Strong yes",
 };
 
 export function RecommendedNextStepsDialog({
