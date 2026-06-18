@@ -247,6 +247,48 @@ const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
 const scorecardSummary = useAssociationScorecardSummary(associationId, scorecardsRefreshNonce)
 
+// Active stage for the Scorecards tab + sidebar (real data wiring)
+const activeStageOption = useMemo(() => {
+  if (!currentStageId) return null
+  const sorted = [...planStages].sort((a, b) => a.position - b.position)
+  return sorted.find(s => s.jhsId === currentStageId) ?? null
+}, [planStages, currentStageId])
+const activeStageInstanceId = activeStageOption?.jhsId ?? null
+
+const { scorecards: activeStageScorecards } = useAllStageScorecards(
+  activeStageInstanceId,
+  associationId,
+  scorecardsRefreshNonce,
+)
+const { pending: pendingPanelists } = useStagePendingPanelists(
+  activeStageInstanceId,
+  associationId,
+  scorecardsRefreshNonce,
+)
+
+const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
+  switch (r) {
+    case 'strong_yes': return { label: 'Strong yes', tone: 'green' }
+    case 'yes':        return { label: 'Yes', tone: 'green' }
+    case 'no':         return { label: 'No', tone: 'red' }
+    case 'definitely_no': return { label: 'Definitely no', tone: 'red' }
+    default: return null
+  }
+}
+
+const submittedScorecardRows: SubmittedScorecardRow[] = useMemo(() => {
+  return activeStageScorecards
+    .filter(s => !s.is_ai_draft && !!s.rating)
+    .map(s => ({
+      id: s.id,
+      name: s.author_name || s.author_email || 'Reviewer',
+      meta: activeStageOption?.stage.stage_name ?? null,
+      verdict: ratingToVerdict(s.rating),
+      feedback: s.general_overview,
+      isMine: s.created_by === user?.id,
+    }))
+}, [activeStageScorecards, activeStageOption, user?.id])
+
 // Dismiss AI draft scorecard
 const handleDismissAiDraft = async (scorecardId: string) => {
   // Delete question responses first (FK constraint)
