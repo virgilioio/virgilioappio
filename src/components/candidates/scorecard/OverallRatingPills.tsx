@@ -28,12 +28,11 @@ const PILLS: PillSpec[] = [
  * the others fade to opacity 0.65. Click the selected pill again to clear.
  */
 export function OverallRatingPills({ value, onChange, disabled }: Props) {
-  const hasSelection = !!value
   return (
     <div role="radiogroup" aria-label="Overall rating" className="grid grid-cols-4 gap-3">
       {PILLS.map(({ value: v, label, Icon, fillBg, fillText }) => {
         const active = value === v
-        const dim = hasSelection && !active
+        const dim = !!value && !active
 
         const style: React.CSSProperties = active
           ? { backgroundColor: fillBg, borderColor: fillBg, color: fillText }
@@ -46,7 +45,7 @@ export function OverallRatingPills({ value, onChange, disabled }: Props) {
             role="radio"
             aria-checked={active}
             disabled={disabled}
-            onClick={() => onChange(active ? ('' as unknown as ScoreRating) : v)}
+            onClick={() => onChange(v)}
             className={`
               inline-flex items-center justify-center gap-1.5
               h-[46px] rounded-[10px] border
