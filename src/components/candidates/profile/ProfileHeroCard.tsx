@@ -39,6 +39,10 @@ interface ProfileHeroCardProps {
   onEmail?: () => void
   isRejected?: boolean
   isHired?: boolean
+  email?: string | null
+  phone?: string | null
+  whatsAppEnabled?: boolean
+  onWhatsAppClick?: (phone: string) => void
 }
 
 function relativeTime(iso?: string | null) {
