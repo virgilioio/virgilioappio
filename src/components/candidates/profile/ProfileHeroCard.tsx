@@ -61,8 +61,11 @@ export function ProfileHeroCard({
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs,
   nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
+  email, phone, whatsAppEnabled, onWhatsAppClick,
 }: ProfileHeroCardProps) {
   const applied = relativeTime(appliedAt)
+  const phoneDisplay = phone ? (formatE164Display(phone) || phone) : null
+  const waUrl = phone ? buildWhatsAppUrl(phone) : null
 
   return (
     <section className="bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] pt-3.5 px-6 pb-0">
