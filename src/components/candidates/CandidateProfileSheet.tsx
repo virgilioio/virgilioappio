@@ -1771,13 +1771,13 @@ const stageHasAutomation = useMemo(() => {
                           case 'scorecards':
                             return (
                               <ScorecardsSidebar
-                                average={null}
-                                panelistCount={Object.keys(myScorecardsByStage || {}).length}
+                                average={scorecardSummary.average}
+                                panelistCount={scorecardSummary.panelistCount}
                                 verdictBreakdown={[
-                                  { label: 'Strong yes', tone: 'green', count: 0 },
-                                  { label: 'Yes', tone: 'green', count: 0 },
-                                  { label: 'Lean yes', tone: 'yellow', count: 0 },
-                                  { label: 'No', tone: 'red', count: 0 },
+                                  { label: 'Strong Yes',    tone: 'green', count: scorecardSummary.counts.strong_yes },
+                                  { label: 'Yes',           tone: 'green', count: scorecardSummary.counts.yes },
+                                  { label: 'No',            tone: 'red',   count: scorecardSummary.counts.no },
+                                  { label: 'Definitely No', tone: 'red',   count: scorecardSummary.counts.definitely_no },
                                 ]}
                                 pending={[]}
                               />
