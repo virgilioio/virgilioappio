@@ -270,6 +270,9 @@ const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
   switch (r) {
     case 'strong_yes': return { label: 'Strong yes', tone: 'green' }
     case 'yes':        return { label: 'Yes', tone: 'green' }
+    case 'lean_yes':   return { label: 'Lean yes', tone: 'yellow' }
+    case 'lean_no':    return { label: 'Lean no', tone: 'orange' }
+    case 'strong_no':  return { label: 'Strong no', tone: 'red' }
     case 'no':         return { label: 'No', tone: 'red' }
     case 'definitely_no': return { label: 'Definitely no', tone: 'red' }
     default: return null
