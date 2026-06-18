@@ -29,6 +29,7 @@ export interface SubmittedScorecardRow {
   feedback?: string | null
   isMine?: boolean
   scores?: SubmittedQuestionScore[]
+  submittedAt?: string | null
 }
 
 // Verdict-distribution palette (matches Scorecards Summary sidebar).
@@ -142,11 +143,17 @@ function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean 
               </Badge>
             )}
           </div>
-          {p.meta && (
-            <div className="font-inter text-[11.5px] text-[#8B8F9E] mt-0.5">
-              {p.meta}
-            </div>
-          )}
+          {(() => {
+            const dateStr = p.submittedAt
+              ? new Date(p.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+              : null
+            const parts = [dateStr, p.meta].filter(Boolean) as string[]
+            return parts.length > 0 ? (
+              <div className="font-inter text-[11.5px] text-[#8B8F9E] mt-0.5">
+                {parts.join(' · ')}
+              </div>
+            ) : null
+          })()}
         </div>
         {p.verdict && (
           <Badge tone={p.verdict.tone} size="md" dot>
@@ -173,7 +180,7 @@ function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean 
       {cleanFeedback && (
         <div className="mt-3 bg-white border border-[#E7E8EE] rounded-[10px] p-3">
           <div className="font-inter font-medium text-[10.5px] tracking-[0.06em] uppercase text-[#8B8F9E]">
-            Written feedback
+            Key takeaways
           </div>
           <p className="mt-1 font-inter text-[12.5px] leading-[1.6] text-[#1F2230]">
             “{cleanFeedback}”
