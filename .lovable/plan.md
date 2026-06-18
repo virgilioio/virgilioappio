@@ -1,24 +1,55 @@
-# Submitted scorecard header polish + Key takeaways label
-
-Three small visual edits in the Scorecards tab on the in-job candidate profile to match the reference screenshot.
-
 ## Scope
 
-1. **`src/components/candidates/CandidateProfileSheet.tsx`** — pass the submission timestamp into each row:
-   - In the `submittedScorecardRows` mapping, add `submittedAt: s.updated_at`. (We use `updated_at` because that is the moment the panelist saved/submitted the scorecard; the schema has no separate `submitted_at` column.)
+Three presentation-only changes. No new logic — reuse existing `useWhatsAppEnabled`, `buildWhatsAppUrl`, `formatE164Display`, `WhatsAppIcon`, and clipboard utilities.
 
-2. **`src/components/candidates/profile/tabs/ScorecardsTabContent.tsx`**
-   - Extend `SubmittedScorecardRow` with `submittedAt?: string | null`.
-   - In `PanelistRow`, change the secondary meta line (currently shows only `p.meta`) to render:  
-     `Mon DD · {stage name}` — e.g. `May 12 · Onsite Day 1`.  
-     Date formatted with `new Date(submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })`; falls back gracefully if either piece is missing (just show whichever is present). Same typography as today (Inter 11.5px, `#8B8F9E`).
-   - The verdict Badge at top-right of the row already renders the overall verdict — no change.
-   - Rename the small uppercase label on the feedback box from **WRITTEN FEEDBACK** to **KEY TAKEAWAYS** (the underlying field is `general_overview`, which the scorecard editor labels "Key takeaways" via `KeyTakeawaysCard`). Quote characters and content rendering stay the same.
+## 1. Add Contact Information card to in-job overview tab
 
-No other files, no data/hook changes (the API already returns `updated_at` on `ScorecardWithAuthor`).
+**File:** `src/components/candidates/CandidateProfileSheet.tsx`
+
+In the `activeTab === 'overview'` block (line 1476), insert a new `<Card>` **above** the existing Profile Summary card. Replicate the exact look of the Independent profile's Contact Information card (`IndependentCandidateProfile.tsx` lines 455–471):
+
+- Title: "Contact information", with an "Edit" `ghost` button on the right that opens the existing edit sheet used in this view.
+- A `grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4` body with four `ContactPair` rows: Email (mailto link), Phone, Location, Salary expectations.
+- Extract the local `ContactPair` primitive from `IndependentCandidateProfile.tsx` into a small shared component `src/components/candidates/profile/primitives/ContactPair.tsx` and import it in both files. Visual markup is copied verbatim — no design changes.
+
+## 2. WhatsApp icon next to phone in both Contact cards
+
+In the new shared `ContactPair` (or a thin wrapper used only for phone), append the `WhatsAppIcon` button right after the phone value when:
+
+```ts
+whatsAppEnabled && buildWhatsAppUrl(phone)
+```
+
+Pattern mirrors `IndependentCandidateTable.tsx` (lines 503–511): an anchor opening `buildWhatsAppUrl(phone)` in a new tab, `WhatsAppIcon size={14}`, with the same subtle hover treatment used in `CandidateDetailsCollapsible.tsx`. The phone display itself uses `formatE164Display(phone)`.
+
+Apply this in:
+- `src/pages/IndependentCandidateProfile.tsx` Contact information card (line 467).
+- New in-job Contact card from §1.
+
+`useWhatsAppEnabled()` is called once at the top of each parent file; result passed into the phone row.
+
+## 3. Email + phone inline in the in-job hero meta row
+
+**File:** `src/components/candidates/profile/ProfileHeroCard.tsx`
+
+Extend `ProfileHeroCardProps` with:
+```ts
+email?: string | null
+phone?: string | null
+whatsAppEnabled?: boolean
+```
+
+In the meta row (lines 179–215, between existing `Applied {applied}` and `Full profile`), append two new inline chips matching the existing `font-inter text-[12.5px] text-[#5A6072]` style and `·` separators:
+
+- **Email chip:** `Mail` icon + email text + small `Copy` icon button (writes to clipboard via existing `src/utils/clipboard.ts`, shows toast "Email copied").
+- **Phone chip:** `Phone` icon + `formatE164Display(phone)` + `Copy` icon button (toast "Phone copied") + `WhatsAppIcon` link when `whatsAppEnabled && buildWhatsAppUrl(phone)`.
+
+Both chips render only when the value exists. Icons are 12–14px to fit the line height; no layout/spacing changes elsewhere.
+
+**File:** `src/components/candidates/CandidateProfileSheet.tsx` — pass `email`, `phone`, `whatsAppEnabled` props into `<ProfileHeroCard>` at line 1209. `whatsAppEnabled` comes from `useWhatsAppEnabled()` already used in this file (verify; if not, add the import).
 
 ## Out of scope
 
-- Storing/displaying a separate `submitted_at` column.
-- Reformatting the date to the global concise `Xd` style — the reference shows an explicit calendar date, which reads better for an interview event.
-- Any change to the verdict badge, per-question score cards, or summary sidebar.
+- No changes to Profile Summary card, sidebar, tabs, or any other section.
+- No schema or hook changes.
+- No restyling of the Independent profile Contact card beyond adding the WhatsApp icon.

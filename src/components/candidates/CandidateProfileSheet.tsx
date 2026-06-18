@@ -46,6 +46,8 @@ import { getEmailFromEntry, getPhoneFromEntry } from '@/utils/parseContactEntry'
 import { formatE164Display, buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
+import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
+import { ContactPair, PhoneContactPair } from '@/components/candidates/profile/primitives/ContactPair'
 import { renderTemplate, buildPlaceholderData, stripHtmlToPlainText } from '@/utils/templateUtils'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
@@ -1216,6 +1218,10 @@ const stageHasAutomation = useMemo(() => {
                       appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                       currentStageName={currentStage?.stage.stage_name || null}
                       daysInStage={daysInStage}
+                      email={candidate.email || null}
+                      phone={candidate.phone || null}
+                      whatsAppEnabled={whatsAppEnabled}
+                      onWhatsAppClick={handleWhatsAppClick}
                       isFavorite={isFavorite}
                       onToggleFavorite={jobId ? handleToggleFavorite : undefined}
                       onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
@@ -1475,6 +1481,38 @@ const stageHasAutomation = useMemo(() => {
                     {/* Overview Tab — Profile summary, skills, URLs, attachments */}
                     {activeTab === 'overview' && (
                       <>
+                        {(() => {
+                          const c: any = candidate
+                          const locStr = [c?.location_city, c?.location_state, c?.location_country].filter(Boolean).join(', ')
+                          const salaryStr = c?.salary_amount
+                            ? `${c.salary_currency || 'USD'} ${Number(c.salary_amount).toLocaleString()} ${c.salary_period || 'annually'}`
+                            : null
+                          return (
+                            <ProfileCard
+                              title="Contact information"
+                              action={canEditCandidates ? <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button> : undefined}
+                            >
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                                <ContactPair
+                                  icon={Mail}
+                                  label="Email"
+                                  value={candidate.email ? (
+                                    <a href={`mailto:${candidate.email}`} className="text-virgilio-purple hover:underline">{candidate.email}</a>
+                                  ) : null}
+                                />
+                                <PhoneContactPair
+                                  icon={Phone}
+                                  phone={candidate.phone}
+                                  whatsAppEnabled={whatsAppEnabled}
+                                  onWhatsAppClick={handleWhatsAppClick}
+                                />
+                                <ContactPair icon={MapPin} label="Location" value={locStr || null} />
+                                <ContactPair icon={DollarSign} label="Salary expectations" value={salaryStr} />
+                              </div>
+                            </ProfileCard>
+                          )
+                        })()}
+
                         <Card className="bg-surface-primary border-border">
                           <CardHeader>
                             <CardTitle className="flex items-center justify-between">

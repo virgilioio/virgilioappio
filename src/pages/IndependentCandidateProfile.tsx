@@ -24,6 +24,8 @@ import {
   ProfileSidebar, SidebarBlock, MetaRow, LinkRow, FileRow,
 } from '@/components/candidates/profile/primitives/ProfileSidebar'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
+import { ContactPair, PhoneContactPair } from '@/components/candidates/profile/primitives/ContactPair'
+import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
@@ -300,20 +302,8 @@ export default function IndependentCandidateProfile() {
     </ProfileSidebar>
   )
 
-  // ───── Contact-pair primitive (kept local to this page) ─────
-  const ContactPair = ({ icon: Icon, label, value }: { icon: any; label: string; value: React.ReactNode }) => (
-    <div className="flex items-start gap-3 min-w-0">
-      <div className="h-8 w-8 rounded-[9px] bg-[#FAFAF7] flex items-center justify-center shrink-0">
-        <Icon className="h-4 w-4 text-[#5A6072]" />
-      </div>
-      <div className="min-w-0">
-        <div className="font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E]">{label}</div>
-        <div className="font-inter text-[13px] font-medium text-[#1F2230] truncate mt-0.5">
-          {value || <span className="text-[#8B8F9E]">—</span>}
-        </div>
-      </div>
-    </div>
-  )
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
+
 
   return (
     <AuthGate>
@@ -464,7 +454,8 @@ export default function IndependentCandidateProfile() {
                             <a href={`mailto:${candidate.email}`} className="text-virgilio-purple hover:underline">{candidate.email}</a>
                           ) : null}
                         />
-                        <ContactPair icon={Phone} label="Phone" value={candidate.phone || null} />
+                        <PhoneContactPair icon={Phone} phone={candidate.phone} whatsAppEnabled={whatsAppEnabled} />
+
                         <ContactPair icon={MapPin} label="Location" value={location || null} />
                         <ContactPair icon={DollarSign} label="Salary expectations" value={salary} />
                       </div>
@@ -621,7 +612,7 @@ export default function IndependentCandidateProfile() {
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                         <ContactPair icon={Mail} label="Email" value={candidate.email || null} />
-                        <ContactPair icon={Phone} label="Phone" value={candidate.phone || null} />
+                        <PhoneContactPair icon={Phone} phone={candidate.phone} whatsAppEnabled={whatsAppEnabled} />
                         <ContactPair icon={MapPin} label="Location" value={location || null} />
                         <ContactPair icon={DollarSign} label="Salary expectations" value={salary} />
                         <ContactPair icon={Info} label="Work authorization" value={(candidate as any).work_authorization || null} />
