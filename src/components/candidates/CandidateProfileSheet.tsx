@@ -111,10 +111,11 @@ interface StageScorecardProps {
   currentUserId?: string;
   onOpenFullSheet: (scorecardId: string) => void;
   onDismissAiDraft: (scorecardId: string) => Promise<void>;
+  refreshNonce?: number;
 }
 
-function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet, onDismissAiDraft }: StageScorecardProps) {
-  const { scorecards, loading, refetch } = useAllStageScorecards(stageInstanceId, associationId);
+function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet, onDismissAiDraft, refreshNonce }: StageScorecardProps) {
+  const { scorecards, loading, refetch } = useAllStageScorecards(stageInstanceId, associationId, refreshNonce);
 
   const handleDismiss = async (scorecardId: string) => {
     await onDismissAiDraft(scorecardId);
@@ -238,6 +239,9 @@ const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, ref
 const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
+// Bump to force per-stage useAllStageScorecards instances to refetch after a save/delete.
+const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
+const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
 
 // Dismiss AI draft scorecard
 const handleDismissAiDraft = async (scorecardId: string) => {
@@ -254,6 +258,7 @@ const handleDismissAiDraft = async (scorecardId: string) => {
     .eq('is_ai_draft', true);
   if (error) throw error;
   await refetchScorecards();
+  bumpScorecardsRefresh();
   toast({ title: 'AI notes dismissed', description: 'The AI-generated notes have been removed.' });
 };
 
@@ -1346,6 +1351,7 @@ const stageHasAutomation = useMemo(() => {
                                 setScoreOpen(true)
                               }}
                               onDismissAiDraft={handleDismissAiDraft}
+                              refreshNonce={scorecardsRefreshNonce}
                             />
                           )}
 
@@ -1535,6 +1541,7 @@ const stageHasAutomation = useMemo(() => {
                                         onScorecardChange?.(scorecardId, opt.jhsId)
                                       }}
                                       onDismissAiDraft={handleDismissAiDraft}
+                                      refreshNonce={scorecardsRefreshNonce}
                                     />
                                   )}
                                 </div>
@@ -1856,6 +1863,7 @@ const stageHasAutomation = useMemo(() => {
               onSubmit={async (rating, overview) => {
                 await upsertMyScorecard(scoreStageInstId!, rating, overview || '')
                 await refetchScorecards()
+                bumpScorecardsRefresh()
                 setViewingScorecardId(null)
                 toast({ title: 'Scorecard saved', description: 'Your scorecard has been saved.' })
               }}
@@ -1864,6 +1872,7 @@ const stageHasAutomation = useMemo(() => {
                 if (existingScorecard?.id) {
                   await deleteMyScorecard(existingScorecard.id)
                   await refetchScorecards()
+                  bumpScorecardsRefresh()
                   setViewingScorecardId(null)
                 }
               }}

@@ -24,7 +24,11 @@ export interface ScorecardWithAuthor {
   source_booking_id?: string | null;
 }
 
-export function useAllStageScorecards(stageInstanceId?: string | null, associationId?: string | null) {
+export function useAllStageScorecards(
+  stageInstanceId?: string | null,
+  associationId?: string | null,
+  refreshKey?: number | string,
+) {
   const { user } = useAuth();
   const permissions = usePermissions();
   const [loading, setLoading] = useState(false);
@@ -32,10 +36,11 @@ export function useAllStageScorecards(stageInstanceId?: string | null, associati
   const [scorecards, setScorecards] = useState<ScorecardWithAuthor[]>([]);
   const [visibility, setVisibility] = useState<ScorecardVisibility>('private');
 
-  const isAdminOrRecruiter = permissions.isAdmin || permissions.isPlatformAdmin ||
-    (permissions as any).isWorkspaceOwner !== undefined
-      ? !!(permissions as any).canManageMembers
-      : false;
+  const isAdminOrRecruiter =
+    permissions.isAdmin ||
+    permissions.isPlatformAdmin ||
+    !!(permissions as any).isWorkspaceOwner ||
+    !!(permissions as any).canManageMembers;
 
   const fetchAllScorecards = async () => {
     if (!stageInstanceId || !associationId) return;
@@ -104,7 +109,7 @@ export function useAllStageScorecards(stageInstanceId?: string | null, associati
   useEffect(() => {
     void fetchAllScorecards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stageInstanceId, associationId, user?.id]);
+  }, [stageInstanceId, associationId, user?.id, refreshKey]);
 
   return { loading, error, scorecards, visibility, refetch: fetchAllScorecards };
 }

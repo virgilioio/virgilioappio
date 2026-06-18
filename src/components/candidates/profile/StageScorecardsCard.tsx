@@ -24,6 +24,8 @@ interface StageScorecardsCardProps {
   onCompare?: () => void
   /** Optional dismiss handler for AI drafts */
   onDismissAiDraft?: (scorecardId: string) => Promise<void>
+  /** Bump to force the internal scorecards fetch to refresh (e.g. after submit). */
+  refreshNonce?: number
 }
 
 const RATING_LABEL: Record<string, string> = {
@@ -70,8 +72,9 @@ export function StageScorecardsCard({
   stageInstanceId, associationId, currentUserId,
   expectedPanelists,
   onOpenFullSheet, onSubmitScorecard, onCompare, onDismissAiDraft,
+  refreshNonce,
 }: StageScorecardsCardProps) {
-  const { scorecards, loading } = useAllStageScorecards(stageInstanceId, associationId)
+  const { scorecards, loading } = useAllStageScorecards(stageInstanceId, associationId, refreshNonce)
 
   const submitted = useMemo(
     () => scorecards.filter(s => !s.is_ai_draft && !!s.rating),
