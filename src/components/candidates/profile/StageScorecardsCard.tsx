@@ -150,10 +150,48 @@ export function StageScorecardsCard({
                           “{s.general_overview.replace(/<[^>]+>/g, '').trim()}”
                         </p>
                       )}
+                      {s.criterion_scores && s.criterion_scores.length > 0 && (
+                        <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2">
+                          {s.criterion_scores.map((c) => {
+                            const meta = coerceRating(c.rating) ? RATING_META[coerceRating(c.rating)!] : null
+                            const n = meta?.numeric ?? 0
+                            const color = meta?.bg ?? '#E0DDD3'
+                            return (
+                              <div
+                                key={c.questionId}
+                                className="rounded-[10px] border border-virgilio-border bg-white px-3 py-2.5"
+                              >
+                                <div
+                                  className="font-poppins uppercase tracking-[0.06em] truncate"
+                                  style={{ fontSize: 10.5, color: '#8B8F9E', fontWeight: 600 }}
+                                  title={c.questionText}
+                                >
+                                  {c.questionText}
+                                </div>
+                                <div className="mt-1.5 flex items-center gap-[3px]">
+                                  {[0, 1, 2, 3, 4].map((i) => (
+                                    <span
+                                      key={i}
+                                      className="h-[3px] flex-1 rounded-full"
+                                      style={{ background: i < n ? color : '#E7E8EE' }}
+                                    />
+                                  ))}
+                                </div>
+                                <div
+                                  className="mt-1.5 font-poppins"
+                                  style={{ fontSize: 13, fontWeight: 700, color: '#1F2230' }}
+                                >
+                                  {n}<span className="text-text-tertiary font-medium">/5</span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                     <div className="shrink-0 ml-2">
                       <Badge tone={tone} size="sm" dot>
-                        {RATING_LABEL[s.rating || ''] || s.rating || '—'}
+                        {ratingLabel(s.rating)}
                       </Badge>
                     </div>
                   </div>
