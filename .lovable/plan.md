@@ -1,78 +1,85 @@
-## Goal
+## Scope
 
-Rebuild the Scorecard sheet to match the spec — new chrome, public/private chip, Gio "Points to validate" suggestion inbox, redesigned overall-rating pills, interview questions card (salary smart-field + open + added-from-Gio), and a Key takeaways editor with Polish-notes AI — while keeping every existing supporting feature (AI Suggested Rating banner, Recommended Next Steps, status/offer/hired banners, Rejection Details, Onboarding tab, Hire Summary, draft persistence, delete dialog).
+Visual-only pass on the Scorecard sheet to match Foundation (§0), Chrome (§1), Left pane (§2), Overall rating (§4), Interview questions (§5), Key takeaways (§6). **No functionality, no backend, no data-source changes.** All existing handlers, state, hooks, persistence, and writebacks stay byte-identical — only JSX wrapping, class names, copy, icons, and tokens change.
 
-## Schema changes (one migration)
+## What's currently off vs. the spec
 
-`validation_point_resolutions` is reused for the new inbox; decisions stay scoped to the individual candidate's scorecard (the table already has `scorecard_id` + `association_id`).
+**Chrome (§1)**
+- No purple `SCORECARD` eyebrow above the title.
+- Title is `Scorecard • Recruiter Screening` — should be `Recruiter Screening` (Poppins 20/600, ls −0.035em) with a lilac `.` period.
+- "Draft saved" chip has no green check icon.
+- Sub-line styling is inline-row, not a quiet "Name · Role" muted line under the title.
+- Footer is missing the left "info · Drafts stay private until you submit." helper; primary button says "Submit Scorecard"/"Update Scorecard" instead of "Submit scorecard" + `check` icon.
+- Sheet body uses default white; spec is `#FAFAF7`.
+- Public/Private chip stays exactly as it is — display-only, read from `scorecardVisibility`. (Toggle lives in Configure Stage → Scorecard, not here.)
 
-- Extend the allowed `status` set via the existing validation trigger (or a new one if none): `validated | flagged | added | dismissed`. Old rows keep their meaning; the new UI treats `validated`/`flagged` as **`added`** (so prior work isn't lost) and surfaces remaining suggestions as `pending`.
-- Add `public.scorecards.gio_added_questions jsonb default '[]'::jsonb` — an array of `{ id: uuid, source_point_index: int, question: text, answer: text }`. This is the canonical store for ad-hoc "Added from Gio" questions and their answers on a single scorecard. Drafts use the same shape in localStorage, so submit is a 1-to-1 write.
-  - Rationale (you let me pick): keeps stage config clean, avoids polluting `scorecard_interview_questions` (which is stage-level), drafts round-trip cleanly, and the JSON is trivially queryable for reporting.
+**Left pane (§2)**
+- 50/50 split today. I'll go **45/55** (left/right): a hair tighter than the spec's 44/56 to give the questions+takeaways column the breathing room it actually needs at common laptop widths (1280–1440), while still keeping the résumé/application readable. Standard pattern for read-context + action-form sheets.
+- Left pane has no `#FAFAF7` bg + right hairline.
+- Tab row isn't a segmented pill (track `#F1F0EC`, active = white pill + soft shadow).
 
-No new tables. No new RLS policies needed; both targets already have RLS scoped to the actor.
+**Overall rating (§4)** — wrong visual model
+- All four pills always filled. Spec: outline default (white, `1px #E0DDD3`, `#5A6072` text, `#8B8F9E` icon); only the **selected** pill fills.
+- Fill colors wrong: currently `#FA5252` / `#FA8F8F` / `#9B7BF7` / `#6F3FF5`. Spec: `#C9554C/white` · `#E7ABA4/#7A2E27` (intentionally light) · `#C8B9F0/#3B2A6B` · `#6F3FF5/white`.
+- Icons wrong (uses `Octagon` for No; spec is `x-circle`).
+- No "others fade to 0.65 on selection" behavior.
+- No height:46 / radius:10 commitment.
 
-## Hook layer
+**Interview questions (§5)**
+- Not wrapped as a FormSection card. Today it's a flat divider section.
+- Heading copy: `Interview Questions` → `Interview questions`. No subtitle "Answer the questions configured for this stage."
+- Salary sub-card already uses green-card styling; needs the spec's "Syncs to profile" badge with `refresh-cw` icon.
 
-- Rework `useValidationPointResolutions` to expose a Map-shaped API (`resolutions: Map<index, row>`) plus typed helpers `addPoint(index, question)`, `dismissPoint(index, question)`, `undoDecision(index)`. The current code already calls `resolutions.has(i)` — that's the source of the live runtime error and gets fixed here.
-- New `useScorecardGioSuggestions(candidateId, jobId, associationId, scorecardId)` — a thin selector that joins `useCandidateFitInsights` validation points with `validation_point_resolutions` rows for this association, returning `{ pending, added, dismissed }` partitions.
-- New `useGioAddedQuestions(scorecardId)` — load + mutate `scorecards.gio_added_questions`. Also exposes a draft-merge helper used while the scorecard is unsaved.
-- New edge function `polish-scorecard-notes` (Lovable AI Gateway, `google/gemini-3-flash-preview`) — input `{ html, candidate_name, stage_name }`, returns cleaned HTML preserving lists/links. Surface `402` / `429` per the gateway guidance.
+**Key takeaways (§6)**
+- Not wrapped as a FormSection card.
+- Polish-notes button is below the editor as an outline button; spec is **header action**, ghost purple with `sparkles`.
+- Heading copy + subtitle don't match.
 
-## Sheet structure (single component refactor of `ScorecardSheet.tsx`)
+**Foundation tokens (§0)**
+- Add missing scorecard-surface tokens as HSL semantic vars in `index.css` + Tailwind aliases in `tailwind.config.ts`: `#FAFAF7` sheet body, `#E7E8EE` card border, `#E0DDD3` field-inner border, `#F1F0EC` hairline / soft-fill, `#EDE4FF` lilac-fill, `#D7C5FB` lilac, `#5B21B6` deep-purple, `#F4FBF6`/`#BBE3C9` green-card.
+- Convert the inline hex values in `GioPointsInbox.tsx` and `AddedFromGioBlock.tsx` to these tokens. No visual change, hygiene only.
 
-Keep the file's outer state, persistence, draft logic, and all existing banners/tabs. Replace the body markup so the right pane renders four ordered cards. Left pane unchanged (Resume / Application / Interview details soon).
+## What I'll change
 
-### Chrome
+1. **Tokens** — `src/index.css`, `tailwind.config.ts`. Add the HSL vars + Tailwind aliases (`bg-sheet-body`, `border-card-hairline`, `border-field-inner`, `bg-soft-fill`, `bg-lilac-fill`, `border-lilac`, `text-deep-purple`, `bg-green-card`, `border-green-card`).
 
-- Header: purple eyebrow `SCORECARD`, title with lilac period, draft-saved chip (existing), **new Public/Private toggle chip** writing to `scorecards.visibility` (column already supported via `scorecardVisibility` prop). Existing "Next Steps", "Edit scorecard", delete affordances stay on the right.
-- Footer: existing left muted helper text + cancel/submit; primary becomes "Submit scorecard" with `check` icon, semantics unchanged.
+2. **New presentational components** under `src/components/candidates/scorecard/`:
+   - `FormSectionCard.tsx` — white card, `border-card-hairline`, `rounded-xl`, p-4, optional header (title Poppins 15/600, optional subtitle Inter 12.5 muted, optional right-side action slot). Pure wrapper, no state.
+   - `OverallRatingPills.tsx` — drop-in replacement for the inline rating RadioGroup. Same props (`value`, `onChange`, `disabled`) so the parent's state, draft-save effect, and submit validation all keep working unchanged. Renders 4 outline pills (h-[46px], rounded-[10px]); on select, selected pill fills with its spec color and the other three drop to opacity 0.65. Icons: `ThumbsDown`, `XCircle`, `ThumbsUp`, `Star`. Spec fill colors are hard-coded with comments (brand accents, not themable). Click-again-to-clear preserved (same behavior as today).
+   - `KeyTakeawaysCard.tsx` — wraps the existing `RichTextEditor` instance with the same `value`/`onChange` props, moves the Polish Notes button into the card header (ghost purple, `sparkles` icon). All Polish handler logic stays in `ScorecardSheet.tsx` and is passed in as a prop.
 
-### Right pane order (top to bottom)
+3. **Sheet chrome edits in `ScorecardSheet.tsx`** (JSX + class names only)
+   - Header: replace the `SheetTitle` block with `eyebrow + title-with-lilac-period + muted sub-line` composition.
+   - Draft chip: add green `Check` icon.
+   - Public/Private chip: **untouched** (display only, no click handler added).
+   - Body bg → `bg-sheet-body`.
+   - Pane split → `lg:w-[45%]` / `lg:w-[55%]`; left pane gets `bg-sheet-body border-r border-card-hairline`. Below `lg` falls back to existing single-column behavior.
+   - Tabs row → segmented pill (track `bg-soft-fill rounded-full p-1`, active item `bg-white shadow-sm rounded-full`).
+   - Footer: left helper text (`Info` icon + "Drafts stay private until you submit."); primary CTA → "Submit scorecard" + `Check` icon.
 
-1. **Points to validate** (replaces inline `ScorecardValidationPoints` only inside this sheet — the standalone component remains available elsewhere). Lilac sparkles tile + question + rationale + priority badge + target-stage chip; row actions `Dismiss` / `Add to scorecard`. Header action: lilac `{n} from Gio` → green `All reviewed` when `pending = 0`. Collapsible.
-2. **Existing AI Suggested Rating banner** — unchanged, just visually slotted under Points-to-validate when present (keeps current behaviour).
-3. **Overall rating** — new 4-pill outline grid with the spec's fills. Wired to the same `rating` state; clicking a selected pill clears.
-4. **Interview questions** — salary smart-field first (existing salary writeback logic preserved), then configured questions, then the dynamic "Added from Gio" blocks (lilac `Added from Gio` badge, removable, `FTextarea` answer). Removing reverts the decision to `dismissed`.
-5. **Key takeaways** — existing notes editor wrapped to match the spec's bordered toolbar look; header action: ghost purple **Polish notes** (calls the new edge function, replaces content on accept).
+4. **Interview questions card**
+   - Wrap the existing `{questions.map(renderQuestion)}` block in `FormSectionCard` with title "Interview questions" + subtitle "Answer the questions configured for this stage."
+   - Inside the salary sub-card render, add the `RefreshCw` + "Syncs to profile" green badge above the input row. The existing salary input, `salary_config`, and profile-writeback logic stay untouched.
 
-### Suggestion → question pipeline
+5. **Replace the rating + key-takeaways JSX**
+   - Swap the inline `RadioGroup` with `<OverallRatingPills value={rating} onChange={setRating} disabled={isReadOnly} />`.
+   - Swap the inline Key-takeaways block with `<KeyTakeawaysCard value={overview} onChange={setOverview} onPolish={handlePolishNotes} isPolishing={isPolishing} disabled={isReadOnly} />`.
 
-- Click **Add to scorecard** on a pending point → optimistic: insert a `validation_point_resolutions` row with `status='added'` + append a `gio_added_questions` entry on the (draft) scorecard. The point row leaves the inbox and the new answerable block appears in Interview questions.
-- Click `Dismiss` → `status='dismissed'`; brief 5s "Undo" toast.
-- Remove an "Added from Gio" block in Interview questions → set `status='dismissed'` and drop the matching `gio_added_questions` entry.
-- On submit: existing flow persists the scorecard; the JSON column already carries the Q/A. On reload, both the inbox state and the added blocks rehydrate.
+## What is NOT changing (explicit)
 
-### What stays untouched
-
-- AI Suggested Rating banner + analysis disclosure.
-- RecommendedNextStepsDialog, Edit/Delete affordances, status/offer/hired banners, Rejection Details + Onboarding tabs, Hire Summary + Time-to-Hire cards.
-- Draft persistence keys, salary writeback on submit, scorecard visibility plumbing.
-- Application tab + résumé viewer in the left pane (Interview details still shows the soft-stage card we shipped last turn).
+- No DB schema, no migrations, no edge functions.
+- No new state, no new hooks, no removed hooks.
+- `handleSave`, `handlePolishNotes`, `handleSheetDismiss`, draft persistence, gio_added_questions persistence, salary writeback, validation-point resolution writes — all untouched.
+- Public/Private toggle behavior — not added; chip stays display-only.
+- AI Suggested Rating banner, RecommendedNextStepsDialog, status/offer/hired banners, Rejection / Onboarding tabs, Hire Summary cards, GioPointsInbox behavior, AddedFromGioBlock behavior — unchanged.
 
 ## Files touched
 
-- `supabase/migrations/<new>.sql` — extend resolution statuses + add `scorecards.gio_added_questions`.
-- `src/hooks/useValidationPointResolutions.ts` — Map API + add/dismiss/undo helpers + fix runtime crash.
-- `src/hooks/useScorecardGioSuggestions.ts` — new selector.
-- `src/hooks/useGioAddedQuestions.ts` — new load/save hook.
-- `supabase/functions/polish-scorecard-notes/index.ts` — new edge function (Lovable AI Gateway).
-- `src/components/candidates/scorecard/GioPointsInbox.tsx` — new card component.
-- `src/components/candidates/scorecard/OverallRatingPills.tsx` — new card component.
-- `src/components/candidates/scorecard/AddedFromGioBlock.tsx` — new sub-component for an added Q.
-- `src/components/candidates/scorecard/PolishNotesButton.tsx` — new ghost-purple action.
-- `src/components/candidates/ScorecardSheet.tsx` — chrome (eyebrow, lilac period, public/private chip), right-pane composition, salary card restyle to green-tinted sub-card.
-- `src/components/candidates/ScorecardValidationPoints.tsx` — keep as-is for other consumers (Candidate Insights tab) so we don't regress; only the in-sheet usage is replaced.
-
-## Out of scope
-
-- Multi-panelist visibility rules beyond the existing `scorecardVisibility` toggle.
-- Editing/curating Gio's suggestions (we render what `useCandidateFitInsights` returns).
-- Polishing notes for languages beyond what the model handles natively.
-- The Interview details tab (handled in the previous turn).
-
-## Risks / clarifications
-
-1. **Inbox scope is per-scorecard, not per-stage** (as you confirmed). That means if two panelists open scorecards for the same candidate-stage, each has an independent inbox. Confirming this is desired (otherwise we'd key decisions by `association_id + stage` and share them across panelists).
-2. **Polish notes** rewrites the editor content in place. Default behaviour: a single Undo via the editor's history. OK?
-3. **Old data**: pre-existing `validated`/`flagged` rows are treated as `added` so reviewers see them as already-added blocks in Interview questions — with the original question text but no answer yet (they can fill or remove). If you'd rather hide legacy rows entirely, say so and I'll filter them out instead.
+- `src/index.css` — add ~10 HSL tokens.
+- `tailwind.config.ts` — Tailwind aliases.
+- `src/components/candidates/scorecard/FormSectionCard.tsx` *(new)*
+- `src/components/candidates/scorecard/OverallRatingPills.tsx` *(new)*
+- `src/components/candidates/scorecard/KeyTakeawaysCard.tsx` *(new)*
+- `src/components/candidates/scorecard/GioPointsInbox.tsx` — hex → tokens only.
+- `src/components/candidates/scorecard/AddedFromGioBlock.tsx` — hex → tokens only.
+- `src/components/candidates/ScorecardSheet.tsx` — JSX/class/copy edits only: header, footer, pane split, tabs styling, Interview-questions wrap, swap rating block, swap key-takeaways block.
