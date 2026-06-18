@@ -210,6 +210,56 @@ export function ProfileHeroCard({
               <span>Applied {applied}</span>
             </>
           )}
+          {email && (
+            <>
+              <span className="text-[#D1D5DB]">·</span>
+              <span className="inline-flex items-center gap-1.5 min-w-0">
+                <Mail className="h-3.5 w-3.5 text-[#8B8F9E]" />
+                <a href={`mailto:${email}`} className="text-[#1F2230] hover:text-virgilio-purple transition-colors truncate max-w-[220px]">{email}</a>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(email, 'Email copied')}
+                  className="p-0.5 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]"
+                  aria-label="Copy email"
+                  title="Copy email"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+              </span>
+            </>
+          )}
+          {phone && (
+            <>
+              <span className="text-[#D1D5DB]">·</span>
+              <span className="inline-flex items-center gap-1.5 min-w-0">
+                <Phone className="h-3.5 w-3.5 text-[#8B8F9E]" />
+                <a href={`tel:${phone}`} className="text-[#1F2230] hover:text-virgilio-purple transition-colors">{phoneDisplay}</a>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(phone, 'Phone copied')}
+                  className="p-0.5 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]"
+                  aria-label="Copy phone"
+                  title="Copy phone"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+                {whatsAppEnabled && waUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onWhatsAppClick) onWhatsAppClick(phone)
+                      else window.open(waUrl, '_blank')
+                    }}
+                    className="p-0.5 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#25D366]"
+                    aria-label="Start WhatsApp conversation"
+                    title="Start WhatsApp conversation"
+                  >
+                    <WhatsAppIcon size={13} />
+                  </button>
+                )}
+              </span>
+            </>
+          )}
           {onOpenFullProfile && (
             <>
               <span className="text-[#D1D5DB]">·</span>
