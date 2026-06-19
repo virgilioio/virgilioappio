@@ -208,14 +208,21 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     jobId: params?.jobId,
     candidateId: params?.candidateId,
     associationId: params?.associationId,
+    jhsId: params?.jhsId,
   });
 
   const tokenStatus = useMemo(() => {
     if (!activeConfig?.short_code || !tokenStatusMap) {
       return { status: 'none' as const, expiresAt: null, token: null };
     }
-    return tokenStatusMap.byShortCode[activeConfig.short_code] ?? { status: 'none' as const, expiresAt: null, token: null };
+    const entry = tokenStatusMap.byShortCode[activeConfig.short_code];
+    if (entry) return entry;
+    if (tokenStatusMap.hasPastBooking) {
+      return { status: 'expired' as const, expiresAt: tokenStatusMap.pastBookingEndsAt, token: null };
+    }
+    return { status: 'none' as const, expiresAt: null, token: null };
   }, [activeConfig?.short_code, tokenStatusMap]);
+
 
   const copyToClipboard = useCallback(async () => {
     if (!contextualLink) {
