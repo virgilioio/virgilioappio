@@ -1,4 +1,4 @@
-import { GoGioLogo } from '@/components/GoGioLogo'
+import { GioLogomark } from '@/components/icons/GioLogomark'
 
 interface Props {
   companyName: string
@@ -56,9 +56,9 @@ export function CareersFooter({ companyName, logoUrl, websiteUrl }: Props) {
       <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between text-[11.5px] text-white/55">
           <span>© {new Date().getFullYear()} {companyName}. All rights reserved.</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-[#FFFCF9]">
             <span>hiring powered by</span>
-            <GoGioLogo size="sm" />
+            <GioLogomark height={18} aria-label="Gio" />
           </div>
         </div>
       </div>
