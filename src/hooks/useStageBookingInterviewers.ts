@@ -331,8 +331,9 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
       });
     } finally {
       setCopyingInterviewerId(null);
+      invalidateTokenStatus();
     }
-  }, [params, toast, prebuiltLinks]);
+  }, [params, toast, prebuiltLinks, invalidateTokenStatus]);
 
   const [isCopyingGroup, setIsCopyingGroup] = useState(false);
 
