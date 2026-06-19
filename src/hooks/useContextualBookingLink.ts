@@ -8,8 +8,9 @@ import {
 } from '@/lib/bookingLinkUtils';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { primeClipboard, copyToClipboardSilent } from '@/utils/clipboard';
+import { useLatestBookingTokenStatus, latestTokenStatusKey } from './useLatestBookingTokenStatus';
 
 interface UseContextualBookingLinkParams {
   jobId: string;
