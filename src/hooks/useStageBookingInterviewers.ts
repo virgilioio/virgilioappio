@@ -274,9 +274,12 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     setCopyingInterviewerId(interviewer.memberId);
 
     try {
-      const prebuiltLink = prebuiltLinks[interviewer.memberId];
+      const memberStatus = tokenStatusByMember?.[interviewer.memberId]?.status;
+      const mustRenew = memberStatus === 'expired';
+      const prebuiltLink = mustRenew ? undefined : prebuiltLinks[interviewer.memberId];
 
       if (prebuiltLink) {
+
         // Happy path: link is pre-built, copy immediately within user gesture
         await primeClipboard();
         const success = await copyToClipboardSilent(prebuiltLink);
