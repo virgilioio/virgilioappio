@@ -410,8 +410,9 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
       });
     } finally {
       setIsCopyingGroup(false);
+      invalidateTokenStatus();
     }
-  }, [params, toast]);
+  }, [params, toast, invalidateTokenStatus]);
 
   return {
     interviewers,
@@ -420,5 +421,7 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     copyingInterviewerId,
     copyGroupLink,
     isCopyingGroup,
+    tokenStatusByMember,
+    groupTokenStatus,
   };
 }
