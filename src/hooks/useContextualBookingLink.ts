@@ -253,9 +253,11 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
               jobId: params.jobId,
               candidateId: params.candidateId,
               associationId: params.associationId,
+              jhsId: params.jhsId,
             }),
           });
         }
+
         return true;
       } else {
         // Clipboard write failed — show link for manual copy
