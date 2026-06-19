@@ -1,55 +1,53 @@
-## Scope
+## Goal
 
-Three presentation-only changes. No new logic — reuse existing `useWhatsAppEnabled`, `buildWhatsAppUrl`, `formatE164Display`, `WhatsAppIcon`, and clipboard utilities.
+When a candidate's booking link has expired, the "Copy [name]'s Link" button should clearly indicate that and act as a one-click renew (generate a fresh token + copy), instead of silently looking the same as a valid link.
 
-## 1. Add Contact Information card to in-job overview tab
+## Where this lives
 
-**File:** `src/components/candidates/CandidateProfileSheet.tsx`
+`src/components/candidates/GenerateBookingLinkButton.tsx` + the two hooks that back it (`useStageBookingInterviewers.ts`, `useContextualBookingLink.ts`).
 
-In the `activeTab === 'overview'` block (line 1476), insert a new `<Card>` **above** the existing Profile Summary card. Replicate the exact look of the Independent profile's Contact Information card (`IndependentCandidateProfile.tsx` lines 455–471):
+Today, clicking Copy already calls `create-booking-token`, which filters `expires_at > now()` — so an expired token is automatically replaced by a new one server-side. The gap is purely UX: the recruiter has no signal that the link they previously sent is dead and the candidate is stuck on the "This link has expired" page.
 
-- Title: "Contact information", with an "Edit" `ghost` button on the right that opens the existing edit sheet used in this view.
-- A `grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4` body with four `ContactPair` rows: Email (mailto link), Phone, Location, Salary expectations.
-- Extract the local `ContactPair` primitive from `IndependentCandidateProfile.tsx` into a small shared component `src/components/candidates/profile/primitives/ContactPair.tsx` and import it in both files. Visual markup is copied verbatim — no design changes.
+## Changes
 
-## 2. WhatsApp icon next to phone in both Contact cards
+### 1. Detect latest token status (new tiny hook)
 
-In the new shared `ContactPair` (or a thin wrapper used only for phone), append the `WhatsAppIcon` button right after the phone value when:
+Add `src/hooks/useLatestBookingTokenStatus.ts`:
 
-```ts
-whatsAppEnabled && buildWhatsAppUrl(phone)
-```
+- Inputs: `jobId`, `candidateId`, `associationId`, optional `shortCode` (per interviewer) or `bookingConfigIds` for group.
+- Query `booking_link_tokens` for the most recent row matching that context, ordered by `created_at desc limit 1`, selecting `expires_at`, `token`, `short_code`.
+- Returns `{ status: 'none' | 'active' | 'expired', expiresAt, lastToken }`.
+- Cached via React Query, invalidated after a successful copy (so a fresh renew flips status back to `active`).
 
-Pattern mirrors `IndependentCandidateTable.tsx` (lines 503–511): an anchor opening `buildWhatsAppUrl(phone)` in a new tab, `WhatsAppIcon size={14}`, with the same subtle hover treatment used in `CandidateDetailsCollapsible.tsx`. The phone display itself uses `formatE164Display(phone)`.
+### 2. Surface status in `useStageBookingInterviewers`
 
-Apply this in:
-- `src/pages/IndependentCandidateProfile.tsx` Contact information card (line 467).
-- New in-job Contact card from §1.
+For each interviewer entry, attach `tokenStatus: 'none' | 'active' | 'expired'` using the hook above (single batched query per stage rather than N hooks: select all latest tokens for (job, candidate, association) in one call and bucket by `short_code`).
 
-`useWhatsAppEnabled()` is called once at the top of each parent file; result passed into the phone row.
+For the user fallback path, do the same inside `useContextualBookingLink` so the fallback button can also morph.
 
-## 3. Email + phone inline in the in-job hero meta row
+### 3. Morph the button in `GenerateBookingLinkButton.tsx`
 
-**File:** `src/components/candidates/profile/ProfileHeroCard.tsx`
+Visual rules (presentation only, no new functionality):
 
-Extend `ProfileHeroCardProps` with:
-```ts
-email?: string | null
-phone?: string | null
-whatsAppEnabled?: boolean
-```
+- **Active or none** (current behavior): `Link2` icon, label "Copy [name]'s Link" / "Copy Your Link" / "Copy Group Booking Link". Unchanged.
+- **Expired**: swap icon to `RefreshCw`, label to "Renew [name]'s Link" (or "Renew Your Link" / "Renew Group Link"), and add a subtle warning dot (existing `Badge` dot pattern) + tooltip: "The previous link expired on {date}. Click to generate a fresh link and copy it."
+- Click handler is unchanged — it still calls the existing copy path, which generates a new token. After success, invalidate the latest-token query so the button flips back to "Copy".
+- Dropdown variant (multi-interviewer): each item shows "Renew {name}'s Link" with the refresh icon when that interviewer's latest token is expired; others stay as "Copy {name}'s Link".
+- Loading state and disabled states unchanged.
 
-In the meta row (lines 179–215, between existing `Applied {applied}` and `Full profile`), append two new inline chips matching the existing `font-inter text-[12.5px] text-[#5A6072]` style and `·` separators:
+### 4. No backend changes
 
-- **Email chip:** `Mail` icon + email text + small `Copy` icon button (writes to clipboard via existing `src/utils/clipboard.ts`, shows toast "Email copied").
-- **Phone chip:** `Phone` icon + `formatE164Display(phone)` + `Copy` icon button (toast "Phone copied") + `WhatsAppIcon` link when `whatsAppEnabled && buildWhatsAppUrl(phone)`.
+`create-booking-token` and `create-group-booking-token` already skip expired tokens via `gt('expires_at', now())` and insert a fresh row, so renew is the same code path as initial create. No edge-function or schema work.
 
-Both chips render only when the value exists. Icons are 12–14px to fit the line height; no layout/spacing changes elsewhere.
+## Technical notes
 
-**File:** `src/components/candidates/CandidateProfileSheet.tsx` — pass `email`, `phone`, `whatsAppEnabled` props into `<ProfileHeroCard>` at line 1209. `whatsAppEnabled` comes from `useWhatsAppEnabled()` already used in this file (verify; if not, add the import).
+- The new query reads `booking_link_tokens` with `job_id`, `candidate_id`, `association_id` scoping — confirm RLS already allows tenant members to select their own org's tokens (it does today for the booking flows that read tokens client-side; otherwise, fall back to a tiny SECURITY DEFINER RPC `latest_booking_token_status(job_id, candidate_id, association_id)`).
+- Time check is client-side comparison against `expires_at`.
+- Strings, icons, and tooltip copy go through existing patterns (no new design tokens).
+- No changes to the public booking expired view in this pass — out of scope unless you want it.
 
 ## Out of scope
 
-- No changes to Profile Summary card, sidebar, tabs, or any other section.
-- No schema or hook changes.
-- No restyling of the Independent profile Contact card beyond adding the WhatsApp icon.
+- Auto-emailing the candidate the renewed link.
+- Changing token TTL.
+- Updating the public "This link has expired" page (can be a follow-up if you want a self-serve "Request a new link" CTA).
