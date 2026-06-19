@@ -1,10 +1,11 @@
 // @ts-nocheck - Supabase type instantiation depth issue with stage_interviewer_assignments
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { createShortBookingToken, generateShortBookingLink, generateContextualBookingLink, createGroupBookingToken, generateGroupBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { primeClipboard, copyToClipboardSilent } from '@/utils/clipboard';
+import { useLatestBookingTokenStatus, latestTokenStatusKey, type TokenStatusEntry } from './useLatestBookingTokenStatus';
 
 export interface InterviewerBookingInfo {
   memberId: string;
@@ -151,6 +152,7 @@ async function fetchStageInterviewers(jhsId: string): Promise<InterviewerBooking
 
 export function useStageBookingInterviewers(params: UseStageBookingInterviewersParams | null) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [copyingInterviewerId, setCopyingInterviewerId] = useState<string | null>(null);
   // Pre-built links: memberId → ready-to-copy URL
   const [prebuiltLinks, setPrebuiltLinks] = useState<Record<string, string>>({});
@@ -161,6 +163,41 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     queryFn: () => params?.jhsId ? fetchStageInterviewers(params.jhsId) : Promise.resolve([]),
     enabled: !!params?.jhsId,
   });
+
+  const { data: tokenStatusMap } = useLatestBookingTokenStatus({
+    jobId: params?.jobId,
+    candidateId: params?.candidateId,
+    associationId: params?.associationId,
+  });
+
+  const invalidateTokenStatus = useCallback(() => {
+    if (!params) return;
+    queryClient.invalidateQueries({
+      queryKey: latestTokenStatusKey({
+        jobId: params.jobId,
+        candidateId: params.candidateId,
+        associationId: params.associationId,
+      }),
+    });
+  }, [queryClient, params?.jobId, params?.candidateId, params?.associationId]);
+
+  const tokenStatusByMember = useMemo<Record<string, TokenStatusEntry>>(() => {
+    const map: Record<string, TokenStatusEntry> = {};
+    for (const i of interviewers) {
+      const entry = tokenStatusMap?.byShortCode[i.bookingConfig.short_code];
+      map[i.memberId] = entry ?? { status: 'none', expiresAt: null, token: null };
+    }
+    return map;
+  }, [interviewers, tokenStatusMap]);
+
+  const groupTokenStatus: TokenStatusEntry = useMemo(() => {
+    if (!interviewers.length || !tokenStatusMap) return { status: 'none', expiresAt: null, token: null };
+    // Group links are stored under the primary's short_code; use first eligible by priority.
+    const eligible = interviewers.filter(i => i.assignmentType !== 'backup');
+    const primary = eligible[0];
+    if (!primary) return { status: 'none', expiresAt: null, token: null };
+    return tokenStatusMap.byShortCode[primary.bookingConfig.short_code] ?? { status: 'none', expiresAt: null, token: null };
+  }, [interviewers, tokenStatusMap]);
 
   // Pre-create tokens for all interviewers when data is ready
   useEffect(() => {
@@ -294,8 +331,9 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
       });
     } finally {
       setCopyingInterviewerId(null);
+      invalidateTokenStatus();
     }
-  }, [params, toast, prebuiltLinks]);
+  }, [params, toast, prebuiltLinks, invalidateTokenStatus]);
 
   const [isCopyingGroup, setIsCopyingGroup] = useState(false);
 
@@ -372,8 +410,9 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
       });
     } finally {
       setIsCopyingGroup(false);
+      invalidateTokenStatus();
     }
-  }, [params, toast]);
+  }, [params, toast, invalidateTokenStatus]);
 
   return {
     interviewers,
@@ -382,5 +421,7 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     copyingInterviewerId,
     copyGroupLink,
     isCopyingGroup,
+    tokenStatusByMember,
+    groupTokenStatus,
   };
 }
