@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '@/integrations/supabase/client'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,6 +71,7 @@ export function PostingSheet({
   const [localId, setLocalId] = useState<string | undefined>(postingId)
   const [isExternalUpdate, setIsExternalUpdate] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [generatingDesc, setGeneratingDesc] = useState(false)
 
   // Basics
   const [title, setTitle] = useState('')
@@ -242,6 +244,45 @@ export function PostingSheet({
     },
     eeo_enabled: eeoEnabled,
   })
+
+  const handleGenerateDescription = async () => {
+    if (!jobId) return
+    if (
+      description.trim() &&
+      !window.confirm('Replace the current description with a freshly generated one?')
+    ) {
+      return
+    }
+    setGeneratingDesc(true)
+    try {
+      const { data: job, error: jobError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .maybeSingle()
+      if (jobError) throw jobError
+      const jobData = { ...(job || {}), title: title || (job as any)?.title }
+      const { data, error } = await supabase.functions.invoke('generate-job-description', {
+        body: { jobData },
+      })
+      if (error) throw error
+      if (data?.description) {
+        setDescription(data.description)
+        setIsExternalUpdate(true)
+        toast({ title: 'Description generated', description: 'Gio refreshed the public copy.' })
+      } else {
+        throw new Error('No description returned')
+      }
+    } catch (e: any) {
+      toast({
+        title: 'Failed to generate description',
+        description: e?.message || 'Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setGeneratingDesc(false)
+    }
+  }
 
   const save = async (publish?: boolean) => {
     if (!title.trim()) {
@@ -509,7 +550,14 @@ export function PostingSheet({
             />
             <div className="flex items-center justify-between mt-3">
               <div className="flex items-center gap-2">
-                <Button variant="purple" size="sm" icon={Sparkles} disabled={readOnly}>
+                <Button
+                  variant="purple"
+                  size="sm"
+                  icon={Sparkles}
+                  disabled={readOnly}
+                  loading={generatingDesc}
+                  onClick={handleGenerateDescription}
+                >
                   {isEdit ? 'Rewrite with Gio' : 'Draft from job'}
                 </Button>
                 <Button variant="ghost" size="sm" icon={Wand2} disabled={readOnly}>
