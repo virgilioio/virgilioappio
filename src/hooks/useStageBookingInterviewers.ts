@@ -168,6 +168,7 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     jobId: params?.jobId,
     candidateId: params?.candidateId,
     associationId: params?.associationId,
+    jhsId: params?.jhsId,
   });
 
   const invalidateTokenStatus = useCallback(() => {
@@ -177,27 +178,38 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
         jobId: params.jobId,
         candidateId: params.candidateId,
         associationId: params.associationId,
+        jhsId: params.jhsId,
       }),
     });
-  }, [queryClient, params?.jobId, params?.candidateId, params?.associationId]);
+  }, [queryClient, params?.jobId, params?.candidateId, params?.associationId, params?.jhsId]);
 
   const tokenStatusByMember = useMemo<Record<string, TokenStatusEntry>>(() => {
     const map: Record<string, TokenStatusEntry> = {};
+    const hasPast = !!tokenStatusMap?.hasPastBooking;
     for (const i of interviewers) {
       const entry = tokenStatusMap?.byShortCode[i.bookingConfig.short_code];
-      map[i.memberId] = entry ?? { status: 'none', expiresAt: null, token: null };
+      // If a past booking exists and we don't have a fresher token cached, surface as expired.
+      const fallback: TokenStatusEntry = hasPast
+        ? { status: 'expired', expiresAt: tokenStatusMap?.pastBookingEndsAt ?? null, token: null }
+        : { status: 'none', expiresAt: null, token: null };
+      map[i.memberId] = entry ?? fallback;
     }
     return map;
   }, [interviewers, tokenStatusMap]);
 
   const groupTokenStatus: TokenStatusEntry = useMemo(() => {
     if (!interviewers.length || !tokenStatusMap) return { status: 'none', expiresAt: null, token: null };
-    // Group links are stored under the primary's short_code; use first eligible by priority.
     const eligible = interviewers.filter(i => i.assignmentType !== 'backup');
     const primary = eligible[0];
     if (!primary) return { status: 'none', expiresAt: null, token: null };
-    return tokenStatusMap.byShortCode[primary.bookingConfig.short_code] ?? { status: 'none', expiresAt: null, token: null };
+    const entry = tokenStatusMap.byShortCode[primary.bookingConfig.short_code];
+    if (entry) return entry;
+    if (tokenStatusMap.hasPastBooking) {
+      return { status: 'expired', expiresAt: tokenStatusMap.pastBookingEndsAt, token: null };
+    }
+    return { status: 'none', expiresAt: null, token: null };
   }, [interviewers, tokenStatusMap]);
+
 
   // Pre-create tokens for all interviewers when data is ready
   useEffect(() => {
@@ -262,9 +274,12 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
     setCopyingInterviewerId(interviewer.memberId);
 
     try {
-      const prebuiltLink = prebuiltLinks[interviewer.memberId];
+      const memberStatus = tokenStatusByMember?.[interviewer.memberId]?.status;
+      const mustRenew = memberStatus === 'expired';
+      const prebuiltLink = mustRenew ? undefined : prebuiltLinks[interviewer.memberId];
 
       if (prebuiltLink) {
+
         // Happy path: link is pre-built, copy immediately within user gesture
         await primeClipboard();
         const success = await copyToClipboardSilent(prebuiltLink);
@@ -333,7 +348,7 @@ export function useStageBookingInterviewers(params: UseStageBookingInterviewersP
       setCopyingInterviewerId(null);
       invalidateTokenStatus();
     }
-  }, [params, toast, prebuiltLinks, invalidateTokenStatus]);
+  }, [params, toast, prebuiltLinks, invalidateTokenStatus, tokenStatusByMember]);
 
   const [isCopyingGroup, setIsCopyingGroup] = useState(false);
 

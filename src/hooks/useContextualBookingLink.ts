@@ -208,17 +208,24 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     jobId: params?.jobId,
     candidateId: params?.candidateId,
     associationId: params?.associationId,
+    jhsId: params?.jhsId,
   });
 
   const tokenStatus = useMemo(() => {
     if (!activeConfig?.short_code || !tokenStatusMap) {
       return { status: 'none' as const, expiresAt: null, token: null };
     }
-    return tokenStatusMap.byShortCode[activeConfig.short_code] ?? { status: 'none' as const, expiresAt: null, token: null };
+    const entry = tokenStatusMap.byShortCode[activeConfig.short_code];
+    if (entry) return entry;
+    if (tokenStatusMap.hasPastBooking) {
+      return { status: 'expired' as const, expiresAt: tokenStatusMap.pastBookingEndsAt, token: null };
+    }
+    return { status: 'none' as const, expiresAt: null, token: null };
   }, [activeConfig?.short_code, tokenStatusMap]);
 
+
   const copyToClipboard = useCallback(async () => {
-    if (!contextualLink) {
+    if (!activeConfig?.short_code) {
       toast({
         title: 'Error',
         description:
@@ -231,8 +238,36 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     // Prime clipboard immediately while user gesture is still valid
     await primeClipboard();
 
+    // If the cached link is stale (expired token / past booking), mint a fresh token now
+    // so the URL we hand to the user is guaranteed to open the booking page.
+    let linkToCopy = contextualLink;
+    if (context && (tokenStatus.status === 'expired' || !shortToken)) {
+      try {
+        const fresh = await createShortBookingToken({
+          shortCode: activeConfig.short_code,
+          context,
+        });
+        if (fresh) {
+          setShortToken(fresh);
+          tokenContextKeyRef.current = `${context.jobId}-${context.candidateId}-${context.jhsId}-${activeConfig.short_code}`;
+          linkToCopy = generateShortBookingLink({ shortCode: activeConfig.short_code, token: fresh });
+        }
+      } catch (e) {
+        console.error('Failed to mint fresh token before copy:', e);
+      }
+    }
+
+    if (!linkToCopy) {
+      toast({
+        title: 'Error',
+        description: 'Could not generate a booking link. Please try again.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
     try {
-      const success = await copyToClipboardSilent(contextualLink);
+      const success = await copyToClipboardSilent(linkToCopy);
       if (success) {
         toast({
           title: 'Link Copied',
@@ -246,15 +281,16 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
               jobId: params.jobId,
               candidateId: params.candidateId,
               associationId: params.associationId,
+              jhsId: params.jhsId,
             }),
           });
         }
+
         return true;
       } else {
-        // Clipboard write failed — show link for manual copy
         toast({
           title: 'Copy the link manually',
-          description: contextualLink,
+          description: linkToCopy,
           duration: 15000,
         });
         return false;
@@ -262,12 +298,13 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     } catch (e) {
       toast({
         title: 'Copy the link manually',
-        description: contextualLink,
+        description: linkToCopy,
         duration: 15000,
       });
       return false;
     }
-  }, [assignedInterviewer?.displayName, assignedInterviewer?.fullName, contextualLink, params?.jobId, params?.candidateId, params?.associationId, queryClient]);
+  }, [assignedInterviewer?.displayName, assignedInterviewer?.fullName, contextualLink, context, activeConfig?.short_code, tokenStatus.status, shortToken, params?.jobId, params?.candidateId, params?.associationId, params?.jhsId, queryClient]);
+
 
   return {
     contextualLink,
