@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { useContextualBookingLink } from '@/hooks/useContextualBookingLink';
 import { useStageBookingInterviewers } from '@/hooks/useStageBookingInterviewers';
 import { useStageInterviewerAssignments } from '@/hooks/useStageInterviewerAssignments';
-import { Link2, Loader2, ChevronDown, User, Users } from 'lucide-react';
+import { Link2, Loader2, ChevronDown, User, Users, RefreshCw } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -31,6 +31,15 @@ interface GenerateBookingLinkButtonProps {
   showLabel?: boolean;
 }
 
+function formatExpiredAt(iso: string | null): string {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return '';
+  }
+}
+
 export function GenerateBookingLinkButton({
   jobId,
   candidateId,
@@ -44,10 +53,8 @@ export function GenerateBookingLinkButton({
   size = 'sm',
   showLabel = true,
 }: GenerateBookingLinkButtonProps) {
-  // Read the stage's scheduling mode (any vs all)
   const { schedulingMode } = useStageInterviewerAssignments(jhsId);
 
-  // Fetch all interviewers with active booking configs for the stage
   const {
     interviewers,
     isLoading: isLoadingInterviewers,
@@ -55,6 +62,8 @@ export function GenerateBookingLinkButton({
     copyingInterviewerId,
     copyGroupLink,
     isCopyingGroup,
+    tokenStatusByMember,
+    groupTokenStatus,
   } = useStageBookingInterviewers({
     jhsId,
     jobId,
@@ -66,11 +75,11 @@ export function GenerateBookingLinkButton({
     stageName,
   });
 
-  // Fallback to user's own booking config
   const {
     copyToClipboard: copyUserLink,
     hasBookingConfig: hasUserBookingConfig,
     isLoading: isLoadingUserConfig,
+    tokenStatus: userTokenStatus,
   } = useContextualBookingLink({
     jobId,
     candidateId,
@@ -83,7 +92,6 @@ export function GenerateBookingLinkButton({
   });
 
   const isLoading = isLoadingInterviewers || isLoadingUserConfig;
-  // For group mode: only required + optional count, exclude backups
   const groupEligible = interviewers.filter(i => i.assignmentType !== 'backup');
   const hasMultipleInterviewers = interviewers.length > 1;
   const hasSingleInterviewer = interviewers.length === 1;
@@ -147,6 +155,12 @@ export function GenerateBookingLinkButton({
     }
 
     const names = groupEligible.map(i => i.fullName).join(', ');
+    const groupExpired = groupTokenStatus?.status === 'expired';
+    const label = groupExpired ? 'Renew Group Booking Link' : 'Copy Group Booking Link';
+    const tooltipMsg = groupExpired
+      ? `The previous group link expired${groupTokenStatus?.expiresAt ? ' on ' + formatExpiredAt(groupTokenStatus.expiresAt) : ''}. Click to generate a fresh link and copy it.`
+      : `Shows times that work for ${names}`;
+
     return (
       <TooltipProvider>
         <Tooltip>
@@ -159,14 +173,16 @@ export function GenerateBookingLinkButton({
             >
               {isCopyingGroup ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : groupExpired ? (
+                <RefreshCw className="h-4 w-4" />
               ) : (
                 <Users className="h-4 w-4" />
               )}
-              {showLabel && <span className="ml-2">Copy Group Booking Link</span>}
+              {showLabel && <span className="ml-2">{label}</span>}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Shows times that work for {names}</p>
+            <p>{tooltipMsg}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -175,12 +191,13 @@ export function GenerateBookingLinkButton({
 
   // Multiple interviewers: show dropdown
   if (hasMultipleInterviewers) {
+    const anyExpired = interviewers.some(i => tokenStatusByMember?.[i.memberId]?.status === 'expired');
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant={variant} size={size}>
-            <Link2 className="h-4 w-4" />
-            {showLabel && <span className="ml-2">Copy Booking Link</span>}
+            {anyExpired ? <RefreshCw className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+            {showLabel && <span className="ml-2">{anyExpired ? 'Renew Booking Link' : 'Copy Booking Link'}</span>}
             <ChevronDown className="ml-1 h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
@@ -188,6 +205,7 @@ export function GenerateBookingLinkButton({
           {interviewers.map((interviewer) => {
             const name = interviewer.fullName;
             const isCopying = copyingInterviewerId === interviewer.memberId;
+            const expired = tokenStatusByMember?.[interviewer.memberId]?.status === 'expired';
             return (
               <DropdownMenuItem
                 key={interviewer.memberId}
@@ -197,10 +215,12 @@ export function GenerateBookingLinkButton({
               >
                 {isCopying ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : expired ? (
+                  <RefreshCw className="h-4 w-4 mr-2" />
                 ) : (
                   <User className="h-4 w-4 mr-2" />
                 )}
-                Copy {name}'s Link
+                {expired ? `Renew ${name}'s Link` : `Copy ${name}'s Link`}
               </DropdownMenuItem>
             );
           })}
@@ -214,7 +234,12 @@ export function GenerateBookingLinkButton({
     const interviewer = interviewers[0];
     const name = interviewer.fullName;
     const isCopying = copyingInterviewerId === interviewer.memberId;
-    const tooltipMessage = `Copy ${name}'s self-scheduling link for this candidate`;
+    const expired = tokenStatusByMember?.[interviewer.memberId]?.status === 'expired';
+    const expiresAt = tokenStatusByMember?.[interviewer.memberId]?.expiresAt ?? null;
+    const tooltipMessage = expired
+      ? `The previous link expired${expiresAt ? ' on ' + formatExpiredAt(expiresAt) : ''}. Click to generate a fresh link and copy it.`
+      : `Copy ${name}'s self-scheduling link for this candidate`;
+    const label = expired ? `Renew ${name}'s Link` : `Copy ${name}'s Link`;
 
     return (
       <TooltipProvider>
@@ -228,10 +253,12 @@ export function GenerateBookingLinkButton({
             >
               {isCopying ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : expired ? (
+                <RefreshCw className="h-4 w-4" />
               ) : (
                 <Link2 className="h-4 w-4" />
               )}
-              {showLabel && <span className="ml-2">Copy {name}'s Link</span>}
+              {showLabel && <span className="ml-2">{label}</span>}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -243,17 +270,23 @@ export function GenerateBookingLinkButton({
   }
 
   // Fallback: user's own booking config
+  const userExpired = userTokenStatus?.status === 'expired';
+  const userLabel = userExpired ? 'Renew Your Link' : 'Copy Your Link';
+  const userTooltip = userExpired
+    ? `The previous link expired${userTokenStatus?.expiresAt ? ' on ' + formatExpiredAt(userTokenStatus.expiresAt) : ''}. Click to generate a fresh link and copy it.`
+    : 'Copy your self-scheduling link for this candidate';
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button variant={variant} size={size} onClick={copyUserLink}>
-            <Link2 className="h-4 w-4" />
-            {showLabel && <span className="ml-2">Copy Your Link</span>}
+            {userExpired ? <RefreshCw className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+            {showLabel && <span className="ml-2">{userLabel}</span>}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Copy your self-scheduling link for this candidate</p>
+          <p>{userTooltip}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
