@@ -90,10 +90,15 @@ serve(async (req) => {
         const booking = bookings[0];
         const scheduledEnd = new Date(booking.scheduled_end);
         const now = new Date();
+        const tokenCreatedAt = tokenData.created_at ? new Date(tokenData.created_at) : null;
 
         if (scheduledEnd < now) {
-          // Event has passed — link is expired
-          tokenStatus = 'expired';
+          // Past booking exists. Only treat as expired if the token predates the booking end
+          // (i.e. it's the original invite). A token minted AFTER the booking ended is a
+          // deliberate renewal/reschedule and should resolve as active.
+          if (!tokenCreatedAt || tokenCreatedAt <= scheduledEnd) {
+            tokenStatus = 'expired';
+          }
         } else {
           // Active future booking exists
           existingBooking = booking;
@@ -125,6 +130,7 @@ serve(async (req) => {
           }
         }
       }
+
     }
 
     // For group tokens, fetch interviewer names so the public page can render
