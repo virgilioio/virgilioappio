@@ -1,10 +1,11 @@
 // @ts-nocheck - Supabase type instantiation depth issue with stage_interviewer_assignments
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { createShortBookingToken, generateShortBookingLink, generateContextualBookingLink, createGroupBookingToken, generateGroupBookingLink, BookingContext } from '@/lib/bookingLinkUtils';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { primeClipboard, copyToClipboardSilent } from '@/utils/clipboard';
+import { useLatestBookingTokenStatus, latestTokenStatusKey, type TokenStatusEntry } from './useLatestBookingTokenStatus';
 
 export interface InterviewerBookingInfo {
   memberId: string;
