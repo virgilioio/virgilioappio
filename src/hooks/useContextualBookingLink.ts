@@ -203,6 +203,20 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     return null;
   }, [activeConfig?.short_code, shortToken, context]);
 
+  const queryClient = useQueryClient();
+  const { data: tokenStatusMap } = useLatestBookingTokenStatus({
+    jobId: params?.jobId,
+    candidateId: params?.candidateId,
+    associationId: params?.associationId,
+  });
+
+  const tokenStatus = useMemo(() => {
+    if (!activeConfig?.short_code || !tokenStatusMap) {
+      return { status: 'none' as const, expiresAt: null, token: null };
+    }
+    return tokenStatusMap.byShortCode[activeConfig.short_code] ?? { status: 'none' as const, expiresAt: null, token: null };
+  }, [activeConfig?.short_code, tokenStatusMap]);
+
   const copyToClipboard = useCallback(async () => {
     if (!contextualLink) {
       toast({
@@ -226,6 +240,15 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
             ? `Booking link for ${assignedInterviewer.displayName || assignedInterviewer.fullName} copied to clipboard.`
             : 'Booking link copied to clipboard. Share it with the candidate.',
         });
+        if (params) {
+          queryClient.invalidateQueries({
+            queryKey: latestTokenStatusKey({
+              jobId: params.jobId,
+              candidateId: params.candidateId,
+              associationId: params.associationId,
+            }),
+          });
+        }
         return true;
       } else {
         // Clipboard write failed — show link for manual copy
@@ -244,7 +267,7 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
       });
       return false;
     }
-  }, [assignedInterviewer?.displayName, assignedInterviewer?.fullName, contextualLink]);
+  }, [assignedInterviewer?.displayName, assignedInterviewer?.fullName, contextualLink, params?.jobId, params?.candidateId, params?.associationId, queryClient]);
 
   return {
     contextualLink,
@@ -257,5 +280,6 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     linkOwnerName: assignedInterviewer?.displayName || assignedInterviewer?.fullName || null,
     usingAssignedInterviewer: !!assignedInterviewer?.bookingConfig?.short_code,
     isLoading: isLoadingUserConfig || isLoadingAssignedInterviewer || isCreatingToken,
+    tokenStatus,
   };
 }
