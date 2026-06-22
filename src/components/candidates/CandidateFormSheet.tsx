@@ -188,8 +188,10 @@ export function CandidateFormSheet({
       const candidateChanged = currentCandidateId !== candidate.id
       if (candidateChanged || currentCandidateId === null) {
         setCurrentCandidateId(candidate.id)
+        const { first: hydratedFirst, last: hydratedLast } = splitFullName(candidate.candidate_name)
         form.reset({
-          candidate_name: candidate.candidate_name || '',
+          first_name: hydratedFirst,
+          last_name: hydratedLast,
           location_country: candidate.location_country || '',
           location_state: candidate.location_state || '',
           location_city: candidate.location_city || '',
