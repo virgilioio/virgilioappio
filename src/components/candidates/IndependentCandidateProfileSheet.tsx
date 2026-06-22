@@ -337,6 +337,16 @@ export function IndependentCandidateProfileSheet({
                     <span className="hidden sm:inline">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 ml-1 text-text-secondary hover:text-text-primary"
+                    onClick={() => onOpenChange(false)}
+                    title="Close"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
