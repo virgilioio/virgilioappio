@@ -49,6 +49,7 @@ import { SkillsSection } from './form/SkillsSection'
 import { ProfileSummarySection } from './form/ProfileSummarySection'
 import { FooterStatusLine } from './form/FooterStatusLine'
 import type { ParsedResumeData } from './EnhancedResumeDropzone'
+import { splitFullName, composeFullName } from '@/utils/nameSplit'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
