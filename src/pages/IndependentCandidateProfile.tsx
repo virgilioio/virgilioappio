@@ -32,7 +32,7 @@ import { CandidateEducationComponent, type CandidateEducation } from '@/componen
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
-import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
+import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
 
 import { useIndependentCandidates, type IndependentCandidate } from '@/hooks/useIndependentCandidates'
@@ -154,10 +154,12 @@ export default function IndependentCandidateProfile() {
     return (
       <AuthGate>
         <PermissionGate permission="canViewCandidates">
-          <div className="min-h-screen bg-[#F6F5F1]">
-            <div className="max-w-[1280px] mx-auto px-6 py-6 space-y-4">
+          <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+            <div className="layout-container pt-2 pb-3 sm:pt-3 sm:pb-4">
               <Skeleton className="h-[180px] w-full rounded-[16px]" />
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="layout-container max-w-[1400px] pb-10 mx-auto w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
                 <Skeleton className="h-[420px] rounded-[14px]" />
                 <Skeleton className="h-[420px] rounded-[14px]" />
               </div>
@@ -308,8 +310,9 @@ export default function IndependentCandidateProfile() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
-        <div className="min-h-screen bg-[#F6F5F1]">
-          <div className="max-w-[1280px] mx-auto px-6 py-6 space-y-4">
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-[#F6F5F1] overflow-hidden">
+          <div className="layout-container pt-2 pb-3 sm:pt-3 sm:pb-4 shrink-0">
+            <div className="space-y-4">
             {/* ───── Hero card (breadcrumbs · actions · identity · meta · tabs) ───── */}
             <section className="bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] pt-3.5 px-6 pb-0">
               {/* Row 1 — breadcrumb + actions */}
@@ -415,7 +418,11 @@ export default function IndependentCandidateProfile() {
                 <ProfileTabs tabs={tabs} activeTab={activeTab} onTabChange={(v) => setTab(v as TabKey)} className="border-b-0" />
               </div>
             </section>
+            </div>
+          </div>
 
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="layout-container max-w-[1400px] pb-10 pt-4 mx-auto w-full">
             {/* ───── Body: main + persistent sidebar ───── */}
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">
               <div className="space-y-4 min-w-0">
@@ -655,10 +662,11 @@ export default function IndependentCandidateProfile() {
                 {sidebar}
               </div>
             </div>
+            </div>
           </div>
 
           {/* ── Dialogs ── */}
-          <IndependentCandidateForm
+          <CandidateFormSheet
             isOpen={isFormOpen}
             onClose={() => setIsFormOpen(false)}
             onSubmit={async (data: any) => {
@@ -666,8 +674,7 @@ export default function IndependentCandidateProfile() {
               setIsFormOpen(false)
             }}
             isLoading={candidatesLoading}
-            initialData={candidate}
-            title="Edit candidate"
+            candidate={candidate as any}
           />
 
           {addToPipelineOpen && (
