@@ -154,10 +154,12 @@ export default function IndependentCandidateProfile() {
     return (
       <AuthGate>
         <PermissionGate permission="canViewCandidates">
-          <div className="min-h-screen bg-[#F6F5F1]">
-            <div className="max-w-[1280px] mx-auto px-6 py-6 space-y-4">
+          <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+            <div className="layout-container pt-2 pb-3 sm:pt-3 sm:pb-4">
               <Skeleton className="h-[180px] w-full rounded-[16px]" />
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="layout-container max-w-[1400px] pb-10 mx-auto w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
                 <Skeleton className="h-[420px] rounded-[14px]" />
                 <Skeleton className="h-[420px] rounded-[14px]" />
               </div>
