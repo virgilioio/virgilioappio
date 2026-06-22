@@ -310,8 +310,9 @@ export default function IndependentCandidateProfile() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
-        <div className="min-h-screen bg-[#F6F5F1]">
-          <div className="max-w-[1280px] mx-auto px-6 py-6 space-y-4">
+        <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-[#F6F5F1] overflow-hidden">
+          <div className="layout-container pt-2 pb-3 sm:pt-3 sm:pb-4 shrink-0">
+            <div className="space-y-4">
             {/* ───── Hero card (breadcrumbs · actions · identity · meta · tabs) ───── */}
             <section className="bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] pt-3.5 px-6 pb-0">
               {/* Row 1 — breadcrumb + actions */}
