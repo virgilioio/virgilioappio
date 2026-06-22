@@ -288,11 +288,13 @@ async function aiExtractFull(text: string, fileName?: string): Promise<ParseResu
 
   const system = `You are an expert ATS resume parser.
 Return ONLY valid JSON with these exact fields:
-{name: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional, currentRole: string|optional, currentCompany: string|optional, yearsExperience: number|optional}
+{name: string|optional, firstName: string|optional, lastName: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional, currentRole: string|optional, currentCompany: string|optional, yearsExperience: number|optional}
 
 CRITICAL: Extract ALL available fields. Do not omit fields even if confidence is medium.
 
 - name: the candidate's full name if confidently found; otherwise omit.
+- firstName: the candidate's given name(s) only. In Spanish/Portuguese/LATAM names this is often TWO tokens (e.g. "María José"). In most other locales it is one token. Never include surnames here.
+- lastName: the candidate's family name(s) only. In Spanish/Portuguese/LATAM names this is typically TWO surnames — paternal + maternal (e.g. "García López"). Particles like "de", "del", "la", "van", "von", "der" MUST stay attached to the surname (e.g. "de la Cruz"). Omit for mononyms.
 - email: a primary contact email if present.
 - phone: a primary phone in E.164 format with country code, no spaces or dashes (e.g., +5213332555660). Always include country code.
 - linkedinUrl: IMPORTANT - Full LinkedIn profile URL if present anywhere in the resume (e.g., https://linkedin.com/in/username). Check headers, contact sections, and links carefully.
