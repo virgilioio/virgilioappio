@@ -418,7 +418,11 @@ export default function IndependentCandidateProfile() {
                 <ProfileTabs tabs={tabs} activeTab={activeTab} onTabChange={(v) => setTab(v as TabKey)} className="border-b-0" />
               </div>
             </section>
+            </div>
+          </div>
 
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="layout-container max-w-[1400px] pb-10 pt-4 mx-auto w-full">
             {/* ───── Body: main + persistent sidebar ───── */}
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">
               <div className="space-y-4 min-w-0">
