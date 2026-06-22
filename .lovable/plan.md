@@ -1,75 +1,71 @@
 
 ## Goal
 
-When a resume is uploaded in the Create/Edit Candidate sheet, prefill the **First name** and **Last name** fields separately (instead of dumping the full name into First name). Handle LATAM-style names with 1–2 first names and 1–2 surnames. No DB schema change — `candidates.candidate_name` stays the single source of truth and is recomposed on save.
+Make the Independent (no-job) candidate profile match the in-job profile in **layout dimensions** (page width, hero card width, content column widths, paddings) and use the **same Edit experience** — the existing `CandidateFormSheet` opening cleanly as a right-side sheet, not as a nested/dialog-looking surface.
 
-## Behavior
+## Diagnosis
 
-- Resume upload → AI returns `firstName` + `lastName` separately → both inputs prefill.
-- If AI omits the split (rare), a heuristic fills them locally.
-- Recruiter can edit either field freely (mononyms, "De La Cruz", hyphenations, etc.).
-- On submit, the form composes `candidate_name = "${first} ${last}".trim()` (collapsing extra spaces). Edits on existing candidates whose first/last was derived from `candidate_name` round-trip cleanly.
+`src/components/candidates/CandidateProfileSheet.tsx` (in-job) is **not** wrapped in a Radix `<Sheet>`. It renders as a fixed-positioned `<div>` with:
+- Outer chrome: `fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly`
+- Hero band wrapped in `layout-container pt-1 pb-2 sm:pt-2 sm:pb-3`
+- Content scroll area wrapped in `pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]`
+- Content grid: `grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4`
 
-## Splitting strategy
+`src/components/candidates/IndependentCandidateProfileSheet.tsx` instead wraps everything in `<Sheet><SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0">`. That:
+- Produces a different overall width/inset than the in-job page (96vw vs the inset card).
+- Uses a 50/50 grid (`grid-cols-1 lg:grid-cols-2`) with `p-6`, so cards render visibly wider than the in-job 1fr+320px grid inside a 1400px max container.
+- Causes the nested `<CandidateFormSheet>` (also a right-side Radix Sheet) to render inside another Sheet portal stack — which is what the user sees as a "dialog box" instead of the clean right-side edit sheet they get from the in-job profile.
 
-**AI-first (primary).** Update the `parse-resume` edge function prompt to return two new optional fields alongside `name`:
+## Fix (frontend-only, presentation)
 
+### 1. Drop the outer Sheet wrapper in `IndependentCandidateProfileSheet.tsx`
+
+Replace `<Sheet open={open} onOpenChange={onOpenChange}><SheetContent …>` and its closing tags with the same fixed-positioned container the in-job profile uses, gated by `open`:
+
+```tsx
+if (!open) return null
+return (
+  <>
+    <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
+      <div className="flex h-full w-full">…</div>
+    </div>
+    {/* CandidateFormSheet, CandidateProfileDownloadDialog, SimpleScheduleInterviewSheet at root */}
+  </>
+)
 ```
-firstName: the candidate's given name(s). In Spanish/Portuguese names this is
-  often two tokens (e.g. "María José"). In most other locales it is one token.
-lastName: the candidate's family name(s). In Spanish/Portuguese names this is
-  typically two surnames (paternal + maternal, e.g. "García López"). Particles
-  like "de", "del", "la", "van", "von", "der" belong with the surname they
-  precede. Single-name candidates: put the only token in firstName, leave
-  lastName empty.
-```
 
-Keep returning `name` (full) for backward compatibility with all existing consumers (bulk upload, enrichment trigger, candidate updates).
+This:
+- Aligns the outer chrome (inset, rounded, shadow) with the in-job profile so width feels identical.
+- Removes the nested-Sheet stacking so the Edit `CandidateFormSheet` opens as the same right-side sheet recruiters see from the in-job profile.
+- Move `<CandidateFormSheet>` out of the nested layout into the outer fragment so it portals from the root, exactly like in-job (`CandidateProfileSheet.tsx` line ~1897).
+- Close ("X") affordance: replace the missing built-in `<SheetContent>` close button with a small ghost icon `Button` in the header row (`X` from lucide), wired to `onOpenChange(false)` — same pattern the in-job sheet uses via its hero card's `onClose`.
 
-**Heuristic fallback (only if AI omits the split).** Pure client-side in a new helper `src/utils/nameSplit.ts`:
+### 2. Align the content widths/grid to the in-job profile
 
-1. Trim, collapse whitespace, tokenize on spaces.
-2. 0 tokens → both empty. 1 token → first = token, last = "".
-3. 2 tokens → first = t[0], last = t[1].
-4. 3 tokens → if any token is a Spanish/Portuguese particle (`de`, `del`, `la`, `las`, `los`, `da`, `do`, `dos`, `das`, `van`, `von`, `der`, `di`, `du`, `le`) → first = t[0], last = t[1..2]; else → first = t[0..1], last = t[2].
-5. 4+ tokens → first = first half (rounded down, min 1), last = the rest, with particles always glued forward to the next token.
+Inside the new container, mirror the in-job structure:
 
-This is a fallback only; the LLM's split wins whenever present.
+- Header band (current `SheetHeader` block): wrap in `<div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 space-y-3 mb-3">…</div>` and keep the existing hero content (name, badges, action buttons, prev/next). No job-specific bits (no stage strip, no Advance, no applied-at) — Independent has no job context, so this stays light but uses the same outer container/padding rhythm.
+- Scroll area: `<div className="flex-1 min-h-0 overflow-y-auto"><div className="pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]">…</div></div>`
+- Replace the current `grid-cols-1 lg:grid-cols-2 gap-6` with `grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4` so cards width-match the in-job profile.
+  - Left column keeps its current children (CandidateNameCard / Resume / Overview accordions / Tabs content), wrapped in `space-y-4 min-w-0`.
+  - Right column hosts the existing "sidebar-ish" cards (today's right-column content of the Independent profile: CandidateAttachments, CandidateUrls, etc.), wrapped in `space-y-4 min-w-0`. Anything that's currently in the right column of the 50/50 grid moves here unchanged.
+- Keep the existing `CandidateJobSidebar` (left rail) as-is; the in-job profile no longer renders one, but in Independent it's the only way to switch between jobs, so it stays.
 
-## Files to change
+### 3. Don't change behavior, data, or other components
 
-1. **`supabase/functions/parse-resume/index.ts`**
-   - Extend both AI prompts (core + full) and the JSON schema to also request `firstName` / `lastName`.
-   - Add `firstName?: string; lastName?: string` to the `ParsedResume` type returned by the function.
-   - Trim values in the post-process step alongside `parsed.name`.
+- No changes to `CandidateFormSheet`, `CandidateProfileSheet`, hooks, or DB.
+- Mobile job selector, loading skeleton, AI enrich, Download, Add-to-pipeline, navigation prev/next, schedule sheet — all keep their existing props and handlers; only their wrapper layout moves into the new containers.
 
-2. **`src/hooks/useResumeParsing.ts`**
-   - Add `firstName?` / `lastName?` to the `ParsedResume`/result types so the values reach the form.
-   - No other behavior change (existing callers keep using `parsed.name`).
+## Files touched
 
-3. **`src/utils/nameSplit.ts`** (new)
-   - `splitFullName(full: string): { first: string; last: string }` implementing the heuristic above.
-   - `composeFullName(first: string, last: string): string` that trims/collapses to one space.
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — outer wrapper swap, header wrapping, content wrapper and grid swap, move `<CandidateFormSheet>` to the outer fragment, add a `X` close button in the header row.
 
-4. **`src/components/candidates/CandidateFormSheet.tsx`**
-   - Form state: rename the registered field from `candidate_name` to `first_name` and register a new `last_name` field. Wire the existing "Last name" input (currently a dead placeholder at line ~772) to `form.register('last_name')`. Update the form's default-values shape, the `useForm` generic, and the `candidate?.candidate_name` initializer to call `splitFullName(candidate.candidate_name)`.
-   - Resume-parse handler (around lines 559–564): prefer `parsed.firstName`/`parsed.lastName` when present; otherwise call `splitFullName(parsed.name)`. Set both `first_name` and `last_name`.
-   - On submit (the existing create/update path): build `candidate_name = composeFullName(first_name, last_name)` and send that to the existing mutation; everything downstream (insert/update, enrichment trigger that reads `form.getValues('candidate_name')` at line 441) keeps working unchanged — replace that read with `composeFullName(...)` too.
-   - Validation: require `first_name`; `last_name` optional (matches the current "Name is required" rule and supports mononyms).
-   - Sheet title fallback (line ~665): use `composeFullName(...)` instead of `candidate.candidate_name` when previewing.
-
-5. **No change** to bulk CSV import, enrichment, or any list/table view — they continue to read/write `candidate_name`.
-
-## Out of scope
-
-- Adding `first_name` / `last_name` columns to `candidates` (explicitly chosen: keep single column).
-- Changing how names render in lists, kanban, profile headers, emails — they keep using `candidate_name`.
-- Auto re-splitting names that were saved before this change; they'll split on next open via the heuristic, which the recruiter can correct inline.
+No other files change.
 
 ## Validation
 
-- Upload a LATAM resume ("María José García López") → First: "María José", Last: "García López".
-- Upload a single-given-name resume ("Allan Bravo") → First: "Allan", Last: "Bravo".
-- Upload a mononym ("Madonna") → First: "Madonna", Last: empty, submit succeeds.
-- Particle case ("Juan de la Cruz") → First: "Juan", Last: "de la Cruz".
-- Edit an existing candidate whose `candidate_name` is "Ana Rodríguez Pérez" → fields prefilled "Ana" / "Rodríguez Pérez", save round-trips identically.
+- Open a candidate from `/candidates` (no job): outer card has the same inset, radius, shadow, and width as opening one from a job pipeline.
+- Cards inside (Overview, Resume, Skills, Experience) render at the same width as the in-job profile (`max-w-[1400px]` with `[minmax(0,1fr)_320px]` grid).
+- Click **Edit** in Independent: the right-side `CandidateFormSheet` slides in cleanly — identical to what the in-job Edit button shows.
+- Prev/Next, Download, AI Enrich, Add to pipeline, job sidebar selection, mobile job selector all continue to work.
+- Closing via the new `X` calls `onOpenChange(false)`; Escape still closes (handled by the same fixed container's keydown is not native — keep current Esc handler if there is one, otherwise rely on the X button + the Candidates page route close).

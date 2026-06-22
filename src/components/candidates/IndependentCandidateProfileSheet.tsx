@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { CandidateProfileSkeleton } from './CandidateProfileSkeleton'
 import { useNavigate } from 'react-router-dom'
-import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
+import { cn } from '@/lib/utils'
 import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
@@ -18,7 +18,7 @@ import { CandidateCertificationsComponent, CandidateCertification } from '@/comp
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { MobileJobSelector } from '@/components/candidates/MobileJobSelector'
-import { Edit, FileText, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Sparkles, Globe, Loader2, Briefcase, Award, TrendingUp, MapPin, DollarSign } from 'lucide-react'
+import { Edit, FileText, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Sparkles, Globe, Loader2, Briefcase, Award, TrendingUp, MapPin, DollarSign, X } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -223,10 +223,11 @@ export function IndependentCandidateProfileSheet({
     }
   }
 
+  if (!open) return null
+
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
+      <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
         <div className="flex h-full w-full">
           {/* Job Associations Sidebar - desktop only, fixed outside scroll */}
           {candidateId && (
@@ -246,7 +247,7 @@ export function IndependentCandidateProfileSheet({
               </div>
             ) : (
               <>
-            <SheetHeader className="p-6 border-b">
+            <div className="layout-container pt-3 pb-3 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
@@ -336,12 +337,22 @@ export function IndependentCandidateProfileSheet({
                     <span className="hidden sm:inline">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 ml-1 text-text-secondary hover:text-text-primary"
+                    onClick={() => onOpenChange(false)}
+                    title="Close"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            </SheetHeader>
+            </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-                <div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]">
                   {/* Mobile Job Selector - show on small screens */}
                   {candidateId && (
                     <div className="lg:hidden mb-6">
@@ -354,9 +365,9 @@ export function IndependentCandidateProfileSheet({
                   )}
                   
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume')}>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left column (50%) */}
-                    <div className="space-y-6 min-w-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+                    {/* Left column */}
+                    <div className="space-y-4 min-w-0">
 
                       <CandidateNameCard
                         email={candidate.email}
@@ -544,7 +555,7 @@ export function IndependentCandidateProfileSheet({
                     </div>
 
                     {/* Right column - Candidate details cards */}
-                    <div className="space-y-6">
+                    <div className="space-y-4 min-w-0">
                       {/* Candidate Details */}
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
@@ -780,13 +791,6 @@ export function IndependentCandidateProfileSheet({
               </div>
               </>
               )}
-              <CandidateFormSheet
-                isOpen={editOpen}
-                onClose={() => setEditOpen(false)}
-                onSubmit={handleUpdateCandidate}
-                candidate={candidate}
-                isLoading={editLoading}
-              />
             </div>
         </div>
 
@@ -802,8 +806,14 @@ export function IndependentCandidateProfileSheet({
               organizationId={organizationId}
             />
           )}
-        </SheetContent>
-      </Sheet>
+        </div>
+      <CandidateFormSheet
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSubmit={handleUpdateCandidate}
+        candidate={candidate}
+        isLoading={editLoading}
+      />
       {candidate && (
         <CandidateProfileDownloadDialog
           open={downloadDialogOpen}
