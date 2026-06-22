@@ -247,7 +247,7 @@ export function IndependentCandidateProfileSheet({
               </div>
             ) : (
               <>
-            <SheetHeader className="p-6 border-b">
+            <div className="layout-container pt-3 pb-3 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
