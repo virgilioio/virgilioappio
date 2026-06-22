@@ -64,7 +64,8 @@ interface CandidateFormSheetProps {
 }
 
 interface FormData {
-  candidate_name: string
+  first_name: string
+  last_name: string
   location_country: string
   location_state: string
   location_city: string
