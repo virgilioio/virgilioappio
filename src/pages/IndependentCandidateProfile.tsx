@@ -32,7 +32,7 @@ import { CandidateEducationComponent, type CandidateEducation } from '@/componen
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
-import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
+import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
 
 import { useIndependentCandidates, type IndependentCandidate } from '@/hooks/useIndependentCandidates'
