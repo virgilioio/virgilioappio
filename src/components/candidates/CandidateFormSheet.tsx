@@ -564,9 +564,22 @@ export function CandidateFormSheet({
       if (result?.resumeText) setCapturedResumeText(result.resumeText)
       let count = 0
       if (parsed) {
-        if (parsed.name) {
-          form.setValue('candidate_name', parsed.name)
-          count++
+        if (parsed.firstName || parsed.lastName || parsed.name) {
+          let first = (parsed.firstName ?? '').trim()
+          let last = (parsed.lastName ?? '').trim()
+          if (!first && !last && parsed.name) {
+            const split = splitFullName(parsed.name)
+            first = split.first
+            last = split.last
+          }
+          if (first) {
+            form.setValue('first_name', first)
+            count++
+          }
+          if (last) {
+            form.setValue('last_name', last)
+            count++
+          }
         }
         if (parsed.email) {
           form.setValue('email', parsed.email)
