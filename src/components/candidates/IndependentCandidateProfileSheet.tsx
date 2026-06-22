@@ -555,7 +555,7 @@ export function IndependentCandidateProfileSheet({
                     </div>
 
                     {/* Right column - Candidate details cards */}
-                    <div className="space-y-6">
+                    <div className="space-y-4 min-w-0">
                       {/* Candidate Details */}
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
