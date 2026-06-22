@@ -781,13 +781,6 @@ export function IndependentCandidateProfileSheet({
               </div>
               </>
               )}
-              <CandidateFormSheet
-                isOpen={editOpen}
-                onClose={() => setEditOpen(false)}
-                onSubmit={handleUpdateCandidate}
-                candidate={candidate}
-                isLoading={editLoading}
-              />
             </div>
         </div>
 
@@ -803,8 +796,15 @@ export function IndependentCandidateProfileSheet({
               organizationId={organizationId}
             />
           )}
-        </SheetContent>
-      </Sheet>
+        </div>
+      </div>
+      <CandidateFormSheet
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSubmit={handleUpdateCandidate}
+        candidate={candidate}
+        isLoading={editLoading}
+      />
       {candidate && (
         <CandidateProfileDownloadDialog
           open={downloadDialogOpen}
