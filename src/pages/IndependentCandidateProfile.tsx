@@ -662,10 +662,11 @@ export default function IndependentCandidateProfile() {
                 {sidebar}
               </div>
             </div>
+            </div>
           </div>
 
           {/* ── Dialogs ── */}
-          <IndependentCandidateForm
+          <CandidateFormSheet
             isOpen={isFormOpen}
             onClose={() => setIsFormOpen(false)}
             onSubmit={async (data: any) => {
@@ -673,8 +674,7 @@ export default function IndependentCandidateProfile() {
               setIsFormOpen(false)
             }}
             isLoading={candidatesLoading}
-            initialData={candidate}
-            title="Edit candidate"
+            candidate={candidate as any}
           />
 
           {addToPipelineOpen && (
