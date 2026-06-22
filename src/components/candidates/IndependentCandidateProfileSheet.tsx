@@ -223,10 +223,11 @@ export function IndependentCandidateProfileSheet({
     }
   }
 
+  if (!open) return null
+
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
+      <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
         <div className="flex h-full w-full">
           {/* Job Associations Sidebar - desktop only, fixed outside scroll */}
           {candidateId && (
