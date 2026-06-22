@@ -153,7 +153,8 @@ export function CandidateFormSheet({
 
   const form = useForm<FormData>({
     defaultValues: {
-      candidate_name: '',
+      first_name: '',
+      last_name: '',
       location_country: '',
       location_state: '',
       location_city: '',
