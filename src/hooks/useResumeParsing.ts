@@ -10,6 +10,8 @@ import { sanitizeToE164 } from '@/utils/phoneUtils';
 
 export type ParsedResume = {
   name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
   phone?: string;
   linkedinUrl?: string;
