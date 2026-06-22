@@ -343,7 +343,7 @@ export function IndependentCandidateProfileSheet({
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]">
+                <div className="layout-container pb-10 pt-4 mx-auto w-full">
                   {/* Mobile Job Selector - show on small screens */}
                   {candidateId && (
                     <div className="lg:hidden mb-6">
