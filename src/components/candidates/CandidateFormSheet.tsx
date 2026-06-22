@@ -488,8 +488,10 @@ export function CandidateFormSheet({
       normalizedLinkedInUrl = `https://${normalizedLinkedInUrl}`
     }
 
+    const composedName = composeFullName(data.first_name, data.last_name)
     const submitData = {
       ...data,
+      candidate_name: composedName,
       email: data.email?.trim() ? data.email.trim() : null,
       phone: data.phone?.trim() ? sanitizeToE164(data.phone.trim()) : null,
       linkedin_url: normalizedLinkedInUrl || null,
