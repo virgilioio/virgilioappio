@@ -797,7 +797,6 @@ export function IndependentCandidateProfileSheet({
             />
           )}
         </div>
-      </div>
       <CandidateFormSheet
         isOpen={editOpen}
         onClose={() => setEditOpen(false)}
