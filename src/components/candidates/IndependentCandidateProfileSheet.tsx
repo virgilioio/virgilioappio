@@ -227,17 +227,8 @@ export function IndependentCandidateProfileSheet({
 
   return (
     <>
-      <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
-        <div className="flex h-full w-full">
-          {/* Job Associations Sidebar - desktop only, fixed outside scroll */}
-          {candidateId && (
-            <CandidateJobSidebar
-              candidateId={candidateId}
-              currentJobId=""
-              onJobSelect={handleJobSelect}
-              className="hidden lg:flex"
-            />
-          )}
+      <div className="fixed inset-x-0 top-14 bottom-0 sm:left-[5.5rem] z-40 h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+        <div className="flex w-full flex-1 min-h-0">
 
           {/* Main Profile Content */}
           <div className="flex-1 flex flex-col min-w-0">
@@ -247,7 +238,7 @@ export function IndependentCandidateProfileSheet({
               </div>
             ) : (
               <>
-            <div className="layout-container pt-3 pb-3 border-b">
+            <div className="layout-container pt-2 pb-3 sm:pt-3 sm:pb-4 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
@@ -352,7 +343,7 @@ export function IndependentCandidateProfileSheet({
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]">
+                <div className="layout-container pb-10 pt-4 mx-auto w-full">
                   {/* Mobile Job Selector - show on small screens */}
                   {candidateId && (
                     <div className="lg:hidden mb-6">

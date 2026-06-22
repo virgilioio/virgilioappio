@@ -1,71 +1,58 @@
 
-## Goal
+## Diagnosis (why widths still differ)
 
-Make the Independent (no-job) candidate profile match the in-job profile in **layout dimensions** (page width, hero card width, content column widths, paddings) and use the **same Edit experience** — the existing `CandidateFormSheet` opening cleanly as a right-side sheet, not as a nested/dialog-looking surface.
+Re-comparing the two surfaces the user sees:
 
-## Diagnosis
+- **In-job** (`/jobs/:jobId/candidates/:id`) renders `CandidateProfileSheet` with `asPage`. Outer chrome is full-viewport (`h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden`), there is **no left rail**, and the scroll inner wrapper uses `layout-container pb-10 mx-auto w-full` (max-width = `--layout-max-width` = **1500px**, with `--spacing-lg` side padding).
+- **Independent** (after my last change) uses the inset-card chrome (`fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] … rounded-2xl ring-1 shadow-calendly`), still keeps the `CandidateJobSidebar` left rail (eats ~240–280px on `lg+`), and the scroll inner wrapper uses `max-w-[1400px]`.
 
-`src/components/candidates/CandidateProfileSheet.tsx` (in-job) is **not** wrapped in a Radix `<Sheet>`. It renders as a fixed-positioned `<div>` with:
-- Outer chrome: `fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly`
-- Hero band wrapped in `layout-container pt-1 pb-2 sm:pt-2 sm:pb-3`
-- Content scroll area wrapped in `pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]`
-- Content grid: `grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4`
+Three concrete reasons the cards look narrower in Independent:
+1. `max-w-[1400px]` vs `layout-container` (1500px).
+2. The persistent left rail (`CandidateJobSidebar`) consumes horizontal space before the 1400px centered area is computed.
+3. The outer card insets (`left-[5.5rem] right-3` instead of full-width) further shrink the available area on the right.
 
-`src/components/candidates/IndependentCandidateProfileSheet.tsx` instead wraps everything in `<Sheet><SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0">`. That:
-- Produces a different overall width/inset than the in-job page (96vw vs the inset card).
-- Uses a 50/50 grid (`grid-cols-1 lg:grid-cols-2`) with `p-6`, so cards render visibly wider than the in-job 1fr+320px grid inside a 1400px max container.
-- Causes the nested `<CandidateFormSheet>` (also a right-side Radix Sheet) to render inside another Sheet portal stack — which is what the user sees as a "dialog box" instead of the clean right-side edit sheet they get from the in-job profile.
+## Fix (frontend layout only)
 
-## Fix (frontend-only, presentation)
+All changes scoped to `src/components/candidates/IndependentCandidateProfileSheet.tsx`. No logic, hooks, or other files touched.
 
-### 1. Drop the outer Sheet wrapper in `IndependentCandidateProfileSheet.tsx`
+### 1. Match the in-job `asPage` chrome
 
-Replace `<Sheet open={open} onOpenChange={onOpenChange}><SheetContent …>` and its closing tags with the same fixed-positioned container the in-job profile uses, gated by `open`:
+Replace the inset rounded-card wrapper with the same full-viewport flex column the in-job profile uses:
 
 ```tsx
-if (!open) return null
-return (
-  <>
-    <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
-      <div className="flex h-full w-full">…</div>
-    </div>
-    {/* CandidateFormSheet, CandidateProfileDownloadDialog, SimpleScheduleInterviewSheet at root */}
-  </>
-)
+<div className="fixed inset-0 z-40 h-[100dvh] sm:h-[calc(100dvh-3.5rem)] sm:top-14 flex flex-col bg-background overflow-hidden">
+  <div className="flex w-full flex-1 min-h-0">
+    …
+  </div>
+</div>
 ```
 
-This:
-- Aligns the outer chrome (inset, rounded, shadow) with the in-job profile so width feels identical.
-- Removes the nested-Sheet stacking so the Edit `CandidateFormSheet` opens as the same right-side sheet recruiters see from the in-job profile.
-- Move `<CandidateFormSheet>` out of the nested layout into the outer fragment so it portals from the root, exactly like in-job (`CandidateProfileSheet.tsx` line ~1897).
-- Close ("X") affordance: replace the missing built-in `<SheetContent>` close button with a small ghost icon `Button` in the header row (`X` from lucide), wired to `onOpenChange(false)` — same pattern the in-job sheet uses via its hero card's `onClose`.
+This gives Independent the same vertical sizing and (after step 2) the same horizontal area as in-job.
 
-### 2. Align the content widths/grid to the in-job profile
+### 2. Remove the persistent left rail; surface job switching in the header
 
-Inside the new container, mirror the in-job structure:
+`CandidateJobSidebar` is dropped from the main flex row. To keep the ability to switch between the candidate's jobs, the header band gets a compact **"Open in job"** action — a small `DropdownMenu` button (Briefcase icon) whose items come from the existing `useCandidateJobs(candidateId)` hook the sidebar already uses. Selecting an entry calls the same `handleJobSelect(jobId)` we have today (navigates to `/jobs/:jobId/candidates/:candidateId`).
 
-- Header band (current `SheetHeader` block): wrap in `<div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 space-y-3 mb-3">…</div>` and keep the existing hero content (name, badges, action buttons, prev/next). No job-specific bits (no stage strip, no Advance, no applied-at) — Independent has no job context, so this stays light but uses the same outer container/padding rhythm.
-- Scroll area: `<div className="flex-1 min-h-0 overflow-y-auto"><div className="pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]">…</div></div>`
-- Replace the current `grid-cols-1 lg:grid-cols-2 gap-6` with `grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4` so cards width-match the in-job profile.
-  - Left column keeps its current children (CandidateNameCard / Resume / Overview accordions / Tabs content), wrapped in `space-y-4 min-w-0`.
-  - Right column hosts the existing "sidebar-ish" cards (today's right-column content of the Independent profile: CandidateAttachments, CandidateUrls, etc.), wrapped in `space-y-4 min-w-0`. Anything that's currently in the right column of the 50/50 grid moves here unchanged.
-- Keep the existing `CandidateJobSidebar` (left rail) as-is; the in-job profile no longer renders one, but in Independent it's the only way to switch between jobs, so it stays.
+`MobileJobSelector` (the mobile-only inline selector) is kept on `lg:hidden` widths as today — no change.
 
-### 3. Don't change behavior, data, or other components
+### 3. Use `layout-container` for both header and scroll inner wrapper
 
-- No changes to `CandidateFormSheet`, `CandidateProfileSheet`, hooks, or DB.
-- Mobile job selector, loading skeleton, AI enrich, Download, Add-to-pipeline, navigation prev/next, schedule sheet — all keep their existing props and handlers; only their wrapper layout moves into the new containers.
+- Header band: `layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 space-y-3 mb-3 border-b` (mirrors in-job).
+- Scroll inner: `layout-container pb-10 mx-auto w-full` (drop the `max-w-[1400px]`/`px-4 sm:px-6 pt-4` shorthand). Add `pt-4` after the container utility if needed for the same top breathing room as in-job.
+- Keep `grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4` (already matches in-job).
+
+### 4. Keep everything else
+
+- `<CandidateFormSheet>` stays at the outer fragment root (already done) → Edit slides in the same right-side sheet as in-job.
+- `X` close button stays in the header right-cluster, wired to `onOpenChange(false)`.
+- Loading skeleton, AI Enrich, Download, Add to pipeline, Prev/Next, schedule sheet — unchanged.
 
 ## Files touched
 
-- `src/components/candidates/IndependentCandidateProfileSheet.tsx` — outer wrapper swap, header wrapping, content wrapper and grid swap, move `<CandidateFormSheet>` to the outer fragment, add a `X` close button in the header row.
-
-No other files change.
+- `src/components/candidates/IndependentCandidateProfileSheet.tsx` only.
 
 ## Validation
 
-- Open a candidate from `/candidates` (no job): outer card has the same inset, radius, shadow, and width as opening one from a job pipeline.
-- Cards inside (Overview, Resume, Skills, Experience) render at the same width as the in-job profile (`max-w-[1400px]` with `[minmax(0,1fr)_320px]` grid).
-- Click **Edit** in Independent: the right-side `CandidateFormSheet` slides in cleanly — identical to what the in-job Edit button shows.
-- Prev/Next, Download, AI Enrich, Add to pipeline, job sidebar selection, mobile job selector all continue to work.
-- Closing via the new `X` calls `onOpenChange(false)`; Escape still closes (handled by the same fixed container's keydown is not native — keep current Esc handler if there is one, otherwise rely on the X button + the Candidates page route close).
+- Open `/candidates?openCandidate=<id>` and the same candidate via `/jobs/<jobId>/candidates/<id>` side by side at 1280–1440px wide. The hero band, content area, left card column, and right 320px column all measure identically — both centered inside a 1500px `layout-container` with `--spacing-lg` side padding. No left rail in either surface.
+- The "Open in job" dropdown in Independent lists the candidate's jobs and navigates to the in-job route on select.
+- Edit still opens the `CandidateFormSheet` from the root (unchanged behavior).
