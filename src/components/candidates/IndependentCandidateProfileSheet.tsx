@@ -227,7 +227,7 @@ export function IndependentCandidateProfileSheet({
 
   return (
     <>
-      <div className="fixed inset-x-0 top-14 bottom-0 z-40 h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+      <div className="fixed inset-x-0 top-14 bottom-0 sm:left-[5.5rem] z-40 h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
         <div className="flex w-full flex-1 min-h-0">
 
           {/* Main Profile Content */}
