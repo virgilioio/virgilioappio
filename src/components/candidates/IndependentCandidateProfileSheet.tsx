@@ -351,8 +351,8 @@ export function IndependentCandidateProfileSheet({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-                <div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="pb-10 mx-auto w-full px-4 sm:px-6 pt-4 max-w-[1400px]">
                   {/* Mobile Job Selector - show on small screens */}
                   {candidateId && (
                     <div className="lg:hidden mb-6">
@@ -365,9 +365,9 @@ export function IndependentCandidateProfileSheet({
                   )}
                   
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'resume')}>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left column (50%) */}
-                    <div className="space-y-6 min-w-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+                    {/* Left column */}
+                    <div className="space-y-4 min-w-0">
 
                       <CandidateNameCard
                         email={candidate.email}
