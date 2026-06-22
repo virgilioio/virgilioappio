@@ -777,18 +777,26 @@ export function CandidateFormSheet({
                 <FormField
                   label="First name"
                   required
-                  error={form.formState.errors.candidate_name?.message}
-                  htmlFor="candidate_name"
+                  error={form.formState.errors.first_name?.message}
+                  htmlFor="first_name"
                 >
                   <Input
-                    id="candidate_name"
-                    {...form.register('candidate_name', { required: 'Name is required' })}
+                    id="first_name"
+                    {...form.register('first_name', { required: 'First name is required' })}
                     placeholder="Lena"
                   />
                 </FormField>
 
-                <FormField label="Last name" htmlFor="last_name">
-                  <Input id="last_name" placeholder="Park" />
+                <FormField
+                  label="Last name"
+                  error={form.formState.errors.last_name?.message}
+                  htmlFor="last_name"
+                >
+                  <Input
+                    id="last_name"
+                    {...form.register('last_name')}
+                    placeholder="Park"
+                  />
                 </FormField>
 
                 <FormField
