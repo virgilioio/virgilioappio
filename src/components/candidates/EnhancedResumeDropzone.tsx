@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils'
 
 export interface ParsedResumeData {
   name?: string
+  firstName?: string
+  lastName?: string
   email?: string
   phone?: string
   linkedinUrl?: string

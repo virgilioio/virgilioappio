@@ -49,6 +49,7 @@ import { SkillsSection } from './form/SkillsSection'
 import { ProfileSummarySection } from './form/ProfileSummarySection'
 import { FooterStatusLine } from './form/FooterStatusLine'
 import type { ParsedResumeData } from './EnhancedResumeDropzone'
+import { splitFullName, composeFullName } from '@/utils/nameSplit'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
@@ -64,7 +65,8 @@ interface CandidateFormSheetProps {
 }
 
 interface FormData {
-  candidate_name: string
+  first_name: string
+  last_name: string
   location_country: string
   location_state: string
   location_city: string
@@ -152,7 +154,8 @@ export function CandidateFormSheet({
 
   const form = useForm<FormData>({
     defaultValues: {
-      candidate_name: '',
+      first_name: '',
+      last_name: '',
       location_country: '',
       location_state: '',
       location_city: '',
@@ -186,8 +189,10 @@ export function CandidateFormSheet({
       const candidateChanged = currentCandidateId !== candidate.id
       if (candidateChanged || currentCandidateId === null) {
         setCurrentCandidateId(candidate.id)
+        const { first: hydratedFirst, last: hydratedLast } = splitFullName(candidate.candidate_name)
         form.reset({
-          candidate_name: candidate.candidate_name || '',
+          first_name: hydratedFirst,
+          last_name: hydratedLast,
           location_country: candidate.location_country || '',
           location_state: candidate.location_state || '',
           location_city: candidate.location_city || '',
@@ -272,7 +277,8 @@ export function CandidateFormSheet({
 
   const resetFormState = () => {
     form.reset({
-      candidate_name: '',
+      first_name: '',
+      last_name: '',
       location_country: '',
       location_state: '',
       location_city: '',
@@ -438,7 +444,7 @@ export function CandidateFormSheet({
         }
       }
       if (candidateId && capturedResumeText) {
-        triggerBackgroundEnrichment(candidateId, capturedResumeText, form.getValues('candidate_name'))
+        triggerBackgroundEnrichment(candidateId, capturedResumeText, composeFullName(form.getValues('first_name'), form.getValues('last_name')))
         setCapturedResumeText('')
       }
       clearPersistedData()
@@ -482,8 +488,10 @@ export function CandidateFormSheet({
       normalizedLinkedInUrl = `https://${normalizedLinkedInUrl}`
     }
 
+    const composedName = composeFullName(data.first_name, data.last_name)
     const submitData = {
       ...data,
+      candidate_name: composedName,
       email: data.email?.trim() ? data.email.trim() : null,
       phone: data.phone?.trim() ? sanitizeToE164(data.phone.trim()) : null,
       linkedin_url: normalizedLinkedInUrl || null,
@@ -558,9 +566,22 @@ export function CandidateFormSheet({
       if (result?.resumeText) setCapturedResumeText(result.resumeText)
       let count = 0
       if (parsed) {
-        if (parsed.name) {
-          form.setValue('candidate_name', parsed.name)
-          count++
+        if (parsed.firstName || parsed.lastName || parsed.name) {
+          let first = (parsed.firstName ?? '').trim()
+          let last = (parsed.lastName ?? '').trim()
+          if (!first && !last && parsed.name) {
+            const split = splitFullName(parsed.name)
+            first = split.first
+            last = split.last
+          }
+          if (first) {
+            form.setValue('first_name', first)
+            count++
+          }
+          if (last) {
+            form.setValue('last_name', last)
+            count++
+          }
         }
         if (parsed.email) {
           form.setValue('email', parsed.email)
@@ -758,18 +779,26 @@ export function CandidateFormSheet({
                 <FormField
                   label="First name"
                   required
-                  error={form.formState.errors.candidate_name?.message}
-                  htmlFor="candidate_name"
+                  error={form.formState.errors.first_name?.message}
+                  htmlFor="first_name"
                 >
                   <Input
-                    id="candidate_name"
-                    {...form.register('candidate_name', { required: 'Name is required' })}
+                    id="first_name"
+                    {...form.register('first_name', { required: 'First name is required' })}
                     placeholder="Lena"
                   />
                 </FormField>
 
-                <FormField label="Last name" htmlFor="last_name">
-                  <Input id="last_name" placeholder="Park" />
+                <FormField
+                  label="Last name"
+                  error={form.formState.errors.last_name?.message}
+                  htmlFor="last_name"
+                >
+                  <Input
+                    id="last_name"
+                    {...form.register('last_name')}
+                    placeholder="Park"
+                  />
                 </FormField>
 
                 <FormField

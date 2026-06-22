@@ -89,6 +89,8 @@ type ParseRequest = {
 
 type ParseResult = {
   name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
   phone?: string;
   linkedinUrl?: string;
@@ -165,10 +167,12 @@ async function aiExtractCoreFields(text: string, fileName?: string): Promise<Par
   const systemPrompt = `You are an expert ATS resume parser. Extract contact and current-role information from this resume.
 
 Return ONLY valid JSON with these exact fields:
-{"name": "string or null", "email": "string or null", "phone": "string or null", "linkedinUrl": "string or null", "location": "string or null", "currentRole": "string or null", "currentCompany": "string or null", "yearsExperience": number or null}
+{"name": "string or null", "firstName": "string or null", "lastName": "string or null", "email": "string or null", "phone": "string or null", "linkedinUrl": "string or null", "location": "string or null", "currentRole": "string or null", "currentCompany": "string or null", "yearsExperience": number or null}
 
 EXTRACTION RULES:
-- name: Full name of the candidate. Look at the very top of the resume, headers, and any "Name:" fields.
+- name: Full name of the candidate exactly as written. Look at the very top of the resume, headers, and any "Name:" fields.
+- firstName: The candidate's given name(s) only. In Spanish/Portuguese/LATAM names this is often TWO tokens (e.g. "María José", "Juan Carlos", "Ana Lucía"). In most other locales it is one token (e.g. "Allan"). Never include surnames here.
+- lastName: The candidate's family name(s) only. In Spanish/Portuguese/LATAM names this is typically TWO surnames — paternal + maternal (e.g. "García López", "Rodríguez Pérez"). Surname particles like "de", "del", "la", "las", "los", "da", "do", "dos", "van", "von", "der", "di", "du", "le" MUST stay attached to the surname (e.g. "de la Cruz", "van der Berg"). For mononyms, leave lastName null.
 - email: Primary contact email address.
 - phone: Phone number in E.164 format with country code, no spaces or dashes (e.g., +5213332555660, +14155551234). Always include country code based on resume context/location.
 - linkedinUrl: Full LinkedIn profile URL. Check headers, footers, contact sections. Format as https://linkedin.com/in/username
@@ -176,6 +180,8 @@ EXTRACTION RULES:
 - currentRole: The candidate's most recent job title (top of the Experience section, or the role marked "Present"/"Current"). Just the title, e.g. "Senior Product Manager".
 - currentCompany: The company name for that most recent role. Just the company name, no city/dates.
 - yearsExperience: Integer total years of professional experience. If not explicitly stated, infer from the earliest professional start date to today, rounded to the nearest whole year. Null if you cannot determine it with confidence — DO NOT GUESS.
+
+CRITICAL: firstName + lastName concatenated with a single space MUST equal name. If you cannot confidently split, still return name and set firstName/lastName to null.
 
 BE THOROUGH: Check ALL sections including headers, footers, sidebars, and contact blocks.
 If a field is not found, set it to null. Never invent data.
@@ -243,6 +249,8 @@ Return ONLY the JSON object, no markdown, no commentary.`;
 
     // Cleanup
     if (parsed.name) parsed.name = parsed.name.trim();
+    if (parsed.firstName) parsed.firstName = parsed.firstName.trim();
+    if (parsed.lastName) parsed.lastName = parsed.lastName.trim();
     if (parsed.linkedinUrl) parsed.linkedinUrl = parsed.linkedinUrl.trim();
     if (parsed.location) parsed.location = parsed.location.trim();
     
@@ -280,11 +288,13 @@ async function aiExtractFull(text: string, fileName?: string): Promise<ParseResu
 
   const system = `You are an expert ATS resume parser.
 Return ONLY valid JSON with these exact fields:
-{name: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional, currentRole: string|optional, currentCompany: string|optional, yearsExperience: number|optional}
+{name: string|optional, firstName: string|optional, lastName: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional, currentRole: string|optional, currentCompany: string|optional, yearsExperience: number|optional}
 
 CRITICAL: Extract ALL available fields. Do not omit fields even if confidence is medium.
 
 - name: the candidate's full name if confidently found; otherwise omit.
+- firstName: the candidate's given name(s) only. In Spanish/Portuguese/LATAM names this is often TWO tokens (e.g. "María José"). In most other locales it is one token. Never include surnames here.
+- lastName: the candidate's family name(s) only. In Spanish/Portuguese/LATAM names this is typically TWO surnames — paternal + maternal (e.g. "García López"). Particles like "de", "del", "la", "van", "von", "der" MUST stay attached to the surname (e.g. "de la Cruz"). Omit for mononyms.
 - email: a primary contact email if present.
 - phone: a primary phone in E.164 format with country code, no spaces or dashes (e.g., +5213332555660). Always include country code.
 - linkedinUrl: IMPORTANT - Full LinkedIn profile URL if present anywhere in the resume (e.g., https://linkedin.com/in/username). Check headers, contact sections, and links carefully.
@@ -405,6 +415,8 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
 
   // Minimal cleanup
   if (parsed.name) parsed.name = parsed.name.trim();
+  if (parsed.firstName) parsed.firstName = parsed.firstName.trim();
+  if (parsed.lastName) parsed.lastName = parsed.lastName.trim();
   if (parsed.linkedinUrl) parsed.linkedinUrl = parsed.linkedinUrl.trim();
   if (parsed.location) parsed.location = parsed.location.trim();
   if (parsed.profileSummary) parsed.profileSummary = parsed.profileSummary.trim();
