@@ -415,6 +415,8 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
 
   // Minimal cleanup
   if (parsed.name) parsed.name = parsed.name.trim();
+  if (parsed.firstName) parsed.firstName = parsed.firstName.trim();
+  if (parsed.lastName) parsed.lastName = parsed.lastName.trim();
   if (parsed.linkedinUrl) parsed.linkedinUrl = parsed.linkedinUrl.trim();
   if (parsed.location) parsed.location = parsed.location.trim();
   if (parsed.profileSummary) parsed.profileSummary = parsed.profileSummary.trim();
