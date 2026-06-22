@@ -444,7 +444,7 @@ export function CandidateFormSheet({
         }
       }
       if (candidateId && capturedResumeText) {
-        triggerBackgroundEnrichment(candidateId, capturedResumeText, form.getValues('candidate_name'))
+        triggerBackgroundEnrichment(candidateId, capturedResumeText, composeFullName(form.getValues('first_name'), form.getValues('last_name')))
         setCapturedResumeText('')
       }
       clearPersistedData()
