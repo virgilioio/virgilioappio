@@ -227,17 +227,8 @@ export function IndependentCandidateProfileSheet({
 
   return (
     <>
-      <div className="fixed top-[4.5rem] left-3 right-3 bottom-3 sm:left-[5.5rem] z-40 bg-background overflow-hidden rounded-2xl ring-1 ring-virgilio-border/60 shadow-calendly">
-        <div className="flex h-full w-full">
-          {/* Job Associations Sidebar - desktop only, fixed outside scroll */}
-          {candidateId && (
-            <CandidateJobSidebar
-              candidateId={candidateId}
-              currentJobId=""
-              onJobSelect={handleJobSelect}
-              className="hidden lg:flex"
-            />
-          )}
+      <div className="fixed inset-x-0 top-14 bottom-0 z-40 h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden">
+        <div className="flex w-full flex-1 min-h-0">
 
           {/* Main Profile Content */}
           <div className="flex-1 flex flex-col min-w-0">
