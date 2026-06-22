@@ -277,7 +277,8 @@ export function CandidateFormSheet({
 
   const resetFormState = () => {
     form.reset({
-      candidate_name: '',
+      first_name: '',
+      last_name: '',
       location_country: '',
       location_state: '',
       location_city: '',
