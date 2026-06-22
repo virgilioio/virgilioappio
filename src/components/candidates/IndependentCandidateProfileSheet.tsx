@@ -339,7 +339,7 @@ export function IndependentCandidateProfileSheet({
                   </Button>
                 </div>
               </div>
-            </SheetHeader>
+            </div>
 
             <div className="flex-1 overflow-y-auto p-6">
                 <div>
