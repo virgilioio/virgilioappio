@@ -161,6 +161,7 @@ export function ApplicationFormBuilder({
       icon: sf.icon,
       hint: sf.hint,
       isSmart: true,
+      fieldConfig: sf.type === 'salary' ? { currency: 'USD', period: 'annually' } : undefined,
     }])
   }
   const addBasic = (bt: { type: FieldType; label: string; icon: React.ComponentType<{ className?: string }> }) => {
@@ -189,6 +190,8 @@ export function ApplicationFormBuilder({
     onChange(fields.filter((x) => x.id !== id))
   const renameField = (id: string, label: string) =>
     onChange(fields.map((x) => (x.id === id ? { ...x, label } : x)))
+  const updateConfig = (id: string, patch: Record<string, any>) =>
+    onChange(fields.map((x) => (x.id === id ? { ...x, fieldConfig: { ...(x.fieldConfig || {}), ...patch } } : x)))
 
   /* --- trailing menu --- */
   const trailing = (
