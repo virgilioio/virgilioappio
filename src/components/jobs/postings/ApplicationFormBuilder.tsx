@@ -16,7 +16,7 @@ import {
   Sparkles, GripVertical, Lock, Trash2, Plus, Puzzle,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
-  Check, X,
+  Check, X, Settings2,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CURRENCIES } from '@/constants/currencies'
 import { SectionCard, ToggleRow } from '@/components/jobs/wizard/_parts'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { cn } from '@/lib/utils'
@@ -48,6 +51,7 @@ export interface AppField {
   locked?: boolean
   isSmart?: boolean
   icon: React.ComponentType<{ className?: string }>
+  fieldConfig?: Record<string, any> | null
 }
 
 interface SmartFieldDef {
@@ -157,6 +161,7 @@ export function ApplicationFormBuilder({
       icon: sf.icon,
       hint: sf.hint,
       isSmart: true,
+      fieldConfig: sf.type === 'salary' ? { currency: 'USD', period: 'annually' } : undefined,
     }])
   }
   const addBasic = (bt: { type: FieldType; label: string; icon: React.ComponentType<{ className?: string }> }) => {
@@ -185,6 +190,8 @@ export function ApplicationFormBuilder({
     onChange(fields.filter((x) => x.id !== id))
   const renameField = (id: string, label: string) =>
     onChange(fields.map((x) => (x.id === id ? { ...x, label } : x)))
+  const updateConfig = (id: string, patch: Record<string, any>) =>
+    onChange(fields.map((x) => (x.id === id ? { ...x, fieldConfig: { ...(x.fieldConfig || {}), ...patch } } : x)))
 
   /* --- trailing menu --- */
   const trailing = (
@@ -266,6 +273,7 @@ export function ApplicationFormBuilder({
               onToggleRequired={() => toggleRequired(f.id)}
               onRemove={() => removeField(f.id)}
               onRename={(label) => renameField(f.id, label)}
+              onConfigChange={(patch) => updateConfig(f.id, patch)}
               readOnly={readOnly}
             />
           ))
@@ -298,6 +306,7 @@ function FieldRow({
   onToggleRequired,
   onRemove,
   onRename,
+  onConfigChange,
   readOnly,
 }: {
   field: AppField
@@ -307,6 +316,7 @@ function FieldRow({
   onToggleRequired: () => void
   onRemove: () => void
   onRename: (label: string) => void
+  onConfigChange?: (patch: Record<string, any>) => void
   readOnly?: boolean
 }) {
   const Icon = f.icon || iconForType(f.type)
@@ -370,6 +380,52 @@ function FieldRow({
         </div>
         {f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>}
       </div>
+      {f.type === 'salary' && !readOnly && onConfigChange && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-full bg-[#F1F0EC] px-2.5 text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-secondary hover:bg-[#E8E6DE]"
+              title="Configure currency and period"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              <span>{(f.fieldConfig?.currency as string) || 'USD'} · {(f.fieldConfig?.period as string) || 'annually'}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 space-y-3 p-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-tertiary">Currency</label>
+              <Select
+                value={(f.fieldConfig?.currency as string) || 'USD'}
+                onValueChange={(v) => onConfigChange({ currency: v })}
+              >
+                <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-tertiary">Period</label>
+              <Select
+                value={(f.fieldConfig?.period as string) || 'annually'}
+                onValueChange={(v) => onConfigChange({ period: v })}
+              >
+                <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="annually">Annually</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
       <button
         type="button"
         onClick={onToggleRequired}

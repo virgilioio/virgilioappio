@@ -905,9 +905,9 @@ export default function PublicJobPosting() {
           </TabsContent>
 
           <TabsContent value="application">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
 
-              <div className="order-2 lg:order-1 lg:col-span-2">
+              <div className="order-2 lg:order-1 lg:col-span-7">
                 <section aria-labelledby="application-form">
                   <div className="space-y-12">
                     {/* Application limits — demoted to a small helper line */}
@@ -1259,8 +1259,15 @@ export default function PublicJobPosting() {
                 </section>
               </div>
 
-              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-24 space-y-4 self-start">
-                <JobDetailsCard details={details} className="border-border/60 shadow-none rounded-xl" />
+              <aside className="lg:col-span-5 order-1 lg:order-2 space-y-4 lg:sticky lg:top-6 self-start">
+                <JobAsideReplyCard onApply={handleApplyClick} accentColor={brandColor} />
+                <JobAsideSummary rows={summaryRows} />
+                <JobAsideHiringPanel members={hiringPanel} />
+                <JobAsideReferral
+                  slug={posting.slug}
+                  amount={referralBonus?.amount ?? null}
+                  currency={referralBonus?.currency ?? null}
+                />
               </aside>
             </div>
           </TabsContent>
