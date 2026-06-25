@@ -51,6 +51,7 @@ export interface AppField {
   locked?: boolean
   isSmart?: boolean
   icon: React.ComponentType<{ className?: string }>
+  fieldConfig?: Record<string, any> | null
 }
 
 interface SmartFieldDef {
