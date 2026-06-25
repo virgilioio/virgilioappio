@@ -396,13 +396,17 @@ export default function PublicJobPosting() {
             </div>
           </div>
 
-          {(details.showSalary && details.salaryAmount) && (
+          {(details.showSalary && (details.salaryAmount || details.salaryMin || details.salaryMax)) && (
             <div className="flex items-start gap-3">
               <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
                 <div className="text-sm font-medium">Compensation</div>
                 <div className="text-sm text-muted-foreground">
-                  {details.salaryCurrency} {Number(details.salaryAmount).toLocaleString()} {formatLabel(details.salaryPeriod)}
+                  {details.salaryCurrency || ''}{' '}
+                  {details.salaryMin && details.salaryMax && details.salaryMin !== details.salaryMax
+                    ? `${Number(details.salaryMin).toLocaleString()} – ${Number(details.salaryMax).toLocaleString()}`
+                    : Number(details.salaryAmount ?? details.salaryMax ?? details.salaryMin).toLocaleString()}
+                  {details.salaryPeriod ? ` ${formatLabel(details.salaryPeriod)}` : ''}
                 </div>
                 {details.hasCommissions && details.commissionsAmount && (
                   <div className="text-xs text-muted-foreground mt-1">
