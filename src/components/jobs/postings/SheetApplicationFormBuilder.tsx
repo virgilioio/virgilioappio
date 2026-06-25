@@ -53,6 +53,7 @@ function postingToAppField(pf: PostingField): AppField {
     isSmart: SMART_FIELD_TYPES_SET.has(sharedType),
     icon: iconForType(pf.field_type),
     hint: pf.help_text || undefined,
+    fieldConfig: (pf.field_config as Record<string, any> | null) || undefined,
   }
 }
 
