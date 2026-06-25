@@ -1259,8 +1259,15 @@ export default function PublicJobPosting() {
                 </section>
               </div>
 
-              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-24 space-y-4 self-start">
-                <JobDetailsCard details={details} className="border-border/60 shadow-none rounded-xl" />
+              <aside className="lg:col-span-5 order-1 lg:order-2 space-y-4 lg:sticky lg:top-6 self-start">
+                <JobAsideReplyCard onApply={handleApplyClick} accentColor={brandColor} />
+                <JobAsideSummary rows={summaryRows} />
+                <JobAsideHiringPanel members={hiringPanel} />
+                <JobAsideReferral
+                  slug={posting.slug}
+                  amount={referralBonus?.amount ?? null}
+                  currency={referralBonus?.currency ?? null}
+                />
               </aside>
             </div>
           </TabsContent>
