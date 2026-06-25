@@ -122,18 +122,22 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
           field_type: sharedTypeToDb(f.type),
           is_required: f.required,
           help_text: f.hint,
+          field_config: (f.fieldConfig as any) || undefined,
         })
       }
     }
 
-    // 3. Updates (label / required) on existing fields
+    // 3. Updates (label / required / field_config) on existing fields
     for (const f of nextCustom) {
       if (!prevIds.has(f.id)) continue
       const before = prevCustom.find((x) => x.id === f.id)
       if (!before) continue
-      const updates: { field_label?: string; is_required?: boolean } = {}
+      const updates: { field_label?: string; is_required?: boolean; field_config?: any } = {}
       if (before.label !== f.label) updates.field_label = f.label
       if (before.required !== f.required) updates.is_required = f.required
+      if (JSON.stringify(before.fieldConfig || null) !== JSON.stringify(f.fieldConfig || null)) {
+        updates.field_config = f.fieldConfig || null
+      }
       if (Object.keys(updates).length > 0) {
         await updateField(f.id, updates as any)
       }
