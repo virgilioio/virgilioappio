@@ -16,7 +16,7 @@ import {
   Sparkles, GripVertical, Lock, Trash2, Plus, Puzzle,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
-  Check, X,
+  Check, X, Settings2,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CURRENCIES } from '@/constants/currencies'
 import { SectionCard, ToggleRow } from '@/components/jobs/wizard/_parts'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { cn } from '@/lib/utils'
