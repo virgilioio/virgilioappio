@@ -1,23 +1,25 @@
-I found the actual problem: the live route `/candidates/:candidateId` is `src/pages/IndependentCandidateProfile.tsx`, not the previously edited `IndependentCandidateProfileSheet.tsx`. That route still uses `max-w-[1280px]` and `IndependentCandidateForm`, which is why the width and edit behavior did not change.
+## Plan
 
-Plan:
+1. **Fix the real blocker in RLS**
+   - The anonymous public posting query is failing with `infinite recursion detected in policy for relation "jobs"`.
+   - I’ll update the public RLS policy setup so anonymous reads use only simple public policies:
+     - `job_postings`: anon can read active, non-deleted postings.
+     - `jobs`: anon can read only open, non-deleted jobs that have an active posting.
+   - I’ll move the org-member/internal `job_postings` read policies that reference `jobs` to `authenticated` only, so they no longer run for anonymous visitors and trigger recursion.
 
-1. Update `src/pages/IndependentCandidateProfile.tsx` width/layout to match the in-job candidate profile page:
-   - Replace the `min-h-screen` + `max-w-[1280px] px-6 py-6` page shell.
-   - Use the same fixed app viewport pattern as `CandidateProfileSheet asPage`.
-   - Put the hero in the same `layout-container` header band.
-   - Put the content grid in the same scroll area using `layout-container max-w-[1400px]`.
+2. **Preserve sensitive data protection**
+   - Keep anon access to `jobs` limited to the minimum columns needed by the public route, currently `id` and `status`.
+   - Keep public posting fields limited to data already intended for public job pages.
 
-2. Replace the independent edit dialog/form:
-   - Remove `IndependentCandidateForm` from this profile page.
-   - Use the shared `CandidateFormSheet` component instead, the same edit sheet used by the in-job candidate profile.
-   - Keep every existing Edit button wired to `setIsFormOpen(true)`, but make that state open the shared sheet.
+3. **Verify the exact failing path**
+   - Re-test the anonymous REST query for `/careers/:companySlug/:postingSlug` using the anon key.
+   - Confirm it returns the posting instead of the recursion error / empty result.
 
-3. Wire saving through the existing independent candidate update logic:
-   - Pass the independent candidate as the sheet `candidate` prop.
-   - On submit, call `updateCandidate(candidate.id, data)` and close the sheet.
-   - Preserve the single-column `candidate_name` behavior already handled by `CandidateFormSheet`.
+4. **Adjust frontend only if still needed**
+   - If the DB fix resolves the query, no frontend change is needed.
+   - If the public careers listing or legacy `/p/:slug` path still hits a recursive join, I’ll update those fetches to use the corrected public-safe path consistently.
 
-4. Verify after implementation:
-   - Check the independent profile route renders with the same container widths as the in-job profile.
-   - Click Overview > Contact information > Edit and confirm the shared side sheet opens, not the old dialog.
+## Technical notes
+
+- Current routes are already outside `RequireAuth`, so this is not an auth-gate issue.
+- The “Posting not found” screen is caused by the frontend swallowing the failed anonymous Supabase query and receiving no posting data.
