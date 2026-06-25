@@ -273,6 +273,7 @@ export function ApplicationFormBuilder({
               onToggleRequired={() => toggleRequired(f.id)}
               onRemove={() => removeField(f.id)}
               onRename={(label) => renameField(f.id, label)}
+              onConfigChange={(patch) => updateConfig(f.id, patch)}
               readOnly={readOnly}
             />
           ))
