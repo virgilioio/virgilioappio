@@ -306,6 +306,7 @@ function FieldRow({
   onToggleRequired,
   onRemove,
   onRename,
+  onConfigChange,
   readOnly,
 }: {
   field: AppField
@@ -315,6 +316,7 @@ function FieldRow({
   onToggleRequired: () => void
   onRemove: () => void
   onRename: (label: string) => void
+  onConfigChange?: (patch: Record<string, any>) => void
   readOnly?: boolean
 }) {
   const Icon = f.icon || iconForType(f.type)
