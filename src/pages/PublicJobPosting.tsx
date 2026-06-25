@@ -171,6 +171,8 @@ export default function PublicJobPosting() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const [jobSalary, setJobSalary] = useState<{ min: number | null; max: number | null; currency: string | null; show: boolean }>({ min: null, max: null, currency: null, show: false })
+
   useEffect(() => {
     const load = async () => {
       if (!slug) return
@@ -187,7 +189,7 @@ export default function PublicJobPosting() {
           tenant_id,
           created_at,
           is_active,
-          jobs!inner(status)
+          jobs!inner(status, salary_min, salary_max, currency, show_salary_public)
         `)
         .eq('slug', slug)
         .eq('is_active', true)
@@ -199,6 +201,15 @@ export default function PublicJobPosting() {
         return
       }
       setPosting(p as unknown as Posting)
+      const jobRow: any = (p as any).jobs
+      if (jobRow) {
+        setJobSalary({
+          min: jobRow.salary_min ?? null,
+          max: jobRow.salary_max ?? null,
+          currency: jobRow.currency ?? null,
+          show: !!jobRow.show_salary_public,
+        })
+      }
       setOrganizationName('our company')
 
       // Fetch tenant data (about and name) via SECURITY DEFINER function
@@ -231,7 +242,40 @@ export default function PublicJobPosting() {
         .eq('posting_id', p.id)
         .order('display_order', { ascending: true })
 
-      const fieldRows = (f || []) as PostingField[]
+      let fieldRows = (f || []) as PostingField[]
+
+      // FALLBACK: postings created via the newer wizard store fields inline at
+      // posting.details.application_fields. If no DB rows exist, render those.
+      if (fieldRows.length === 0) {
+        const inline = ((p as any).details?.application_fields || []) as Array<any>
+        if (Array.isArray(inline) && inline.length > 0) {
+          const mapType = (t: string): FieldType => {
+            switch (t) {
+              case 'longtext': return 'textarea'
+              case 'shorttext': return 'text'
+              case 'multiselect': return 'checkbox_group'
+              case 'singleselect': return 'select'
+              default: return (t as FieldType)
+            }
+          }
+          fieldRows = inline
+            // 'file' (resume) and core 'full_name'/'email'/'phone'/'linkedin' are already rendered
+            // by the Basic Information section, so skip them here to avoid duplicates.
+            .filter((it) => !['full_name', 'email', 'phone', 'linkedin', 'resume'].includes(it.id))
+            .filter((it) => it.type !== 'file')
+            .map((it) => ({
+              id: it.id,
+              field_label: it.label || it.id,
+              field_type: mapType(it.type),
+              is_required: !!it.required,
+              placeholder_text: it.hint || null,
+              column_span: null,
+              field_name: it.id,
+              field_config: it.config || null,
+            } as PostingField))
+        }
+      }
+
       setCustomFields(fieldRows)
 
       // Fetch select options for select fields
