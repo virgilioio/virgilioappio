@@ -303,19 +303,27 @@ export default function PublicJobPosting() {
 
   const details = useMemo(() => {
     const d: any = (posting?.details as any) || {}
+    const comp: any = d.compensation || {}
+    // Prefer posting.details, fall back to job-level salary configured on the job record
+    const salaryAmount = d.salary_amount ?? (jobSalary.max ?? jobSalary.min ?? null)
+    const salaryCurrency = d.salary_currency || jobSalary.currency || null
+    const showSalary = !!d.show_salary || jobSalary.show
+    const hasCommissions = !!d.has_commissions || !!comp.variable_enabled
     return {
       location: d.location || null,
       employmentType: d.employment_type || null,
       locationType: d.location_type || null,
-      salaryCurrency: d.salary_currency || null,
-      salaryAmount: d.salary_amount ?? null,
+      salaryCurrency,
+      salaryAmount,
+      salaryMin: jobSalary.min,
+      salaryMax: jobSalary.max,
       salaryPeriod: d.salary_period || null,
-      showSalary: !!d.show_salary,
-      hasCommissions: !!d.has_commissions,
-      commissionsCurrency: d.commissions_currency || null,
-      commissionsAmount: d.commissions_amount ?? null,
+      showSalary,
+      hasCommissions,
+      commissionsCurrency: d.commissions_currency || comp.commission_currency || null,
+      commissionsAmount: d.commissions_amount ?? comp.commission_amount ?? null,
     }
-  }, [posting])
+  }, [posting, jobSalary])
 
   const brandColor = ((posting?.details as any)?.brand_color as string) || '#6F3FF5'
 
