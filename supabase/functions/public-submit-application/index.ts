@@ -88,11 +88,25 @@ serve(async (req) => {
     );
 
     const body = (await req.json()) as SubmitApplicationPayload;
-    console.log("📥 Received public application:", JSON.stringify(body, null, 2)?.slice(0, 1000));
-    console.log("🔍 Fields received:", body.fields);
+    const uploadedFilesCountInitial = !body.uploadedFiles
+      ? 0
+      : Array.isArray(body.uploadedFiles)
+        ? body.uploadedFiles.length
+        : Object.keys(body.uploadedFiles).length;
+    console.log("📥 Received public application summary:", {
+      posting_id: body.posting_id || body.postingId,
+      candidate_name: body.candidate_name,
+      email: body.email,
+      has_phone: !!body.phone,
+      has_linkedin: !!body.linkedin_url,
+      custom_fields_keys: body.custom_fields ? Object.keys(body.custom_fields) : [],
+      uploaded_files_count: uploadedFilesCountInitial,
+      resume_text_length: body.resumeText?.length || 0,
+    });
 
     const postingId = body.postingId || body.posting_id;
     if (!postingId) {
+      console.error("❌ 400: Missing postingId in body");
       return new Response(JSON.stringify({ error: "Missing postingId" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -115,6 +129,7 @@ serve(async (req) => {
     }
 
     if (posting.is_active === false) {
+      console.error("❌ 400: Posting is not active", postingId);
       return new Response(JSON.stringify({ error: "Posting is no longer active" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -124,6 +139,7 @@ serve(async (req) => {
     // Get candidate email for application limits check
     const candidateEmail = body.email?.trim()?.slice(0, 320);
     if (!candidateEmail) {
+      console.error("❌ 400: Missing email");
       return new Response(JSON.stringify({ error: "Email is required for application" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -132,6 +148,7 @@ serve(async (req) => {
 
     // Validate candidate name is provided
     if (!body.candidate_name?.trim()) {
+      console.error("❌ 400: Missing candidate_name");
       return new Response(JSON.stringify({ error: "Full name is required for application" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -139,13 +156,10 @@ serve(async (req) => {
     }
 
     // Validate resume upload is provided — handle both array and object formats
-    const uploadedFilesCount = !body.uploadedFiles
-      ? 0
-      : Array.isArray(body.uploadedFiles)
-        ? body.uploadedFiles.length
-        : Object.keys(body.uploadedFiles).length;
+    const uploadedFilesCount = uploadedFilesCountInitial;
 
     if (uploadedFilesCount === 0) {
+      console.error("❌ 400: No resume uploaded");
       return new Response(JSON.stringify({ error: "Resume/CV is required for application" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

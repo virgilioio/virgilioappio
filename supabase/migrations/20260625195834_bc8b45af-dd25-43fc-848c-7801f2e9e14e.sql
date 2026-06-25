@@ -1,0 +1,1 @@
+GRANT SELECT (id, status, organization_id, salary_min, salary_max, currency, show_salary_public) ON public.jobs TO anon;
