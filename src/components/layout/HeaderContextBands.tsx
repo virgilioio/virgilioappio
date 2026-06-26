@@ -38,6 +38,7 @@ export function HeaderContextBands() {
   const { userType } = useAuth()
   const { data: billing } = useBillingStatus()
   const { isDismissed, dismiss } = useDismissed()
+  const openPortal = useOpenBillingPortal()
 
   const isPlatformAdmin = userType === 'platform_admin'
 
