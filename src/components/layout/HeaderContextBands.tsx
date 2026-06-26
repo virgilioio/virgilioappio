@@ -67,7 +67,11 @@ export function HeaderContextBands() {
       )}
 
       {showBilling && (
-        <Band tone="amber" onDismiss={() => dismiss('billing')} className="pointer-events-auto">
+        <Band
+          tone="amber"
+          onDismiss={pastDue ? undefined : () => dismiss('billing')}
+          className="pointer-events-auto"
+        >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[#B86E00]" />
           <span className="font-poppins font-medium text-[12.5px] tracking-[-0.01em] text-[#5c3a00]">
             {trialing && billing?.days_until_trial_end != null && (
@@ -80,12 +84,24 @@ export function HeaderContextBands() {
             {gracePeriod && (
               <>Trial ended — {billing?.days_until_lockout ?? 0} days until lockout</>
             )}
-            {pastDue && <>Payment past due — update your billing to keep access</>}
+            {pastDue && <>Payment past due — update your payment method to keep access</>}
           </span>
           <div className="ml-auto flex items-center gap-1">
-            <Button variant="purple" size="xs" asChild>
-              <Link to="/settings?tab=subscription">Upgrade</Link>
-            </Button>
+            {pastDue ? (
+              <Button
+                variant="purple"
+                size="xs"
+                onClick={() => openPortal.mutate()}
+                disabled={openPortal.isPending}
+              >
+                {openPortal.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                Update payment method
+              </Button>
+            ) : (
+              <Button variant="purple" size="xs" asChild>
+                <Link to="/settings?tab=subscription">Upgrade</Link>
+              </Button>
+            )}
           </div>
         </Band>
       )}
