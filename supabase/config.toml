@@ -3,6 +3,9 @@ project_id = "etrxjxstjfcozdjumfsj"
 [functions.admin-operations]
 verify_jwt = true
 
+[functions.admin-stripe-handle-fraud]
+verify_jwt = true
+
 [functions.cancel-booking]
 verify_jwt = true
 
