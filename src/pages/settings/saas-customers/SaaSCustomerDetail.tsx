@@ -5,7 +5,7 @@ import {
   ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock,
   Briefcase, Users, UserCheck, Lightbulb, Copy, Check, CalendarPlus, Sparkles, CreditCard, Ban,
   UserPlus, ArrowRightLeft, Video, Upload, FileText, Download, Minus, Plus,
-  CircleDollarSign, Mail, Eye, PencilLine, Unlock,
+  CircleDollarSign, Mail, Eye, PencilLine, Unlock, RotateCcw,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, formatDistanceToNowStrict, differenceInCalendarDays, isToday, isYesterday } from 'date-fns'
