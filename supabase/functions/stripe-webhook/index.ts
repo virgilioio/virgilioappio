@@ -86,6 +86,17 @@ serve(async (req) => {
         ? eventObject.customer
         : (eventObject?.customer?.id ?? null);
 
+    // Best-effort resolve tenant_id from the customer so the event row is filterable by tenant.
+    let resolvedTenantId: string | null = null;
+    if (eventCustomerId) {
+      const { data: tenantRow } = await supabaseClient
+        .from("tenant_subscriptions")
+        .select("tenant_id")
+        .eq("stripe_customer_id", eventCustomerId)
+        .maybeSingle();
+      resolvedTenantId = tenantRow?.tenant_id ?? null;
+    }
+
     // Record the event as being processed
     await supabaseClient
       .from("stripe_webhook_events")
@@ -95,6 +106,7 @@ serve(async (req) => {
         source: 'webhook',
         action: 'received',
         stripe_customer_id: eventCustomerId,
+        tenant_id: resolvedTenantId,
       });
 
     logStep("Processing event", { eventType: event.type, customerId: eventCustomerId });
