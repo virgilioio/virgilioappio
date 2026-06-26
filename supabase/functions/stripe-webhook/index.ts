@@ -41,14 +41,27 @@ serve(async (req) => {
       throw new Error("No Stripe signature found");
     }
 
-    // Verify the webhook signature
+    // Verify the webhook signature (must use async variant in Deno — SubtleCrypto is async-only)
     let event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
       logStep("Webhook signature verified", { eventType: event.type, eventId: event.id });
     } catch (err) {
-      logStep("Webhook signature verification failed", { error: err instanceof Error ? err.message : 'Unknown error' });
-      return new Response(`Webhook signature verification failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { status: 400 });
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      logStep("Webhook signature verification failed", { error: errMsg });
+      // Log signature failures for observability so they show up in stripe_webhook_events
+      try {
+        await supabaseClient.from("stripe_webhook_events").insert({
+          stripe_event_id: `sig_fail_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          event_type: 'signature_verification_failed',
+          source: 'webhook',
+          action: 'signature_failed',
+          error: errMsg,
+        });
+      } catch (_logErr) {
+        // best-effort logging only
+      }
+      return new Response(`Webhook signature verification failed: ${errMsg}`, { status: 400 });
     }
 
     // Check if we've already processed this event (idempotency)
