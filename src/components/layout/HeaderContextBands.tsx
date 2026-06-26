@@ -70,7 +70,7 @@ export function HeaderContextBands() {
       {showBilling && (
         <Band
           tone="amber"
-          onDismiss={pastDue ? undefined : () => dismiss('billing')}
+          onDismiss={(pastDue || fraudReview) ? undefined : () => dismiss('billing')}
           className="pointer-events-auto"
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[#B86E00]" />
@@ -86,9 +86,14 @@ export function HeaderContextBands() {
               <>Trial ended — {billing?.days_until_lockout ?? 0} days until lockout</>
             )}
             {pastDue && <>Payment past due — update your payment method to keep access</>}
+            {fraudReview && <>Account under fraud review — contact support to restore access</>}
           </span>
           <div className="ml-auto flex items-center gap-1">
-            {pastDue ? (
+            {fraudReview ? (
+              <Button variant="purple" size="xs" asChild>
+                <a href="mailto:support@gio.app">Contact support</a>
+              </Button>
+            ) : pastDue ? (
               <Button
                 variant="purple"
                 size="xs"
