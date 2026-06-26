@@ -1312,7 +1312,13 @@ function BillingTab({
       <section style={CARD}>
         <CardHeader title="Stripe" desc="Managed in Stripe — Gio never stores card details."
           action={sub?.stripe_customer_id
-            ? <button style={SEC_BTN} onClick={() => window.open(`https://dashboard.stripe.com/customers/${sub.stripe_customer_id}`, '_blank')}><ExternalLink size={12} />Open in Stripe</button>
+            ? <div style={{ display: 'inline-flex', gap: 6 }}>
+                <StripeResyncButton stripeCustomerId={sub.stripe_customer_id} tenantId={customer?.tenant_id} onDone={() => {
+                  queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
+                  queryClient.invalidateQueries({ queryKey: ['saas-customer'] })
+                }} />
+                <button style={SEC_BTN} onClick={() => window.open(`https://dashboard.stripe.com/customers/${sub.stripe_customer_id}`, '_blank')}><ExternalLink size={12} />Open in Stripe</button>
+              </div>
             : undefined} />
         <Row>
           <span className="font-inter" style={{ fontSize: 11.5, fontWeight: 600, color: NOIR, width: 170, flexShrink: 0 }}>Customer ID</span>
