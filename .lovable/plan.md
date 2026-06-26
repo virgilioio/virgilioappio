@@ -1,48 +1,57 @@
+# Stripe ↔ Database Reconciliation Plan
 
-## Goal
+## Problem recap
+Tenant `42f89a19…` paid on Stripe (active `$99/mo` sub since May 25, last invoice June 8) but our `tenant_subscriptions` row stayed on the expired trial because our `stripe-webhook` never persisted the subscription/invoice events. We unlocked manually. We need to (a) understand why the webhook missed it and (b) ensure no tenant ever stays locked while paying.
 
-Find out what actually happened on Stripe for `35nervous@dollicons.com` (tenant `42f89a19-bee8-4b44-9cbb-852ac9af70cf`, Stripe customer `cus_UZw9MO20ayI3ul`) and unlock their workspace if a real payment exists.
+## Goals
+1. Detect & alert when Stripe and DB disagree.
+2. Auto-heal common drift (active sub on Stripe, locked/trial in DB).
+3. Make `stripe-webhook` resilient to missed/out-of-order events.
+4. Give platform admins a one-click "resync this tenant" tool.
 
-## Why this is needed
+## Workstream 1 — Diagnose the webhook miss (no code, investigation first)
+- Check Stripe Dashboard → Developers → Webhooks for the endpoint pointed at `stripe-webhook`:
+  - Delivery attempts around **May 25** (subscription created) and **June 8** (invoice paid) for customer `cus_UZw9MO20ayI3ul`.
+  - Look for 4xx/5xx responses, signature failures, or "endpoint disabled" notices.
+- Check whether multiple Stripe accounts / environments (test vs live) are in play; the customer may have been created on a Stripe account whose webhook isn't wired to this project.
+- Confirm `STRIPE_WEBHOOK_SECRET` matches the live endpoint's signing secret.
+- Output: a short note in chat with the root cause (or "unknown — recommend periodic sync as safety net").
 
-- Our DB says: `billing_status = locked`, `subscribed = false`, no `stripe_subscription_id`, trial ended June 8, 2026.
-- `stripe_webhook_events` has nothing for this customer after their payment was supposedly made.
-- The user reports they submitted a bank account and a payment was received.
-- Either (a) Stripe processed it but our webhook never fired/failed, or (b) the payment is still pending/incomplete on Stripe's side. We can't tell without querying Stripe directly.
+## Workstream 2 — Periodic reconciliation edge function
+New scheduled function **`reconcile-stripe-subscriptions`**:
+- Runs every 6h via `pg_cron` + `pg_net` (insert tool, not migration — contains URL + anon key).
+- For each tenant in `tenant_subscriptions` where `stripe_customer_id IS NOT NULL`:
+  - Fetch active subscriptions from Stripe for that customer.
+  - Compare to DB row: `billing_status`, `subscribed`, `stripe_subscription_id`, `current_period_end`, `plan_id`.
+  - If Stripe has active sub but DB says `locked`/`trial_expired`/`trialing` past end → update DB to `active`, populate IDs and period end, log to `stripe_webhook_events` with `source='reconciler'`.
+  - If Stripe has cancelled/past_due and DB says `active` → flip DB to match.
+- Batched (e.g. 50 customers per tick) with cursor in a small `reconciliation_state` table to stay within Stripe rate limits.
+- Emits structured logs; failures don't block the batch.
 
-## Plan
+## Workstream 3 — Webhook hardening
+Update `stripe-webhook`:
+- On every relevant event (`customer.subscription.created/updated/deleted`, `invoice.payment_succeeded/failed`), always fetch the **current** subscription from Stripe (don't trust the event payload alone) and upsert the DB row. This makes the handler idempotent and self-healing against out-of-order delivery.
+- Always write to `stripe_webhook_events` (success and failure) with `event_id`, `type`, `customer_id`, `status`, `error`. Add a unique index on `event_id` to dedupe retries.
+- On unknown `customer_id` (no matching tenant), log and skip rather than 500 (prevents Stripe disabling the endpoint after repeated failures).
 
-### 1. Create a one-off admin diagnostic edge function: `admin-stripe-customer-lookup`
+## Workstream 4 — Admin "Resync tenant" action
+- Promote the existing `admin-stripe-customer-lookup` into the admin UI:
+  - Add a **Resync from Stripe** button on the SaaS customer detail view (platform-admin only).
+  - Calls a new `admin-stripe-resync-tenant` function that runs the same reconcile logic for a single tenant and returns the diff.
+- No new tables required.
 
-- Input: `{ tenantId }` or `{ stripeCustomerId }`.
-- Auth: require caller to be a `platform_admin` (re-use the same check `saas-customer-metrics` uses).
-- Uses `STRIPE_SECRET_KEY` (already configured for the seamless Stripe integration) to call:
-  - `stripe.customers.retrieve(customerId)`
-  - `stripe.subscriptions.list({ customer, status: 'all', limit: 10 })`
-  - `stripe.paymentIntents.list({ customer, limit: 10 })`
-  - `stripe.invoices.list({ customer, limit: 10 })`
-  - `stripe.checkout.sessions.list({ customer, limit: 5 })`
-- Returns a compact summary: customer email, default payment method, each subscription's status/price/current_period_end, recent invoice statuses, recent payment intent statuses.
+## Workstream 5 — Observability
+- Add a simple admin dashboard tile: "Tenants with Stripe/DB drift in last 24h" sourced from `stripe_webhook_events` where `source='reconciler' AND action='healed'`.
+- Optional: email platform admins if drift count > N in a single run.
 
-### 2. Run it for this tenant
-
-I'll invoke the function from the platform admin SaaS Customers page context and report back what Stripe actually shows for `cus_UZw9MO20ayI3ul`.
-
-### 3. Based on the result, do one of:
-
-- **Stripe has an active subscription** → write a migration (or call `admin-manage-subscription` with a `force_sync` action) to set `tenant_subscriptions.stripe_subscription_id`, `subscribed = true`, `subscription_status = 'active'`, `billing_status = 'active'`, and seed `current_period_start/end`. Then investigate why the webhook didn't fire (likely a separate follow-up: check Stripe Dashboard → Developers → Webhooks for delivery failures to our `stripe-webhook` endpoint).
-- **Stripe has a payment but no subscription** (e.g. one-off checkout, or subscription in `incomplete`) → surface the exact state to the user so they can decide whether to refund, complete, or convert.
-- **Stripe has nothing recent** → the payment the user is referring to didn't land on our Stripe account; ask the user for the Stripe receipt / charge ID so we can trace it.
-
-## Technical details
-
-- New file: `supabase/functions/admin-stripe-customer-lookup/index.ts`.
-- Reuses `STRIPE_SECRET_KEY` env var (no new secrets).
-- Read-only — does not mutate anything in Stripe or our DB.
-- No frontend wiring needed for the diagnostic step; I'll invoke it via the supabase client from this session and report back.
-- Any DB unlock in step 3 will be a separate, explicit migration after we know the truth.
+## Rollout order
+1. WS1 investigation (immediate, manual).
+2. WS3 webhook hardening (low risk, fixes future events).
+3. WS2 periodic reconciler (safety net for past + future).
+4. WS4 admin button (quality of life).
+5. WS5 dashboard tile (after a week of reconciler data).
 
 ## Out of scope
-
-- Building a permanent reconciliation UI in Platform Admin.
-- Fixing the webhook delivery gap end-to-end (logged as a follow-up after we confirm there's a gap).
+- Refactoring the billing data model.
+- Changing pricing tiers or lock behavior.
+- Migrating to Stripe Billing Portal.
