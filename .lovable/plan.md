@@ -1,44 +1,49 @@
-## What's happening
+## Status
 
-Every Stripe delivery is failing at signature verification with:
+The signature-verification fix from last turn is working. The `invoice.payment_failed` event for `tcundiff@oatesenergy.com` was verified, logged (`action='processed'`), and the tenant was correctly flipped to `billing_status='past_due'`. Stripe's `200 {"received": true}` is the expected ACK.
 
-> HTTP 400 — `Webhook signature verification failed: SubtleCryptoProvider cannot be used in a synchronous context. Use 'await constructEventAsync(...)' instead of 'constructEvent(...)'`
+Three small upgrades remain.
 
-That's why `stripe_webhook_events` is empty: Stripe never gets past the signature check, so our logging code never runs. It's also why the previous tenant (`35nervous@dollicons.com`) needed manual healing — no event has ever been persisted.
+## 1. Backfill `tenant_id` on `stripe_webhook_events`
 
-### Root cause
+**Why:** the row written today has `tenant_id = null` even though we resolved the tenant during handling. Filtering events by tenant is currently impossible.
 
-`supabase/functions/stripe-webhook/index.ts` line 47 uses the **synchronous** Stripe verifier:
+**Webhook patch — `supabase/functions/stripe-webhook/index.ts`**
+- Resolve `tenant_id` from `stripe_customer_id` (via `tenant_subscriptions`) as soon as we have the event's customer.
+- Pass `tenant_id` into every `stripe_webhook_events` insert path (signature failure already writes; success path needs it added).
 
-```ts
-event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+**Historical backfill (one-time SQL via insert tool):**
+```sql
+UPDATE public.stripe_webhook_events e
+SET tenant_id = ts.tenant_id
+FROM public.tenant_subscriptions ts
+WHERE e.tenant_id IS NULL
+  AND e.stripe_customer_id IS NOT NULL
+  AND ts.stripe_customer_id = e.stripe_customer_id;
 ```
 
-Stripe's Node SDK relies on Node's sync `crypto` module. In Deno (Supabase Edge Runtime) only the async `SubtleCrypto` is available, so the sync call throws before signature verification even completes. Stripe's SDK explicitly tells us to call `constructEventAsync` in this environment.
+## 2. Surface `past_due` to the customer (in-app)
 
-## The fix (one-line behavior change, plus safety net)
+**Status:** the amber banner in `HeaderContextBands.tsx` already shows for `past_due`. But its CTA is `Upgrade → /settings?tab=subscription`, which is the wrong action for past_due — they need to **update their card**, not pick a plan.
 
-### 1. `supabase/functions/stripe-webhook/index.ts`
-- Replace the sync call with the async one:
-  ```ts
-  event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-  ```
-- While we're in the verification block, also log signature failures to `stripe_webhook_events` with `source='webhook'`, `action='signature_failed'`, and the error message, so future signature problems show up in our table instead of being invisible.
+**Changes — `src/components/layout/HeaderContextBands.tsx`**
+- When `pastDue`: change CTA label to **"Update payment method"** and wire it to call the existing `customer-portal` edge function, then `window.location.href = data.url` (same pattern already used in `src/pages/settings/Billing.tsx`).
+- Keep the existing `Upgrade` CTA for `trialing` / `gracePeriod` unchanged.
+- Make the past_due band non-dismissible (or auto-restore after 24h) — losing access silently is a worse UX than nagging. Smallest change: remove the dismiss button for `pastDue` only.
 
-### 2. Backfill the missed events
-Because Stripe has been getting 400s, it has been retrying (and eventually giving up on) every event since the webhook was last working. After deploy:
-- Run the existing `reconcile-stripe-subscriptions` function once manually to heal any tenants whose subscription state drifted while the webhook was broken.
-- Spot-check `stripe_webhook_events` to confirm new deliveries are landing with `source='webhook'` and no `error`.
+**Optional small polish — `src/pages/settings/Billing.tsx`**
+- If `billing_status === 'past_due'`, surface an inline red banner at the top of the Billing tab with the same "Update payment method" action so users who navigate directly there also see it.
 
-### 3. Smoke test
-- From the Stripe Dashboard → Developers → Webhooks → our endpoint → **Send test webhook** (`customer.subscription.updated`). Expect 200 and a new row in `stripe_webhook_events`.
+## 3. Backfill the affected tenant's billing visibility
 
-## Out of scope (not changing now)
+No code change — just verify in the DB that tenant `a6de5ad0-0057-4315-8727-c7279d98e152` shows `past_due` (it does). When they open the app they'll now see the corrected banner; when they click it, the Stripe Customer Portal opens and they can update the card. Stripe will then fire `invoice.payment_succeeded` / `customer.subscription.updated`, our webhook will set them back to `active`, and the banner disappears.
 
-- Webhook endpoint URL / secret rotation — endpoint is correct.
-- The reconciler, admin resync button, and webhook event schema — all already shipped last turn and working; they just never got fed because verification was failing.
-- Any other edge function — only `stripe-webhook` uses sync `constructEvent`.
+## Out of scope
+
+- No schema migration needed — `stripe_webhook_events.tenant_id` column already exists.
+- Not adding an email notification for past_due in this pass (Stripe's Smart Retries + dunning emails already handle that side; we can add an in-app notification later if you want).
+- Reconciler / admin resync button — already shipped and unchanged.
 
 ## Risk
 
-Minimal. `constructEventAsync` is the Stripe-sanctioned API for non-Node runtimes and returns the same `Stripe.Event` shape. The rest of the handler is unchanged.
+Low. The webhook patch only adds a field to an existing insert. The banner change reuses the already-deployed `customer-portal` function. The SQL backfill is idempotent.
