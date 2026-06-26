@@ -47,7 +47,8 @@ export function HeaderContextBands() {
   const pastDue = billing?.billing_status === 'past_due'
 
   const showAdmin = isPlatformAdmin && !isDismissed('admin')
-  const showBilling = (trialing || gracePeriod || pastDue) && !isDismissed('billing')
+  // past_due is not dismissible — losing access silently is worse than nagging.
+  const showBilling = (trialing || gracePeriod) ? !isDismissed('billing') : pastDue
 
   if (!showAdmin && !showBilling) return null
 
