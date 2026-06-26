@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface BillingStatus {
-  billing_status: 'pending_trial' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'locked' | 'grace_period'
+  billing_status: 'pending_trial' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'locked' | 'grace_period' | 'fraud_review'
   trial_ends_at: string | null
   trial_started_at: string | null
   subscription_end: string | null
