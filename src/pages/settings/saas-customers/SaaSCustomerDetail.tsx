@@ -5,7 +5,7 @@ import {
   ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock,
   Briefcase, Users, UserCheck, Lightbulb, Copy, Check, CalendarPlus, Sparkles, CreditCard, Ban,
   UserPlus, ArrowRightLeft, Video, Upload, FileText, Download, Minus, Plus,
-  CircleDollarSign, Mail, Eye, PencilLine, Unlock, RotateCcw,
+  CircleDollarSign, Mail, Eye, PencilLine, Unlock, RotateCcw, ShieldAlert,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, formatDistanceToNowStrict, differenceInCalendarDays, isToday, isYesterday } from 'date-fns'
@@ -1172,6 +1172,7 @@ function BillingTab({
 
   const billingStatus = (sub?.billing_status || customer.status || 'active').toString()
   const statusChip = (() => {
+    if (billingStatus === 'fraud_review') return <Chip tone="red">Fraud review</Chip>
     if (billingStatus === 'trialing' || billingStatus === 'pending_trial') return <Chip tone="blue">Trialing</Chip>
     if (billingStatus === 'past_due') return <Chip tone="amber">Past due</Chip>
     if (customer.status === 'suspended' || billingStatus === 'locked') return <Chip tone="gray">Locked</Chip>
@@ -1361,6 +1362,9 @@ function BillingTab({
           })}
         </div>
       </section>
+
+      {/* Fraud signals */}
+      <FraudSignalsSection tenantId={customer?.tenant_id} stripeCustomerId={sub?.stripe_customer_id} />
     </div>
   )
 }
@@ -1476,3 +1480,101 @@ function StripeResyncButton({ stripeCustomerId, tenantId }: { stripeCustomerId: 
     </button>
   )
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Fraud signals section
+// ─────────────────────────────────────────────────────────────────
+function FraudSignalsSection({ tenantId, stripeCustomerId }: { tenantId?: string; stripeCustomerId?: string }) {
+  const qc = useQueryClient()
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const { data: signals = [], isLoading } = useQuery({
+    queryKey: ['fraud-signals', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return []
+      const { data, error } = await supabase
+        .from('tenant_fraud_signals')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (error) throw error
+      return data || []
+    },
+    enabled: !!tenantId,
+  })
+
+  const runAction = async (action: 'refund_and_suspend' | 'suspend_only' | 'clear', chargeId?: string) => {
+    if (!tenantId) return
+    const confirmMsg = action === 'clear'
+      ? 'Clear fraud review and reactivate this tenant?'
+      : action === 'refund_and_suspend'
+      ? 'Refund the latest charge as fraudulent, cancel subscription, and suspend tenant?'
+      : 'Suspend tenant without refunding?'
+    if (!window.confirm(confirmMsg)) return
+    setBusy(action)
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-stripe-handle-fraud', {
+        body: { tenant_id: tenantId, action, charge_id: chargeId, stripe_customer_id: stripeCustomerId },
+      })
+      if (error) throw error
+      toast.success(data?.message || 'Done')
+      qc.invalidateQueries({ queryKey: ['fraud-signals', tenantId] })
+      qc.invalidateQueries({ queryKey: ['tenant-subscription', tenantId] })
+      qc.invalidateQueries({ queryKey: ['saas-customer'] })
+    } catch (e) {
+      toast.error(`Action failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section style={CARD}>
+      <CardHeader title="Fraud signals" desc="Stripe Radar early-fraud warnings and disputes for this tenant." />
+      <div style={{ padding: 14, display: 'flex', gap: 8, flexWrap: 'wrap', borderBottom: `1px solid ${HAIRLINE}` }}>
+        <button style={{ ...NOIR_BTN, background: '#B91C1C', borderColor: '#B91C1C' }}
+                disabled={!!busy || !tenantId}
+                onClick={() => runAction('refund_and_suspend')}>
+          <ShieldAlert size={12} />
+          {busy === 'refund_and_suspend' ? 'Working…' : 'Refund + suspend'}
+        </button>
+        <button style={SEC_BTN} disabled={!!busy || !tenantId} onClick={() => runAction('suspend_only')}>
+          <Ban size={12} />
+          {busy === 'suspend_only' ? 'Working…' : 'Suspend only'}
+        </button>
+        <button style={SEC_BTN} disabled={!!busy || !tenantId} onClick={() => runAction('clear')}>
+          <Unlock size={12} />
+          {busy === 'clear' ? 'Working…' : 'Clear & reactivate'}
+        </button>
+      </div>
+      <div>
+        {isLoading ? (
+          <div style={{ padding: 24, textAlign: 'center', color: MUTED, fontFamily: 'Inter', fontSize: 12 }}>Loading…</div>
+        ) : signals.length === 0 ? (
+          <div style={{ padding: 18, textAlign: 'center', color: MUTED, fontFamily: 'Inter', fontSize: 12 }}>No fraud signals recorded.</div>
+        ) : signals.map((s: any, i: number) => {
+          const tone: ChipTone = s.signal_type === 'dispute' ? 'red' : s.signal_type === 'early_fraud_warning' ? 'amber' : 'gray'
+          const amt = s.amount_cents != null
+            ? new Intl.NumberFormat('en-US', { style: 'currency', currency: (s.currency || 'usd').toUpperCase() }).format((s.amount_cents || 0) / 100)
+            : '—'
+          return (
+            <Row key={s.id} last={i === signals.length - 1}>
+              <Chip tone={tone}>{s.signal_type.replace(/_/g, ' ')}</Chip>
+              <span className="font-inter flex-1 truncate" style={{ fontSize: 12.5, color: NOIR }}>
+                {s.fraud_type || '—'}
+                {s.stripe_charge_id && <span style={{ color: MUTED, marginLeft: 8 }}>{s.stripe_charge_id}</span>}
+              </span>
+              <span className="font-poppins tabular-nums" style={{ fontSize: 12.5, fontWeight: 600, color: NOIR }}>{amt}</span>
+              <Chip tone="gray">{s.action_taken || 'none'}</Chip>
+              <span className="font-inter" style={{ fontSize: 11, color: MUTED, minWidth: 110, textAlign: 'right' }}>
+                {format(new Date(s.created_at), 'MMM d, yyyy HH:mm')}
+              </span>
+            </Row>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+

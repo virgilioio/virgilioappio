@@ -145,6 +145,22 @@ serve(async (req) => {
           await handleTrialWillEnd(supabaseClient, event.data.object as Stripe.Subscription);
           break;
 
+        case "radar.early_fraud_warning.created":
+          await handleEarlyFraudWarning(supabaseClient, stripe, event);
+          break;
+
+        case "charge.dispute.created":
+          await handleDisputeCreated(supabaseClient, stripe, event);
+          break;
+
+        case "charge.dispute.closed":
+          await handleDisputeClosed(supabaseClient, event);
+          break;
+
+        case "charge.refunded":
+          await handleChargeRefunded(supabaseClient, event);
+          break;
+
         default:
           logStep("Unhandled event type", { eventType: event.type });
       }
@@ -446,3 +462,195 @@ async function handleCheckoutCompleted(
   
   logStep("Checkout session processed", { sessionId: session.id, subscriptionId });
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Fraud handlers
+// ────────────────────────────────────────────────────────────────────────────
+
+async function resolveTenantFromCustomer(supabaseClient: any, customerId: string | null) {
+  if (!customerId) return null;
+  const { data } = await supabaseClient
+    .from("tenant_subscriptions")
+    .select("tenant_id, stripe_subscription_id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+async function suspendTenantForFraud(supabaseClient: any, tenantId: string, reason: string) {
+  const nowIso = new Date().toISOString();
+  await supabaseClient
+    .from("tenant_subscriptions")
+    .update({
+      billing_status: 'fraud_review',
+      subscribed: false,
+      suspended_at: nowIso,
+      suspended_reason: reason,
+      updated_at: nowIso,
+    })
+    .eq("tenant_id", tenantId);
+  await supabaseClient
+    .from("tenants")
+    .update({
+      status: 'suspended',
+      suspended_at: nowIso,
+      suspended_reason: reason,
+      updated_at: nowIso,
+    })
+    .eq("id", tenantId);
+}
+
+async function handleEarlyFraudWarning(supabaseClient: any, stripe: Stripe, event: Stripe.Event) {
+  const efw = event.data.object as any; // radar.early_fraud_warning
+  logStep("Handling early fraud warning", { id: efw.id, fraud_type: efw.fraud_type, charge: efw.charge });
+
+  // Resolve customer via the charge
+  let customerId: string | null = null;
+  let chargeId: string | null = typeof efw.charge === 'string' ? efw.charge : (efw.charge?.id ?? null);
+  let amount: number | null = null;
+  let currency: string | null = null;
+  let subscriptionId: string | null = null;
+  if (chargeId) {
+    try {
+      const charge = await stripe.charges.retrieve(chargeId);
+      customerId = typeof charge.customer === 'string' ? charge.customer : (charge.customer?.id ?? null);
+      amount = charge.amount ?? null;
+      currency = charge.currency ?? null;
+      // Pull subscription via invoice if any
+      if (charge.invoice) {
+        const invoiceId = typeof charge.invoice === 'string' ? charge.invoice : charge.invoice.id;
+        try {
+          const inv = await stripe.invoices.retrieve(invoiceId);
+          subscriptionId = typeof inv.subscription === 'string' ? inv.subscription : (inv.subscription?.id ?? null);
+        } catch (_) { /* noop */ }
+      }
+    } catch (e) {
+      logStep("Failed to retrieve charge", { chargeId, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  const tenant = await resolveTenantFromCustomer(supabaseClient, customerId);
+
+  // Auto-refund the charge with reason='fraudulent' (lowers future Radar risk score)
+  let refundOutcome: any = 'skipped';
+  if (chargeId) {
+    try {
+      const refund = await stripe.refunds.create({ charge: chargeId, reason: 'fraudulent' });
+      refundOutcome = { id: refund.id, status: refund.status };
+    } catch (e) {
+      refundOutcome = { error: e instanceof Error ? e.message : String(e) };
+      logStep("Refund failed", refundOutcome);
+    }
+  }
+
+  // Cancel subscription if we found one
+  const subToCancel = subscriptionId ?? tenant?.stripe_subscription_id ?? null;
+  let cancelOutcome: any = 'skipped';
+  if (subToCancel) {
+    try {
+      const cancelled = await stripe.subscriptions.cancel(subToCancel, { prorate: false });
+      cancelOutcome = { id: cancelled.id, status: cancelled.status };
+    } catch (e) {
+      cancelOutcome = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  // Suspend tenant
+  if (tenant?.tenant_id) {
+    await suspendTenantForFraud(supabaseClient, tenant.tenant_id, 'fraud_signal');
+  }
+
+  // Audit log
+  await supabaseClient.from("tenant_fraud_signals").insert({
+    tenant_id: tenant?.tenant_id ?? null,
+    signal_type: 'early_fraud_warning',
+    stripe_event_id: event.id,
+    stripe_charge_id: chargeId,
+    stripe_customer_id: customerId,
+    fraud_type: efw.fraud_type ?? null,
+    amount_cents: amount,
+    currency,
+    action_taken: 'refunded',
+    raw_event: { efw, refund: refundOutcome, cancel: cancelOutcome },
+  });
+
+  logStep("Early fraud warning processed", { tenant: tenant?.tenant_id, refundOutcome, cancelOutcome });
+}
+
+async function handleDisputeCreated(supabaseClient: any, stripe: Stripe, event: Stripe.Event) {
+  const dispute = event.data.object as Stripe.Dispute;
+  logStep("Handling dispute created", { id: dispute.id, reason: dispute.reason });
+
+  const chargeId = typeof dispute.charge === 'string' ? dispute.charge : (dispute.charge?.id ?? null);
+  let customerId: string | null = null;
+  if (chargeId) {
+    try {
+      const charge = await stripe.charges.retrieve(chargeId);
+      customerId = typeof charge.customer === 'string' ? charge.customer : (charge.customer?.id ?? null);
+    } catch (_) { /* noop */ }
+  }
+
+  const tenant = await resolveTenantFromCustomer(supabaseClient, customerId);
+  if (tenant?.tenant_id) {
+    await suspendTenantForFraud(supabaseClient, tenant.tenant_id, 'dispute_filed');
+    // Cancel subscription if still active
+    if (tenant.stripe_subscription_id) {
+      try {
+        await stripe.subscriptions.cancel(tenant.stripe_subscription_id, { prorate: false });
+      } catch (_) { /* noop */ }
+    }
+  }
+
+  await supabaseClient.from("tenant_fraud_signals").insert({
+    tenant_id: tenant?.tenant_id ?? null,
+    signal_type: 'dispute',
+    stripe_event_id: event.id,
+    stripe_charge_id: chargeId,
+    stripe_dispute_id: dispute.id,
+    stripe_customer_id: customerId,
+    fraud_type: dispute.reason,
+    amount_cents: dispute.amount,
+    currency: dispute.currency,
+    action_taken: 'suspended',
+    raw_event: dispute as any,
+  });
+}
+
+async function handleDisputeClosed(supabaseClient: any, event: Stripe.Event) {
+  const dispute = event.data.object as Stripe.Dispute;
+  logStep("Handling dispute closed", { id: dispute.id, status: dispute.status });
+
+  // We log the outcome but do NOT auto-unsuspend even if won — requires admin review.
+  await supabaseClient.from("tenant_fraud_signals").insert({
+    tenant_id: null,
+    signal_type: 'dispute',
+    stripe_event_id: event.id,
+    stripe_dispute_id: dispute.id,
+    fraud_type: `${dispute.reason}:closed_${dispute.status}`,
+    amount_cents: dispute.amount,
+    currency: dispute.currency,
+    action_taken: 'none',
+    raw_event: dispute as any,
+  });
+}
+
+async function handleChargeRefunded(supabaseClient: any, event: Stripe.Event) {
+  const charge = event.data.object as Stripe.Charge;
+  logStep("Handling charge refunded", { id: charge.id, refunded: charge.refunded });
+
+  const customerId = typeof charge.customer === 'string' ? charge.customer : (charge.customer?.id ?? null);
+  const tenant = await resolveTenantFromCustomer(supabaseClient, customerId);
+
+  await supabaseClient.from("tenant_fraud_signals").insert({
+    tenant_id: tenant?.tenant_id ?? null,
+    signal_type: 'refunded',
+    stripe_event_id: event.id,
+    stripe_charge_id: charge.id,
+    stripe_customer_id: customerId,
+    amount_cents: charge.amount_refunded,
+    currency: charge.currency,
+    action_taken: 'refunded',
+    raw_event: charge as any,
+  });
+}
+
