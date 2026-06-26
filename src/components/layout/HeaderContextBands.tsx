@@ -118,7 +118,7 @@ function Band({
   children: React.ReactNode
   tone: 'lilac' | 'amber'
   className?: string
-  onDismiss: () => void
+  onDismiss?: () => void
 }) {
   const styles =
     tone === 'lilac'
@@ -139,17 +139,19 @@ function Band({
       )}
     >
       {children}
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label="Dismiss"
-        className={cn(
-          'ml-1 h-6 w-6 rounded-md inline-flex items-center justify-center shrink-0 transition-colors',
-          dismissHover,
-        )}
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className={cn(
+            'ml-1 h-6 w-6 rounded-md inline-flex items-center justify-center shrink-0 transition-colors',
+            dismissHover,
+          )}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   )
 }
