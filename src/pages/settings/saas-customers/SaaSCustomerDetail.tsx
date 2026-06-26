@@ -1172,6 +1172,7 @@ function BillingTab({
 
   const billingStatus = (sub?.billing_status || customer.status || 'active').toString()
   const statusChip = (() => {
+    if (billingStatus === 'fraud_review') return <Chip tone="red">Fraud review</Chip>
     if (billingStatus === 'trialing' || billingStatus === 'pending_trial') return <Chip tone="blue">Trialing</Chip>
     if (billingStatus === 'past_due') return <Chip tone="amber">Past due</Chip>
     if (customer.status === 'suspended' || billingStatus === 'locked') return <Chip tone="gray">Locked</Chip>
