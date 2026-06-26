@@ -1,8 +1,9 @@
-import { Shield, AlertTriangle, X } from 'lucide-react'
+import { Shield, AlertTriangle, X, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
+import { useOpenBillingPortal } from '@/hooks/useBillingPortal'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
