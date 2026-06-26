@@ -1,49 +1,80 @@
-## Status
 
-The signature-verification fix from last turn is working. The `invoice.payment_failed` event for `tcundiff@oatesenergy.com` was verified, logged (`action='processed'`), and the tenant was correctly flipped to `billing_status='past_due'`. Stripe's `200 {"received": true}` is the expected ACK.
+## Context
 
-Three small upgrades remain.
+Stripe Radar fired an **early fraud warning** (`unauthorized_use_of_card`) on charge `ch_3TfrxLFB3VjcLexI2Ryj5TiW` belonging to `35nervous@dollicons.com` (tenant `42f89a19-bee8-4b44-9cbb-852ac9af70cf`).
 
-## 1. Backfill `tenant_id` on `stripe_webhook_events`
+What this means in practice:
+- The cardholder's bank has told Stripe the card was used without authorization.
+- A chargeback is highly likely (Stripe's own data says >80% of EFWs become disputes).
+- If the chargeback lands, we lose the $99 + $15 dispute fee and the account is almost certainly a fraud signup.
+- Our webhook is **not subscribed** to `radar.early_fraud_warning.created`, so this event never reached our system — we only saw it because you checked Stripe directly.
 
-**Why:** the row written today has `tenant_id = null` even though we resolved the tenant during handling. Filtering events by tenant is currently impossible.
+## Immediate action (this tenant)
 
-**Webhook patch — `supabase/functions/stripe-webhook/index.ts`**
-- Resolve `tenant_id` from `stripe_customer_id` (via `tenant_subscriptions`) as soon as we have the event's customer.
-- Pass `tenant_id` into every `stripe_webhook_events` insert path (signature failure already writes; success path needs it added).
+1. **Refund the charge proactively** via Stripe (better than eating a chargeback — no $15 fee, no dispute ratio hit).
+2. **Suspend the tenant** by setting `tenants.suspended_at` + `suspended_reason = 'fraud_signal'` and `tenant_subscriptions.billing_status = 'suspended'`, locking the workspace.
+3. **Cancel the Stripe subscription** so no further invoices are attempted.
+4. **Flag the user** so the same email/IP can't re-register without admin review.
 
-**Historical backfill (one-time SQL via insert tool):**
-```sql
-UPDATE public.stripe_webhook_events e
-SET tenant_id = ts.tenant_id
-FROM public.tenant_subscriptions ts
-WHERE e.tenant_id IS NULL
-  AND e.stripe_customer_id IS NOT NULL
-  AND ts.stripe_customer_id = e.stripe_customer_id;
-```
+I'll do steps 1–3 from a one-shot admin edge function call (`admin-stripe-handle-fraud`) once you approve.
 
-## 2. Surface `past_due` to the customer (in-app)
+## Going forward (system-wide)
 
-**Status:** the amber banner in `HeaderContextBands.tsx` already shows for `past_due`. But its CTA is `Upgrade → /settings?tab=subscription`, which is the wrong action for past_due — they need to **update their card**, not pick a plan.
+### 1. Subscribe to fraud-signal webhook events
 
-**Changes — `src/components/layout/HeaderContextBands.tsx`**
-- When `pastDue`: change CTA label to **"Update payment method"** and wire it to call the existing `customer-portal` edge function, then `window.location.href = data.url` (same pattern already used in `src/pages/settings/Billing.tsx`).
-- Keep the existing `Upgrade` CTA for `trialing` / `gracePeriod` unchanged.
-- Make the past_due band non-dismissible (or auto-restore after 24h) — losing access silently is a worse UX than nagging. Smallest change: remove the dismiss button for `pastDue` only.
+Add these event types to the Stripe webhook endpoint:
+- `radar.early_fraud_warning.created` — pre-chargeback fraud alert
+- `charge.dispute.created` — actual chargeback filed
+- `charge.dispute.closed` — dispute resolved (won/lost)
+- `charge.refunded` — track our own refunds
 
-**Optional small polish — `src/pages/settings/Billing.tsx`**
-- If `billing_status === 'past_due'`, surface an inline red banner at the top of the Billing tab with the same "Update payment method" action so users who navigate directly there also see it.
+### 2. Extend `stripe-webhook` to handle them
 
-## 3. Backfill the affected tenant's billing visibility
+In `supabase/functions/stripe-webhook/index.ts`, add handlers that:
 
-No code change — just verify in the DB that tenant `a6de5ad0-0057-4315-8727-c7279d98e152` shows `past_due` (it does). When they open the app they'll now see the corrected banner; when they click it, the Stripe Customer Portal opens and they can update the card. Stripe will then fire `invoice.payment_succeeded` / `customer.subscription.updated`, our webhook will set them back to `active`, and the banner disappears.
+- On `radar.early_fraud_warning.created`:
+  - Resolve tenant from the charge's customer.
+  - **Auto-refund** the charge (configurable, default ON for EFW).
+  - Set `tenant_subscriptions.billing_status = 'fraud_review'` (new enum value).
+  - Suspend the tenant (`tenants.suspended_at`, `suspended_reason = 'fraud_signal'`).
+  - Cancel the active subscription (`stripe.subscriptions.cancel`).
+  - Insert a row into a new `tenant_fraud_signals` table for the audit trail.
 
-## Out of scope
+- On `charge.dispute.created`:
+  - Same suspension flow if not already suspended.
+  - Record dispute id, reason, amount.
 
-- No schema migration needed — `stripe_webhook_events.tenant_id` column already exists.
-- Not adding an email notification for past_due in this pass (Stripe's Smart Retries + dunning emails already handle that side; we can add an in-app notification later if you want).
-- Reconciler / admin resync button — already shipped and unchanged.
+- On `charge.dispute.closed`:
+  - If `status = 'won'` and only fraud signal was the dispute → optionally restore access (require admin confirmation, don't auto-unsuspend).
+  - If `lost` → keep suspended, log loss amount.
 
-## Risk
+### 3. New table `tenant_fraud_signals`
 
-Low. The webhook patch only adds a field to an existing insert. The banner change reuses the already-deployed `customer-portal` function. The SQL backfill is idempotent.
+Columns:
+- `tenant_id`, `signal_type` (`early_fraud_warning` | `dispute` | `manual_flag`)
+- `stripe_charge_id`, `stripe_dispute_id`, `fraud_type`, `amount`, `currency`
+- `action_taken` (`refunded` | `disputed` | `suspended` | `none`)
+- `raw_event` (jsonb), `created_at`
+
+With RLS limiting reads to platform admins.
+
+### 4. Admin UI surfacing
+
+On `SaaSCustomerDetail.tsx`, add a **"Fraud signals"** card that lists rows from `tenant_fraud_signals` with a red banner at the top of the page when any unresolved signal exists. Add a manual **"Suspend for fraud"** and **"Clear flag"** action.
+
+### 5. Onboarding guardrail (optional, ask before building)
+
+Disposable-email domain check (`dollicons.com` and similar) at signup — soft-block with a "verify your work email" step instead of allowing instant trial. Not in scope unless you want it.
+
+## Technical notes
+
+- Stripe SDK call for refund: `stripe.refunds.create({ charge: chargeId, reason: 'fraudulent' })`. Marking `reason: 'fraudulent'` tells Stripe's Radar model and improves our risk score going forward.
+- Cancelling the sub: `stripe.subscriptions.cancel(subId, { invoice_now: false, prorate: false })`.
+- The webhook handler must remain idempotent — fraud events can be re-sent.
+- `radar.early_fraud_warning.created` must be enabled in the Stripe Dashboard endpoint settings; we can't subscribe purely from code.
+
+## Open questions
+
+- **Auto-refund on EFW?** Default proposal: yes (safer, avoids dispute fee). Alternative: just suspend + alert and let you review.
+- **Auto-cancel subscription?** Default: yes.
+- **Do you want the disposable-email guardrail** at signup?
