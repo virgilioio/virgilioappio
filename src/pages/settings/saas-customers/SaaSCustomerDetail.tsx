@@ -1362,6 +1362,9 @@ function BillingTab({
           })}
         </div>
       </section>
+
+      {/* Fraud signals */}
+      <FraudSignalsSection tenantId={customer?.tenant_id} stripeCustomerId={sub?.stripe_customer_id} />
     </div>
   )
 }
