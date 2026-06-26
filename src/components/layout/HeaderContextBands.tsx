@@ -1,8 +1,9 @@
-import { Shield, AlertTriangle, X } from 'lucide-react'
+import { Shield, AlertTriangle, X, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
+import { useOpenBillingPortal } from '@/hooks/useBillingPortal'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +38,7 @@ export function HeaderContextBands() {
   const { userType } = useAuth()
   const { data: billing } = useBillingStatus()
   const { isDismissed, dismiss } = useDismissed()
+  const openPortal = useOpenBillingPortal()
 
   const isPlatformAdmin = userType === 'platform_admin'
 
@@ -45,7 +47,8 @@ export function HeaderContextBands() {
   const pastDue = billing?.billing_status === 'past_due'
 
   const showAdmin = isPlatformAdmin && !isDismissed('admin')
-  const showBilling = (trialing || gracePeriod || pastDue) && !isDismissed('billing')
+  // past_due is not dismissible — losing access silently is worse than nagging.
+  const showBilling = (trialing || gracePeriod) ? !isDismissed('billing') : pastDue
 
   if (!showAdmin && !showBilling) return null
 
@@ -64,7 +67,11 @@ export function HeaderContextBands() {
       )}
 
       {showBilling && (
-        <Band tone="amber" onDismiss={() => dismiss('billing')} className="pointer-events-auto">
+        <Band
+          tone="amber"
+          onDismiss={pastDue ? undefined : () => dismiss('billing')}
+          className="pointer-events-auto"
+        >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[#B86E00]" />
           <span className="font-poppins font-medium text-[12.5px] tracking-[-0.01em] text-[#5c3a00]">
             {trialing && billing?.days_until_trial_end != null && (
@@ -77,12 +84,24 @@ export function HeaderContextBands() {
             {gracePeriod && (
               <>Trial ended — {billing?.days_until_lockout ?? 0} days until lockout</>
             )}
-            {pastDue && <>Payment past due — update your billing to keep access</>}
+            {pastDue && <>Payment past due — update your payment method to keep access</>}
           </span>
           <div className="ml-auto flex items-center gap-1">
-            <Button variant="purple" size="xs" asChild>
-              <Link to="/settings?tab=subscription">Upgrade</Link>
-            </Button>
+            {pastDue ? (
+              <Button
+                variant="purple"
+                size="xs"
+                onClick={() => openPortal.mutate()}
+                disabled={openPortal.isPending}
+              >
+                {openPortal.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                Update payment method
+              </Button>
+            ) : (
+              <Button variant="purple" size="xs" asChild>
+                <Link to="/settings?tab=subscription">Upgrade</Link>
+              </Button>
+            )}
           </div>
         </Band>
       )}
@@ -99,7 +118,7 @@ function Band({
   children: React.ReactNode
   tone: 'lilac' | 'amber'
   className?: string
-  onDismiss: () => void
+  onDismiss?: () => void
 }) {
   const styles =
     tone === 'lilac'
@@ -120,17 +139,19 @@ function Band({
       )}
     >
       {children}
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label="Dismiss"
-        className={cn(
-          'ml-1 h-6 w-6 rounded-md inline-flex items-center justify-center shrink-0 transition-colors',
-          dismissHover,
-        )}
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className={cn(
+            'ml-1 h-6 w-6 rounded-md inline-flex items-center justify-center shrink-0 transition-colors',
+            dismissHover,
+          )}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   )
 }
