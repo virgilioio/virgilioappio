@@ -1,57 +1,44 @@
-# Stripe ↔ Database Reconciliation Plan
+## What's happening
 
-## Problem recap
-Tenant `42f89a19…` paid on Stripe (active `$99/mo` sub since May 25, last invoice June 8) but our `tenant_subscriptions` row stayed on the expired trial because our `stripe-webhook` never persisted the subscription/invoice events. We unlocked manually. We need to (a) understand why the webhook missed it and (b) ensure no tenant ever stays locked while paying.
+Every Stripe delivery is failing at signature verification with:
 
-## Goals
-1. Detect & alert when Stripe and DB disagree.
-2. Auto-heal common drift (active sub on Stripe, locked/trial in DB).
-3. Make `stripe-webhook` resilient to missed/out-of-order events.
-4. Give platform admins a one-click "resync this tenant" tool.
+> HTTP 400 — `Webhook signature verification failed: SubtleCryptoProvider cannot be used in a synchronous context. Use 'await constructEventAsync(...)' instead of 'constructEvent(...)'`
 
-## Workstream 1 — Diagnose the webhook miss (no code, investigation first)
-- Check Stripe Dashboard → Developers → Webhooks for the endpoint pointed at `stripe-webhook`:
-  - Delivery attempts around **May 25** (subscription created) and **June 8** (invoice paid) for customer `cus_UZw9MO20ayI3ul`.
-  - Look for 4xx/5xx responses, signature failures, or "endpoint disabled" notices.
-- Check whether multiple Stripe accounts / environments (test vs live) are in play; the customer may have been created on a Stripe account whose webhook isn't wired to this project.
-- Confirm `STRIPE_WEBHOOK_SECRET` matches the live endpoint's signing secret.
-- Output: a short note in chat with the root cause (or "unknown — recommend periodic sync as safety net").
+That's why `stripe_webhook_events` is empty: Stripe never gets past the signature check, so our logging code never runs. It's also why the previous tenant (`35nervous@dollicons.com`) needed manual healing — no event has ever been persisted.
 
-## Workstream 2 — Periodic reconciliation edge function
-New scheduled function **`reconcile-stripe-subscriptions`**:
-- Runs every 6h via `pg_cron` + `pg_net` (insert tool, not migration — contains URL + anon key).
-- For each tenant in `tenant_subscriptions` where `stripe_customer_id IS NOT NULL`:
-  - Fetch active subscriptions from Stripe for that customer.
-  - Compare to DB row: `billing_status`, `subscribed`, `stripe_subscription_id`, `current_period_end`, `plan_id`.
-  - If Stripe has active sub but DB says `locked`/`trial_expired`/`trialing` past end → update DB to `active`, populate IDs and period end, log to `stripe_webhook_events` with `source='reconciler'`.
-  - If Stripe has cancelled/past_due and DB says `active` → flip DB to match.
-- Batched (e.g. 50 customers per tick) with cursor in a small `reconciliation_state` table to stay within Stripe rate limits.
-- Emits structured logs; failures don't block the batch.
+### Root cause
 
-## Workstream 3 — Webhook hardening
-Update `stripe-webhook`:
-- On every relevant event (`customer.subscription.created/updated/deleted`, `invoice.payment_succeeded/failed`), always fetch the **current** subscription from Stripe (don't trust the event payload alone) and upsert the DB row. This makes the handler idempotent and self-healing against out-of-order delivery.
-- Always write to `stripe_webhook_events` (success and failure) with `event_id`, `type`, `customer_id`, `status`, `error`. Add a unique index on `event_id` to dedupe retries.
-- On unknown `customer_id` (no matching tenant), log and skip rather than 500 (prevents Stripe disabling the endpoint after repeated failures).
+`supabase/functions/stripe-webhook/index.ts` line 47 uses the **synchronous** Stripe verifier:
 
-## Workstream 4 — Admin "Resync tenant" action
-- Promote the existing `admin-stripe-customer-lookup` into the admin UI:
-  - Add a **Resync from Stripe** button on the SaaS customer detail view (platform-admin only).
-  - Calls a new `admin-stripe-resync-tenant` function that runs the same reconcile logic for a single tenant and returns the diff.
-- No new tables required.
+```ts
+event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+```
 
-## Workstream 5 — Observability
-- Add a simple admin dashboard tile: "Tenants with Stripe/DB drift in last 24h" sourced from `stripe_webhook_events` where `source='reconciler' AND action='healed'`.
-- Optional: email platform admins if drift count > N in a single run.
+Stripe's Node SDK relies on Node's sync `crypto` module. In Deno (Supabase Edge Runtime) only the async `SubtleCrypto` is available, so the sync call throws before signature verification even completes. Stripe's SDK explicitly tells us to call `constructEventAsync` in this environment.
 
-## Rollout order
-1. WS1 investigation (immediate, manual).
-2. WS3 webhook hardening (low risk, fixes future events).
-3. WS2 periodic reconciler (safety net for past + future).
-4. WS4 admin button (quality of life).
-5. WS5 dashboard tile (after a week of reconciler data).
+## The fix (one-line behavior change, plus safety net)
 
-## Out of scope
-- Refactoring the billing data model.
-- Changing pricing tiers or lock behavior.
-- Migrating to Stripe Billing Portal.
+### 1. `supabase/functions/stripe-webhook/index.ts`
+- Replace the sync call with the async one:
+  ```ts
+  event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+  ```
+- While we're in the verification block, also log signature failures to `stripe_webhook_events` with `source='webhook'`, `action='signature_failed'`, and the error message, so future signature problems show up in our table instead of being invisible.
+
+### 2. Backfill the missed events
+Because Stripe has been getting 400s, it has been retrying (and eventually giving up on) every event since the webhook was last working. After deploy:
+- Run the existing `reconcile-stripe-subscriptions` function once manually to heal any tenants whose subscription state drifted while the webhook was broken.
+- Spot-check `stripe_webhook_events` to confirm new deliveries are landing with `source='webhook'` and no `error`.
+
+### 3. Smoke test
+- From the Stripe Dashboard → Developers → Webhooks → our endpoint → **Send test webhook** (`customer.subscription.updated`). Expect 200 and a new row in `stripe_webhook_events`.
+
+## Out of scope (not changing now)
+
+- Webhook endpoint URL / secret rotation — endpoint is correct.
+- The reconciler, admin resync button, and webhook event schema — all already shipped last turn and working; they just never got fed because verification was failing.
+- Any other edge function — only `stripe-webhook` uses sync `constructEvent`.
+
+## Risk
+
+Minimal. `constructEventAsync` is the Stripe-sanctioned API for non-Node runtimes and returns the same `Stripe.Event` shape. The rest of the handler is unchanged.
