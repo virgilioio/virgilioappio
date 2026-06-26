@@ -145,6 +145,22 @@ serve(async (req) => {
           await handleTrialWillEnd(supabaseClient, event.data.object as Stripe.Subscription);
           break;
 
+        case "radar.early_fraud_warning.created":
+          await handleEarlyFraudWarning(supabaseClient, stripe, event);
+          break;
+
+        case "charge.dispute.created":
+          await handleDisputeCreated(supabaseClient, stripe, event);
+          break;
+
+        case "charge.dispute.closed":
+          await handleDisputeClosed(supabaseClient, event);
+          break;
+
+        case "charge.refunded":
+          await handleChargeRefunded(supabaseClient, event);
+          break;
+
         default:
           logStep("Unhandled event type", { eventType: event.type });
       }
