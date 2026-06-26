@@ -6319,6 +6319,74 @@ export type Database = {
           },
         ]
       }
+      tenant_fraud_signals: {
+        Row: {
+          action_taken: string | null
+          amount_cents: number | null
+          created_at: string
+          currency: string | null
+          fraud_type: string | null
+          id: string
+          notes: string | null
+          raw_event: Json | null
+          resolved_at: string | null
+          resolved_by: string | null
+          signal_type: string
+          stripe_charge_id: string | null
+          stripe_customer_id: string | null
+          stripe_dispute_id: string | null
+          stripe_event_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          action_taken?: string | null
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          fraud_type?: string | null
+          id?: string
+          notes?: string | null
+          raw_event?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          signal_type: string
+          stripe_charge_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_dispute_id?: string | null
+          stripe_event_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          action_taken?: string | null
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          fraud_type?: string | null
+          id?: string
+          notes?: string | null
+          raw_event?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          signal_type?: string
+          stripe_charge_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_dispute_id?: string | null
+          stripe_event_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_fraud_signals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_notes: {
         Row: {
           author_id: string
