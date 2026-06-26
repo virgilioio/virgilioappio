@@ -66,48 +66,78 @@ serve(async (req) => {
       });
     }
 
+    // Extract customer id (best-effort) from event payload for observability.
+    const eventObject = event.data.object as any;
+    const eventCustomerId: string | null =
+      typeof eventObject?.customer === 'string'
+        ? eventObject.customer
+        : (eventObject?.customer?.id ?? null);
+
     // Record the event as being processed
     await supabaseClient
       .from("stripe_webhook_events")
       .insert({
         stripe_event_id: event.id,
         event_type: event.type,
+        source: 'webhook',
+        action: 'received',
+        stripe_customer_id: eventCustomerId,
       });
 
-    logStep("Processing event", { eventType: event.type });
+    logStep("Processing event", { eventType: event.type, customerId: eventCustomerId });
 
-    // Handle different event types
-    switch (event.type) {
-      case "checkout.session.completed":
-        await handleCheckoutCompleted(supabaseClient, stripe, event.data.object as Stripe.Checkout.Session);
-        break;
+    let handlerError: string | null = null;
+    try {
+      // Handle different event types. For subscription/invoice events, we
+      // always re-fetch the latest subscription from Stripe to stay idempotent
+      // and self-heal out-of-order or missed events.
+      switch (event.type) {
+        case "checkout.session.completed":
+          await handleCheckoutCompleted(supabaseClient, stripe, event.data.object as Stripe.Checkout.Session);
+          break;
 
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-        await handleSubscriptionChange(supabaseClient, event.data.object as Stripe.Subscription);
-        break;
+        case "customer.subscription.created":
+        case "customer.subscription.updated": {
+          const incoming = event.data.object as Stripe.Subscription;
+          const fresh = await stripe.subscriptions.retrieve(incoming.id).catch(() => incoming);
+          await handleSubscriptionChange(supabaseClient, fresh);
+          break;
+        }
 
-      case "customer.subscription.deleted":
-        await handleSubscriptionDeleted(supabaseClient, event.data.object as Stripe.Subscription);
-        break;
+        case "customer.subscription.deleted":
+          await handleSubscriptionDeleted(supabaseClient, event.data.object as Stripe.Subscription);
+          break;
 
-      case "invoice.payment_succeeded":
-        await handlePaymentSucceeded(supabaseClient, stripe, event.data.object as Stripe.Invoice);
-        break;
+        case "invoice.payment_succeeded":
+          await handlePaymentSucceeded(supabaseClient, stripe, event.data.object as Stripe.Invoice);
+          break;
 
-      case "invoice.payment_failed":
-        await handlePaymentFailed(supabaseClient, event.data.object as Stripe.Invoice);
-        break;
+        case "invoice.payment_failed":
+          await handlePaymentFailed(supabaseClient, event.data.object as Stripe.Invoice);
+          break;
 
-      case "customer.subscription.trial_will_end":
-        await handleTrialWillEnd(supabaseClient, event.data.object as Stripe.Subscription);
-        break;
+        case "customer.subscription.trial_will_end":
+          await handleTrialWillEnd(supabaseClient, event.data.object as Stripe.Subscription);
+          break;
 
-      default:
-        logStep("Unhandled event type", { eventType: event.type });
+        default:
+          logStep("Unhandled event type", { eventType: event.type });
+      }
+    } catch (handlerErr) {
+      handlerError = handlerErr instanceof Error ? handlerErr.message : String(handlerErr);
+      logStep("Handler error", { eventType: event.type, error: handlerError });
     }
 
-    logStep("Event processed successfully", { eventType: event.type, eventId: event.id });
+    // Update the event row with the final outcome.
+    await supabaseClient
+      .from("stripe_webhook_events")
+      .update({
+        action: handlerError ? 'error' : 'processed',
+        error: handlerError,
+      })
+      .eq('stripe_event_id', event.id);
+
+    logStep("Event finished", { eventType: event.type, eventId: event.id, ok: !handlerError });
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

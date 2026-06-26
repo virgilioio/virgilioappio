@@ -6091,25 +6091,43 @@ export type Database = {
       }
       stripe_webhook_events: {
         Row: {
+          action: string | null
           created_at: string
+          details: Json | null
+          error: string | null
           event_type: string
           id: string
           processed_at: string
+          source: string
+          stripe_customer_id: string | null
           stripe_event_id: string
+          tenant_id: string | null
         }
         Insert: {
+          action?: string | null
           created_at?: string
+          details?: Json | null
+          error?: string | null
           event_type: string
           id?: string
           processed_at?: string
+          source?: string
+          stripe_customer_id?: string | null
           stripe_event_id: string
+          tenant_id?: string | null
         }
         Update: {
+          action?: string | null
           created_at?: string
+          details?: Json | null
+          error?: string | null
           event_type?: string
           id?: string
           processed_at?: string
+          source?: string
+          stripe_customer_id?: string | null
           stripe_event_id?: string
+          tenant_id?: string | null
         }
         Relationships: []
       }
