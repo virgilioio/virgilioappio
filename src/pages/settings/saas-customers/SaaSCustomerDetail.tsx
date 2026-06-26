@@ -1436,3 +1436,43 @@ function FeedEventRow({ a, last }: { a: any; last?: boolean }) {
     </Row>
   )
 }
+
+function StripeResyncButton({ stripeCustomerId, tenantId }: { stripeCustomerId: string; tenantId?: string }) {
+  const queryClient = useQueryClient()
+  const [busy, setBusy] = useState(false)
+  const onClick = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-stripe-resync-tenant', {
+        body: { stripeCustomerId, tenantId },
+      })
+      if (error) throw error
+      const outcome = (data as any)?.outcome
+      if (outcome?.action === 'healed') {
+        toast.success(`Healed: DB updated to match Stripe (${outcome.stripeStatus}).`)
+      } else if (outcome?.action === 'cancelled_in_db') {
+        toast.success('No active Stripe subscription — marked as canceled in DB.')
+      } else if (outcome?.action === 'no_change') {
+        toast.success('Already in sync with Stripe.')
+      } else if (outcome?.action === 'no_tenant') {
+        toast.error('No tenant found for this Stripe customer.')
+      } else if (outcome?.action === 'error') {
+        toast.error(`Resync error: ${outcome.error}`)
+      }
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer'] })
+      queryClient.invalidateQueries({ queryKey: ['stripe-invoices'] })
+    } catch (e) {
+      toast.error(`Resync failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <button style={SEC_BTN} onClick={onClick} disabled={busy} title="Re-pull live state from Stripe and heal any drift">
+      <RotateCcw size={12} className={busy ? 'animate-spin' : ''} />
+      {busy ? 'Syncing…' : 'Resync from Stripe'}
+    </button>
+  )
+}
