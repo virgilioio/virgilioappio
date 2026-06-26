@@ -1515,10 +1515,15 @@ function FraudSignalsSection({ tenantId, stripeCustomerId }: { tenantId?: string
     setBusy(action)
     try {
       const { data, error } = await supabase.functions.invoke('admin-stripe-handle-fraud', {
-        body: { tenant_id: tenantId, action, charge_id: chargeId, stripe_customer_id: stripeCustomerId },
+        body: { tenantId, action, chargeId },
       })
-      if (error) throw error
-      toast.success(data?.message || 'Done')
+      if (error) {
+        const serverMsg = (data as any)?.error
+        console.error('[admin-stripe-handle-fraud] failed', { error, data })
+        throw new Error(serverMsg || error.message || 'Edge function error')
+      }
+      console.log('[admin-stripe-handle-fraud] outcome', data)
+      toast.success(data?.message || 'Fraud action completed')
       qc.invalidateQueries({ queryKey: ['fraud-signals', tenantId] })
       qc.invalidateQueries({ queryKey: ['tenant-subscription', tenantId] })
       qc.invalidateQueries({ queryKey: ['saas-customer'] })
