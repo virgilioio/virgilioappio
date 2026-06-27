@@ -98,6 +98,7 @@ interface SourcingCandidateTableProps {
     preview_only: number
   }
   onCandidatesChanged?: () => void | Promise<void>
+  topMatchRowId?: string | null
 }
 
 export function SourcingCandidateTable({ 
@@ -107,7 +108,8 @@ export function SourcingCandidateTable({
   projectId,
   searchCriteria,
   sourceBreakdown,
-  onCandidatesChanged
+  onCandidatesChanged,
+  topMatchRowId,
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
