@@ -1,24 +1,37 @@
-# Fix Deal Card currency mismatch in CRM Kanban
+# Align CRM Companies table with Jobs table
 
-## Problem
-On `CRM > Deals` kanban, each deal card's main amount badge shows the **converted (base) amount** but labels it with the deal's **original currency code/symbol**. Example: a $15,000 USD deal in an MXN workspace renders the MXN-converted number with a "$ … USD" label.
+The CRM > Companies table (`OrganizationsTable.tsx`) currently uses an old `Card` shell, a different filter/search row, custom pagination, and inconsistent badges/buttons. The Jobs table (`JobsTable.tsx`) is the reference implementation for the Gio Foundation table style. This plan ports the Jobs table's structural patterns to Companies while preserving Companies' columns and data.
 
-## Root cause
-`DealsKanbanBoard.computeDisplayAmount` returns `deal.base_amount ?? deal.amount` (always converted when available), but `DealCard` formats that number using `deal.currency` / `CURRENCY_SYMBOLS[deal.currency]`. The currency used to format never follows the value being shown.
+## What stays the same
+- Columns in Companies: **Name**, **Status**, **Actions** (no new data added — UI/structure only).
+- Data hook, edit/delete/view handlers, permission gates, details dialog.
 
-## Fix (frontend only)
+## Structural changes (to mirror JobsTable)
 
-1. **`src/components/deals/DealsKanbanBoard.tsx`**
-   - Pass the currency that matches `displayAmount` down to `DealCard` via a new `displayCurrency` prop. When `base_amount` is used, pass `base_currency`; otherwise pass `deal.currency`.
-   - Apply this for both the column cards and the drag-overlay card.
+1. **Outer chrome** — drop `Card`/`CardHeader`/`CardContent`. Use the same two-card layout JobsTable uses:
+   - Top card: `rounded-2xl border border-virgilio-border bg-white overflow-hidden` containing the tabs row + search/filters row.
+   - Bottom card: same wrapper around the `<Table>`.
 
-2. **`src/components/deals/DealCard.tsx`**
-   - Accept optional `displayCurrency?: string`. Use it (falling back to `deal.currency`) when building the amount badge label (both the symbol and the trailing currency code).
-   - When `displayCurrency` equals `deal.base_currency` and differs from `deal.currency`, hide the redundant "≈ base amount" sub-line (the badge already shows the converted value in the base currency). Keep the sub-line behavior unchanged otherwise.
+2. **Tabs row** — replace the status `FilterChipPopover` with the Jobs-style segmented tabs (All / Active / Inactive), using the exact classes from JobsTable (`h-9 px-3.5 rounded-lg font-poppins text-[13.5px]`, active pill `bg-[#FAFAF7]`, count in tabular-nums). Counts come from the existing `statusOptions` logic.
 
-3. **No backend, hook, or schema changes.** `formatStageTotal` already formats stage totals in base currency correctly — leave it alone.
+3. **Search + filters row** — same `p-3` flex row:
+   - Search input: `h-10 pl-10` with `bg-[#FAFAF7] border-transparent rounded-xl text-[13.5px]`, magnifier at `left-3.5`, placeholder "Search companies…".
+   - Right side: keep "Create Company" primary button using the standard `<Button>` (no custom classes).
 
-## Verification
-- Create/open a deal in a non-base currency on an MXN workspace: the card's main badge should now read e.g. `$270,000 MXN` (converted), not `$270,000 USD`.
-- Deals already in the base currency are unchanged.
-- Stage column totals are unchanged.
+4. **Table** — use `<Table density="comfortable">` (Jobs uses `comfortable`) and the shared `TableHeader/TableRow/TableHead/TableCell` primitives. Rows become `interactive className="group cursor-pointer"`.
+   - **Name** column: render via `<IdentityCell hideAvatar name={org.name} fallback={org.name} />` — same font sizing/truncation as Jobs.
+   - **Status** column: `<StatusCell><Badge tone={status === 'active' ? 'green' : 'neutral'} dot size="sm">…</Badge></StatusCell>` (replaces the hardcoded `bg-[#d2ffc2]` badge — uses semantic tones).
+   - **Actions** column: `<TableHead className="w-[32px] text-right" aria-label="Actions" />` + `<ActionCell>` with a ghost `iconOnly` MoreHorizontal trigger (same as Jobs); items View / Edit / Delete, Delete in destructive style after a separator.
+
+5. **Empty / loading** — match Jobs:
+   - Loading: `<TableSkeleton rows={5} columns={3} />` rendered inside a single `<TableRow><TableCell colSpan={3}>` (drop the separate skeleton card).
+   - Empty: keep `EmptyState` with `SoftBuilding`, rendered inside the table body row exactly like JobsTable does for "No matching jobs".
+
+6. **Pagination** — remove the entire custom pagination block (the gradient/scale/translate buttons). Replace with `<TableFooterSummary>` (the Gio standard used implicitly by Jobs; Jobs shows row count via the footer). Companies list is small, so a simple footer summary matches the Jobs convention. Pagination state (`currentPage`, `itemsPerPage`) is removed.
+
+7. **Cleanup** — delete unused imports (`ChevronLeft/Right`, `Building2`, `Card*`, pagination helpers, `getPageNumbers`).
+
+## Files touched
+- `src/components/organizations/OrganizationsTable.tsx` — full rewrite of the render tree and filter/tab state to match JobsTable patterns.
+
+No backend, hook, or data-shape changes. No new columns. Pure structural/visual alignment.
