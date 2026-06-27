@@ -38,7 +38,7 @@ export function KpiChart({ metricId, data }: Props) {
     <div className="flex flex-col h-full">
       <div className="flex items-end justify-between gap-3">
         <div className="font-poppins font-semibold text-[34px] leading-none tracking-[-0.02em] text-[#0d0d09]">
-          {fmt(data.value, data.format)}
+          {fmt(data.value, data.format, data.currency)}
         </div>
         {series.length > 0 && (
           <svg width={w} height={h} className="flex-shrink-0">
