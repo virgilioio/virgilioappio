@@ -1,8 +1,9 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles, Search, ArrowRight } from 'lucide-react'
+import { Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 
 interface JobSourcingTabProps {
