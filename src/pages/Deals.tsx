@@ -20,6 +20,7 @@ import {
 import { usePermissions } from '@/hooks/usePermissions'
 import { useDeals } from '@/hooks/useDeals'
 import { useDealStages } from '@/hooks/useDealStages'
+import { useDealPaymentsTotals } from '@/hooks/useDealPaymentsTotals'
 import { DealsKanbanBoard, type DealAmountMode } from '@/components/deals/DealsKanbanBoard'
 import { DealFormSheet } from '@/components/deals/DealFormSheet'
 import { DealProfileSheet } from '@/components/deals/DealProfileSheet'
@@ -29,6 +30,8 @@ import { cn } from '@/lib/utils'
 const AMOUNT_MODE_OPTIONS: FilterChipSelectOption<DealAmountMode>[] = [
   { value: 'total', label: 'Total' },
   { value: 'weighted', label: 'Weighted' },
+  { value: 'collected', label: 'Collected' },
+  { value: 'outstanding', label: 'Outstanding' },
 ]
 
 const NONE = '__none__'
@@ -52,6 +55,8 @@ export default function Deals() {
   const { canViewOrganizations } = usePermissions()
   const { data: deals = [] } = useDeals()
   const { data: stages = [] } = useDealStages()
+  const { data: paymentTotals } = useDealPaymentsTotals()
+  const collectedByDeal = paymentTotals?.collectedByDeal
 
   const [creating, setCreating] = useState(false)
   const [openDealId, setOpenDealId] = useState<string | null>(null)
@@ -301,6 +306,7 @@ export default function Deals() {
               selectedOwners={selectedOwners}
               selectedOrgs={selectedOrgs}
               searchQuery={searchQuery}
+              collectedByDeal={collectedByDeal}
             />
           </div>
         </AppContainer>

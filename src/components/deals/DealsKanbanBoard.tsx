@@ -19,11 +19,24 @@ import { cn } from '@/lib/utils'
 import { DealCard } from './DealCard'
 import { DraggableDealCard } from './KanbanPrimitives'
 
-export type DealAmountMode = 'total' | 'weighted'
+export type DealAmountMode = 'total' | 'weighted' | 'collected' | 'outstanding'
 
 // ---- helpers ----
-function computeDisplayAmount(deal: Deal, mode: DealAmountMode): number | null {
+function computeDisplayAmount(
+  deal: Deal,
+  mode: DealAmountMode,
+  collectedByDeal?: Map<string, number>,
+): number | null {
   const base = deal.base_amount ?? deal.amount
+  if (mode === 'collected') {
+    const c = collectedByDeal?.get(deal.id)
+    return c == null ? null : c
+  }
+  if (mode === 'outstanding') {
+    if (base == null) return null
+    const c = collectedByDeal?.get(deal.id) ?? 0
+    return Math.max(0, base - c)
+  }
   if (base == null) return null
   if (mode === 'weighted') {
     const p = deal.probability == null ? 1 : Math.max(0, Math.min(1, Number(deal.probability)))
@@ -47,12 +60,16 @@ function formatCompactMoney(amount: number, currency: string): string {
   return `${symbol}${body}`
 }
 
-function stageSubtotal(deals: Deal[], mode: DealAmountMode): string {
+function stageSubtotal(
+  deals: Deal[],
+  mode: DealAmountMode,
+  collectedByDeal?: Map<string, number>,
+): string {
   if (!deals.length) return '—'
   const baseCcy = deals.find((d) => d.base_currency)?.base_currency ?? deals[0]?.currency ?? 'USD'
   let total = 0
   for (const d of deals) {
-    const v = computeDisplayAmount(d, mode)
+    const v = computeDisplayAmount(d, mode, collectedByDeal)
     if (v != null) total += v
   }
   return `${formatCompactMoney(total, baseCcy)} ${baseCcy}`
@@ -127,6 +144,7 @@ interface DealsKanbanBoardProps {
   selectedOwners?: string[]
   selectedOrgs?: string[]
   searchQuery?: string
+  collectedByDeal?: Map<string, number>
 }
 
 export function DealsKanbanBoard({
@@ -135,6 +153,7 @@ export function DealsKanbanBoard({
   selectedOwners = [],
   selectedOrgs = [],
   searchQuery = '',
+  collectedByDeal,
 }: DealsKanbanBoardProps) {
   const stagesQuery = useDealStages()
   const dealsQuery = useDeals()
@@ -217,7 +236,7 @@ export function DealsKanbanBoard({
       <div className="flex gap-3 h-full overflow-x-auto pb-2">
         {stages.map((stage) => {
           const stageDeals = dealsByStage.get(stage.id) ?? []
-          const subtotal = stageSubtotal(stageDeals, amountMode)
+          const subtotal = stageSubtotal(stageDeals, amountMode, collectedByDeal)
           const accent = stageAccent(stage)
           return (
             <div
@@ -269,7 +288,7 @@ export function DealsKanbanBoard({
                       <DealCard
                         deal={deal}
                         onClick={() => onOpenDeal(deal.id)}
-                        displayAmount={computeDisplayAmount(deal, amountMode)}
+                        displayAmount={computeDisplayAmount(deal, amountMode, collectedByDeal)}
                         displayCurrency={computeDisplayCurrency(deal)}
                       />
                     </DraggableDealCard>
@@ -286,7 +305,7 @@ export function DealsKanbanBoard({
           <div className="w-[252px] rotate-[1deg] opacity-95">
             <DealCard
               deal={activeDeal}
-              displayAmount={computeDisplayAmount(activeDeal, amountMode)}
+              displayAmount={computeDisplayAmount(activeDeal, amountMode, collectedByDeal)}
               displayCurrency={computeDisplayCurrency(activeDeal)}
             />
           </div>
