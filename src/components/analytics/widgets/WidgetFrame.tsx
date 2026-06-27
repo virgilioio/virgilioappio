@@ -165,9 +165,12 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
       </div>
 
       <Section label="Metric">
-        <Dropdown
+        <GroupedDropdown
           value={cfg.metric}
-          options={METRIC_LIST.map(m => ({ value: m.id, label: m.label }))}
+          groups={[
+            { label: 'Recruiting', options: RECRUITING_METRICS.map(m => ({ value: m.id, label: m.label })) },
+            { label: 'CRM / Revenue', options: CRM_METRICS.map(m => ({ value: m.id, label: m.label })) },
+          ]}
           onChange={v => setMetric(v as MetricId)}
         />
       </Section>
