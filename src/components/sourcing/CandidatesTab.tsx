@@ -146,6 +146,7 @@ export function CandidatesTab({
           searchCriteria={searchCriteria || project.search_criteria}
           sourceBreakdown={sourceBreakdown}
           onCandidatesChanged={onCandidatesChanged}
+          topMatchRowId={topMatch?.rowId ?? null}
         />
       </div>
     </div>
