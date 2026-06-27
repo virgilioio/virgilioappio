@@ -7,12 +7,17 @@ import { useSourcePerformanceMetrics } from '@/hooks/analytics/useSourcePerforma
 import { useInterviewHealthMetrics } from '@/hooks/analytics/useInterviewHealthMetrics'
 import { useOfferAnalyticsMetrics } from '@/hooks/analytics/useOfferAnalyticsMetrics'
 import { useTalentInsightsMetrics } from '@/hooks/analytics/useTalentInsightsMetrics'
+import { useCrmAnalyticsMetrics, type CrmFilters } from '@/hooks/analytics/useCrmAnalyticsMetrics'
 
 export interface PageFilters {
   recruiterIds: string[]
   jobIds: string[]
   organizationIds: string[]
   jobStatus: string
+  // CRM filter slice (optional — defaults to empty)
+  dealOwnerIds?: string[]
+  dealCompanyIds?: string[]
+  dealStageIds?: string[]
 }
 
 interface ProviderProps {
@@ -31,6 +36,7 @@ export interface AnalyticsBundle {
   interview: ReturnType<typeof useInterviewHealthMetrics>
   offer: ReturnType<typeof useOfferAnalyticsMetrics>
   talent: ReturnType<typeof useTalentInsightsMetrics>
+  crm: ReturnType<typeof useCrmAnalyticsMetrics>
 }
 
 const Ctx = createContext<AnalyticsBundle | null>(null)
@@ -45,10 +51,16 @@ export function AnalyticsDataProvider({ dateRange, filters, children }: Provider
   const interview = useInterviewHealthMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const offer = useOfferAnalyticsMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const talent = useTalentInsightsMetrics(metrics.finalJobIds, dateRange, hasJobIds)
+  const crmFilters: CrmFilters = {
+    ownerIds: filters.dealOwnerIds,
+    companyIds: filters.dealCompanyIds,
+    stageIds: filters.dealStageIds,
+  }
+  const crm = useCrmAnalyticsMetrics(dateRange, crmFilters)
 
   const value = useMemo<AnalyticsBundle>(
-    () => ({ dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent }),
-    [dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent],
+    () => ({ dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent, crm }),
+    [dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent, crm],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
@@ -58,3 +70,4 @@ export function useAnalyticsBundle(): AnalyticsBundle {
   if (!v) throw new Error('useAnalyticsBundle must be used inside AnalyticsDataProvider')
   return v
 }
+
