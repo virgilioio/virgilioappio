@@ -84,12 +84,13 @@ export function DealCard({ deal, onClick, className, displayAmount, displayCurre
       <div className="absolute left-4 right-4 bottom-3 flex justify-between items-center gap-2">
         <div className="flex flex-col gap-0.5 min-w-0">
           <Badge variant="outline">{amountLabel}</Badge>
-          {deal.base_currency && deal.base_amount != null && deal.currency !== deal.base_currency && (
+          {deal.base_currency && deal.base_amount != null && deal.currency !== deal.base_currency && shownCurrency !== deal.base_currency && (
             <span className="text-[10px] text-text-tertiary pl-1">
               ≈ {CURRENCY_SYMBOLS[deal.base_currency] ?? ''}
               {new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(deal.base_amount)}
             </span>
           )}
+
         </div>
 
         <TooltipProvider>
