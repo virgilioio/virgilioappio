@@ -239,11 +239,6 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
       try {
         await ensureSourcingProject({
           name: `Sourcing — ${wizardState.jobData.title ?? 'Job'}`,
-          seed: {
-            skills: (wizardState.jobData as any).required_skills ?? [],
-            location: wizardState.jobData.location ?? null,
-            level: (wizardState.jobData as any).level ?? null,
-          },
         })
       } catch (e) {
         console.error('Failed to create sourcing project', e)
