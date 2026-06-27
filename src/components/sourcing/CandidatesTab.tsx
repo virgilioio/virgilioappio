@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { SourcingProject, SearchCriteria } from '@/types/sourcing'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { LinkToJobBanner } from './LinkToJobBanner'
+import { useTopMatchForResults } from '@/hooks/useTopMatchForResults'
 
 import { LinkedJobStrip } from './LinkedJobStrip'
 import { ResultsRunSummary } from './ResultsRunSummary'
@@ -71,7 +72,6 @@ export function CandidatesTab({
     let good = 0
     let possible = 0
     let alreadyCollected = 0
-    let top: Candidate | null = null
 
     for (const c of candidates) {
       if (c.match_tier === 'excellent') strongFit++
@@ -82,8 +82,6 @@ export function CandidatesTab({
         c.display_source === 'internal' ||
         (c.source === 'apollo' && !!c.candidate_id)
       if (isInternal) alreadyCollected++
-
-      if (!top || (c.match_score ?? 0) > (top.match_score ?? 0)) top = c
     }
 
     return {
@@ -92,12 +90,13 @@ export function CandidatesTab({
       good,
       possible,
       alreadyCollected,
-      topName: top ? (top.full_name || top.candidate_name) : null,
-      topScore: top ? top.match_score : null,
     }
   }, [candidates])
 
   const isLinked = !!(jobId || project.job_id)
+
+  // Evidence-backed Top match — only when an internal candidate has a strong AI fit score
+  const { topMatch } = useTopMatchForResults(jobId || project.job_id || null, candidates)
 
   return (
     <div className="flex-1 min-h-0 overflow-hidden h-full flex flex-col">
@@ -130,14 +129,15 @@ export function CandidatesTab({
             good={summary.good}
             possible={summary.possible}
             alreadyCollected={summary.alreadyCollected}
-            topMatchName={summary.topName}
-            topMatchScore={summary.topScore}
+            topMatchName={topMatch?.name ?? null}
+            topMatchScore={topMatch?.score ?? null}
             sourceBreakdown={sourceBreakdown}
           />
         </div>
       )}
 
       <div className="flex-1 min-h-0 overflow-hidden px-4 pb-4 pt-4">
+
         <SourcingCandidateTable
           candidates={candidates}
           isLoading={isLoading}
@@ -146,6 +146,7 @@ export function CandidatesTab({
           searchCriteria={searchCriteria || project.search_criteria}
           sourceBreakdown={sourceBreakdown}
           onCandidatesChanged={onCandidatesChanged}
+          topMatchRowId={topMatch?.rowId ?? null}
         />
       </div>
     </div>
