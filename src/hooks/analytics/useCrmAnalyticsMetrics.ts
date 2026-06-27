@@ -324,17 +324,15 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       const ownerIds = Array.from(new Set(deals.map(d => d.owner_id).filter(Boolean))) as string[]
       const orgIds = Array.from(new Set(deals.map(d => d.organization_id).filter(Boolean))) as string[]
 
-      const [stagesRes, ownersRes, orgsRes] = await Promise.all([
-        stageIds.length
-          ? supabase.from('deal_stages').select('id, name, stage_type, position').in('id', stageIds)
-          : Promise.resolve({ data: [] as StageMeta[] }),
-        ownerIds.length
-          ? supabase.from('profiles').select('id, first_name, last_name, email').in('id', ownerIds)
-          : Promise.resolve({ data: [] as any[] }),
-        orgIds.length
-          ? supabase.from('organizations').select('id, name').in('id', orgIds)
-          : Promise.resolve({ data: [] as CompanyMeta[] }),
-      ])
+      const stagesRes: { data: StageMeta[] | null } = stageIds.length
+        ? await supabase.from('deal_stages').select('id, name, stage_type, position').in('id', stageIds) as any
+        : { data: [] }
+      const ownersRes: { data: any[] | null } = ownerIds.length
+        ? await supabase.from('profiles').select('id, first_name, last_name, email').in('id', ownerIds) as any
+        : { data: [] }
+      const orgsRes: { data: CompanyMeta[] | null } = orgIds.length
+        ? await supabase.from('organizations').select('id, name').in('id', orgIds) as any
+        : { data: [] }
 
       const stages = ((stagesRes.data ?? []) as StageMeta[]).sort((a, b) => a.position - b.position)
       const ownerMap = new Map<string, string>()
