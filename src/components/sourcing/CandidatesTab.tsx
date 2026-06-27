@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { SourcingProject, SearchCriteria } from '@/types/sourcing'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { LinkToJobBanner } from './LinkToJobBanner'
+import { useTopMatchForResults } from '@/hooks/useTopMatchForResults'
 
 import { LinkedJobStrip } from './LinkedJobStrip'
 import { ResultsRunSummary } from './ResultsRunSummary'
