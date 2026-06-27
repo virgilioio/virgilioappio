@@ -62,7 +62,7 @@ export function useDealPayments(dealId: string | null | undefined) {
         .from('deal_payments')
         .select('*')
         .eq('deal_id', dealId!)
-        .order('paid_at', { ascending: false })
+        .order('created_at', { ascending: false })
       if (error) throw error
       return (data ?? []).map((r: any) => ({ ...r, amount: Number(r.amount) })) as DealPayment[]
     },
