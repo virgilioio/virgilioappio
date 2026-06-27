@@ -36,14 +36,20 @@ import {
   XCircle,
   CheckCircle2,
   Circle,
-  MoveRight,
+  ArrowRight,
   Send,
   MoreHorizontal,
   Calendar,
-  Percent,
   Clock,
   User as UserIcon,
   AlertTriangle,
+  Building2,
+  DollarSign,
+  StickyNote,
+  LayoutGrid,
+  Receipt,
+  FileText,
+  X,
 } from 'lucide-react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
