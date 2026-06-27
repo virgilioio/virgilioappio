@@ -315,7 +315,7 @@ export default function Deals() {
               collectedByDeal={collectedByDeal}
             />
           </div>
-        </AppContainer>
+        </div>
       </div>
 
       <DealFormSheet open={creating} onOpenChange={setCreating} />
