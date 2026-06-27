@@ -159,6 +159,14 @@ export function Header() {
     },
     {
       href: '/crm',
+      icon: PieChart,
+      label: 'Overview',
+      show: canViewOrganizations,
+      section: 'crm',
+      exact: true,
+    },
+    {
+      href: '/crm/companies',
       icon: Building2,
       label: 'Companies',
       show: canViewOrganizations,
