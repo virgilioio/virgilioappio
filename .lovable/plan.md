@@ -1,41 +1,54 @@
-## Goal
+# Use canonical EmptyState in Job → Sourcing tab
 
-Stop labeling anything "Top match" unless there's real evidence behind it. If the data is thin (uncollected previews with no AI fit, no internal record), hide the badge and the banner line entirely.
+## Problem
 
-## New rule (applies to both surfaces)
+`src/components/jobs/JobSourcingTab.tsx` hand-rolls its "no sourcing project yet" block — a custom rounded card with a grey `Search` icon tile, ad-hoc typography, and a manual CTA. This bypasses the canonical `<EmptyState>` primitive and violates the project Core rule ("Never hand-roll empty blocks").
 
-A candidate qualifies as "Top match" only if **all** of these are true:
+The "project exists" branch is a linked-project summary card (not an empty state) and stays untouched. The loading branch is a simple skeleton placeholder and also stays as-is (loading ≠ empty per the EmptyState memo).
 
-1. They are an **internal/collected** candidate — i.e. there's a row in `candidates` (either `display_source === 'internal'`, or an Apollo/PDL row that has been resolved to an existing `candidate_id`).
-2. They have a real **AI fit score** from `job_candidate_associations.ai_fit_score` (requires the project to be linked to a job).
-3. That AI fit score is **strong** — `ai_fit_score >= 80` (the "excellent" tier already used elsewhere). Confidence must not be `low`.
-4. They are unambiguously the top — strictly higher AI fit than the next candidate (no ties). On a tie, no badge.
+## Change
 
-If any condition fails → no "Top match" badge anywhere, no "Top match: …" line in the banner. The rest of the banner (counts, sources) keeps rendering.
+Refactor only the "no project" branch of `JobSourcingTab.tsx` to render the canonical primitive.
 
-Raw `match_score` from preview matching alone is **not** enough — that's the "lie" today.
+```tsx
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { Sparkles } from 'lucide-react'
 
-## Surface 1 — Banner (`ResultsRunSummary` via `CandidatesTab.tsx`)
+// ...in the no-project branch:
+return (
+  <div className="p-6">
+    <EmptyState
+      size="card"
+      title="No sourcing project yet"
+      body="Start a sourcing project linked to this job — Gio will surface matching candidates and keep them organized in one place."
+      primary={
+        <EmptyAction
+          icon={<Sparkles size={16} strokeWidth={2} />}
+          onClick={handleStart}
+          loading={creating}
+        >
+          Start sourcing for this job
+        </EmptyAction>
+      }
+    />
+  </div>
+)
+```
 
-- Replace the current `max(match_score)` reducer in `CandidatesTab.tsx` with the rule above.
-- Needs AI fit data for the visible candidates. Fetch `ai_fit_score`, `ai_fit_confidence` from `job_candidate_associations` for the project's `job_id` + the candidate ids that are internal/resolved. New small hook `useTopMatchForResults(jobId, candidates)` returning `{ name, score } | null`.
-- Pass through to `ResultsRunSummary` only when non-null; the existing conditional already hides the line when `topMatchName` is falsy.
-
-## Surface 2 — Row pill (`SourcingCandidateTable.tsx:926-976`)
-
-- Drop the positional `sortedData[0] && sortMode === 'ai_fit'` check.
-- Use the same resolved top-match candidate id from the hook above; show the pill only on that row, regardless of current sort.
-- If no qualifying candidate exists, no row shows the pill.
-
-## Edge cases
-
-- Project not linked to a job → no AI fit possible → never show Top match.
-- All results are preview-only (no internal candidate_id) → no Top match.
-- Internal candidate exists but `ai_fit_score` is null / still generating → no Top match (don't fall back to `match_score`).
-- Tie at the top → no Top match.
+Notes:
+- Uses the default Gio mascot illustration (per the canonical empty-state spec for `inline`/`card` contexts).
+- Title plain text — the purple period is auto-appended by the primitive.
+- CTA preserves the existing `handleStart` / `creating` behavior (calls `ensureProject` then navigates to `/find/:id`).
+- If `EmptyAction` does not support `loading`, fall back to disabling it while `creating` is true and keep the label.
 
 ## Out of scope
 
-- No changes to how `match_score` or `ai_fit_score` are computed.
-- No changes to sort behavior or other badges (Already collected, source chips, fit tier coloring).
-- No backfilling of AI fit for candidates that don't have it.
+- The linked-project summary card (it's a status card, not empty).
+- The loading skeleton (separate concern per the empty-state memo).
+- Any other tab or sourcing surface.
+
+## Verification
+
+- Visit a job with no sourcing project → see canonical mascot empty state with the "Start sourcing for this job" CTA.
+- Click the CTA → project is created and the view navigates to `/find/:id` (unchanged behavior).
+- Visit a job that already has a project → the linked-project card still renders unchanged.
