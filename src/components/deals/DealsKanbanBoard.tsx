@@ -305,7 +305,7 @@ export function DealsKanbanBoard({
           <div className="w-[252px] rotate-[1deg] opacity-95">
             <DealCard
               deal={activeDeal}
-              displayAmount={computeDisplayAmount(activeDeal, amountMode)}
+              displayAmount={computeDisplayAmount(activeDeal, amountMode, collectedByDeal)}
               displayCurrency={computeDisplayCurrency(activeDeal)}
             />
           </div>
