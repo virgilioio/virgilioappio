@@ -214,7 +214,7 @@ export function useDealMutations() {
       if (previous) {
         queryClient.setQueryData<Deal[]>(
           ['deals', user?.id],
-          previous.map((d) => (d.id === id ? { ...d, stage_id } : d))
+          previous.map((d) => (d.id === id ? { ...d, stage_id, stage_changed_at: new Date().toISOString() } : d))
         )
       }
       return { previous }
