@@ -207,6 +207,7 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwn
                               deal={deal}
                               onClick={() => onOpenDeal(deal.id)}
                               displayAmount={computeDisplayAmount(deal, amountMode, collectedByDeal)}
+                              displayCurrency={computeDisplayCurrency(deal)}
                               amountLabelPrefix={labelPrefix}
                             />
                           </DraggableDealCard>
@@ -225,6 +226,7 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwn
                 <DealCard
                   deal={activeDeal}
                   displayAmount={computeDisplayAmount(activeDeal, amountMode, collectedByDeal)}
+                  displayCurrency={computeDisplayCurrency(activeDeal)}
                   amountLabelPrefix={labelPrefix}
                 />
               </div>
@@ -235,3 +237,4 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwn
     </Card>
   )
 }
+
