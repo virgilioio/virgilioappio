@@ -48,18 +48,11 @@ export function useJobSourcingProject(jobId?: string | null) {
       if (!jobId || !user || !organizationId) return null
       const existing = await fetchProject()
       if (existing) return existing
-      const { data, error } = await supabase
-        .from('sourcing_projects')
-        .insert({
-          organization_id: organizationId,
-          created_by: user.id,
-          job_id: jobId,
-          name: opts?.name ?? 'Sourcing project',
-          search_criteria: opts?.seed ?? {},
-        })
-        .select('id, job_id, name, status, organization_id')
-        .single()
-      if (error) {
+      const { data, error } = await supabase.functions.invoke(
+        'create-sourcing-project-from-job',
+        { body: { job_id: jobId, name: opts?.name } },
+      )
+      if (error || !data?.id) {
         console.error('ensureProject error', error)
         return null
       }
