@@ -55,6 +55,8 @@ export default function Deals() {
   const { canViewOrganizations } = usePermissions()
   const { data: deals = [] } = useDeals()
   const { data: stages = [] } = useDealStages()
+  const { data: paymentTotals } = useDealPaymentsTotals()
+  const collectedByDeal = paymentTotals?.collectedByDeal
 
   const [creating, setCreating] = useState(false)
   const [openDealId, setOpenDealId] = useState<string | null>(null)
