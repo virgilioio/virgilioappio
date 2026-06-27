@@ -67,6 +67,7 @@ export function JobSourcingTab({ jobId, jobTitle, seed }: JobSourcingTabProps) {
     <div className="p-6">
       <EmptyState
         size="card"
+        illustration={<SoftFind />}
         title="No sourcing project yet"
         body="Start a sourcing project linked to this job — Gio will surface matching candidates and keep them organized in one place."
         primary={
