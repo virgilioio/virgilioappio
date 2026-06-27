@@ -18,6 +18,10 @@ export interface Deal {
   created_by: string | null
   created_at: string
   updated_at: string
+  /** Last time this deal moved to its current stage (auto-maintained by DB trigger). */
+  stage_changed_at: string
+  /** Win likelihood 0..1; used by the Weighted amount view. */
+  probability: number | null
   // joined / derived
   organization_name?: string | null
   owner_name?: string | null
