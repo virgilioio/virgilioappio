@@ -306,6 +306,7 @@ export default function Deals() {
               selectedOwners={selectedOwners}
               selectedOrgs={selectedOrgs}
               searchQuery={searchQuery}
+              collectedByDeal={collectedByDeal}
             />
           </div>
         </AppContainer>
