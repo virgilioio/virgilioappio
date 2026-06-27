@@ -38,9 +38,10 @@ interface DealFormSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   deal?: Deal | null
+  defaultOrganizationId?: string | null
 }
 
-export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) {
+export function DealFormSheet({ open, onOpenChange, deal, defaultOrganizationId }: DealFormSheetProps) {
   const isEdit = !!deal
   const { organizations } = useOrganizations()
   const { members } = useMembers()
@@ -70,7 +71,7 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
     if (open) {
       form.reset({
         title: deal?.title ?? '',
-        organization_id: deal?.organization_id ?? null,
+        organization_id: deal?.organization_id ?? defaultOrganizationId ?? null,
         amount: deal?.amount != null ? String(deal.amount) : '',
         currency: deal?.currency ?? 'USD',
         owner_id: deal?.owner_id ?? null,
@@ -79,7 +80,7 @@ export function DealFormSheet({ open, onOpenChange, deal }: DealFormSheetProps) 
         notes: deal?.notes ?? '',
       })
     }
-  }, [open, deal, form])
+  }, [open, deal, defaultOrganizationId, form])
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
