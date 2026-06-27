@@ -7,10 +7,11 @@ interface Props {
   metricId: MetricId
   data: SeriesPoint[]
   format: Format
+  currency?: string
   max?: number
 }
 
-export function BarsChart({ metricId, data, format, max }: Props) {
+export function BarsChart({ metricId, data, format, currency, max }: Props) {
   const color = TONE_COLOR[METRICS[metricId].tone]
   const rows = data.slice(0, 10)
   const m = max ?? Math.max(1, ...rows.map(r => r.value))
@@ -29,7 +30,7 @@ export function BarsChart({ metricId, data, format, max }: Props) {
             />
           </div>
           <div className="w-[52px] text-right font-poppins font-semibold text-[12.5px] tabular-nums text-[#0d0d09]">
-            {fmt(r.value, format)}
+            {fmt(r.value, format, currency)}
           </div>
         </div>
       ))}

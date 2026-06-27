@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { GripVertical, Maximize2, Settings2, Trash2, X, Check } from 'lucide-react'
-import { METRICS, METRIC_LIST } from '../model/metrics'
+import { METRICS, RECRUITING_METRICS, CRM_METRICS } from '../model/metrics'
 import { DIMENSIONS, SPLITTABLE_DIMENSIONS } from '../model/dimensions'
 import { VIZ, vizFor, defaultSpan, nextSpan } from '../model/viz'
 import { TONE_COLOR, TONE_TINT } from '../model/tokens'
@@ -20,6 +20,7 @@ interface Props {
   onRemove: () => void
   dragHandleProps?: Record<string, unknown>
   isDragging?: boolean
+  readonly?: boolean
 }
 
 function autoTitle(cfg: WidgetConfig): string {
@@ -36,7 +37,7 @@ function subLine(cfg: WidgetConfig): string {
   return `${v} · by ${DIMENSIONS[cfg.groupBy].label.toLowerCase()}`
 }
 
-export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDragging }: Props) {
+export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
   const meta = METRICS[cfg.metric]
   const Icon = meta.icon
   const tone = TONE_COLOR[meta.tone]
@@ -50,6 +51,7 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
       style={{ opacity: isDragging ? 0.4 : 1, outline: isDragging ? '1.5px dashed #D7C5FB' : 'none', outlineOffset: '-2px' }}
     >
       {/* Hover toolbar */}
+      {!readonly && (
       <div className={`absolute top-2 right-2 ${configOpen ? 'flex' : 'hidden group-hover:flex'} items-center gap-0.5 bg-white border border-[#E7E8EE] rounded-[9px] p-0.5 shadow-[0_4px_12px_-4px_rgba(13,13,9,0.08)]`}>
         <button {...(dragHandleProps ?? {})} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#5A6072] hover:bg-[#F1F0EC] cursor-grab active:cursor-grabbing" aria-label="Drag">
           <GripVertical size={13} />
@@ -64,9 +66,11 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
           <Trash2 size={13} />
         </button>
       </div>
+      )}
+
 
       {/* Header */}
-      <div className="flex items-start gap-2.5 mb-3 min-h-[30px] pr-24">
+      <div className={`flex items-start gap-2.5 mb-3 min-h-[30px] ${readonly ? '' : 'pr-24'}`}>
         <div className="h-[30px] w-[30px] rounded-[8px] flex items-center justify-center flex-shrink-0" style={{ background: tint, color: tone }}>
           <Icon size={15} strokeWidth={2} />
         </div>
@@ -115,15 +119,15 @@ function renderViz(cfg: WidgetConfig, data: ReturnType<typeof useWidgetData>) {
     case 'line':
       return <LineChart metricId={cfg.metric} series={data.series} />
     case 'bars':
-      return <BarsChart metricId={cfg.metric} data={data.breakdown} format={data.format} />
+      return <BarsChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'columns':
-      return <ColumnsChart data={data.breakdown} format={data.format} />
+      return <ColumnsChart data={data.breakdown} format={data.format} currency={data.currency} />
     case 'donut':
       return <DonutChart data={data.breakdown} />
     case 'funnel':
-      return <FunnelChart metricId={cfg.metric} data={data.breakdown} format={data.format} />
+      return <FunnelChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'table':
-      return <TableViz dimensionLabel={DIMENSIONS[cfg.groupBy].label} data={data.breakdown} format={data.format} />
+      return <TableViz dimensionLabel={DIMENSIONS[cfg.groupBy].label} data={data.breakdown} format={data.format} currency={data.currency} />
   }
 }
 
@@ -161,9 +165,12 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
       </div>
 
       <Section label="Metric">
-        <Dropdown
+        <GroupedDropdown
           value={cfg.metric}
-          options={METRIC_LIST.map(m => ({ value: m.id, label: m.label }))}
+          groups={[
+            { label: 'Recruiting', options: RECRUITING_METRICS.map(m => ({ value: m.id, label: m.label })) },
+            { label: 'CRM / Revenue', options: CRM_METRICS.map(m => ({ value: m.id, label: m.label })) },
+          ]}
           onChange={v => setMetric(v as MetricId)}
         />
       </Section>
@@ -225,6 +232,32 @@ function Dropdown({ value, options, onChange }: { value: string; options: { valu
         <option key={o.value} value={o.value}>
           {o.label}
         </option>
+      ))}
+    </select>
+  )
+}
+
+function GroupedDropdown({
+  value,
+  groups,
+  onChange,
+}: {
+  value: string
+  groups: { label: string; options: { value: string; label: string }[] }[]
+  onChange: (v: string) => void
+}) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full h-8 px-2 rounded-[7px] border border-[#E7E8EE] bg-white text-[12.5px] font-inter text-[#0d0d09] focus:outline-none focus:ring-2 focus:ring-[#6F3FF5]/30"
+    >
+      {groups.map(g => (
+        <optgroup key={g.label} label={g.label}>
+          {g.options.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </optgroup>
       ))}
     </select>
   )

@@ -5,10 +5,11 @@ import type { SeriesPoint, Format } from '../../model/types'
 interface Props {
   data: SeriesPoint[]
   format: Format
+  currency?: string
   height?: number
 }
 
-export function ColumnsChart({ data, format, height = 220 }: Props) {
+export function ColumnsChart({ data, format, currency, height = 220 }: Props) {
   const rows = data.slice(0, 10)
   const max = Math.max(1, ...rows.map(r => r.value))
   return (
@@ -18,7 +19,7 @@ export function ColumnsChart({ data, format, height = 220 }: Props) {
         const h = (r.value / max) * (height - 50)
         return (
           <div key={`${r.label}-${i}`} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-            <div className="text-[11px] font-poppins font-semibold text-[#0d0d09] tabular-nums">{fmt(r.value, format)}</div>
+            <div className="text-[11px] font-poppins font-semibold text-[#0d0d09] tabular-nums">{fmt(r.value, format, currency)}</div>
             <div
               className="w-full max-w-[40px] rounded-t-[4px] transition-[height] duration-[400ms] ease-out"
               style={{ height: h, background: PALETTE[i % PALETTE.length] }}

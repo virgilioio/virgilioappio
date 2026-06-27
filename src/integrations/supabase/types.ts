@@ -2184,6 +2184,7 @@ export type Database = {
           owner_id: string | null
           position: number
           probability: number | null
+          source: string | null
           stage_changed_at: string
           stage_id: string | null
           tenant_id: string
@@ -2211,6 +2212,7 @@ export type Database = {
           owner_id?: string | null
           position?: number
           probability?: number | null
+          source?: string | null
           stage_changed_at?: string
           stage_id?: string | null
           tenant_id: string
@@ -2238,6 +2240,7 @@ export type Database = {
           owner_id?: string | null
           position?: number
           probability?: number | null
+          source?: string | null
           stage_changed_at?: string
           stage_id?: string | null
           tenant_id?: string

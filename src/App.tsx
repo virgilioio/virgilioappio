@@ -28,6 +28,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Find = lazy(() => import('./pages/Find'))
 const Jobs = lazy(() => import('./pages/Jobs'))
 const CRM = lazy(() => import('./pages/CRM'))
+const CrmOverview = lazy(() => import('./pages/CrmOverview'))
 const Deals = lazy(() => import('./pages/Deals'))
 const CompanyDetail = lazy(() => import('./pages/CompanyDetail'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
@@ -156,10 +157,11 @@ function AppContent() {
             <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
             <Route path="/lists/:id" element={<SharedList />} />
             <Route path="/members" element={<Members />} />
-            <Route path="/crm" element={<CRM />} />
+            <Route path="/crm" element={<CrmOverview />} />
+            <Route path="/crm/companies" element={<CRM />} />
             <Route path="/crm/deals" element={<Deals />} />
             <Route path="/crm/companies/:id" element={<CompanyDetail />} />
-            <Route path="/organizations" element={<Navigate to="/crm" replace />} />
+            <Route path="/organizations" element={<Navigate to="/crm/companies" replace />} />
           </Route>
         </Route>
 

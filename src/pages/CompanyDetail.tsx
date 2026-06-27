@@ -174,7 +174,7 @@ export default function CompanyDetail() {
   const hardDelete = async () => {
     if (!company || !canDelete) return
     await deleteOrganization(company.id)
-    navigate('/crm')
+    navigate('/crm/companies')
   }
 
   if (orgsLoading && !company) return <CompanyDetailSkeleton />
@@ -182,7 +182,7 @@ export default function CompanyDetail() {
     return (
       <div className="min-h-screen" style={{ background: '#F6F5F1' }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/crm')}>Back to Companies</Button>
+          <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/crm/companies')}>Back to Companies</Button>
           <div className="mt-8 text-text-secondary">Company not found.</div>
         </div>
       </div>
@@ -319,7 +319,7 @@ export default function CompanyDetail() {
         onSubmit={handleSaveEdit}
         organization={company}
         isLoading={false}
-        onDelete={async (oid) => { await deleteOrganization(oid); navigate('/crm') }}
+        onDelete={async (oid) => { await deleteOrganization(oid); navigate('/crm/companies') }}
       />
 
       {/* New deal sheet (pre-selected company) */}

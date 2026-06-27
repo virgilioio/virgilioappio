@@ -7,9 +7,10 @@ interface Props {
   metricId: MetricId
   data: SeriesPoint[]
   format: Format
+  currency?: string
 }
 
-export function FunnelChart({ metricId, data, format }: Props) {
+export function FunnelChart({ metricId, data, format, currency }: Props) {
   const tone = TONE_COLOR[METRICS[metricId].tone]
   const rows = data
   const top = rows[0]?.value ?? 0
@@ -31,7 +32,7 @@ export function FunnelChart({ metricId, data, format }: Props) {
                 style={{ width: `${widthPct}%`, background: bg }}
               >
                 <span className="font-poppins font-semibold text-[11px] tabular-nums text-[#0d0d09]">
-                  {fmt(r.value, format)}
+                  {fmt(r.value, format, currency)}
                 </span>
               </div>
             </div>
