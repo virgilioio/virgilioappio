@@ -1,120 +1,155 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
-import { CURRENCY_SYMBOLS } from '@/constants/currencies'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import type { Deal } from '@/hooks/useDeals'
+import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 import { cn } from '@/lib/utils'
 
-function formatAmount(amount: number | null, currency: string) {
-  if (amount === null || amount === undefined) return '—'
-  const symbol = CURRENCY_SYMBOLS[currency] ?? ''
-  const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(amount)
-  return `${symbol}${formatted}`
+const BRAND_COLORS = [
+  '#7C5CFA', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444',
+  '#EC4899', '#8B5CF6', '#14B8A6', '#F97316', '#6366F1',
+]
+
+function brandColor(seed: string): string {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  return BRAND_COLORS[h % BRAND_COLORS.length]
 }
 
-function ageInDays(iso: string): string {
-  const days = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
-  return `${days}d`
+function initials(name: string, max = 2): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, max)
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('') || '?'
+  )
+}
+
+function formatAmount(amount: number | null | undefined): string {
+  if (amount == null) return '—'
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(amount)
+}
+
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
 }
 
 interface DealCardProps {
   deal: Deal
   onClick?: () => void
   className?: string
-  /** Override the amount shown in the bottom-left badge (e.g. collected/outstanding). */
+  /** Override the amount shown (e.g. weighted). */
   displayAmount?: number | null
-  /** Currency to label the displayed amount. Defaults to deal.currency. */
+  /** Currency label to render under the amount. Defaults to deal currency. */
   displayCurrency?: string
-  /** Optional prefix for the amount badge label, e.g. "Collected" or "Outstanding". */
-  amountLabelPrefix?: string
 }
 
-export function DealCard({ deal, onClick, className, displayAmount, displayCurrency, amountLabelPrefix }: DealCardProps) {
-  const ownerInitials = deal.owner_name
-    ? deal.owner_name
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0])
-        .join('')
-        .toUpperCase()
-    : '?'
+export function DealCard({ deal, onClick, className, displayAmount, displayCurrency }: DealCardProps) {
+  const amount = displayAmount !== undefined ? displayAmount : deal.amount
+  const currency = displayCurrency ?? deal.currency
+  const symbol = CURRENCY_SYMBOLS[currency] ?? ''
 
-  const ownerFirstName = deal.owner_name?.split(' ')[0] ?? null
-  const shownAmount = displayAmount !== undefined ? displayAmount : deal.amount
-  const shownCurrency = displayCurrency ?? deal.currency
-  const amountLabel = amountLabelPrefix
-    ? `${amountLabelPrefix}: ${formatAmount(shownAmount, shownCurrency)} ${shownCurrency}`
-    : `${formatAmount(shownAmount, shownCurrency)} ${shownCurrency}`
+  const days = daysSince(deal.stage_changed_at ?? deal.created_at)
+  const stale = days >= 30
 
+  const ownerName = deal.owner_name ?? null
+  const ownerFirst = ownerName?.split(' ')[0] ?? 'Unassigned'
+  const ownerInits = initials(ownerName ?? '?')
+  const ownerColor = brandColor(ownerName ?? deal.owner_id ?? 'x')
+
+  const companyName = deal.organization_name ?? null
+  const companyColor = brandColor(companyName ?? deal.organization_id ?? 'no-company')
 
   return (
-    <Card
-      className={cn('relative p-4 min-h-32 bg-white border-border cursor-pointer', className)}
+    <div
       onClick={onClick}
       role="button"
-      aria-label="Open deal"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick?.()
+        }
+      }}
+      aria-label={`Open deal ${deal.title}`}
+      className={cn(
+        'group relative cursor-pointer bg-white rounded-[11px] px-3 pt-2.5 pb-2.5',
+        'transition-shadow duration-150',
+        className,
+      )}
+      style={{
+        border: '1px solid #E7E8EE',
+        boxShadow: '0 1px 2px rgba(13, 13, 9, 0.04)',
+      }}
     >
-      {/* Top-right age badge */}
-      <Badge
-        variant="secondary"
-        className="absolute top-2 right-2 gap-1"
-      >
-        <Clock className="h-3 w-3" />
-        {ageInDays(deal.created_at)}
-      </Badge>
-
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 pr-12">
-          <div className="font-medium text-sm text-text-primary truncate">{deal.title}</div>
-          <div className="flex flex-col gap-0.5 mt-1">
-            {deal.organization_name ? (
-              <div className="text-xs text-text-secondary truncate">{deal.organization_name}</div>
-            ) : (
-              <div className="text-xs text-text-tertiary">No company</div>
-            )}
-          </div>
+      {/* Top row: title + days-in-stage */}
+      <div className="flex items-start gap-2">
+        <div
+          className="flex-1 min-w-0 font-inter font-semibold text-[12.5px] leading-snug text-text-primary"
+          style={{ letterSpacing: '-0.005em' }}
+        >
+          <span className="line-clamp-2">{deal.title}</span>
         </div>
-      </div>
-
-      {/* Bottom row: amount (left) + owner badge (right) */}
-      <div className="absolute left-4 right-4 bottom-3 flex justify-between items-center gap-2">
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <Badge variant="outline">{amountLabel}</Badge>
-          {deal.base_currency && deal.base_amount != null && deal.currency !== deal.base_currency && shownCurrency !== deal.base_currency && (
-            <span className="text-[10px] text-text-tertiary pl-1">
-              ≈ {CURRENCY_SYMBOLS[deal.base_currency] ?? ''}
-              {new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(deal.base_amount)}
-            </span>
+        <div
+          className={cn(
+            'inline-flex items-center gap-1 shrink-0 tabular-nums',
+            'text-[11px]',
+            stale ? 'font-semibold' : 'font-medium',
           )}
+          style={{ color: stale ? '#D97706' : '#8B8F9E' }}
+          title={`${days} day${days === 1 ? '' : 's'} in this stage`}
+        >
+          <Clock className="h-3 w-3" strokeWidth={2} />
+          {days}d
+        </div>
+      </div>
 
+      {/* Company line */}
+      <div className="mt-1.5 flex items-center gap-1.5 min-w-0">
+        <span
+          className="flex shrink-0 items-center justify-center rounded-[4px] font-poppins text-white text-[9px] font-semibold"
+          style={{ width: 16, height: 16, background: companyColor }}
+          aria-hidden
+        >
+          {initials(companyName ?? 'NC', 1)}
+        </span>
+        <span className="truncate text-[11.5px] text-text-secondary">
+          {companyName ?? 'No company'}
+        </span>
+      </div>
+
+      {/* Footer: amount + owner */}
+      <div
+        className="mt-2.5 pt-2 flex items-center justify-between gap-2"
+        style={{ borderTop: '1px solid #F1F0EC' }}
+      >
+        <div className="min-w-0 flex items-baseline gap-1 tabular-nums">
+          <span
+            className="font-poppins font-semibold text-[12.5px] text-text-primary"
+            style={{ letterSpacing: '-0.01em' }}
+          >
+            {symbol}
+            {formatAmount(amount)}
+          </span>
+          <span className="text-[10px] font-medium uppercase text-text-tertiary">{currency}</span>
         </div>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5">
-                <Avatar className="h-3.5 w-3.5">
-                  {deal.owner_avatar_url && (
-                    <AvatarImage src={deal.owner_avatar_url} alt={deal.owner_name ?? ''} />
-                  )}
-                  <AvatarFallback className="bg-virgilio-purple/10 text-virgilio-purple text-[8px] font-semibold">
-                    {ownerInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="hidden sm:inline">{ownerFirstName ?? 'Unassigned'}</span>
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              {deal.owner_name ?? 'Unassigned'}
-              {deal.owner_email ? ` · ${deal.owner_email}` : ''}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Avatar className="h-[18px] w-[18px]">
+            {deal.owner_avatar_url && (
+              <AvatarImage src={deal.owner_avatar_url} alt={ownerName ?? ''} />
+            )}
+            <AvatarFallback
+              className="text-[8px] font-poppins font-semibold text-white"
+              style={{ backgroundColor: ownerColor }}
+            >
+              {ownerInits}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-[11px] text-text-secondary truncate max-w-[80px]">{ownerFirst}</span>
+        </div>
       </div>
-    </Card>
+    </div>
   )
 }
