@@ -49,7 +49,25 @@ serve(async (req) => {
 
     const projectTenantId = (project as any).organizations?.tenant_id;
 
-    const criteria = project.search_criteria;
+    const criteria = project.search_criteria || {};
+
+    // Defensive: if title_keywords are missing but we have a linked job,
+    // derive them from the job so projects created with thin payloads
+    // still return candidates instead of silently exiting with 0.
+    if ((!criteria.title_keywords || criteria.title_keywords.length === 0) && project.job_id) {
+      const { data: jobRow } = await supabase
+        .from('jobs')
+        .select('title, internal_title')
+        .eq('id', project.job_id)
+        .maybeSingle();
+      const derived = [jobRow?.title, jobRow?.internal_title]
+        .filter((t): t is string => !!t && t.trim().length > 1);
+      if (derived.length > 0) {
+        criteria.title_keywords = Array.from(new Set(derived));
+        console.log(`🩹 Derived title_keywords from job: ${JSON.stringify(criteria.title_keywords)}`);
+      }
+    }
+
     if (!criteria?.title_keywords?.length) {
       return new Response(JSON.stringify({
         candidates: [],
