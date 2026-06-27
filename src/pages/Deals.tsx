@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils'
 const AMOUNT_MODE_OPTIONS: FilterChipSelectOption<DealAmountMode>[] = [
   { value: 'total', label: 'Total' },
   { value: 'weighted', label: 'Weighted' },
+  { value: 'collected', label: 'Collected' },
+  { value: 'outstanding', label: 'Outstanding' },
 ]
 
 const NONE = '__none__'
