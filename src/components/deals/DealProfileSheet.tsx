@@ -350,7 +350,7 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                                       size="sm"
                                       className="gap-2"
                                       disabled={moveDeal.isPending}
-                                      onClick={() => moveDeal.mutate({ id: deal.id, stage_id: s.id })}
+                                      onClick={() => moveDeal.mutate({ id: deal.id, stage_id: s.id, stage_type: s.stage_type })}
                                     >
                                       <MoveRight className="h-4 w-4" />
                                       Move to this stage
