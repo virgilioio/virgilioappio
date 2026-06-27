@@ -1,29 +1,24 @@
-# Fix: "Refund + suspend" silently did nothing
+# Fix Deal Card currency mismatch in CRM Kanban
 
-## What actually happened
-When you clicked **Refund + suspend**, the call returned an error in ~130ms (button flashed "Working…" then back). I verified server-side: tenant `42f89a19…` is still `billing_status = active`, no row was written to `tenant_fraud_signals`, and the `admin-stripe-handle-fraud` edge function has **no log entries** at all. So no refund, no cancel, no suspend — nothing was performed.
+## Problem
+On `CRM > Deals` kanban, each deal card's main amount badge shows the **converted (base) amount** but labels it with the deal's **original currency code/symbol**. Example: a $15,000 USD deal in an MXN workspace renders the MXN-converted number with a "$ … USD" label.
 
-## Root causes
-1. **Param name mismatch (client ↔ function).** The UI sends snake_case (`tenant_id`, `charge_id`), but the edge function reads camelCase (`tenantId`, `chargeId`). The function therefore returns `400 "tenantId is required"` before doing anything. The toast error likely flew by unnoticed.
-2. **Function not registered in `supabase/config.toml`.** `admin-stripe-handle-fraud/index.ts` exists but has no `[functions.admin-stripe-handle-fraud]` block, which is why it has zero logs and may not be reachably deployed.
-3. **Minor:** `runAction` also passes a `stripe_customer_id` that the function doesn't read — harmless but confusing.
+## Root cause
+`DealsKanbanBoard.computeDisplayAmount` returns `deal.base_amount ?? deal.amount` (always converted when available), but `DealCard` formats that number using `deal.currency` / `CURRENCY_SYMBOLS[deal.currency]`. The currency used to format never follows the value being shown.
 
-## Plan
+## Fix (frontend only)
 
-1. **Register the function** in `supabase/config.toml` with `verify_jwt = true` (admin-only, JWT-required, matches `admin-operations` pattern).
-2. **Fix the client payload** in `src/pages/settings/saas-customers/SaaSCustomerDetail.tsx` (`runAction`, ~line 1517) to send `tenantId` and `chargeId` (camelCase), matching the edge function contract. Drop the unused `stripe_customer_id`.
-3. **Make error feedback louder** — if the function returns a non-2xx, surface the server's `error` message in the toast (currently it falls back to a generic supabase-functions error). Also log the body to console for diagnosis.
-4. **Re-run the action** against tenant `42f89a19-bee8-4b44-9cbb-852ac9af70cf` for charge `ch_3TfrxLFB3VjcLexI2Ryj5TiW` and verify:
-   - `tenant_subscriptions.billing_status = 'fraud_review'`, `suspended_at` set
-   - `tenants.status = 'suspended'`
-   - A row in `tenant_fraud_signals` with `action_taken = 'refunded'`
-   - Stripe refund + subscription cancellation visible in the Stripe dashboard
-   - The fraud-review banner appears in the app header for that tenant
+1. **`src/components/deals/DealsKanbanBoard.tsx`**
+   - Pass the currency that matches `displayAmount` down to `DealCard` via a new `displayCurrency` prop. When `base_amount` is used, pass `base_currency`; otherwise pass `deal.currency`.
+   - Apply this for both the column cards and the drag-overlay card.
 
-No DB schema changes are needed — the migration adding `tenant_fraud_signals` and the `fraud_review` billing status is already applied.
+2. **`src/components/deals/DealCard.tsx`**
+   - Accept optional `displayCurrency?: string`. Use it (falling back to `deal.currency`) when building the amount badge label (both the symbol and the trailing currency code).
+   - When `displayCurrency` equals `deal.base_currency` and differs from `deal.currency`, hide the redundant "≈ base amount" sub-line (the badge already shows the converted value in the base currency). Keep the sub-line behavior unchanged otherwise.
 
-## Files to edit
-- `supabase/config.toml` — add `[functions.admin-stripe-handle-fraud]` block.
-- `src/pages/settings/saas-customers/SaaSCustomerDetail.tsx` — fix `runAction` body keys + error toast.
+3. **No backend, hook, or schema changes.** `formatStageTotal` already formats stage totals in base currency correctly — leave it alone.
 
-Nothing else changes; the edge function itself, the webhook handler, the banner, and the fraud-signals card are already correct.
+## Verification
+- Create/open a deal in a non-base currency on an MXN workspace: the card's main badge should now read e.g. `$270,000 MXN` (converted), not `$270,000 USD`.
+- Deals already in the base currency are unchanged.
+- Stage column totals are unchanged.

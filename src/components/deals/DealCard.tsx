@@ -25,11 +25,13 @@ interface DealCardProps {
   className?: string
   /** Override the amount shown in the bottom-left badge (e.g. collected/outstanding). */
   displayAmount?: number | null
+  /** Currency to label the displayed amount. Defaults to deal.currency. */
+  displayCurrency?: string
   /** Optional prefix for the amount badge label, e.g. "Collected" or "Outstanding". */
   amountLabelPrefix?: string
 }
 
-export function DealCard({ deal, onClick, className, displayAmount, amountLabelPrefix }: DealCardProps) {
+export function DealCard({ deal, onClick, className, displayAmount, displayCurrency, amountLabelPrefix }: DealCardProps) {
   const ownerInitials = deal.owner_name
     ? deal.owner_name
         .split(' ')
@@ -42,9 +44,11 @@ export function DealCard({ deal, onClick, className, displayAmount, amountLabelP
 
   const ownerFirstName = deal.owner_name?.split(' ')[0] ?? null
   const shownAmount = displayAmount !== undefined ? displayAmount : deal.amount
+  const shownCurrency = displayCurrency ?? deal.currency
   const amountLabel = amountLabelPrefix
-    ? `${amountLabelPrefix}: ${formatAmount(shownAmount, deal.currency)} ${deal.currency}`
-    : `${formatAmount(shownAmount, deal.currency)} ${deal.currency}`
+    ? `${amountLabelPrefix}: ${formatAmount(shownAmount, shownCurrency)} ${shownCurrency}`
+    : `${formatAmount(shownAmount, shownCurrency)} ${shownCurrency}`
+
 
   return (
     <Card
@@ -80,12 +84,13 @@ export function DealCard({ deal, onClick, className, displayAmount, amountLabelP
       <div className="absolute left-4 right-4 bottom-3 flex justify-between items-center gap-2">
         <div className="flex flex-col gap-0.5 min-w-0">
           <Badge variant="outline">{amountLabel}</Badge>
-          {deal.base_currency && deal.base_amount != null && deal.currency !== deal.base_currency && (
+          {deal.base_currency && deal.base_amount != null && deal.currency !== deal.base_currency && shownCurrency !== deal.base_currency && (
             <span className="text-[10px] text-text-tertiary pl-1">
               ≈ {CURRENCY_SYMBOLS[deal.base_currency] ?? ''}
               {new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(deal.base_amount)}
             </span>
           )}
+
         </div>
 
         <TooltipProvider>

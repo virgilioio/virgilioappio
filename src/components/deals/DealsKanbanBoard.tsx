@@ -38,6 +38,13 @@ function computeDisplayAmount(deal: Deal, mode: DealAmountMode, collectedByDeal:
   return Math.max(0, t - collected)
 }
 
+function computeDisplayCurrency(deal: Deal): string {
+  // Mirror computeDisplayAmount: when base_amount drives the value, label with base_currency
+  if (deal.base_amount != null && deal.base_currency) return deal.base_currency
+  return deal.currency
+}
+
+
 function formatStageTotal(deals: Deal[], mode: DealAmountMode, collectedByDeal: Map<string, number>): string {
   if (!deals.length) return ''
   // All values are in base currency (computeDisplayAmount uses base_amount)
@@ -200,6 +207,7 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwn
                               deal={deal}
                               onClick={() => onOpenDeal(deal.id)}
                               displayAmount={computeDisplayAmount(deal, amountMode, collectedByDeal)}
+                              displayCurrency={computeDisplayCurrency(deal)}
                               amountLabelPrefix={labelPrefix}
                             />
                           </DraggableDealCard>
@@ -218,6 +226,7 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwn
                 <DealCard
                   deal={activeDeal}
                   displayAmount={computeDisplayAmount(activeDeal, amountMode, collectedByDeal)}
+                  displayCurrency={computeDisplayCurrency(activeDeal)}
                   amountLabelPrefix={labelPrefix}
                 />
               </div>
@@ -228,3 +237,4 @@ export function DealsKanbanBoard({ onOpenDeal, amountMode = 'total', selectedOwn
     </Card>
   )
 }
+
