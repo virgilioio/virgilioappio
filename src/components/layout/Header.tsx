@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Sparkles,
   BarChart3,
+  PieChart,
   Lightbulb,
   Handshake,
   ChevronDown,
@@ -163,7 +164,6 @@ export function Header() {
       label: 'Overview',
       show: canViewOrganizations,
       section: 'crm',
-      exact: true,
     },
     {
       href: '/crm/companies',
