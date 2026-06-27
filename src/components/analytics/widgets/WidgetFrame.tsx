@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { GripVertical, Maximize2, Settings2, Trash2, X, Check } from 'lucide-react'
-import { METRICS, METRIC_LIST } from '../model/metrics'
+import { METRICS, RECRUITING_METRICS, CRM_METRICS } from '../model/metrics'
 import { DIMENSIONS, SPLITTABLE_DIMENSIONS } from '../model/dimensions'
 import { VIZ, vizFor, defaultSpan, nextSpan } from '../model/viz'
 import { TONE_COLOR, TONE_TINT } from '../model/tokens'
