@@ -1,8 +1,10 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles, Search, ArrowRight } from 'lucide-react'
+import { Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftFind } from '@/components/ui/EmptyIllustrations'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 
 interface JobSourcingTabProps {
@@ -63,23 +65,20 @@ export function JobSourcingTab({ jobId, jobTitle, seed }: JobSourcingTabProps) {
 
   return (
     <div className="p-6">
-      <div className="rounded-2xl bg-white border border-virgilio-border p-8 text-center">
-        <div className="h-12 w-12 rounded-xl bg-[#F1F0EC] inline-flex items-center justify-center mx-auto">
-          <Search className="h-5 w-5 text-text-secondary" />
-        </div>
-        <p className="mt-3 text-[15px] font-poppins font-semibold text-text-primary">
-          No sourcing project yet
-        </p>
-        <p className="mt-1 text-[12.5px] text-text-secondary max-w-md mx-auto">
-          Start a sourcing project linked to this job — Gio will surface matching candidates and
-          keep them organized in one place.
-        </p>
-        <div className="mt-4">
-          <Button variant="purple" size="sm" icon={Sparkles} loading={creating} onClick={handleStart}>
-            Start sourcing for this job
-          </Button>
-        </div>
-      </div>
+      <EmptyState
+        size="card"
+        illustration={<SoftFind />}
+        title="No sourcing project yet"
+        body="Start a sourcing project linked to this job — Gio will surface matching candidates and keep them organized in one place."
+        primary={
+          <EmptyAction
+            icon={<Sparkles size={16} strokeWidth={2} />}
+            onClick={creating ? undefined : handleStart}
+          >
+            {creating ? 'Starting…' : 'Start sourcing for this job'}
+          </EmptyAction>
+        }
+      />
     </div>
   )
 }
