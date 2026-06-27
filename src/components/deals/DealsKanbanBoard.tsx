@@ -236,7 +236,7 @@ export function DealsKanbanBoard({
       <div className="flex gap-3 h-full overflow-x-auto pb-2">
         {stages.map((stage) => {
           const stageDeals = dealsByStage.get(stage.id) ?? []
-          const subtotal = stageSubtotal(stageDeals, amountMode)
+          const subtotal = stageSubtotal(stageDeals, amountMode, collectedByDeal)
           const accent = stageAccent(stage)
           return (
             <div
