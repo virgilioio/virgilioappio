@@ -29,6 +29,7 @@ const Find = lazy(() => import('./pages/Find'))
 const Jobs = lazy(() => import('./pages/Jobs'))
 const CRM = lazy(() => import('./pages/CRM'))
 const Deals = lazy(() => import('./pages/Deals'))
+const CompanyDetail = lazy(() => import('./pages/CompanyDetail'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const JobDetail = lazy(() => import('./pages/JobDetail'))
@@ -157,6 +158,7 @@ function AppContent() {
             <Route path="/members" element={<Members />} />
             <Route path="/crm" element={<CRM />} />
             <Route path="/crm/deals" element={<Deals />} />
+            <Route path="/crm/companies/:id" element={<CompanyDetail />} />
             <Route path="/organizations" element={<Navigate to="/crm" replace />} />
           </Route>
         </Route>
