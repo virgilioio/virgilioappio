@@ -3,10 +3,8 @@ import { Plus, Search as SearchIcon, Settings2, X } from 'lucide-react'
 import { Briefcase, Handshake, Trophy, Clock } from 'lucide-react'
 import { startOfMonth } from 'date-fns'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { AppContainer } from '@/components/layout/AppContainer'
-
-import { PageHeader } from '@/components/layout/PageHeader'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
 import {
@@ -193,16 +191,21 @@ export default function Deals() {
   const hasActiveFilters = selectedOwners.length + selectedOrgs.length > 0 || !!searchQuery
 
   return (
-    <div className="h-[100dvh] flex flex-col" style={{ background: '#F6F5F1' }}>
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
       <div className="flex-1 min-h-0 flex flex-col">
-        <AppContainer variant="default" className="flex-1 min-h-0 flex flex-col">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <PageHeader title="Deals" />
-              <div className="mt-1 flex items-center flex-wrap gap-x-2 gap-y-1 text-[13px] text-text-secondary">
+        <div className="container mx-auto pt-6 sm:pt-8 lg:pt-12 px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in flex-1 min-h-0 flex flex-col">
+          {/* Page header — matches Companies */}
+          <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] leading-tight sm:text-[32px]">
+                  Deals<span className="text-virgilio-purple">.</span>
+                </h1>
+                <Badge tone="neutral" size="sm">{totalCount}</Badge>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-text-secondary">
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#12B886' }} />
+                  <span className="h-1.5 w-1.5 rounded-full bg-pastel-green-foreground" />
                   <span className="font-medium text-text-primary tabular-nums">{openCount}</span>
                   <span>open</span>
                 </span>
@@ -212,13 +215,16 @@ export default function Deals() {
                 <span className="tabular-nums">{totalCount} deals total</span>
               </div>
             </div>
-            <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>
-              New Deal
-            </Button>
-          </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="primary" size="md" icon={Plus} onClick={() => setCreating(true)}>
+                New Deal
+              </Button>
+            </div>
+          </header>
 
           {/* KPI strip */}
-          <div className="mt-4">
+          <div>
             <MetricStrip items={metrics} />
           </div>
 
@@ -309,7 +315,7 @@ export default function Deals() {
               collectedByDeal={collectedByDeal}
             />
           </div>
-        </AppContainer>
+        </div>
       </div>
 
       <DealFormSheet open={creating} onOpenChange={setCreating} />
