@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
+import { Plus, Pencil, Trash2, Wallet, CheckCircle2, Clock } from 'lucide-react'
 import { useDealPayments, type DealPayment } from '@/hooks/useDealPayments'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { CURRENCY_SYMBOLS } from '@/constants/currencies'
+import { cn } from '@/lib/utils'
 import { DealPaymentFormDialog } from './DealPaymentFormDialog'
 import { useAuth } from '@/contexts/AuthContext'
 
