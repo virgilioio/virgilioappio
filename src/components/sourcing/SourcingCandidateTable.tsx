@@ -925,8 +925,8 @@ export function SourcingCandidateTable({
                   .join('')
                   .toUpperCase()
 
-                // Top match: position 0 in sorted data when sorted by AI fit
-                const isTopMatch = sortMode === 'ai_fit' && sortedData[0]?.id === candidate.id
+                // Top match: evidence-backed (internal candidate + strong AI fit), resolved upstream
+                const isTopMatch = !!topMatchRowId && topMatchRowId === candidate.id
 
                 // Matched skills (green check chips)
                 const matchedSkills = (candidate.matched_keywords ?? []).slice(0, 4)
