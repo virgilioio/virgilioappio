@@ -20,6 +20,7 @@ interface Props {
   onRemove: () => void
   dragHandleProps?: Record<string, unknown>
   isDragging?: boolean
+  readonly?: boolean
 }
 
 function autoTitle(cfg: WidgetConfig): string {
@@ -36,7 +37,7 @@ function subLine(cfg: WidgetConfig): string {
   return `${v} · by ${DIMENSIONS[cfg.groupBy].label.toLowerCase()}`
 }
 
-export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDragging }: Props) {
+export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
   const meta = METRICS[cfg.metric]
   const Icon = meta.icon
   const tone = TONE_COLOR[meta.tone]
@@ -50,6 +51,7 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
       style={{ opacity: isDragging ? 0.4 : 1, outline: isDragging ? '1.5px dashed #D7C5FB' : 'none', outlineOffset: '-2px' }}
     >
       {/* Hover toolbar */}
+      {!readonly && (
       <div className={`absolute top-2 right-2 ${configOpen ? 'flex' : 'hidden group-hover:flex'} items-center gap-0.5 bg-white border border-[#E7E8EE] rounded-[9px] p-0.5 shadow-[0_4px_12px_-4px_rgba(13,13,9,0.08)]`}>
         <button {...(dragHandleProps ?? {})} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#5A6072] hover:bg-[#F1F0EC] cursor-grab active:cursor-grabbing" aria-label="Drag">
           <GripVertical size={13} />
