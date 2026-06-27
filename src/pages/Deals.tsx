@@ -304,7 +304,7 @@ export default function Deals() {
             />
           </div>
         </AppContainer>
-      </Section>
+      </div>
 
       <DealFormSheet open={creating} onOpenChange={setCreating} />
       <DealProfileSheet
