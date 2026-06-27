@@ -235,10 +235,10 @@ export function OrganizationsTable({
           </Table>
           {!isLoading && filteredOrganizations.length > 0 && (
             <TableFooterSummary
-              shown={filteredOrganizations.length}
+              rangeStart={1}
+              rangeEnd={filteredOrganizations.length}
               total={organizations.length}
-              noun="company"
-              nounPlural="companies"
+              entityLabel="companies"
             />
           )}
         </div>
