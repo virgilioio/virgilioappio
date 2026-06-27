@@ -206,7 +206,8 @@ export function DealsKanbanBoard({
     if (!overStageId) return
     const deal = deals.find((d) => d.id === dealId)
     if (!deal || deal.stage_id === overStageId) return
-    moveDeal.mutate({ id: dealId, stage_id: overStageId })
+    const targetStage = stages.find((s) => s.id === overStageId)
+    moveDeal.mutate({ id: dealId, stage_id: overStageId, stage_type: targetStage?.stage_type })
   }
 
   const activeDeal = activeId ? deals.find((d) => d.id === activeId) : null

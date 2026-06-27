@@ -154,7 +154,9 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
     .slice(currentIdx + 1)
     .find((s) => s.stage_type === 'open')
 
-  const collected = (payments.data ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0)
+  const collected = (payments.data ?? [])
+    .filter((p) => p.status === 'paid')
+    .reduce((sum, p) => sum + (p.amount ?? 0), 0)
 
   const tabs = [
     { value: 'overview', label: 'Deal Overview', Icon: LayoutGrid },
@@ -246,17 +248,34 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => moveDeal.mutate({ id: deal.id, stage_id: nextOpenStage.id })}
+                              onClick={() =>
+                                moveDeal.mutate({
+                                  id: deal.id,
+                                  stage_id: nextOpenStage.id,
+                                  stage_type: 'open',
+                                })
+                              }
                             >
                               <MoveRight className="h-4 w-4 mr-2" />
-                              Move to {nextOpenStage.name}
+                              {/^warranty$/i.test(nextOpenStage.name)
+                                ? 'Start warranty'
+                                : `Move to ${nextOpenStage.name}`}
                             </Button>
                           )}
                           {lostStage && stage?.stage_type !== 'lost' && (
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => moveDeal.mutate({ id: deal.id, stage_id: lostStage.id })}
+                              onClick={() => {
+                                const reason = window.prompt('Reason for losing this deal? (optional)')
+                                if (reason === null) return
+                                moveDeal.mutate({
+                                  id: deal.id,
+                                  stage_id: lostStage.id,
+                                  stage_type: 'lost',
+                                  lost_reason: reason.trim() || null,
+                                })
+                              }}
                             >
                               <XCircle className="h-4 w-4 mr-2" />
                               Mark lost
@@ -266,7 +285,13 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                             <Button
                               variant="success"
                               size="sm"
-                              onClick={() => moveDeal.mutate({ id: deal.id, stage_id: wonStage.id })}
+                              onClick={() =>
+                                moveDeal.mutate({
+                                  id: deal.id,
+                                  stage_id: wonStage.id,
+                                  stage_type: 'won',
+                                })
+                              }
                             >
                               <Trophy className="h-4 w-4 mr-2" />
                               Mark won
@@ -325,7 +350,7 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
                                       size="sm"
                                       className="gap-2"
                                       disabled={moveDeal.isPending}
-                                      onClick={() => moveDeal.mutate({ id: deal.id, stage_id: s.id })}
+                                      onClick={() => moveDeal.mutate({ id: deal.id, stage_id: s.id, stage_type: s.stage_type })}
                                     >
                                       <MoveRight className="h-4 w-4" />
                                       Move to this stage
