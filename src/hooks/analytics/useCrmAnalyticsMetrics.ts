@@ -44,7 +44,7 @@ export interface CrmAnalyticsBundle {
   values: CrmAnalyticsValues
   previous: CrmAnalyticsValues
   /** Per-day series in the selected range. */
-  trend: { date: string; revenueWon: number; newDeals: number; collected: number; openPipeline: number }[]
+  trend: { date: string; revenueWon: number; newDeals: number; collected: number; openPipeline: number; dealsWon: number }[]
   breakdowns: {
     stage: CrmDimensionRow[]
     owner: CrmDimensionRow[]
@@ -370,12 +370,12 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     // Daily trend within range
     const days = eachDayOfInterval({ start: dateRange.startDate, end: dateRange.endDate })
     const dayKey = (iso: string) => fmtDate(new Date(iso), 'yyyy-MM-dd')
-    const trendMap = new Map<string, { revenueWon: number; newDeals: number; collected: number }>()
-    for (const day of days) trendMap.set(fmtDate(day, 'yyyy-MM-dd'), { revenueWon: 0, newDeals: 0, collected: 0 })
+    const trendMap = new Map<string, { revenueWon: number; newDeals: number; collected: number; dealsWon: number }>()
+    for (const day of days) trendMap.set(fmtDate(day, 'yyyy-MM-dd'), { revenueWon: 0, newDeals: 0, collected: 0, dealsWon: 0 })
     for (const d of deals) {
       if (d.won_at && inRange(d.won_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(d.won_at)
-        const e = trendMap.get(k); if (e) { e.revenueWon += Number(d.base_amount ?? 0) }
+        const e = trendMap.get(k); if (e) { e.revenueWon += Number(d.base_amount ?? 0); e.dealsWon += 1 }
       }
       if (inRange(d.created_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(d.created_at)
@@ -396,6 +396,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
         revenueWon: e.revenueWon,
         newDeals: e.newDeals,
         collected: e.collected,
+        dealsWon: e.dealsWon,
         openPipeline: values.openPipeline, // open pipeline is a snapshot, not a daily curve
       }
     })

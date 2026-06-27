@@ -113,7 +113,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
         break
       case 'deals_won':
         value = v.dealsWon
-        series = crmTrend.map(t => ({ label: t.date, value: t.newDeals })) // won-by-day not currently kept; reuse newDeals series for sparkline shape
+        series = crmTrend.map(t => ({ label: t.date, value: t.dealsWon }))
         sparkline = series
         trendDelta = deltaFromValues(v.dealsWon, p.dealsWon)
         break
