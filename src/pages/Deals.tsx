@@ -5,7 +5,7 @@ import { startOfMonth } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AppContainer } from '@/components/layout/AppContainer'
-import { Section } from '@/components/layout/Section'
+
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
@@ -189,7 +189,7 @@ export default function Deals() {
 
   return (
     <div className="h-[100dvh] flex flex-col" style={{ background: '#F6F5F1' }}>
-      <Section className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col">
         <AppContainer variant="default" className="flex-1 min-h-0 flex flex-col">
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
@@ -304,7 +304,7 @@ export default function Deals() {
             />
           </div>
         </AppContainer>
-      </Section>
+      </div>
 
       <DealFormSheet open={creating} onOpenChange={setCreating} />
       <DealProfileSheet

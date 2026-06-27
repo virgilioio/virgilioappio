@@ -1,37 +1,63 @@
-# Align CRM Companies table with Jobs table
 
-The CRM > Companies table (`OrganizationsTable.tsx`) currently uses an old `Card` shell, a different filter/search row, custom pagination, and inconsistent badges/buttons. The Jobs table (`JobsTable.tsx`) is the reference implementation for the Gio Foundation table style. This plan ports the Jobs table's structural patterns to Companies while preserving Companies' columns and data.
+## What's wrong today
 
-## What stays the same
-- Columns in Companies: **Name**, **Status**, **Actions** (no new data added — UI/structure only).
-- Data hook, edit/delete/view handlers, permission gates, details dialog.
+**Board background.** The Deals page sets the warm cream `#F6F5F1` (which matches the mock exactly when sampled), but the inner `<Section>` defaults to `bg-surface-primary` (white) and paints over it. That's why the area behind the KPI strip, filter bar and columns currently reads as white instead of the warm cream from the mock.
 
-## Structural changes (to mirror JobsTable)
+**Detail sheet.** Last turn I shipped the schema + behavior (won_at/lost_at/lost_reason stamping, paid vs due payments, lost-reason prompt, "Start warranty" label, real Collected/Outstanding math) but did not rebuild the visual shell, so the sheet still looks like the old layout.
 
-1. **Outer chrome** — drop `Card`/`CardHeader`/`CardContent`. Use the same two-card layout JobsTable uses:
-   - Top card: `rounded-2xl border border-virgilio-border bg-white overflow-hidden` containing the tabs row + search/filters row.
-   - Bottom card: same wrapper around the `<Table>`.
+## Plan
 
-2. **Tabs row** — replace the status `FilterChipPopover` with the Jobs-style segmented tabs (All / Active / Inactive), using the exact classes from JobsTable (`h-9 px-3.5 rounded-lg font-poppins text-[13.5px]`, active pill `bg-[#FAFAF7]`, count in tabular-nums). Counts come from the existing `statusOptions` logic.
+### 1. Board background — match the mock exactly
 
-3. **Search + filters row** — same `p-3` flex row:
-   - Search input: `h-10 pl-10` with `bg-[#FAFAF7] border-transparent rounded-xl text-[13.5px]`, magnifier at `left-3.5`, placeholder "Search companies…".
-   - Right side: keep "Create Company" primary button using the standard `<Button>` (no custom classes).
+- Stop `<Section>` from painting white over the warm wrapper on the Deals page. Either drop the `<Section>` wrapper (keep only `AppContainer` for horizontal padding) or pass a transparent variant. Outer wrapper stays at `#F6F5F1` so it matches the mock pixel-for-pixel.
+- No token churn elsewhere; this is a one-line layout fix scoped to `src/pages/Deals.tsx`.
 
-4. **Table** — use `<Table density="comfortable">` (Jobs uses `comfortable`) and the shared `TableHeader/TableRow/TableHead/TableCell` primitives. Rows become `interactive className="group cursor-pointer"`.
-   - **Name** column: render via `<IdentityCell hideAvatar name={org.name} fallback={org.name} />` — same font sizing/truncation as Jobs.
-   - **Status** column: `<StatusCell><Badge tone={status === 'active' ? 'green' : 'neutral'} dot size="sm">…</Badge></StatusCell>` (replaces the hardcoded `bg-[#d2ffc2]` badge — uses semantic tones).
-   - **Actions** column: `<TableHead className="w-[32px] text-right" aria-label="Actions" />` + `<ActionCell>` with a ghost `iconOnly` MoreHorizontal trigger (same as Jobs); items View / Edit / Delete, Delete in destructive style after a separator.
+### 2. Deal detail sheet — visual rebuild (no behavior changes)
 
-5. **Empty / loading** — match Jobs:
-   - Loading: `<TableSkeleton rows={5} columns={3} />` rendered inside a single `<TableRow><TableCell colSpan={3}>` (drop the separate skeleton card).
-   - Empty: keep `EmptyState` with `SoftBuilding`, rendered inside the table body row exactly like JobsTable does for "No matching jobs".
+All wiring stays as it is today (Won/Lost/Move, accordion, billing math, notes, lost reason prompt). Only the shell changes — same family as our other FormSheet panels and the candidate profile sheet.
 
-6. **Pagination** — remove the entire custom pagination block (the gradient/scale/translate buttons). Replace with `<TableFooterSummary>` (the Gio standard used implicitly by Jobs; Jobs shows row count via the footer). Companies list is small, so a simple footer summary matches the Jobs convention. Pagination state (`currentPage`, `itemsPerPage`) is removed.
+**Shell**
+- Right-side sheet, ~560–600px, scrollable, `p-0`.
+- Header band (px-6 pt-6 pb-4, hairline border):
+  - Eyebrow: `CRM · DEAL` in 10.5px Inter caps, lilac.
+  - Title: deal name in Poppins 600, tracking -0.04em, ~22px, with the brand lilac period accent (`.`) appended — same treatment as our other FormSheet titles.
+  - Subtitle row: company name (clickable → company page) · `<Badge>` for stage with stage-type tone · `<Badge>` for amount in deal currency · created Xd ago in muted ink.
+  - Right cluster: `Edit` (secondary), kebab menu (Delete inside).
 
-7. **Cleanup** — delete unused imports (`ChevronLeft/Right`, `Building2`, `Card*`, pagination helpers, `getPageNumbers`).
+**KPI strip** (4 mini metrics, same Pulse-style cards we use on the board)
+- Amount (deal.amount + currency)
+- Collected (sum of paid payments)
+- Outstanding (Amount − Collected, amber when > 0)
+- Days in stage (from `stage_changed_at`, amber chip ≥ 30d)
+
+**Tabs**: Overview · Billing · Notes — same tab bar treatment as the candidate profile sheet (lilac underline, Poppins 12.5).
+
+**Overview tab**
+- Stage Actions card: `Move to {next open stage}` (secondary, lilac chevron), `Mark won` (success), `Mark lost` (danger outline → reason prompt). Horizontal scroll on overflow.
+- About card: Owner (avatar + name), Expected close date, Probability, Last stage change, Lost reason (only when present).
+- Pipeline Stages card: same accordion we have today, restyled with Gio tokens (rounded-lg, hairline border, stage-type tinted header strip, `CheckCircle2`/`Circle` indicators kept).
+
+**Billing tab**
+- Billing summary band: Total · Collected · Outstanding (already a component, restyled to match KPI strip typography).
+- Invoices card and Payments card kept as-is functionally; rows restyled: 30h, status dot (green for paid, amber for due), label in Inter 13, amount right-aligned Poppins tabular-nums, relative date in muted ink.
+
+**Notes tab**
+- Textarea composer (resize-none, 3 rows) + `Add Note` primary, ⌘↵ hint left.
+- Notes list: avatar 20px, author Poppins 600 12.5, time muted, body Inter 13.5 with `whitespace-pre-wrap`. Delete only on author's own notes or platform admin (unchanged logic).
+
+**Tokens & rules**
+- All colors via semantic tokens (`text-virgilio-text`, `text-virgilio-muted`, `border-virgilio-border/40`, `bg-surface-primary`, lilac via `text-virgilio-purple`). No hex literals in components.
+- Typography per style guide (`text-h*`, `text-body-md`, `text-form-label`, `text-ui-button-md`).
+- Buttons follow §2: one primary per surface; danger uses `variant="danger"` outline; success uses `variant="success"`.
+
+## Out of scope (this pass)
+
+- No DB or hook changes — all data already flows.
+- No drag-and-drop changes on the board.
+- No new tabs, no activity feed, no email composer.
 
 ## Files touched
-- `src/components/organizations/OrganizationsTable.tsx` — full rewrite of the render tree and filter/tab state to match JobsTable patterns.
 
-No backend, hook, or data-shape changes. No new columns. Pure structural/visual alignment.
+- `src/pages/Deals.tsx` — drop the white `<Section>` so the warm bg shows through.
+- `src/components/deals/DealProfileSheet.tsx` — full visual rebuild (shell, header, KPI strip, tab content restyled). No prop or behavior changes.
+- Small restyle pass on `src/components/deals/billing/DealBillingSummary.tsx`, `DealPaymentsCard.tsx`, `DealInvoicesCard.tsx` for typography/row styling only.
