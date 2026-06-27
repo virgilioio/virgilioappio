@@ -1969,6 +1969,7 @@ export type Database = {
           file_path: string
           file_size: number | null
           id: string
+          kind: string | null
           mime_type: string | null
           tenant_id: string
           uploaded_by: string | null
@@ -1980,6 +1981,7 @@ export type Database = {
           file_path: string
           file_size?: number | null
           id?: string
+          kind?: string | null
           mime_type?: string | null
           tenant_id: string
           uploaded_by?: string | null
@@ -1991,6 +1993,7 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           id?: string
+          kind?: string | null
           mime_type?: string | null
           tenant_id?: string
           uploaded_by?: string | null
@@ -2052,14 +2055,17 @@ export type Database = {
           created_by: string | null
           currency: string
           deal_id: string
+          due_on: string | null
           fx_rate: number | null
           fx_rate_date: string | null
           fx_rate_source: string | null
           id: string
           invoice_id: string | null
+          label: string | null
           method: string | null
           note: string | null
-          paid_at: string
+          paid_at: string | null
+          status: Database["public"]["Enums"]["deal_payment_status"]
           tenant_id: string
           updated_at: string
         }
@@ -2071,14 +2077,17 @@ export type Database = {
           created_by?: string | null
           currency?: string
           deal_id: string
+          due_on?: string | null
           fx_rate?: number | null
           fx_rate_date?: string | null
           fx_rate_source?: string | null
           id?: string
           invoice_id?: string | null
+          label?: string | null
           method?: string | null
           note?: string | null
-          paid_at?: string
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["deal_payment_status"]
           tenant_id: string
           updated_at?: string
         }
@@ -2090,14 +2099,17 @@ export type Database = {
           created_by?: string | null
           currency?: string
           deal_id?: string
+          due_on?: string | null
           fx_rate?: number | null
           fx_rate_date?: string | null
           fx_rate_source?: string | null
           id?: string
           invoice_id?: string | null
+          label?: string | null
           method?: string | null
           note?: string | null
-          paid_at?: string
+          paid_at?: string | null
+          status?: Database["public"]["Enums"]["deal_payment_status"]
           tenant_id?: string
           updated_at?: string
         }
@@ -2165,6 +2177,8 @@ export type Database = {
           fx_rate_date: string | null
           fx_rate_source: string | null
           id: string
+          lost_at: string | null
+          lost_reason: string | null
           notes: string | null
           organization_id: string | null
           owner_id: string | null
@@ -2175,6 +2189,7 @@ export type Database = {
           tenant_id: string
           title: string
           updated_at: string
+          won_at: string | null
         }
         Insert: {
           amount?: number | null
@@ -2189,6 +2204,8 @@ export type Database = {
           fx_rate_date?: string | null
           fx_rate_source?: string | null
           id?: string
+          lost_at?: string | null
+          lost_reason?: string | null
           notes?: string | null
           organization_id?: string | null
           owner_id?: string | null
@@ -2199,6 +2216,7 @@ export type Database = {
           tenant_id: string
           title: string
           updated_at?: string
+          won_at?: string | null
         }
         Update: {
           amount?: number | null
@@ -2213,6 +2231,8 @@ export type Database = {
           fx_rate_date?: string | null
           fx_rate_source?: string | null
           id?: string
+          lost_at?: string | null
+          lost_reason?: string | null
           notes?: string | null
           organization_id?: string | null
           owner_id?: string | null
@@ -2223,6 +2243,7 @@ export type Database = {
           tenant_id?: string
           title?: string
           updated_at?: string
+          won_at?: string | null
         }
         Relationships: [
           {
@@ -7554,6 +7575,7 @@ export type Database = {
         | "seasonal"
       contractor_payment_type_enum: "fixed_rate" | "hourly_rate" | "per_project"
       conversation_status: "draft" | "active"
+      deal_payment_status: "paid" | "due"
       delay_unit: "days" | "weeks"
       email_send_to: "candidate" | "hiring_team" | "interviewers" | "custom"
       employment_duration_enum: "indefinite" | "definite"
@@ -7837,6 +7859,7 @@ export const Constants = {
         "per_project",
       ],
       conversation_status: ["draft", "active"],
+      deal_payment_status: ["paid", "due"],
       delay_unit: ["days", "weeks"],
       email_send_to: ["candidate", "hiring_team", "interviewers", "custom"],
       employment_duration_enum: ["indefinite", "definite"],

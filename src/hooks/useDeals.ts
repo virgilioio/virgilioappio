@@ -22,6 +22,9 @@ export interface Deal {
   stage_changed_at: string
   /** Win likelihood 0..1; used by the Weighted amount view. */
   probability: number | null
+  won_at?: string | null
+  lost_at?: string | null
+  lost_reason?: string | null
   // joined / derived
   organization_name?: string | null
   owner_name?: string | null
