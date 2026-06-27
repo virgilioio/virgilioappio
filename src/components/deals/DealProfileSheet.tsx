@@ -592,59 +592,32 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
 
 // ────────────── helpers ──────────────
 
-function KpiTile({
-  label,
+function TabTrigger({
   value,
-  suffix,
-  tone = 'default',
-  icon,
+  icon: Icon,
+  children,
 }: {
-  label: string
   value: string
-  suffix?: string
-  tone?: 'default' | 'success' | 'warning'
-  icon?: React.ReactNode
+  icon?: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
 }) {
-  const toneClass =
-    tone === 'success'
-      ? 'text-virgilio-success'
-      : tone === 'warning'
-      ? 'text-virgilio-warning'
-      : 'text-virgilio-text'
-  return (
-    <div className="rounded-lg border border-virgilio-border/60 bg-surface-primary px-3 py-2">
-      <div className="flex items-center gap-1 text-[10.5px] font-medium uppercase tracking-[0.06em] text-virgilio-muted font-inter">
-        {icon}
-        {label}
-      </div>
-      <div className={cn('mt-1 font-poppins font-semibold text-[15px] tabular-nums leading-tight', toneClass)}>
-        {value}
-        {suffix && (
-          <span className="ml-1 text-[10px] font-normal text-virgilio-muted">{suffix}</span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function TabTrigger({ value, children }: { value: string; children: React.ReactNode }) {
   return (
     <TabsTrigger
       value={value}
       className={cn(
-        'relative h-9 px-3 rounded-none bg-transparent text-[12.5px] font-poppins font-medium text-virgilio-muted',
-        'data-[state=active]:text-virgilio-text data-[state=active]:shadow-none',
-        'data-[state=active]:bg-transparent',
-        'after:absolute after:left-2 after:right-2 after:-bottom-px after:h-[2px] after:rounded-full',
-        'after:bg-transparent data-[state=active]:after:bg-virgilio-purple',
+        'h-9 px-3 rounded-lg bg-transparent text-[12.5px] font-poppins font-medium text-virgilio-muted',
+        'gap-1.5 inline-flex items-center justify-center',
+        'data-[state=active]:bg-white data-[state=active]:text-virgilio-text',
+        'data-[state=active]:shadow-[0_1px_2px_rgba(13,13,9,0.06),0_0_0_1px_rgba(13,13,9,0.04)]',
       )}
     >
+      {Icon && <Icon className="h-3.5 w-3.5" />}
       {children}
     </TabsTrigger>
   )
 }
 
-function AboutRow({
+function DetailRow({
   icon: Icon,
   label,
   children,
@@ -654,12 +627,13 @@ function AboutRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-[12px] text-virgilio-muted min-w-0">
-        <Icon className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{label}</span>
+    <div className="flex items-start gap-3">
+      <Icon className="h-3.5 w-3.5 text-virgilio-muted mt-0.5 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] text-virgilio-muted font-inter leading-tight">{label}</div>
+        <div className="mt-0.5">{children}</div>
       </div>
-      <div className="text-right min-w-0">{children}</div>
     </div>
   )
 }
+
