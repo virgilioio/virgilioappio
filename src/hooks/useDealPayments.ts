@@ -3,13 +3,18 @@ import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
+export type DealPaymentStatus = 'paid' | 'due'
+
 export interface DealPayment {
   id: string
   deal_id: string
   tenant_id: string
   amount: number
   currency: string
-  paid_at: string
+  paid_at: string | null
+  due_on: string | null
+  status: DealPaymentStatus
+  label: string | null
   method: string | null
   note: string | null
   invoice_id: string | null
@@ -26,7 +31,10 @@ export interface DealPayment {
 export interface DealPaymentInput {
   amount: number
   currency: string
-  paid_at: string
+  paid_at?: string | null
+  due_on?: string | null
+  status?: DealPaymentStatus
+  label?: string | null
   method?: string | null
   note?: string | null
   invoice_id?: string | null
