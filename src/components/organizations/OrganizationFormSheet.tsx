@@ -132,7 +132,7 @@ export function OrganizationFormSheet({
   const { user } = useAuth()
   const { members } = useMembers()
   const { data: deals = [] } = useDeals()
-  const { data: jobs = [] } = useJobs()
+  const { jobs = [] } = useJobs()
 
   const activeMembers = useMemo(
     () => (members ?? []).filter(m => m.user_id && m.user_status === 'active'),
