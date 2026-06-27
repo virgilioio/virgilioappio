@@ -59,20 +59,38 @@ export function DealPaymentsCard({ dealId, currency }: { dealId: string; currenc
             <ul className="space-y-2">
               {(payments.data ?? []).map((p) => {
                 const canEdit = p.created_by === user?.id
+                const isPaid = p.status === 'paid'
+                const dateLabel = isPaid
+                  ? p.paid_at
+                    ? `Paid · ${new Date(p.paid_at).toLocaleDateString()}`
+                    : 'Paid'
+                  : p.due_on
+                    ? `Due ${new Date(p.due_on).toLocaleDateString()}`
+                    : 'Due on Won'
                 return (
                   <li key={p.id} className="flex items-center gap-3 rounded-lg border border-border p-3 bg-card">
+                    {isPaid ? (
+                      <CheckCircle2 className="h-4 w-4 text-virgilio-success shrink-0" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-virgilio-warning shrink-0" />
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-text-primary">{fmt(p.amount, p.currency)}</span>
-                        {p.method && (
+                        <span className="text-sm font-semibold text-text-primary truncate">
+                          {p.label ?? (isPaid ? 'Payment' : 'Scheduled payment')}
+                        </span>
+                        {p.method && isPaid && (
                           <span className="text-xs text-text-tertiary">• {METHOD_LABEL[p.method] ?? p.method}</span>
                         )}
                       </div>
                       <div className="text-xs text-text-tertiary mt-0.5">
-                        {new Date(p.paid_at).toLocaleDateString()}
+                        {dateLabel}
                         {p.note && <span className="ml-2 text-text-secondary">— {p.note}</span>}
                       </div>
                     </div>
+                    <span className={cn('text-sm font-semibold tabular-nums', isPaid ? 'text-virgilio-success' : 'text-virgilio-warning')}>
+                      {fmt(p.amount, p.currency)}
+                    </span>
                     {canEdit && (
                       <>
                         <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
