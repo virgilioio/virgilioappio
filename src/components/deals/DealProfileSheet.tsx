@@ -154,7 +154,9 @@ export function DealProfileSheet({ dealId, open, onOpenChange }: DealProfileShee
     .slice(currentIdx + 1)
     .find((s) => s.stage_type === 'open')
 
-  const collected = (payments.data ?? []).reduce((sum, p) => sum + (p.amount ?? 0), 0)
+  const collected = (payments.data ?? [])
+    .filter((p) => p.status === 'paid')
+    .reduce((sum, p) => sum + (p.amount ?? 0), 0)
 
   const tabs = [
     { value: 'overview', label: 'Deal Overview', Icon: LayoutGrid },
