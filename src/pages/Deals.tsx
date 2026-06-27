@@ -3,10 +3,8 @@ import { Plus, Search as SearchIcon, Settings2, X } from 'lucide-react'
 import { Briefcase, Handshake, Trophy, Clock } from 'lucide-react'
 import { startOfMonth } from 'date-fns'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { AppContainer } from '@/components/layout/AppContainer'
-
-import { PageHeader } from '@/components/layout/PageHeader'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
 import {
