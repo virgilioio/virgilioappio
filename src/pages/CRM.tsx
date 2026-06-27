@@ -1,5 +1,3 @@
-import { AppContainer } from '@/components/layout/AppContainer'
-import { Section } from '@/components/layout/Section'
 import { OrganizationsTab } from '@/components/settings/OrganizationsTab'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -17,12 +15,12 @@ export default function CRM() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col">
-      <AppContainer>
-        <Section>
+    <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
+      <div className="flex-1 min-h-0 overflow-auto">
+        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in">
           <OrganizationsTab />
-        </Section>
-      </AppContainer>
+        </div>
+      </div>
     </div>
   )
 }
