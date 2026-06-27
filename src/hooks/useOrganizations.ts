@@ -8,10 +8,13 @@ import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
 
+export type CompanyStatus = 'active' | 'prospect' | 'inactive'
+export type CompanySize = '1-10' | '11-50' | '51-200' | '201-500' | '501-1000' | '1000+'
+
 export interface Organization {
   id: string
   name: string
-  status: 'active' | 'inactive'
+  status: CompanyStatus
   organization_type: 'platform' | 'client'
   owner_id: string | null
   created_at: string
@@ -33,16 +36,35 @@ export interface Organization {
   parent_organization_id?: string | null
   tenant_id?: string | null
   org_kind?: string | null
+  // CRM fields
+  website?: string | null
+  logo_url?: string | null
+  industry?: string | null
+  company_size?: CompanySize | null
+  hq_city?: string | null
+  country?: string | null
+  account_owner_id?: string | null
+  tags?: string[] | null
+  description?: string | null
 }
 
 export interface CreateOrganizationData {
   name: string
-  status: 'active' | 'inactive'
+  status: CompanyStatus
+  website?: string | null
+  logo_url?: string | null
+  industry?: string | null
+  company_size?: CompanySize | null
+  hq_city?: string | null
+  country?: string | null
+  account_owner_id?: string | null
+  tags?: string[] | null
+  description?: string | null
 }
 
 export interface UpdateOrganizationData {
   name?: string
-  status?: 'active' | 'inactive'
+  status?: CompanyStatus
   owner_id?: string | null
   billing_poc_user_id?: string | null
   billing_poc_additional_email?: string | null
@@ -50,6 +72,15 @@ export interface UpdateOrganizationData {
   billing_poc_updated_by?: string | null
   billing_poc_updated_at?: string | null
   parent_organization_id?: string | null
+  website?: string | null
+  logo_url?: string | null
+  industry?: string | null
+  company_size?: CompanySize | null
+  hq_city?: string | null
+  country?: string | null
+  account_owner_id?: string | null
+  tags?: string[] | null
+  description?: string | null
 }
 
 // Optimized organizations hook - no longer needs helper function due to JOIN queries
