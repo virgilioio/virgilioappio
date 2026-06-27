@@ -66,9 +66,11 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
           <Trash2 size={13} />
         </button>
       </div>
+      )}
+
 
       {/* Header */}
-      <div className="flex items-start gap-2.5 mb-3 min-h-[30px] pr-24">
+      <div className={`flex items-start gap-2.5 mb-3 min-h-[30px] ${readonly ? '' : 'pr-24'}`}>
         <div className="h-[30px] w-[30px] rounded-[8px] flex items-center justify-center flex-shrink-0" style={{ background: tint, color: tone }}>
           <Icon size={15} strokeWidth={2} />
         </div>
@@ -117,15 +119,15 @@ function renderViz(cfg: WidgetConfig, data: ReturnType<typeof useWidgetData>) {
     case 'line':
       return <LineChart metricId={cfg.metric} series={data.series} />
     case 'bars':
-      return <BarsChart metricId={cfg.metric} data={data.breakdown} format={data.format} />
+      return <BarsChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'columns':
-      return <ColumnsChart data={data.breakdown} format={data.format} />
+      return <ColumnsChart data={data.breakdown} format={data.format} currency={data.currency} />
     case 'donut':
       return <DonutChart data={data.breakdown} />
     case 'funnel':
-      return <FunnelChart metricId={cfg.metric} data={data.breakdown} format={data.format} />
+      return <FunnelChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'table':
-      return <TableViz dimensionLabel={DIMENSIONS[cfg.groupBy].label} data={data.breakdown} format={data.format} />
+      return <TableViz dimensionLabel={DIMENSIONS[cfg.groupBy].label} data={data.breakdown} format={data.format} currency={data.currency} />
   }
 }
 
