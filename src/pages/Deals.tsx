@@ -5,7 +5,7 @@ import { startOfMonth } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AppContainer } from '@/components/layout/AppContainer'
-import { Section } from '@/components/layout/Section'
+
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
