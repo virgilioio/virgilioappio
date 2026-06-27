@@ -288,7 +288,7 @@ export function DealsKanbanBoard({
                       <DealCard
                         deal={deal}
                         onClick={() => onOpenDeal(deal.id)}
-                        displayAmount={computeDisplayAmount(deal, amountMode)}
+                        displayAmount={computeDisplayAmount(deal, amountMode, collectedByDeal)}
                         displayCurrency={computeDisplayCurrency(deal)}
                       />
                     </DraggableDealCard>
