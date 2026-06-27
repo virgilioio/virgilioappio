@@ -1704,6 +1704,56 @@ export type Database = {
           },
         ]
       }
+      company_contacts: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          email: string
+          full_name: string
+          id: string
+          is_primary: boolean
+          phone: string | null
+          role_title: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          full_name: string
+          id?: string
+          is_primary?: boolean
+          phone?: string | null
+          role_title?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          is_primary?: boolean
+          phone?: string | null
+          role_title?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_templates: {
         Row: {
           content: string
@@ -4389,14 +4439,21 @@ export type Database = {
       }
       organizations: {
         Row: {
+          account_owner_id: string | null
           billing_id: string | null
           billing_poc_additional_email: string | null
           billing_poc_phone: string | null
           billing_poc_updated_at: string | null
           billing_poc_updated_by: string | null
+          company_size: string | null
+          country: string | null
           created_at: string
           created_by: string | null
+          description: string | null
+          hq_city: string | null
           id: string
+          industry: string | null
+          logo_url: string | null
           name: string
           org_kind: Database["public"]["Enums"]["org_kind_enum"]
           organization_type: string
@@ -4409,20 +4466,29 @@ export type Database = {
           status: string
           suspended_at: string | null
           suspended_reason: string | null
+          tags: string[] | null
           tenant_id: string
           tenant_type: string | null
           trial_end_date: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          account_owner_id?: string | null
           billing_id?: string | null
           billing_poc_additional_email?: string | null
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
           billing_poc_updated_by?: string | null
+          company_size?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
+          hq_city?: string | null
           id?: string
+          industry?: string | null
+          logo_url?: string | null
           name: string
           org_kind?: Database["public"]["Enums"]["org_kind_enum"]
           organization_type?: string
@@ -4435,20 +4501,29 @@ export type Database = {
           status?: string
           suspended_at?: string | null
           suspended_reason?: string | null
+          tags?: string[] | null
           tenant_id: string
           tenant_type?: string | null
           trial_end_date?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          account_owner_id?: string | null
           billing_id?: string | null
           billing_poc_additional_email?: string | null
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
           billing_poc_updated_by?: string | null
+          company_size?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
+          description?: string | null
+          hq_city?: string | null
           id?: string
+          industry?: string | null
+          logo_url?: string | null
           name?: string
           org_kind?: Database["public"]["Enums"]["org_kind_enum"]
           organization_type?: string
@@ -4461,10 +4536,12 @@ export type Database = {
           status?: string
           suspended_at?: string | null
           suspended_reason?: string | null
+          tags?: string[] | null
           tenant_id?: string
           tenant_type?: string | null
           trial_end_date?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: [
           {

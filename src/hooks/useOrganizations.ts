@@ -8,10 +8,13 @@ import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
 
+export type CompanyStatus = 'active' | 'prospect' | 'inactive'
+export type CompanySize = '1-10' | '11-50' | '51-200' | '201-500' | '501-1000' | '1000+'
+
 export interface Organization {
   id: string
   name: string
-  status: 'active' | 'inactive'
+  status: CompanyStatus
   organization_type: 'platform' | 'client'
   owner_id: string | null
   created_at: string
@@ -33,16 +36,35 @@ export interface Organization {
   parent_organization_id?: string | null
   tenant_id?: string | null
   org_kind?: string | null
+  // CRM fields
+  website?: string | null
+  logo_url?: string | null
+  industry?: string | null
+  company_size?: CompanySize | null
+  hq_city?: string | null
+  country?: string | null
+  account_owner_id?: string | null
+  tags?: string[] | null
+  description?: string | null
 }
 
 export interface CreateOrganizationData {
   name: string
-  status: 'active' | 'inactive'
+  status: CompanyStatus
+  website?: string | null
+  logo_url?: string | null
+  industry?: string | null
+  company_size?: CompanySize | null
+  hq_city?: string | null
+  country?: string | null
+  account_owner_id?: string | null
+  tags?: string[] | null
+  description?: string | null
 }
 
 export interface UpdateOrganizationData {
   name?: string
-  status?: 'active' | 'inactive'
+  status?: CompanyStatus
   owner_id?: string | null
   billing_poc_user_id?: string | null
   billing_poc_additional_email?: string | null
@@ -50,6 +72,15 @@ export interface UpdateOrganizationData {
   billing_poc_updated_by?: string | null
   billing_poc_updated_at?: string | null
   parent_organization_id?: string | null
+  website?: string | null
+  logo_url?: string | null
+  industry?: string | null
+  company_size?: CompanySize | null
+  hq_city?: string | null
+  country?: string | null
+  account_owner_id?: string | null
+  tags?: string[] | null
+  description?: string | null
 }
 
 // Optimized organizations hook - no longer needs helper function due to JOIN queries
@@ -129,21 +160,21 @@ export function useOrganizations() {
       log.debug('Successfully fetched organizations:', orgsData?.length)
       
       // Transform data to match Organization interface
-      const organizationsWithDetails: Organization[] = (orgsData || []).map(org => {
+      const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => {
         return {
           id: org.id,
           name: org.name,
-          status: org.status as 'active' | 'inactive',
+          status: (org.status as CompanyStatus) ?? 'active',
           organization_type: org.organization_type as 'platform' | 'client',
           owner_id: org.owner_id,
           created_at: org.created_at,
           updated_at: org.updated_at,
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
-          owner_email: null, // Will be populated if needed
-          owner_name: null,   // Will be populated if needed
-          created_by_email: null, // Will be populated if needed
-          created_by_name: null,  // Will be populated if needed
+          owner_email: null,
+          owner_name: null,
+          created_by_email: null,
+          created_by_name: null,
           billing_poc_additional_email: org.billing_poc_additional_email,
           billing_poc_phone: org.billing_poc_phone,
           billing_poc_updated_by: org.billing_poc_updated_by,
@@ -152,7 +183,16 @@ export function useOrganizations() {
           billing_poc_user_name: null,
           parent_organization_id: org.parent_organization_id || null,
           tenant_id: org.tenant_id || null,
-          org_kind: org.org_kind || null
+          org_kind: org.org_kind || null,
+          website: org.website ?? null,
+          logo_url: org.logo_url ?? null,
+          industry: org.industry ?? null,
+          company_size: (org.company_size as CompanySize) ?? null,
+          hq_city: org.hq_city ?? null,
+          country: org.country ?? null,
+          account_owner_id: org.account_owner_id ?? null,
+          tags: org.tags ?? [],
+          description: org.description ?? null,
         }
       })
 

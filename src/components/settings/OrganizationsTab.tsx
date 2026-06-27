@@ -112,6 +112,7 @@ export function OrganizationsTab() {
         onSubmit={handleFormSubmit}
         organization={selectedOrganization}
         isLoading={isLoading}
+        onDelete={async (id) => { await deleteOrganization(id) }}
       />
 
       <AlertDialog open={!!deleteOrgId} onOpenChange={() => setDeleteOrgId(null)}>
