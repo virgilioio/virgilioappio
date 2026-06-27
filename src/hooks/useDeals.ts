@@ -198,16 +198,39 @@ export function useDealMutations() {
   })
 
   const moveDeal = useMutation({
-    mutationFn: async ({ id, stage_id }: { id: string; stage_id: string }) => {
+    mutationFn: async ({
+      id,
+      stage_id,
+      stage_type,
+      lost_reason,
+    }: {
+      id: string
+      stage_id: string
+      stage_type?: 'open' | 'won' | 'lost'
+      lost_reason?: string | null
+    }) => {
       // Append to bottom of new stage
       const { count } = await supabase
         .from('deals')
         .select('id', { count: 'exact', head: true })
         .eq('stage_id', stage_id)
-      const { error } = await supabase
-        .from('deals')
-        .update({ stage_id, position: count ?? 0 })
-        .eq('id', id)
+      const patch: Record<string, any> = { stage_id, position: count ?? 0 }
+      const now = new Date().toISOString()
+      if (stage_type === 'won') {
+        patch.won_at = now
+        patch.lost_at = null
+        patch.lost_reason = null
+      } else if (stage_type === 'lost') {
+        patch.lost_at = now
+        patch.lost_reason = lost_reason ?? null
+        patch.won_at = null
+      } else if (stage_type === 'open') {
+        // re-opening: clear close markers
+        patch.won_at = null
+        patch.lost_at = null
+        patch.lost_reason = null
+      }
+      const { error } = await supabase.from('deals').update(patch).eq('id', id)
       if (error) throw error
     },
     // Optimistic update for snappy kanban feel
@@ -226,7 +249,10 @@ export function useDealMutations() {
       if (ctx?.previous) queryClient.setQueryData(['deals', user?.id], ctx.previous)
       toast({ title: 'Could not move deal', description: e.message, variant: 'destructive' })
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['deals'] }),
+    onSettled: (_d, _e, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['deals'] })
+      if (vars?.id) queryClient.invalidateQueries({ queryKey: ['deal', vars.id] })
+    },
   })
 
   const deleteDeal = useMutation({
