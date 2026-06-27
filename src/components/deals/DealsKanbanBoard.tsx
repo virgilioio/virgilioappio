@@ -19,11 +19,24 @@ import { cn } from '@/lib/utils'
 import { DealCard } from './DealCard'
 import { DraggableDealCard } from './KanbanPrimitives'
 
-export type DealAmountMode = 'total' | 'weighted'
+export type DealAmountMode = 'total' | 'weighted' | 'collected' | 'outstanding'
 
 // ---- helpers ----
-function computeDisplayAmount(deal: Deal, mode: DealAmountMode): number | null {
+function computeDisplayAmount(
+  deal: Deal,
+  mode: DealAmountMode,
+  collectedByDeal?: Map<string, number>,
+): number | null {
   const base = deal.base_amount ?? deal.amount
+  if (mode === 'collected') {
+    const c = collectedByDeal?.get(deal.id)
+    return c == null ? null : c
+  }
+  if (mode === 'outstanding') {
+    if (base == null) return null
+    const c = collectedByDeal?.get(deal.id) ?? 0
+    return Math.max(0, base - c)
+  }
   if (base == null) return null
   if (mode === 'weighted') {
     const p = deal.probability == null ? 1 : Math.max(0, Math.min(1, Number(deal.probability)))
@@ -47,12 +60,16 @@ function formatCompactMoney(amount: number, currency: string): string {
   return `${symbol}${body}`
 }
 
-function stageSubtotal(deals: Deal[], mode: DealAmountMode): string {
+function stageSubtotal(
+  deals: Deal[],
+  mode: DealAmountMode,
+  collectedByDeal?: Map<string, number>,
+): string {
   if (!deals.length) return '—'
   const baseCcy = deals.find((d) => d.base_currency)?.base_currency ?? deals[0]?.currency ?? 'USD'
   let total = 0
   for (const d of deals) {
-    const v = computeDisplayAmount(d, mode)
+    const v = computeDisplayAmount(d, mode, collectedByDeal)
     if (v != null) total += v
   }
   return `${formatCompactMoney(total, baseCcy)} ${baseCcy}`
