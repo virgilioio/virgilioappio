@@ -144,6 +144,7 @@ interface DealsKanbanBoardProps {
   selectedOwners?: string[]
   selectedOrgs?: string[]
   searchQuery?: string
+  collectedByDeal?: Map<string, number>
 }
 
 export function DealsKanbanBoard({
@@ -152,6 +153,7 @@ export function DealsKanbanBoard({
   selectedOwners = [],
   selectedOrgs = [],
   searchQuery = '',
+  collectedByDeal,
 }: DealsKanbanBoardProps) {
   const stagesQuery = useDealStages()
   const dealsQuery = useDeals()
