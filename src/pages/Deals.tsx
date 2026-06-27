@@ -20,6 +20,7 @@ import {
 import { usePermissions } from '@/hooks/usePermissions'
 import { useDeals } from '@/hooks/useDeals'
 import { useDealStages } from '@/hooks/useDealStages'
+import { useDealPaymentsTotals } from '@/hooks/useDealPaymentsTotals'
 import { DealsKanbanBoard, type DealAmountMode } from '@/components/deals/DealsKanbanBoard'
 import { DealFormSheet } from '@/components/deals/DealFormSheet'
 import { DealProfileSheet } from '@/components/deals/DealProfileSheet'
