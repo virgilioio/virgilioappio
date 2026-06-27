@@ -4,6 +4,7 @@ import { Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftFind } from '@/components/ui/EmptyIllustrations'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 
 interface JobSourcingTabProps {
