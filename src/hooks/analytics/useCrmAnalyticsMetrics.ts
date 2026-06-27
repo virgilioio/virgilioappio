@@ -324,14 +324,15 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       const ownerIds = Array.from(new Set(deals.map(d => d.owner_id).filter(Boolean))) as string[]
       const orgIds = Array.from(new Set(deals.map(d => d.organization_id).filter(Boolean))) as string[]
 
+      const sb = supabase as any
       const stagesRes: { data: StageMeta[] | null } = stageIds.length
-        ? await supabase.from('deal_stages').select('id, name, stage_type, position').in('id', stageIds) as any
+        ? await sb.from('deal_stages').select('id, name, stage_type, position').in('id', stageIds)
         : { data: [] }
       const ownersRes: { data: any[] | null } = ownerIds.length
-        ? await supabase.from('profiles').select('id, first_name, last_name, email').in('id', ownerIds) as any
+        ? await sb.from('profiles').select('id, first_name, last_name, email').in('id', ownerIds)
         : { data: [] }
       const orgsRes: { data: CompanyMeta[] | null } = orgIds.length
-        ? await supabase.from('organizations').select('id, name').in('id', orgIds) as any
+        ? await sb.from('organizations').select('id, name').in('id', orgIds)
         : { data: [] }
 
       const stages = ((stagesRes.data ?? []) as StageMeta[]).sort((a, b) => a.position - b.position)
