@@ -236,3 +236,29 @@ function Dropdown({ value, options, onChange }: { value: string; options: { valu
     </select>
   )
 }
+
+function GroupedDropdown({
+  value,
+  groups,
+  onChange,
+}: {
+  value: string
+  groups: { label: string; options: { value: string; label: string }[] }[]
+  onChange: (v: string) => void
+}) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full h-8 px-2 rounded-[7px] border border-[#E7E8EE] bg-white text-[12.5px] font-inter text-[#0d0d09] focus:outline-none focus:ring-2 focus:ring-[#6F3FF5]/30"
+    >
+      {groups.map(g => (
+        <optgroup key={g.label} label={g.label}>
+          {g.options.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  )
+}
