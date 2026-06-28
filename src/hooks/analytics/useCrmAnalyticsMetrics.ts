@@ -350,7 +350,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       if (dealIds.length) {
         const { data: payRows } = await supabase
           .from('deal_payments')
-          .select('id, deal_id, base_amount, paid_at, status')
+          .select('id, deal_id, amount, currency, base_amount, base_currency, paid_at, status')
           .eq('tenant_id', tenantId)
           .in('deal_id', dealIds)
           .limit(10000)
