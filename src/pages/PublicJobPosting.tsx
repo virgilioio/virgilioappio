@@ -96,6 +96,8 @@ interface Posting {
   description: string | null
   details: any | null
   created_at?: string
+  updated_at?: string
+  syndication?: any | null
 }
 
 interface PostingField {
@@ -202,7 +204,9 @@ export default function PublicJobPosting() {
           details,
           tenant_id,
           created_at,
+          updated_at,
           is_active,
+          syndication,
           jobs!inner(status, salary_min, salary_max, currency, show_salary_public)
         `)
         .eq('slug', slug)
