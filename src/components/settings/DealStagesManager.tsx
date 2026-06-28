@@ -233,7 +233,11 @@ function StageFormSheet({ open, onOpenChange, stage, onSubmit }: StageFormSheetP
           </div>
           <div className="space-y-1.5">
             <Label>Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as DealStageType)}>
+            <Select
+              value={type}
+              onValueChange={(v) => setType(v as DealStageType)}
+              disabled={stage?.stage_type === 'won' || stage?.stage_type === 'lost'}
+            >
               <SelectTrigger className="h-8 focus:ring-virgilio-purple">
                 <SelectValue />
               </SelectTrigger>
@@ -243,6 +247,11 @@ function StageFormSheet({ open, onOpenChange, stage, onSubmit }: StageFormSheetP
                 <SelectItem value="lost">Lost</SelectItem>
               </SelectContent>
             </Select>
+            {(stage?.stage_type === 'won' || stage?.stage_type === 'lost') && (
+              <p className="font-inter text-[11px] text-[#8B8F9E]">
+                System stage — you can rename it, but the type is locked so analytics keep working.
+              </p>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => onOpenChange(false)}>
