@@ -47,7 +47,7 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
 
   return (
     <div
-      className="group relative bg-white rounded-[14px] border border-[#E7E8EE] hover:border-[#D7C5FB] transition-colors p-4 h-full flex flex-col min-w-0 overflow-hidden"
+      className="group relative bg-white rounded-[14px] border border-[#E7E8EE] hover:border-[#D7C5FB] transition-colors p-4 h-full flex flex-col min-w-0"
       style={{ opacity: isDragging ? 0.4 : 1, outline: isDragging ? '1.5px dashed #D7C5FB' : 'none', outlineOffset: '-2px' }}
     >
       {/* Hover toolbar */}
