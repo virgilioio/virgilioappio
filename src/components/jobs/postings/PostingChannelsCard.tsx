@@ -78,12 +78,12 @@ const CHANNELS: ChannelDef[] = [
   {
     code: 'google_jobs',
     name: 'Google for Jobs',
-    meta: 'Auto-indexed when SEO is on',
+    meta: 'Free · indexed via structured data on the public posting',
     glyph: 'G',
     glyphBg: 'bg-white border border-virgilio-border',
     glyphFg: 'text-[#0D0D09]',
-    statusOn: 'Free · auto',
-    statusOff: 'Free · auto',
+    statusOn: 'Indexable · structured data on',
+    statusOff: 'Hidden from Google',
     free: true,
   },
   {

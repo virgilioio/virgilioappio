@@ -3221,6 +3221,7 @@ export type Database = {
           location: string | null
           publish_to_talent: boolean | null
           slug: string
+          syndication: Json
           tenant_id: string
           title: string
           updated_at: string
@@ -3239,6 +3240,7 @@ export type Database = {
           location?: string | null
           publish_to_talent?: boolean | null
           slug: string
+          syndication?: Json
           tenant_id: string
           title: string
           updated_at?: string
@@ -3257,6 +3259,7 @@ export type Database = {
           location?: string | null
           publish_to_talent?: boolean | null
           slug?: string
+          syndication?: Json
           tenant_id?: string
           title?: string
           updated_at?: string

@@ -105,7 +105,7 @@ export function PostingSheet({
   // Channels
   const [channels, setChannels] = useState<ChannelsValue>({
     publishToTalent: false,
-    channels: {},
+    channels: { google_jobs: { enabled: true } },
   })
 
   // Apply experience
@@ -159,9 +159,15 @@ export function PostingSheet({
           setCommissionsAmount(d.commissions_amount != null ? String(d.commissions_amount) : '')
 
           setBranding(d.branding || {})
+          const loadedChannels = d.channels || {}
+          const syndication = (p as any).syndication || {}
+          const googleEnabled =
+            typeof syndication?.google_jobs?.enabled === 'boolean'
+              ? syndication.google_jobs.enabled
+              : loadedChannels?.google_jobs?.enabled !== false
           setChannels({
             publishToTalent: !!(p as any).publish_to_talent,
-            channels: d.channels || {},
+            channels: { ...loadedChannels, google_jobs: { enabled: googleEnabled } },
           })
           const a = d.apply || {}
           setConfirmationEmail(a.confirmation_email !== false)
@@ -196,7 +202,7 @@ export function PostingSheet({
         setCommissionsCurrency('USD')
         setCommissionsAmount('')
         setBranding({})
-        setChannels({ publishToTalent: false, channels: {} })
+        setChannels({ publishToTalent: false, channels: { google_jobs: { enabled: true } } })
         setConfirmationEmail(true)
         setPromise48h(false)
         setAllowMessage(false)
@@ -292,12 +298,16 @@ export function PostingSheet({
     setSaving(true)
     try {
       const details = buildDetails()
+      const syndication = {
+        google_jobs: { enabled: channels.channels?.google_jobs?.enabled !== false },
+      }
       if (localId) {
         await updatePosting(localId, {
           title,
           description,
           details,
           publish_to_talent: channels.publishToTalent,
+          syndication,
           ...(publish !== undefined ? { is_active: publish } : {}),
         } as any)
         toast({ title: 'Saved', description: 'Posting updated' })
@@ -307,6 +317,7 @@ export function PostingSheet({
           setLocalId(created.id)
           await updatePosting(created.id, {
             publish_to_talent: channels.publishToTalent,
+            syndication,
             is_active: !!publish,
           } as any)
           toast({

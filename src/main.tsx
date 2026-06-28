@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import { HelmetProvider } from 'react-helmet-async'
 
 import App from './App.tsx'
 import './index.css'
@@ -37,10 +38,12 @@ function Root() {
   // It does NOT play on soft client-side navigations because <Root /> mounts
   // exactly once per page load.
   return (
-    <SplashReadyProvider initialReady={false}>
-      <App />
-      <SplashHost enabled />
-    </SplashReadyProvider>
+    <HelmetProvider>
+      <SplashReadyProvider initialReady={false}>
+        <App />
+        <SplashHost enabled />
+      </SplashReadyProvider>
+    </HelmetProvider>
   )
 }
 
