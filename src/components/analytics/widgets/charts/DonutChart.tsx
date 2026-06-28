@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { PALETTE } from '../../model/tokens'
 import type { SeriesPoint } from '../../model/types'
 
@@ -7,23 +8,50 @@ interface Props {
 }
 
 export function DonutChart({ data, size = 200 }: Props) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [containerW, setContainerW] = useState(0)
+  useEffect(() => {
+    if (!wrapRef.current) return
+    const measure = () => {
+      if (wrapRef.current) setContainerW(wrapRef.current.clientWidth)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(wrapRef.current)
+    return () => ro.disconnect()
+  }, [])
+
   const rows = data.slice(0, 8)
   const total = rows.reduce((s, r) => s + r.value, 0)
-  const r = size / 2
+  const stacked = containerW > 0 && containerW < 280
+  // When side-by-side, donut takes ~half the width; when stacked, full width capped by `size`.
+  const maxDonut = stacked
+    ? Math.min(size, Math.max(120, containerW - 8))
+    : Math.min(size, Math.max(120, Math.floor((containerW || size * 2) * 0.5)))
+  const actualSize = containerW === 0 ? size : maxDonut
+  const r = actualSize / 2
   const inner = r * 0.62
   let acc = 0
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center" style={{ height: size }}>
+      <div ref={wrapRef} className="w-full flex items-center justify-center overflow-hidden" style={{ height: size }}>
         <div className="text-[12px] text-[#8B8F9E] font-inter">No data</div>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
+    <div
+      ref={wrapRef}
+      className={`w-full overflow-hidden flex ${stacked ? 'flex-col' : 'flex-row'} items-center gap-4`}
+    >
+      <svg
+        width={actualSize}
+        height={actualSize}
+        viewBox={`0 0 ${actualSize} ${actualSize}`}
+        className="flex-shrink-0 max-w-full h-auto"
+      >
         {rows.map((row, i) => {
           const frac = row.value / total
           const start = acc
@@ -49,12 +77,12 @@ export function DonutChart({ data, size = 200 }: Props) {
           Total
         </text>
       </svg>
-      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+      <div className="flex-1 min-w-0 w-full flex flex-col gap-1.5">
         {rows.map((row, i) => (
-          <div key={`${row.label}-${i}`} className="flex items-center gap-2 text-[11.5px] font-inter">
+          <div key={`${row.label}-${i}`} className="flex items-center gap-2 text-[11.5px] font-inter min-w-0">
             <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
             <span className="flex-1 truncate text-[#1F2230]" title={row.label}>{row.label}</span>
-            <span className="font-poppins font-semibold tabular-nums text-[#0d0d09]">
+            <span className="font-poppins font-semibold tabular-nums text-[#0d0d09] flex-shrink-0">
               {Math.round((row.value / total) * 100)}%
             </span>
           </div>

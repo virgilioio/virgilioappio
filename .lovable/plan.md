@@ -1,36 +1,65 @@
 ## Goal
-Make every CRM widget metric (`Revenue won`, `Deals won`, `Win rate`, `Avg sales cycle`, `Avg deal size`, `Open pipeline`, `Open deals`, `Collected`, `Outstanding`, `New deals`) reflect the actual state of CRM deals.
 
-## What I found
-All ten CRM metrics are wired correctly in the analytics bundle and widget data layer. The root cause is in the database: deals already sitting in a canonical `Won` stage have `won_at = null`, and deals in `Lost` have `lost_at = null`. Because every CRM metric (except `New deals`) is derived from `won_at` / `lost_at` / `deal_payments`, almost nothing shows up.
+At narrow widget widths (small screens or a 1-span card on a tight grid), several analytics chart bodies render wider than their containing widget card. Fix the chart primitives and the widget body so content is always clipped/sized to the card.
 
-Concretely:
-- `Revenue won`, `Deals won`, `Win rate`, `Avg sales cycle`, `Avg deal size` all key off `won_at`. → currently 0.
-- `Open pipeline`, `Open deals` treat a deal as open when `won_at` and `lost_at` are both null. → Won deals are wrongly counted as Open.
-- `Collected`, `Outstanding` depend on `deal_payments`. They only need data if payments exist; if no payments are logged they will correctly show 0.
-- `New deals` keys off `created_at` and the active date range; this one works if the range covers the deal's creation date.
+## Root causes
 
-## Plan
+1. **`WidgetFrame` body** (`src/components/analytics/widgets/WidgetFrame.tsx`)
+   - Body wrapper is `flex-1 min-h-0` with no `min-w-0` and no `overflow-hidden`. A child SVG with a measured pixel width can push the card out before the `ResizeObserver` recalculates.
 
-1. **Add a database trigger on `deals` to keep terminal timestamps in sync with `stage_type`**
-   - On insert and on stage change:
-     - If new stage is `won` and `won_at` is null → set `won_at = now()`, clear `lost_at` / `lost_reason`.
-     - If new stage is `lost` and `lost_at` is null → set `lost_at = now()`, clear `won_at`.
-     - If new stage is `open` → clear both `won_at` and `lost_at`.
-   - This guarantees future moves (drag-and-drop on the board, edits in the sheet, any new client) always populate the close markers, even if a developer forgets.
+2. **`LineChart`** (`charts/LineChart.tsx`)
+   - Renders `<svg width={w} height={height}>` where `w` comes from `ResizeObserver`. On the first paint, on container shrink, or in the brief window before RO fires, `w` keeps the previous larger value → SVG overflows. Also no `overflow-hidden` on the wrapper.
 
-2. **Backfill existing CRM data**
-   - Set `won_at` for every deal currently in a Won stage (using `updated_at` as the best available timestamp).
-   - Set `lost_at` for every deal currently in a Lost stage (same approach).
-   - This immediately repairs `Revenue won`, `Deals won`, `Win rate`, `Avg sales cycle`, `Avg deal size`, `Open pipeline`, `Open deals` for existing tenants.
+3. **`BarsChart`** (`charts/BarsChart.tsx`)
+   - Fixed `w-[116px]` label column + `gap-3` + fixed `w-[52px]` value column. Below ~240px wide that already exceeds the card.
 
-3. **Frontend cleanup (small)**
-   - In `useDeals.moveDeal`, also invalidate analytics caches so widgets refresh immediately after a deal is dragged to Won/Lost on the kanban.
+4. **`FunnelChart`** (`charts/FunnelChart.tsx`)
+   - Same pattern: fixed `w-[110px]` label and `w-[42px]` conversion columns. Same overflow at narrow widths.
 
-4. **Validation**
-   - Re-query Won and Lost deals and confirm `won_at` / `lost_at` are populated.
-   - Open Analytics and verify CRM metrics return non-zero values for date ranges covering those dates.
+5. **`ColumnsChart`** (`charts/ColumnsChart.tsx`)
+   - Uses `gap-2` between columns with `flex-1` items but no `min-w-0`/`overflow-hidden` — long category labels wrap and push height; numeric labels above can be wider than the column at narrow widths.
 
-## Notes
-- `Collected` and `Outstanding` will only have data if the user records payments in `deal_payments`. If they expect those to show value purely from deal totals, that is a separate product decision and I will flag it after this fix lands.
-- No metric definitions change; this is a data-correctness fix, not a metric redesign.
+6. **`DonutChart`** (`charts/DonutChart.tsx`)
+   - Fixed `size = 200` SVG + legend side-by-side. Below ~320px wide, SVG + legend overflow horizontally.
+
+## Changes
+
+### A. Widget body containment
+- In `WidgetFrame.tsx`, change the body wrapper from `flex-1 min-h-0` to `flex-1 min-h-0 min-w-0 overflow-hidden`. This guarantees clipping even if a child momentarily over-measures.
+- Also add `min-w-0` to the outer card flex column so it shrinks inside the grid.
+
+### B. LineChart — make SVG fluid
+- Drop the measured-pixel `width` approach. Render:
+  - `<svg viewBox="0 0 {VIRTUAL_W} {height}" width="100%" height={height} preserveAspectRatio="none">` for the area/grid, with the curve drawn against a fixed virtual width (e.g. 600). Text labels (`fontSize`) are placed in a second SVG overlay using `preserveAspectRatio="xMinYMin meet"` OR rendered as HTML at percent x positions so they don't stretch.
+- Simpler alternative we'll adopt: keep ResizeObserver but
+  - initialise `w` to `0` and render nothing until measured (avoid first-paint overflow),
+  - wrap in a `div.w-full.overflow-hidden`,
+  - clamp `w` to `ref.current.clientWidth` on every observer tick.
+
+### C. BarsChart / FunnelChart — fluid label & value columns
+- Replace fixed pixel widths with responsive ones using `clamp` via inline style or Tailwind arbitrary values:
+  - Label column: `w-[clamp(72px,28%,140px)]`.
+  - Value/conv column: `w-[clamp(40px,16%,60px)]`.
+- Add `min-w-0` to the bar track so flex can shrink.
+- Wrap each chart root in `w-full overflow-hidden`.
+
+### D. ColumnsChart
+- Wrap root in `w-full overflow-hidden`.
+- Add `min-w-0` to each column item; truncate value labels (`truncate max-w-full`).
+- Cap inner SVG/column gap to `gap-1` when the parent is narrow (use `gap-1 sm:gap-2`).
+
+### E. DonutChart — stack at narrow widths
+- Wrap in a container with `flex flex-col @[280px]:flex-row items-center gap-4 w-full overflow-hidden` (use Tailwind container queries already enabled, otherwise fall back to `flex-col md:flex-row`).
+- Make the SVG `max-w-full h-auto` and replace fixed `size={200}` with `min(size, containerWidth)` via a `ResizeObserver` (same hardened pattern as LineChart).
+- Legend list gets `min-w-0 w-full`.
+
+### F. Sanity pass
+- Audit `TableViz` and `KpiChart` for the same fixed-width issues; add `min-w-0 overflow-hidden` wrappers there too if needed (no logic change).
+
+## Out of scope
+- No metric, data, or business-logic changes — purely presentational/responsive.
+- No grid/breakpoint changes in `WidgetGrid`.
+
+## Verification
+- Resize the Analytics page from 1400 → 360 px and confirm no widget content extends past its card border, no horizontal scrollbar on the grid, no clipped numbers.
+- Check Line, Bars, Columns, Funnel, Donut, KPI, Table at both 1-span and 2-span on a narrow viewport.

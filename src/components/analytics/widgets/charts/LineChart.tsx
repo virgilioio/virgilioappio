@@ -11,10 +11,14 @@ interface Props {
 
 export function LineChart({ metricId, series, height = 220 }: Props) {
   const ref = useRef<HTMLDivElement>(null)
-  const [w, setW] = useState(600)
+  const [w, setW] = useState(0)
   useEffect(() => {
     if (!ref.current) return
-    const ro = new ResizeObserver(entries => setW(Math.max(120, entries[0].contentRect.width)))
+    const measure = () => {
+      if (ref.current) setW(Math.max(0, ref.current.clientWidth))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
     ro.observe(ref.current)
     return () => ro.disconnect()
   }, [])
@@ -39,7 +43,8 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
   const last = pts[pts.length - 1]
 
   return (
-    <div ref={ref} className="w-full" style={{ height }}>
+    <div ref={ref} className="w-full overflow-hidden" style={{ height }}>
+      {w > 0 && (
       <svg width={w} height={height}>
         <defs>
           <linearGradient id={`line-${metricId}`} x1="0" x2="0" y1="0" y2="1">
@@ -70,6 +75,7 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
             </text>
           ))}
       </svg>
+      )}
     </div>
   )
 }

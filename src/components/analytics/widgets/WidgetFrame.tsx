@@ -47,7 +47,7 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
 
   return (
     <div
-      className="group relative bg-white rounded-[14px] border border-[#E7E8EE] hover:border-[#D7C5FB] transition-colors p-4 h-full flex flex-col"
+      className="group relative bg-white rounded-[14px] border border-[#E7E8EE] hover:border-[#D7C5FB] transition-colors p-4 h-full flex flex-col min-w-0 overflow-hidden"
       style={{ opacity: isDragging ? 0.4 : 1, outline: isDragging ? '1.5px dashed #D7C5FB' : 'none', outlineOffset: '-2px' }}
     >
       {/* Hover toolbar */}
@@ -91,7 +91,7 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
       </div>
 
       {/* Body */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {data.loading ? (
           <div className="h-full min-h-[60px] flex items-center justify-center">
             <div className="h-4 w-4 rounded-full border-2 border-[#E7E8EE] border-t-[#6F3FF5] animate-spin" />
