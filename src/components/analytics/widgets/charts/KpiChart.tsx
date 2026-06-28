@@ -35,9 +35,9 @@ export function KpiChart({ metricId, data }: Props) {
   const Arrow = positive ? ArrowUp : ArrowDown
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-end justify-between gap-3">
-        <div className="font-poppins font-semibold text-[34px] leading-none tracking-[-0.02em] text-[#0d0d09]">
+    <div className="flex flex-col h-full w-full min-w-0 overflow-hidden">
+      <div className="flex items-end justify-between gap-3 min-w-0">
+        <div className="font-poppins font-semibold text-[34px] leading-none tracking-[-0.02em] text-[#0d0d09] min-w-0 flex-1 truncate">
           {fmt(data.value, data.format, data.currency)}
         </div>
         {series.length > 0 && (
