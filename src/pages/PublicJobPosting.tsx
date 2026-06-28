@@ -10,6 +10,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  EEO_GENDER_OPTIONS,
+  EEO_RACE_OPTIONS,
+  EEO_VETERAN_OPTIONS,
+  EEO_DISABILITY_OPTIONS,
+  EEO_LEGAL_DISCLAIMER,
+} from '@/lib/eeo'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { MapPin, Briefcase, DollarSign, Loader2, Linkedin, Users, Sparkles, Clock as ClockIcon } from 'lucide-react'
@@ -131,6 +139,12 @@ export default function PublicJobPosting() {
     profile_summary: ''
   })
   const [customFieldResponses, setCustomFieldResponses] = useState<Record<string, any>>({})
+  const [eeoResponses, setEeoResponses] = useState<{
+    gender: string | null
+    race_ethnicity: string | null
+    veteran_status: string | null
+    disability_status: string | null
+  }>({ gender: null, race_ethnicity: null, veteran_status: null, disability_status: null })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submittedMeta, setSubmittedMeta] = useState<{
     firstName: string
@@ -586,7 +600,10 @@ export default function PublicJobPosting() {
         salary_sync: salarySync,
         location_sync: locationSync,
         phone_sync: phoneSync,
-        linkedin_sync: linkedinSync
+        linkedin_sync: linkedinSync,
+        eeo: (eeoResponses.gender || eeoResponses.race_ethnicity || eeoResponses.veteran_status || eeoResponses.disability_status)
+          ? eeoResponses
+          : null,
       }
 
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
@@ -707,6 +724,7 @@ export default function PublicJobPosting() {
   const teamSize: number | null = typeof d.team_size === 'number' ? d.team_size : null
   const equityNote: string | null = d.equity_note || null
   const eeoStatement: string | null = d.eeo_statement || null
+  const eeoEnabled: boolean = !!d.eeo_enabled
 
   const compensationLabel = (() => {
     if (!details.showSalary || !details.salaryAmount) return null
@@ -1236,6 +1254,56 @@ export default function PublicJobPosting() {
                           </div>
                         </div>
                       )}
+
+                    {/* EEO Self-Identification Section — voluntary, confidential */}
+                    {eeoEnabled && (
+                      <div>
+                        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-text-secondary mb-3">
+                          Voluntary Self-Identification
+                        </h3>
+                        <div className="rounded-lg border border-border bg-surface-secondary/40 p-4 mb-6">
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {EEO_LEGAL_DISCLAIMER}
+                          </p>
+                        </div>
+
+                        <div className="space-y-8">
+                          {[
+                            { key: 'gender', label: 'Gender', options: EEO_GENDER_OPTIONS },
+                            { key: 'race_ethnicity', label: 'Race / Ethnicity', options: EEO_RACE_OPTIONS },
+                            { key: 'veteran_status', label: 'Veteran Status', options: EEO_VETERAN_OPTIONS },
+                            { key: 'disability_status', label: 'Disability Status', options: EEO_DISABILITY_OPTIONS },
+                          ].map(field => (
+                            <div key={field.key}>
+                              <Label className="text-[13px] font-semibold text-text-primary block mb-3">
+                                {field.label}
+                              </Label>
+                              <RadioGroup
+                                value={(eeoResponses as any)[field.key] || ''}
+                                onValueChange={(v) => setEeoResponses(prev => ({ ...prev, [field.key]: v }))}
+                                className="space-y-2"
+                              >
+                                {field.options.map(opt => (
+                                  <div key={opt.value} className="flex items-start gap-2">
+                                    <RadioGroupItem
+                                      value={opt.value}
+                                      id={`eeo-${field.key}-${opt.value}`}
+                                      className="mt-0.5"
+                                    />
+                                    <Label
+                                      htmlFor={`eeo-${field.key}-${opt.value}`}
+                                      className="text-sm font-normal text-text-primary cursor-pointer leading-snug"
+                                    >
+                                      {opt.label}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </RadioGroup>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="pt-4">
                       <Button 

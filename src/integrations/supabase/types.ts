@@ -1043,6 +1043,80 @@ export type Database = {
           },
         ]
       }
+      candidate_eeo_responses: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          disability_status:
+            | Database["public"]["Enums"]["eeo_disability_status"]
+            | null
+          gender: Database["public"]["Enums"]["eeo_gender"] | null
+          id: string
+          ip_hash: string | null
+          job_posting_id: string | null
+          race_ethnicity:
+            | Database["public"]["Enums"]["eeo_race_ethnicity"]
+            | null
+          submitted_at: string
+          tenant_id: string
+          updated_at: string
+          user_agent_hash: string | null
+          veteran_status:
+            | Database["public"]["Enums"]["eeo_veteran_status"]
+            | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          disability_status?:
+            | Database["public"]["Enums"]["eeo_disability_status"]
+            | null
+          gender?: Database["public"]["Enums"]["eeo_gender"] | null
+          id?: string
+          ip_hash?: string | null
+          job_posting_id?: string | null
+          race_ethnicity?:
+            | Database["public"]["Enums"]["eeo_race_ethnicity"]
+            | null
+          submitted_at?: string
+          tenant_id: string
+          updated_at?: string
+          user_agent_hash?: string | null
+          veteran_status?:
+            | Database["public"]["Enums"]["eeo_veteran_status"]
+            | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          disability_status?:
+            | Database["public"]["Enums"]["eeo_disability_status"]
+            | null
+          gender?: Database["public"]["Enums"]["eeo_gender"] | null
+          id?: string
+          ip_hash?: string | null
+          job_posting_id?: string | null
+          race_ethnicity?:
+            | Database["public"]["Enums"]["eeo_race_ethnicity"]
+            | null
+          submitted_at?: string
+          tenant_id?: string
+          updated_at?: string
+          user_agent_hash?: string | null
+          veteran_status?:
+            | Database["public"]["Enums"]["eeo_veteran_status"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_eeo_responses_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_list_items: {
         Row: {
           added_at: string
@@ -7015,6 +7089,10 @@ export type Database = {
       }
       backfill_default_stages_to_all_jobs: { Args: never; Returns: number }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
+      can_view_eeo: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       categorize_skills: {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
@@ -7587,6 +7665,22 @@ export type Database = {
       conversation_status: "draft" | "active"
       deal_payment_status: "paid" | "due"
       delay_unit: "days" | "weeks"
+      eeo_disability_status: "yes" | "no" | "decline"
+      eeo_gender: "male" | "female" | "non_binary" | "other" | "decline"
+      eeo_race_ethnicity:
+        | "hispanic_latino"
+        | "white"
+        | "black_african_american"
+        | "native_hawaiian_pacific_islander"
+        | "asian"
+        | "american_indian_alaska_native"
+        | "two_or_more"
+        | "decline"
+      eeo_veteran_status:
+        | "not_veteran"
+        | "protected_veteran"
+        | "veteran_not_protected"
+        | "decline"
       email_send_to: "candidate" | "hiring_team" | "interviewers" | "custom"
       employment_duration_enum: "indefinite" | "definite"
       employment_type_enum:
@@ -7871,6 +7965,24 @@ export const Constants = {
       conversation_status: ["draft", "active"],
       deal_payment_status: ["paid", "due"],
       delay_unit: ["days", "weeks"],
+      eeo_disability_status: ["yes", "no", "decline"],
+      eeo_gender: ["male", "female", "non_binary", "other", "decline"],
+      eeo_race_ethnicity: [
+        "hispanic_latino",
+        "white",
+        "black_african_american",
+        "native_hawaiian_pacific_islander",
+        "asian",
+        "american_indian_alaska_native",
+        "two_or_more",
+        "decline",
+      ],
+      eeo_veteran_status: [
+        "not_veteran",
+        "protected_veteran",
+        "veteran_not_protected",
+        "decline",
+      ],
       email_send_to: ["candidate", "hiring_team", "interviewers", "custom"],
       employment_duration_enum: ["indefinite", "definite"],
       employment_type_enum: [
