@@ -251,6 +251,7 @@ export function useDealMutations() {
     },
     onSettled: (_d, _e, vars) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] })
+      queryClient.invalidateQueries({ queryKey: ['crm-analytics'] })
       if (vars?.id) queryClient.invalidateQueries({ queryKey: ['deal', vars.id] })
     },
   })
