@@ -254,7 +254,7 @@ function buildBreakdown(
     const row = ensure(k)
     row.allDeals += 1
     const amount = Number(d.base_amount ?? 0)
-    const isOpen = !d.won_at && !d.lost_at
+    const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       row.openAmount += amount
       row.openDeals += 1
