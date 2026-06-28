@@ -18,14 +18,20 @@ interface JobStage {
 interface DraggableStageItemProps {
   stage: JobStage
   index: number
-  onRemove: (stageId: string) => void
+  /** Receives the instance id (jhsId or temp client id) of the row being removed. */
+  onRemove: (instanceId: string) => void
   onConfigure?: (jhsId: string) => void
+  /** Stable id for this row in the plan (persisted jhsId or temp client id). Used as DnD identity. */
+  instanceId: string
   jhsId?: string
   customStageName?: string | null
   isDragging?: boolean
+  /** When true, this instance cannot be removed/reordered (e.g. canonical default stage). */
+  locked?: boolean
 }
 
-export function DraggableStageItem({ stage, index, onRemove, onConfigure, jhsId, customStageName, isDragging }: DraggableStageItemProps) {
+export function DraggableStageItem({ stage, index, onRemove, onConfigure, instanceId, jhsId, customStageName, isDragging, locked }: DraggableStageItemProps) {
+  const isDisabled = locked ?? stage.is_default
   const {
     attributes,
     listeners,
@@ -34,8 +40,8 @@ export function DraggableStageItem({ stage, index, onRemove, onConfigure, jhsId,
     transition,
     isDragging: isSortableDragging,
   } = useSortable({
-    id: stage.id,
-    disabled: stage.is_default, // Disable dragging for default stages
+    id: instanceId,
+    disabled: isDisabled, // Disable dragging for locked stages
   })
 
   const style = {
