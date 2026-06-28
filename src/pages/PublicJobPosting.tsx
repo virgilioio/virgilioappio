@@ -131,6 +131,12 @@ export default function PublicJobPosting() {
     profile_summary: ''
   })
   const [customFieldResponses, setCustomFieldResponses] = useState<Record<string, any>>({})
+  const [eeoResponses, setEeoResponses] = useState<{
+    gender: string | null
+    race_ethnicity: string | null
+    veteran_status: string | null
+    disability_status: string | null
+  }>({ gender: null, race_ethnicity: null, veteran_status: null, disability_status: null })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submittedMeta, setSubmittedMeta] = useState<{
     firstName: string
