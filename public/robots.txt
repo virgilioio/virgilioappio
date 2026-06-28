@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://app.gogio.io/sitemap-jobs.xml
+Sitemap: https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/generate-jobs-sitemap
