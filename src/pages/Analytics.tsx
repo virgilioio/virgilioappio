@@ -17,7 +17,7 @@ import { defaultSpan } from '@/components/analytics/model/viz'
 import { METRICS } from '@/components/analytics/model/metrics'
 import { DIMENSIONS } from '@/components/analytics/model/dimensions'
 import { VIZ } from '@/components/analytics/model/viz'
-import type { WidgetConfig } from '@/components/analytics/model/types'
+import type { DimensionId, MetricId, WidgetConfig, VizId } from '@/components/analytics/model/types'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 import { generateAnalyticsReport, type StageConversion } from '@/utils/analyticsReportGenerator'
 import { useAnalyticsMetrics } from '@/hooks/useAnalyticsMetrics'
@@ -40,10 +40,10 @@ function sanitizeWidgets(value: unknown): WidgetConfig[] {
   return value.flatMap((raw): WidgetConfig[] => {
     if (!raw || typeof raw !== 'object') return []
     const widget = raw as Partial<WidgetConfig>
-    const metric = typeof widget.metric === 'string' && widget.metric in METRICS ? widget.metric : null
+    const metric = typeof widget.metric === 'string' && widget.metric in METRICS ? widget.metric as MetricId : null
     if (!metric) return []
-    const groupBy = typeof widget.groupBy === 'string' && widget.groupBy in DIMENSIONS ? widget.groupBy : 'none'
-    const viz = typeof widget.viz === 'string' && widget.viz in VIZ ? widget.viz : 'kpi'
+    const groupBy = typeof widget.groupBy === 'string' && widget.groupBy in DIMENSIONS ? widget.groupBy as DimensionId : 'none'
+    const viz = typeof widget.viz === 'string' && widget.viz in VIZ ? widget.viz as VizId : 'kpi'
     const span = typeof widget.span === 'number' && Number.isFinite(widget.span) && widget.span > 0
       ? Math.min(12, Math.max(1, Math.round(widget.span)))
       : defaultSpan(viz)
