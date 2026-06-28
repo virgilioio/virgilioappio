@@ -1,21 +1,38 @@
-## Plan
+# Fix Analytics empty state to use canonical structure
 
-1. **Harden widget data inputs**
-   - Update the analytics widget data adapter so every array-like source is normalized before `.map()`, `.every()`, `.filter()`, or `.slice()` runs.
-   - Default missing `series`, `sparkline`, CRM `trend`, and CRM breakdown arrays to `[]` so one malformed saved widget or partially-loaded hook cannot crash the whole Analytics page.
+## Problem
 
-2. **Make saved widget loading defensive**
-   - Sanitize `extra_state.widgets` when activating a saved Analytics view.
-   - Drop or repair invalid saved widget configs with missing `metric`, `groupBy`, `viz`, or `span` so older persisted views cannot pass undefined fields into `WidgetFrame`.
+The Analytics page renders a custom, hand-built "This view is empty" block when a view has no widgets. It uses raw divs, dashed border, a `LayoutGrid` lucide icon in a grey circle, and a custom purple button — none of which match our canonical empty-state system (`<EmptyState>` + `<EmptyAction>` + `SoftChart` illustration).
 
-3. **Fix the visible bad profile query**
-   - Correct the CRM analytics owner lookup to query the existing `profiles.user_id` column instead of `profiles.id`, matching the project schema and preventing the `GET /profiles?...id=in...` 400 error.
-   - Keep the returned owner metadata serializable, then rebuild maps inside memoized calculations.
+Location: `src/components/analytics/WidgetGrid.tsx` lines 62–80.
 
-4. **Reduce the large-stage 400 risk**
-   - Inspect the stage-performance/stuck-candidate query path that produces a very large `current_stage_id=in.(...)` request.
-   - If it is coming from Analytics, chunk the affected `.in(...)` request or route it through job IDs so Analytics no longer emits oversized PostgREST filter URLs.
+Note: a deprecated wrapper `AnalyticsEmptyState` exists and other analytics surfaces (charts, tables, sections) already use `EmptyState` correctly. Only the top-level Analytics dashboard empty state is non-compliant.
 
-5. **Validate against the live Analytics page**
-   - Reopen `/analytics` after the changes.
-   - Confirm the error boundary no longer appears and the console no longer reports `Cannot read properties of undefined (reading 'map')` for `WidgetFrame`.
+## Change
+
+Replace the custom block in `WidgetGrid.tsx` with the canonical primitive:
+
+```tsx
+<EmptyState
+  size="card"
+  illustration={<SoftChart />}
+  title="This view is empty"
+  body="Add a widget to start building your dashboard."
+  primary={
+    <EmptyAction icon={<Plus size={16} />} onClick={add}>
+      Add your first widget
+    </EmptyAction>
+  }
+/>
+```
+
+- Import `EmptyState`, `EmptyAction` from `@/components/ui/empty-state`.
+- Import `SoftChart` from `@/components/ui/EmptyIllustrations`.
+- Swap the `LayoutGrid` icon import for `Plus` (used in the action button).
+- Remove the unused dashed-border wrapper and custom button styling.
+
+## Out of scope
+
+- No changes to widget data, sanitization, view loading, or any other Analytics logic.
+- Per-chart/per-table empty states already use the canonical system — leaving untouched.
+- `AnalyticsEmptyState` deprecated wrapper stays as-is (separately tracked).
