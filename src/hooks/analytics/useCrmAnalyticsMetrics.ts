@@ -337,7 +337,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       // Pull all deals for the tenant (capped by Supabase limit; CRM scale is small).
       let dq = supabase
         .from('deals')
-        .select('id, stage_id, owner_id, organization_id, source, base_amount, created_at, won_at, lost_at')
+        .select('id, stage_id, owner_id, organization_id, source, amount, currency, base_amount, base_currency, created_at, won_at, lost_at')
         .eq('tenant_id', tenantId)
       if (filters.ownerIds?.length) dq = dq.in('owner_id', filters.ownerIds)
       if (filters.companyIds?.length) dq = dq.in('organization_id', filters.companyIds)
