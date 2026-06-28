@@ -1,36 +1,25 @@
-## Redefine "Outstanding" metric
+## Problem
 
-### New definition
-**Outstanding = Σ (deal.base_amount − Σ paid_payments_on_deal)** across all deals where:
-- `stage_type !== 'lost'` AND `lost_at IS NULL` (exclude Closed Lost)
-- Includes both Open deals and Closed Won deals
-- Deals with **no payment records at all** contribute their **full `base_amount`**
-- Deals with partial payments contribute the remaining balance
-- Negative diffs (overpaid) are clamped to 0
-- All amounts normalized to the tenant's base currency
+In `src/components/jobs/JobWizard.tsx`, `handleNextStep` always calls `submitStep1()` when leaving step 1, and `submitStep1()` always calls `createJob(...)`. There is no check for `wizardState.createdJobId`. So if a user goes Step 1 → Step 2, then back to Step 1, edits, and clicks "Create & continue" again, a second job row is inserted.
 
-### Why this differs from today
-Today, Outstanding only counts deals that already have at least one row in `deal_payments`. A Won deal with no payment schedule yet shows as $0 outstanding — wrong. Lost deals with scheduled-but-unpaid payments leak in — also wrong.
+## Fix (frontend-only, single file)
 
-### Changes (frontend-only, no DB)
+Edit `src/components/jobs/JobWizard.tsx`:
 
-**File: `src/hooks/analytics/useCrmAnalyticsMetrics.ts`**
+1. Pull `updateJob` alongside `createJob` from `useJobs()` (line 133).
+2. In `submitStep1()` (lines 180-201), branch on `wizardState.createdJobId`:
+   - If **no** `createdJobId` → call `createJob(payload)` as today, store returned id in `createdJobId`.
+   - If `createdJobId` already exists → call `updateJob(createdJobId, payload)` instead, return `{ id: createdJobId }`. No new row.
+3. In `handleNextStep` (lines 203-218), change the toast on step 1:
+   - First time (no prior `createdJobId` at start of call) → "Job created".
+   - Subsequent times → "Job updated".
+   Track this by checking `wizardState.createdJobId` before calling `submitStep1()`.
+4. Same logic already protects `handleSaveAndExit` (line 224 guards on `!createdJobId` for the create path); leave as-is, but make sure if `createdJobId` exists it persists any pending edits via `updateJob` before closing. Add the same create-vs-update branch there for consistency.
 
-1. In `computeValues` (lines ~211–227), rewrite the Outstanding loop:
-   - Iterate over **all enriched deals** (not just `dealTotals` map).
-   - Skip a deal if `stage_type === 'lost'` OR `lost_at` is set.
-   - Compute `dealBase = toBase(deal, tenantBase)`.
-   - Compute `paidAmt = paidByDeal.get(deal.id) ?? 0` (lifetime paid).
-   - Add `max(0, dealBase − paidAmt)` to outstanding.
+No DB changes. No changes to step 2+ components. Button label on step 1 can stay "Create & continue" the first time and switch to "Save & continue" once `createdJobId` exists (minor polish in `getPrimaryAction`, line 343-349).
 
-2. Remove the now-unused `dealsWithBilling` / `dealTotals` gating around line 406–414 (or keep `dealTotals` only if still referenced — verify and drop if dead).
+## Verification
 
-3. `computeValues` signature: `dealTotals` parameter becomes unnecessary for the outstanding calc. Either drop the parameter or ignore it. Keep the signature stable if other callers rely on it; just stop using it inside the outstanding block.
-
-### Unchanged
-- Collected, Revenue Won, Open Pipeline, Open Deals, Win Rate, etc. — no changes.
-- Date range still does not filter Outstanding (it remains a current snapshot).
-- Currency normalization via existing `toBase` helper.
-
-### Verification
-- Manually confirm in the Analytics page that a known Won deal with no payments now contributes its full amount; a Lost deal contributes 0; an Open deal with partial payment contributes the remainder.
+- Open wizard → fill step 1 → Continue (job created, 1 row in `jobs`).
+- Go back to step 1, change title, Continue again → same row updated, no duplicate. Confirm via `select count(*)` or by reloading Jobs list.
+- Save & exit from step 1 after edits behaves the same (no duplicate).
