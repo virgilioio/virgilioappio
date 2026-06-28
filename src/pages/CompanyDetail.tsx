@@ -92,7 +92,7 @@ export default function CompanyDetail() {
 
   const openDeals = companyDeals.filter(d => {
     const s = d.stage_id ? stageById.get(d.stage_id) : null
-    return !s || s.stage_type === 'open'
+    return s?.stage_type === 'open'
   })
   const openValue = openDeals.reduce((sum, d) => sum + (d.amount ?? 0), 0)
 

@@ -150,7 +150,7 @@ function computeValues(
 
   for (const d of deals) {
     const amount = Number(d.base_amount ?? 0)
-    const isOpen = !d.won_at && !d.lost_at
+    const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       openPipeline += amount
       openDeals += 1
@@ -254,7 +254,7 @@ function buildBreakdown(
     const row = ensure(k)
     row.allDeals += 1
     const amount = Number(d.base_amount ?? 0)
-    const isOpen = !d.won_at && !d.lost_at
+    const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       row.openAmount += amount
       row.openDeals += 1
@@ -367,6 +367,13 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     const ownerMap = new Map<string, string>(owners.map(o => [o.id, o.label]))
     const companyMap = new Map<string, string>(companies.map(c => [c.id, c.name]))
     const stageMap = new Map<string, string>(stages.map(s => [s.id, s.name]))
+    const stageTypeMap = new Map<string, string | null>(stages.map(s => [s.id, s.stage_type]))
+
+    // Enrich every deal with its stage_type so "open" can be checked from two angles.
+    const enrichedDeals: DealRow[] = deals.map(d => ({
+      ...d,
+      stage_type: d.stage_id ? stageTypeMap.get(d.stage_id) ?? null : null,
+    }))
 
     // Map deal -> total billed amount (sum of all payments regardless of status) for outstanding calc.
     // Per spec, "Outstanding = Σ (deal total − collected) for deals with billing".
@@ -374,12 +381,12 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     const dealsWithBilling = new Set<string>()
     for (const p of payments) dealsWithBilling.add(p.deal_id)
     const dealTotals = new Map<string, number>()
-    for (const d of deals) {
+    for (const d of enrichedDeals) {
       if (dealsWithBilling.has(d.id)) dealTotals.set(d.id, Number(d.base_amount ?? 0))
     }
 
-    const values = computeValues(deals, payments, dateRange, dealTotals)
-    const prev = computeValues(deals, payments, periodBefore(dateRange), dealTotals)
+    const values = computeValues(enrichedDeals, payments, dateRange, dealTotals)
+    const prev = computeValues(enrichedDeals, payments, periodBefore(dateRange), dealTotals)
 
     // Daily trend within range
     const days = eachDayOfInterval({ start: dateRange.startDate, end: dateRange.endDate })
@@ -417,7 +424,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
 
     // Stage breakdown — preserve stage order
     const stageRows = buildBreakdown(
-      deals,
+      enrichedDeals,
       payments,
       dateRange,
       d => d.stage_id,
@@ -427,12 +434,12 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     const orderIndex = new Map(stages.map((s, i) => [s.id, i] as const))
     stageRows.sort((a, b) => (orderIndex.get(a.key) ?? 99) - (orderIndex.get(b.key) ?? 99))
 
-    const ownerRows = buildBreakdown(deals, payments, dateRange, d => d.owner_id, ownerMap, 'Unassigned')
-    const companyRows = buildBreakdown(deals, payments, dateRange, d => d.organization_id, companyMap, 'No company')
+    const ownerRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.owner_id, ownerMap, 'Unassigned')
+    const companyRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.organization_id, companyMap, 'No company')
 
     const sourceLabels = new Map<string, string>()
     for (const [k, v] of Object.entries(SOURCE_LABELS)) sourceLabels.set(k, v)
-    const sourceRows = buildBreakdown(deals, payments, dateRange, d => d.source, sourceLabels, 'No source')
+    const sourceRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.source, sourceLabels, 'No source')
 
     return {
       isLoading: false,

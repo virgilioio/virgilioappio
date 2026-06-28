@@ -1,65 +1,46 @@
 ## Goal
 
-At narrow widget widths (small screens or a 1-span card on a tight grid), several analytics chart bodies render wider than their containing widget card. Fix the chart primitives and the widget body so content is always clipped/sized to the card.
+Guarantee that **Open pipeline** and **Open deals** — wherever they appear (Analytics widgets, Deals page KPI strip, Company detail KPI strip) — only count deals whose stage is `open`, never deals in a `won` or `lost` stage.
 
-## Root causes
+## Audit results
 
-1. **`WidgetFrame` body** (`src/components/analytics/widgets/WidgetFrame.tsx`)
-   - Body wrapper is `flex-1 min-h-0` with no `min-w-0` and no `overflow-hidden`. A child SVG with a measured pixel width can push the card out before the `ResizeObserver` recalculates.
+Current code already excludes won/lost in every surface, but each surface uses a different signal:
 
-2. **`LineChart`** (`charts/LineChart.tsx`)
-   - Renders `<svg width={w} height={height}>` where `w` comes from `ResizeObserver`. On the first paint, on container shrink, or in the brief window before RO fires, `w` keeps the previous larger value → SVG overflows. Also no `overflow-hidden` on the wrapper.
+| Surface | File | Open signal |
+|---|---|---|
+| Deals page KPIs | `src/pages/Deals.tsx` (L69–77, 130) | `stage_type === 'open'` ✅ |
+| Company detail KPIs | `src/pages/CompanyDetail.tsx` (L93–97) | `s.stage_type === 'open'` (treats unknown stage as open) ⚠️ |
+| Analytics CRM bundle | `src/hooks/analytics/useCrmAnalyticsMetrics.ts` (L153, 257) | `!won_at && !lost_at` ✅ (depends on the DB trigger we shipped) |
 
-3. **`BarsChart`** (`charts/BarsChart.tsx`)
-   - Fixed `w-[116px]` label column + `gap-3` + fixed `w-[52px]` value column. Below ~240px wide that already exceeds the card.
+A spot-check of the DB confirms data is currently consistent (every deal in a `won` stage has `won_at`; every deal in a `lost` stage has `lost_at`; open stages have neither). So the user is right that today it works, but it relies on a single source (timestamps) in Analytics and on a separate signal (stage_type) in the Deals/Company pages. Drift between the two is the failure mode we want to lock down.
 
-4. **`FunnelChart`** (`charts/FunnelChart.tsx`)
-   - Same pattern: fixed `w-[110px]` label and `w-[42px]` conversion columns. Same overflow at narrow widths.
+## Changes (frontend-only, safety net)
 
-5. **`ColumnsChart`** (`charts/ColumnsChart.tsx`)
-   - Uses `gap-2` between columns with `flex-1` items but no `min-w-0`/`overflow-hidden` — long category labels wrap and push height; numeric labels above can be wider than the column at narrow widths.
+1. **`useCrmAnalyticsMetrics.ts` — make "open" a two-key check**
+   - In the query function, populate `stage_type` on each `DealRow` from the already-fetched `stages` array (build a `Map<stage_id, stage_type>`).
+   - Change the `isOpen` check in `computeValues` and `buildBreakdown` from:
+     ```ts
+     const isOpen = !d.won_at && !d.lost_at
+     ```
+     to:
+     ```ts
+     const isOpen =
+       d.stage_type !== 'won' &&
+       d.stage_type !== 'lost' &&
+       !d.won_at &&
+       !d.lost_at
+     ```
+   - This means a deal sitting in a Won/Lost stage is excluded from Open even if `won_at`/`lost_at` haven't been written yet (e.g. legacy rows the trigger missed, or a future bulk import).
 
-6. **`DonutChart`** (`charts/DonutChart.tsx`)
-   - Fixed `size = 200` SVG + legend side-by-side. Below ~320px wide, SVG + legend overflow horizontally.
+2. **`CompanyDetail.tsx` — tighten the fallback**
+   - Replace `!s || s.stage_type === 'open'` with strict `s?.stage_type === 'open'`, so a deal with an unresolved stage is **not** silently bucketed as Open.
 
-## Changes
+3. **No change** to `Deals.tsx` — its existing `stage_type === 'open'` filter is already correct.
 
-### A. Widget body containment
-- In `WidgetFrame.tsx`, change the body wrapper from `flex-1 min-h-0` to `flex-1 min-h-0 min-w-0 overflow-hidden`. This guarantees clipping even if a child momentarily over-measures.
-- Also add `min-w-0` to the outer card flex column so it shrinks inside the grid.
-
-### B. LineChart — make SVG fluid
-- Drop the measured-pixel `width` approach. Render:
-  - `<svg viewBox="0 0 {VIRTUAL_W} {height}" width="100%" height={height} preserveAspectRatio="none">` for the area/grid, with the curve drawn against a fixed virtual width (e.g. 600). Text labels (`fontSize`) are placed in a second SVG overlay using `preserveAspectRatio="xMinYMin meet"` OR rendered as HTML at percent x positions so they don't stretch.
-- Simpler alternative we'll adopt: keep ResizeObserver but
-  - initialise `w` to `0` and render nothing until measured (avoid first-paint overflow),
-  - wrap in a `div.w-full.overflow-hidden`,
-  - clamp `w` to `ref.current.clientWidth` on every observer tick.
-
-### C. BarsChart / FunnelChart — fluid label & value columns
-- Replace fixed pixel widths with responsive ones using `clamp` via inline style or Tailwind arbitrary values:
-  - Label column: `w-[clamp(72px,28%,140px)]`.
-  - Value/conv column: `w-[clamp(40px,16%,60px)]`.
-- Add `min-w-0` to the bar track so flex can shrink.
-- Wrap each chart root in `w-full overflow-hidden`.
-
-### D. ColumnsChart
-- Wrap root in `w-full overflow-hidden`.
-- Add `min-w-0` to each column item; truncate value labels (`truncate max-w-full`).
-- Cap inner SVG/column gap to `gap-1` when the parent is narrow (use `gap-1 sm:gap-2`).
-
-### E. DonutChart — stack at narrow widths
-- Wrap in a container with `flex flex-col @[280px]:flex-row items-center gap-4 w-full overflow-hidden` (use Tailwind container queries already enabled, otherwise fall back to `flex-col md:flex-row`).
-- Make the SVG `max-w-full h-auto` and replace fixed `size={200}` with `min(size, containerWidth)` via a `ResizeObserver` (same hardened pattern as LineChart).
-- Legend list gets `min-w-0 w-full`.
-
-### F. Sanity pass
-- Audit `TableViz` and `KpiChart` for the same fixed-width issues; add `min-w-0 overflow-hidden` wrappers there too if needed (no logic change).
-
-## Out of scope
-- No metric, data, or business-logic changes — purely presentational/responsive.
-- No grid/breakpoint changes in `WidgetGrid`.
+4. **No DB / business-logic changes.** The existing `sync_deal_terminal_timestamps` trigger and backfill continue to keep the timestamps in sync; the frontend changes above are belt-and-suspenders so a missing timestamp can never leak a Won/Lost deal into Open.
 
 ## Verification
-- Resize the Analytics page from 1400 → 360 px and confirm no widget content extends past its card border, no horizontal scrollbar on the grid, no clipped numbers.
-- Check Line, Bars, Columns, Funnel, Donut, KPI, Table at both 1-span and 2-span on a narrow viewport.
+
+- Reload `/analytics`: Open pipeline / Open deals KPIs and the "Open deals by stage" funnel show zero contribution from Won/Lost stages.
+- Move a deal from an Open stage → Won stage → back to Open on the Deals board and confirm the KPI strip and Analytics both update without ever counting it as Open while in Won/Lost.
+- Open a company detail page and confirm Open deals count matches the Deals board for that company.
