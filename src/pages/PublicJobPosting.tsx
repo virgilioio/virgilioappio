@@ -10,6 +10,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  EEO_GENDER_OPTIONS,
+  EEO_RACE_OPTIONS,
+  EEO_VETERAN_OPTIONS,
+  EEO_DISABILITY_OPTIONS,
+  EEO_LEGAL_DISCLAIMER,
+} from '@/lib/eeo'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { MapPin, Briefcase, DollarSign, Loader2, Linkedin, Users, Sparkles, Clock as ClockIcon } from 'lucide-react'
