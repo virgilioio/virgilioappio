@@ -25,20 +25,20 @@ interface Props {
 
 function autoTitle(cfg: WidgetConfig): string {
   if (cfg.title) return cfg.title
-  const m = METRICS[cfg.metric].label
+  const m = (METRICS[cfg.metric] ?? METRICS.applications).label
   if (cfg.groupBy === 'none') return m
   if (cfg.groupBy === 'time') return `${m} over time`
-  return `${m} by ${DIMENSIONS[cfg.groupBy].label.toLowerCase()}`
+  return `${m} by ${(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label.toLowerCase()}`
 }
 
 function subLine(cfg: WidgetConfig): string {
-  const v = VIZ[cfg.viz].label
+  const v = (VIZ[cfg.viz] ?? VIZ.kpi).label
   if (cfg.groupBy === 'none') return v
-  return `${v} · by ${DIMENSIONS[cfg.groupBy].label.toLowerCase()}`
+  return `${v} · by ${(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label.toLowerCase()}`
 }
 
 export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
-  const meta = METRICS[cfg.metric]
+  const meta = METRICS[cfg.metric] ?? METRICS.applications
   const Icon = meta.icon
   const tone = TONE_COLOR[meta.tone]
   const tint = TONE_TINT[meta.tone]
