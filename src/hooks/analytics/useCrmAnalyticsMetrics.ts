@@ -208,22 +208,23 @@ function computeValues(
     }
   }
 
-  // Outstanding = sum over deals that have any billing, (deal total - collected on it).
-  // Use lifetime payments (any status=paid) for outstanding calc.
+  // Outstanding = Σ (deal.base_amount − lifetime paid on deal) for all non-Lost deals.
+  // Includes Open and Closed Won. Excludes Closed Lost. Deals with no payments contribute full amount.
   const paidByDeal = new Map<string, number>()
   for (const p of payments) {
     if ((p.status ?? 'paid') === 'paid') {
       paidByDeal.set(p.deal_id, (paidByDeal.get(p.deal_id) ?? 0) + toBase(p, tenantBase))
     }
   }
+  void dealTotals
   let outstanding = 0
-  for (const [dealId, total] of dealTotals) {
-    if (!paidByDeal.has(dealId) && (dealTotals.get(dealId) ?? 0) === 0) continue
-    const paidAmt = paidByDeal.get(dealId) ?? 0
-    if (paidAmt > 0 || total > 0) {
-      const diff = total - paidAmt
-      if (diff > 0) outstanding += diff
-    }
+  for (const d of deals) {
+    const isLost = d.stage_type === 'lost' || !!d.lost_at
+    if (isLost) continue
+    const dealBase = toBase(d, tenantBase)
+    const paidAmt = paidByDeal.get(d.id) ?? 0
+    const diff = dealBase - paidAmt
+    if (diff > 0) outstanding += diff
   }
 
   const closed = dealsWon + dealsLost
