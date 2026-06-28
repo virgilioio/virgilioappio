@@ -686,6 +686,9 @@ export function IndependentCandidateProfileSheet({
                         </CardContent>
                       </Card>
 
+                      {/* EEO (Self-Identification) — admin/owner only, never visible in the in-job profile */}
+                      <EeoResponseCard candidateId={candidate?.id} />
+
                       {/* Career Summary */}
                       {(candidate?.current_job_title || candidate?.seniority_level || candidate?.functional_area) && (
                         <Card className="bg-surface-primary border-border">
