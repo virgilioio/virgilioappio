@@ -11,10 +11,14 @@ interface Props {
 
 export function LineChart({ metricId, series, height = 220 }: Props) {
   const ref = useRef<HTMLDivElement>(null)
-  const [w, setW] = useState(600)
+  const [w, setW] = useState(0)
   useEffect(() => {
     if (!ref.current) return
-    const ro = new ResizeObserver(entries => setW(Math.max(120, entries[0].contentRect.width)))
+    const measure = () => {
+      if (ref.current) setW(Math.max(0, ref.current.clientWidth))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
     ro.observe(ref.current)
     return () => ro.disconnect()
   }, [])
