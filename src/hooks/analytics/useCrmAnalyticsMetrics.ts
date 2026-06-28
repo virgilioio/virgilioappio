@@ -251,6 +251,7 @@ function buildBreakdown(
   range: DateRange,
   keyOf: (d: DealRow) => string | null,
   labelMap: Map<string, string>,
+  tenantBase: string,
   fallbackLabel = '—',
 ): CrmDimensionRow[] {
   const map = new Map<string, CrmDimensionRow>()
@@ -280,7 +281,7 @@ function buildBreakdown(
     dealKeyById.set(d.id, k)
     const row = ensure(k)
     row.allDeals += 1
-    const amount = Number(d.base_amount ?? 0)
+    const amount = toBase(d, tenantBase)
     const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       row.openAmount += amount
@@ -298,7 +299,7 @@ function buildBreakdown(
     const k = dealKeyById.get(p.deal_id)
     if (!k) continue
     if ((p.status ?? 'paid') === 'paid' && p.paid_at && inRange(p.paid_at, range.startDate, range.endDate)) {
-      ensure(k).collected += Number(p.base_amount ?? 0)
+      ensure(k).collected += toBase(p, tenantBase)
     }
   }
   return Array.from(map.values()).sort((a, b) => b.wonAmount + b.openAmount - (a.wonAmount + a.openAmount))
