@@ -863,6 +863,46 @@ serve(async (req) => {
       }
     }
 
+    // Persist EEO self-identification (confidential, admin-only readable)
+    if (globalCandidateId && body.eeo && (body.eeo.gender || body.eeo.race_ethnicity || body.eeo.veteran_status || body.eeo.disability_status)) {
+      try {
+        const allowed = {
+          gender: ['male','female','non_binary','other','decline'],
+          race_ethnicity: ['hispanic_latino','white','black_african_american','native_hawaiian_pacific_islander','asian','american_indian_alaska_native','two_or_more','decline'],
+          veteran_status: ['not_veteran','protected_veteran','veteran_not_protected','decline'],
+          disability_status: ['yes','no','decline'],
+        } as const;
+        const pick = (k: keyof typeof allowed, v?: string | null) =>
+          v && (allowed[k] as readonly string[]).includes(v) ? v : null;
+
+        const xff = req.headers.get('x-forwarded-for') || '';
+        const ua = req.headers.get('user-agent') || '';
+        const hash = async (s: string) => {
+          if (!s) return null;
+          const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+          return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+        };
+
+        const { error: eeoErr } = await supabase
+          .from('candidate_eeo_responses')
+          .upsert({
+            candidate_id: globalCandidateId,
+            tenant_id: posting.tenant_id,
+            job_posting_id: posting.id,
+            gender: pick('gender', body.eeo.gender),
+            race_ethnicity: pick('race_ethnicity', body.eeo.race_ethnicity),
+            veteran_status: pick('veteran_status', body.eeo.veteran_status),
+            disability_status: pick('disability_status', body.eeo.disability_status),
+            ip_hash: await hash(xff.split(',')[0]?.trim() || ''),
+            user_agent_hash: await hash(ua),
+          }, { onConflict: 'candidate_id' });
+        if (eeoErr) console.error('EEO insert error (non-blocking):', eeoErr);
+        else console.log('🔒 EEO response stored for candidate:', globalCandidateId);
+      } catch (eeoEx) {
+        console.error('EEO processing error (non-blocking):', eeoEx);
+      }
+    }
+
     // Check if any required file uploads failed
     const failedUploads = fileUploadResults.filter(result => !result.success);
     const hasFailedUploads = failedUploads.length > 0;
