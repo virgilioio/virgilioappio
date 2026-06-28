@@ -97,7 +97,6 @@ interface PaymentRow {
 }
 
 interface StageMeta { id: string; name: string; stage_type: string | null; position: number }
-interface OwnerMeta { id: string; name: string }
 interface CompanyMeta { id: string; name: string }
 
 type SerializableOwnerMeta = { id: string; label: string }
@@ -109,9 +108,6 @@ type CrmAnalyticsQueryData = {
   stages?: StageMeta[]
   owners?: SerializableOwnerMeta[]
   companies?: SerializableCompanyMeta[]
-  ownerMap?: unknown
-  companyMap?: unknown
-  stageMap?: unknown
 }
 
 const SOURCE_LABELS: Record<string, string> = {
