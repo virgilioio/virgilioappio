@@ -240,7 +240,7 @@ export default function Analytics() {
               ANALYTICS
             </div>
             <h1 className="font-poppins font-semibold text-[26px] tracking-[-0.045em] text-[#0d0d09]">
-              Recruiting analytics<span className="text-[#D7C5FB]">.</span>
+              {views.find(v => v.id === activeViewId)?.name ?? 'Analytics'}<span className="text-[#D7C5FB]">.</span>
             </h1>
             <div className="mt-2 flex items-center gap-3 text-[12px] font-inter text-[#5A6072]">
               <span className="inline-flex items-center gap-1.5"><LayoutGrid size={12} /> {widgets.length} widgets</span>
