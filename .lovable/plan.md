@@ -1,54 +1,38 @@
-# Use canonical EmptyState in Job → Sourcing tab
+# Fix Analytics crash on `/analytics`
 
-## Problem
+## Root cause
 
-`src/components/jobs/JobSourcingTab.tsx` hand-rolls its "no sourcing project yet" block — a custom rounded card with a grey `Search` icon tile, ad-hoc typography, and a manual CTA. This bypasses the canonical `<EmptyState>` primitive and violates the project Core rule ("Never hand-roll empty blocks").
+`useCrmAnalyticsMetrics` returns `Map` instances (`ownerMap`, `companyMap`, `stageMap`) from its react-query `queryFn`. The app's react-query cache persister serializes cached query data to JSON. `Map` does not survive `JSON.stringify` — it becomes an empty plain object `{}`. On rehydration (or on any code path that round-trips through the persisted cache), `labelMap.has(k)` at line 242 of `useCrmAnalyticsMetrics.ts` throws `TypeError: r.has is not a function`, which is exactly the production stack we see. The same risk applies to `buildBreakdown` calls that pass these maps in.
 
-The "project exists" branch is a linked-project summary card (not an empty state) and stays untouched. The loading branch is a simple skeleton placeholder and also stays as-is (loading ≠ empty per the EmptyState memo).
+The Supabase realtime websocket close and the `profiles` 400 in the console are unrelated noise (the websocket teardown happens because the React tree unmounts when the ErrorBoundary catches the crash; the profiles 400 is a separate RLS issue and isn't what's breaking the page).
 
-## Change
+## Fix
 
-Refactor only the "no project" branch of `JobSourcingTab.tsx` to render the canonical primitive.
+Refactor `src/hooks/analytics/useCrmAnalyticsMetrics.ts` so the query result holds only serializable primitives, and rebuild the `Map`s inside `useMemo`:
 
-```tsx
-import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { Sparkles } from 'lucide-react'
-
-// ...in the no-project branch:
-return (
-  <div className="p-6">
-    <EmptyState
-      size="card"
-      title="No sourcing project yet"
-      body="Start a sourcing project linked to this job — Gio will surface matching candidates and keep them organized in one place."
-      primary={
-        <EmptyAction
-          icon={<Sparkles size={16} strokeWidth={2} />}
-          onClick={handleStart}
-          loading={creating}
-        >
-          Start sourcing for this job
-        </EmptyAction>
-      }
-    />
-  </div>
-)
-```
-
-Notes:
-- Uses the default Gio mascot illustration (per the canonical empty-state spec for `inline`/`card` contexts).
-- Title plain text — the purple period is auto-appended by the primitive.
-- CTA preserves the existing `handleStart` / `creating` behavior (calls `ensureProject` then navigates to `/find/:id`).
-- If `EmptyAction` does not support `loading`, fall back to disabling it while `creating` is true and keep the label.
-
-## Out of scope
-
-- The linked-project summary card (it's a status card, not empty).
-- The loading skeleton (separate concern per the empty-state memo).
-- Any other tab or sourcing surface.
+1. In `queryFn`, replace the three `Map` instances with plain arrays of `{ id, label }` (or for stages, keep the existing `StageMeta[]` and derive label inline). Return:
+   ```
+   { tenantId, deals, payments, stages,
+     owners: [{ id, label }],
+     companies: [{ id, name }] }   // stageMap derived from stages
+   ```
+   No `Map` instances in the returned object.
+2. In the `useMemo` block, construct fresh `Map`s from those arrays before calling `buildBreakdown`:
+   ```
+   const ownerMap = new Map(owners.map(o => [o.id, o.label]))
+   const companyMap = new Map(companies.map(c => [c.id, c.name]))
+   const stageMap = new Map(stages.map(s => [s.id, s.name]))
+   ```
+3. Leave `sourceLabels` as-is (it's already built inside `useMemo`).
+4. No behavioral changes to `computeValues` / `buildBreakdown` / trend logic.
 
 ## Verification
 
-- Visit a job with no sourcing project → see canonical mascot empty state with the "Start sourcing for this job" CTA.
-- Click the CTA → project is created and the view navigates to `/find/:id` (unchanged behavior).
-- Visit a job that already has a project → the linked-project card still renders unchanged.
+- Reload `/analytics` (and `/crm/overview`) — page renders without ErrorBoundary; KPI/funnel/line widgets populate.
+- Hard-refresh after navigating away and back to confirm the persisted cache path also works.
+- Check console — the `TypeError: r.has is not a function` no longer appears.
+
+## Out of scope
+
+- The `profiles?...` 400 (likely RLS on `profiles` for cross-tenant owner IDs). Separate ticket if it still surfaces after this fix; it does not cause the crash.
+- The realtime websocket message (symptom of unmount, not a bug here).

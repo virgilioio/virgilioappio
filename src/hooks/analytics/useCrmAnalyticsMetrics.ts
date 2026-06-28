@@ -336,23 +336,22 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
         : { data: [] }
 
       const stages = ((stagesRes.data ?? []) as StageMeta[]).sort((a, b) => a.position - b.position)
-      const ownerMap = new Map<string, string>()
-      for (const o of (ownersRes.data ?? []) as any[]) {
-        const name = [o.first_name, o.last_name].filter(Boolean).join(' ').trim() || o.email || 'Unknown'
-        ownerMap.set(o.id, name)
-      }
-      const companyMap = new Map<string, string>()
-      for (const c of (orgsRes.data ?? []) as CompanyMeta[]) companyMap.set(c.id, c.name)
-      const stageMap = new Map<string, string>()
-      for (const s of stages) stageMap.set(s.id, s.name)
+      const owners = ((ownersRes.data ?? []) as any[]).map(o => ({
+        id: o.id as string,
+        label: ([o.first_name, o.last_name].filter(Boolean).join(' ').trim() || o.email || 'Unknown') as string,
+      }))
+      const companies = ((orgsRes.data ?? []) as CompanyMeta[]).map(c => ({ id: c.id, name: c.name }))
 
-      return { tenantId, deals, payments, stages, ownerMap, companyMap, stageMap }
+      return { tenantId, deals, payments, stages, owners, companies }
     },
   })
 
   return useMemo<CrmAnalyticsBundle>(() => {
     if (!data) return { ...EMPTY_BUNDLE, isLoading, baseCurrency }
-    const { deals, payments, stages, ownerMap, companyMap, stageMap } = data
+    const { deals, payments, stages, owners, companies } = data
+    const ownerMap = new Map<string, string>(owners.map(o => [o.id, o.label]))
+    const companyMap = new Map<string, string>(companies.map(c => [c.id, c.name]))
+    const stageMap = new Map<string, string>(stages.map(s => [s.id, s.name]))
 
     // Map deal -> total billed amount (sum of all payments regardless of status) for outstanding calc.
     // Per spec, "Outstanding = Σ (deal total − collected) for deals with billing".
