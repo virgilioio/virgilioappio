@@ -1,17 +1,22 @@
 ## Problem
-The Configure widget popover is rendered with `absolute` positioning inside the widget card. In the recent responsiveness fix we added `overflow-hidden` to the outer card (`WidgetFrame.tsx`, line 50), which now clips the popover so users can't fully see or interact with it.
-
-The inner body already has its own `overflow-hidden` to clip charts, so the outer clip is redundant for the original goal.
+When a metric resolves to 0 or no rows, widgets render "No data in this range" which feels like an error. For numeric metrics, showing `0` (in the correct format/currency) is more accurate and reassuring.
 
 ## Fix
-**File:** `src/components/analytics/widgets/WidgetFrame.tsx`
 
-- Line 50: remove `overflow-hidden` from the outer card class list. Keep `min-w-0` so the card still shrinks correctly inside the grid.
-- Line 94: keep `overflow-hidden` on the inner body wrapper — this is what actually prevents charts from bleeding.
+### `src/components/analytics/model/useWidgetData.ts`
+Soften the `empty` flag:
+- KPI (`groupBy === 'none'`): never empty — `0` is a valid value. Set `empty = false` when `value` is a number (including 0). Only stay `empty` if `value` is `null/undefined` (true unknown).
+- Time series (`groupBy === 'time'`): if all points are 0, keep `empty = false` so the chart renders a flat line at 0 instead of swapping to a message.
+- Breakdown (other group-bys): keep `empty = true` only when the breakdown array is literally empty (no categories to draw). This is the only case where a "0" doesn't make sense (no bars/columns/donut slices to show).
 
-Net effect:
-- Charts remain clipped to the body (no regression on responsiveness fix).
-- The Configure popover, which is anchored to the card (not the body), can extend beyond the card edges when needed and stays fully visible.
+### `src/components/analytics/widgets/WidgetFrame.tsx`
+Replace the "No data in this range" error-toned copy with a calm zero-state for breakdown vizzes:
+- Render the metric's formatted `0` (using the existing `formatMetricValue` helper / metric format + currency) centered in the body, in muted typography.
+- Keep the same height so layout doesn't jump.
+
+### KPI chart
+`KpiChart` already renders `value`; with the new `empty` logic it will naturally display `$0`, `0%`, or `0` per the metric's format. No change needed beyond ensuring it isn't short-circuited by the empty branch in `WidgetFrame`.
 
 ## Out of scope
-- No change to the popover's positioning logic or chart components.
+- No change to how metrics compute values, query the DB, or scope by filters.
+- No change to loading spinner behavior.
