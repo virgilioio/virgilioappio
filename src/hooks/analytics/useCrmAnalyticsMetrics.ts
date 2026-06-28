@@ -410,21 +410,21 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     for (const p of payments) dealsWithBilling.add(p.deal_id)
     const dealTotals = new Map<string, number>()
     for (const d of enrichedDeals) {
-      if (dealsWithBilling.has(d.id)) dealTotals.set(d.id, Number(d.base_amount ?? 0))
+      if (dealsWithBilling.has(d.id)) dealTotals.set(d.id, toBase(d, baseCurrency))
     }
 
-    const values = computeValues(enrichedDeals, payments, dateRange, dealTotals)
-    const prev = computeValues(enrichedDeals, payments, periodBefore(dateRange), dealTotals)
+    const values = computeValues(enrichedDeals, payments, dateRange, dealTotals, baseCurrency)
+    const prev = computeValues(enrichedDeals, payments, periodBefore(dateRange), dealTotals, baseCurrency)
 
     // Daily trend within range
     const days = eachDayOfInterval({ start: dateRange.startDate, end: dateRange.endDate })
     const dayKey = (iso: string) => fmtDate(new Date(iso), 'yyyy-MM-dd')
     const trendMap = new Map<string, { revenueWon: number; newDeals: number; collected: number; dealsWon: number }>()
     for (const day of days) trendMap.set(fmtDate(day, 'yyyy-MM-dd'), { revenueWon: 0, newDeals: 0, collected: 0, dealsWon: 0 })
-    for (const d of deals) {
+    for (const d of enrichedDeals) {
       if (d.won_at && inRange(d.won_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(d.won_at)
-        const e = trendMap.get(k); if (e) { e.revenueWon += Number(d.base_amount ?? 0); e.dealsWon += 1 }
+        const e = trendMap.get(k); if (e) { e.revenueWon += toBase(d, baseCurrency); e.dealsWon += 1 }
       }
       if (inRange(d.created_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(d.created_at)
@@ -434,7 +434,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     for (const p of payments) {
       if ((p.status ?? 'paid') === 'paid' && p.paid_at && inRange(p.paid_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(p.paid_at)
-        const e = trendMap.get(k); if (e) { e.collected += Number(p.base_amount ?? 0) }
+        const e = trendMap.get(k); if (e) { e.collected += toBase(p, baseCurrency) }
       }
     }
     const trend = days.map(day => {
@@ -457,17 +457,18 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       dateRange,
       d => d.stage_id,
       stageMap,
+      baseCurrency,
       'Unassigned',
     )
     const orderIndex = new Map(stages.map((s, i) => [s.id, i] as const))
     stageRows.sort((a, b) => (orderIndex.get(a.key) ?? 99) - (orderIndex.get(b.key) ?? 99))
 
-    const ownerRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.owner_id, ownerMap, 'Unassigned')
-    const companyRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.organization_id, companyMap, 'No company')
+    const ownerRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.owner_id, ownerMap, baseCurrency, 'Unassigned')
+    const companyRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.organization_id, companyMap, baseCurrency, 'No company')
 
     const sourceLabels = new Map<string, string>()
     for (const [k, v] of Object.entries(SOURCE_LABELS)) sourceLabels.set(k, v)
-    const sourceRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.source, sourceLabels, 'No source')
+    const sourceRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.source, sourceLabels, baseCurrency, 'No source')
 
     return {
       isLoading: false,
