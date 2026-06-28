@@ -127,7 +127,7 @@ function renderViz(cfg: WidgetConfig, data: ReturnType<typeof useWidgetData>) {
     case 'funnel':
       return <FunnelChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'table':
-      return <TableViz dimensionLabel={DIMENSIONS[cfg.groupBy].label} data={data.breakdown} format={data.format} currency={data.currency} />
+      return <TableViz dimensionLabel={(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label} data={data.breakdown} format={data.format} currency={data.currency} />
   }
 }
 
