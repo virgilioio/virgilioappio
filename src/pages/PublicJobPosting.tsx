@@ -814,14 +814,61 @@ export default function PublicJobPosting() {
     )
   }
 
+  const googleJobsEnabled =
+    posting.syndication?.google_jobs?.enabled !== false
+  const canonicalUrl =
+    typeof window !== 'undefined' ? window.location.href.split('?')[0] : ''
+  const metaDescription = (() => {
+    const seoDesc = posting.details?.seo?.meta_description
+    if (typeof seoDesc === 'string' && seoDesc.trim()) return seoDesc.trim()
+    const fromBody = (posting.description || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return fromBody.slice(0, 155)
+  })()
+  const jsonLd = googleJobsEnabled
+    ? buildJobPostingJsonLd({
+        posting,
+        job: {
+          salary_min: jobSalary.min,
+          salary_max: jobSalary.max,
+          currency: jobSalary.currency,
+          show_salary_public: jobSalary.show,
+        },
+        tenant: {
+          name: organizationName || 'Company',
+          logoUrl: companyLogoUrl,
+          websiteUrl: companyWebsiteUrl,
+        },
+        url: canonicalUrl,
+      })
+    : null
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
+      <Helmet>
+        <title>{`${posting.title} — ${organizationName || 'Careers'}`}</title>
+        {metaDescription ? <meta name="description" content={metaDescription} /> : null}
+        {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+        {canonicalUrl ? <meta property="og:url" content={canonicalUrl} /> : null}
+        <meta property="og:title" content={posting.title} />
+        <meta property="og:type" content="website" />
+        <meta
+          name="robots"
+          content={googleJobsEnabled ? 'index,follow' : 'noindex,nofollow'}
+        />
+        {jsonLd ? (
+          <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        ) : null}
+      </Helmet>
       <CareersTopBar
         logoUrl={companyLogoUrl}
         companyName={organizationName || 'Company'}
         websiteUrl={companyWebsiteUrl}
         showCompanyName
       />
+
 
 
       <JobHeader
