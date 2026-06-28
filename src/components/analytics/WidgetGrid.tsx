@@ -17,7 +17,9 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { LayoutGrid } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftChart } from '@/components/ui/EmptyIllustrations'
 import { WidgetFrame } from './widgets/WidgetFrame'
 import { AddWidgetTile } from './widgets/AddWidgetTile'
 import { defaultSpan } from './model/viz'
