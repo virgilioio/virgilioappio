@@ -348,7 +348,10 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
 
   return useMemo<CrmAnalyticsBundle>(() => {
     if (!data) return { ...EMPTY_BUNDLE, isLoading, baseCurrency }
-    const { deals, payments, stages, ownerMap, companyMap, stageMap } = data
+    const { deals, payments, stages, owners, companies } = data
+    const ownerMap = new Map<string, string>(owners.map(o => [o.id, o.label]))
+    const companyMap = new Map<string, string>(companies.map(c => [c.id, c.name]))
+    const stageMap = new Map<string, string>(stages.map(s => [s.id, s.name]))
 
     // Map deal -> total billed amount (sum of all payments regardless of status) for outstanding calc.
     // Per spec, "Outstanding = Σ (deal total − collected) for deals with billing".
