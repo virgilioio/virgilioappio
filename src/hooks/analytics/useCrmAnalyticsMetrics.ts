@@ -81,7 +81,10 @@ interface DealRow {
   owner_id: string | null
   organization_id: string | null
   source: string | null
+  amount: number | null
+  currency: string | null
   base_amount: number | null
+  base_currency: string | null
   created_at: string
   won_at: string | null
   lost_at: string | null
@@ -91,9 +94,32 @@ interface DealRow {
 interface PaymentRow {
   id: string
   deal_id: string
+  amount: number | null
+  currency: string | null
   base_amount: number | null
+  base_currency: string | null
   paid_at: string | null
   status: string | null
+}
+
+/**
+ * Returns a row's value in the tenant base currency.
+ * Prefers the stored base_amount when it is already in the tenant base.
+ * Falls back to the raw amount when the row currency equals the tenant base
+ * (covers rows where the DB backfill hasn't run yet). Otherwise returns 0
+ * rather than silently summing across currencies.
+ */
+function toBase(
+  row: { amount: number | null; currency: string | null; base_amount: number | null; base_currency: string | null },
+  tenantBase: string,
+): number {
+  const base = (tenantBase || '').toUpperCase()
+  const rowBase = (row.base_currency || '').toUpperCase()
+  const rowCcy = (row.currency || '').toUpperCase()
+  if (row.base_amount != null && rowBase && rowBase === base) return Number(row.base_amount)
+  if (row.amount != null && rowCcy && rowCcy === base) return Number(row.amount)
+  if (row.base_amount != null && !rowBase) return Number(row.base_amount) // legacy null base_currency
+  return 0
 }
 
 interface StageMeta { id: string; name: string; stage_type: string | null; position: number }
@@ -138,6 +164,7 @@ function computeValues(
   payments: PaymentRow[],
   range: DateRange,
   dealTotals: Map<string, number>,
+  tenantBase: string,
 ): CrmAnalyticsValues {
   let openPipeline = 0
   let openDeals = 0
@@ -149,7 +176,7 @@ function computeValues(
   let cycleN = 0
 
   for (const d of deals) {
-    const amount = Number(d.base_amount ?? 0)
+    const amount = toBase(d, tenantBase)
     const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       openPipeline += amount
@@ -177,7 +204,7 @@ function computeValues(
   for (const p of payments) {
     const paid = (p.status ?? 'paid') === 'paid' && p.paid_at
     if (paid && inRange(p.paid_at, range.startDate, range.endDate)) {
-      collected += Number(p.base_amount ?? 0)
+      collected += toBase(p, tenantBase)
     }
   }
 
@@ -186,7 +213,7 @@ function computeValues(
   const paidByDeal = new Map<string, number>()
   for (const p of payments) {
     if ((p.status ?? 'paid') === 'paid') {
-      paidByDeal.set(p.deal_id, (paidByDeal.get(p.deal_id) ?? 0) + Number(p.base_amount ?? 0))
+      paidByDeal.set(p.deal_id, (paidByDeal.get(p.deal_id) ?? 0) + toBase(p, tenantBase))
     }
   }
   let outstanding = 0
@@ -224,6 +251,7 @@ function buildBreakdown(
   range: DateRange,
   keyOf: (d: DealRow) => string | null,
   labelMap: Map<string, string>,
+  tenantBase: string,
   fallbackLabel = '—',
 ): CrmDimensionRow[] {
   const map = new Map<string, CrmDimensionRow>()
@@ -253,7 +281,7 @@ function buildBreakdown(
     dealKeyById.set(d.id, k)
     const row = ensure(k)
     row.allDeals += 1
-    const amount = Number(d.base_amount ?? 0)
+    const amount = toBase(d, tenantBase)
     const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       row.openAmount += amount
@@ -271,7 +299,7 @@ function buildBreakdown(
     const k = dealKeyById.get(p.deal_id)
     if (!k) continue
     if ((p.status ?? 'paid') === 'paid' && p.paid_at && inRange(p.paid_at, range.startDate, range.endDate)) {
-      ensure(k).collected += Number(p.base_amount ?? 0)
+      ensure(k).collected += toBase(p, tenantBase)
     }
   }
   return Array.from(map.values()).sort((a, b) => b.wonAmount + b.openAmount - (a.wonAmount + a.openAmount))
@@ -309,7 +337,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       // Pull all deals for the tenant (capped by Supabase limit; CRM scale is small).
       let dq = supabase
         .from('deals')
-        .select('id, stage_id, owner_id, organization_id, source, base_amount, created_at, won_at, lost_at')
+        .select('id, stage_id, owner_id, organization_id, source, amount, currency, base_amount, base_currency, created_at, won_at, lost_at')
         .eq('tenant_id', tenantId)
       if (filters.ownerIds?.length) dq = dq.in('owner_id', filters.ownerIds)
       if (filters.companyIds?.length) dq = dq.in('organization_id', filters.companyIds)
@@ -322,7 +350,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       if (dealIds.length) {
         const { data: payRows } = await supabase
           .from('deal_payments')
-          .select('id, deal_id, base_amount, paid_at, status')
+          .select('id, deal_id, amount, currency, base_amount, base_currency, paid_at, status')
           .eq('tenant_id', tenantId)
           .in('deal_id', dealIds)
           .limit(10000)
@@ -382,21 +410,21 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     for (const p of payments) dealsWithBilling.add(p.deal_id)
     const dealTotals = new Map<string, number>()
     for (const d of enrichedDeals) {
-      if (dealsWithBilling.has(d.id)) dealTotals.set(d.id, Number(d.base_amount ?? 0))
+      if (dealsWithBilling.has(d.id)) dealTotals.set(d.id, toBase(d, baseCurrency))
     }
 
-    const values = computeValues(enrichedDeals, payments, dateRange, dealTotals)
-    const prev = computeValues(enrichedDeals, payments, periodBefore(dateRange), dealTotals)
+    const values = computeValues(enrichedDeals, payments, dateRange, dealTotals, baseCurrency)
+    const prev = computeValues(enrichedDeals, payments, periodBefore(dateRange), dealTotals, baseCurrency)
 
     // Daily trend within range
     const days = eachDayOfInterval({ start: dateRange.startDate, end: dateRange.endDate })
     const dayKey = (iso: string) => fmtDate(new Date(iso), 'yyyy-MM-dd')
     const trendMap = new Map<string, { revenueWon: number; newDeals: number; collected: number; dealsWon: number }>()
     for (const day of days) trendMap.set(fmtDate(day, 'yyyy-MM-dd'), { revenueWon: 0, newDeals: 0, collected: 0, dealsWon: 0 })
-    for (const d of deals) {
+    for (const d of enrichedDeals) {
       if (d.won_at && inRange(d.won_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(d.won_at)
-        const e = trendMap.get(k); if (e) { e.revenueWon += Number(d.base_amount ?? 0); e.dealsWon += 1 }
+        const e = trendMap.get(k); if (e) { e.revenueWon += toBase(d, baseCurrency); e.dealsWon += 1 }
       }
       if (inRange(d.created_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(d.created_at)
@@ -406,7 +434,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     for (const p of payments) {
       if ((p.status ?? 'paid') === 'paid' && p.paid_at && inRange(p.paid_at, dateRange.startDate, dateRange.endDate)) {
         const k = dayKey(p.paid_at)
-        const e = trendMap.get(k); if (e) { e.collected += Number(p.base_amount ?? 0) }
+        const e = trendMap.get(k); if (e) { e.collected += toBase(p, baseCurrency) }
       }
     }
     const trend = days.map(day => {
@@ -429,17 +457,18 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
       dateRange,
       d => d.stage_id,
       stageMap,
+      baseCurrency,
       'Unassigned',
     )
     const orderIndex = new Map(stages.map((s, i) => [s.id, i] as const))
     stageRows.sort((a, b) => (orderIndex.get(a.key) ?? 99) - (orderIndex.get(b.key) ?? 99))
 
-    const ownerRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.owner_id, ownerMap, 'Unassigned')
-    const companyRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.organization_id, companyMap, 'No company')
+    const ownerRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.owner_id, ownerMap, baseCurrency, 'Unassigned')
+    const companyRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.organization_id, companyMap, baseCurrency, 'No company')
 
     const sourceLabels = new Map<string, string>()
     for (const [k, v] of Object.entries(SOURCE_LABELS)) sourceLabels.set(k, v)
-    const sourceRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.source, sourceLabels, 'No source')
+    const sourceRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.source, sourceLabels, baseCurrency, 'No source')
 
     return {
       isLoading: false,
