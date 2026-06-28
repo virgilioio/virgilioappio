@@ -42,6 +42,7 @@ import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Separator } from '@/components/ui/separator'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
+import { EeoResponseCard } from './EeoResponseCard'
 
 interface IndependentCandidateProfileSheetProps {
   open: boolean
