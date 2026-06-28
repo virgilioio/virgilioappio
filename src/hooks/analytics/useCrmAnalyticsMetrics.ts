@@ -150,7 +150,7 @@ function computeValues(
 
   for (const d of deals) {
     const amount = Number(d.base_amount ?? 0)
-    const isOpen = !d.won_at && !d.lost_at
+    const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       openPipeline += amount
       openDeals += 1
