@@ -75,6 +75,7 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
             </text>
           ))}
       </svg>
+      )}
     </div>
   )
 }
