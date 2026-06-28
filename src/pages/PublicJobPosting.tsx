@@ -1,5 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
+import { buildJobPostingJsonLd } from '@/lib/jobPostingJsonLd'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
