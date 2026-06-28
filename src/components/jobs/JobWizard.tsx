@@ -351,7 +351,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const primaryCta = (() => {
     switch (wizardState.currentStep) {
       case 1:
-        return { label: 'Create & continue', onClick: handleNextStep, disabled: !canProceedStep1() || isSubmitting, loading: isSubmitting }
+        return { label: wizardState.createdJobId ? 'Save & continue' : 'Create & continue', onClick: handleNextStep, disabled: !canProceedStep1() || isSubmitting, loading: isSubmitting }
       case 2:
         return { label: 'Continue to team', onClick: handleNextStep, disabled: false, loading: false }
       case 3:
