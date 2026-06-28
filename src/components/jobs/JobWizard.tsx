@@ -130,7 +130,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     hiringTeamUi: { ...DEFAULT_HIRING_TEAM_UI },
   })
 
-  const { createJob } = useJobs()
+  const { createJob, updateJob } = useJobs()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const postingRef = React.useRef<JobPostingStepHandle>(null)
   const mainRef = React.useRef<HTMLElement>(null)
@@ -177,7 +177,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const updateJobData = (data: Partial<CreateJobData>) =>
     setWizardState((prev) => ({ ...prev, jobData: { ...prev.jobData, ...data } }))
 
-  const submitStep1 = async (): Promise<{ id: string } | null> => {
+  const submitStep1 = async (): Promise<{ id: string; created: boolean } | null> => {
     if (isSubmitting) return null
     setIsSubmitting(true)
     try {
@@ -188,12 +188,19 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
         ...wizardState.jobData,
         status: wizardState.jobData.status ?? 'open',
       } as CreateJobData
+      const existingId = wizardState.createdJobId
+      if (existingId && existingId !== 'created') {
+        // Re-entering step 1 after the job was already created — update in place
+        // instead of inserting a duplicate row.
+        await updateJob(existingId, payload as any)
+        return { id: existingId, created: false }
+      }
       const jobResult = await createJob(payload)
       const id = (jobResult as any)?.id || 'created'
       setWizardState((prev) => ({ ...prev, createdJobId: id }))
-      return { id }
+      return { id, created: true }
     } catch (error) {
-      console.error('Error creating job:', error)
+      console.error('Error saving job step 1:', error)
       return null
     } finally {
       setIsSubmitting(false)
@@ -206,8 +213,10 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
       if (!r) return
       setWizardState((prev) => ({ ...prev, currentStep: 2 }))
       toast({
-        title: 'Job created',
-        description: 'Basic job information saved. Continue to configure hiring plan.',
+        title: r.created ? 'Job created' : 'Job updated',
+        description: r.created
+          ? 'Basic job information saved. Continue to configure hiring plan.'
+          : 'Changes saved. Continue to configure hiring plan.',
       })
     } else {
       setWizardState((prev) => ({
@@ -221,7 +230,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     setWizardState((prev) => ({ ...prev, currentStep: Math.max(prev.currentStep - 1, 1) }))
 
   const handleSaveAndExit = async () => {
-    if (wizardState.currentStep === 1 && !wizardState.createdJobId) {
+    if (wizardState.currentStep === 1) {
       const r = await submitStep1()
       if (!r) return
     }
@@ -342,7 +351,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const primaryCta = (() => {
     switch (wizardState.currentStep) {
       case 1:
-        return { label: 'Create & continue', onClick: handleNextStep, disabled: !canProceedStep1() || isSubmitting, loading: isSubmitting }
+        return { label: wizardState.createdJobId ? 'Save & continue' : 'Create & continue', onClick: handleNextStep, disabled: !canProceedStep1() || isSubmitting, loading: isSubmitting }
       case 2:
         return { label: 'Continue to team', onClick: handleNextStep, disabled: false, loading: false }
       case 3:
