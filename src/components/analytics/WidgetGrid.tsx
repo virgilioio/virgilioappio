@@ -63,21 +63,17 @@ export function WidgetGrid({ widgets, onChange }: Props) {
 
   if (widgets.length === 0) {
     return (
-      <div className="rounded-[14px] border border-dashed border-[#D8D5CC] bg-white/30 p-10 flex flex-col items-center justify-center gap-3">
-        <span className="h-10 w-10 rounded-full bg-[#F1F0EC] text-[#5A6072] flex items-center justify-center">
-          <LayoutGrid size={16} />
-        </span>
-        <div className="text-center">
-          <div className="font-poppins font-semibold text-[14px] text-[#0d0d09]">This view is empty</div>
-          <div className="text-[12.5px] font-inter text-[#5A6072] mt-0.5">Add a widget to start building your dashboard.</div>
-        </div>
-        <button
-          onClick={add}
-          className="mt-1 h-9 px-3.5 rounded-[8px] bg-[#6F3FF5] text-white font-poppins font-semibold text-[12.5px] hover:bg-[#5B21B6] transition-colors"
-        >
-          + Add your first widget
-        </button>
-      </div>
+      <EmptyState
+        size="card"
+        illustration={<SoftChart />}
+        title="This view is empty"
+        body="Add a widget to start building your dashboard."
+        primary={
+          <EmptyAction icon={<Plus size={16} />} onClick={add}>
+            Add your first widget
+          </EmptyAction>
+        }
+      />
     )
   }
 
