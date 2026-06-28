@@ -177,7 +177,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const updateJobData = (data: Partial<CreateJobData>) =>
     setWizardState((prev) => ({ ...prev, jobData: { ...prev.jobData, ...data } }))
 
-  const submitStep1 = async (): Promise<{ id: string } | null> => {
+  const submitStep1 = async (): Promise<{ id: string; created: boolean } | null> => {
     if (isSubmitting) return null
     setIsSubmitting(true)
     try {
@@ -188,12 +188,19 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
         ...wizardState.jobData,
         status: wizardState.jobData.status ?? 'open',
       } as CreateJobData
+      const existingId = wizardState.createdJobId
+      if (existingId && existingId !== 'created') {
+        // Re-entering step 1 after the job was already created — update in place
+        // instead of inserting a duplicate row.
+        await updateJob(existingId, payload as any)
+        return { id: existingId, created: false }
+      }
       const jobResult = await createJob(payload)
       const id = (jobResult as any)?.id || 'created'
       setWizardState((prev) => ({ ...prev, createdJobId: id }))
-      return { id }
+      return { id, created: true }
     } catch (error) {
-      console.error('Error creating job:', error)
+      console.error('Error saving job step 1:', error)
       return null
     } finally {
       setIsSubmitting(false)
@@ -206,8 +213,10 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
       if (!r) return
       setWizardState((prev) => ({ ...prev, currentStep: 2 }))
       toast({
-        title: 'Job created',
-        description: 'Basic job information saved. Continue to configure hiring plan.',
+        title: r.created ? 'Job created' : 'Job updated',
+        description: r.created
+          ? 'Basic job information saved. Continue to configure hiring plan.'
+          : 'Changes saved. Continue to configure hiring plan.',
       })
     } else {
       setWizardState((prev) => ({
