@@ -230,7 +230,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     setWizardState((prev) => ({ ...prev, currentStep: Math.max(prev.currentStep - 1, 1) }))
 
   const handleSaveAndExit = async () => {
-    if (wizardState.currentStep === 1 && !wizardState.createdJobId) {
+    if (wizardState.currentStep === 1) {
       const r = await submitStep1()
       if (!r) return
     }
