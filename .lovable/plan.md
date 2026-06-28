@@ -1,18 +1,17 @@
-## Goal
-Replace the static "Recruiting analytics." page title with the active view's name (e.g., "Recruiting Overview", "Revenue Analytics", or any custom view the user creates). When no view is active, fall back to a sensible default.
+## Problem
+The Configure widget popover is rendered with `absolute` positioning inside the widget card. In the recent responsiveness fix we added `overflow-hidden` to the outer card (`WidgetFrame.tsx`, line 50), which now clips the popover so users can't fully see or interact with it.
 
-## Changes
-**File:** `src/pages/Analytics.tsx`
+The inner body already has its own `overflow-hidden` to clip charts, so the outer clip is redundant for the original goal.
 
-1. Derive `activeViewName` from the loaded views list using `activeViewId`:
-   ```ts
-   const activeView = views.find(v => v.id === activeViewId)
-   const pageTitle = activeView?.name ?? 'Analytics'
-   ```
-2. Replace the hardcoded `<h1>Recruiting analytics.</h1>` with `{pageTitle}` followed by the existing lilac period accent.
-3. Keep the small "ANALYTICS" eyebrow label above the title unchanged (acts as the module label).
-4. Title updates reactively when the user switches views via `AnalyticsViewSwitcher` or renames a view (since `views` comes from the same hook).
+## Fix
+**File:** `src/components/analytics/widgets/WidgetFrame.tsx`
+
+- Line 50: remove `overflow-hidden` from the outer card class list. Keep `min-w-0` so the card still shrinks correctly inside the grid.
+- Line 94: keep `overflow-hidden` on the inner body wrapper — this is what actually prevents charts from bleeding.
+
+Net effect:
+- Charts remain clipped to the body (no regression on responsiveness fix).
+- The Configure popover, which is anchored to the card (not the body), can extend beyond the card edges when needed and stays fully visible.
 
 ## Out of scope
-- No changes to the view switcher, view CRUD, or widget logic.
-- No change to the eyebrow ("ANALYTICS") or the widget-count subline.
+- No change to the popover's positioning logic or chart components.
