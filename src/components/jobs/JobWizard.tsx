@@ -130,7 +130,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     hiringTeamUi: { ...DEFAULT_HIRING_TEAM_UI },
   })
 
-  const { createJob } = useJobs()
+  const { createJob, updateJob } = useJobs()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const postingRef = React.useRef<JobPostingStepHandle>(null)
   const mainRef = React.useRef<HTMLElement>(null)
