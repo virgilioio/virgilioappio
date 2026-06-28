@@ -165,8 +165,8 @@ export function HiringPlanStep({ jobId, ui, onUiChange }: HiringPlanStepProps) {
     setApplyingTemplate(template.id)
     try {
       // Resolve each stage_type to the first matching active library stage.
-      // Prefer platform defaults so the same stage_type repeats consistently.
-      const usedIds = new Set<string>()
+      // Duplicates of the same library stage are allowed in the plan, so a
+      // template like ['interview','interview'] now produces two interview rows.
       const resolved: JobStage[] = []
       let skipped = 0
 
@@ -179,22 +179,12 @@ export function HiringPlanStep({ jobId, ui, onUiChange }: HiringPlanStepProps) {
             return Number(b.is_default) - Number(a.is_default)
           })
 
-        // Same stage_type can appear multiple times (e.g. interview twice).
-        // Allow reuse — saveHiringPlan dedupes by id, so distinct stages are needed.
-        // Fall back to any candidate, even if already used.
-        const fresh = candidates.find((c) => !usedIds.has(c.id))
-        const pick = fresh || candidates[0]
+        const pick = candidates[0]
         if (!pick) {
           skipped += 1
           continue
         }
-        if (!usedIds.has(pick.id)) {
-          usedIds.add(pick.id)
-          resolved.push(pick as unknown as JobStage)
-        } else {
-          // Already in the plan — duplicate not possible without a distinct stage row.
-          skipped += 1
-        }
+        resolved.push(pick as unknown as JobStage)
       }
 
       if (resolved.length === 0) {
@@ -202,7 +192,7 @@ export function HiringPlanStep({ jobId, ui, onUiChange }: HiringPlanStepProps) {
         return
       }
 
-      await saveHiringPlan(jobId, resolved.map((s) => ({ id: s.id })))
+      await saveHiringPlan(jobId, resolved.map((s) => ({ stage_id: s.id })))
       setSelectedTemplate(template.id)
       setPlanVersion((v) => v + 1)
 

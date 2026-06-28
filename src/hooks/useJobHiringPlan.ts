@@ -4,9 +4,19 @@ import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import type { JobStage } from '@/hooks/useJobStages'
 
-type HiringPlanEntry = {
-  stage_id: string
+export type HiringPlanInstance = {
+  jhsId: string
+  stage: JobStage
   position: number
+  customStageName?: string | null
+}
+
+export type HiringPlanInput = {
+  /** Existing job_hiring_stages.id, or undefined for a new instance to insert. */
+  jhsId?: string
+  /** Library stage id (job_stages.id). */
+  stage_id: string
+  customStageName?: string | null
 }
 
 export function useJobHiringPlan() {
@@ -14,85 +24,51 @@ export function useJobHiringPlan() {
   const [isSavingPlan, setIsSavingPlan] = useState(false)
   const { toast } = useToast()
 
+  /**
+   * Returns the ordered list of library stages used by this job's plan,
+   * preserving duplicates (one entry per job_hiring_stages row).
+   */
   const loadHiringPlan = useCallback(async (jobId: string): Promise<JobStage[]> => {
-    setIsLoadingPlan(true)
-    try {
-      // 1) Load existing plan entries for the job (ordered)
-      const { data: planEntries, error: planError } = await supabase
-        .from('job_hiring_stages')
-        .select('stage_id, position')
-        .eq('job_id', jobId)
-        .order('position', { ascending: true })
+    const instances = await loadHiringPlanInstancesInternal(jobId)
+    return instances.map((i) => i.stage)
+  }, [])
 
-      if (planError) throw planError
+  const loadHiringPlanInstancesInternal = async (jobId: string): Promise<HiringPlanInstance[]> => {
+    const { data: planEntries, error: planError } = await supabase
+      .from('job_hiring_stages')
+      .select('id, stage_id, position, custom_stage_name')
+      .eq('job_id', jobId)
+      .order('position', { ascending: true })
 
-      if (!planEntries || planEntries.length === 0) {
-        return []
-      }
+    if (planError) throw planError
+    if (!planEntries || planEntries.length === 0) return []
 
-      const stageIds = planEntries.map((e: HiringPlanEntry) => e.stage_id)
+    const stageIds = Array.from(new Set(planEntries.map((e: any) => e.stage_id)))
+    const { data: stages, error: stagesError } = await supabase
+      .from('job_stages')
+      .select('*')
+      .in('id', stageIds)
+      .eq('is_active', true)
 
-      // 2) Load stage details for those ids
-      const { data: stages, error: stagesError } = await supabase
-        .from('job_stages')
-        .select('*')
-        .in('id', stageIds)
-        .eq('is_active', true)
+    if (stagesError) throw stagesError
 
-      if (stagesError) throw stagesError
-
-      const byId = new Map(stages.map((s) => [s.id, s]))
-      const ordered: JobStage[] = planEntries
-        .map((e: HiringPlanEntry) => byId.get(e.stage_id))
-        .filter(Boolean) as JobStage[]
-
-      return ordered
-    } catch (error) {
-      console.error('Error loading hiring plan:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load the hiring plan for this job.',
-        variant: 'destructive',
+    const byId = new Map(stages.map((s: any) => [s.id, s]))
+    const ordered: HiringPlanInstance[] = planEntries
+      .map((e: any) => {
+        const s = byId.get(e.stage_id)
+        return s
+          ? { jhsId: e.id, stage: s as JobStage, position: e.position, customStageName: e.custom_stage_name }
+          : null
       })
-      return []
-    } finally {
-      setIsLoadingPlan(false)
-    }
-  }, [toast])
+      .filter(Boolean) as HiringPlanInstance[]
 
-  // Returns plan with job_hiring_stages ids for safe pipeline moves
-  type HiringPlanStageOption = { jhsId: string; stage: JobStage; position: number; customStageName?: string | null }
+    return ordered
+  }
 
-  const loadHiringPlanInstances = useCallback(async (jobId: string): Promise<HiringPlanStageOption[]> => {
+  const loadHiringPlanInstances = useCallback(async (jobId: string): Promise<HiringPlanInstance[]> => {
     setIsLoadingPlan(true)
     try {
-      const { data: planEntries, error: planError } = await supabase
-        .from('job_hiring_stages')
-        .select('id, stage_id, position, custom_stage_name')
-        .eq('job_id', jobId)
-        .order('position', { ascending: true })
-
-      if (planError) throw planError
-      if (!planEntries || planEntries.length === 0) return []
-
-      const stageIds = planEntries.map((e: { stage_id: string }) => e.stage_id)
-      const { data: stages, error: stagesError } = await supabase
-        .from('job_stages')
-        .select('*')
-        .in('id', stageIds)
-        .eq('is_active', true)
-
-      if (stagesError) throw stagesError
-
-      const byId = new Map(stages.map((s) => [s.id, s]))
-      const ordered: HiringPlanStageOption[] = planEntries
-        .map((e: { id: string; stage_id: string; position: number; custom_stage_name?: string | null }) => {
-          const s = byId.get(e.stage_id)
-          return s ? { jhsId: e.id, stage: s, position: e.position, customStageName: e.custom_stage_name } : null
-        })
-        .filter(Boolean) as HiringPlanStageOption[]
-
-      return ordered
+      return await loadHiringPlanInstancesInternal(jobId)
     } catch (error) {
       console.error('Error loading hiring plan instances:', error)
       toast({
@@ -106,15 +82,19 @@ export function useJobHiringPlan() {
     }
   }, [toast])
 
-  const saveHiringPlan = useCallback(async (jobId: string, stages: { id: string }[]) => {
+  /**
+   * Save the hiring plan as an ordered list of instances.
+   * - Entries with an existing `jhsId` are kept (and re-ordered).
+   * - Entries without `jhsId` are inserted as new rows (duplicates of the same `stage_id` allowed).
+   * - Existing rows whose `jhsId` is not in `entries` are deleted (candidates reassigned to the previous stage).
+   */
+  const saveHiringPlan = useCallback(async (jobId: string, entries: HiringPlanInput[]) => {
     setIsSavingPlan(true)
     try {
-      // Get current user for created_by
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
       const userId = userData.user?.id ?? null
 
-      // Load current plan entries for this job
       const { data: currentPlan, error: currentPlanError } = await supabase
         .from('job_hiring_stages')
         .select('id, stage_id, position')
@@ -122,31 +102,25 @@ export function useJobHiringPlan() {
         .order('position', { ascending: true })
       if (currentPlanError) throw currentPlanError
 
-      type IncomingStage = { id: string; jhsId?: string }
-      const incoming: IncomingStage[] = stages as any
+      const currentById = new Map<string, { id: string; stage_id: string; position: number }>()
+      for (const row of currentPlan || []) currentById.set(row.id, row)
 
-      // Map current plan by stage_id
-      const currentByStageId = new Map<string, { id: string; stage_id: string; position: number }>()
-      for (const row of currentPlan || []) {
-        currentByStageId.set(row.stage_id, row)
-      }
+      const incomingJhsIds = new Set<string>()
+      const toKeep: { jhsId: string; stage_id: string }[] = []
+      const toInsert: { stage_id: string; customStageName?: string | null; insertIndex: number }[] = []
 
-      // Determine which to keep, insert, and delete
-      const toKeep: { id: string; stage_id: string }[] = []
-      const toInsert: { stage_id: string }[] = []
-      const incomingStageIds = new Set<string>()
-
-      incoming.forEach((s) => {
-        incomingStageIds.add(s.id)
-        const existing = currentByStageId.get(s.id)
-        if (existing) toKeep.push({ id: existing.id, stage_id: s.id })
-        else toInsert.push({ stage_id: s.id })
+      entries.forEach((e, idx) => {
+        if (e.jhsId && currentById.has(e.jhsId)) {
+          incomingJhsIds.add(e.jhsId)
+          toKeep.push({ jhsId: e.jhsId, stage_id: e.stage_id })
+        } else {
+          toInsert.push({ stage_id: e.stage_id, customStageName: e.customStageName ?? null, insertIndex: idx })
+        }
       })
 
-      const toDelete = (currentPlan || []).filter((row) => !incomingStageIds.has(row.stage_id))
+      const toDelete = (currentPlan || []).filter((row) => !incomingJhsIds.has(row.id))
 
-      // Phase 0: park all current rows in a unique temp block (30000+) that fits in int4
-      // and cannot collide with Phase 1 (10000+), Phase 2 (20000+), or final (1..n).
+      // Phase 0: park all current rows in a unique temp block (30000+)
       for (let i = 0; i < (currentPlan || []).length; i++) {
         const { error: normErr } = await supabase
           .from('job_hiring_stages')
@@ -155,42 +129,54 @@ export function useJobHiringPlan() {
         if (normErr) throw normErr
       }
 
-      // Phase 1: Move kept rows to temporary unique positions to avoid unique (job_id, position) conflicts
-      // Use a high offset block (10000 + index) guaranteed unique within this save operation
+      // Phase 1: temp positions for kept rows (10000+)
       for (let i = 0; i < toKeep.length; i++) {
         const { error: tmpErr } = await supabase
           .from('job_hiring_stages')
           .update({ position: 10000 + (i + 1) })
-          .eq('id', toKeep[i].id)
+          .eq('id', toKeep[i].jhsId)
         if (tmpErr) throw tmpErr
       }
 
-      // Phase 2: Insert new stages with distinct temporary positions in a different block (20000 + index)
-      let inserted: { id: string; stage_id: string }[] = []
+      // Phase 2: insert new rows with distinct temp positions (20000+)
+      const insertedJhsIdByInsertIndex = new Map<number, string>()
       if (toInsert.length > 0) {
         const payload = toInsert.map((s, idx) => ({
           job_id: jobId,
           stage_id: s.stage_id,
+          custom_stage_name: s.customStageName,
           position: 20000 + (idx + 1),
           created_by: userId,
         }))
         const { data: insertedRows, error: insertErr } = await supabase
           .from('job_hiring_stages')
           .insert(payload)
-          .select('id, stage_id')
+          .select('id, position')
         if (insertErr) throw insertErr
-        inserted = insertedRows || []
+        // Map back by the temp position we assigned
+        for (const row of insertedRows || []) {
+          const tempIdx = (row.position as number) - 20000 - 1
+          const original = toInsert[tempIdx]
+          if (original) insertedJhsIdByInsertIndex.set(original.insertIndex, row.id)
+        }
       }
 
-      // Build final mapping and desired order
-      const finalStageIds = incoming.map((s) => s.id)
-      const finalStageIdToJhsId = new Map<string, string>()
-      for (const k of toKeep) finalStageIdToJhsId.set(k.stage_id, k.id)
-      for (const ins of inserted) finalStageIdToJhsId.set(ins.stage_id, ins.id)
+      // Build final ordered jhsId list (matches `entries` order)
+      const finalOrderedJhsIds: string[] = []
+      const keptByEntry = new Map<string, true>()
+      for (const k of toKeep) keptByEntry.set(k.jhsId, true)
 
-      // Phase 3: Reassign candidates away from stages being removed, then delete those stages
-      if ((toKeep.length + inserted.length) === 0) {
-        // Edge case: plan becomes empty -> set associations' stage to NULL first, then delete all
+      entries.forEach((e, idx) => {
+        if (e.jhsId && keptByEntry.has(e.jhsId)) {
+          finalOrderedJhsIds.push(e.jhsId)
+        } else {
+          const newId = insertedJhsIdByInsertIndex.get(idx)
+          if (newId) finalOrderedJhsIds.push(newId)
+        }
+      })
+
+      // Phase 3: reassign candidates away from removed rows, then delete
+      if (finalOrderedJhsIds.length === 0) {
         const { error: updAllErr } = await supabase
           .from('job_candidate_associations')
           .update({ current_stage_id: null, pipeline_position: null })
@@ -203,21 +189,17 @@ export function useJobHiringPlan() {
           .eq('job_id', jobId)
         if (delAllErr) throw delAllErr
       } else if (toDelete.length > 0) {
-        const finalStagesWithPos = finalStageIds.map((sid, idx) => ({ stage_id: sid, pos: idx + 1 }))
+        const finalWithPos = finalOrderedJhsIds.map((jhsId, idx) => ({ jhsId, pos: idx + 1 }))
         for (const removed of toDelete) {
-          const previous = finalStagesWithPos
+          const previous = finalWithPos
             .filter((s) => s.pos < (removed.position ?? Number.MAX_SAFE_INTEGER))
-            .sort((a, b) => b.pos - a.pos)[0] || finalStagesWithPos[0]
+            .sort((a, b) => b.pos - a.pos)[0] || finalWithPos[0]
 
-          const targetStageId = previous?.stage_id
-          const targetJhsId = targetStageId ? finalStageIdToJhsId.get(targetStageId) : null
-
-          const updatePayload: any = { pipeline_position: null }
-          updatePayload.current_stage_id = targetJhsId ?? null
+          const targetJhsId = previous?.jhsId ?? null
 
           const { error: moveErr } = await supabase
             .from('job_candidate_associations')
-            .update(updatePayload)
+            .update({ current_stage_id: targetJhsId, pipeline_position: null })
             .eq('job_id', jobId)
             .eq('current_stage_id', removed.id)
           if (moveErr) throw moveErr
@@ -231,15 +213,12 @@ export function useJobHiringPlan() {
         if (delErr) throw delErr
       }
 
-      // Phase 4: Finalize positions to 1..n according to incoming order
-      for (let i = 0; i < finalStageIds.length; i++) {
-        const sid = finalStageIds[i]
-        const jhsId = finalStageIdToJhsId.get(sid)
-        if (!jhsId) continue
+      // Phase 4: finalize positions 1..n
+      for (let i = 0; i < finalOrderedJhsIds.length; i++) {
         const { error: finErr } = await supabase
           .from('job_hiring_stages')
           .update({ position: i + 1 })
-          .eq('id', jhsId)
+          .eq('id', finalOrderedJhsIds[i])
         if (finErr) throw finErr
       }
 
@@ -247,6 +226,8 @@ export function useJobHiringPlan() {
         title: 'Hiring Plan Saved',
         description: 'The hiring plan has been successfully saved.',
       })
+
+      return finalOrderedJhsIds
     } catch (error) {
       console.error('Error saving hiring plan:', error)
       toast({

@@ -4,13 +4,12 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useJobStages } from '@/hooks/useJobStages'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Plus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { DraggableStageItem } from './DraggableStageItem'
-import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
+import { useJobHiringPlan, type HiringPlanInput } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
 import {
   AlertDialog,
@@ -25,6 +24,7 @@ import {
 import { ReadOnlyOverlay } from '@/components/ui/read-only-overlay'
 import { StageConfigSheet } from './StageConfigSheet'
 import { Skeleton } from '@/components/ui/skeleton'
+
 interface JobStage {
   id: string
   stage_name: string
@@ -34,119 +34,114 @@ interface JobStage {
   stage_priority?: number | string
 }
 
+interface PlanRow {
+  /** Stable identity used in DnD and React keys (jhsId when persisted, otherwise a tmp client id). */
+  instanceId: string
+  /** Persisted job_hiring_stages.id, when the row has already been saved. */
+  jhsId?: string
+  stage: JobStage
+  customStageName?: string | null
+  /** True when this is the canonical (first) default stage occurrence — cannot be removed. */
+  locked: boolean
+}
+
 interface HiringPlanTabProps {
   jobId: string
   readOnly?: boolean
   hideHeader?: boolean
 }
 
+const newTempId = () => `tmp-${(globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2))}`
+
 export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: HiringPlanTabProps) {
   const { stages, isLoading } = useJobStages()
-  const [selectedStages, setSelectedStages] = useState<JobStage[]>([])
-  const [availableStages, setAvailableStages] = useState<JobStage[]>([])
+  const [planRows, setPlanRows] = useState<PlanRow[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
-  const { isSavingPlan, loadHiringPlan, loadHiringPlanInstances, saveHiringPlan } = useJobHiringPlan()
-
-  // Map of stage_id -> { jhsId, position, customStageName } for current persisted plan
-  const [instancesMap, setInstancesMap] = useState<Map<string, { jhsId: string; position: number; customStageName?: string | null }>>(new Map())
+  const { isSavingPlan, loadHiringPlanInstances, saveHiringPlan } = useJobHiringPlan()
 
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [stagePendingDelete, setStagePendingDelete] = useState<JobStage | null>(null)
+  const [rowPendingDelete, setRowPendingDelete] = useState<PlanRow | null>(null)
   const [pendingDeleteCount, setPendingDeleteCount] = useState<number | null>(null)
   const [countLoading, setCountLoading] = useState(false)
-  
+
   // Configuration sheet state
   const [configSheetOpen, setConfigSheetOpen] = useState(false)
   const [configJhsId, setConfigJhsId] = useState<string | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  // Helper function to check if a stage has "last" priority
   const isLastPriorityStage = (stage: JobStage) => {
     const p = stage.stage_priority
     return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
   }
 
-  // Helper function to sort stages with proper priority handling
-  const sortStagesByPriority = (stages: JobStage[]) => {
-    return stages.sort((a, b) => {
-      const aPriority = a.stage_priority
-      const bPriority = b.stage_priority
-      
-      // Handle "last" priority stages
+  const sortStagesByPriority = (list: JobStage[]) => {
+    return [...list].sort((a, b) => {
       if (isLastPriorityStage(a) && !isLastPriorityStage(b)) return 1
       if (!isLastPriorityStage(a) && isLastPriorityStage(b)) return -1
       if (isLastPriorityStage(a) && isLastPriorityStage(b)) return 0
-      
-      // For non-"last" stages, sort by numeric priority
-      const aValue = typeof aPriority === 'number' ? aPriority : (aPriority ? 500 : 500)
-      const bValue = typeof bPriority === 'number' ? bPriority : (bPriority ? 500 : 500)
-      
+      const aValue = typeof a.stage_priority === 'number' ? a.stage_priority : 500
+      const bValue = typeof b.stage_priority === 'number' ? b.stage_priority : 500
       return aValue - bValue
     })
   }
 
-  // Combined initialization effect - prevents race conditions
+  // Initialization
   useEffect(() => {
     if (!jobId || !stages.length || isLoading) return
-    
-    // Reset state when jobId changes
+
     setIsInitialized(false)
-    setSelectedStages([])
-    setAvailableStages([])
-    setInstancesMap(new Map())
-    
-    const initializeHiringPlan = async () => {
+    setPlanRows([])
+
+    const init = async () => {
       try {
-        // First, try to load existing hiring plan
-        const planStages = await loadHiringPlan(jobId)
-        
-        if (planStages.length > 0) {
-          // Job has a custom plan - use it
-          const defaultStages = planStages.filter(s => s.is_default)
-          const customStages = planStages.filter(s => !s.is_default)
-          const defaultNormalStages = defaultStages.filter(s => !isLastPriorityStage(s))
-          const defaultLastStages = defaultStages.filter(s => isLastPriorityStage(s))
+        const instances = await loadHiringPlanInstances(jobId)
 
-          const ordered = [
-            ...sortStagesByPriority([...defaultNormalStages]),
-            ...customStages,
-            ...sortStagesByPriority([...defaultLastStages])
-          ]
-
-          const selectedIds = new Set(ordered.map(s => s.id))
-          setSelectedStages(ordered)
-          setAvailableStages(stages.filter(s => !selectedIds.has(s.id)))
+        let rows: PlanRow[]
+        if (instances.length > 0) {
+          // Lock the FIRST occurrence of each default stage (cannot be removed)
+          const seenDefaultStageIds = new Set<string>()
+          rows = instances.map((inst) => {
+            let locked = false
+            if (inst.stage.is_default && !seenDefaultStageIds.has(inst.stage.id)) {
+              locked = true
+              seenDefaultStageIds.add(inst.stage.id)
+            }
+            return {
+              instanceId: inst.jhsId,
+              jhsId: inst.jhsId,
+              stage: inst.stage as JobStage,
+              customStageName: inst.customStageName,
+              locked,
+            }
+          })
         } else {
-          // No custom plan - use defaults
-          const defaultStages = sortStagesByPriority(stages.filter(stage => stage.is_default))
-          setSelectedStages(defaultStages)
-          setAvailableStages(stages.filter(stage => !stage.is_default))
+          // No custom plan yet — seed with library defaults, sorted by priority
+          const defaults = sortStagesByPriority(stages.filter((s) => s.is_default))
+          rows = defaults.map((s) => ({
+            instanceId: newTempId(),
+            stage: s as JobStage,
+            locked: true,
+          }))
         }
-        
-        // Load instances map
-        const opts = await loadHiringPlanInstances(jobId)
-        const map = new Map<string, { jhsId: string; position: number; customStageName?: string | null }>()
-        ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position, customStageName: o.customStageName }))
-        setInstancesMap(map)
-        
+
+        setPlanRows(rows)
         setIsInitialized(true)
         setHasUnsavedChanges(false)
       } catch (error) {
         console.error('Error initializing hiring plan:', error)
-        setIsInitialized(true) // Still mark as initialized to prevent infinite loading
+        setIsInitialized(true)
       }
     }
-    
-    initializeHiringPlan()
-  }, [jobId, stages, isLoading, loadHiringPlan, loadHiringPlanInstances])
+
+    init()
+  }, [jobId, stages, isLoading, loadHiringPlanInstances])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -155,98 +150,72 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
+    if (!over || active.id === over.id) return
 
-    if (!over) return
-
-    if (active.id !== over.id) {
-      setSelectedStages((stages) => {
-        // Separate stages by category
-        const defaultStages = stages.filter(stage => stage.is_default)
-        const customStages = stages.filter(stage => !stage.is_default)
-
-        // Find stages with "last" priority
-        const defaultNormalStages = defaultStages.filter(stage => !isLastPriorityStage(stage))
-        const defaultLastStages = defaultStages.filter(stage => isLastPriorityStage(stage))
-
-        const oldIndex = customStages.findIndex(stage => stage.id === active.id)
-        const newIndex = customStages.findIndex(stage => stage.id === over.id)
-
-        if (oldIndex === -1 || newIndex === -1) return stages
-
-        const reorderedCustom = arrayMove(customStages, oldIndex, newIndex)
-        
-        // Combine: normal priority defaults + custom stages + "last" priority defaults
-        return [
-          ...sortStagesByPriority(defaultNormalStages),
-          ...reorderedCustom,
-          ...sortStagesByPriority(defaultLastStages)
-        ]
-      })
-      setHasUnsavedChanges(true)
-    }
+    setPlanRows((rows) => {
+      // Reorder among the non-locked rows; locked rows keep their slots
+      const oldIndex = rows.findIndex((r) => r.instanceId === active.id)
+      const newIndex = rows.findIndex((r) => r.instanceId === over.id)
+      if (oldIndex === -1 || newIndex === -1) return rows
+      if (rows[oldIndex].locked || rows[newIndex].locked) return rows
+      return arrayMove(rows, oldIndex, newIndex)
+    })
+    setHasUnsavedChanges(true)
   }
 
   const handleAddStage = (stageId: string) => {
-    const stage = availableStages.find(s => s.id === stageId)
+    const stage = stages.find((s) => s.id === stageId)
     if (!stage) return
 
-    setSelectedStages(prev => {
-      // Separate existing stages by category
-      const defaultStages = prev.filter(s => s.is_default)
-      const customStages = prev.filter(s => !s.is_default)
-
-      // Find stages with "last" priority
-      const defaultNormalStages = defaultStages.filter(s => !isLastPriorityStage(s))
-      const defaultLastStages = defaultStages.filter(s => isLastPriorityStage(s))
-
-      // Add new stage to custom stages (it will be positioned between normal and "last")
-      return [
-        ...sortStagesByPriority(defaultNormalStages),
-        ...customStages,
-        stage, // Add new stage here
-        ...sortStagesByPriority(defaultLastStages)
-      ]
+    setPlanRows((prev) => {
+      const next = [...prev]
+      const newRow: PlanRow = {
+        instanceId: newTempId(),
+        stage: stage as JobStage,
+        // Adding from picker never produces a "locked" row — only the original seeded default instance is locked.
+        locked: false,
+      }
+      // Insert before the first trailing "last priority" locked default, otherwise append.
+      const trailingIdx = next.findIndex((r) => r.locked && isLastPriorityStage(r.stage))
+      if (trailingIdx >= 0) next.splice(trailingIdx, 0, newRow)
+      else next.push(newRow)
+      return next
     })
     setHasUnsavedChanges(true)
-    setAvailableStages(prev => prev.filter(s => s.id !== stageId))
-    
+
     toast({
       title: 'Stage Added',
-      description: `${stage.stage_name} has been added to the hiring plan`
+      description: `${stage.stage_name} has been added to the hiring plan`,
     })
   }
 
-  const handleRemoveStageRequest = async (stageId: string) => {
-    const stage = selectedStages.find(s => s.id === stageId)
-    if (!stage) return
+  const handleRemoveRowRequest = async (instanceId: string) => {
+    const row = planRows.find((r) => r.instanceId === instanceId)
+    if (!row) return
 
-    // Don't allow removing default stages
-    if (stage.is_default) {
+    if (row.locked) {
       toast({
         title: 'Cannot Remove Stage',
         description: 'Default stages cannot be removed from the hiring plan',
-        variant: 'destructive'
+        variant: 'destructive',
       })
       return
     }
 
-    setStagePendingDelete(stage)
+    setRowPendingDelete(row)
     setDeleteDialogOpen(true)
     setPendingDeleteCount(null)
     setCountLoading(true)
 
     try {
-      const inst = instancesMap.get(stage.id)
-      if (inst?.jhsId) {
+      if (row.jhsId) {
         const { count, error } = await supabase
           .from('job_candidate_associations')
           .select('id', { count: 'exact', head: true })
           .eq('job_id', jobId)
-          .eq('current_stage_id', inst.jhsId)
-        if (!error) setPendingDeleteCount(count ?? 0)
-        else setPendingDeleteCount(0)
+          .eq('current_stage_id', row.jhsId)
+        setPendingDeleteCount(!error ? (count ?? 0) : 0)
       } else {
-        // Not persisted yet -> no candidates in this stage
         setPendingDeleteCount(0)
       }
     } catch (e) {
@@ -256,45 +225,54 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
     }
   }
 
-  const handleConfirmRemove = async () => {
-    if (!stagePendingDelete) return
-    const stage = stagePendingDelete
+  const buildSaveInput = (rows: PlanRow[]): HiringPlanInput[] =>
+    rows.map((r) => ({ jhsId: r.jhsId, stage_id: r.stage.id, customStageName: r.customStageName ?? null }))
 
-    const newSelected = selectedStages.filter(s => s.id !== stage.id)
+  const handleConfirmRemove = async () => {
+    if (!rowPendingDelete) return
+    const row = rowPendingDelete
+    const newRows = planRows.filter((r) => r.instanceId !== row.instanceId)
 
     try {
-      await saveHiringPlan(jobId as string, newSelected)
-
-      setSelectedStages(newSelected)
-      setAvailableStages(prev => [...prev, stage].sort((a, b) => {
-        const aPriority = typeof a.stage_priority === 'number' ? a.stage_priority : 500
-        const bPriority = typeof b.stage_priority === 'number' ? b.stage_priority : 500
-        return aPriority - bPriority
-      }))
+      await saveHiringPlan(jobId, buildSaveInput(newRows))
+      // Reload instances to get fresh jhsIds and the correct count of duplicates
+      const refreshed = await loadHiringPlanInstances(jobId)
+      const seenDefaultStageIds = new Set<string>()
+      const rebuilt: PlanRow[] = refreshed.map((inst) => {
+        let locked = false
+        if (inst.stage.is_default && !seenDefaultStageIds.has(inst.stage.id)) {
+          locked = true
+          seenDefaultStageIds.add(inst.stage.id)
+        }
+        return {
+          instanceId: inst.jhsId,
+          jhsId: inst.jhsId,
+          stage: inst.stage as JobStage,
+          customStageName: inst.customStageName,
+          locked,
+        }
+      })
+      setPlanRows(rebuilt)
       setHasUnsavedChanges(false)
-
-      // Refresh instances map
-      const opts = await loadHiringPlanInstances(jobId as string)
-      const map = new Map<string, { jhsId: string; position: number; customStageName?: string | null }>()
-      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position, customStageName: o.customStageName }))
-      setInstancesMap(map)
 
       toast({
         title: 'Stage Removed',
-        description: `${stage.stage_name} was removed.${(pendingDeleteCount ?? 0) > 0 ? ` ${(pendingDeleteCount ?? 0)} candidate${(pendingDeleteCount ?? 0) !== 1 ? 's' : ''} moved to the previous stage.` : ''}`
+        description: `${row.stage.stage_name} was removed.${(pendingDeleteCount ?? 0) > 0 ? ` ${(pendingDeleteCount ?? 0)} candidate${(pendingDeleteCount ?? 0) !== 1 ? 's' : ''} moved to the previous stage.` : ''}`,
       })
     } finally {
       setDeleteDialogOpen(false)
-      setStagePendingDelete(null)
+      setRowPendingDelete(null)
     }
   }
 
   const handleSaveHiringPlan = async () => {
     if (!jobId) return
-    await saveHiringPlan(jobId as string, selectedStages)
+    const finalIds = await saveHiringPlan(jobId, buildSaveInput(planRows))
+    // Update local jhsIds for newly inserted rows in original order
+    setPlanRows((prev) => prev.map((r, idx) => ({ ...r, jhsId: finalIds?.[idx] ?? r.jhsId, instanceId: finalIds?.[idx] ?? r.instanceId })))
     setHasUnsavedChanges(false)
   }
-  
+
   const handleConfigure = (jhsId: string) => {
     setConfigJhsId(jhsId)
     setConfigSheetOpen(true)
@@ -311,13 +289,16 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
     )
   }
 
+  // Library stages remain fully available — duplicates are allowed.
+  const availableStages = stages
+
   return (
     <div className="space-y-6">
       {!hideHeader && (
         <div>
           <h3 className="text-lg font-medium text-text-primary mb-2">Hiring Plan</h3>
           <p className="text-sm text-text-secondary mb-4">
-            Customize the hiring process for this job. Default stages (grayed out) are fixed in priority order. Stages marked as "last" priority will always appear at the end, with custom stages positioned before them.
+            Customize the hiring process for this job. Default stages (grayed out) are fixed in priority order. You can add the same stage from the library more than once if you need multiple rounds (e.g. two interview rounds).
           </p>
         </div>
       )}
@@ -326,51 +307,51 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
         <div className="space-y-4">
           <div>
             <h4 className="text-base font-medium text-text-primary mb-3">Current Hiring Stages</h4>
-            {selectedStages.length === 0 ? (
+            {planRows.length === 0 ? (
               <InlineEmpty text="No stages in the hiring plan yet." />
             ) : (
-              <DndContext 
+              <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
               >
-                <SortableContext 
-                  items={selectedStages.filter(stage => !stage.is_default).map(stage => stage.id)}
+                <SortableContext
+                  items={planRows.filter((r) => !r.locked).map((r) => r.instanceId)}
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-3">
-                    {selectedStages.map((stage, index) => {
-                      const instance = instancesMap.get(stage.id)
-                      return (
-                        <DraggableStageItem
-                          key={stage.id}
-                          stage={stage}
-                          index={index}
-                          onRemove={handleRemoveStageRequest}
-                          onConfigure={handleConfigure}
-                          jhsId={instance?.jhsId}
-                          customStageName={instance?.customStageName}
-                          isDragging={activeId === stage.id}
-                        />
-                      )
-                    })}
+                    {planRows.map((row, index) => (
+                      <DraggableStageItem
+                        key={row.instanceId}
+                        instanceId={row.instanceId}
+                        stage={row.stage}
+                        index={index}
+                        onRemove={handleRemoveRowRequest}
+                        onConfigure={handleConfigure}
+                        jhsId={row.jhsId}
+                        customStageName={row.customStageName}
+                        isDragging={activeId === row.instanceId}
+                        locked={row.locked}
+                      />
+                    ))}
                   </div>
                 </SortableContext>
                 <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
                   {activeId && (() => {
-                    const stage = selectedStages.find(s => s.id === activeId)
-                    if (!stage) return null
-                    const index = selectedStages.indexOf(stage)
-                    const instance = instancesMap.get(stage.id)
+                    const row = planRows.find((r) => r.instanceId === activeId)
+                    if (!row) return null
+                    const index = planRows.indexOf(row)
                     return (
                       <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
                         <DraggableStageItem
-                          stage={stage}
+                          instanceId={row.instanceId}
+                          stage={row.stage}
                           index={index}
                           onRemove={() => {}}
-                          jhsId={instance?.jhsId}
-                          customStageName={instance?.customStageName}
+                          jhsId={row.jhsId}
+                          customStageName={row.customStageName}
+                          locked={row.locked}
                         />
                       </div>
                     )
@@ -390,10 +371,10 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
                     <SearchableSelect
                       value=""
                       onValueChange={handleAddStage}
-                      options={availableStages.map(stage => ({
+                      options={availableStages.map((stage) => ({
                         value: stage.id,
                         label: stage.stage_name,
-                        description: stage.stage_description
+                        description: stage.stage_description,
                       }))}
                       placeholder="Select a stage to add..."
                       searchPlaceholder="Search stages..."
@@ -402,7 +383,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
                   <Plus className="h-4 w-4 text-text-secondary" />
                 </div>
                 <p className="text-xs text-text-secondary mt-2">
-                  Available stages from the Stages Library
+                  Add a stage as many times as you need — same stage can appear multiple times.
                 </p>
               </div>
             </>
@@ -412,10 +393,8 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
 
       <div className="pt-4 border-t border-border/50">
         <div className="flex justify-between items-center">
-          <p className="text-sm text-text-secondary">
-            Total stages: {selectedStages.length}
-          </p>
-          <Button 
+          <p className="text-sm text-text-secondary">Total stages: {planRows.length}</p>
+          <Button
             disabled={readOnly || !hasUnsavedChanges || isSavingPlan}
             onClick={handleSaveHiringPlan}
           >
@@ -429,9 +408,9 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
           <AlertDialogHeader>
             <AlertDialogTitle>Remove stage?</AlertDialogTitle>
             <AlertDialogDescription>
-              {stagePendingDelete && (
+              {rowPendingDelete && (
                 <div>
-                  Are you sure you want to remove "{stagePendingDelete.stage_name}" from this hiring plan?
+                  Are you sure you want to remove "{rowPendingDelete.stage.stage_name}" from this hiring plan?
                   {countLoading ? (
                     <div className="mt-2">Checking candidates...</div>
                   ) : (pendingDeleteCount ?? 0) > 0 ? (
@@ -447,9 +426,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmRemove}>
-              Remove stage
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmRemove}>Remove stage</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
