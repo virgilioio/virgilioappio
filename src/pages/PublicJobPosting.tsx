@@ -716,6 +716,7 @@ export default function PublicJobPosting() {
   const teamSize: number | null = typeof d.team_size === 'number' ? d.team_size : null
   const equityNote: string | null = d.equity_note || null
   const eeoStatement: string | null = d.eeo_statement || null
+  const eeoEnabled: boolean = !!d.eeo_enabled
 
   const compensationLabel = (() => {
     if (!details.showSalary || !details.salaryAmount) return null
