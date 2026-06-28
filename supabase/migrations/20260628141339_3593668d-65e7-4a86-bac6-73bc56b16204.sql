@@ -1,0 +1,1 @@
+ALTER TABLE public.job_hiring_stages DROP CONSTRAINT IF EXISTS job_hiring_stages_job_stage_unique;
