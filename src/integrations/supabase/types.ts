@@ -7410,6 +7410,13 @@ export type Database = {
         Args: { stage_id_param: string }
         Returns: undefined
       }
+      recompute_all_deal_bases: {
+        Args: { p_tenant_id?: string }
+        Returns: {
+          deals_updated: number
+          payments_updated: number
+        }[]
+      }
       recompute_open_deals_base: {
         Args: { p_tenant_id?: string }
         Returns: number
