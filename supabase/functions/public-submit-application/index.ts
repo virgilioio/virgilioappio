@@ -40,6 +40,12 @@ interface SubmitApplicationPayload {
     confidence: number;
     source?: string;
   }>;
+  eeo?: {
+    gender?: string | null;
+    race_ethnicity?: string | null;
+    veteran_status?: string | null;
+    disability_status?: string | null;
+  } | null;
 }
 
 interface FileUploadResult {
