@@ -100,6 +100,20 @@ interface StageMeta { id: string; name: string; stage_type: string | null; posit
 interface OwnerMeta { id: string; name: string }
 interface CompanyMeta { id: string; name: string }
 
+type SerializableOwnerMeta = { id: string; label: string }
+type SerializableCompanyMeta = { id: string; name: string }
+type CrmAnalyticsQueryData = {
+  tenantId: string
+  deals?: DealRow[]
+  payments?: PaymentRow[]
+  stages?: StageMeta[]
+  owners?: SerializableOwnerMeta[]
+  companies?: SerializableCompanyMeta[]
+  ownerMap?: unknown
+  companyMap?: unknown
+  stageMap?: unknown
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   referral: 'Referral',
   inbound: 'Inbound',
@@ -329,7 +343,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
         ? await sb.from('deal_stages').select('id, name, stage_type, position').in('id', stageIds)
         : { data: [] }
       const ownersRes: { data: any[] | null } = ownerIds.length
-        ? await sb.from('profiles').select('id, first_name, last_name, email').in('id', ownerIds)
+        ? await sb.from('profiles').select('user_id, first_name, last_name, email').in('user_id', ownerIds)
         : { data: [] }
       const orgsRes: { data: CompanyMeta[] | null } = orgIds.length
         ? await sb.from('organizations').select('id, name').in('id', orgIds)
@@ -337,7 +351,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
 
       const stages = ((stagesRes.data ?? []) as StageMeta[]).sort((a, b) => a.position - b.position)
       const owners = ((ownersRes.data ?? []) as any[]).map(o => ({
-        id: o.id as string,
+        id: o.user_id as string,
         label: ([o.first_name, o.last_name].filter(Boolean).join(' ').trim() || o.email || 'Unknown') as string,
       }))
       const companies = ((orgsRes.data ?? []) as CompanyMeta[]).map(c => ({ id: c.id, name: c.name }))
@@ -348,7 +362,12 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
 
   return useMemo<CrmAnalyticsBundle>(() => {
     if (!data) return { ...EMPTY_BUNDLE, isLoading, baseCurrency }
-    const { deals, payments, stages, owners, companies } = data
+    const queryData = data as CrmAnalyticsQueryData
+    const deals = Array.isArray(queryData.deals) ? queryData.deals : []
+    const payments = Array.isArray(queryData.payments) ? queryData.payments : []
+    const stages = Array.isArray(queryData.stages) ? queryData.stages : []
+    const owners = Array.isArray(queryData.owners) ? queryData.owners : []
+    const companies = Array.isArray(queryData.companies) ? queryData.companies : []
     const ownerMap = new Map<string, string>(owners.map(o => [o.id, o.label]))
     const companyMap = new Map<string, string>(companies.map(c => [c.id, c.name]))
     const stageMap = new Map<string, string>(stages.map(s => [s.id, s.name]))
