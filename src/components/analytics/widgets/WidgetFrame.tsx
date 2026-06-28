@@ -91,7 +91,7 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
       </div>
 
       {/* Body */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {data.loading ? (
           <div className="h-full min-h-[60px] flex items-center justify-center">
             <div className="h-4 w-4 rounded-full border-2 border-[#E7E8EE] border-t-[#6F3FF5] animate-spin" />
