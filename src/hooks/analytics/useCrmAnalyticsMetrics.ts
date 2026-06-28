@@ -164,6 +164,7 @@ function computeValues(
   payments: PaymentRow[],
   range: DateRange,
   dealTotals: Map<string, number>,
+  tenantBase: string,
 ): CrmAnalyticsValues {
   let openPipeline = 0
   let openDeals = 0
@@ -175,7 +176,7 @@ function computeValues(
   let cycleN = 0
 
   for (const d of deals) {
-    const amount = Number(d.base_amount ?? 0)
+    const amount = toBase(d, tenantBase)
     const isOpen = d.stage_type !== 'won' && d.stage_type !== 'lost' && !d.won_at && !d.lost_at
     if (isOpen) {
       openPipeline += amount
@@ -203,7 +204,7 @@ function computeValues(
   for (const p of payments) {
     const paid = (p.status ?? 'paid') === 'paid' && p.paid_at
     if (paid && inRange(p.paid_at, range.startDate, range.endDate)) {
-      collected += Number(p.base_amount ?? 0)
+      collected += toBase(p, tenantBase)
     }
   }
 
@@ -212,7 +213,7 @@ function computeValues(
   const paidByDeal = new Map<string, number>()
   for (const p of payments) {
     if ((p.status ?? 'paid') === 'paid') {
-      paidByDeal.set(p.deal_id, (paidByDeal.get(p.deal_id) ?? 0) + Number(p.base_amount ?? 0))
+      paidByDeal.set(p.deal_id, (paidByDeal.get(p.deal_id) ?? 0) + toBase(p, tenantBase))
     }
   }
   let outstanding = 0
