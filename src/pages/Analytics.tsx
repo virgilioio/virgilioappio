@@ -14,6 +14,9 @@ import { AnalyticsFiltersToolbar } from '@/components/analytics/AnalyticsFilters
 import { WidgetGrid } from '@/components/analytics/WidgetGrid'
 import { SEED_RECRUITING_OVERVIEW, withFreshIds } from '@/components/analytics/seedDefaultViews'
 import { defaultSpan } from '@/components/analytics/model/viz'
+import { METRICS } from '@/components/analytics/model/metrics'
+import { DIMENSIONS } from '@/components/analytics/model/dimensions'
+import { VIZ } from '@/components/analytics/model/viz'
 import type { WidgetConfig } from '@/components/analytics/model/types'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 import { generateAnalyticsReport, type StageConversion } from '@/utils/analyticsReportGenerator'
@@ -30,6 +33,31 @@ const DEFAULT_FILTERS: PageFilters = {
 interface ExtraState {
   widgets?: WidgetConfig[]
   dateRange?: { startISO: string; endISO: string }
+}
+
+function sanitizeWidgets(value: unknown): WidgetConfig[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((raw): WidgetConfig[] => {
+    if (!raw || typeof raw !== 'object') return []
+    const widget = raw as Partial<WidgetConfig>
+    const metric = typeof widget.metric === 'string' && widget.metric in METRICS ? widget.metric : null
+    if (!metric) return []
+    const groupBy = typeof widget.groupBy === 'string' && widget.groupBy in DIMENSIONS ? widget.groupBy : 'none'
+    const viz = typeof widget.viz === 'string' && widget.viz in VIZ ? widget.viz : 'kpi'
+    const span = typeof widget.span === 'number' && Number.isFinite(widget.span) && widget.span > 0
+      ? Math.min(12, Math.max(1, Math.round(widget.span)))
+      : defaultSpan(viz)
+
+    return [{
+      id: typeof widget.id === 'string' && widget.id ? widget.id : crypto.randomUUID(),
+      metric,
+      groupBy,
+      viz,
+      span,
+      title: typeof widget.title === 'string' ? widget.title : undefined,
+      scope: widget.scope,
+    }]
+  })
 }
 
 export default function Analytics() {
@@ -105,7 +133,7 @@ export default function Analytics() {
     setActiveViewId(v.id)
     setFilters((v.filters as unknown as PageFilters) ?? DEFAULT_FILTERS)
     const extra = (v.extra_state ?? {}) as ExtraState
-    setWidgets((extra.widgets ?? []).map(w => ({ ...w, span: w.span || defaultSpan(w.viz) })))
+    setWidgets(sanitizeWidgets(extra.widgets))
     if (extra.dateRange) {
       setDateRange({ startDate: new Date(extra.dateRange.startISO), endDate: new Date(extra.dateRange.endISO) })
     }
