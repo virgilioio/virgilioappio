@@ -592,7 +592,10 @@ export default function PublicJobPosting() {
         salary_sync: salarySync,
         location_sync: locationSync,
         phone_sync: phoneSync,
-        linkedin_sync: linkedinSync
+        linkedin_sync: linkedinSync,
+        eeo: (eeoResponses.gender || eeoResponses.race_ethnicity || eeoResponses.veteran_status || eeoResponses.disability_status)
+          ? eeoResponses
+          : null,
       }
 
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
