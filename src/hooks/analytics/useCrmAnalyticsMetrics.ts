@@ -81,7 +81,10 @@ interface DealRow {
   owner_id: string | null
   organization_id: string | null
   source: string | null
+  amount: number | null
+  currency: string | null
   base_amount: number | null
+  base_currency: string | null
   created_at: string
   won_at: string | null
   lost_at: string | null
@@ -91,9 +94,32 @@ interface DealRow {
 interface PaymentRow {
   id: string
   deal_id: string
+  amount: number | null
+  currency: string | null
   base_amount: number | null
+  base_currency: string | null
   paid_at: string | null
   status: string | null
+}
+
+/**
+ * Returns a row's value in the tenant base currency.
+ * Prefers the stored base_amount when it is already in the tenant base.
+ * Falls back to the raw amount when the row currency equals the tenant base
+ * (covers rows where the DB backfill hasn't run yet). Otherwise returns 0
+ * rather than silently summing across currencies.
+ */
+function toBase(
+  row: { amount: number | null; currency: string | null; base_amount: number | null; base_currency: string | null },
+  tenantBase: string,
+): number {
+  const base = (tenantBase || '').toUpperCase()
+  const rowBase = (row.base_currency || '').toUpperCase()
+  const rowCcy = (row.currency || '').toUpperCase()
+  if (row.base_amount != null && rowBase && rowBase === base) return Number(row.base_amount)
+  if (row.amount != null && rowCcy && rowCcy === base) return Number(row.amount)
+  if (row.base_amount != null && !rowBase) return Number(row.base_amount) // legacy null base_currency
+  return 0
 }
 
 interface StageMeta { id: string; name: string; stage_type: string | null; position: number }
