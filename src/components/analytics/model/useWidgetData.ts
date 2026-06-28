@@ -169,9 +169,9 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
   const empty =
     !loading &&
     (cfg.groupBy === 'none'
-      ? value === 0 || value === null
+      ? value === null || value === undefined
       : cfg.groupBy === 'time'
-      ? asArray(series).every(p => p.value === 0)
+      ? false
       : breakdown.length === 0)
 
   return {
