@@ -1255,6 +1255,56 @@ export default function PublicJobPosting() {
                         </div>
                       )}
 
+                    {/* EEO Self-Identification Section — voluntary, confidential */}
+                    {eeoEnabled && (
+                      <div>
+                        <h3 className="text-[13px] font-semibold uppercase tracking-wide text-text-secondary mb-3">
+                          Voluntary Self-Identification
+                        </h3>
+                        <div className="rounded-lg border border-border bg-surface-secondary/40 p-4 mb-6">
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {EEO_LEGAL_DISCLAIMER}
+                          </p>
+                        </div>
+
+                        <div className="space-y-8">
+                          {[
+                            { key: 'gender', label: 'Gender', options: EEO_GENDER_OPTIONS },
+                            { key: 'race_ethnicity', label: 'Race / Ethnicity', options: EEO_RACE_OPTIONS },
+                            { key: 'veteran_status', label: 'Veteran Status', options: EEO_VETERAN_OPTIONS },
+                            { key: 'disability_status', label: 'Disability Status', options: EEO_DISABILITY_OPTIONS },
+                          ].map(field => (
+                            <div key={field.key}>
+                              <Label className="text-[13px] font-semibold text-text-primary block mb-3">
+                                {field.label}
+                              </Label>
+                              <RadioGroup
+                                value={(eeoResponses as any)[field.key] || ''}
+                                onValueChange={(v) => setEeoResponses(prev => ({ ...prev, [field.key]: v }))}
+                                className="space-y-2"
+                              >
+                                {field.options.map(opt => (
+                                  <div key={opt.value} className="flex items-start gap-2">
+                                    <RadioGroupItem
+                                      value={opt.value}
+                                      id={`eeo-${field.key}-${opt.value}`}
+                                      className="mt-0.5"
+                                    />
+                                    <Label
+                                      htmlFor={`eeo-${field.key}-${opt.value}`}
+                                      className="text-sm font-normal text-text-primary cursor-pointer leading-snug"
+                                    >
+                                      {opt.label}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </RadioGroup>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="pt-4">
                       <Button 
                         type="button" 
