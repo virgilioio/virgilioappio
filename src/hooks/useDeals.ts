@@ -179,6 +179,7 @@ export function useDealMutations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deals'] })
+      queryClient.invalidateQueries({ queryKey: ['crm-analytics'] })
       toast({ title: 'Deal created' })
     },
     onError: (e: any) => toast({ title: 'Could not create deal', description: e.message, variant: 'destructive' }),
@@ -192,6 +193,7 @@ export function useDealMutations() {
     },
     onSuccess: (_d, vars) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] })
+      queryClient.invalidateQueries({ queryKey: ['crm-analytics'] })
       queryClient.invalidateQueries({ queryKey: ['deal', vars.id] })
     },
     onError: (e: any) => toast({ title: 'Could not update deal', description: e.message, variant: 'destructive' }),
