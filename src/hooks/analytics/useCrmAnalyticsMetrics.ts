@@ -424,7 +424,7 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
 
     // Stage breakdown — preserve stage order
     const stageRows = buildBreakdown(
-      deals,
+      enrichedDeals,
       payments,
       dateRange,
       d => d.stage_id,
@@ -434,12 +434,12 @@ export function useCrmAnalyticsMetrics(dateRange: DateRange, filters: CrmFilters
     const orderIndex = new Map(stages.map((s, i) => [s.id, i] as const))
     stageRows.sort((a, b) => (orderIndex.get(a.key) ?? 99) - (orderIndex.get(b.key) ?? 99))
 
-    const ownerRows = buildBreakdown(deals, payments, dateRange, d => d.owner_id, ownerMap, 'Unassigned')
-    const companyRows = buildBreakdown(deals, payments, dateRange, d => d.organization_id, companyMap, 'No company')
+    const ownerRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.owner_id, ownerMap, 'Unassigned')
+    const companyRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.organization_id, companyMap, 'No company')
 
     const sourceLabels = new Map<string, string>()
     for (const [k, v] of Object.entries(SOURCE_LABELS)) sourceLabels.set(k, v)
-    const sourceRows = buildBreakdown(deals, payments, dateRange, d => d.source, sourceLabels, 'No source')
+    const sourceRows = buildBreakdown(enrichedDeals, payments, dateRange, d => d.source, sourceLabels, 'No source')
 
     return {
       isLoading: false,
