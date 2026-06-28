@@ -13,6 +13,7 @@ import { DonutChart } from './charts/DonutChart'
 import { FunnelChart } from './charts/FunnelChart'
 import { TableViz } from './charts/TableViz'
 import type { WidgetConfig, DimensionId, VizId, MetricId } from '../model/types'
+import { fmt } from '../model/format'
 
 interface Props {
   cfg: WidgetConfig
