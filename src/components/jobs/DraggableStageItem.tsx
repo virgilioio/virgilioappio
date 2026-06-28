@@ -62,7 +62,6 @@ export function DraggableStageItem({ stage, index, onRemove, onConfigure, instan
   }
 
 
-  const isDisabled = stage.is_default
   const showDragging = isDragging || isSortableDragging
 
   return (
