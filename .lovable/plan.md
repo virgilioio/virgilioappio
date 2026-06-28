@@ -1,71 +1,85 @@
-# EEO Survey — Linked + Role-Gated Implementation
+# Google for Jobs — make the toggle functional
 
-Replace the anonymity-first design with a candidate-linked model that is structurally hidden from anyone who participates in hiring decisions.
+Today the "Google for Jobs" channel toggle in the Job Wizard / Posting setup is cosmetic. This plan wires it to the three things Google actually needs: valid `JobPosting` JSON-LD on the public posting page, an indexable URL with proper meta, and a discoverable sitemap entry. Default for new postings: **ON**.
 
-## Compliance model
+## Behavior contract
 
-- US EEOC / OFCCP requires EEO data to be **voluntary, optional, and kept separate from the hiring process**.
-- We satisfy "separate" via **role-based access**, not anonymity:
-  - Visible to: **Platform admins, Workspace owners, Admins** (HR/compliance roles).
-  - Hidden from: **Recruiters, Hiring Managers, Interviewers, regular members**.
-- Hidden everywhere a hiring decision happens: **never** rendered in the in-job candidate profile, kanban, pipeline, scorecards, comparison views, exports for non-admins, or analytics drill-downs.
-- Visible only in the **independent candidate profile → Details tab → "EEO (Self-Identification)" card**, gated by role.
+```
+Toggle ON  → emit JobPosting JSON-LD on the public page
+           → include canonical + og:url + robots "index,follow"
+           → include the posting URL in /sitemap-jobs.xml
+           → show a small "Indexable" badge in the wizard
+Toggle OFF → omit JSON-LD
+           → emit <meta name="robots" content="noindex,nofollow">
+           → exclude from /sitemap-jobs.xml
+```
+
+Defaults: `google_jobs.enabled = true` for every new posting (free, recommended). Existing postings without the flag set are treated as ON.
 
 ## Database
 
-Drop the previously-built anonymous architecture and rebuild linked:
+Migration on `job_postings`:
+- Add `syndication jsonb not null default '{"google_jobs": {"enabled": true}}'::jsonb`.
+- Backfill existing rows where `details->'channels'->'google_jobs'` exists, otherwise default to enabled.
+- Index: `create index on job_postings ((syndication->'google_jobs'->>'enabled')) where is_active = true;` for the sitemap query.
+- RLS unchanged (already public-readable for active postings).
 
-1. Drop `eeo_responses` (token-based) and `get_eeo_aggregate` from the prior migration.
-2. Create `candidate_eeo_responses`:
-   - `candidate_id` (FK → candidates, unique — one EEO record per candidate)
-   - `tenant_id`
-   - `job_posting_id` (nullable — which posting collected it)
-   - `gender`, `race_ethnicity`, `veteran_status`, `disability_status` (enums, all nullable + "decline" option)
-   - `submitted_at`, `ip_hash` (audit), `user_agent_hash`
-3. **RLS** — strict allowlist:
-   - SELECT: only `has_role(auth.uid(), 'admin')` OR workspace owner OR platform admin, scoped to tenant.
-   - INSERT: `anon` allowed for public application submission (via edge function only), scoped by candidate_id existence.
-   - UPDATE/DELETE: admins/owners only.
-   - Explicitly **no policy** granting recruiters, members, hiring managers, or interviewers read access.
-4. GRANTs: `INSERT` to anon (public form), `SELECT/UPDATE/DELETE` to authenticated (RLS enforces role gating), ALL to service_role.
-5. Audit log entry on every SELECT by an admin (write to `audit_logs`).
+## Edge function: `generate-jobs-sitemap`
 
-## Edge function
+New public edge function (`verify_jwt = false`) that:
+- Reads `?tenant=<slug>` (or host header) to scope to the careers domain.
+- Selects active `job_postings` joined to `jobs` where `is_active = true` AND `syndication->'google_jobs'->>'enabled' = 'true'` AND parent `jobs.status = 'open'`.
+- Returns `application/xml` `<urlset>` with `<loc>`, `<lastmod>` (`updated_at`), `<changefreq>weekly</changefreq>`.
+- Cache-Control: `public, max-age=3600`.
 
-- Update `submit-application` (or equivalent) to accept optional `eeo` payload, look up the just-created candidate, and insert into `candidate_eeo_responses` server-side using service role. Never trust client to send `candidate_id` for EEO.
+Wire `/sitemap-jobs.xml` on each careers domain to this function (Vite rewrite + production redirect). Reference it from `public/robots.txt`:
 
-## Public application form
+```
+Sitemap: https://app.gogio.io/sitemap-jobs.xml
+```
 
-- `<EeoSurveySection>` in `PublicJobPosting.tsx` — renders only when `job_postings.details.eeo_enabled = true`.
-- Standard EEOC question set, all optional, all with "Decline to identify".
-- Legal disclaimer block above the section ("Voluntary, will not be used in hiring decisions, kept confidential…").
-- Submitted with the application payload.
+## Frontend
 
-## Frontend gating
+**`src/lib/jobPostingJsonLd.ts`** (new) — pure mapper:
+- Input: `job_postings` row + `jobs` row + tenant (org name, logo URL, careers domain).
+- Output: validated `JobPosting` object with required fields (`title`, `description` HTML, `datePosted`, `validThrough` defaulting to +90d if missing, `hiringOrganization` with `@type: Organization`, `name`, `logo`, `sameAs`, `jobLocation` or remote variant, `employmentType`, `identifier`).
+- Optional: `baseSalary` with `MonetaryAmount` + `QuantitativeValue` when salary range present; `directApply: false` (external apply only — Google Apply API is out of scope).
+- Remote: emit `jobLocationType: "TELECOMMUTE"` + `applicantLocationRequirements` from posting country list.
+- Employment type mapping: full_time→FULL_TIME, part_time→PART_TIME, contract→CONTRACTOR, internship→INTERN, temporary→TEMPORARY.
 
-- New hook `useCanViewEeo()` → returns true only for platform admin, workspace owner, or `admin` system role.
-- New hook `useCandidateEeoResponse(candidateId)` — only fetches if `useCanViewEeo()` is true (avoids unnecessary 403s).
-- New component `<EeoResponseCard>` in independent candidate profile → Details tab.
-  - Visual: same Gio card pattern as Contact Info card, with a subtle "Confidential — HR access only" badge.
-  - Shows the 4 fields with human-readable labels, "Declined to identify" italicized, "Not collected" muted when null.
-  - Edit affordance for admins (rare correction case).
-- **Explicit exclusion** in:
-  - `CandidateProfileSheet` (in-job) — no EEO card, no EEO section, no EEO field anywhere.
-  - Kanban cards, scorecard views, comparison panels, candidate exports for non-admins.
-  - Any candidate CSV export — strip EEO fields unless requested by an admin via a separate "Compliance export".
+**`src/pages/PublicJobPosting.tsx`** — inject via `react-helmet-async` (install if absent, add `<HelmetProvider>` once at `main.tsx`):
+- `<title>` and `<meta name="description">` from posting.
+- `<link rel="canonical">` + `<meta property="og:url">` self-referencing the posting URL.
+- When enabled: `<script type="application/ld+json">` with the mapped object + `<meta name="robots" content="index,follow">`.
+- When disabled: `<meta name="robots" content="noindex,nofollow">` and no JSON-LD.
+- Skip JSON-LD entirely when the posting is inactive, closed, or the parent job is paused/closed.
 
-## Analytics (later, separate ticket)
+**`src/components/jobs/postings/PostingChannelsCard.tsx`** — Google for Jobs row:
+- Read enabled state from `value.channels.google_jobs.enabled` (default true).
+- Replace the "Free · auto" static meta with two states: "Indexable · structured data on" (on) vs "Hidden from Google" (off).
+- Add a tooltip explaining what the toggle controls and what Google needs.
+- Keep the toggle enabled (was previously implicit always-on); writes flow through existing `onChange`.
 
-- Out of scope for this plan. When built, aggregate-only widget with k-anonymity suppression, available only to admins/owners.
+**`useJobPostings.createPosting`** — set `syndication: { google_jobs: { enabled: true } }` when creating.
 
-## Out of scope
+**Wizard validation helper** (`src/components/jobs/wizard/...`) — non-blocking warning when toggle is ON but required JSON-LD fields are missing (employment type, location or remote flag, currency on salary range). Show as an inline lilac alert: "Google may skip this posting until you add …".
 
-- Aggregated EEO analytics widget.
-- Compliance export CSV.
-- EEO for internally-added candidates (only collected via public application).
+## Out of scope (call out to user before extending)
+
+- `directApply: true` (requires Google Apply API integration).
+- Tenant-level "always syndicate" master switch in Settings → Careers — easy to add later; deferred unless asked.
+- Per-tenant `hiringOrganization.sameAs` (LinkedIn/company URLs) — emit only if already on `tenants`/`organizations`; otherwise omit.
 
 ## Technical notes
 
-- Reuse the enums already created in the prior migration (`eeo_gender`, `eeo_race_ethnicity`, `eeo_veteran_status`, `eeo_disability_status`) — drop only the table and aggregate function.
-- `useCanViewEeo` should derive from `user_type` (platform admin/owner) OR `members.system_role = 'admin'`, following the existing user-type precedence rule.
-- The independent profile route must itself be gated to roles that can legitimately access it; if any non-admin role can open it today, the EEO card still hides via `useCanViewEeo`, but we should audit who reaches that route.
+- `react-helmet-async` provider must live above the router in `src/main.tsx` so any route can inject head tags. Per the head-meta guide, remove the site-wide `<link rel="canonical">` from `index.html` once Helmet is the source of truth for canonicals.
+- JSON-LD is rendered client-side; Googlebot executes JS so this is sufficient for indexing. Tell the user that LinkedIn/Slack previews still rely on `index.html`'s static og tags.
+- Sitemap edge function must use anon key + RLS (active public postings are already anon-readable per existing policy), no service role needed.
+- Add a small `__tests__/jobPostingJsonLd.test.ts` covering: required fields present, remote variant, salary range, missing-field handling.
+
+## Verification
+
+- Pull a posting URL, view-source → confirm `<script type="application/ld+json">` and Helmet-injected canonical.
+- Paste the URL into Google's Rich Results Test → confirm "Job posting" detected with no errors.
+- Toggle off → reload → confirm `noindex` meta and no JSON-LD.
+- Hit `/sitemap-jobs.xml` → confirm only enabled, active, open postings appear.
