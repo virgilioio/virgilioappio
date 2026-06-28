@@ -97,8 +97,8 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
             <div className="h-4 w-4 rounded-full border-2 border-[#E7E8EE] border-t-[#6F3FF5] animate-spin" />
           </div>
         ) : data.empty ? (
-          <div className="h-full min-h-[60px] flex items-center justify-center text-[12px] font-inter text-[#8B8F9E]">
-            No data in this range
+          <div className="h-full min-h-[60px] flex items-center justify-center font-poppins font-semibold text-[22px] tracking-[-0.02em] text-[#8B8F9E] tabular-nums">
+            {fmt(0, data.format, data.currency)}
           </div>
         ) : (
           renderViz(cfg, data)
