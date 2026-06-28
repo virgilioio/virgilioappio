@@ -31,7 +31,7 @@ function deltaFromValues(current: number | null, previous: number | null): numbe
 
 export function useWidgetData(cfg: WidgetConfig): NormalizedData {
   const b = useAnalyticsBundle()
-  const meta = METRICS[cfg.metric]
+  const meta = METRICS[cfg.metric] ?? METRICS.applications
   const loading =
     b.metrics.isLoading ||
     b.stage.isLoading ||
