@@ -36,6 +36,7 @@ export function DraggableDealStageItem({ stage, onEdit, onRemove, isDragging, is
   }
 
   const chip = CHIP[stage.stage_type] ?? CHIP.open
+  const isSystem = stage.stage_type === 'won' || stage.stage_type === 'lost'
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -56,6 +57,21 @@ export function DraggableDealStageItem({ stage, onEdit, onRemove, isDragging, is
       >
         {stage.name}
       </span>
+
+      {isSystem && (
+        <span
+          className="inline-flex items-center font-inter shrink-0"
+          style={{
+            fontSize: 9.5, fontWeight: 600,
+            padding: '2px 7px', borderRadius: 999,
+            backgroundColor: '#F1F0EC', color: '#5C6070',
+            textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}
+          title="System stage — every CRM keeps a Won and Lost stage"
+        >
+          System
+        </span>
+      )}
 
       <span
         className="inline-flex items-center font-inter shrink-0"
@@ -82,18 +98,20 @@ export function DraggableDealStageItem({ stage, onEdit, onRemove, isDragging, is
         <Pencil size={12} strokeWidth={2} />
       </button>
 
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onRemove(stage) }}
-        className="shrink-0 inline-flex items-center justify-center transition-colors"
-        style={{ background: 'transparent', border: 'none', padding: 4, color: '#8B8F9E', cursor: 'pointer' }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = '#B91C1C')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = '#8B8F9E')}
-        title="Remove stage"
-        aria-label="Remove stage"
-      >
-        <Trash2 size={12} strokeWidth={2} />
-      </button>
+      {!isSystem && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemove(stage) }}
+          className="shrink-0 inline-flex items-center justify-center transition-colors"
+          style={{ background: 'transparent', border: 'none', padding: 4, color: '#8B8F9E', cursor: 'pointer' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#B91C1C')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#8B8F9E')}
+          title="Remove stage"
+          aria-label="Remove stage"
+        >
+          <Trash2 size={12} strokeWidth={2} />
+        </button>
+      )}
     </div>
   )
 }
