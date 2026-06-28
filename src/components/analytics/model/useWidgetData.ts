@@ -3,6 +3,10 @@ import type { MetricId, NormalizedData, DimensionId, SeriesPoint, WidgetConfig }
 import { useAnalyticsBundle } from './AnalyticsDataContext'
 import type { CrmAnalyticsBundle, CrmDimensionRow } from '@/hooks/analytics/useCrmAnalyticsMetrics'
 
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : []
+}
+
 function pickTimeSeries(
   trend: Array<Record<string, unknown>>,
   field: string,
@@ -27,7 +31,7 @@ function deltaFromValues(current: number | null, previous: number | null): numbe
 
 export function useWidgetData(cfg: WidgetConfig): NormalizedData {
   const b = useAnalyticsBundle()
-  const meta = METRICS[cfg.metric]
+  const meta = METRICS[cfg.metric] ?? METRICS.applications
   const loading =
     b.metrics.isLoading ||
     b.stage.isLoading ||
@@ -39,7 +43,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
     b.jobHealth.isLoading ||
     b.crm.isLoading
 
-  const trend = b.metrics.trendData as Array<Record<string, unknown>>
+  const trend = asArray(b.metrics.trendData as Array<Record<string, unknown>> | undefined)
 
   let value: number | null = 0
   let series: SeriesPoint[] = []
@@ -68,11 +72,11 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
         break
       case 'interviews':
         value = b.interview.completed
-        series = (b.interview.trendData || []).map(p => ({ label: p.date, value: p.completed }))
+        series = asArray(b.interview.trendData).map(p => ({ label: p.date, value: p.completed }))
         break
       case 'interviews_scheduled':
         value = b.interview.scheduled
-        series = (b.interview.trendData || []).map(p => ({ label: p.date, value: p.scheduled }))
+        series = asArray(b.interview.trendData).map(p => ({ label: p.date, value: p.scheduled }))
         break
       case 'offers_sent':
         value = b.offer.offersSent
@@ -93,7 +97,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
     // CRM metrics
     const v = b.crm.values
     const p = b.crm.previous
-    const crmTrend = b.crm.trend
+    const crmTrend = asArray(b.crm.trend)
     switch (cfg.metric) {
       case 'open_pipeline':
         value = v.openPipeline
@@ -167,7 +171,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
     (cfg.groupBy === 'none'
       ? value === 0 || value === null
       : cfg.groupBy === 'time'
-      ? series.every(p => p.value === 0)
+      ? asArray(series).every(p => p.value === 0)
       : breakdown.length === 0)
 
   return {
@@ -212,16 +216,16 @@ function resolveBreakdown(
   b: ReturnType<typeof useAnalyticsBundle>,
 ): SeriesPoint[] {
   // CRM dimensions
-  if (group === 'deal_stage') return crmBreakdown(metric, b.crm.breakdowns.stage)
-  if (group === 'deal_owner') return crmBreakdown(metric, b.crm.breakdowns.owner)
-  if (group === 'company') return crmBreakdown(metric, b.crm.breakdowns.company)
-  if (group === 'deal_source') return crmBreakdown(metric, b.crm.breakdowns.source)
+  if (group === 'deal_stage') return crmBreakdown(metric, asArray(b.crm.breakdowns?.stage))
+  if (group === 'deal_owner') return crmBreakdown(metric, asArray(b.crm.breakdowns?.owner))
+  if (group === 'company') return crmBreakdown(metric, asArray(b.crm.breakdowns?.company))
+  if (group === 'deal_source') return crmBreakdown(metric, asArray(b.crm.breakdowns?.source))
 
   switch (group) {
     case 'stage':
-      return (b.metrics.stageDistribution || []).map(s => ({ label: s.name, value: s.count }))
+      return asArray(b.metrics.stageDistribution).map(s => ({ label: s.name, value: s.count }))
     case 'source':
-      return (b.source.rows || []).map(r => {
+      return asArray(b.source.rows).map(r => {
         let v = r.total
         if (metric === 'hires') v = r.hires
         else if (metric === 'offers_sent') v = r.offers
@@ -229,15 +233,15 @@ function resolveBreakdown(
         return { label: r.source, value: v }
       })
     case 'seniority':
-      return (b.talent.seniorityDistribution || []).map(s => ({ label: s.name, value: s.count }))
+      return asArray(b.talent.seniorityDistribution).map(s => ({ label: s.name, value: s.count }))
     case 'skills':
-      return (b.talent.topSkills || []).slice(0, 10).map(s => ({ label: s.name, value: s.count }))
+      return asArray(b.talent.topSkills).slice(0, 10).map(s => ({ label: s.name, value: s.count }))
     case 'experience':
-      return (b.talent.experienceDistribution || []).map(s => ({ label: s.name, value: s.count }))
+      return asArray(b.talent.experienceDistribution).map(s => ({ label: s.name, value: s.count }))
     case 'geography':
-      return (b.talent.geographyDistribution || []).slice(0, 10).map(s => ({ label: s.name, value: s.count }))
+      return asArray(b.talent.geographyDistribution).slice(0, 10).map(s => ({ label: s.name, value: s.count }))
     case 'job':
-      return (b.jobHealth.rows || []).slice(0, 12).map(r => {
+      return asArray(b.jobHealth.rows).slice(0, 12).map(r => {
         let v = r.totalCandidates
         if (metric === 'hires') v = r.hires
         else if (metric === 'offers_sent') v = r.offers
@@ -247,7 +251,7 @@ function resolveBreakdown(
         return { label: r.title, value: v }
       })
     case 'recruiter':
-      return (b.recruiter.rows || []).map(r => {
+      return asArray(b.recruiter.rows).map(r => {
         let v = r.candidatesAdded
         if (metric === 'hires') v = r.hires
         else if (metric === 'interviews_scheduled' || metric === 'interviews') v = r.interviewsBooked

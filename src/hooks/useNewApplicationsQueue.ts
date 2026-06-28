@@ -25,7 +25,7 @@ export function useNewApplicationsQueue() {
     enabled: !jobsLoading && jobIds.length > 0,
     staleTime: 30_000,
     queryFn: async (): Promise<NewApplicationItem[]> => {
-      const chunkSize = 200
+      const chunkSize = 40
       const hiringStages: { id: string; job_id: string }[] = []
       for (let i = 0; i < jobIds.length; i += chunkSize) {
         const chunk = jobIds.slice(i, i + chunkSize)
