@@ -376,6 +376,7 @@ export default function Dashboard() {
             isLoading={jobsLoading}
             onPipeline={() => navigate('/pipeline')}
             onJobClick={(id) => navigate(`/jobs/${id}`)}
+            onCreateJob={() => navigate('/jobs')}
           />
         </div>
       </div>
