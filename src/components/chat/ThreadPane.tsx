@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { MessageSquare } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftBubble } from '@/components/ui/EmptyIllustrations'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MessageList } from '@/components/chat/MessageList'
-import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
+import { Composer } from '@/components/chat/Composer'
 
 interface ThreadPaneProps {
   threadId?: string
