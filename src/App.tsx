@@ -163,7 +163,7 @@ function AppContent() {
             <Route path="/crm/deals" element={<Deals />} />
             <Route path="/crm/companies/:id" element={<CompanyDetail />} />
             <Route path="/organizations" element={<Navigate to="/crm/companies" replace />} />
-            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
 
           </Route>
         </Route>
