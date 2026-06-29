@@ -144,7 +144,7 @@ export function PostingSheet({
         if (p) {
           setTitle(p.title || '')
           setSlug(p.slug || '')
-          setDescription(p.description || '')
+          setDescription(markdownToHtml(p.description || ''))
           setIsActive(!!p.is_active)
           const d = (p as any).details || {}
           setReferenceId(d.reference_id || '')
