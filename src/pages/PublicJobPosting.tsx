@@ -884,6 +884,7 @@ export default function PublicJobPosting() {
         onSave={handleSave}
         saved={isSaved}
         accentColor={brandColor}
+        bannerUrl={bannerUrl}
       />
 
 
