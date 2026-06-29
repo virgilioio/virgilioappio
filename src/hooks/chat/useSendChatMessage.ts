@@ -8,6 +8,13 @@ interface SendArgs {
   threadId: string
   body: string
   direction?: Exclude<ChatDirection, 'in'>
+  /** Convenience flag — overrides `direction` to 'note' when true. */
+  isInternalNote?: boolean
+}
+
+function resolveDirection(args: SendArgs): Exclude<ChatDirection, 'in'> {
+  if (args.isInternalNote) return 'note'
+  return args.direction ?? 'out'
 }
 
 /**
@@ -20,24 +27,27 @@ export function useSendChatMessage() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ threadId, body, direction = 'out' }: SendArgs) => {
+    mutationFn: async (args: SendArgs) => {
       if (!tenant?.id || !user?.id) throw new Error('Not authenticated')
+      const direction = resolveDirection(args)
       const { data, error } = await supabase
         .from('chat_messages')
         .insert({
-          thread_id: threadId,
+          thread_id: args.threadId,
           tenant_id: tenant.id,
           direction,
           sender_type: 'recruiter',
           sender_user_id: user.id,
-          body,
+          body: args.body,
         })
         .select()
         .single()
       if (error) throw error
       return data as ChatMessageRow
     },
-    onMutate: async ({ threadId, body, direction = 'out' }) => {
+    onMutate: async (args) => {
+      const { threadId, body } = args
+      const direction = resolveDirection(args)
       await qc.cancelQueries({ queryKey: ['chat-messages', threadId] })
       const key = ['chat-messages', threadId]
       const prev = qc.getQueryData<InfiniteData<ChatMessageRow[]>>(key)
