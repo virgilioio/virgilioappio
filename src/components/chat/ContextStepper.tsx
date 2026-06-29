@@ -63,7 +63,7 @@ export function ContextStepper({ jobId, currentStageId }: ContextStepperProps) {
           const isCurrent = idx === currentIdx
           const isDone = currentIdx >= 0 && idx < currentIdx
           const isLast = idx === instances.length - 1
-          const label = inst.customStageName || inst.stage.name
+          const label = inst.customStageName || inst.stage.stage_name
 
           return (
             <li key={inst.jhsId} className="relative flex items-start gap-3 pb-3 last:pb-0">
