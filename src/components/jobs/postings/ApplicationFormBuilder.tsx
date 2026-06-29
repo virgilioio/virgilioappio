@@ -123,6 +123,19 @@ interface ApplicationFormBuilderProps {
   extraTrailing?: React.ReactNode
   /** Helper subtitle displayed under the section header */
   description?: string
+  /* ---------- Optional granular handlers ----------
+   * When provided, used instead of full-array onChange diffing.
+   * Lets persisted adapters target a single mutation per user action,
+   * eliminating diff/race issues (e.g., toggling Required clobbering a typed label).
+   */
+  onAddSmart?: (sf: SmartFieldDef) => void
+  onAddBasic?: (bt: { type: FieldType; label: string; icon: React.ComponentType<{ className?: string }> }) => void
+  onAddFromLibrary?: (lf: { id: string; field_label: string; field_type: string; is_required: boolean; help_text?: string | null }) => void
+  onRenameField?: (id: string, label: string) => void
+  onToggleRequired?: (id: string, next: boolean) => void
+  onRemoveField?: (id: string) => void
+  onUpdateFieldConfig?: (id: string, patch: Record<string, any>) => void
+  onReorderFields?: (orderedIds: string[]) => void
 }
 
 export function ApplicationFormBuilder({
@@ -133,6 +146,14 @@ export function ApplicationFormBuilder({
   readOnly,
   extraTrailing,
   description = 'What candidates fill in to apply. Drag to reorder. Keep it short — every extra field drops completion by ~6%.',
+  onAddSmart,
+  onAddBasic,
+  onAddFromLibrary,
+  onRenameField,
+  onToggleRequired,
+  onRemoveField,
+  onUpdateFieldConfig,
+  onReorderFields,
 }: ApplicationFormBuilderProps) {
   const { fields: smartFieldsLibrary } = useApplicationFields()
 
@@ -148,11 +169,16 @@ export function ApplicationFormBuilder({
     const [moved] = next.splice(from, 1)
     next.splice(i, 0, moved)
     dragIdx.current = i
-    onChange(next)
+    if (onReorderFields) {
+      onReorderFields(next.filter((f) => !f.locked).map((f) => f.id))
+    } else {
+      onChange(next)
+    }
   }
 
   /* --- ops --- */
   const addSmart = (sf: SmartFieldDef) => {
+    if (onAddSmart) { onAddSmart(sf); return }
     onChange([...fields, {
       id: `${sf.id}_${Date.now()}`,
       label: sf.label,
@@ -165,6 +191,7 @@ export function ApplicationFormBuilder({
     }])
   }
   const addBasic = (bt: { type: FieldType; label: string; icon: React.ComponentType<{ className?: string }> }) => {
+    if (onAddBasic) { onAddBasic(bt); return }
     onChange([...fields, {
       id: `q_${Date.now()}`,
       label: `New ${bt.label.toLowerCase()} question`,
@@ -174,6 +201,7 @@ export function ApplicationFormBuilder({
     }])
   }
   const addFromLibrary = (lf: { id: string; field_label: string; field_type: string; is_required: boolean; help_text?: string | null }) => {
+    if (onAddFromLibrary) { onAddFromLibrary(lf); return }
     const mappedType: FieldType = (lf.field_type as any) === 'textarea' ? 'longtext' : (lf.field_type as any)
     onChange([...fields, {
       id: `lib_${lf.id}_${Date.now()}`,
@@ -184,14 +212,27 @@ export function ApplicationFormBuilder({
       hint: lf.help_text || undefined,
     }])
   }
-  const toggleRequired = (id: string) =>
+  const toggleRequired = (id: string) => {
+    if (onToggleRequired) {
+      const cur = fields.find((x) => x.id === id)
+      onToggleRequired(id, !(cur?.required ?? false))
+      return
+    }
     onChange(fields.map((x) => (x.id === id ? { ...x, required: !x.required } : x)))
-  const removeField = (id: string) =>
+  }
+  const removeField = (id: string) => {
+    if (onRemoveField) { onRemoveField(id); return }
     onChange(fields.filter((x) => x.id !== id))
-  const renameField = (id: string, label: string) =>
+  }
+  const renameField = (id: string, label: string) => {
+    if (onRenameField) { onRenameField(id, label); return }
     onChange(fields.map((x) => (x.id === id ? { ...x, label } : x)))
-  const updateConfig = (id: string, patch: Record<string, any>) =>
+  }
+  const updateConfig = (id: string, patch: Record<string, any>) => {
+    if (onUpdateFieldConfig) { onUpdateFieldConfig(id, patch); return }
     onChange(fields.map((x) => (x.id === id ? { ...x, fieldConfig: { ...(x.fieldConfig || {}), ...patch } } : x)))
+  }
+
 
   /* --- trailing menu --- */
   const trailing = (

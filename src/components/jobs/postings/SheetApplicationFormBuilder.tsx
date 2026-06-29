@@ -5,9 +5,14 @@
  * job_posting_application_fields table via useJobPostingFields. Used inside
  * PostingSheet so the New/Edit posting flow uses the EXACT same design as
  * Wizard Step 4 (Job Posting).
+ *
+ * Persistence model: per-action granular handlers (no diff). Each user action
+ * (add / rename / toggle required / config / delete / reorder) calls exactly
+ * one mutation on the hook. This avoids the race where a toggle-Required
+ * click could clobber a user-typed label.
  */
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { User, Mail, Phone, FileText, Linkedin } from 'lucide-react'
 import { useJobPostingFields, type PostingField, type FieldType as DbFieldType } from '@/hooks/useJobPostingFields'
 import { useCoreFields } from '@/hooks/useCoreFields'
@@ -65,7 +70,7 @@ interface Props {
 }
 
 export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, onEeoChange }: Props) {
-  const { fields: posting, addCustomField, updateField, deleteField, reorderFields } = useJobPostingFields(postingId)
+  const { fields: posting, addCustomField, addFieldFromLibrary, updateField, deleteField, reorderFields } = useJobPostingFields(postingId)
   const { coreFields } = useCoreFields()
 
   // Synthesize locked core-field rows that always appear at the top.
@@ -91,74 +96,52 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
 
   const combined = useMemo<AppField[]>(() => [...coreAppFields, ...customAppFields], [coreAppFields, customAppFields])
 
-  // Track the last AppField snapshot we surfaced so onChange diffs are accurate.
-  const lastRef = useRef<AppField[]>(combined)
-  useEffect(() => {
-    lastRef.current = combined
-  }, [combined])
-
-  const handleChange = async (next: AppField[]) => {
-    const prev = lastRef.current
-    lastRef.current = next
-
-    const prevCustom = prev.filter((f) => !f.locked)
-    const nextCustom = next.filter((f) => !f.locked)
-
-    const prevIds = new Set(prevCustom.map((f) => f.id))
-    const nextIds = new Set(nextCustom.map((f) => f.id))
-
-    // 1. Removed
-    for (const f of prevCustom) {
-      if (!nextIds.has(f.id)) {
-        await deleteField(f.id)
-      }
-    }
-
-    // 2. Added (locally generated transient ids)
-    for (const f of nextCustom) {
-      if (!prevIds.has(f.id)) {
-        await addCustomField({
-          field_label: f.label,
-          field_type: sharedTypeToDb(f.type),
-          is_required: f.required,
-          help_text: f.hint,
-          field_config: (f.fieldConfig as any) || undefined,
-        })
-      }
-    }
-
-    // 3. Updates (label / required / field_config) on existing fields
-    for (const f of nextCustom) {
-      if (!prevIds.has(f.id)) continue
-      const before = prevCustom.find((x) => x.id === f.id)
-      if (!before) continue
-      const updates: { field_label?: string; is_required?: boolean; field_config?: any } = {}
-      if (before.label !== f.label) updates.field_label = f.label
-      if (before.required !== f.required) updates.is_required = f.required
-      if (JSON.stringify(before.fieldConfig || null) !== JSON.stringify(f.fieldConfig || null)) {
-        updates.field_config = f.fieldConfig || null
-      }
-      if (Object.keys(updates).length > 0) {
-        await updateField(f.id, updates as any)
-      }
-    }
-
-    // 4. Reorder (only consider persisted ids, skip just-added transient ones)
-    const persistedNextIds = nextCustom.map((f) => f.id).filter((id) => prevIds.has(id))
-    const persistedPrevIds = prevCustom.map((f) => f.id).filter((id) => nextIds.has(id))
-    if (persistedNextIds.length === persistedPrevIds.length && persistedNextIds.length > 1) {
-      const changed = persistedNextIds.some((id, i) => id !== persistedPrevIds[i])
-      if (changed) await reorderFields(persistedNextIds)
-    }
-  }
-
   return (
     <ApplicationFormBuilder
       fields={combined}
-      onChange={handleChange}
+      // Required by the props contract, but never used because we provide all
+      // granular handlers below.
+      onChange={() => { /* no-op: granular handlers handle every mutation */ }}
       eeoEnabled={eeoEnabled}
       onEeoChange={onEeoChange}
       readOnly={readOnly}
+      onAddSmart={(sf) => {
+        void addCustomField({
+          field_label: sf.label,
+          field_type: sharedTypeToDb(sf.type),
+          is_required: false,
+          help_text: sf.hint,
+          field_config: sf.type === 'salary' ? ({ currency: 'USD', period: 'annually' } as any) : undefined,
+        })
+      }}
+      onAddBasic={(bt) => {
+        void addCustomField({
+          field_label: `New ${bt.label.toLowerCase()} question`,
+          field_type: sharedTypeToDb(bt.type),
+          is_required: false,
+        })
+      }}
+      onAddFromLibrary={(lf) => {
+        void addFieldFromLibrary(lf as any)
+      }}
+      onRenameField={(id, label) => {
+        void updateField(id, { field_label: label } as any)
+      }}
+      onToggleRequired={(id, next) => {
+        void updateField(id, { is_required: next } as any)
+      }}
+      onUpdateFieldConfig={(id, patch) => {
+        const current = posting.find((p) => p.id === id)
+        const merged = { ...(current?.field_config as any || {}), ...patch }
+        void updateField(id, { field_config: merged } as any)
+      }}
+      onRemoveField={(id) => {
+        void deleteField(id)
+      }}
+      onReorderFields={(orderedIds) => {
+        // orderedIds excludes locked core rows; only persisted custom fields.
+        void reorderFields(orderedIds)
+      }}
     />
   )
 }
