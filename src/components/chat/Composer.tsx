@@ -125,7 +125,7 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
             variant={isNote ? 'secondary' : undefined}
             onClick={handleSend}
             disabled={!canSend}
-            icon={<Send className="h-3.5 w-3.5" />}
+            icon={Send}
           >
             {send.isPending ? 'Sending…' : isNote ? 'Add note' : 'Send'}
           </Button>
