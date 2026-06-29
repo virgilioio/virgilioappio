@@ -239,8 +239,59 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     /* --- branding --- */
     const [brandColor, setBrandColor] = useState('#6F3FF5')
     const [bannerName, setBannerName] = useState('')
+    const [bannerUrl, setBannerUrl] = useState<string | null>(null)
+    const [bannerUploading, setBannerUploading] = useState(false)
     const [teamPhotos, setTeamPhotos] = useState(true)
     const [cultureVideo, setCultureVideo] = useState(false)
+
+    /* Resolve tenant_id from the parent job's organization to scope storage uploads. */
+    async function resolveTenantIdForUpload(): Promise<string | null> {
+      const orgId: string | undefined = (jobData as any)?.organization_id
+      if (orgId) {
+        const { data } = await supabase.from('organizations').select('tenant_id').eq('id', orgId).maybeSingle()
+        if (data?.tenant_id) return data.tenant_id as string
+      }
+      const { data: auth } = await supabase.auth.getUser()
+      const uid = auth?.user?.id
+      if (!uid) return null
+      const { data: mem } = await supabase.from('members').select('tenant_id').eq('user_id', uid).limit(1).maybeSingle()
+      return (mem?.tenant_id as string) || null
+    }
+
+    async function handleBannerFileChange(file: File | null) {
+      if (!file) return
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please choose an image file (PNG, JPG, or WebP).')
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Banner must be 5 MB or smaller.')
+        return
+      }
+      setBannerUploading(true)
+      try {
+        const tenantId = await resolveTenantIdForUpload()
+        if (!tenantId) {
+          toast.error('Could not resolve your workspace — please reload and try again.')
+          return
+        }
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+        const key = `${tenantId}/job-banners/${(jobId || 'wizard')}-${Date.now()}.${ext}`
+        const { error: upErr } = await supabase.storage
+          .from('careers-logos')
+          .upload(key, file, { upsert: true, contentType: file.type, cacheControl: '3600' })
+        if (upErr) throw upErr
+        const { data: pub } = supabase.storage.from('careers-logos').getPublicUrl(key)
+        setBannerUrl(pub.publicUrl)
+        setBannerName(file.name)
+        toast.success('Hero banner uploaded.')
+      } catch (e: any) {
+        console.error('Banner upload failed:', e)
+        toast.error(e?.message || 'Banner upload failed.')
+      } finally {
+        setBannerUploading(false)
+      }
+    }
 
     /* --- application form --- */
     const [fields, setFields] = useState<AppField[]>(DEFAULT_FIELDS)
