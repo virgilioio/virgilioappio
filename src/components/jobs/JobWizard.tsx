@@ -243,6 +243,28 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
 
   const handleComplete = async () => {
     setWizardState((prev) => ({ ...prev, isComplete: true }))
+
+    // Publish the posting if the Summary toggle is ON. The posting was created
+    // as a draft (is_active=false) in Step 4 so this is the moment it goes live.
+    if (publishImmediately && wizardState.hasPosting && createdPostingId) {
+      try {
+        const { error: pubErr } = await supabase
+          .from('job_postings')
+          .update({ is_active: true })
+          .eq('id', createdPostingId)
+        if (pubErr) {
+          console.error('Failed to publish posting:', pubErr)
+          toast({
+            title: 'Job created, but publish failed',
+            description: 'Open the posting and click Publish to retry.',
+            variant: 'destructive',
+          })
+        }
+      } catch (e) {
+        console.error('Failed to publish posting:', e)
+      }
+    }
+
     if (
       autoSource &&
       wizardState.createdJobId &&
@@ -258,7 +280,10 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     }
     toast({
       title: 'Job Created Successfully!',
-      description: 'Your job has been created and is ready for candidates.',
+      description:
+        publishImmediately && wizardState.hasPosting
+          ? 'Your job is live on your careers page.'
+          : 'Your job has been created and is ready for candidates.',
     })
     if (wizardState.createdJobId && wizardState.createdJobId !== 'created') {
       window.open(`/jobs/${wizardState.createdJobId}`, '_blank')
