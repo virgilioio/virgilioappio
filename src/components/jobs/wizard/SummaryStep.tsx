@@ -47,6 +47,10 @@ interface SummaryStepProps {
   onGoToStep: (step: number) => void
   autoSource?: boolean
   onAutoSourceChange?: (v: boolean) => void
+  publishImmediately?: boolean
+  onPublishImmediatelyChange?: (v: boolean) => void
+  notifySlack?: boolean
+  onNotifySlackChange?: (v: boolean) => void
 }
 
 const STAGE_TONES = ['blue', 'purple', 'yellow', 'pink', 'green', 'orange', 'lilac'] as const
