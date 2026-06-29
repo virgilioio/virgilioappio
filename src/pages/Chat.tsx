@@ -14,7 +14,7 @@ export default function Chat() {
     <div className="flex h-[calc(100dvh-4rem)] w-full bg-surface-secondary">
       <ConversationListPane />
       <ThreadPane threadId={threadId} />
-      <ContextPane />
+      <ContextPane threadId={threadId} />
     </div>
   )
 }
