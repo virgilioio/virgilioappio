@@ -899,9 +899,10 @@ interface OpenJobsCardProps {
   isLoading: boolean
   onPipeline: () => void
   onJobClick: (id: string) => void
+  onCreateJob: () => void
 }
 
-function OpenJobsCard({ jobs, metrics, stale, isLoading, onPipeline, onJobClick }: OpenJobsCardProps) {
+function OpenJobsCard({ jobs, metrics, stale, isLoading, onPipeline, onJobClick, onCreateJob }: OpenJobsCardProps) {
   const list = jobs ?? []
   const metricsById = new Map((metrics ?? []).map(m => [m.job_id, m]))
   const stuckByJob = (stale ?? []).reduce<Record<string, number>>((acc, s) => {
