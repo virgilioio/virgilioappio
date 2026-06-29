@@ -642,15 +642,48 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <FieldLabel optional>Hero banner</FieldLabel>
-              <label className="mt-2 block rounded-xl border border-dashed border-virgilio-border bg-[#FAFAF7] aspect-[16/5] cursor-pointer hover:bg-[#F2EBFF] transition-colors relative overflow-hidden"
-                style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}30)` }}>
-                <input type="file" accept="image/*" className="sr-only"
-                  onChange={(e) => setBannerName(e.target.files?.[0]?.name || '')} />
-                <span className="absolute bottom-3 left-3 text-[11.5px] text-white/90 font-medium">
-                  {bannerName || 'Click to upload (1600 × 480 recommended)'}
+              <label
+                className="mt-2 block rounded-xl border border-dashed border-virgilio-border bg-[#FAFAF7] aspect-[16/5] cursor-pointer hover:bg-[#F2EBFF] transition-colors relative overflow-hidden"
+                style={
+                  bannerUrl
+                    ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : { background: `linear-gradient(135deg, ${brandColor}, ${brandColor}30)` }
+                }
+              >
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  disabled={bannerUploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null
+                    void handleBannerFileChange(f)
+                    e.currentTarget.value = ''
+                  }}
+                />
+                <span className="absolute bottom-3 left-3 text-[11.5px] text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                  {bannerUploading
+                    ? 'Uploading…'
+                    : bannerUrl
+                    ? (bannerName || 'Banner uploaded — click to replace')
+                    : 'Click to upload (1600 × 480 recommended · PNG/JPG/WebP · max 5 MB)'}
                 </span>
+                {bannerUrl && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setBannerUrl(null)
+                      setBannerName('')
+                    }}
+                    className="absolute top-2 right-2 h-7 px-2 rounded-md bg-black/60 text-white text-[11px] font-poppins font-medium hover:bg-black/75"
+                  >
+                    Remove
+                  </button>
+                )}
               </label>
-              <FieldHint>Falls back to workspace cover.</FieldHint>
+              <FieldHint>Shown at the top of the public job posting. Falls back to the brand-color gradient.</FieldHint>
             </div>
             <div>
               <FieldLabel>Brand color</FieldLabel>
