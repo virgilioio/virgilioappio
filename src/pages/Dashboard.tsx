@@ -959,8 +959,14 @@ function OpenJobsCard({ jobs, metrics, stale, isLoading, onPipeline, onJobClick,
           ))}
         </div>
       ) : list.length === 0 ? (
-        <div style={{ padding: '24px 16px', textAlign: 'center', font: '400 12px/1.4 Inter', color: C.tertiary }}>
-          No open jobs.
+        <div style={{ borderTop: `1px solid ${C.hairline}` }}>
+          <EmptyState
+            size="card"
+            illustration={<SoftFlag />}
+            title="No open jobs"
+            body="Create a job to start tracking candidates and pipeline activity."
+            primary={<EmptyAction onClick={onCreateJob}>Go to Jobs</EmptyAction>}
+          />
         </div>
       ) : (
         list.map((j, idx) => {
