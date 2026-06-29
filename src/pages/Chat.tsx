@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom'
 import { ConversationListPane } from '@/components/chat/ConversationListPane'
 import { ThreadPane } from '@/components/chat/ThreadPane'
 import { ContextPane } from '@/components/chat/ContextPane'
+import { useChatRealtime } from '@/hooks/chat/useChatRealtime'
 
 /**
  * Chat — 3-pane workspace shell (Step 1.4).
@@ -9,6 +10,7 @@ import { ContextPane } from '@/components/chat/ContextPane'
  */
 export default function Chat() {
   const { threadId } = useParams<{ threadId: string }>()
+  useChatRealtime({ activeThreadId: threadId })
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] w-full bg-surface-secondary">
