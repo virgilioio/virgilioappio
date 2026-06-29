@@ -1778,6 +1778,395 @@ export type Database = {
           },
         ]
       }
+      chat_access_tokens: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          issued_at: string
+          jti_hash: string
+          last_used_at: string | null
+          revoked_at: string | null
+          tenant_id: string
+          thread_id: string
+          use_count: number
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          issued_at?: string
+          jti_hash: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          tenant_id: string
+          thread_id: string
+          use_count?: number
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          jti_hash?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          tenant_id?: string
+          thread_id?: string
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_access_tokens_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_audit_log: {
+        Row: {
+          actor_id: string | null
+          actor_type: string
+          created_at: string
+          event: string
+          id: string
+          ip_address: unknown
+          metadata: Json
+          tenant_id: string
+          thread_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type: string
+          created_at?: string
+          event: string
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          tenant_id: string
+          thread_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string
+          event?: string
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          tenant_id?: string
+          thread_id?: string | null
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          direction: string
+          id: string
+          parts: Json
+          read_by_recipient_at: string | null
+          redacted_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages_2026_05: {
+        Row: {
+          body: string | null
+          created_at: string
+          direction: string
+          id: string
+          parts: Json
+          read_by_recipient_at: string | null
+          redacted_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages_2026_06: {
+        Row: {
+          body: string | null
+          created_at: string
+          direction: string
+          id: string
+          parts: Json
+          read_by_recipient_at: string | null
+          redacted_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages_2026_07: {
+        Row: {
+          body: string | null
+          created_at: string
+          direction: string
+          id: string
+          parts: Json
+          read_by_recipient_at: string | null
+          redacted_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages_2026_08: {
+        Row: {
+          body: string | null
+          created_at: string
+          direction: string
+          id: string
+          parts: Json
+          read_by_recipient_at: string | null
+          redacted_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
+      chat_rate_limits: {
+        Row: {
+          count: number
+          created_at: string
+          id: string
+          scope: string
+          scope_key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          id?: string
+          scope: string
+          scope_key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          id?: string
+          scope?: string
+          scope_key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      chat_threads: {
+        Row: {
+          archived_at: string | null
+          assigned_recruiter_id: string | null
+          association_id: string | null
+          candidate_id: string
+          channel: string
+          context_summary: string | null
+          created_at: string
+          deleted_at: string | null
+          id: string
+          job_id: string
+          last_candidate_read_at: string | null
+          last_message_at: string | null
+          last_message_preview: string | null
+          last_recruiter_read_at: string | null
+          message_count: number
+          mode: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          assigned_recruiter_id?: string | null
+          association_id?: string | null
+          candidate_id: string
+          channel?: string
+          context_summary?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          job_id: string
+          last_candidate_read_at?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          last_recruiter_read_at?: string | null
+          message_count?: number
+          mode?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          assigned_recruiter_id?: string | null
+          association_id?: string | null
+          candidate_id?: string
+          channel?: string
+          context_summary?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          job_id?: string
+          last_candidate_read_at?: string | null
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          last_recruiter_read_at?: string | null
+          message_count?: number
+          mode?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       company_contacts: {
         Row: {
           company_id: string
@@ -3208,6 +3597,8 @@ export type Database = {
       }
       job_postings: {
         Row: {
+          chat_enabled: boolean
+          chat_mode: string
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -3227,6 +3618,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          chat_enabled?: boolean
+          chat_mode?: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -3246,6 +3639,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          chat_enabled?: boolean
+          chat_mode?: string
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -6710,6 +7105,9 @@ export type Database = {
           billing_phone: string | null
           billing_postal_code: string | null
           billing_state: string | null
+          chat_ai_daily_token_cap: number
+          chat_hard_delete_days: number
+          chat_retention_days_after_close: number
           created_at: string
           id: string
           metadata: Json | null
@@ -6737,6 +7135,9 @@ export type Database = {
           billing_phone?: string | null
           billing_postal_code?: string | null
           billing_state?: string | null
+          chat_ai_daily_token_cap?: number
+          chat_hard_delete_days?: number
+          chat_retention_days_after_close?: number
           created_at?: string
           id?: string
           metadata?: Json | null
@@ -6764,6 +7165,9 @@ export type Database = {
           billing_phone?: string | null
           billing_postal_code?: string | null
           billing_state?: string | null
+          chat_ai_daily_token_cap?: number
+          chat_hard_delete_days?: number
+          chat_retention_days_after_close?: number
           created_at?: string
           id?: string
           metadata?: Json | null
@@ -7091,7 +7495,12 @@ export type Database = {
         }[]
       }
       backfill_default_stages_to_all_jobs: { Args: never; Returns: number }
+      can_access_chat_thread: {
+        Args: { _job_id: string; _tenant_id: string }
+        Returns: boolean
+      }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
+      can_use_chat_module: { Args: never; Returns: boolean }
       can_view_eeo: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
