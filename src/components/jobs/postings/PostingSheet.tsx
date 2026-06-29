@@ -28,6 +28,7 @@ import {
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { markdownToHtml } from '@/utils/markdown'
 import { useTenant } from '@/hooks/useTenant'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
@@ -143,7 +144,7 @@ export function PostingSheet({
         if (p) {
           setTitle(p.title || '')
           setSlug(p.slug || '')
-          setDescription(p.description || '')
+          setDescription(markdownToHtml(p.description || ''))
           setIsActive(!!p.is_active)
           const d = (p as any).details || {}
           setReferenceId(d.reference_id || '')
@@ -296,7 +297,7 @@ export function PostingSheet({
       })
       if (error) throw error
       if (data?.description) {
-        setDescription(data.description)
+        setDescription(markdownToHtml(data.description))
         setIsExternalUpdate(true)
         toast({ title: 'Description generated', description: 'Gio refreshed the public copy.' })
       } else {

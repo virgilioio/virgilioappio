@@ -1,39 +1,34 @@
-## Validation
+## Problem
 
-Confirmed — true on both counts:
+`generate-job-description` returns **Markdown** (per its prompt: "Output MARKDOWN ONLY"), but the Public Description editor in `PostingSheet.tsx` is a `RichTextEditor` that treats `value` as **HTML**. So raw Markdown gets pushed straight in, and inside a contenteditable all newlines collapse to whitespace — producing the single-blob, no-spacing text the user sees. Saving that blob then breaks the public page (which renders the stored value with `markdownToHtml` / `SafeHtml`).
 
-1. **Edit posting sheet has no department field.** `src/components/jobs/postings/PostingSheet.tsx` contains zero references to `department`. The sheet lets you edit title, location, employment type, banner, channels, application form, etc., but not the department the posting is filed under.
-2. **Careers page groups by `details.department`.** `src/pages/PublicCareersPage.tsx` (line 105) and `VirgilioCareersPage.tsx` (line 104) both do `department: (p.details?.department as string) || 'Other'`. Any posting created without a department name in `details` falls into the "Other" bucket with no way to fix it from the UI.
+The same issue exists in `JobInfoStep.tsx` and `JobPostingStep.tsx` (wizard) which also call `generate-job-description` and push the markdown into rich-text editors.
 
-The wizard writes both `details.department` (name) and `details.department_id` (id) to `job_postings` on creation (`JobPostingStep.tsx` lines 352–380). Older postings — or any created when the wizard skipped the lookup — have empty values and are now stranded.
+## Fix
 
-## Fix Plan
+Convert AI Markdown → HTML at the boundary, before it touches the editor and before it's saved. We already have `src/utils/markdown.ts` (`markdownToHtml`) used by `SafeHtml` consumers; reuse it.
 
-### 1. Add a Department selector to the Edit Posting sheet
-In `PostingSheet.tsx`, alongside the existing posting-level fields (near title/location/employment type):
+### 1. `src/components/jobs/postings/PostingSheet.tsx` — `handleGenerateDescription`
+- After `data?.description` arrives, run `const html = markdownToHtml(data.description)`.
+- `setDescription(html)` instead of the raw markdown.
+- Keep `setIsExternalUpdate(true)` so RichTextEditor reloads.
 
-- Add a `SearchableSelect` powered by `useDepartments()` (same hook the wizard uses).
-- Pre-select from `posting.details.department_id`; fall back to matching `posting.details.department` by name; otherwise empty.
-- Support "Create department" inline (mirroring `JobInfoStep.tsx` behavior) so users aren't blocked.
-- On change, persist BOTH fields into `job_postings.details`:
-  - `details.department_id` = selected id
-  - `details.department` = selected name (denormalized — careers page reads the name directly)
-- Reuse the existing posting update mutation (the one that already writes `details` for title/location). No schema change needed — `details` is JSONB.
+### 2. `src/components/jobs/wizard/JobPostingStep.tsx` (rewrite button) and `src/components/jobs/wizard/JobInfoStep.tsx` (draft button)
+- Same one-line conversion before assigning to the editor / form state.
 
-### 2. Backfill stranded postings (one-time)
-Run a data update for postings whose `details.department` is null/empty but whose parent `jobs.department_id` exists:
+### 3. Defensive load path in `PostingSheet.tsx`
+- When hydrating `setDescription(p.description || '')` at line 146, detect legacy rows that were saved as raw Markdown (no HTML tags but contains `##` / `*` / `-` bullets) and run `markdownToHtml` once so existing broken postings render correctly in the editor on open. `markdownToHtml` already no-ops on real HTML, so this is safe.
 
-- For each affected `job_posting`, look up the job's `department_id` → `departments.name`.
-- Write both into `details`.
+### 4. No backend change
+- Leave the edge function prompt as-is (markdown is a clean intermediate format and other callers may rely on it). All conversion happens client-side.
 
-This immediately removes existing postings from "Other" without requiring users to re-open each one.
+## Why this works
 
-### 3. Guardrail in the careers page (optional polish)
-In `PublicCareersPage.tsx` and `VirgilioCareersPage.tsx`, if `details.department` is missing, fall back to the parent job's department name before defaulting to `'Other'`. This protects against any future posting that slips through without the denormalized name.
+- Editor receives proper `<h2>`, `<ul>`, `<li>`, `<p>` — paragraph breaks, bullets and headings render as the user expects and can be edited safely.
+- Saved value is HTML, identical to what the public page already renders through `SafeHtml`, so the public posting stays intact when the user edits.
+- Existing postings stored as raw Markdown get auto-upgraded on next open (and re-saved as HTML on next save).
 
-### Technical notes
+## Out of scope
 
-- No migration required — `job_postings.details` is already JSONB and both `department` and `department_id` are already conventions used by the wizard.
-- The Edit Posting save path already round-trips `details`, so adding two keys is purely additive.
-- The backfill is a single `UPDATE ... FROM jobs JOIN departments ...` statement run via the data tool.
-- Keep the change UI-only otherwise; no business-logic changes to the wizard, jobs table, or RLS.
+- Changing the rich text toolbar or schema.
+- Touching `generate-job-description` prompt or other Markdown-returning AI endpoints.
