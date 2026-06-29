@@ -297,7 +297,7 @@ export function PostingSheet({
       })
       if (error) throw error
       if (data?.description) {
-        setDescription(data.description)
+        setDescription(markdownToHtml(data.description))
         setIsExternalUpdate(true)
         toast({ title: 'Description generated', description: 'Gio refreshed the public copy.' })
       } else {
