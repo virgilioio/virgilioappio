@@ -768,8 +768,13 @@ function TodayCard({ bookings, isLoading, nextEventId, freeAfter, onFullCalendar
           ))}
         </div>
       ) : bookings.length === 0 ? (
-        <div style={{ padding: '24px 16px', textAlign: 'center', font: '400 12px/1.4 Inter', color: C.tertiary }}>
-          No events today.
+        <div style={{ borderTop: `1px solid ${C.hairline}` }}>
+          <EmptyState
+            size="card"
+            illustration={<SoftCalendar />}
+            title="Nothing on today"
+            body="Your schedule is clear. Newly booked interviews will show up here."
+          />
         </div>
       ) : (
         bookings.map((b, idx) => {
