@@ -1,18 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useTenant } from '@/hooks/useTenant'
+import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { logChatAuditEvent } from '@/lib/chat/audit'
 
 /**
  * useChatKillSwitch — read + toggle the tenant-wide `chat_paused` flag (Step 1.10).
  *
  * When paused:
  *   - Recruiter UI shows a top-of-thread banner (handled in `ThreadPane`).
+ *   - DB BEFORE INSERT trigger blocks inbound candidate messages (Phase 1.5).
  *   - Candidate send endpoints will return 423 Locked (enforced in Phase 2 edge fns).
  *   - AI auto-replies are suspended (enforced in Phase 3 worker).
  */
 export function useChatKillSwitch() {
   const { tenant } = useTenant()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -26,6 +30,13 @@ export function useChatKillSwitch() {
         .update({ chat_paused: paused })
         .eq('id', tenant.id)
       if (error) throw error
+      if (user?.id) {
+        void logChatAuditEvent({
+          tenantId: tenant.id,
+          actorId: user.id,
+          event: paused ? 'chat_paused' : 'chat_resumed',
+        })
+      }
       return paused
     },
     onSuccess: (paused) => {
