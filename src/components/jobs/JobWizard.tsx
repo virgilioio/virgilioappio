@@ -368,6 +368,10 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
             onGoToStep={goToStep}
             autoSource={autoSource}
             onAutoSourceChange={setAutoSource}
+            publishImmediately={publishImmediately}
+            onPublishImmediatelyChange={setPublishImmediately}
+            notifySlack={notifySlack}
+            onNotifySlackChange={setNotifySlack}
           />
         )
       default:
