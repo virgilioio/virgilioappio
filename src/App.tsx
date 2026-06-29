@@ -88,7 +88,17 @@ if (typeof window !== 'undefined') {
   ;(window as unknown as { __queryClient?: QueryClient }).__queryClient = queryClient
 }
 
+
+// Step 1.2 — gate /chat behind canUseChat
+import { useCanUseChat } from '@/hooks/usePermissions'
+function ChatRouteGuard({ children }: { children: React.ReactNode }) {
+  const canUseChat = useCanUseChat()
+  if (!canUseChat) return <NotFound />
+  return <>{children}</>
+}
+
 function AppContent() {
+
 
 
   return (
@@ -163,7 +173,7 @@ function AppContent() {
             <Route path="/crm/deals" element={<Deals />} />
             <Route path="/crm/companies/:id" element={<CompanyDetail />} />
             <Route path="/organizations" element={<Navigate to="/crm/companies" replace />} />
-            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
 
           </Route>
         </Route>

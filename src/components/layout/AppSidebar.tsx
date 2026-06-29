@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { usePermissions } from '@/hooks/usePermissions'
+import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'analytics' | 'settings' | 'my-profile' | null
 
@@ -82,7 +82,7 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'
   { id: 'home', label: 'Dashboard', Icon: DashboardGlyph, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'ats', label: 'ATS', Icon: AtsGlyph, href: '/jobs', show: (p) => p.canViewJobs },
   { id: 'crm', label: 'CRM', Icon: CrmGlyph, href: '/crm', show: (p) => p.canViewOrganizations },
-  { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: (p) => !p.isSalesUser },
+  { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: () => false }, // gated via useCanUseChat below
   { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/analytics', show: (p) => !p.isSalesUser },
 ]
 
@@ -100,7 +100,8 @@ export function AppSidebar() {
   const active = getActiveSection(pathname, search)
   const { profile } = useUserProfile()
   const permissions = usePermissions()
-  const items = allItems.filter((item) => item.show(permissions))
+  const canUseChat = useCanUseChat()
+  const items = allItems.filter((item) => (item.id === 'chat' ? canUseChat : item.show(permissions)))
 
   const initials = (() => {
     const f = profile?.first_name?.trim()?.[0] ?? ''

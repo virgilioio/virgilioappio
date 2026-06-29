@@ -1,6 +1,10 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
+
+
 
 export interface PermissionsState {
   // Job permissions
@@ -125,3 +129,36 @@ export function usePermissions(): PermissionsState {
     hasOrganizationContext,
   }
 }
+
+/**
+ * Chat module access (Step 1.2):
+ * Owners + Admins (system-wide in tenant) OR users assigned as recruiter on any job.
+ * Hiring Managers, Interviewers, and Sales users get false.
+ */
+export function useCanUseChat(): boolean {
+  const { user } = useAuth()
+  const perms = usePermissions()
+
+  const baseAllowed = perms.isPlatformAdmin || perms.isWorkspaceOwner || perms.isAdmin
+
+  const { data: isRecruiterAnywhere } = useQuery({
+    queryKey: ['chat-recruiter-assignment', user?.id],
+    enabled: !!user?.id && !baseAllowed && perms.isMember && !perms.isSalesUser,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('job_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user!.id)
+        .eq('role', 'recruiter')
+        .is('deleted_at', null)
+      if (error) return false
+      return (count ?? 0) > 0
+    },
+  })
+
+  if (baseAllowed) return true
+  if (perms.isSalesUser) return false
+  return !!isRecruiterAnywhere
+}
+
