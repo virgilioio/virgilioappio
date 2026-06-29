@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { SoftPlane, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { SoftPlane, SoftMagnifier, SoftCalendar, SoftFlag } from '@/components/ui/EmptyIllustrations'
 import { format } from 'date-fns'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -376,6 +376,7 @@ export default function Dashboard() {
             isLoading={jobsLoading}
             onPipeline={() => navigate('/pipeline')}
             onJobClick={(id) => navigate(`/jobs/${id}`)}
+            onCreateJob={() => navigate('/jobs')}
           />
         </div>
       </div>
@@ -768,8 +769,13 @@ function TodayCard({ bookings, isLoading, nextEventId, freeAfter, onFullCalendar
           ))}
         </div>
       ) : bookings.length === 0 ? (
-        <div style={{ padding: '24px 16px', textAlign: 'center', font: '400 12px/1.4 Inter', color: C.tertiary }}>
-          No events today.
+        <div style={{ borderTop: `1px solid ${C.hairline}` }}>
+          <EmptyState
+            size="card"
+            illustration={<SoftCalendar />}
+            title="Nothing on today"
+            body="Your schedule is clear. Newly booked interviews will show up here."
+          />
         </div>
       ) : (
         bookings.map((b, idx) => {
@@ -893,9 +899,10 @@ interface OpenJobsCardProps {
   isLoading: boolean
   onPipeline: () => void
   onJobClick: (id: string) => void
+  onCreateJob: () => void
 }
 
-function OpenJobsCard({ jobs, metrics, stale, isLoading, onPipeline, onJobClick }: OpenJobsCardProps) {
+function OpenJobsCard({ jobs, metrics, stale, isLoading, onPipeline, onJobClick, onCreateJob }: OpenJobsCardProps) {
   const list = jobs ?? []
   const metricsById = new Map((metrics ?? []).map(m => [m.job_id, m]))
   const stuckByJob = (stale ?? []).reduce<Record<string, number>>((acc, s) => {
@@ -952,8 +959,14 @@ function OpenJobsCard({ jobs, metrics, stale, isLoading, onPipeline, onJobClick 
           ))}
         </div>
       ) : list.length === 0 ? (
-        <div style={{ padding: '24px 16px', textAlign: 'center', font: '400 12px/1.4 Inter', color: C.tertiary }}>
-          No open jobs.
+        <div style={{ borderTop: `1px solid ${C.hairline}` }}>
+          <EmptyState
+            size="card"
+            illustration={<SoftFlag />}
+            title="No open jobs"
+            body="Create a job to start tracking candidates and pipeline activity."
+            primary={<EmptyAction onClick={onCreateJob}>Go to Jobs</EmptyAction>}
+          />
         </div>
       ) : (
         list.map((j, idx) => {
