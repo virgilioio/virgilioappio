@@ -185,6 +185,10 @@ export function SummaryStep({
   onGoToStep,
   autoSource = true,
   onAutoSourceChange,
+  publishImmediately = true,
+  onPublishImmediatelyChange,
+  notifySlack = false,
+  onNotifySlackChange,
 }: SummaryStepProps) {
   const { organizations } = useOrganizations()
   const { departments } = useDepartments()
