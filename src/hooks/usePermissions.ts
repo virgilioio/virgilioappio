@@ -1,6 +1,10 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
+import { usePermissions as _usePermissions } from '@/hooks/usePermissions'
+
 
 export interface PermissionsState {
   // Job permissions
