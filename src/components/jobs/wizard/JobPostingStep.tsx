@@ -173,6 +173,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
   function JobPostingStep({ jobData, onUpdate, jobId, onPostingMeta }, ref) {
     const { createPosting, updatePosting } = useJobPostings(jobId || '')
     const { fields: smartFieldsLibrary } = useApplicationFields()
+    const { tenant } = useTenant()
+    const careersPageName = tenant?.name ? `${tenant.name}'s careers page` : 'Your careers page'
 
     const setJob = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) =>
       onUpdate({ [field]: value } as Partial<CreateJobData>)
