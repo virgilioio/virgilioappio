@@ -68,6 +68,7 @@ export function PostingSheet({
   const { tenant } = useTenant()
   const { getPosting, createPosting, updatePosting } = useJobPostings(jobId)
   const { isEnabled: talentEnabled } = useJobBoardIntegration('talent')
+  const { departments, isLoading: isLoadingDepts, createDepartment } = useDepartments()
 
   const isEdit = !!postingId
   const [localId, setLocalId] = useState<string | undefined>(postingId)
