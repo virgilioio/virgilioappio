@@ -491,7 +491,7 @@ export function PostingSheet({
             <div className="mt-4">
               <FormField
                 label="Department"
-                helper="Used to group this posting on your public careers page."
+                helpText="Used to group this posting on your public careers page."
               >
                 <SearchableSelect
                   options={departments.map((d) => ({ value: d.id, label: d.name })) as SearchableSelectOption[]}
