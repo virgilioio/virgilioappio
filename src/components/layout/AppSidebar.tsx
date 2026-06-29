@@ -100,7 +100,8 @@ export function AppSidebar() {
   const active = getActiveSection(pathname, search)
   const { profile } = useUserProfile()
   const permissions = usePermissions()
-  const items = allItems.filter((item) => item.show(permissions))
+  const canUseChat = useCanUseChat()
+  const items = allItems.filter((item) => (item.id === 'chat' ? canUseChat : item.show(permissions)))
 
   const initials = (() => {
     const f = profile?.first_name?.trim()?.[0] ?? ''
