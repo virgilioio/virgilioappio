@@ -272,8 +272,9 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const handlePostingContinue = async () => {
     setIsSubmitting(true)
     try {
-      const ok = await postingRef.current?.savePosting()
-      if (ok === false) return
+      const result = await postingRef.current?.savePosting()
+      if (!result || result.ok === false) return
+      if (result.postingId) setCreatedPostingId(result.postingId)
       setWizardState((prev) => ({ ...prev, currentStep: 5, hasPosting: true }))
     } finally {
       setIsSubmitting(false)
