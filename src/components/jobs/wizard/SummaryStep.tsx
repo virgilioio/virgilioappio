@@ -638,18 +638,19 @@ export function SummaryStep({
                 ? 'Otherwise stays in draft — you can publish later.'
                 : 'Disabled — no posting configured. Add posting info to enable.'
             }
-            defaultOn={hasPosting}
+            checked={hasPosting && publishImmediately}
+            onChange={(v) => onPublishImmediatelyChange?.(v)}
             disabled={!hasPosting}
           />
           <ToggleRow
-            title="Cross-post to LinkedIn, WTTJ, ZipRecruiter"
+            title="Cross-post to LinkedIn, WTTJ, ZipRecruiter (coming soon)"
             helper={
               hasPosting
                 ? '3 free + 1 paid placement. Charged on publish.'
                 : 'Disabled — no posting configured.'
             }
-            defaultOn={hasPosting}
-            disabled={!hasPosting}
+            defaultOn={false}
+            disabled
           />
           <ToggleRow
             title="Open sourcing project linked to this job"
@@ -662,9 +663,11 @@ export function SummaryStep({
             onChange={(v) => onAutoSourceChange?.(v)}
           />
           <ToggleRow
-            title="Notify hiring team in Slack"
+            title="Notify hiring team in Slack (coming soon)"
             helper={`Send a '${hasPosting ? 'job is live' : 'job created'}' message to #hiring-${(dept || 'general').toLowerCase().replace(/\s+/g, '-')}.`}
-            defaultOn={false}
+            checked={notifySlack}
+            onChange={(v) => onNotifySlackChange?.(v)}
+            disabled
           />
         </div>
       </section>
