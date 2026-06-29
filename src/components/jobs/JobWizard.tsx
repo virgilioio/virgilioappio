@@ -11,6 +11,7 @@ import { HiringTeamStep } from './wizard/HiringTeamStep'
 import { SummaryStep } from './wizard/SummaryStep'
 import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
+import { supabase } from '@/integrations/supabase/client'
 
 interface JobWizardProps {
   isOpen: boolean
