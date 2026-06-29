@@ -328,6 +328,10 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     const [allowMessage, setAllowMessage] = useState(false)
     const [enableReferral, setEnableReferral] = useState(true)
 
+    /* --- candidate chat (Step 1.3) --- */
+    const [chatEnabled, setChatEnabled] = useState(true)
+    const [chatMode, setChatMode] = useState<'ai' | 'recruiter'>('ai')
+
     /* --- SEO --- */
     const [metaTitle, setMetaTitle] = useState('')
     const [metaDescription, setMetaDescription] = useState('')
@@ -428,6 +432,13 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
               // Don't block advance; user can fix from PostingSheet.
             }
           }
+
+          // Step 1.3 — persist chat toggle + mode on the new posting.
+          const { error: chatErr } = await supabase
+            .from('job_postings')
+            .update({ chat_enabled: chatEnabled, chat_mode: chatMode })
+            .eq('id', created.id)
+          if (chatErr) console.error('Error saving chat settings:', chatErr)
 
           return { ok: true, postingId: created.id }
         } catch (e: any) {
@@ -792,6 +803,55 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             checked={enableReferral}
             onChange={setEnableReferral}
           />
+        </SectionCard>
+
+        {/* ---------- CANDIDATE CHAT (Step 1.3) ---------- */}
+        <SectionCard title="Candidate chat">
+          <ToggleRow
+            label="Enable chat for this job"
+            hint="Candidates get a private chat thread after they apply. You can reply from the Chat module."
+            checked={chatEnabled}
+            onChange={setChatEnabled}
+          />
+          {chatEnabled && (
+            <div className="rounded-xl border border-virgilio-border bg-white p-4 space-y-3">
+              <p className="text-[10.5px] font-poppins font-semibold uppercase tracking-[0.12em] text-text-secondary">Who replies first</p>
+              <div className="grid gap-2">
+                {([
+                  { id: 'ai', title: 'Chat with Gio', desc: 'Gio answers candidate questions instantly. Candidates can request a human anytime.' },
+                  { id: 'recruiter', title: 'Recruiter only', desc: 'No AI replies. The assigned recruiter handles every message.' },
+                ] as const).map((opt) => {
+                  const active = chatMode === opt.id
+                  return (
+                    <button
+                      type="button"
+                      key={opt.id}
+                      onClick={() => setChatMode(opt.id)}
+                      className={cn(
+                        'flex items-start gap-3 text-left rounded-lg border px-3 py-2.5 transition-colors',
+                        active
+                          ? 'border-virgilio-purple bg-[#FAF8FF]'
+                          : 'border-virgilio-border hover:bg-[#FAFAF7]',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0',
+                          active ? 'border-virgilio-purple' : 'border-virgilio-border',
+                        )}
+                      >
+                        {active && <span className="h-1.5 w-1.5 rounded-full bg-virgilio-purple" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-poppins font-medium text-text-primary">{opt.title}</span>
+                        <span className="block text-[12px] text-text-secondary mt-0.5">{opt.desc}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </SectionCard>
 
         {/* ---------- SEO & SHARING ---------- */}
