@@ -488,7 +488,36 @@ export function PostingSheet({
               />
             </div>
 
+            <div className="mt-4">
+              <FormField
+                label="Department"
+                helper="Used to group this posting on your public careers page."
+              >
+                <SearchableSelect
+                  options={departments.map((d) => ({ value: d.id, label: d.name })) as SearchableSelectOption[]}
+                  value={departmentId}
+                  onValueChange={setDepartmentId}
+                  placeholder={isLoadingDepts ? 'Loading…' : 'Select a department…'}
+                  searchPlaceholder="Search departments…"
+                  emptyMessage="No departments found."
+                  disabled={readOnly}
+                  createNewLabel="Create department"
+                  onCreateNew={async () => {
+                    const name = window.prompt('New department name')
+                    if (!name || !name.trim()) return
+                    try {
+                      const created = await createDepartment.mutateAsync({ name: name.trim() })
+                      if (created?.id) setDepartmentId(created.id)
+                    } catch (e) {
+                      // toast handled in hook
+                    }
+                  }}
+                />
+              </FormField>
+            </div>
+
             <Collapsible open={compOpen} onOpenChange={setCompOpen} className="mt-4">
+
               <CollapsibleTrigger className="flex items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-text-primary">
                 {compOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 Compensation & location
