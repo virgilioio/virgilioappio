@@ -62,6 +62,13 @@ const CrmGlyph: IconRenderer = ({ className }) => (
   </svg>
 )
 
+const ChatGlyph: IconRenderer = ({ className }) => (
+  <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+    <rect x="8" y="9" width="32" height="22" rx="9" fill="currentColor" />
+    <circle className="accent" cx="13.5" cy="36.5" r="3.6" fill="currentColor" />
+  </svg>
+)
+
 const AnalyticsGlyph: IconRenderer = ({ className }) => (
   <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
     <rect x="9" y="25" width="9" height="14" rx="4.5" fill="currentColor" />
@@ -75,6 +82,7 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'
   { id: 'home', label: 'Dashboard', Icon: DashboardGlyph, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'ats', label: 'ATS', Icon: AtsGlyph, href: '/jobs', show: (p) => p.canViewJobs },
   { id: 'crm', label: 'CRM', Icon: CrmGlyph, href: '/crm', show: (p) => p.canViewOrganizations },
+  { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: (p) => !p.isSalesUser },
   { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/analytics', show: (p) => !p.isSalesUser },
 ]
 
