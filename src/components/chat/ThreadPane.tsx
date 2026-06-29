@@ -6,7 +6,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { MessageList } from '@/components/chat/MessageList'
 import { Composer } from '@/components/chat/Composer'
 import { useChatKillSwitch } from '@/hooks/chat/useChatKillSwitch'
+import { useMarkThreadRead } from '@/hooks/chat/useMarkThreadRead'
 import { PauseCircle } from 'lucide-react'
+
+interface ThreadHeaderWithTimestamp extends ThreadHeader {
+  last_message_at?: string | null
+}
 
 interface ThreadPaneProps {
   threadId?: string
