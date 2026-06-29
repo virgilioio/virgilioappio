@@ -12,6 +12,7 @@ export interface Tenant {
   billing_email?: string | null;
   billing_contact_name?: string | null;
   billing_phone?: string | null;
+  chat_paused?: boolean;
   created_at: string;
 }
 
