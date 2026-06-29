@@ -1,104 +1,41 @@
-# Chat Module — Locked Plan v5 (with execution discipline)
+# Phase 1 — Chat Foundation Audit
 
-## Execution discipline (new — applies to the entire Chat build)
+Review only. No code changes proposed here — this confirms what's shipped and flags the gaps a senior engineer would close before calling Phase 1 "done."
 
-Before any code, **Step 0** creates two repo files that govern the rest of the build:
+## Step-by-step verification
 
-- **`docs/chat/PLAN.md`** — the locked plan below, broken into numbered steps. Each step has:
-  - `Goal:` one sentence
-  - `Files allowed:` exhaustive manifest (anything outside requires re-approval)
-  - `DB changes:` yes/no (+ migration name)
-  - `Acceptance criteria:` what must be true when the step is done
-  - `Out of scope:` explicit "do not touch" list
-- **`docs/chat/FOLLOWUPS.md`** — empty stub. Anything I notice outside the current step's manifest gets logged here instead of fixed.
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| 1.1 | `chat_threads`, partitioned `chat_messages`, `chat_access_tokens`, `chat_rate_limits`, `chat_audit_log`, `job_postings.chat_enabled/chat_mode`, `tenants.chat_retention_*`, RLS + GRANTs | ✅ | `20260629231422_…sql` + realtime publication migration |
+| 1.2 | `canUseChat` gate + sidebar/route hide | ✅ | `useCanUseChat`, `ChatRouteGuard` in `App.tsx`, `AppSidebar.tsx` filter |
+| 1.3 | Wizard "Candidate chat" master toggle + AI/Recruiter radio | ✅ | `JobPostingStep.tsx` SectionCard + persistence on `chat_enabled/chat_mode` |
+| 1.4 | `/chat` three-pane shell + `/chat/:threadId` routing | ✅ | `pages/Chat.tsx`, route pair registered |
+| 1.5 | ConversationList (scope tabs, filters, search, empty state) | ✅ | `ConversationListPane.tsx` + `ScopeTabs.tsx` + `useChatThreads.ts` |
+| 1.6 | Thread pane (header, messages, day separators, bubbles, internal notes, optimistic) | ✅ | `ThreadPane.tsx`, `MessageList.tsx`, `MessageBubble.tsx`, `DaySeparator.tsx` |
+| 1.7 | Composer (Reply/Note toggle, Enter/Shift+Enter, disabled stubs) | ✅ | `Composer.tsx` + `useSendChatMessage.ts` |
+| 1.8 | Context panel (Snapshot, Stepper, Quick actions) | ✅ | `ContextPane.tsx`, `ContextSnapshot.tsx`, `ContextStepper.tsx`, `ContextQuickActions.tsx` |
+| 1.9 | Realtime + unread badge | ✅ | `useChatRealtime.ts`, `useChatUnreadCount.ts`, sidebar pill |
+| 1.10 | Tenant kill switch | ✅ | `tenants.chat_paused`, `useChatKillSwitch.ts`, `OrganizationTab.tsx`, banner in `ThreadPane` |
 
-### Rules I will follow on every turn
-1. Re-read `docs/chat/PLAN.md` at the start of each implementation turn.
-2. Open with: **"Executing Step X.Y — files I will touch: […]"** before any edit.
-3. Never touch a file not in the current step's manifest. If I need to, I stop and ask.
-4. **Stop tokens** — if any of these appear, I halt and ask instead of guessing:
-   - Missing product decision
-   - Pre-existing bug in code I need to call
-   - Naming/schema conflict with existing tables or hooks
-   - Permission/RLS ambiguity
-   - Anything the spec doesn't cover
-5. Log opportunistic observations to `FOLLOWUPS.md`, never fix them in-flight.
-6. After each phase ships, I return to plan mode so we re-anchor before the next phase.
+All ten checklist items are present in code and DB. Phase 1 acceptance scope is materially complete.
 
-### Rules you'll use to keep me honest
-- Drive me **one step per turn**: *"Do Step 1.3."* Don't say *"do Phase 1."*
-- If I edit a file not in the manifest, reject the turn and point at the manifest.
-- If I skip the "Executing Step X.Y…" preamble, ask me to restart the turn.
+## Senior-engineer gaps to fix before Phase 2
 
----
+These don't block the checklist but a careful reviewer would flag them now:
 
-## Locked product decisions (from v4)
+1. **Partition runway is finite.** Migration pre-creates `chat_messages_2026_05..08`. After Aug 2026 inserts will fail. Need a scheduled `pg_cron` job (or edge cron) calling a `create_chat_message_partitions(months_ahead int)` function monthly.
+2. **`last_message_at` / `last_message_preview` are not maintained.** `chat_threads` has the columns and an index on them, but no trigger updates them on insert into `chat_messages`. The conversation list ordering and previews will drift / stay null.
+3. **Unread is recruiter-global, not per-recruiter.** `useChatUnreadCount` compares `last_message_at` to a single `last_read_at` on the thread. Two recruiters sharing a thread will clear each other's badge. Needs a `chat_thread_reads(thread_id, user_id, last_read_at)` table (or JSON map) before multi-recruiter inboxes ship.
+4. **Kill switch is UI-only.** `chat_paused` disables the composer in React but there is no DB-level guard. An RLS predicate or `BEFORE INSERT` trigger on `chat_messages` should reject sends when `tenants.chat_paused = true`, otherwise a stale tab or future candidate endpoint bypasses it.
+5. **`chat_mode` / `chat_enabled` are stored per posting but never read at thread creation.** Nothing today refuses to create a thread when a job's chat is disabled, and `chat_mode='ai'` has no behavioural branch yet (expected for Phase 2/3, but should at least be surfaced as a thread-level snapshot column to avoid retroactive mode changes).
+6. **No audit writes.** `chat_audit_log` table exists with RLS but no code path inserts into it (send, internal note, kill-switch toggle, thread assignment). Compliance story is incomplete.
+7. **Rate limit table is unused.** `chat_rate_limits` exists; `useSendChatMessage` does not consult or increment it. Recruiter side is low-risk, but the table should at least be wired for internal-note/send to validate the schema before candidate side opens.
+8. **Realtime payload trust.** `REPLICA IDENTITY FULL` is set, but `useChatRealtime` should still re-fetch via RLS-scoped query rather than trusting the payload row directly (defence in depth if RLS ever regresses).
+9. **Retention defaults exist, enforcement does not.** `chat_retention_days_*` columns are added on `tenants` but no purge job/edge function reads them. Should at minimum land a stub edge function + cron registration so retention is visible in ops.
+10. **Tests.** No Deno tests for the RLS policies on `chat_messages` / `chat_threads` / `chat_audit_log`. Given the cross-tenant blast radius, a small `*_test.ts` proving "user in tenant A cannot read tenant B's messages" should land before Phase 2 adds the candidate surface.
 
-- **Default chat mode per new job:** AI-first (`chat_mode='ai'`, Chat with Gio + human handoff). Recruiter can flip in the Job Wizard.
-- **AI provider:** Existing **OpenAI** API key. All AI calls isolated behind one server helper (`_shared/chatAiClient.ts`) so we can swap to Lovable AI Gateway later by changing one file.
-- **Retention:** **30 days soft-delete, 90 days hard-delete** after thread close. Active threads kept indefinitely. Per-tenant override allowed, never looser than 90d hard cap.
-- **Access scope:** Chat module is **Owners + Admins + Recruiters only**. Hiring Managers and Interviewers see no sidebar glyph, get 404 on `/chat`, and have no chat tab on candidate profiles. "Assigned to me" = `chat_threads.assigned_recruiter_id = auth.uid()`.
+## Suggested next move
 
----
+Before starting Phase 2 (candidate-side magic link, AI auto-reply), close items **1, 2, 3, 4, 6** at minimum — they are foundational and cheaper to fix now than after the candidate channel is live. Items 5, 7, 8, 9, 10 can be tracked as Phase 1.5 hardening.
 
-## Phasing (one phase = one approval gate; one step = one turn)
-
-### Phase 0 — Plan files (Step 0.1)
-Create `docs/chat/PLAN.md` and `docs/chat/FOLLOWUPS.md`. No code, no DB.
-
-### Phase 1 — Foundation, recruiter side, in-app only
-- 1.1 DB migration: `chat_threads`, `chat_messages` (monthly partitioned), `chat_access_tokens`, `chat_rate_limits`, `chat_audit_log`; add `chat_enabled`/`chat_mode` to `job_postings`; add `chat_retention_*` defaults `30`/`90` to `tenants`. Full RLS + GRANTs.
-- 1.2 `canUseChat` permission gate in `usePermissions.ts`; hide sidebar Chat glyph and `/chat` route for non-eligible roles.
-- 1.3 Job Wizard "Candidate chat" section in `JobPostingStep.tsx`: master toggle + AI/Recruiter radio (AI default).
-- 1.4 `/chat` three-pane shell + URL routing `/chat/:threadId` (empty panes, no data yet).
-- 1.5 `ConversationList` (scope tabs, filter chips, search, canonical empty state).
-- 1.6 Thread pane (header, messages, day separators, bubbles, internal note block, optimistic send).
-- 1.7 Composer (Message / Internal note toggle, Enter / Shift+Enter, Send / Save note; Attach/Calendar/Emoji as disabled stubs).
-- 1.8 Context panel (Snapshot, Pipeline stepper, Quick actions wired to existing flows).
-- 1.9 Realtime: per-thread + per-user inbox channels; unread badge on sidebar glyph.
-- 1.10 Kill switch in tenant Settings → "Pause all candidate chat".
-
-### Phase 2 — Candidate magic-link surface
-- 2.1 `CHAT_TOKEN_SECRET` via `generate_secret`.
-- 2.2 Token issuance on application submit; magic-link email to `/c/chat/:token`.
-- 2.3 `chat-token-verify` edge function (Zod, rate-limited, anti-enumeration 404).
-- 2.4 Public `/c/chat/:token` page using AI Elements (Conversation, Message, PromptInput, Shimmer).
-- 2.5 `chat-candidate-send` / `chat-candidate-fetch` edge functions.
-- 2.6 "Talk to a human" button → `status='awaiting_human'`.
-- 2.7 Audit log entries on token issue/use/revoke.
-
-### Phase 3 — Gio AI on OpenAI
-- 3.1 `_shared/chatAiClient.ts` (OpenAI isolation layer).
-- 3.2 `chat-agent-reply` edge function: system prompt, tools (`request_human_handoff`, `schedule_interview_link`, `get_job_details`), advisory lock, daily tenant token cap, fail-soft handoff.
-- 3.3 Summarize button + AI summary card.
-- 3.4 Draft with Gio popover (Insert / Regenerate).
-- 3.5 Suggested replies chip row.
-- 3.6 Context summarization rolling every 50 messages.
-
-### Phase 4 — Notifications + retention + observability
-- 4.1 Candidate + recruiter emails via `automation_email_queue` (throttled / digested).
-- 4.2 In-app bell notification entries.
-- 4.3 `chat-retention-sweeper` pg_cron (30d soft, 90d hard); partition drop for hard delete.
-- 4.4 Admin-only audit log viewer; SLA dashboard widget.
-
-### Phase 5 — Channels (Email then WhatsApp)
-- 5.1 Email channel via existing mail identities, outbound `noreply@app.gogio.io`, open-pixel receipt.
-- 5.2 WhatsApp provider integration (separate spec), webhook → inbound, delivery/read receipts.
-- 5.3 "Connect a channel" CTA in zero state + Settings.
-
-### Phase 6 — Polish (later)
-Attachments UI, smart compose, templates/snippets, presence/typing.
-
----
-
-## Technical details (for engineers; safe to skim)
-
-- **Tables**: `chat_threads(id, tenant_id, job_id, candidate_id, association_id, channel, mode, status, assigned_recruiter_id, last_message_at, last_message_preview, last_candidate_read_at, last_recruiter_read_at, message_count, archived_at, deleted_at, context_summary)`; `chat_messages` partitioned monthly with `direction in ('in','out','note')`, `sender_type`, `parts jsonb`, `read_by_recipient_at`, `redacted_at`; `chat_access_tokens` storing SHA-256 of JWT jti.
-- **RLS**: SELECT requires `user_has_tenant_access(tenant_id) AND has_role(auth.uid(), ANY('owner','admin','recruiter'))`. No HM/Interviewer policies. Candidate writes only via edge functions.
-- **Caching**: React Query — list 30s, unread 15s, thread realtime + cursor pagination size 30. Materialized `chat_unread_counts_mv`.
-- **Cost guards**: Per-tenant daily OpenAI token cap, per-thread reply lock, 429 backpressure, max 4KB body / 5 attachments.
-
----
-
-## What I need from you to start
-Just say **"Do Step 0.1"** and I'll create the two plan files. Nothing else.
+Say the word and I'll turn the must-fix subset into a Phase 1.5 plan.
