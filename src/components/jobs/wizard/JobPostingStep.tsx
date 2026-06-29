@@ -108,6 +108,19 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 }
 const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
 
+/** Map the wizard's local AppField type → the DB field_type enum used in job_posting_application_fields. */
+function sharedTypeToDbType(t: FieldType): string {
+  if (t === 'longtext') return 'textarea'
+  if (t === 'yesno') return 'checkbox'
+  return t
+}
+
+/** Generate a snake_case field_name suitable for the application_fields contract. */
+function sanitizeFieldName(label: string, index: number): string {
+  const base = (label || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  return base ? `${base}_${index + 1}` : `question_${index + 1}`
+}
+
 const DEFAULT_FIELDS: AppField[] = [
   { id: 'full_name', label: 'Full name', type: 'text', hint: 'Short text', required: true, locked: true, icon: User },
   { id: 'email', label: 'Email', type: 'email', hint: 'Email', required: true, locked: true, icon: Mail },
@@ -150,8 +163,9 @@ interface JobPostingStepProps {
 }
 
 export interface JobPostingStepHandle {
-  /** Persist (or skip persist) and return true to allow advancing */
-  savePosting: () => Promise<boolean>
+  /** Persist (or skip persist) and return true to allow advancing.
+   *  When a posting is created, the new posting id is also returned. */
+  savePosting: (opts?: { publish?: boolean }) => Promise<{ ok: boolean; postingId?: string | null }>
 }
 
 export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingStepProps>(
@@ -274,11 +288,11 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
 
     /* --- save --- */
     React.useImperativeHandle(ref, () => ({
-      async savePosting() {
-        if (!jobId) return true // nothing to wire to — skip silently
+      async savePosting(opts) {
+        if (!jobId) return { ok: true, postingId: null } // nothing to wire to — skip silently
         if (!publicTitle.trim()) {
           toast.error('Public job title is required')
-          return false
+          return { ok: false }
         }
 
         // Resolve department NAME for the public careers page. The wizard's
@@ -318,11 +332,53 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         }
 
         try {
-          const created = await createPosting({ title: publicTitle, description, details })
-          return !!created
+          // Create the posting as DRAFT (is_active = false). The wizard's
+          // Summary step "Publish to careers page immediately" toggle is what
+          // flips it live on Create — that happens in JobWizard.handleComplete.
+          const created = await createPosting({
+            title: publicTitle,
+            description,
+            details,
+            is_active: opts?.publish === true ? true : false,
+          })
+          if (!created) return { ok: false }
+
+          // Persist custom (non-locked, non-core) application questions into
+          // job_posting_application_fields — the table that PostingSheet and
+          // the public application form actually read from. The JSON snapshot
+          // above is kept for backward compatibility (previews, summaries).
+          const customFields = fields.filter((f) => !f.locked)
+          if (customFields.length > 0) {
+            const rows = customFields.map((f, index) => ({
+              posting_id: created.id,
+              source: 'custom' as const,
+              application_field_id: null,
+              field_name: sanitizeFieldName(f.label, index),
+              field_label: f.label,
+              field_type: sharedTypeToDbType(f.type),
+              is_required: f.required,
+              column_span: 4,
+              placeholder_text: null,
+              help_text: f.hint || null,
+              accepted_file_types: null,
+              max_file_size_mb: null,
+              field_config: (f as any).fieldConfig ?? null,
+              display_order: index,
+            }))
+            const { error: fieldsErr } = await supabase
+              .from('job_posting_application_fields')
+              .insert(rows as any)
+            if (fieldsErr) {
+              console.error('Error saving custom application fields:', fieldsErr)
+              toast.error('Posting created, but custom questions failed to save — open the posting to retry.')
+              // Don't block advance; user can fix from PostingSheet.
+            }
+          }
+
+          return { ok: true, postingId: created.id }
         } catch (e: any) {
           toast.error(e?.message || 'Failed to create posting')
-          return false
+          return { ok: false }
         }
       },
     }))

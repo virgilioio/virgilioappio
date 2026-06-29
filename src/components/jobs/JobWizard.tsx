@@ -11,6 +11,7 @@ import { HiringTeamStep } from './wizard/HiringTeamStep'
 import { SummaryStep } from './wizard/SummaryStep'
 import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
+import { supabase } from '@/integrations/supabase/client'
 
 interface JobWizardProps {
   isOpen: boolean
@@ -136,6 +137,9 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const mainRef = React.useRef<HTMLElement>(null)
   const [postingMeta, setPostingMeta] = useState({ channels: 1, fields: 9 })
   const [autoSource, setAutoSource] = useState(true)
+  const [publishImmediately, setPublishImmediately] = useState(true)
+  const [notifySlack, setNotifySlack] = useState(false)
+  const [createdPostingId, setCreatedPostingId] = useState<string | null>(null)
   const { ensureProject: ensureSourcingProject } = useJobSourcingProject(
     wizardState.createdJobId && wizardState.createdJobId !== 'created'
       ? wizardState.createdJobId
@@ -240,6 +244,28 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
 
   const handleComplete = async () => {
     setWizardState((prev) => ({ ...prev, isComplete: true }))
+
+    // Publish the posting if the Summary toggle is ON. The posting was created
+    // as a draft (is_active=false) in Step 4 so this is the moment it goes live.
+    if (publishImmediately && wizardState.hasPosting && createdPostingId) {
+      try {
+        const { error: pubErr } = await supabase
+          .from('job_postings')
+          .update({ is_active: true })
+          .eq('id', createdPostingId)
+        if (pubErr) {
+          console.error('Failed to publish posting:', pubErr)
+          toast({
+            title: 'Job created, but publish failed',
+            description: 'Open the posting and click Publish to retry.',
+            variant: 'destructive',
+          })
+        }
+      } catch (e) {
+        console.error('Failed to publish posting:', e)
+      }
+    }
+
     if (
       autoSource &&
       wizardState.createdJobId &&
@@ -255,7 +281,10 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     }
     toast({
       title: 'Job Created Successfully!',
-      description: 'Your job has been created and is ready for candidates.',
+      description:
+        publishImmediately && wizardState.hasPosting
+          ? 'Your job is live on your careers page.'
+          : 'Your job has been created and is ready for candidates.',
     })
     if (wizardState.createdJobId && wizardState.createdJobId !== 'created') {
       window.open(`/jobs/${wizardState.createdJobId}`, '_blank')
@@ -269,8 +298,9 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const handlePostingContinue = async () => {
     setIsSubmitting(true)
     try {
-      const ok = await postingRef.current?.savePosting()
-      if (ok === false) return
+      const result = await postingRef.current?.savePosting()
+      if (!result || result.ok === false) return
+      if (result.postingId) setCreatedPostingId(result.postingId)
       setWizardState((prev) => ({ ...prev, currentStep: 5, hasPosting: true }))
     } finally {
       setIsSubmitting(false)
@@ -338,6 +368,10 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
             onGoToStep={goToStep}
             autoSource={autoSource}
             onAutoSourceChange={setAutoSource}
+            publishImmediately={publishImmediately}
+            onPublishImmediatelyChange={setPublishImmediately}
+            notifySlack={notifySlack}
+            onNotifySlackChange={setNotifySlack}
           />
         )
       default:
