@@ -2,6 +2,7 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Zap, Globe, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTenant } from '@/hooks/useTenant'
 
 export interface ChannelState {
   enabled: boolean
@@ -106,6 +107,8 @@ interface Props {
 }
 
 export function PostingChannelsCard({ value, onChange, readOnly }: Props) {
+  const { tenant } = useTenant()
+  const careersPageName = tenant?.name ? `${tenant.name}'s careers page` : 'Your careers page'
   const setChannel = (code: string, enabled: boolean) => {
     if (code === 'careers') {
       onChange({ ...value, publishToTalent: enabled })
@@ -149,7 +152,7 @@ export function PostingChannelsCard({ value, onChange, readOnly }: Props) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-poppins font-medium text-[13.5px] tracking-[-0.01em] text-text-primary">
-                    {ch.name}
+                    {ch.code === 'careers' ? careersPageName : ch.name}
                   </span>
                   {ch.recommended && (
                     <Badge tone="lilac" size="xs">

@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useJobsWithPostings } from '@/hooks/useJobsWithPostings'
+import { useTenant } from '@/hooks/useTenant'
 import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, type AppField as SharedAppField, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
 
 
@@ -172,6 +173,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
   function JobPostingStep({ jobData, onUpdate, jobId, onPostingMeta }, ref) {
     const { createPosting, updatePosting } = useJobPostings(jobId || '')
     const { fields: smartFieldsLibrary } = useApplicationFields()
+    const { tenant } = useTenant()
+    const careersPageName = tenant?.name ? `${tenant.name}'s careers page` : 'Your careers page'
 
     const setJob = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) =>
       onUpdate({ [field]: value } as Partial<CreateJobData>)
@@ -751,7 +754,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-[13px] font-poppins font-medium text-text-primary truncate">{c.name}</p>
+                    <p className="text-[13px] font-poppins font-medium text-text-primary truncate">{c.id === 'careers' ? careersPageName : c.name}</p>
                     {c.id === 'careers' && <span className="text-[10.5px] uppercase tracking-[0.08em] font-poppins font-semibold text-virgilio-purple bg-[#EDE4FF] rounded-full px-2 py-0.5">Recommended</span>}
                   </div>
                   <p className="text-[11.5px] text-text-tertiary truncate">{c.sub}</p>
