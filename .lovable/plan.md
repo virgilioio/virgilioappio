@@ -1,45 +1,39 @@
-## Bug
-In **Edit posting → Application form**, toggling a custom question from Optional → Required (or vice versa) replaces the user-typed label with the default placeholder label (e.g., "New short text question"). The same flow inside the **Job Wizard** works because the wizard keeps state in memory; the posting sheet persists through a diff-based adapter.
+## Validation
 
-## Root cause
-`src/components/jobs/postings/SheetApplicationFormBuilder.tsx` is a diff adapter:
+Confirmed — true on both counts:
 
-- `ApplicationFormBuilder` is fully controlled — every row mutation (add / rename / toggle required / reorder / delete / config) calls `onChange(nextArray)` with the entire array.
-- `handleChange` then diffs `lastRef.current` (previous snapshot) vs `next` to decide whether to call `addCustomField`, `updateField`, `deleteField`, or `reorderFields`.
-- `lastRef.current` is refreshed inside a `useEffect` on `combined`, i.e., **one render late**.
-- When the user adds a question, the row is created with a default label. They type the real label, then click "Required". Between the rename-onChange and the toggle-onChange, `lastRef` is still the pre-rename snapshot, and `combined` (built from the optimistic `posting` state) hasn't always been refreshed yet. The diff for the toggle click can therefore:
-  - See `next` carrying the stale default label (because the toggle was clicked before React re-rendered with the renamed `combined`), and
-  - Issue an `updateField` with `is_required` only — but the user-visible label was already "Custom label", so when `fetchFields` returns the latest row, the UI snaps back to whatever the DB last received.
-- The transient-id → DB-id swap during `addCustomField` makes this worse: a rename committed against the transient id is silently dropped, then the toggle persists `is_required` against the DB row whose label is still the default.
+1. **Edit posting sheet has no department field.** `src/components/jobs/postings/PostingSheet.tsx` contains zero references to `department`. The sheet lets you edit title, location, employment type, banner, channels, application form, etc., but not the department the posting is filed under.
+2. **Careers page groups by `details.department`.** `src/pages/PublicCareersPage.tsx` (line 105) and `VirgilioCareersPage.tsx` (line 104) both do `department: (p.details?.department as string) || 'Other'`. Any posting created without a department name in `details` falls into the "Other" bucket with no way to fix it from the UI.
 
-The wizard path doesn't hit this because it stores `AppField[]` directly in component state with no diff/refetch round-trip.
+The wizard writes both `details.department` (name) and `details.department_id` (id) to `job_postings` on creation (`JobPostingStep.tsx` lines 352–380). Older postings — or any created when the wizard skipped the lookup — have empty values and are now stranded.
 
-## Fix
-Stop diffing. Give `ApplicationFormBuilder` optional granular callbacks and have the posting-sheet adapter wire each callback straight to the matching `useJobPostingFields` mutation. The wizard keeps the existing controlled-array path unchanged.
+## Fix Plan
 
-### Files to change
+### 1. Add a Department selector to the Edit Posting sheet
+In `PostingSheet.tsx`, alongside the existing posting-level fields (near title/location/employment type):
 
-1. **`src/components/jobs/postings/ApplicationFormBuilder.tsx`**
-   - Extend props with optional handlers: `onAddSmart`, `onAddBasic`, `onAddFromLibrary`, `onRenameField`, `onToggleRequired`, `onRemoveField`, `onUpdateFieldConfig`, `onReorderFields`.
-   - Inside `addSmart`, `addBasic`, `addFromLibrary`, `toggleRequired`, `removeField`, `renameField`, `updateConfig`, and the DnD `onDragOver`, prefer the granular handler when supplied; fall back to the current `onChange(next)` behavior otherwise. This keeps `JobPostingStep` (wizard) working unchanged.
-   - No visual changes.
+- Add a `SearchableSelect` powered by `useDepartments()` (same hook the wizard uses).
+- Pre-select from `posting.details.department_id`; fall back to matching `posting.details.department` by name; otherwise empty.
+- Support "Create department" inline (mirroring `JobInfoStep.tsx` behavior) so users aren't blocked.
+- On change, persist BOTH fields into `job_postings.details`:
+  - `details.department_id` = selected id
+  - `details.department` = selected name (denormalized — careers page reads the name directly)
+- Reuse the existing posting update mutation (the one that already writes `details` for title/location). No schema change needed — `details` is JSONB.
 
-2. **`src/components/jobs/postings/SheetApplicationFormBuilder.tsx`**
-   - Remove the `handleChange` diff and the `lastRef` machinery.
-   - Pass granular handlers that call `addCustomField`, `addFieldFromLibrary`, `updateField(id, { field_label })`, `updateField(id, { is_required })`, `updateField(id, { field_config })`, `deleteField`, and `reorderFields` directly.
-   - Keep the core-field synthesis and the read-only guard exactly as today.
+### 2. Backfill stranded postings (one-time)
+Run a data update for postings whose `details.department` is null/empty but whose parent `jobs.department_id` exists:
 
-3. **`src/hooks/useJobPostingFields.ts`** (small hardening, no behavior change for callers)
-   - `updateField` already does optimistic `setFields` — leave as is.
-   - In `addCustomField`, also return the inserted row so the adapter can reference the new DB id if needed (purely for safety; the new adapter no longer needs id reconciliation because rename targets the DB id directly).
+- For each affected `job_posting`, look up the job's `department_id` → `departments.name`.
+- Write both into `details`.
 
-### Out of scope
-- No DB schema changes.
-- No changes to `JobPostingStep.tsx` (wizard).
-- No visual/UX changes — only the data wiring inside Edit posting.
+This immediately removes existing postings from "Other" without requiring users to re-open each one.
 
-### Verification
-- Edit posting → add a custom "Short text" question → type a custom label → toggle Required → label is preserved.
-- Toggle Required → Optional → Required repeatedly → label unchanged.
-- Rename, then reorder, then toggle required → all three persist independently.
-- Wizard Step 4 still adds/renames/toggles correctly (unchanged code path).
+### 3. Guardrail in the careers page (optional polish)
+In `PublicCareersPage.tsx` and `VirgilioCareersPage.tsx`, if `details.department` is missing, fall back to the parent job's department name before defaulting to `'Other'`. This protects against any future posting that slips through without the denormalized name.
+
+### Technical notes
+
+- No migration required — `job_postings.details` is already JSONB and both `department` and `department_id` are already conventions used by the wizard.
+- The Edit Posting save path already round-trips `details`, so adding two keys is purely additive.
+- The backfill is a single `UPDATE ... FROM jobs JOIN departments ...` statement run via the data tool.
+- Keep the change UI-only otherwise; no business-logic changes to the wizard, jobs table, or RLS.
