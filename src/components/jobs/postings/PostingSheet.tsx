@@ -87,6 +87,9 @@ export function PostingSheet({
   const [isActive, setIsActive] = useState(false)
   const [isPrimary, setIsPrimary] = useState(false)
 
+  // Department
+  const [departmentId, setDepartmentId] = useState<string>('')
+
   // Compensation & location (legacy preserved)
   const [location, setLocation] = useState('')
   const [employmentType, setEmploymentType] = useState('full_time')
