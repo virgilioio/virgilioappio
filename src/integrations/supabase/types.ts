@@ -2074,6 +2074,48 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages_2026_09: {
+        Row: {
+          body: string | null
+          created_at: string
+          direction: string
+          id: string
+          parts: Json
+          read_by_recipient_at: string | null
+          redacted_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
       chat_rate_limits: {
         Row: {
           count: number
@@ -2100,6 +2142,38 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      chat_thread_reads: {
+        Row: {
+          last_read_at: string
+          tenant_id: string
+          thread_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_read_at?: string
+          tenant_id: string
+          thread_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_read_at?: string
+          tenant_id?: string
+          thread_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_thread_reads_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_threads: {
         Row: {
@@ -7603,6 +7677,10 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: string
+      }
+      create_chat_message_partitions: {
+        Args: { months_ahead?: number }
+        Returns: undefined
       }
       debug_user_permissions: {
         Args: never
