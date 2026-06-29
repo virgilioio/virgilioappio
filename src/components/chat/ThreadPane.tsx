@@ -5,6 +5,8 @@ import { SoftBubble } from '@/components/ui/EmptyIllustrations'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MessageList } from '@/components/chat/MessageList'
 import { Composer } from '@/components/chat/Composer'
+import { useChatKillSwitch } from '@/hooks/chat/useChatKillSwitch'
+import { PauseCircle } from 'lucide-react'
 
 interface ThreadPaneProps {
   threadId?: string
@@ -64,6 +66,7 @@ function useThreadHeader(threadId: string | undefined) {
  */
 export function ThreadPane({ threadId }: ThreadPaneProps) {
   const { data: header, loading } = useThreadHeader(threadId)
+  const { isPaused } = useChatKillSwitch()
 
   if (!threadId) {
     return (
@@ -118,9 +121,23 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
         )}
       </header>
 
+      {isPaused && (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 px-5 py-2.5 bg-[#FFF7E0] border-b border-[#F2E2A8] text-[12.5px] text-[#5A4A12] font-inter"
+        >
+          <PauseCircle className="h-4 w-4 mt-[1px] shrink-0 text-[#8A6A0F]" />
+          <div className="min-w-0">
+            <span className="font-poppins font-semibold mr-1.5">Candidate chat is paused.</span>
+            New candidate messages and AI replies are blocked workspace-wide. Resume in
+            Settings → Workspace.
+          </div>
+        </div>
+      )}
+
       <MessageList threadId={threadId} />
 
-      <Composer threadId={threadId} />
+      <Composer threadId={threadId} disabled={isPaused} />
     </section>
   )
 }
