@@ -346,6 +346,7 @@ export default function PublicJobPosting() {
   }, [posting, jobSalary])
 
   const brandColor = ((posting?.details as any)?.brand_color as string) || '#6F3FF5'
+  const bannerUrl = ((posting?.details as any)?.banner_url as string) || null
 
 
   const formatLabel = (val?: string | null) => {
