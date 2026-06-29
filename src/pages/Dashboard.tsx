@@ -463,7 +463,7 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
       {loading ? (
         <QueueSkeleton />
       ) : items.length === 0 ? (
-        <EmptyQueue />
+        <EmptyQueue filter={filter} totalAll={counts.all} onClear={() => onFilter('all')} />
       ) : (
         <div>
           {items.map((item, idx) => (
