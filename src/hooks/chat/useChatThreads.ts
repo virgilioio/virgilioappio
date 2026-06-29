@@ -17,7 +17,6 @@ export interface ChatThreadRow {
   assigned_recruiter_id: string | null
   last_message_at: string | null
   last_message_preview: string | null
-  last_recruiter_read_at: string | null
   message_count: number
   created_at: string
   candidate?: {
@@ -41,44 +40,57 @@ interface UseChatThreadsOptions {
 
 /**
  * useChatThreads — fetch chat threads for the current tenant (Step 1.5).
- * Joins candidate + job for display; filters client-side by scope and search.
+ * Joins candidate + job for display; computes `isUnread` against the
+ * current recruiter's own `chat_thread_reads` row.
  */
 export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOptions = {}) {
   const { user } = useAuth()
   const { tenant } = useTenant()
   const tenantId = tenant?.id
+  const userId = user?.id
 
   return useQuery({
-    queryKey: ['chat-threads', tenantId, scope, search],
-    enabled: Boolean(tenantId && user?.id),
+    queryKey: ['chat-threads', tenantId, userId, scope, search],
+    enabled: Boolean(tenantId && userId),
     staleTime: 30_000,
     queryFn: async (): Promise<ChatThreadRow[]> => {
-      if (!tenantId) return []
+      if (!tenantId || !userId) return []
 
-      const { data, error } = await supabase
-        .from('chat_threads')
-        .select(
-          `
-          id, tenant_id, job_id, candidate_id, association_id,
-          channel, mode, status, assigned_recruiter_id,
-          last_message_at, last_message_preview, last_recruiter_read_at,
-          message_count, created_at,
-          candidate:candidates(id, first_name, last_name, email, avatar_url),
-          job:jobs(id, title)
-        `,
-        )
-        .eq('tenant_id', tenantId)
-        .is('deleted_at', null)
-        .order('last_message_at', { ascending: false, nullsFirst: false })
-        .limit(200)
+      const [threadsRes, readsRes] = await Promise.all([
+        supabase
+          .from('chat_threads')
+          .select(
+            `
+            id, tenant_id, job_id, candidate_id, association_id,
+            channel, mode, status, assigned_recruiter_id,
+            last_message_at, last_message_preview,
+            message_count, created_at,
+            candidate:candidates(id, first_name, last_name, email, avatar_url),
+            job:jobs(id, title)
+          `,
+          )
+          .eq('tenant_id', tenantId)
+          .is('deleted_at', null)
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+          .limit(200),
+        supabase
+          .from('chat_thread_reads')
+          .select('thread_id, last_read_at')
+          .eq('user_id', userId)
+          .eq('tenant_id', tenantId),
+      ])
 
-      if (error) throw error
+      if (threadsRes.error) throw threadsRes.error
+      if (readsRes.error) throw readsRes.error
 
-      const rows: ChatThreadRow[] = (data ?? []).map((t: any) => {
+      const reads = new Map<string, number>()
+      for (const r of readsRes.data ?? []) {
+        reads.set(r.thread_id as string, new Date(r.last_read_at as string).getTime())
+      }
+
+      const rows: ChatThreadRow[] = (threadsRes.data ?? []).map((t: any) => {
         const lastMsg = t.last_message_at ? new Date(t.last_message_at).getTime() : 0
-        const lastRead = t.last_recruiter_read_at
-          ? new Date(t.last_recruiter_read_at).getTime()
-          : 0
+        const lastRead = reads.get(t.id) ?? 0
         return {
           ...t,
           candidate: Array.isArray(t.candidate) ? t.candidate[0] ?? null : t.candidate,
@@ -89,7 +101,7 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
 
       const scoped = rows.filter((row) => {
         if (scope === 'unread') return row.isUnread
-        if (scope === 'assigned') return row.assigned_recruiter_id === user?.id
+        if (scope === 'assigned') return row.assigned_recruiter_id === userId
         return true
       })
 

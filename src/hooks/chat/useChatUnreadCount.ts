@@ -5,39 +5,51 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useCanUseChat } from '@/hooks/usePermissions'
 
 /**
- * useChatUnreadCount — number of threads in tenant with unread inbound activity
- * since the recruiter's last read marker (Step 1.9).
+ * useChatUnreadCount — per-recruiter unread thread count (Step 1.9 hardening).
  *
- * Lightweight client-side count over open threads; refreshed via realtime
- * invalidation from `useChatRealtime`.
+ * Compares each thread's `last_message_at` against this user's own row in
+ * `chat_thread_reads` so two recruiters don't clear each other's badge.
  */
 export function useChatUnreadCount() {
   const { tenant } = useTenant()
   const { user } = useAuth()
   const canUseChat = useCanUseChat()
   const tenantId = tenant?.id
+  const userId = user?.id
 
   return useQuery({
-    queryKey: ['chat-unread-count', tenantId, user?.id],
-    enabled: Boolean(tenantId && user?.id && canUseChat),
+    queryKey: ['chat-unread-count', tenantId, userId],
+    enabled: Boolean(tenantId && userId && canUseChat),
     staleTime: 15_000,
     queryFn: async (): Promise<number> => {
-      if (!tenantId) return 0
-      const { data, error } = await supabase
-        .from('chat_threads')
-        .select('id, last_message_at, last_recruiter_read_at')
-        .eq('tenant_id', tenantId)
-        .is('deleted_at', null)
-        .not('last_message_at', 'is', null)
-        .limit(500)
+      if (!tenantId || !userId) return 0
 
-      if (error) throw error
+      const [threadsRes, readsRes] = await Promise.all([
+        supabase
+          .from('chat_threads')
+          .select('id, last_message_at')
+          .eq('tenant_id', tenantId)
+          .is('deleted_at', null)
+          .not('last_message_at', 'is', null)
+          .limit(500),
+        supabase
+          .from('chat_thread_reads')
+          .select('thread_id, last_read_at')
+          .eq('user_id', userId)
+          .eq('tenant_id', tenantId),
+      ])
 
-      return (data ?? []).reduce((acc, row: any) => {
+      if (threadsRes.error) throw threadsRes.error
+      if (readsRes.error) throw readsRes.error
+
+      const reads = new Map<string, number>()
+      for (const r of readsRes.data ?? []) {
+        reads.set(r.thread_id as string, new Date(r.last_read_at as string).getTime())
+      }
+
+      return (threadsRes.data ?? []).reduce((acc, row: any) => {
         const last = row.last_message_at ? new Date(row.last_message_at).getTime() : 0
-        const read = row.last_recruiter_read_at
-          ? new Date(row.last_recruiter_read_at).getTime()
-          : 0
+        const read = reads.get(row.id) ?? 0
         return acc + (last > 0 && last > read ? 1 : 0)
       }, 0)
     },

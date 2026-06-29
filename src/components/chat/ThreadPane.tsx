@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { MessageList } from '@/components/chat/MessageList'
 import { Composer } from '@/components/chat/Composer'
 import { useChatKillSwitch } from '@/hooks/chat/useChatKillSwitch'
+import { useMarkThreadRead } from '@/hooks/chat/useMarkThreadRead'
 import { PauseCircle } from 'lucide-react'
 
 interface ThreadPaneProps {
@@ -16,6 +17,7 @@ interface ThreadHeader {
   id: string
   status: string
   mode: string
+  last_message_at: string | null
   candidate: { first_name: string | null; last_name: string | null; email: string | null } | null
   job: { title: string | null } | null
 }
@@ -34,7 +36,7 @@ function useThreadHeader(threadId: string | undefined) {
     supabase
       .from('chat_threads')
       .select(
-        'id, status, mode, candidate:candidates(first_name, last_name, email), job:jobs(title)',
+        'id, status, mode, last_message_at, candidate:candidates(first_name, last_name, email), job:jobs(title)',
       )
       .eq('id', threadId)
       .maybeSingle()
@@ -67,6 +69,7 @@ function useThreadHeader(threadId: string | undefined) {
 export function ThreadPane({ threadId }: ThreadPaneProps) {
   const { data: header, loading } = useThreadHeader(threadId)
   const { isPaused } = useChatKillSwitch()
+  useMarkThreadRead(threadId, header?.last_message_at ?? null)
 
   if (!threadId) {
     return (
