@@ -88,7 +88,17 @@ if (typeof window !== 'undefined') {
   ;(window as unknown as { __queryClient?: QueryClient }).__queryClient = queryClient
 }
 
+
+// Step 1.2 — gate /chat behind canUseChat
+import { useCanUseChat } from '@/hooks/usePermissions'
+function ChatRouteGuard({ children }: { children: React.ReactNode }) {
+  const canUseChat = useCanUseChat()
+  if (!canUseChat) return <NotFound />
+  return <>{children}</>
+}
+
 function AppContent() {
+
 
 
   return (
