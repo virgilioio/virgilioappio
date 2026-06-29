@@ -245,6 +245,9 @@ export function PostingSheet({
     is_primary: isPrimary,
     // legacy compensation & location
     location: location || null,
+    // Department (denormalized name + id for careers page grouping)
+    department_id: departmentId || null,
+    department: (departments.find((d) => d.id === departmentId)?.name) || null,
     employment_type: employmentType || null,
     location_type: locationType || null,
     salary_currency: salaryCurrency || null,
