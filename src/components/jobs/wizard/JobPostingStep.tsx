@@ -364,7 +364,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           slug, reference_id: refId || null, language,
           deadline: deadline ? deadline.toISOString().slice(0, 10) : null,
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
-          brand_color: brandColor, banner_name: bannerName || null,
+          brand_color: brandColor, banner_name: bannerName || null, banner_url: bannerUrl || null,
           team_photos: teamPhotos, culture_video: cultureVideo,
           application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type) })),
           eeo_survey: eeo,
