@@ -28,14 +28,16 @@ export async function logChatAuditEvent({
   metadata = {},
 }: LogArgs): Promise<void> {
   try {
-    await supabase.from('chat_audit_log').insert({
-      tenant_id: tenantId,
-      actor_type: 'recruiter',
-      actor_id: actorId,
-      thread_id: threadId ?? null,
-      event,
-      metadata,
-    })
+    await supabase.from('chat_audit_log').insert([
+      {
+        tenant_id: tenantId,
+        actor_type: 'recruiter',
+        actor_id: actorId,
+        thread_id: threadId ?? undefined,
+        event,
+        metadata: metadata as any,
+      },
+    ])
   } catch {
     // intentionally silent
   }
