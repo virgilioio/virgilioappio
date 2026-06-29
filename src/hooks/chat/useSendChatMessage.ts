@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
 import type { ChatDirection, ChatMessageRow } from '@/hooks/chat/useChatMessages'
+import { logChatAuditEvent } from '@/lib/chat/audit'
 
 interface SendArgs {
   threadId: string
@@ -43,6 +44,13 @@ export function useSendChatMessage() {
         .select()
         .single()
       if (error) throw error
+      void logChatAuditEvent({
+        tenantId: tenant.id,
+        actorId: user.id,
+        threadId: args.threadId,
+        event: direction === 'note' ? 'internal_note_added' : 'message_sent',
+        metadata: { body_length: args.body.length },
+      })
       return data as ChatMessageRow
     },
     onMutate: async (args) => {
