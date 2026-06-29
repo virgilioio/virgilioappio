@@ -28,6 +28,7 @@ import {
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { markdownToHtml } from '@/utils/markdown'
 import { useTenant } from '@/hooks/useTenant'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
