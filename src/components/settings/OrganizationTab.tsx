@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/hooks/useTenant";
 import { CurrencySettings } from "./CurrencySettings";
 import { SettingsCard } from "@/components/settings/shared/SettingsCard";
 import { stripHtmlToPlainText } from "@/utils/templateUtils";
+import { useChatKillSwitch } from "@/hooks/chat/useChatKillSwitch";
 
 interface TenantFormData {
   name: string;
@@ -199,6 +201,42 @@ export default function OrganizationTab() {
       </SettingsCard>
 
       <CurrencySettings />
+
+      <ChatKillSwitchCard canEdit={canEdit} />
     </div>
+  );
+}
+
+function ChatKillSwitchCard({ canEdit }: { canEdit: boolean }) {
+  const { isPaused, setPaused } = useChatKillSwitch();
+  return (
+    <SettingsCard
+      title="Candidate chat"
+      description="Workspace-wide kill switch for the Chat module."
+      action={
+        <Badge tone={isPaused ? "yellow" : "green"} size="sm" dot>
+          {isPaused ? "Paused" : "Active"}
+        </Badge>
+      }
+    >
+      <div className="flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <div className="font-poppins font-semibold text-[13.5px] text-[#0d0d09]">
+            Pause all candidate chat
+          </div>
+          <p className="font-inter text-[12px] text-[#5A6072] mt-1 leading-relaxed">
+            Blocks new candidate messages workspace-wide, suspends AI auto-replies, and shows
+            a banner to recruiters at the top of every conversation. Existing threads remain
+            readable. Resume any time.
+          </p>
+        </div>
+        <Switch
+          checked={isPaused}
+          disabled={!canEdit || setPaused.isPending}
+          onCheckedChange={(v) => setPaused.mutate(v)}
+          aria-label="Pause candidate chat workspace-wide"
+        />
+      </div>
+    </SettingsCard>
   );
 }

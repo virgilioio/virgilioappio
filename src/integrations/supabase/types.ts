@@ -7107,6 +7107,7 @@ export type Database = {
           billing_state: string | null
           chat_ai_daily_token_cap: number
           chat_hard_delete_days: number
+          chat_paused: boolean
           chat_retention_days_after_close: number
           created_at: string
           id: string
@@ -7137,6 +7138,7 @@ export type Database = {
           billing_state?: string | null
           chat_ai_daily_token_cap?: number
           chat_hard_delete_days?: number
+          chat_paused?: boolean
           chat_retention_days_after_close?: number
           created_at?: string
           id?: string
@@ -7167,6 +7169,7 @@ export type Database = {
           billing_state?: string | null
           chat_ai_daily_token_cap?: number
           chat_hard_delete_days?: number
+          chat_paused?: boolean
           chat_retention_days_after_close?: number
           created_at?: string
           id?: string
