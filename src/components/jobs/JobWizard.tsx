@@ -136,6 +136,9 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const mainRef = React.useRef<HTMLElement>(null)
   const [postingMeta, setPostingMeta] = useState({ channels: 1, fields: 9 })
   const [autoSource, setAutoSource] = useState(true)
+  const [publishImmediately, setPublishImmediately] = useState(true)
+  const [notifySlack, setNotifySlack] = useState(false)
+  const [createdPostingId, setCreatedPostingId] = useState<string | null>(null)
   const { ensureProject: ensureSourcingProject } = useJobSourcingProject(
     wizardState.createdJobId && wizardState.createdJobId !== 'created'
       ? wizardState.createdJobId
