@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useTenant } from '@/hooks/useTenant'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
+import { useDepartments } from '@/hooks/useDepartments'
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
 import { SheetApplicationFormBuilder } from './SheetApplicationFormBuilder'
 import {
   PostingChannelsCard,
