@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
+import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'analytics' | 'settings' | 'my-profile' | null
 
@@ -102,6 +103,7 @@ export function AppSidebar() {
   const permissions = usePermissions()
   const canUseChat = useCanUseChat()
   const items = allItems.filter((item) => (item.id === 'chat' ? canUseChat : item.show(permissions)))
+  const { data: chatUnread = 0 } = useChatUnreadCount()
 
   const initials = (() => {
     const f = profile?.first_name?.trim()?.[0] ?? ''
@@ -134,11 +136,19 @@ export function AppSidebar() {
                   <Link
                     to={item.href}
                     aria-current={isActive ? 'page' : undefined}
-                    aria-label={item.label}
+                    aria-label={item.id === 'chat' && chatUnread > 0 ? `${item.label} (${chatUnread} unread)` : item.label}
                     title={item.label}
-                    className={cn(tileBase, isActive ? tileActive : tileInactive)}
+                    className={cn(tileBase, isActive ? tileActive : tileInactive, 'relative')}
                   >
                     <Icon className="h-6 w-6" />
+                    {item.id === 'chat' && chatUnread > 0 && (
+                      <span
+                        aria-hidden
+                        className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-[#D7C5FB] text-[#0d0d09] font-poppins font-semibold text-[10px] leading-none flex items-center justify-center ring-2 ring-[#0d0d09]"
+                      >
+                        {chatUnread > 99 ? '99+' : chatUnread}
+                      </span>
+                    )}
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={12}>
