@@ -1,34 +1,56 @@
 ## Problem
+Validated. In `src/pages/Dashboard.tsx` the `EmptyQueue` component (line 671) is hand-rolled:
 
-`generate-job-description` returns **Markdown** (per its prompt: "Output MARKDOWN ONLY"), but the Public Description editor in `PostingSheet.tsx` is a `RichTextEditor` that treats `value` as **HTML**. So raw Markdown gets pushed straight in, and inside a contenteditable all newlines collapse to whitespace — producing the single-blob, no-spacing text the user sees. Saving that blob then breaks the public page (which renders the stored value with `markdownToHtml` / `SafeHtml`).
+```tsx
+<div style={{ padding: '48px 16px', textAlign: 'center' }}>
+  <CheckCircle2 .../>
+  <div>All clear — nothing needs you right now.</div>
+</div>
+```
 
-The same issue exists in `JobInfoStep.tsx` and `JobPostingStep.tsx` (wizard) which also call `generate-job-description` and push the markdown into rich-text editors.
+This violates the canonical empty-state rule (`mem://style/ui/standardized-empty-states` + `EmptyState` primitive in `src/components/ui/empty-state.tsx`): "Never hand-roll empty blocks. Always use `<EmptyState>`."
 
 ## Fix
 
-Convert AI Markdown → HTML at the boundary, before it touches the editor and before it's saved. We already have `src/utils/markdown.ts` (`markdownToHtml`) used by `SafeHtml` consumers; reuse it.
+Replace `EmptyQueue` with the canonical `<EmptyState>` primitive using the inline (card) variant and the standard Gio mascot illustration, so it matches other in-card empties across the app (Analytics, Today card, etc.).
 
-### 1. `src/components/jobs/postings/PostingSheet.tsx` — `handleGenerateDescription`
-- After `data?.description` arrives, run `const html = markdownToHtml(data.description)`.
-- `setDescription(html)` instead of the raw markdown.
-- Keep `setIsExternalUpdate(true)` so RichTextEditor reloads.
+### Change in `src/pages/Dashboard.tsx`
 
-### 2. `src/components/jobs/wizard/JobPostingStep.tsx` (rewrite button) and `src/components/jobs/wizard/JobInfoStep.tsx` (draft button)
-- Same one-line conversion before assigning to the editor / form state.
+1. Add imports:
+   - `import { EmptyState } from '@/components/ui/empty-state'`
+   - `import { SoftPlane } from '@/components/ui/EmptyIllustrations'` (calm, generic "all clear" scene already used by `GioEmptyState`)
 
-### 3. Defensive load path in `PostingSheet.tsx`
-- When hydrating `setDescription(p.description || '')` at line 146, detect legacy rows that were saved as raw Markdown (no HTML tags but contains `##` / `*` / `-` bullets) and run `markdownToHtml` once so existing broken postings render correctly in the editor on open. `markdownToHtml` already no-ops on real HTML, so this is safe.
+2. Replace the `EmptyQueue` function body with:
 
-### 4. No backend change
-- Leave the edge function prompt as-is (markdown is a clean intermediate format and other callers may rely on it). All conversion happens client-side.
+```tsx
+function EmptyQueue() {
+  return (
+    <div style={{ padding: '16px' }}>
+      <EmptyState
+        size="card"
+        illustration={<SoftPlane />}
+        title="All clear"
+        body="Nothing needs you right now — new scorecards, decisions, replies and applications will appear here."
+      />
+    </div>
+  )
+}
+```
 
-## Why this works
+3. Filtered variant (nice-to-have, scoped to same card): when the user has selected a chip (e.g. "Scorecards") and there are 0 matching items but the overall queue is non-empty, show a filtered message instead. Implementation: pass `filter` and `counts.all` into `EmptyQueue` and branch:
 
-- Editor receives proper `<h2>`, `<ul>`, `<li>`, `<p>` — paragraph breaks, bullets and headings render as the user expects and can be edited safely.
-- Saved value is HTML, identical to what the public page already renders through `SafeHtml`, so the public posting stays intact when the user edits.
-- Existing postings stored as raw Markdown get auto-upgraded on next open (and re-saved as HTML on next save).
+```tsx
+{loading
+  ? <QueueSkeleton />
+  : items.length === 0
+    ? <EmptyQueue filter={filter} totalAll={counts.all} onClear={() => onFilter('all')} />
+    : (...)}
+```
+
+`EmptyQueue` then renders either the "All clear" variant (when `totalAll === 0`) or a filtered variant using `SoftMagnifier` with title "No matches" + a "Clear filter" `EmptyAction` that calls `onClear`.
+
+4. Remove the now-unused `CheckCircle2` import if it isn't referenced elsewhere in the file (verify before deleting).
 
 ## Out of scope
-
-- Changing the rich text toolbar or schema.
-- Touching `generate-job-description` prompt or other Markdown-returning AI endpoints.
+- No changes to queue data fetching, row rendering, skeleton, or the Today card.
+- No design-token or layout changes elsewhere.
