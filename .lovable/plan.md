@@ -1,56 +1,20 @@
 ## Problem
-Validated. In `src/pages/Dashboard.tsx` the `EmptyQueue` component (line 671) is hand-rolled:
+The dashboard's **Today** (calendar) card and **Open jobs** card render plain centered text when empty:
+- Today → `"No events today."`
+- Open jobs → `"No open jobs."`
 
-```tsx
-<div style={{ padding: '48px 16px', textAlign: 'center' }}>
-  <CheckCircle2 .../>
-  <div>All clear — nothing needs you right now.</div>
-</div>
-```
-
-This violates the canonical empty-state rule (`mem://style/ui/standardized-empty-states` + `EmptyState` primitive in `src/components/ui/empty-state.tsx`): "Never hand-roll empty blocks. Always use `<EmptyState>`."
+Neither uses the canonical `<EmptyState>` primitive with a Gio mascot illustration, breaking consistency with the rest of the app (and with the Your queue card we just fixed).
 
 ## Fix
+Update `src/pages/Dashboard.tsx`:
 
-Replace `EmptyQueue` with the canonical `<EmptyState>` primitive using the inline (card) variant and the standard Gio mascot illustration, so it matches other in-card empties across the app (Analytics, Today card, etc.).
+1. **TodayCard empty state** (~line 770)
+   - Replace the plain text with `<EmptyState size="card" illustration={<SoftCalendar />} title="Nothing on today" body="Your schedule is clear. Newly booked interviews will show up here." />`.
 
-### Change in `src/pages/Dashboard.tsx`
+2. **OpenJobsCard empty state** (~line 954)
+   - Replace with `<EmptyState size="card" illustration={<SoftFlag />} title="No open jobs" body="Create a job to start tracking candidates and pipeline activity." action={<EmptyAction onClick={() => navigate('/jobs')}>Go to Jobs</EmptyAction>} />`.
+   - Pass `onCreateJob`/navigate via props (OpenJobsCard already receives `onPipeline`; add a similar handler or reuse navigation).
 
-1. Add imports:
-   - `import { EmptyState } from '@/components/ui/empty-state'`
-   - `import { SoftPlane } from '@/components/ui/EmptyIllustrations'` (calm, generic "all clear" scene already used by `GioEmptyState`)
+3. Keep the existing skeleton loading states untouched — only the empty branches change.
 
-2. Replace the `EmptyQueue` function body with:
-
-```tsx
-function EmptyQueue() {
-  return (
-    <div style={{ padding: '16px' }}>
-      <EmptyState
-        size="card"
-        illustration={<SoftPlane />}
-        title="All clear"
-        body="Nothing needs you right now — new scorecards, decisions, replies and applications will appear here."
-      />
-    </div>
-  )
-}
-```
-
-3. Filtered variant (nice-to-have, scoped to same card): when the user has selected a chip (e.g. "Scorecards") and there are 0 matching items but the overall queue is non-empty, show a filtered message instead. Implementation: pass `filter` and `counts.all` into `EmptyQueue` and branch:
-
-```tsx
-{loading
-  ? <QueueSkeleton />
-  : items.length === 0
-    ? <EmptyQueue filter={filter} totalAll={counts.all} onClear={() => onFilter('all')} />
-    : (...)}
-```
-
-`EmptyQueue` then renders either the "All clear" variant (when `totalAll === 0`) or a filtered variant using `SoftMagnifier` with title "No matches" + a "Clear filter" `EmptyAction` that calls `onClear`.
-
-4. Remove the now-unused `CheckCircle2` import if it isn't referenced elsewhere in the file (verify before deleting).
-
-## Out of scope
-- No changes to queue data fetching, row rendering, skeleton, or the Today card.
-- No design-token or layout changes elsewhere.
+No business-logic changes; presentation only.
