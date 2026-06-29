@@ -150,8 +150,9 @@ interface JobPostingStepProps {
 }
 
 export interface JobPostingStepHandle {
-  /** Persist (or skip persist) and return true to allow advancing */
-  savePosting: () => Promise<boolean>
+  /** Persist (or skip persist) and return true to allow advancing.
+   *  When a posting is created, the new posting id is also returned. */
+  savePosting: (opts?: { publish?: boolean }) => Promise<{ ok: boolean; postingId?: string | null }>
 }
 
 export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingStepProps>(
