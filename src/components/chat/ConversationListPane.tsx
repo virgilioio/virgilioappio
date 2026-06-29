@@ -114,7 +114,7 @@ export function ConversationListPane() {
               />
             ) : (
               <EmptyState
-                size="sm"
+                size="card"
                 illustration={<SoftBubble />}
                 title="No conversations yet"
                 body="When a candidate replies to a chat invite, the thread will land here."
