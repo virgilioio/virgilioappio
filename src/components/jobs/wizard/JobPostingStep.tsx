@@ -239,8 +239,59 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     /* --- branding --- */
     const [brandColor, setBrandColor] = useState('#6F3FF5')
     const [bannerName, setBannerName] = useState('')
+    const [bannerUrl, setBannerUrl] = useState<string | null>(null)
+    const [bannerUploading, setBannerUploading] = useState(false)
     const [teamPhotos, setTeamPhotos] = useState(true)
     const [cultureVideo, setCultureVideo] = useState(false)
+
+    /* Resolve tenant_id from the parent job's organization to scope storage uploads. */
+    async function resolveTenantIdForUpload(): Promise<string | null> {
+      const orgId: string | undefined = (jobData as any)?.organization_id
+      if (orgId) {
+        const { data } = await supabase.from('organizations').select('tenant_id').eq('id', orgId).maybeSingle()
+        if (data?.tenant_id) return data.tenant_id as string
+      }
+      const { data: auth } = await supabase.auth.getUser()
+      const uid = auth?.user?.id
+      if (!uid) return null
+      const { data: mem } = await supabase.from('members').select('tenant_id').eq('user_id', uid).limit(1).maybeSingle()
+      return (mem?.tenant_id as string) || null
+    }
+
+    async function handleBannerFileChange(file: File | null) {
+      if (!file) return
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please choose an image file (PNG, JPG, or WebP).')
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Banner must be 5 MB or smaller.')
+        return
+      }
+      setBannerUploading(true)
+      try {
+        const tenantId = await resolveTenantIdForUpload()
+        if (!tenantId) {
+          toast.error('Could not resolve your workspace — please reload and try again.')
+          return
+        }
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+        const key = `${tenantId}/job-banners/${(jobId || 'wizard')}-${Date.now()}.${ext}`
+        const { error: upErr } = await supabase.storage
+          .from('careers-logos')
+          .upload(key, file, { upsert: true, contentType: file.type, cacheControl: '3600' })
+        if (upErr) throw upErr
+        const { data: pub } = supabase.storage.from('careers-logos').getPublicUrl(key)
+        setBannerUrl(pub.publicUrl)
+        setBannerName(file.name)
+        toast.success('Hero banner uploaded.')
+      } catch (e: any) {
+        console.error('Banner upload failed:', e)
+        toast.error(e?.message || 'Banner upload failed.')
+      } finally {
+        setBannerUploading(false)
+      }
+    }
 
     /* --- application form --- */
     const [fields, setFields] = useState<AppField[]>(DEFAULT_FIELDS)
@@ -313,7 +364,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           slug, reference_id: refId || null, language,
           deadline: deadline ? deadline.toISOString().slice(0, 10) : null,
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
-          brand_color: brandColor, banner_name: bannerName || null,
+          brand_color: brandColor, banner_name: bannerName || null, banner_url: bannerUrl || null,
           team_photos: teamPhotos, culture_video: cultureVideo,
           application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type) })),
           eeo_survey: eeo,
@@ -591,15 +642,48 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <FieldLabel optional>Hero banner</FieldLabel>
-              <label className="mt-2 block rounded-xl border border-dashed border-virgilio-border bg-[#FAFAF7] aspect-[16/5] cursor-pointer hover:bg-[#F2EBFF] transition-colors relative overflow-hidden"
-                style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}30)` }}>
-                <input type="file" accept="image/*" className="sr-only"
-                  onChange={(e) => setBannerName(e.target.files?.[0]?.name || '')} />
-                <span className="absolute bottom-3 left-3 text-[11.5px] text-white/90 font-medium">
-                  {bannerName || 'Click to upload (1600 × 480 recommended)'}
+              <label
+                className="mt-2 block rounded-xl border border-dashed border-virgilio-border bg-[#FAFAF7] aspect-[16/5] cursor-pointer hover:bg-[#F2EBFF] transition-colors relative overflow-hidden"
+                style={
+                  bannerUrl
+                    ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : { background: `linear-gradient(135deg, ${brandColor}, ${brandColor}30)` }
+                }
+              >
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  disabled={bannerUploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null
+                    void handleBannerFileChange(f)
+                    e.currentTarget.value = ''
+                  }}
+                />
+                <span className="absolute bottom-3 left-3 text-[11.5px] text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                  {bannerUploading
+                    ? 'Uploading…'
+                    : bannerUrl
+                    ? (bannerName || 'Banner uploaded — click to replace')
+                    : 'Click to upload (1600 × 480 recommended · PNG/JPG/WebP · max 5 MB)'}
                 </span>
+                {bannerUrl && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setBannerUrl(null)
+                      setBannerName('')
+                    }}
+                    className="absolute top-2 right-2 h-7 px-2 rounded-md bg-black/60 text-white text-[11px] font-poppins font-medium hover:bg-black/75"
+                  >
+                    Remove
+                  </button>
+                )}
               </label>
-              <FieldHint>Falls back to workspace cover.</FieldHint>
+              <FieldHint>Shown at the top of the public job posting. Falls back to the brand-color gradient.</FieldHint>
             </div>
             <div>
               <FieldLabel>Brand color</FieldLabel>

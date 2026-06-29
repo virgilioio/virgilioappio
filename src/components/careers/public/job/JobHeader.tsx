@@ -13,6 +13,7 @@ interface Props {
   onSave: () => void
   saved: boolean
   accentColor?: string
+  bannerUrl?: string | null
 }
 
 export function JobHeader({
@@ -27,11 +28,20 @@ export function JobHeader({
   onSave,
   saved,
   accentColor,
+  bannerUrl,
 }: Props) {
   const accent = accentColor || '#6F3FF5'
 
   return (
     <section className="border-b border-black/5 bg-[#FAF7F2]">
+      {bannerUrl && (
+        <div
+          className="w-full aspect-[16/5] sm:aspect-[16/4] bg-center bg-cover"
+          style={{ backgroundImage: `url(${bannerUrl})` }}
+          role="img"
+          aria-label={`${title} hero banner`}
+        />
+      )}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-7">
         {/* breadcrumb */}
         <nav className="flex items-center gap-1.5 text-[11.5px] text-[#8B8F9E]">
