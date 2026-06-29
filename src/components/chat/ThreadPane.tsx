@@ -60,13 +60,10 @@ function useThreadHeader(threadId: string | undefined) {
 }
 
 /**
- * ThreadPane — header, messages, and a temporary inline composer (Step 1.6).
- * The real composer ships in Step 1.7.
+ * ThreadPane — header, messages, and composer (Step 1.7).
  */
 export function ThreadPane({ threadId }: ThreadPaneProps) {
   const { data: header, loading } = useThreadHeader(threadId)
-  const [draft, setDraft] = useState('')
-  const send = useSendChatMessage()
 
   if (!threadId) {
     return (
@@ -88,17 +85,6 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
       header.candidate.email ||
       'Candidate'
     : 'Candidate'
-
-  const onSend = async () => {
-    const body = draft.trim()
-    if (!body) return
-    setDraft('')
-    try {
-      await send.mutateAsync({ threadId, body })
-    } catch {
-      setDraft(body)
-    }
-  }
 
   return (
     <section className="flex-1 min-w-0 flex flex-col bg-surface-primary" aria-label="Thread">
@@ -134,32 +120,7 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
 
       <MessageList threadId={threadId} />
 
-      <footer className="border-t border-virgilio-border p-3">
-        <div className="rounded-lg border border-virgilio-border bg-surface-primary focus-within:ring-2 focus-within:ring-virgilio-purple/30">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                onSend()
-              }
-            }}
-            placeholder="Write a message…"
-            rows={2}
-            className="w-full resize-none bg-transparent px-3 py-2 text-[13.5px] outline-none placeholder:text-text-secondary"
-          />
-          <div className="flex items-center justify-between px-2 py-1.5 border-t border-virgilio-border">
-            <span className="text-[10.5px] text-text-secondary font-mono px-1">
-              <MessageSquare className="inline h-3 w-3 mr-1" />
-              Composer placeholder · Step 1.7
-            </span>
-            <Button size="sm" onClick={onSend} disabled={!draft.trim() || send.isPending}>
-              {send.isPending ? 'Sending…' : 'Send'}
-            </Button>
-          </div>
-        </div>
-      </footer>
+      <Composer threadId={threadId} />
     </section>
   )
 }
