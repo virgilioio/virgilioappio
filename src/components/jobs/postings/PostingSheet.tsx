@@ -154,6 +154,19 @@ export function PostingSheet({
           setIsPrimary(!!d.is_primary)
 
           setLocation(d.location || '')
+          // Department: prefer stored id; fallback to matching name to id
+          const storedDeptId: string | undefined = d.department_id || undefined
+          const storedDeptName: string | undefined = d.department || undefined
+          if (storedDeptId) {
+            setDepartmentId(storedDeptId)
+          } else if (storedDeptName) {
+            const match = (departments || []).find(
+              (dep) => dep.name.toLowerCase() === String(storedDeptName).toLowerCase()
+            )
+            setDepartmentId(match?.id || '')
+          } else {
+            setDepartmentId('')
+          }
           setEmploymentType(d.employment_type || 'full_time')
           setLocationType(d.location_type || 'onsite')
           setSalaryCurrency(d.salary_currency || 'USD')
