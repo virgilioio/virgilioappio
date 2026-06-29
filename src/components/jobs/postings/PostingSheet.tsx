@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useTenant } from '@/hooks/useTenant'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
+import { useDepartments } from '@/hooks/useDepartments'
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select'
 import { SheetApplicationFormBuilder } from './SheetApplicationFormBuilder'
 import {
   PostingChannelsCard,
@@ -66,6 +68,7 @@ export function PostingSheet({
   const { tenant } = useTenant()
   const { getPosting, createPosting, updatePosting } = useJobPostings(jobId)
   const { isEnabled: talentEnabled } = useJobBoardIntegration('talent')
+  const { departments, isLoading: isLoadingDepts, createDepartment } = useDepartments()
 
   const isEdit = !!postingId
   const [localId, setLocalId] = useState<string | undefined>(postingId)
@@ -83,6 +86,9 @@ export function PostingSheet({
   const [show24h, setShow24h] = useState(false)
   const [isActive, setIsActive] = useState(false)
   const [isPrimary, setIsPrimary] = useState(false)
+
+  // Department
+  const [departmentId, setDepartmentId] = useState<string>('')
 
   // Compensation & location (legacy preserved)
   const [location, setLocation] = useState('')
@@ -148,6 +154,19 @@ export function PostingSheet({
           setIsPrimary(!!d.is_primary)
 
           setLocation(d.location || '')
+          // Department: prefer stored id; fallback to matching name to id
+          const storedDeptId: string | undefined = d.department_id || undefined
+          const storedDeptName: string | undefined = d.department || undefined
+          if (storedDeptId) {
+            setDepartmentId(storedDeptId)
+          } else if (storedDeptName) {
+            const match = (departments || []).find(
+              (dep) => dep.name.toLowerCase() === String(storedDeptName).toLowerCase()
+            )
+            setDepartmentId(match?.id || '')
+          } else {
+            setDepartmentId('')
+          }
           setEmploymentType(d.employment_type || 'full_time')
           setLocationType(d.location_type || 'onsite')
           setSalaryCurrency(d.salary_currency || 'USD')
@@ -192,6 +211,7 @@ export function PostingSheet({
         setIsPrimary(false)
         setDescription('')
         setLocation('')
+        setDepartmentId('')
         setEmploymentType('full_time')
         setLocationType('onsite')
         setSalaryCurrency('USD')
@@ -225,6 +245,9 @@ export function PostingSheet({
     is_primary: isPrimary,
     // legacy compensation & location
     location: location || null,
+    // Department (denormalized name + id for careers page grouping)
+    department_id: departmentId || null,
+    department: (departments.find((d) => d.id === departmentId)?.name) || null,
     employment_type: employmentType || null,
     location_type: locationType || null,
     salary_currency: salaryCurrency || null,
@@ -465,7 +488,36 @@ export function PostingSheet({
               />
             </div>
 
+            <div className="mt-4">
+              <FormField
+                label="Department"
+                helpText="Used to group this posting on your public careers page."
+              >
+                <SearchableSelect
+                  options={departments.map((d) => ({ value: d.id, label: d.name })) as SearchableSelectOption[]}
+                  value={departmentId}
+                  onValueChange={setDepartmentId}
+                  placeholder={isLoadingDepts ? 'Loading…' : 'Select a department…'}
+                  searchPlaceholder="Search departments…"
+                  emptyMessage="No departments found."
+                  disabled={readOnly}
+                  createNewLabel="Create department"
+                  onCreateNew={async () => {
+                    const name = window.prompt('New department name')
+                    if (!name || !name.trim()) return
+                    try {
+                      const created = await createDepartment.mutateAsync({ name: name.trim() })
+                      if (created?.id) setDepartmentId(created.id)
+                    } catch (e) {
+                      // toast handled in hook
+                    }
+                  }}
+                />
+              </FormField>
+            </div>
+
             <Collapsible open={compOpen} onOpenChange={setCompOpen} className="mt-4">
+
               <CollapsibleTrigger className="flex items-center gap-1.5 text-[12.5px] text-text-secondary hover:text-text-primary">
                 {compOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 Compensation & location
