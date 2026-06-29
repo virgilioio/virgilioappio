@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { usePermissions } from '@/hooks/usePermissions'
+import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'analytics' | 'settings' | 'my-profile' | null
 
