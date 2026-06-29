@@ -211,6 +211,7 @@ export function PostingSheet({
         setIsPrimary(false)
         setDescription('')
         setLocation('')
+        setDepartmentId('')
         setEmploymentType('full_time')
         setLocationType('onsite')
         setSalaryCurrency('USD')
