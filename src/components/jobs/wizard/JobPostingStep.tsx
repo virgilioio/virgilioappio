@@ -108,6 +108,19 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 }
 const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
 
+/** Map the wizard's local AppField type → the DB field_type enum used in job_posting_application_fields. */
+function sharedTypeToDbType(t: FieldType): string {
+  if (t === 'longtext') return 'textarea'
+  if (t === 'yesno') return 'checkbox'
+  return t
+}
+
+/** Generate a snake_case field_name suitable for the application_fields contract. */
+function sanitizeFieldName(label: string, index: number): string {
+  const base = (label || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  return base ? `${base}_${index + 1}` : `question_${index + 1}`
+}
+
 const DEFAULT_FIELDS: AppField[] = [
   { id: 'full_name', label: 'Full name', type: 'text', hint: 'Short text', required: true, locked: true, icon: User },
   { id: 'email', label: 'Email', type: 'email', hint: 'Email', required: true, locked: true, icon: Mail },
