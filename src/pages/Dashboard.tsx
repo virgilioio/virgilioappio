@@ -669,13 +669,40 @@ function QueueSkeleton() {
   )
 }
 
-function EmptyQueue() {
+function EmptyQueue({
+  filter,
+  totalAll,
+  onClear,
+}: {
+  filter: 'all' | QueueType
+  totalAll: number
+  onClear: () => void
+}) {
+  const isFiltered = filter !== 'all' && totalAll > 0
+  const filterLabel =
+    filter === 'scorecard' ? 'scorecards'
+    : filter === 'decision' ? 'decisions'
+    : filter === 'reply' ? 'replies'
+    : filter === 'application' ? 'applications'
+    : 'tasks'
   return (
-    <div style={{ padding: '48px 16px', textAlign: 'center' }}>
-      <CheckCircle2 size={18} strokeWidth={2} color={C.green} style={{ margin: '0 auto 8px' }} />
-      <div style={{ font: '400 12.5px/1.4 Inter', color: C.tertiary }}>
-        All clear — nothing needs you right now.
-      </div>
+    <div style={{ padding: '16px' }}>
+      {isFiltered ? (
+        <EmptyState
+          size="card"
+          illustration={<SoftMagnifier />}
+          title="No matches"
+          body={`No ${filterLabel} need you right now. Clear the filter to see everything in your queue.`}
+          primary={<EmptyAction onClick={onClear}>Clear filter</EmptyAction>}
+        />
+      ) : (
+        <EmptyState
+          size="card"
+          illustration={<SoftPlane />}
+          title="All clear"
+          body="Nothing needs you right now — new scorecards, decisions, replies and applications will appear here."
+        />
+      )}
     </div>
   )
 }
