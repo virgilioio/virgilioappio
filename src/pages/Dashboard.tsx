@@ -14,9 +14,10 @@ import {
   Briefcase,
   Video,
   Check,
-  CheckCircle2,
   ArrowRight,
 } from 'lucide-react'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftPlane, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
 import { format } from 'date-fns'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
