@@ -1,90 +1,70 @@
-## What I verified
 
-**Bug 1 — Custom application questions aren't saved.** The wizard's Job posting step (`src/components/jobs/wizard/JobPostingStep.tsx`, `savePosting` at L277–326) serializes the field builder state into a JSON blob on `job_postings.details.application_fields` and calls `createPosting({ title, description, details })`. The actual public posting + the PostingSheet read fields from the dedicated `job_posting_application_fields` table via `useJobPostingFields` (`SheetApplicationFormBuilder.tsx`, `public-submit-application`, `talent-questions`, etc.). Nothing inserts the wizard's custom rows into that table → custom questions disappear after creation.
+## Problem
 
-**Bug 2 — "Publish to careers page immediately" toggle is cosmetic.** In `SummaryStep.tsx` L626–660 the four `ToggleRow`s in "On creation" only set `defaultOn`/`disabled` — no `checked`/`onChange`/state, and `JobWizard.tsx` never receives or acts on them. The posting is created via `useJobPostings.createPosting` which inserts into `job_postings` without touching `is_active`, so the posting row ends with whatever default `is_active` has (and even if `true`, public visibility on the careers page depends on the posting being marked published, not on this toggle).
+In the Job Wizard → Job Posting step, the "Hero banner" uploader is cosmetic:
+- It captures only the filename, never the file bytes.
+- Nothing is uploaded to Supabase Storage.
+- `PublicJobPosting` and `PublicCareersPage` do not read any banner field — so even if a URL existed, it would not render.
 
-Both reports are accurate.
+Result: users think they've branded their posting, but the live careers page only ever shows the brand-color gradient placeholder.
 
----
+## Goal
+
+When a user uploads a hero banner during job posting configuration (wizard or PostingSheet), the image is:
+1. Uploaded to Supabase Storage on selection.
+2. Persisted on the job posting.
+3. Rendered as the hero on the public job page (with the brand-color gradient as the documented fallback).
 
 ## Plan
 
-### 1. Persist wizard custom questions into `job_posting_application_fields`
+### 1. Storage
 
-Refactor `JobPostingStep.savePosting()` so that after `createPosting` returns the new posting id, we sync the builder's non-locked fields into the real table — the same shape `PostingSheet` writes.
+- Create a new public bucket `job-posting-banners` via `supabase--storage_create_bucket` (public, so the careers page can render the image without signed URLs).
+- Add RLS on `storage.objects` so:
+  - Authenticated members of the tenant can `INSERT/UPDATE/DELETE` objects keyed under `{tenant_id}/{posting_id}/...`.
+  - `SELECT` is public (matches existing `careers-logos` pattern).
+- File constraints enforced client-side: image/* only, max 5 MB, recommended 1600×480.
 
-```text
-savePosting()
-  ├─ createPosting(...)              → newPostingId
-  └─ for each custom (non-locked) field f, in order:
-       insert into job_posting_application_fields {
-         posting_id: newPostingId,
-         field_label: f.label,
-         field_type: sharedTypeToDb(f.type),   // longtext→textarea, yesno→checkbox
-         is_required: f.required,
-         help_text: f.hint,
-         field_config: f.fieldConfig ?? null,
-         source: 'custom',
-         display_order: index,
-       }
-       if f.type === 'select' && f.fieldConfig?.options → insert posting_field_select_options rows
-```
+### 2. Data model
 
-Implementation notes:
-- Add a helper `persistWizardFields(postingId, fields)` in `JobPostingStep.tsx` (or extract to `src/hooks/useJobPostingFields.ts` as `bulkCreateForPosting`) that mirrors `addCustomField` from `useJobPostingFields`.
-- Keep writing the lightweight summary into `details.application_fields` for backward compatibility (other code paths read it for previews), but the table is the source of truth.
-- Skip rows whose `id` starts with `core:` and any `locked` rows (those are the always-on core fields handled separately).
-- On insert failure: surface a toast and return `false` so the wizard does not advance/finalize the posting in a half-saved state. If `createPosting` succeeded but field sync failed, leave the posting as draft and tell the user "Posting created, but custom questions failed to save — open the posting to retry."
-- Backfill safety: ignore any pre-existing rows (this runs at create time, so the table is empty).
+- No new column needed. Store the public URL inside the existing `job_postings.details` JSONB as `details.banner_url` (alongside `banner_name`, which we'll keep for the filename label).
+- This mirrors how `brand_color`, `team_photos`, `culture_video`, and other posting branding fields are already stored.
 
-### 2. Wire the "On creation" toggles, and actually publish
+### 3. Wizard upload UX (`JobPostingStep.tsx`)
 
-Make the four `ToggleRow`s in `SummaryStep.tsx` controlled. Add four pieces of state on `JobWizard.tsx` (`publishImmediately`, `crossPost`, `openSourcing` — already exists as `autoSource` — and `notifySlack`) and pass `checked`/`onChange` props down to `SummaryStep`. The first one defaults to `true` only when `hasPosting`.
+- Replace the filename-only `onChange` with a real upload flow:
+  - On file select, immediately upload to `job-posting-banners/{tenantId}/wizard-{uuid}/{filename}`.
+  - Show inline progress state (spinner + filename) on the dashed tile.
+  - On success, render the uploaded image inside the tile (replacing the gradient preview), store `bannerUrl` + `bannerName` in component state.
+  - Provide a small "Remove" affordance (top-right of the tile) that clears state and deletes the storage object.
+  - On validation/upload error, toast and keep the tile in the gradient state.
+- Include `banner_url: bannerUrl || null` in the `details` payload sent to `createPosting`.
+- After the posting is created in `savePosting`, optionally move the wizard temp object from `wizard-{uuid}/` to `{postingId}/` so storage stays tidy (best-effort; not blocking).
 
-On Create:
+### 4. PostingSheet (post-creation editing)
 
-```text
-handleCreate (Summary step)
-  1. saveJob()                       → jobId
-  2. postingRef.current.savePosting() → creates posting + custom fields (Bug 1 fix)
-  3. if (publishImmediately && hasPosting):
-        update job_postings
-          set is_active = true,
-              published_at = now()
-          where id = newPostingId
-        ensure jobs.status = 'open'
-  4. if (crossPost && hasPosting): enqueue cross-post job (out of scope for this fix — leave a TODO; do NOT silently lie)
-  5. if (notifySlack): same — leave wired but TODO until Slack integration ships
-  6. if (openSourcing): existing `autoSource` already creates the sourcing project — keep as-is
-```
+- The existing PostingSheet that edits an already-created posting needs the same banner field so users can swap/remove the banner later. Reuse the same upload component.
+- Path here is the final form: `{tenantId}/{postingId}/{filename}`.
 
-Concretely:
-- Extend `useJobPostings.createPosting` (or add `publishPosting(id)`) with an optional `publish: boolean` argument that sets `is_active = true` and `published_at = now()` (add column if missing — check schema first; if not present, add migration `ALTER TABLE job_postings ADD COLUMN published_at timestamptz`).
-- Update `JobPostingStep.savePosting()` signature to accept `{ publish: boolean }` and pass it to `createPosting`.
-- In `JobWizard.tsx`, thread `publishImmediately` from `SummaryStep` into the call to `postingRef.current.savePosting({ publish: publishImmediately })`.
-- After success, refresh `useJobPostings` and the careers page query cache.
-- Verify `PublicCareersPage` / `PublicJobPosting` filtering: they should require `is_active = true` (and `published_at IS NOT NULL` if we adopt that column). Adjust the query/RLS read policy if it currently shows drafts or hides published rows.
-- Disable the "Publish immediately" toggle (already done) and the cross-post toggle when `!hasPosting`. Keep helper copy honest: when a toggle's backend is not yet implemented, label it `Coming soon` and force it off instead of pretending it works.
+### 5. Public rendering
 
-### 3. QA checklist
+- In `PublicJobPosting.tsx`, where the hero currently renders the brand-color gradient:
+  - If `details.banner_url` exists, render the image as the hero background (cover, center) with a subtle dark overlay for text legibility.
+  - Otherwise keep the current gradient fallback.
+- In `PublicCareersPage.tsx` job cards, if a banner exists, use it as the card thumbnail; otherwise keep current gradient. (Optional polish — confirm before doing.)
 
-- Create a job with posting + 2 custom questions (short text + select) → open `Job → Postings → Edit posting` and confirm both questions render with correct type, required flag, and select options.
-- Open the public posting URL → custom questions appear in the application form; submitting stores them in `candidate_application_responses`.
-- Toggle "Publish to careers page immediately" OFF → posting created with `is_active = false`; it does NOT appear on the public careers page; "Publish" button on the posting edit view works.
-- Toggle ON (default) → posting created with `is_active = true`, `published_at` set, immediately visible on `/careers/...` and indexable per the existing Google for Jobs syndication logic.
-- Re-open the wizard for an existing job (edit mode) → custom questions round-trip from the table back into the builder.
+### 6. Cleanup & guardrails
 
-### Files touched
+- When a posting is deleted, attempt to delete its banner objects (best-effort in the existing delete flow).
+- Add an `image/*` accept + 5MB size check before upload.
+- Show toast errors for storage failures rather than failing silently.
 
-- `src/components/jobs/wizard/JobPostingStep.tsx` — persist custom fields after `createPosting`; accept `publish` flag.
-- `src/components/jobs/wizard/SummaryStep.tsx` — controlled toggles, prop-driven.
-- `src/components/jobs/JobWizard.tsx` — own toggle state, pass through to `savePosting`, post-create publish step.
-- `src/hooks/useJobPostings.ts` — optional `publish` flag → set `is_active` / `published_at`.
-- `src/hooks/useJobPostingFields.ts` — optional `bulkCreateForPosting(postingId, fields)` helper.
-- Possible migration: `published_at` column on `job_postings` (only if not already present).
+## Technical notes
 
-### Out of scope (flagged, not fixed in this pass)
+- Reuse the same upload helper pattern already used by `careers-logos` to stay consistent.
+- Keep the API surface of `JobPostingStep` save unchanged aside from the extra `banner_url` field in `details` — no DB migration required.
+- Public URL format will be the standard Supabase public bucket URL, safe to embed directly in `<img>` and CSS `background-image`.
 
-- Real Slack notification on creation.
-- Real cross-post-to-LinkedIn/WTTJ/ZipRecruiter pipeline. The toggle will be labeled "Coming soon" and disabled until the integration lands, so we never again ship a toggle that does nothing.
+## Open question
+
+Do you want the banner to also replace the placeholder thumbnail on **job cards in the public careers list**, or only on the individual job posting page? I'd default to "individual job page only" to keep the careers grid visually uniform, but happy to do both if you prefer.
