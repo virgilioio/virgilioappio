@@ -431,6 +431,11 @@ Deno.serve(async (req) => {
       await failSoftHandoff(sb, ctx, "empty_reply");
     }
 
+    // ---- Rolling context summary refresh (every 50 messages) -----------
+    if (stillAi && text) {
+      await maybeRefreshRollingSummary(sb, ctx, ai);
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
