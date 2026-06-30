@@ -181,14 +181,29 @@ export async function authenticateCandidateRequest(
   const tenant = tenantRes.data;
   if (!thread || !tenant || thread.deleted_at) return { ok: false, response: NOT_FOUND() };
 
-  // Posting gate.
-  const { data: posting } = await supabase
+  // Posting gate — prefer the active posting; fall back to most recent only
+  // if no active row exists (e.g. job got deactivated after token issuance).
+  const postingSelect = "id, chat_enabled, chat_mode, is_active, created_at";
+  const { data: activePosting } = await supabase
     .from("job_postings")
-    .select("id, chat_enabled, chat_mode")
+    .select(postingSelect)
     .eq("job_id", thread.job_id)
+    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  let posting = activePosting;
+  if (!posting) {
+    const { data: latest } = await supabase
+      .from("job_postings")
+      .select(postingSelect)
+      .eq("job_id", thread.job_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    posting = latest;
+  }
 
   if (!posting || posting.chat_enabled !== true) {
     return {
