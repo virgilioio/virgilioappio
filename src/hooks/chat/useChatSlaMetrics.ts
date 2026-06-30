@@ -37,13 +37,15 @@ export function useChatSlaMetrics(enabled: boolean = true) {
           .select('id, updated_at, last_message_at', { count: 'exact' })
           .eq('tenant_id', organizationId!)
           .eq('status', 'awaiting_human')
-          .order('updated_at', { ascending: true })
+          .order('last_message_at', { ascending: true, nullsFirst: false })
           .limit(1),
         supabase
           .from('chat_messages')
           .select('thread_id, direction, sender_type, created_at')
           .eq('tenant_id', organizationId!)
           .gte('created_at', since)
+          // Order by thread first so per-thread arrays stay chronological
+          // after the group-by below; then by created_at within each thread.
           .order('thread_id', { ascending: true })
           .order('created_at', { ascending: true })
           .limit(1000),
@@ -51,12 +53,14 @@ export function useChatSlaMetrics(enabled: boolean = true) {
 
       const awaitingHumanCount = awaitingRes.count ?? 0
       const oldestRow = awaitingRes.data?.[0]
-      const oldestAwaitingMs = oldestRow
-        ? Date.now() - new Date(oldestRow.updated_at).getTime()
+      const oldestClockIso = oldestRow?.last_message_at ?? oldestRow?.updated_at ?? null
+      const oldestAwaitingMs = oldestClockIso
+        ? Date.now() - new Date(oldestClockIso).getTime()
         : null
 
       // Compute first-response latencies: for each inbound (candidate) message,
       // find the next outbound (recruiter human) message in the same thread.
+      // NOTE: DB stores direction as 'in' / 'out' (not 'inbound' / 'outbound').
       const msgs = msgsRes.data ?? []
       const byThread = new Map<string, typeof msgs>()
       for (const m of msgs) {
@@ -70,10 +74,10 @@ export function useChatSlaMetrics(enabled: boolean = true) {
         let pendingInboundAt: number | null = null
         for (const m of arr) {
           const t = new Date(m.created_at).getTime()
-          if (m.direction === 'inbound' && m.sender_type === 'candidate') {
+          if (m.direction === 'in' && m.sender_type === 'candidate') {
             if (pendingInboundAt === null) pendingInboundAt = t
           } else if (
-            m.direction === 'outbound' &&
+            m.direction === 'out' &&
             m.sender_type === 'recruiter' &&
             pendingInboundAt !== null
           ) {
@@ -82,6 +86,7 @@ export function useChatSlaMetrics(enabled: boolean = true) {
           }
         }
       }
+
 
       latencies.sort((a, b) => a - b)
       const pick = (p: number) => {
