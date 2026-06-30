@@ -7288,6 +7288,7 @@ export type Database = {
           billing_state: string | null
           chat_ai_daily_token_cap: number
           chat_hard_delete_days: number
+          chat_inactivity_soft_delete_days: number
           chat_paused: boolean
           chat_retention_days_after_close: number
           created_at: string
@@ -7319,6 +7320,7 @@ export type Database = {
           billing_state?: string | null
           chat_ai_daily_token_cap?: number
           chat_hard_delete_days?: number
+          chat_inactivity_soft_delete_days?: number
           chat_paused?: boolean
           chat_retention_days_after_close?: number
           created_at?: string
@@ -7350,6 +7352,7 @@ export type Database = {
           billing_state?: string | null
           chat_ai_daily_token_cap?: number
           chat_hard_delete_days?: number
+          chat_inactivity_soft_delete_days?: number
           chat_paused?: boolean
           chat_retention_days_after_close?: number
           created_at?: string
@@ -7727,6 +7730,21 @@ export type Database = {
           tokens_after: number
         }[]
       }
+      chat_drop_expired_message_partitions: {
+        Args: { months_to_keep?: number }
+        Returns: {
+          dropped: boolean
+          partition_name: string
+        }[]
+      }
+      chat_hard_delete_threads: {
+        Args: never
+        Returns: {
+          hard_deleted_messages: number
+          hard_deleted_threads: number
+          tenant_id: string
+        }[]
+      }
       chat_notif_enqueue: {
         Args: {
           p_delay_seconds?: number
@@ -7760,6 +7778,13 @@ export type Database = {
           audit_deleted: number
           rate_limits_deleted: number
           tokens_deleted: number
+        }[]
+      }
+      chat_soft_delete_inactive_threads: {
+        Args: never
+        Returns: {
+          archived_threads: number
+          tenant_id: string
         }[]
       }
       chat_try_lock_thread_for_ai: {
