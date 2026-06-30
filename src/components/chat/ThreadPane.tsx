@@ -8,6 +8,7 @@ import { Composer } from '@/components/chat/Composer'
 import { useChatKillSwitch } from '@/hooks/chat/useChatKillSwitch'
 import { useMarkThreadRead } from '@/hooks/chat/useMarkThreadRead'
 import { PauseCircle } from 'lucide-react'
+import { AiSummaryCard } from '@/components/chat/AiSummaryCard'
 
 interface ThreadPaneProps {
   threadId?: string
