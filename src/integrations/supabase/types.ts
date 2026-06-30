@@ -4268,6 +4268,9 @@ export type Database = {
           application_batch_in_app: boolean
           application_batch_push: boolean
           chat_email_enabled: boolean
+          chat_message_email: boolean
+          chat_message_in_app: boolean
+          chat_message_push: boolean
           daily_digest_email: boolean
           daily_digest_in_app: boolean
           daily_digest_push: boolean
@@ -4299,6 +4302,9 @@ export type Database = {
           application_batch_in_app?: boolean
           application_batch_push?: boolean
           chat_email_enabled?: boolean
+          chat_message_email?: boolean
+          chat_message_in_app?: boolean
+          chat_message_push?: boolean
           daily_digest_email?: boolean
           daily_digest_in_app?: boolean
           daily_digest_push?: boolean
@@ -4330,6 +4336,9 @@ export type Database = {
           application_batch_in_app?: boolean
           application_batch_push?: boolean
           chat_email_enabled?: boolean
+          chat_message_email?: boolean
+          chat_message_in_app?: boolean
+          chat_message_push?: boolean
           daily_digest_email?: boolean
           daily_digest_in_app?: boolean
           daily_digest_push?: boolean
@@ -7684,6 +7693,20 @@ export type Database = {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
       }
+      chat_bell_enqueue: {
+        Args: {
+          p_action_url: string
+          p_candidate_id: string
+          p_kind: string
+          p_preview: string
+          p_subtitle: string
+          p_tenant: string
+          p_thread: string
+          p_title: string
+          p_user: string
+        }
+        Returns: string
+      }
       chat_bump_rate_limit: {
         Args: {
           p_max: number
@@ -8392,6 +8415,7 @@ export type Database = {
         | "offer_event"
         | "posting_status"
         | "daily_digest"
+        | "chat_message"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -8704,6 +8728,7 @@ export const Constants = {
         "offer_event",
         "posting_status",
         "daily_digest",
+        "chat_message",
       ],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
