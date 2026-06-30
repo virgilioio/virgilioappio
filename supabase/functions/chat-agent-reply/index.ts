@@ -17,7 +17,7 @@
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { generateText, stepCountIs, tool } from "npm:ai@4";
+import { generateText, stepCountIs, tool } from "npm:ai@5";
 import { z } from "npm:zod@3.23.8";
 import {
   CHAT_MODELS,
@@ -71,13 +71,14 @@ type ThreadCtx = {
   mode: string;
   status: string;
   messageCount: number;
+  visibleMessageCount: number;
   contextSummary: RollingSummary;
 };
 
 async function loadThread(sb: ReturnType<typeof adminClient>, id: string): Promise<ThreadCtx | null> {
   const { data } = await sb
     .from("chat_threads")
-    .select("id, tenant_id, candidate_id, job_id, mode, status, deleted_at, message_count, context_summary")
+    .select("id, tenant_id, candidate_id, job_id, mode, status, deleted_at, message_count, candidate_visible_message_count, context_summary")
     .eq("id", id)
     .maybeSingle();
   if (!data || data.deleted_at) return null;
@@ -89,6 +90,7 @@ async function loadThread(sb: ReturnType<typeof adminClient>, id: string): Promi
     mode: data.mode,
     status: data.status,
     messageCount: Number(data.message_count ?? 0),
+    visibleMessageCount: Number(data.candidate_visible_message_count ?? 0),
     contextSummary: (data.context_summary ?? null) as RollingSummary,
   };
 }
@@ -107,8 +109,9 @@ async function loadRecentMessages(sb: ReturnType<typeof adminClient>, threadId: 
 }
 
 // ----- Rolling context summary (Step 3.6) ---------------------------------
-// Refresh `chat_threads.context_summary` every 50 new messages so the agent
-// keeps long-running threads grounded without re-sending the entire history.
+// Refresh `chat_threads.context_summary` every N new *candidate-visible*
+// messages (excludes recruiter notes / system messages) so long-running
+// threads stay grounded without re-sending the entire history.
 const ROLLING_SUMMARY_EVERY = 50;
 
 async function maybeRefreshRollingSummary(
@@ -116,14 +119,15 @@ async function maybeRefreshRollingSummary(
   ctx: ThreadCtx,
   ai: ReturnType<typeof getChatAi>,
 ) {
+  let reserved = 0;
   try {
-    // Re-read the latest message_count after the just-inserted assistant turn.
+    // Re-read the latest visible message_count after the just-inserted assistant turn.
     const { data: fresh } = await sb
       .from("chat_threads")
-      .select("message_count, context_summary")
+      .select("candidate_visible_message_count, context_summary")
       .eq("id", ctx.threadId)
       .maybeSingle();
-    const currentCount = Number(fresh?.message_count ?? ctx.messageCount);
+    const currentCount = Number(fresh?.candidate_visible_message_count ?? ctx.visibleMessageCount);
     const prev = (fresh?.context_summary ?? ctx.contextSummary) as RollingSummary;
     const lastAt = Number(prev?.message_count ?? 0);
     if (currentCount - lastAt < ROLLING_SUMMARY_EVERY) return;
@@ -145,6 +149,20 @@ async function maybeRefreshRollingSummary(
       })
       .join("\n");
 
+    // Reserve summarize tokens up front; refund overage on failure.
+    reserved = CHAT_TOKEN_CAPS.summarize;
+    const { data: reserveRow } = await sb.rpc("chat_consume_ai_tokens", {
+      p_tenant_id: ctx.tenantId,
+      p_tokens: reserved,
+    });
+    const reserveCheck = Array.isArray(reserveRow) ? reserveRow[0] : reserveRow;
+    if (reserveCheck && reserveCheck.allowed === false) {
+      // Cap exceeded — refund and bail; the main reply already succeeded.
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserved });
+      reserved = 0;
+      return;
+    }
+
     const priorBlock = prev?.text ? `Prior summary:\n${prev.text}\n\n` : "";
     const result = await generateText({
       model: ai.model(CHAT_MODELS.summarize),
@@ -153,12 +171,17 @@ async function maybeRefreshRollingSummary(
       prompt: `${priorBlock}Recent transcript (most recent last):\n${transcript}\n\nWrite the updated rolling summary now.`,
     });
     const text = (result.text ?? "").trim();
-    if (!text) return;
-
     const used = result.usage?.totalTokens ?? 0;
-    if (used > 0) {
-      await sb.rpc("chat_consume_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: used });
+    // True-up: refund any unused reserve, charge any overage.
+    const delta = used - reserved;
+    if (delta > 0) {
+      await sb.rpc("chat_consume_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: delta });
+    } else if (delta < 0) {
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: -delta });
     }
+    reserved = 0;
+
+    if (!text) return;
 
     await sb
       .from("chat_threads")
@@ -183,6 +206,9 @@ async function maybeRefreshRollingSummary(
     });
   } catch (e) {
     // Rolling summary is best-effort; never fail the reply because of it.
+    if (reserved > 0) {
+      try { await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserved }); } catch { /* noop */ }
+    }
     console.error("[chat-agent-reply] rolling summary refresh failed", e);
   }
 }
@@ -210,10 +236,15 @@ async function postSystemMessage(
   });
 }
 
+// Kinds that represent an *unexpected* failure (we want to notice these in
+// logs). All other kinds are part of normal fail-soft handoff flow.
+const UNEXPECTED_KINDS = new Set(["exception", "assistant_insert_failed", "empty_reply"]);
+
 async function failSoftHandoff(
   sb: ReturnType<typeof adminClient>,
   ctx: ThreadCtx,
-  reason: string,
+  kind: string,
+  detail?: string,
 ) {
   try {
     await sb
@@ -221,12 +252,17 @@ async function failSoftHandoff(
       .update({ status: "awaiting_human", mode: "recruiter", updated_at: new Date().toISOString() })
       .eq("id", ctx.threadId);
     await postSystemMessage(sb, ctx, "A teammate will jump in shortly.");
+    const unexpected = UNEXPECTED_KINDS.has(kind);
+    const event = unexpected ? "chat_ai_handoff_unexpected" : "chat_ai_handoff_expected";
+    if (unexpected) {
+      console.warn("[chat-agent-reply] unexpected fail-soft handoff", { kind, detail, threadId: ctx.threadId });
+    }
     await sb.from("chat_audit_log").insert({
       tenant_id: ctx.tenantId,
       thread_id: ctx.threadId,
       actor_type: "system",
-      event: "chat_ai_fail_soft_handoff",
-      metadata: { reason },
+      event,
+      metadata: { kind, detail: detail ?? null },
     });
   } catch (e) {
     console.error("[chat-agent-reply] fail-soft handoff failed", e);
@@ -271,18 +307,24 @@ Deno.serve(async (req) => {
     try { await sb.rpc("chat_release_thread_ai_lock", { p_thread_id: ctx.threadId }); } catch { /* noop */ }
   };
 
+  let reserve = CHAT_TOKEN_CAPS.reply;
+  let reserveOutstanding = 0;
   try {
     // ---- Token-cap pre-check (cheap reserve of estimated tokens) -------
-    const reserve = CHAT_TOKEN_CAPS.reply;
     const { data: usage } = await sb.rpc("chat_consume_ai_tokens", {
       p_tenant_id: ctx.tenantId,
       p_tokens: reserve,
     });
+    reserveOutstanding = reserve;
     const row = Array.isArray(usage) ? usage[0] : usage;
     if (row && row.allowed === false) {
+      // Cap exceeded — refund the reserve (we didn't actually call the model).
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserveOutstanding });
+      reserveOutstanding = 0;
       await failSoftHandoff(sb, ctx, "daily_token_cap_exceeded");
       return jsonResponse(200, { handoff: true, reason: "daily_cap" });
     }
+
 
     // ---- Tools --------------------------------------------------------
     const tools = {
@@ -395,12 +437,15 @@ Deno.serve(async (req) => {
         : {}),
     });
 
-    // True-up token usage (reserve was conservative; add overage if any).
+    // True-up token usage: charge any overage, refund any unused reserve.
     const used = result.usage?.totalTokens ?? 0;
-    const delta = Math.max(used - reserve, 0);
+    const delta = used - reserveOutstanding;
     if (delta > 0) {
       await sb.rpc("chat_consume_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: delta });
+    } else if (delta < 0) {
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: -delta });
     }
+    reserveOutstanding = 0;
 
     // If the model already triggered a handoff tool, the system message is
     // posted by the tool. Only emit a fresh assistant message when there's
@@ -424,14 +469,14 @@ Deno.serve(async (req) => {
       });
       if (insertErr) {
         console.error("[chat-agent-reply] assistant insert failed", insertErr);
-        await failSoftHandoff(sb, ctx, "assistant_insert_failed");
+        await failSoftHandoff(sb, ctx, "assistant_insert_failed", insertErr.message);
       }
     } else if (stillAi && !text) {
       // Model returned nothing usable → fail-soft.
       await failSoftHandoff(sb, ctx, "empty_reply");
     }
 
-    // ---- Rolling context summary refresh (every 50 messages) -----------
+    // ---- Rolling context summary refresh (every N visible messages) -----
     if (stillAi && text) {
       await maybeRefreshRollingSummary(sb, ctx, ai);
     }
@@ -450,7 +495,12 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("[chat-agent-reply] generation failed", e);
-    await failSoftHandoff(sb, ctx, `exception:${(e as Error).message?.slice(0, 200) ?? "unknown"}`);
+    if (reserveOutstanding > 0) {
+      try { await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserveOutstanding }); } catch { /* noop */ }
+      reserveOutstanding = 0;
+    }
+    const err = e as Error;
+    await failSoftHandoff(sb, ctx, "exception", `${err.name ?? "Error"}: ${err.message?.slice(0, 200) ?? "unknown"}`);
     return jsonResponse(200, { handoff: true, reason: "exception" });
   } finally {
     await release();

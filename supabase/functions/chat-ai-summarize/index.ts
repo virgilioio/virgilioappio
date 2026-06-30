@@ -11,7 +11,7 @@
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { generateText } from "npm:ai@4";
+import { generateText } from "npm:ai@5";
 import { z } from "npm:zod@3.23.8";
 import {
   CHAT_MODELS,
@@ -95,11 +95,13 @@ Deno.serve(async (req) => {
   const sbAdmin = adminClient();
 
   // ---- Cache check ----------------------------------------------------
-  // context_summary shape we persist: { text, generated_at, message_count, model }.
-  // Reuse when the message count hasn't materially moved (< 5 new msgs) unless `force`.
-  type Cached = { text: string; generated_at: string; message_count: number; model: string };
+  // context_summary shape we persist: { text, generated_at, message_count, model, source }.
+  // Only the prose card-source summary is valid for this endpoint; rolling-source
+  // summaries (4–8 bullets, for the agent) should not be returned to the recruiter.
+  type Cached = { text: string; generated_at: string; message_count: number; model: string; source?: string };
   const cached = (thread.context_summary ?? null) as Cached | null;
-  if (!force && cached?.text && typeof cached.message_count === "number") {
+  const cardSourced = cached?.source ? cached.source === "card" : true; // legacy (no source) treated as card
+  if (!force && cached?.text && cardSourced && typeof cached.message_count === "number") {
     const delta = (thread.message_count ?? 0) - cached.message_count;
     if (delta < 5) {
       return jsonResponse(200, {
@@ -170,13 +172,17 @@ Deno.serve(async (req) => {
     used = result.usage?.totalTokens ?? 0;
   } catch (e) {
     console.error("[chat-ai-summarize] generation failed", e);
+    // Refund the entire reserve — model never produced anything billable.
+    await sbAdmin.rpc("chat_refund_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: reserve });
     return jsonResponse(502, { error: "ai_failed" });
   }
 
-  // True-up overage
-  const delta = Math.max(used - reserve, 0);
+  // True-up: charge any overage, refund any unused reserve.
+  const delta = used - reserve;
   if (delta > 0) {
     await sbAdmin.rpc("chat_consume_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: delta });
+  } else if (delta < 0) {
+    await sbAdmin.rpc("chat_refund_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: -delta });
   }
 
   if (!text) {
@@ -189,6 +195,7 @@ Deno.serve(async (req) => {
     generated_at,
     message_count: thread.message_count ?? recent.length,
     model,
+    source: "card",
   };
 
   await sbAdmin

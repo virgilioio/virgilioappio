@@ -12,7 +12,7 @@
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { generateText } from "npm:ai@4";
+import { generateText } from "npm:ai@5";
 import { z } from "npm:zod@3.23.8";
 import {
   CHAT_MODELS,
@@ -144,6 +144,20 @@ Deno.serve(async (req) => {
     `\nReturn 3 short reply suggestions now, one per line.`,
   ].filter(Boolean).join("\n");
 
+  // ---- Cooldown (per recruiter + thread, 10s) ------------------------
+  // Stops accidental rapid "Refresh" clicks from burning tokens.
+  const sbAdmin2 = sbAdmin;
+  const cooldown = await sbAdmin2.rpc("chat_bump_rate_limit", {
+    p_scope: "ai_suggest_replies",
+    p_scope_key: `${userRes.user.id}:${threadId}`,
+    p_window_seconds: 10,
+    p_max: 1,
+  });
+  const cdRow = Array.isArray(cooldown.data) ? cooldown.data[0] : cooldown.data;
+  if (cdRow && cdRow.allowed === false) {
+    return jsonResponse(429, { error: "cooldown" }, { "Retry-After": "10" });
+  }
+
   // ---- Token-cap reserve ---------------------------------------------
   const reserve = CHAT_TOKEN_CAPS.suggest;
   const { data: usage } = await sbAdmin.rpc("chat_consume_ai_tokens", {
@@ -170,12 +184,16 @@ Deno.serve(async (req) => {
     used = result.usage?.totalTokens ?? 0;
   } catch (e) {
     console.error("[chat-ai-suggest-replies] generation failed", e);
+    await sbAdmin.rpc("chat_refund_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: reserve });
     return jsonResponse(502, { error: "ai_failed" });
   }
 
-  const delta = Math.max(used - reserve, 0);
+  // True-up: charge overage, refund unused reserve.
+  const delta = used - reserve;
   if (delta > 0) {
     await sbAdmin.rpc("chat_consume_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: delta });
+  } else if (delta < 0) {
+    await sbAdmin.rpc("chat_refund_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: -delta });
   }
 
   const suggestions = parseSuggestions(text);
