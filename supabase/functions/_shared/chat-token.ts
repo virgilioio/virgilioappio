@@ -149,12 +149,39 @@ export async function issueCandidateChatToken(
     threadId = newThread.id;
   }
 
-  // 3. Revoke any prior active tokens for this thread.
-  await supabase
+  // 3. Revoke any prior active tokens for this thread (and audit each).
+  const { data: priorTokens } = await supabase
     .from("chat_access_tokens")
-    .update({ revoked_at: new Date().toISOString() })
+    .select("id, jti_hash")
     .eq("thread_id", threadId)
     .is("revoked_at", null);
+
+  if (priorTokens && priorTokens.length > 0) {
+    const nowIso = new Date().toISOString();
+    await supabase
+      .from("chat_access_tokens")
+      .update({ revoked_at: nowIso })
+      .eq("thread_id", threadId)
+      .is("revoked_at", null);
+
+    try {
+      await supabase.from("chat_audit_log").insert(
+        priorTokens.map((t) => ({
+          tenant_id: input.tenantId,
+          thread_id: threadId,
+          actor_type: "system",
+          event: "chat_token_revoked",
+          metadata: {
+            reason: "rotated",
+            jti_hash: t.jti_hash,
+            revoked_at: nowIso,
+          },
+        })),
+      );
+    } catch (auditErr) {
+      console.warn("[chat-token] revoke audit skipped", auditErr);
+    }
+  }
 
   // 4. Mint a fresh token. Payload format: t.c.th.jti.exp (all url-safe).
   const jtiBytes = new Uint8Array(18);
