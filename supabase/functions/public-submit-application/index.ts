@@ -478,11 +478,60 @@ serve(async (req) => {
         "expires",
         issued.expiresAt,
       );
-      // TODO(phase-2.2-email): once email domain is configured, queue the
-      // magic-link email here via send-transactional-email. The path
-      // `${chatMagicLinkPath}` should be appended to the public app URL.
+
+      // Phase 2.4 — send the candidate magic-link email via Resend.
+      // Best-effort: a delivery failure must not roll back the application.
+      try {
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        if (!resendKey) {
+          console.warn("⚠️ RESEND_API_KEY missing — skipping chat magic-link email");
+        } else {
+          const appBase =
+            Deno.env.get("PUBLIC_APP_URL")?.replace(/\/$/, "") ||
+            "https://app.gogio.io";
+          const magicUrl = `${appBase}${chatMagicLinkPath}`;
+          const jobTitle = (posting as any).job?.title ?? "the role";
+          const companyName =
+            (posting as any).job?.organization?.name ??
+            (posting as any).tenant?.name ??
+            "the hiring team";
+
+          const { Resend } = await import("npm:resend@2.0.0");
+          const { createEmailTemplate } = await import("../_shared/emailTemplate.ts");
+          const resend = new Resend(resendKey);
+          const emailFrom =
+            Deno.env.get("EMAIL_DEFAULT_FROM") || "GoGio <noreply@app.gogio.io>";
+
+          const recipientName = (candidateName || candidateEmail).split(/\s+/)[0] ?? "there";
+          const html = createEmailTemplate({
+            recipientName,
+            preheaderText: `Open a private chat about ${jobTitle}`,
+            title: `Chat with ${companyName}`,
+            content: `
+              <p>Thanks for applying to <strong>${jobTitle}</strong>.</p>
+              <p>We've opened a private chat so you can ask questions, get updates, and hear back from the team — all in one place.</p>
+              <p>Your secure link is valid for <strong>14 days</strong>.</p>
+            `,
+            ctaText: "Open chat",
+            ctaUrl: magicUrl,
+            footerNote: "If you didn't apply, you can safely ignore this email.",
+          });
+
+          const emailRes = await resend.emails.send({
+            from: emailFrom,
+            to: [candidateEmail],
+            subject: `Chat with ${companyName} about ${jobTitle}`,
+            html,
+          });
+          console.log("💌 Candidate chat magic-link email queued:", emailRes?.data?.id ?? "(no id)");
+        }
+      } catch (emailErr) {
+        console.warn(
+          "⚠️ Chat magic-link email failed (non-fatal):",
+          emailErr instanceof Error ? emailErr.message : String(emailErr),
+        );
+      }
     } catch (chatErr) {
-      // Disabled chat / config issues are expected and silent at info level.
       const msg = chatErr instanceof Error ? chatErr.message : String(chatErr);
       if (msg.includes("disabled")) {
         console.log("💬 Chat not enabled for this posting — skipping token issuance");
