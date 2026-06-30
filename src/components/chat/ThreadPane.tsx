@@ -139,6 +139,10 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
         </div>
       )}
 
+      <div className="px-5 pt-3">
+        <AiSummaryCard threadId={threadId} />
+      </div>
+
       <MessageList threadId={threadId} />
 
       <Composer threadId={threadId} disabled={isPaused} />
