@@ -11,6 +11,7 @@ export type NotificationCategory =
   | 'offer_event'
   | 'posting_status'
   | 'daily_digest'
+  | 'chat_message'
 
 export type NotificationChannel = 'in_app' | 'email' | 'push'
 
@@ -37,6 +38,9 @@ export interface NotificationPreferences {
   daily_digest_in_app: boolean
   daily_digest_email: boolean
   daily_digest_push: boolean
+  chat_message_in_app: boolean
+  chat_message_email: boolean
+  chat_message_push: boolean
   quiet_hours_enabled: boolean
   quiet_hours_start: string | null
   quiet_hours_end: string | null
@@ -66,6 +70,9 @@ const DEFAULTS: Omit<NotificationPreferences, 'user_id'> = {
   daily_digest_in_app: false,
   daily_digest_email: false,
   daily_digest_push: false,
+  chat_message_in_app: true,
+  chat_message_email: true,
+  chat_message_push: false,
   quiet_hours_enabled: false,
   quiet_hours_start: '22:00',
   quiet_hours_end: '08:00',
@@ -140,5 +147,6 @@ export const PREFS_CATEGORIES: { key: CategoryKey; label: string; description: s
   { key: 'interview_event',     label: 'Interview events',   description: 'Interview scheduled, rescheduled, or canceled.' },
   { key: 'offer_event',         label: 'Offer events',       description: 'Offer created, approval requested, approved, or signed.' },
   { key: 'posting_status',      label: 'Job posting status', description: 'Posting published, expired, or board sync issues.' },
+  { key: 'chat_message',        label: 'Chat messages',      description: 'New candidate messages and AI handoffs in the Chat module.' },
   { key: 'daily_digest',        label: 'Daily digest',       description: 'Once-a-day summary of pipeline activity.' },
 ]
