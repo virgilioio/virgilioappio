@@ -147,5 +147,6 @@ export const PREFS_CATEGORIES: { key: CategoryKey; label: string; description: s
   { key: 'interview_event',     label: 'Interview events',   description: 'Interview scheduled, rescheduled, or canceled.' },
   { key: 'offer_event',         label: 'Offer events',       description: 'Offer created, approval requested, approved, or signed.' },
   { key: 'posting_status',      label: 'Job posting status', description: 'Posting published, expired, or board sync issues.' },
+  { key: 'chat_message',        label: 'Chat messages',      description: 'New candidate messages and AI handoffs in the Chat module.' },
   { key: 'daily_digest',        label: 'Daily digest',       description: 'Once-a-day summary of pipeline activity.' },
 ]
