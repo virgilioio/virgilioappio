@@ -31,6 +31,34 @@ export function useSendChatMessage() {
     mutationFn: async (args: SendArgs) => {
       if (!tenant?.id || !user?.id) throw new Error('Not authenticated')
       const direction = resolveDirection(args)
+
+      // Phase 5.1: outbound recruiter→candidate messages on an email-channel
+      // thread are sent through the chat-send-email edge function (which writes
+      // the message row, dispatches the email, and stamps tracking metadata).
+      // Internal notes stay in-app regardless of channel.
+      if (direction === 'out') {
+        const { data: t } = await supabase
+          .from('chat_threads')
+          .select('channel')
+          .eq('id', args.threadId)
+          .maybeSingle()
+        if (t?.channel === 'email') {
+          const { data, error } = await supabase.functions.invoke('chat-send-email', {
+            body: { threadId: args.threadId, body: args.body },
+          })
+          if (error) throw error
+          const { data: row, error: rErr } = await supabase
+            .from('chat_messages')
+            .select(
+              'id, thread_id, tenant_id, direction, sender_type, sender_user_id, body, parts, read_by_recipient_at, redacted_at, created_at',
+            )
+            .eq('id', (data as any)?.message_id)
+            .maybeSingle()
+          if (rErr || !row) throw rErr ?? new Error('message_not_found_after_send')
+          return row as ChatMessageRow
+        }
+      }
+
       const { data, error } = await supabase
         .from('chat_messages')
         .insert({

@@ -1,10 +1,11 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
-import { Send, StickyNote, MessageSquare } from 'lucide-react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Send, StickyNote, MessageSquare, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
 import { SuggestedReplies } from '@/components/chat/SuggestedReplies'
+import { supabase } from '@/lib/supabaseClient'
 
 interface ComposerProps {
   threadId: string
@@ -28,10 +29,28 @@ type Mode = 'reply' | 'note'
 export function Composer({ threadId, disabled = false }: ComposerProps) {
   const [draft, setDraft] = useState('')
   const [mode, setMode] = useState<Mode>('reply')
+  const [channel, setChannel] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const send = useSendChatMessage()
 
+  useEffect(() => {
+    let cancelled = false
+    if (!threadId) return
+    void supabase
+      .from('chat_threads')
+      .select('channel')
+      .eq('id', threadId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setChannel((data?.channel as string | undefined) ?? null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [threadId])
+
   const isNote = mode === 'note'
+  const isEmail = !isNote && channel === 'email'
   const canSend = draft.trim().length > 0 && !send.isPending && !disabled
 
   const handleSend = async () => {
@@ -159,15 +178,31 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
             </kbd>{' '}
             for newline
           </span>
-          <Button
-            size="sm"
-            variant={isNote ? 'secondary' : undefined}
-            onClick={handleSend}
-            disabled={!canSend}
-            icon={Send}
-          >
-            {send.isPending ? 'Sending…' : isNote ? 'Add note' : 'Send'}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isEmail && (
+              <span
+                className="inline-flex items-center gap-1 rounded-md bg-[#EEF1FF] px-1.5 py-0.5 text-[10.5px] font-poppins font-medium text-[#3F4FBF]"
+                title="This reply will be delivered by email"
+              >
+                <Mail className="h-3 w-3" /> via email
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant={isNote ? 'secondary' : undefined}
+              onClick={handleSend}
+              disabled={!canSend}
+              icon={Send}
+            >
+              {send.isPending
+                ? 'Sending…'
+                : isNote
+                  ? 'Add note'
+                  : isEmail
+                    ? 'Send email'
+                    : 'Send'}
+            </Button>
+          </div>
         </div>
       </div>
     </footer>
