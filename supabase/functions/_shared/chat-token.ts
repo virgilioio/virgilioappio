@@ -31,6 +31,19 @@ export interface IssueChatTokenResult {
   magicLinkPath: string;
 }
 
+export interface ParsedChatToken {
+  tenantId: string;
+  candidateId: string;
+  threadId: string;
+  jti: string;
+  expEpoch: number;
+  signature: string;
+}
+
+export type VerifyChatTokenResult =
+  | { ok: true; payload: ParsedChatToken; jtiHash: string }
+  | { ok: false; reason: "shape" | "signature" | "expired" };
+
 const DEFAULT_EXPIRY_DAYS = 14;
 const enc = new TextEncoder();
 
