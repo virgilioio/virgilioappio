@@ -30,6 +30,7 @@ const CATEGORY_META: Record<NotificationCategory, { label: string; icon: any; to
   offer_event:         { label: 'OFFER',             icon: FileCheck2,     tone: 'green',  bg: '#DCFCE7', fg: '#15803D' },
   posting_status:      { label: 'POSTING',           icon: Briefcase,      tone: 'orange', bg: '#FFE4D6', fg: '#9A3412' },
   daily_digest:        { label: 'DIGEST',            icon: CalendarDays,   tone: 'blue',   bg: '#DBEAFE', fg: '#1D4ED8' },
+  chat_message:        { label: 'CHAT',              icon: MessageSquare,  tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
 }
 
 function relTime(iso: string): string {
