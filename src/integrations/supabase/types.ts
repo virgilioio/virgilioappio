@@ -2140,6 +2140,71 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_notification_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          kind: Database["public"]["Enums"]["chat_notification_kind"]
+          last_message_at: string
+          last_message_id: string | null
+          message_count: number
+          recipient_email: string | null
+          recipient_user_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["chat_notification_status"]
+          tenant_id: string
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["chat_notification_kind"]
+          last_message_at?: string
+          last_message_id?: string | null
+          message_count?: number
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          scheduled_for: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["chat_notification_status"]
+          tenant_id: string
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["chat_notification_kind"]
+          last_message_at?: string
+          last_message_id?: string | null
+          message_count?: number
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["chat_notification_status"]
+          tenant_id?: string
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_notification_queue_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_rate_limits: {
         Row: {
           count: number
@@ -4202,6 +4267,7 @@ export type Database = {
           application_batch_email: boolean
           application_batch_in_app: boolean
           application_batch_push: boolean
+          chat_email_enabled: boolean
           daily_digest_email: boolean
           daily_digest_in_app: boolean
           daily_digest_push: boolean
@@ -4232,6 +4298,7 @@ export type Database = {
           application_batch_email?: boolean
           application_batch_in_app?: boolean
           application_batch_push?: boolean
+          chat_email_enabled?: boolean
           daily_digest_email?: boolean
           daily_digest_in_app?: boolean
           daily_digest_push?: boolean
@@ -4262,6 +4329,7 @@ export type Database = {
           application_batch_email?: boolean
           application_batch_in_app?: boolean
           application_batch_push?: boolean
+          chat_email_enabled?: boolean
           daily_digest_email?: boolean
           daily_digest_in_app?: boolean
           daily_digest_push?: boolean
@@ -7636,6 +7704,25 @@ export type Database = {
           tokens_after: number
         }[]
       }
+      chat_notif_enqueue: {
+        Args: {
+          p_delay_seconds?: number
+          p_email: string
+          p_kind: Database["public"]["Enums"]["chat_notification_kind"]
+          p_message_id?: string
+          p_tenant: string
+          p_thread: string
+          p_throttle_seconds?: number
+          p_user: string
+        }
+        Returns: string
+      }
+      chat_notif_recruiter_targets: {
+        Args: { p_thread: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
       chat_refund_ai_tokens: {
         Args: { p_tenant_id: string; p_tokens: number }
         Returns: undefined
@@ -8219,6 +8306,11 @@ export type Database = {
       automation_type: "single_email" | "email_sequence"
       candidate_list_access: "view" | "comment" | "comment_score"
       candidate_list_reviewer_status: "pending" | "active" | "removed"
+      chat_notification_kind:
+        | "recruiter_new_message"
+        | "recruiter_handoff"
+        | "candidate_recruiter_reply"
+      chat_notification_status: "pending" | "sent" | "cancelled" | "failed"
       contract_status_enum:
         | "active"
         | "pending"
@@ -8513,6 +8605,12 @@ export const Constants = {
       automation_type: ["single_email", "email_sequence"],
       candidate_list_access: ["view", "comment", "comment_score"],
       candidate_list_reviewer_status: ["pending", "active", "removed"],
+      chat_notification_kind: [
+        "recruiter_new_message",
+        "recruiter_handoff",
+        "candidate_recruiter_reply",
+      ],
+      chat_notification_status: ["pending", "sent", "cancelled", "failed"],
       contract_status_enum: [
         "active",
         "pending",
