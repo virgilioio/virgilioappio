@@ -234,3 +234,6 @@ verify_jwt = true
 verify_jwt = false
 
 
+[functions.chat-notification-processor]
+verify_jwt = true
+
