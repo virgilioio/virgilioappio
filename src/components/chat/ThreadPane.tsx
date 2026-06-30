@@ -8,6 +8,7 @@ import { Composer } from '@/components/chat/Composer'
 import { useChatKillSwitch } from '@/hooks/chat/useChatKillSwitch'
 import { useMarkThreadRead } from '@/hooks/chat/useMarkThreadRead'
 import { PauseCircle } from 'lucide-react'
+import { AiSummaryCard } from '@/components/chat/AiSummaryCard'
 
 interface ThreadPaneProps {
   threadId?: string
@@ -137,6 +138,10 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
           </div>
         </div>
       )}
+
+      <div className="px-5 pt-3">
+        <AiSummaryCard threadId={threadId} />
+      </div>
 
       <MessageList threadId={threadId} />
 
