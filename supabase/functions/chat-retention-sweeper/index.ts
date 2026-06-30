@@ -71,8 +71,26 @@ Deno.serve(async (req) => {
   const failed = results.filter((r) => !r.ok)
   const status = failed.length === 0 ? 200 : 207
 
+  // F4 — write a single system-actor audit row so admins can see the last
+  // sweep outcome from the audit viewer. tenant_id is the nil UUID because
+  // this run is cross-tenant; admins filter by event='retention_sweep'.
+  const summary = Object.fromEntries(
+    results.map((r) => [r.name, r.ok ? (r.data ?? true) : { error: r.error }]),
+  )
+  try {
+    await supabase.from('chat_audit_log').insert({
+      tenant_id: '00000000-0000-0000-0000-000000000000',
+      actor_type: 'system',
+      event: 'retention_sweep',
+      metadata: { ok: failed.length === 0, summary },
+    })
+  } catch (err) {
+    console.error('[chat-retention-sweeper] audit insert failed', err)
+  }
+
   return new Response(
     JSON.stringify({ ok: failed.length === 0, results }),
     { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   )
 })
+
