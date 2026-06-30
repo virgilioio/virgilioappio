@@ -104,24 +104,37 @@ export async function issueCandidateChatToken(
 
   const supabase = adminClient();
 
-  // 1. Confirm the posting allows chat. If no posting exists for the job
-  //    (private/legacy jobs), default to deny — Phase 2 only opens when
-  //    the recruiter explicitly enabled chat on the posting.
-  const { data: posting, error: postingErr } = await supabase
+  // 1. Confirm the posting allows chat. Prefer the active posting; fall back
+  //    to most recent only if no active row exists.
+  const postingSelect = "id, chat_enabled, chat_mode, is_active, created_at";
+  let posting: { id: string; chat_enabled: boolean; chat_mode: string | null } | null = null;
+  const { data: activePosting, error: activeErr } = await supabase
     .from("job_postings")
-    .select("id, chat_enabled, chat_mode")
+    .select(postingSelect)
     .eq("job_id", input.jobId)
+    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  if (postingErr) {
-    console.error("[chat-token] posting lookup failed", postingErr);
+  if (activeErr) {
+    console.error("[chat-token] active posting lookup failed", activeErr);
     throw new Error("Failed to verify chat configuration");
+  }
+  posting = activePosting ?? null;
+  if (!posting) {
+    const { data: latest } = await supabase
+      .from("job_postings")
+      .select(postingSelect)
+      .eq("job_id", input.jobId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    posting = latest ?? null;
   }
   if (!posting || posting.chat_enabled !== true) {
     throw new Error("Candidate chat is disabled for this job");
   }
+
 
   // 2. Find or create the thread for this candidate + job.
   let threadId: string | null = null;
