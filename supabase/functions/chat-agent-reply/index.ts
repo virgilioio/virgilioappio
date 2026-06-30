@@ -236,10 +236,15 @@ async function postSystemMessage(
   });
 }
 
+// Kinds that represent an *unexpected* failure (we want to notice these in
+// logs). All other kinds are part of normal fail-soft handoff flow.
+const UNEXPECTED_KINDS = new Set(["exception", "assistant_insert_failed", "empty_reply"]);
+
 async function failSoftHandoff(
   sb: ReturnType<typeof adminClient>,
   ctx: ThreadCtx,
-  reason: string,
+  kind: string,
+  detail?: string,
 ) {
   try {
     await sb
@@ -247,12 +252,17 @@ async function failSoftHandoff(
       .update({ status: "awaiting_human", mode: "recruiter", updated_at: new Date().toISOString() })
       .eq("id", ctx.threadId);
     await postSystemMessage(sb, ctx, "A teammate will jump in shortly.");
+    const unexpected = UNEXPECTED_KINDS.has(kind);
+    const event = unexpected ? "chat_ai_handoff_unexpected" : "chat_ai_handoff_expected";
+    if (unexpected) {
+      console.warn("[chat-agent-reply] unexpected fail-soft handoff", { kind, detail, threadId: ctx.threadId });
+    }
     await sb.from("chat_audit_log").insert({
       tenant_id: ctx.tenantId,
       thread_id: ctx.threadId,
       actor_type: "system",
-      event: "chat_ai_fail_soft_handoff",
-      metadata: { reason },
+      event,
+      metadata: { kind, detail: detail ?? null },
     });
   } catch (e) {
     console.error("[chat-agent-reply] fail-soft handoff failed", e);
