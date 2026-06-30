@@ -158,12 +158,35 @@ export async function issueCandidateChatToken(
     threadId = newThread.id;
   }
 
-  // 3. Revoke any prior active tokens for this thread (and audit each).
+  // 3. Reuse-or-rotate gate. By default we never silently kick a candidate
+  //    out of an open browser tab — only `forceRotate: true` revokes live tokens.
   const { data: priorTokens } = await supabase
     .from("chat_access_tokens")
-    .select("id, jti_hash")
+    .select("id, jti_hash, expires_at")
     .eq("thread_id", threadId)
     .is("revoked_at", null);
+
+  const nowMs = Date.now();
+  const activePriorTokens = (priorTokens ?? []).filter(
+    (t) => new Date(t.expires_at).getTime() > nowMs,
+  );
+
+  if (!input.forceRotate && activePriorTokens.length > 0) {
+    // Return the existing active token's metadata. We deliberately do NOT
+    // echo the raw token (we only stored the hash) — callers that need to
+    // re-send the magic link should pass forceRotate: true.
+    const newest = activePriorTokens.reduce((a, b) =>
+      new Date(a.expires_at).getTime() > new Date(b.expires_at).getTime() ? a : b,
+    );
+    return {
+      token: null,
+      threadId,
+      expiresAt: newest.expires_at,
+      magicLinkPath: null,
+      reused: true,
+    };
+  }
+
 
   if (priorTokens && priorTokens.length > 0) {
     const nowIso = new Date().toISOString();
