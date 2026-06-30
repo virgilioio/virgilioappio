@@ -61,6 +61,7 @@ export default function CandidateChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [status, setStatus] = useState<ChatStatus>('ready')
+  const [handoffState, setHandoffState] = useState<'idle' | 'sending' | 'sent'>('idle')
   const submittedAt = useRef<number | null>(null)
 
   useEffect(() => {
@@ -293,13 +294,29 @@ export default function CandidateChat() {
                   variant="ghost"
                   size="sm"
                   className="gap-1.5"
-                  onClick={() => {
-                    // Phase 2.6 will toggle thread.status = 'awaiting_human'.
-                    console.info('[CandidateChat] talk to a human — wired in Phase 2.6')
+                  disabled={handoffState !== 'idle'}
+                  onClick={async () => {
+                    if (!token || handoffState !== 'idle') return
+                    setHandoffState('sending')
+                    try {
+                      const { error } = await supabase.functions.invoke(
+                        'chat-candidate-handoff',
+                        { body: { token } },
+                      )
+                      if (error) throw error
+                      setHandoffState('sent')
+                    } catch (e) {
+                      console.error('[CandidateChat] handoff failed', e)
+                      setHandoffState('idle')
+                    }
                   }}
                 >
                   <Hand className="h-3.5 w-3.5" />
-                  Talk to a human
+                  {handoffState === 'sent'
+                    ? 'A recruiter has been notified'
+                    : handoffState === 'sending'
+                      ? 'Requesting…'
+                      : 'Talk to a human'}
                 </Button>
               ) : (
                 <span />
