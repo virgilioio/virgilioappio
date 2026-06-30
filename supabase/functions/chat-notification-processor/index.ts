@@ -119,13 +119,14 @@ async function shouldCancel(
       return "candidate_active";
     }
 
-    // Suppression list double-check
+    // Suppression list double-check (case-insensitive equality via lowercased .eq).
     const { data: sup } = await sb
       .from("email_suppression_list")
       .select("email")
-      .ilike("email", row.recipient_email)
+      .eq("email", row.recipient_email.toLowerCase())
       .maybeSingle();
     if (sup) return "suppressed";
+
   }
 
   return null;
