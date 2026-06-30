@@ -1,10 +1,11 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
-import { Send, StickyNote, MessageSquare } from 'lucide-react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Send, StickyNote, MessageSquare, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
 import { SuggestedReplies } from '@/components/chat/SuggestedReplies'
+import { supabase } from '@/lib/supabaseClient'
 
 interface ComposerProps {
   threadId: string
