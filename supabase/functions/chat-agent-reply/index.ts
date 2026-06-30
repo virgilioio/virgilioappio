@@ -56,6 +56,13 @@ function adminClient() {
 
 const BodySchema = z.object({ threadId: z.string().uuid() });
 
+type RollingSummary = {
+  text?: string;
+  generated_at?: string;
+  message_count?: number;
+  model?: string;
+} | null;
+
 type ThreadCtx = {
   threadId: string;
   tenantId: string;
@@ -63,12 +70,14 @@ type ThreadCtx = {
   jobId: string;
   mode: string;
   status: string;
+  messageCount: number;
+  contextSummary: RollingSummary;
 };
 
 async function loadThread(sb: ReturnType<typeof adminClient>, id: string): Promise<ThreadCtx | null> {
   const { data } = await sb
     .from("chat_threads")
-    .select("id, tenant_id, candidate_id, job_id, mode, status, deleted_at")
+    .select("id, tenant_id, candidate_id, job_id, mode, status, deleted_at, message_count, context_summary")
     .eq("id", id)
     .maybeSingle();
   if (!data || data.deleted_at) return null;
@@ -79,20 +88,103 @@ async function loadThread(sb: ReturnType<typeof adminClient>, id: string): Promi
     jobId: data.job_id,
     mode: data.mode,
     status: data.status,
+    messageCount: Number(data.message_count ?? 0),
+    contextSummary: (data.context_summary ?? null) as RollingSummary,
   };
 }
 
-async function loadRecentMessages(sb: ReturnType<typeof adminClient>, threadId: string) {
+async function loadRecentMessages(sb: ReturnType<typeof adminClient>, threadId: string, limit = 20) {
   const { data } = await sb
     .from("chat_messages")
     .select("direction, sender_type, body, created_at")
     .eq("thread_id", threadId)
     .is("redacted_at", null)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(limit);
   const rows = (data ?? []).reverse();
   // Drop recruiter-only notes; the candidate never saw them.
   return rows.filter((r) => r.direction !== "note");
+}
+
+// ----- Rolling context summary (Step 3.6) ---------------------------------
+// Refresh `chat_threads.context_summary` every 50 new messages so the agent
+// keeps long-running threads grounded without re-sending the entire history.
+const ROLLING_SUMMARY_EVERY = 50;
+
+async function maybeRefreshRollingSummary(
+  sb: ReturnType<typeof adminClient>,
+  ctx: ThreadCtx,
+  ai: ReturnType<typeof getChatAi>,
+) {
+  try {
+    // Re-read the latest message_count after the just-inserted assistant turn.
+    const { data: fresh } = await sb
+      .from("chat_threads")
+      .select("message_count, context_summary")
+      .eq("id", ctx.threadId)
+      .maybeSingle();
+    const currentCount = Number(fresh?.message_count ?? ctx.messageCount);
+    const prev = (fresh?.context_summary ?? ctx.contextSummary) as RollingSummary;
+    const lastAt = Number(prev?.message_count ?? 0);
+    if (currentCount - lastAt < ROLLING_SUMMARY_EVERY) return;
+
+    // Pull a wider window for the rolling summary than the agent loop uses.
+    const rows = await loadRecentMessages(sb, ctx.threadId, 80);
+    if (rows.length === 0) return;
+    const transcript = rows
+      .filter((r) => r.body && r.body.trim())
+      .map((r) => {
+        const who = r.sender_type === "candidate"
+          ? "Candidate"
+          : r.sender_type === "ai"
+            ? "Gio (AI)"
+            : r.sender_type === "system"
+              ? "System"
+              : "Recruiter";
+        return `${who}: ${r.body!.trim()}`;
+      })
+      .join("\n");
+
+    const priorBlock = prev?.text ? `Prior summary:\n${prev.text}\n\n` : "";
+    const result = await generateText({
+      model: ai.model(CHAT_MODELS.summarize),
+      system:
+        "You maintain a rolling briefing of a recruiter↔candidate chat. Output 4–8 short bullet lines covering: candidate intent, key facts shared (role, location, comp expectations only if stated), open questions, next step. No greetings, no markdown headers, no quotes. Never invent facts.",
+      prompt: `${priorBlock}Recent transcript (most recent last):\n${transcript}\n\nWrite the updated rolling summary now.`,
+    });
+    const text = (result.text ?? "").trim();
+    if (!text) return;
+
+    const used = result.usage?.totalTokens ?? 0;
+    if (used > 0) {
+      await sb.rpc("chat_consume_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: used });
+    }
+
+    await sb
+      .from("chat_threads")
+      .update({
+        context_summary: {
+          text,
+          generated_at: new Date().toISOString(),
+          message_count: currentCount,
+          model: CHAT_MODELS.summarize,
+          source: "rolling",
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", ctx.threadId);
+
+    await sb.from("chat_audit_log").insert({
+      tenant_id: ctx.tenantId,
+      thread_id: ctx.threadId,
+      actor_type: "system",
+      event: "chat_ai_rolling_summary_refresh",
+      metadata: { tokens: used, model: CHAT_MODELS.summarize, message_count: currentCount },
+    });
+  } catch (e) {
+    // Rolling summary is best-effort; never fail the reply because of it.
+    console.error("[chat-agent-reply] rolling summary refresh failed", e);
+  }
 }
 
 function toModelMessages(rows: { direction: string; sender_type: string; body: string | null }[]) {
