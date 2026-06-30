@@ -102,9 +102,8 @@ export default function CandidateChat() {
     return ctx.job.companyName ?? ctx.job.title ?? 'Chat'
   }, [ctx])
 
-  async function handleSubmit(e?: React.FormEvent) {
-    e?.preventDefault()
-    const text = input.trim()
+  async function handleSubmit(message: { text?: string; files?: unknown[] }) {
+    const text = (message?.text ?? input).trim()
     if (!text || status !== 'ready' || state.kind !== 'ready') return
     const msg: ChatMessage = {
       id: crypto.randomUUID(),
