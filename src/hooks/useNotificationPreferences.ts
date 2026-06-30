@@ -38,6 +38,9 @@ export interface NotificationPreferences {
   daily_digest_in_app: boolean
   daily_digest_email: boolean
   daily_digest_push: boolean
+  chat_message_in_app: boolean
+  chat_message_email: boolean
+  chat_message_push: boolean
   quiet_hours_enabled: boolean
   quiet_hours_start: string | null
   quiet_hours_end: string | null
