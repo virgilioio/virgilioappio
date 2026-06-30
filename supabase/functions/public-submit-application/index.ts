@@ -470,6 +470,9 @@ serve(async (req) => {
         tenantId: posting.tenant_id,
         candidateId: globalCandidateId!,
         jobId: posting.job_id,
+        // Application submission is a fresh entry point — mint a new token
+        // and revoke any prior one so the email always contains a valid link.
+        forceRotate: true,
       });
       chatMagicLinkPath = issued.magicLinkPath;
       console.log(
@@ -477,6 +480,7 @@ serve(async (req) => {
         issued.threadId,
         "expires",
         issued.expiresAt,
+        issued.reused ? "(reused)" : "(new)",
       );
 
       // Phase 2.4 — send the candidate magic-link email via Resend.
