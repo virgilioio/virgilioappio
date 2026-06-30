@@ -2206,6 +2206,7 @@ export type Database = {
           assigned_recruiter_id: string | null
           association_id: string | null
           candidate_id: string
+          candidate_visible_message_count: number
           channel: string
           context_summary: string | null
           created_at: string
@@ -2228,6 +2229,7 @@ export type Database = {
           assigned_recruiter_id?: string | null
           association_id?: string | null
           candidate_id: string
+          candidate_visible_message_count?: number
           channel?: string
           context_summary?: string | null
           created_at?: string
@@ -2250,6 +2252,7 @@ export type Database = {
           assigned_recruiter_id?: string | null
           association_id?: string | null
           candidate_id?: string
+          candidate_visible_message_count?: number
           channel?: string
           context_summary?: string | null
           created_at?: string
@@ -7632,6 +7635,10 @@ export type Database = {
           cap: number
           tokens_after: number
         }[]
+      }
+      chat_refund_ai_tokens: {
+        Args: { p_tenant_id: string; p_tokens: number }
+        Returns: undefined
       }
       chat_release_thread_ai_lock: {
         Args: { p_thread_id: string }
