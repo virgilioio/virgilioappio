@@ -172,13 +172,17 @@ Deno.serve(async (req) => {
     used = result.usage?.totalTokens ?? 0;
   } catch (e) {
     console.error("[chat-ai-summarize] generation failed", e);
+    // Refund the entire reserve — model never produced anything billable.
+    await sbAdmin.rpc("chat_refund_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: reserve });
     return jsonResponse(502, { error: "ai_failed" });
   }
 
-  // True-up overage
-  const delta = Math.max(used - reserve, 0);
+  // True-up: charge any overage, refund any unused reserve.
+  const delta = used - reserve;
   if (delta > 0) {
     await sbAdmin.rpc("chat_consume_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: delta });
+  } else if (delta < 0) {
+    await sbAdmin.rpc("chat_refund_ai_tokens", { p_tenant_id: thread.tenant_id, p_tokens: -delta });
   }
 
   if (!text) {
@@ -191,6 +195,7 @@ Deno.serve(async (req) => {
     generated_at,
     message_count: thread.message_count ?? recent.length,
     model,
+    source: "card",
   };
 
   await sbAdmin
