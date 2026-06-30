@@ -7586,6 +7586,26 @@ export type Database = {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
       }
+      chat_bump_rate_limit: {
+        Args: {
+          p_max: number
+          p_scope: string
+          p_scope_key: string
+          p_window_seconds: number
+        }
+        Returns: {
+          allowed: boolean
+          current_count: number
+        }[]
+      }
+      chat_retention_sweep: {
+        Args: never
+        Returns: {
+          audit_deleted: number
+          rate_limits_deleted: number
+          tokens_deleted: number
+        }[]
+      }
       check_application_limits:
         | {
             Args: {

@@ -60,13 +60,23 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!thread) return json(404, { error: "thread_not_found" });
 
+  // RBAC: only owners, admins, and recruiters in the thread's tenant can
+  // revoke. user_type='member'/'manager' (e.g. interviewers) cannot.
   const { data: membership } = await admin
     .from("members")
-    .select("id")
+    .select("id, system_role, user_type")
     .eq("tenant_id", thread.tenant_id)
     .eq("user_id", userId)
     .maybeSingle();
   if (!membership) return json(403, { error: "forbidden" });
+
+  const ALLOWED_USER_TYPES = new Set(["owner", "admin", "recruiter"]);
+  const ALLOWED_SYSTEM_ROLES = new Set(["owner", "admin", "superadmin"]);
+  const allowed =
+    ALLOWED_USER_TYPES.has(String(membership.user_type ?? "").toLowerCase()) ||
+    ALLOWED_SYSTEM_ROLES.has(String(membership.system_role ?? "").toLowerCase());
+  if (!allowed) return json(403, { error: "forbidden_role" });
+
 
   const { data: activeTokens } = await admin
     .from("chat_access_tokens")

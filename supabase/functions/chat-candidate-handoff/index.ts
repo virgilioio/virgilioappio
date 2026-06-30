@@ -63,11 +63,13 @@ Deno.serve(async (req) => {
     return jsonResponse(500, { error: "update_failed" });
   }
 
-  // Insert a system message so the thread shows the request inline.
+  // Insert a system/note message so the thread shows the request inline.
+  // direction='note' tells the UI to render this as a centered system banner
+  // rather than an incoming candidate bubble.
   await supabase.from("chat_messages").insert({
     tenant_id: ctx.tenantId,
     thread_id: ctx.threadId,
-    direction: "in",
+    direction: "note",
     sender_type: "system",
     body: "The candidate requested to talk to a human.",
   });

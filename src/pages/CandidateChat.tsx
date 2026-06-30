@@ -103,13 +103,20 @@ export default function CandidateChat() {
     return ctx.job.companyName ?? ctx.job.title ?? 'Chat'
   }, [ctx])
 
-  // Initial + polling fetch once the token is verified.
+  // Initial + adaptive polling fetch once the token is verified.
+  //
+  // We can't use Supabase Realtime here because the candidate is anonymous
+  // (no Supabase JWT). To keep the fan-out cheap at scale we:
+  //   • poll every 4s while the tab is visible
+  //   • pause polling entirely when the tab is hidden
+  //   • do an immediate refetch on `visibilitychange` / `focus`
   useEffect(() => {
     if (state.kind !== 'ready' || !token) return
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
+    const ACTIVE_INTERVAL_MS = 4_000
 
-    const tick = async () => {
+    const fetchOnce = async () => {
       try {
         const { data, error } = await supabase.functions.invoke('chat-candidate-fetch', {
           body: { token },
@@ -127,7 +134,6 @@ export default function CandidateChat() {
             createdAt: new Date(m.created_at).getTime(),
           }))
           setMessages((prev) => {
-            // Preserve any optimistic messages not yet returned by the server.
             const serverIds = new Set(mapped.map((m) => m.id))
             const pending = prev.filter((m) => m.id.startsWith('optimistic-') && !serverIds.has(m.id))
             return [...mapped, ...pending]
@@ -136,14 +142,36 @@ export default function CandidateChat() {
       } catch (e) {
         console.warn('[CandidateChat] fetch failed', e)
       }
-      if (!cancelled) timer = setTimeout(tick, 5_000)
     }
-    void tick()
+
+    const schedule = () => {
+      if (cancelled) return
+      if (document.visibilityState === 'hidden') return
+      timer = setTimeout(async () => {
+        await fetchOnce()
+        schedule()
+      }, ACTIVE_INTERVAL_MS)
+    }
+
+    const onWake = () => {
+      if (document.visibilityState !== 'visible') return
+      void fetchOnce()
+      if (timer) clearTimeout(timer)
+      schedule()
+    }
+
+    void fetchOnce().then(() => schedule())
+    document.addEventListener('visibilitychange', onWake)
+    window.addEventListener('focus', onWake)
+
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onWake)
+      window.removeEventListener('focus', onWake)
     }
   }, [state.kind, token])
+
 
   async function handleSubmit(message: { text?: string; files?: unknown[] }) {
     const text = (message?.text ?? input).trim()

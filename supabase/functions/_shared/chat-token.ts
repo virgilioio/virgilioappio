@@ -20,15 +20,24 @@ export interface IssueChatTokenInput {
   associationId?: string | null;
   /** Override the default 14d window. */
   expiresInDays?: number;
+  /**
+   * When true, revoke any active token and mint a fresh one. Default false:
+   * if an active non-expired token already exists, return `{ reused: true }`
+   * with no raw token (caller must decide whether to re-send the magic link).
+   * Set true only when the caller actually wants to invalidate live sessions.
+   */
+  forceRotate?: boolean;
 }
 
 export interface IssueChatTokenResult {
-  /** Raw token to embed in the magic link. Never persisted. */
-  token: string;
+  /** Raw token to embed in the magic link. Null when `reused` is true. */
+  token: string | null;
   threadId: string;
   expiresAt: string;
-  /** Absolute /c/chat/:token URL the candidate should open. */
-  magicLinkPath: string;
+  /** Absolute /c/chat/:token URL the candidate should open. Null when reused. */
+  magicLinkPath: string | null;
+  /** True when an existing active token was returned instead of minting a new one. */
+  reused: boolean;
 }
 
 export interface ParsedChatToken {
@@ -95,24 +104,37 @@ export async function issueCandidateChatToken(
 
   const supabase = adminClient();
 
-  // 1. Confirm the posting allows chat. If no posting exists for the job
-  //    (private/legacy jobs), default to deny — Phase 2 only opens when
-  //    the recruiter explicitly enabled chat on the posting.
-  const { data: posting, error: postingErr } = await supabase
+  // 1. Confirm the posting allows chat. Prefer the active posting; fall back
+  //    to most recent only if no active row exists.
+  const postingSelect = "id, chat_enabled, chat_mode, is_active, created_at";
+  let posting: { id: string; chat_enabled: boolean; chat_mode: string | null } | null = null;
+  const { data: activePosting, error: activeErr } = await supabase
     .from("job_postings")
-    .select("id, chat_enabled, chat_mode")
+    .select(postingSelect)
     .eq("job_id", input.jobId)
+    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  if (postingErr) {
-    console.error("[chat-token] posting lookup failed", postingErr);
+  if (activeErr) {
+    console.error("[chat-token] active posting lookup failed", activeErr);
     throw new Error("Failed to verify chat configuration");
+  }
+  posting = activePosting ?? null;
+  if (!posting) {
+    const { data: latest } = await supabase
+      .from("job_postings")
+      .select(postingSelect)
+      .eq("job_id", input.jobId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    posting = latest ?? null;
   }
   if (!posting || posting.chat_enabled !== true) {
     throw new Error("Candidate chat is disabled for this job");
   }
+
 
   // 2. Find or create the thread for this candidate + job.
   let threadId: string | null = null;
@@ -149,12 +171,35 @@ export async function issueCandidateChatToken(
     threadId = newThread.id;
   }
 
-  // 3. Revoke any prior active tokens for this thread (and audit each).
+  // 3. Reuse-or-rotate gate. By default we never silently kick a candidate
+  //    out of an open browser tab — only `forceRotate: true` revokes live tokens.
   const { data: priorTokens } = await supabase
     .from("chat_access_tokens")
-    .select("id, jti_hash")
+    .select("id, jti_hash, expires_at")
     .eq("thread_id", threadId)
     .is("revoked_at", null);
+
+  const nowMs = Date.now();
+  const activePriorTokens = (priorTokens ?? []).filter(
+    (t) => new Date(t.expires_at).getTime() > nowMs,
+  );
+
+  if (!input.forceRotate && activePriorTokens.length > 0) {
+    // Return the existing active token's metadata. We deliberately do NOT
+    // echo the raw token (we only stored the hash) — callers that need to
+    // re-send the magic link should pass forceRotate: true.
+    const newest = activePriorTokens.reduce((a, b) =>
+      new Date(a.expires_at).getTime() > new Date(b.expires_at).getTime() ? a : b,
+    );
+    return {
+      token: null,
+      threadId,
+      expiresAt: newest.expires_at,
+      magicLinkPath: null,
+      reused: true,
+    };
+  }
+
 
   if (priorTokens && priorTokens.length > 0) {
     const nowIso = new Date().toISOString();
@@ -238,6 +283,7 @@ export async function issueCandidateChatToken(
     threadId,
     expiresAt: expiresAt.toISOString(),
     magicLinkPath: `/c/chat/${encodeURIComponent(token)}`,
+    reused: false,
   };
 }
 

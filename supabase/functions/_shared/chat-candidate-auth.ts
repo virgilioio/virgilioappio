@@ -62,35 +62,43 @@ export async function bumpRateLimit(
   max: number,
   windowSeconds: number,
 ): Promise<boolean> {
-  const windowStart = new Date(
-    Math.floor(Date.now() / 1000 / windowSeconds) * windowSeconds * 1000,
-  ).toISOString();
   try {
-    const { data } = await supabase
-      .from("chat_rate_limits")
-      .select("id, count")
-      .eq("scope", scope)
-      .eq("scope_key", key)
-      .eq("window_start", windowStart)
-      .maybeSingle();
-    if (data?.id) {
-      if ((data.count ?? 0) >= max) return false;
-      await supabase
-        .from("chat_rate_limits")
-        .update({ count: (data.count ?? 0) + 1 })
-        .eq("id", data.id);
-    } else {
-      await supabase.from("chat_rate_limits").insert({
-        scope,
-        scope_key: key,
-        window_start: windowStart,
-        count: 1,
-      });
+    const { data, error } = await supabase.rpc("chat_bump_rate_limit", {
+      p_scope: scope,
+      p_scope_key: key,
+      p_window_seconds: windowSeconds,
+      p_max: max,
+    });
+    if (error) {
+      console.warn("[chat-candidate-auth] rate-limit rpc failed", error);
+      return true; // fail-open on infra error — never block a legit user
     }
+    const row = Array.isArray(data) ? data[0] : data;
+    return row?.allowed !== false;
   } catch (e) {
-    console.warn("[chat-candidate-auth] rate-limit lookup failed", e);
+    console.warn("[chat-candidate-auth] rate-limit rpc threw", e);
+    return true;
   }
-  return true;
+}
+
+/**
+ * Audit a `chat_token_verify_failed` event but cap it at one row per
+ * (ip, minute) so scanners can't flood `chat_audit_log` between sweeps.
+ */
+export async function auditVerifyFailure(
+  supabase: SupabaseClient,
+  row: Record<string, unknown>,
+  ip: string,
+): Promise<void> {
+  const allowed = await bumpRateLimit(
+    supabase,
+    "audit_verify_fail_ip",
+    ip,
+    1,
+    60,
+  );
+  if (!allowed) return;
+  await audit(supabase, row);
 }
 
 export async function audit(
@@ -118,13 +126,13 @@ export async function authenticateCandidateRequest(
   // Stateless verify first — short-circuits on bad shape/sig/expiry.
   const verified = await verifyCandidateChatToken(token);
   if (!verified.ok) {
-    await audit(supabase, {
+    await auditVerifyFailure(supabase, {
       tenant_id: null,
       thread_id: null,
       actor_type: "candidate",
       event: "chat_token_verify_failed",
       metadata: { reason: verified.reason, ip, source: "candidate_api" },
-    });
+    }, ip);
     return { ok: false, response: NOT_FOUND() };
   }
 
@@ -145,13 +153,13 @@ export async function authenticateCandidateRequest(
     tokenRow.thread_id !== payload.threadId ||
     new Date(tokenRow.expires_at).getTime() <= Date.now()
   ) {
-    await audit(supabase, {
+    await auditVerifyFailure(supabase, {
       tenant_id: payload.tenantId,
       thread_id: payload.threadId,
       actor_type: "candidate",
       event: "chat_token_verify_failed",
       metadata: { reason: "db_miss_or_revoked", ip, source: "candidate_api" },
-    });
+    }, ip);
     return { ok: false, response: NOT_FOUND() };
   }
 
@@ -173,14 +181,29 @@ export async function authenticateCandidateRequest(
   const tenant = tenantRes.data;
   if (!thread || !tenant || thread.deleted_at) return { ok: false, response: NOT_FOUND() };
 
-  // Posting gate.
-  const { data: posting } = await supabase
+  // Posting gate — prefer the active posting; fall back to most recent only
+  // if no active row exists (e.g. job got deactivated after token issuance).
+  const postingSelect = "id, chat_enabled, chat_mode, is_active, created_at";
+  const { data: activePosting } = await supabase
     .from("job_postings")
-    .select("id, chat_enabled, chat_mode")
+    .select(postingSelect)
     .eq("job_id", thread.job_id)
+    .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  let posting = activePosting;
+  if (!posting) {
+    const { data: latest } = await supabase
+      .from("job_postings")
+      .select(postingSelect)
+      .eq("job_id", thread.job_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    posting = latest;
+  }
 
   if (!posting || posting.chat_enabled !== true) {
     return {
