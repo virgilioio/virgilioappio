@@ -307,18 +307,24 @@ Deno.serve(async (req) => {
     try { await sb.rpc("chat_release_thread_ai_lock", { p_thread_id: ctx.threadId }); } catch { /* noop */ }
   };
 
+  let reserve = CHAT_TOKEN_CAPS.reply;
+  let reserveOutstanding = 0;
   try {
     // ---- Token-cap pre-check (cheap reserve of estimated tokens) -------
-    const reserve = CHAT_TOKEN_CAPS.reply;
     const { data: usage } = await sb.rpc("chat_consume_ai_tokens", {
       p_tenant_id: ctx.tenantId,
       p_tokens: reserve,
     });
+    reserveOutstanding = reserve;
     const row = Array.isArray(usage) ? usage[0] : usage;
     if (row && row.allowed === false) {
+      // Cap exceeded — refund the reserve (we didn't actually call the model).
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserveOutstanding });
+      reserveOutstanding = 0;
       await failSoftHandoff(sb, ctx, "daily_token_cap_exceeded");
       return jsonResponse(200, { handoff: true, reason: "daily_cap" });
     }
+
 
     // ---- Tools --------------------------------------------------------
     const tools = {
