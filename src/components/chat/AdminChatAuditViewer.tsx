@@ -91,7 +91,7 @@ export function AdminChatAuditViewer() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" icon={<ScrollText className="h-3.5 w-3.5" />}>
+        <Button variant="ghost" size="sm" icon={ScrollText}>
           Audit
         </Button>
       </SheetTrigger>
