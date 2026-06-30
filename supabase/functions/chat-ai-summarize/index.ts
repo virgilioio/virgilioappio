@@ -95,11 +95,13 @@ Deno.serve(async (req) => {
   const sbAdmin = adminClient();
 
   // ---- Cache check ----------------------------------------------------
-  // context_summary shape we persist: { text, generated_at, message_count, model }.
-  // Reuse when the message count hasn't materially moved (< 5 new msgs) unless `force`.
-  type Cached = { text: string; generated_at: string; message_count: number; model: string };
+  // context_summary shape we persist: { text, generated_at, message_count, model, source }.
+  // Only the prose card-source summary is valid for this endpoint; rolling-source
+  // summaries (4–8 bullets, for the agent) should not be returned to the recruiter.
+  type Cached = { text: string; generated_at: string; message_count: number; model: string; source?: string };
   const cached = (thread.context_summary ?? null) as Cached | null;
-  if (!force && cached?.text && typeof cached.message_count === "number") {
+  const cardSourced = cached?.source ? cached.source === "card" : true; // legacy (no source) treated as card
+  if (!force && cached?.text && cardSourced && typeof cached.message_count === "number") {
     const delta = (thread.message_count ?? 0) - cached.message_count;
     if (delta < 5) {
       return jsonResponse(200, {
