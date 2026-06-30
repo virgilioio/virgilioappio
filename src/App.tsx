@@ -127,6 +127,7 @@ function AppContent() {
         <Route path="/schedule/:shortCode/:eventSlug" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
         <Route path="/chrome-oauth/start" element={<ChromeOAuthStart />} />
+        <Route path="/c/chat/:token" element={<CandidateChat />} />
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
