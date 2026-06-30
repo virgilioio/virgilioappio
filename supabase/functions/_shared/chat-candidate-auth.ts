@@ -126,13 +126,13 @@ export async function authenticateCandidateRequest(
   // Stateless verify first — short-circuits on bad shape/sig/expiry.
   const verified = await verifyCandidateChatToken(token);
   if (!verified.ok) {
-    await audit(supabase, {
+    await auditVerifyFailure(supabase, {
       tenant_id: null,
       thread_id: null,
       actor_type: "candidate",
       event: "chat_token_verify_failed",
       metadata: { reason: verified.reason, ip, source: "candidate_api" },
-    });
+    }, ip);
     return { ok: false, response: NOT_FOUND() };
   }
 
@@ -153,13 +153,13 @@ export async function authenticateCandidateRequest(
     tokenRow.thread_id !== payload.threadId ||
     new Date(tokenRow.expires_at).getTime() <= Date.now()
   ) {
-    await audit(supabase, {
+    await auditVerifyFailure(supabase, {
       tenant_id: payload.tenantId,
       thread_id: payload.threadId,
       actor_type: "candidate",
       event: "chat_token_verify_failed",
       metadata: { reason: "db_miss_or_revoked", ip, source: "candidate_api" },
-    });
+    }, ip);
     return { ok: false, response: NOT_FOUND() };
   }
 
