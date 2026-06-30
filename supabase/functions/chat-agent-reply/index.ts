@@ -376,9 +376,17 @@ Deno.serve(async (req) => {
     const model = CHAT_MODELS.reply;
     const ai = getChatAi({ initialRunId: chatAiRunIdFromRequest(req) });
 
+    // Inject the rolling context summary (if any) as a prefix to the system
+    // prompt so the model stays grounded on long-running threads without
+    // resending the full history.
+    const rollingText = ctx.contextSummary?.text?.trim();
+    const systemPrompt = rollingText
+      ? `${SYSTEM_PROMPT}\n\nRolling context summary of the conversation so far (use as background; do not quote verbatim):\n${rollingText}`
+      : SYSTEM_PROMPT;
+
     const result = await generateText({
       model: ai.model(model),
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages,
       tools,
       stopWhen: stepCountIs(50),
