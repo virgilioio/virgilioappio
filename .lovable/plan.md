@@ -1,116 +1,85 @@
 
-# Phase 4.1 — Candidate + recruiter chat email notifications
+# Phase 4 — Recap & senior review
 
-## Why a chat-owned queue (not `automation_email_queue`)
+## What's in place (verified end-to-end)
 
-`automation_email_queue` enforces `stage_automation_email_id NOT NULL` and `job_candidate_association_id NOT NULL`, both with FK cascade, and its RLS scopes by JCA. Chat notifications (new candidate message → recruiters, AI handoff → recruiters, recruiter reply → candidate) often have no JCA and never have a stage-automation email. Bolting them on means nullable FKs, mixed-purpose RLS, and a confusing processor.
+**4.1 — Email notifications**
+- Dedicated `chat_notification_queue` (separate from `automation_email_queue` so chat throttling doesn't compete with onboarding/marketing-style sends).
+- `chat_notif_enqueue` RPC + DB triggers (`chat_messages_notify`, `chat_threads_notify_handoff`) auto-queue on every new message and on handoff status transitions.
+- 10-minute digest coalescing (`message_count` + `last_message_*`) before send.
+- `chat-notification-processor` edge function: batch 25, attempts/backoff (5min × 5), suppression list re-check, "already read" / "candidate active" / "thread handled" cancellations, Resend send with `EMAIL_DEFAULT_FROM` fallback to `chat@app.gogio.io`.
+- pg_cron `chat-notification-processor` runs every minute (verified active).
+- Triggers attached to all current chat_messages monthly partitions (2026_05 → 2026_09).
 
-The cleaner move is a dedicated `chat_notification_queue` that **reuses the same discipline** (single processor on pg_cron, status enum, retry/error tracking, throttle window) and sends through the existing Resend infra. No new domain setup — `app.gogio.io` is already verified.
+**4.2 — In-app bell**
+- `chat_message` notification category in `notification_preferences` (in-app on, email on, push off).
+- `chat_bell_enqueue` RPC coalesces repeats per (thread, recipient) so one thread = one unread bell entry.
+- `NotificationCenter` renders the category with the purple "CHAT" chip and links to `/chat/{threadId}`.
+- Respects each recruiter's per-channel toggle.
 
-## What 4.1 ships
+**4.3 — Retention sweeper**
+- `chat-retention-sweeper` edge function orchestrates: closed-job purge → 30d soft-archive → 90d hard-delete → partition drop (keep last 4 months) → opportunistic rate-limit/audit/token cleanup.
+- Tenant-tunable windows (`chat_inactivity_soft_delete_days`, `chat_hard_delete_days`).
+- pg_cron `chat-retention-sweeper` runs nightly 03:20 UTC (verified).
+- `chat-messages-create-partitions` continues to roll forward partitions monthly.
 
-Three notification kinds, all queue-driven:
+**4.4 — Admin observability**
+- `chat_audit_log` RLS restricts reads to admins / workspace owners (verified policy).
+- `AdminChatAuditViewer` sheet: 200 most recent events, event filter, search, tone-mapped badges, JSON metadata, mounted in the chat list header (admin-only).
+- `ChatSlaWidget` + `useChatSlaMetrics`: awaiting-human count + oldest age, median / p95 first-response over last 7 days, refreshed every 60s, capped to 1k messages.
 
-| kind                       | recipient                                    | trigger                                                                |
-| -------------------------- | -------------------------------------------- | ---------------------------------------------------------------------- |
-| `recruiter_new_message`    | recruiters with thread access (members)      | candidate posts an inbound message                                     |
-| `recruiter_handoff`        | recruiters with thread access (members)      | AI fail-soft or candidate "Talk to a human" flips thread to `awaiting_human` |
-| `candidate_recruiter_reply`| candidate email                              | recruiter sends an outbound reply while candidate has no live polling session |
+---
 
-### Throttling + digesting (the important part)
+## Audit findings — issues to fix in this pass
 
-- **Per-recipient throttle window.** While a notification for a given `(thread_id, recipient)` is `pending` *or* was `sent` within the last `THROTTLE_MINUTES` (default 10), subsequent enqueues for the same pair coalesce into the existing row instead of creating a new one — `message_count++`, `last_message_at = now()`, `scheduled_for` left as-is. That's the digest: one email per thread per recipient per window, summarizing N messages.
-- **First message goes out fast.** The first enqueue per window is scheduled for `now() + DIGEST_DELAY_SECONDS` (default 60s) so a burst of two-three quick messages still collapses into one send.
-- **Suppressed if already read.** Right before the processor sends, it checks `chat_thread_reads` for that recipient/thread; if they've read past the last queued message we mark the row `cancelled` and skip the email. Same for `recruiter_handoff` if a teammate already grabbed the thread.
+### F1 (bug, blocking the SLA widget). Direction values mismatch
+`useChatSlaMetrics.ts` filters on `direction === 'inbound'` / `'outbound'`, but the database stores `'in'` / `'out'` (confirmed in `chat-candidate-send`, `chat-agent-reply`, `useChatMessages`). Result: the latency loop never collects samples — median/p95 always render as `—`.
 
-### Recipient resolution
+Fix: change the two comparisons to `'in'` and `'out'`. Also add a defensive `direction.startsWith('in')` if we keep both representations.
 
-- Recruiter targets resolve from `thread_assignees` (when present) → fallback to all `members` on the thread's tenant with role `recruiter`/`admin`/`workspace_owner` who have `notification_preferences.chat_email_enabled = true`. New pref column, defaults to `true`.
-- Candidate target is `candidates.email` from the thread's `candidate_id`. Skipped if no email or if email is on `email_suppression_list`.
+### F2 (correctness, small). Oldest-awaiting clock
+Widget computes oldest awaiting age from `chat_threads.updated_at`, which moves on any thread-row change (e.g. `context_summary` refresh). Use `last_message_at` instead — it more accurately reflects "how long has the candidate been waiting".
 
-## Schema (one migration)
+### F3 (defensive). Add explicit ordering by `created_at` in `useChatSlaMetrics`
+We currently order by `thread_id, created_at` so per-thread arrays remain chronological — but Supabase chains the two `.order(...)` calls correctly; verify and add a comment. No code change beyond a comment unless `EXPLAIN` shows otherwise.
 
-```sql
--- enum
-create type chat_notification_kind as enum (
-  'recruiter_new_message',
-  'recruiter_handoff',
-  'candidate_recruiter_reply'
-);
-create type chat_notification_status as enum ('pending','sent','cancelled','failed');
+### F4 (observability gap). Retention sweeper has no audit row
+Successful sweeper runs aren't reflected in `chat_audit_log`, so admins can't see "last cleaned at X, removed Y threads". Add a single `system`-actor audit insert at the end of `chat-retention-sweeper` with `{ purged, soft_archived, hard_deleted, partitions_dropped }` counts pulled from the RPC results. Cheap, one row per night, very useful when debugging retention questions.
 
--- queue
-create table public.chat_notification_queue (
-  id uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null,
-  thread_id uuid not null references public.chat_threads(id) on delete cascade,
-  kind chat_notification_kind not null,
-  recipient_user_id uuid,          -- recruiter target (members.user_id)
-  recipient_email   text,          -- candidate target (lowercased)
-  scheduled_for timestamptz not null,
-  status chat_notification_status not null default 'pending',
-  message_count int not null default 1,
-  last_message_id uuid,
-  last_message_at timestamptz not null default now(),
-  attempts int not null default 0,
-  sent_at timestamptz,
-  error text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+### F5 (resilience). Notification processor cancellation typo-tolerance
+`shouldCancel` uses `email_suppression_list` (`.ilike("email", row.recipient_email)`). `ilike` without `%` wildcards is just case-insensitive equality — that's fine, but flag it as `.eq` with `email.toLowerCase()` for clarity and to avoid future regex-style confusion. Behavior identical.
 
--- one open row per (thread, kind, recipient)
-create unique index chat_notif_q_open_uidx
-  on public.chat_notification_queue (thread_id, kind, coalesce(recipient_user_id::text, recipient_email))
-  where status = 'pending';
-create index chat_notif_q_due_idx
-  on public.chat_notification_queue (status, scheduled_for) where status = 'pending';
+### F6 (housekeeping). Document the worker contract
+Add a one-paragraph header to `chat-notification-processor` and `chat-retention-sweeper` documenting:
+- Invocation source (`pg_cron`, anon apikey)
+- Concurrency assumptions (single-runner; processor selects `pending` ordered + limit 25 — safe even on overlap because rows flip to `sent`/`failed` immediately).
+- Retry semantics (5min × 5 attempts → `failed`).
 
--- RLS: tenant-scoped read for members; service_role writes
--- (full grants + policies in the migration)
+No code shape change; just inline docs for the next on-call engineer.
 
--- enqueue RPC (SECURITY DEFINER): atomically coalesces or inserts
-create function public.chat_notif_enqueue(
-  p_tenant uuid, p_thread uuid, p_kind chat_notification_kind,
-  p_user uuid, p_email text, p_message_id uuid,
-  p_throttle_seconds int default 600, p_delay_seconds int default 60
-) returns uuid ...
+---
 
--- new notification preference column
-alter table public.notification_preferences
-  add column if not exists chat_email_enabled boolean not null default true;
+## What I deliberately did NOT change
+
+- Queue table choice. Keeping `chat_notification_queue` separate from `automation_email_queue` is the right call: chat is high-volume + needs digesting + per-thread cancellation; mixing into the general queue would force generic schemas and complicate suppression rules. Revisit only if we later need a single observability pane across all email senders.
+- `verify_jwt = true` on workers. Both worker functions stay JWT-verified; pg_cron passes the anon key. This is the supported pattern and keeps Resend keys out of any unauthenticated path.
+- SLA sample cap of 1k messages / 7 days. Adequate for current volumes; revisit once any tenant exceeds ~1k inbound chat msgs per week (we'll switch to a materialized SLA snapshot computed by the nightly sweeper).
+
+---
+
+## Plan of execution (small, self-contained)
+
+```text
+1. Fix F1: useChatSlaMetrics.ts — change 'inbound'/'outbound' → 'in'/'out'.
+2. Fix F2: switch oldest-awaiting clock to last_message_at + fallback to updated_at.
+3. F4: append audit row in chat-retention-sweeper after RPC stage, with totals.
+4. F5: replace .ilike with .eq(lowercased) in chat-notification-processor.
+5. F6: header docstrings on both worker functions.
+6. Smoke: curl chat-retention-sweeper once, confirm `results` array + new audit row;
+         open chat as admin, confirm ChatSlaWidget now shows median/p95 (or sampleSize=0
+         only when truly no recruiter replies).
 ```
 
-## Edge functions (Resend-backed)
+No DB migration needed — all fixes are code-only.
 
-1. `chat-notify-enqueue` (internal, header `x-internal-secret`) — called by `chat-candidate-send`, `chat-agent-reply` (on handoff), and `chat-recruiter-send` (for candidate emails). Resolves recipients then calls the `chat_notif_enqueue` RPC per recipient. Idempotent.
-2. `chat-notification-processor` — every minute via `pg_cron`. Pulls due `pending` rows (batch 25), runs cancel checks (read receipts, taken-over threads, suppression list), renders the appropriate React Email template, sends via Resend through the gateway (`Bearer ${LOVABLE_API_KEY}` + `X-Connection-Api-Key: ${RESEND_API_KEY}`), then marks `sent` / increments `attempts` and re-schedules on transient failure (max 5 attempts → `failed`). `From: Gio <chat@app.gogio.io>` (already verified domain). `Reply-To` for recruiter emails deep-links the recruiter inbox; candidate emails set `Reply-To` to a non-monitored address with a "Open chat" CTA back to the magic-link surface.
-3. Three React Email templates under `supabase/functions/_shared/chat-email-templates/`:
-   - `recruiter-new-messages.tsx` — "N new messages from {candidate}" + last excerpt + CTA to thread.
-   - `recruiter-handoff.tsx` — "Gio handed off {candidate} — needs a human" + reason.
-   - `candidate-recruiter-reply.tsx` — "{recruiter} replied" + excerpt + "Open chat" magic-link CTA (reuses existing token surface).
-
-## Wiring (call sites)
-
-- `chat-candidate-send` → after successful insert, fire-and-forget `chat-notify-enqueue` with `kind=recruiter_new_message`.
-- `chat-agent-reply` → in `failSoftHandoff` and on `request_human_handoff` tool execution, enqueue `recruiter_handoff`.
-- New `chat-recruiter-send` integration (or wherever recruiter outbound currently inserts) → enqueue `candidate_recruiter_reply` only when the candidate hasn't been seen polling in the last 2 minutes (`chat_threads.candidate_last_seen_at`).
-
-## Cron + secret check
-
-- `pg_cron` job `chat-notification-processor` every minute, invoking the function via existing service-role secret pattern (same as `process-email-queue`).
-- Confirms `LOVABLE_API_KEY` + `RESEND_API_KEY` already present (they power existing transactional email). No new secrets to ask the user for.
-
-## Out of scope for 4.1 (later in Phase 4)
-
-- 4.2 in-app bell notifications — separate write to `notifications`.
-- 4.3 retention sweeper.
-- 4.4 audit viewer + SLA widget.
-
-## Acceptance
-
-- Burst of 5 candidate messages within 1 minute → 1 recruiter email arrives ~60s after the first, subject reads "5 new messages from …".
-- Recruiter opens the thread before send → row flips to `cancelled`, no email sent.
-- AI fail-soft handoff → recruiters get a distinct `Needs a human` email (not coalesced with new-message digest).
-- Candidate without an email address or on suppression list → row flips to `cancelled` with reason, no Resend call.
-- Resend 5xx → row stays `pending`, `attempts++`, next minute retried; after 5 attempts → `failed` with error captured.
+After this pass Phase 4 is closed and we can move to Phase 5 with clean observability.
