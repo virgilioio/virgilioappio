@@ -1828,6 +1828,30 @@ export type Database = {
           },
         ]
       }
+      chat_ai_token_usage: {
+        Row: {
+          request_count: number
+          tenant_id: string
+          tokens_used: number
+          updated_at: string
+          usage_date: string
+        }
+        Insert: {
+          request_count?: number
+          tenant_id: string
+          tokens_used?: number
+          updated_at?: string
+          usage_date?: string
+        }
+        Update: {
+          request_count?: number
+          tenant_id?: string
+          tokens_used?: number
+          updated_at?: string
+          usage_date?: string
+        }
+        Relationships: []
+      }
       chat_audit_log: {
         Row: {
           actor_id: string | null
@@ -2177,6 +2201,7 @@ export type Database = {
       }
       chat_threads: {
         Row: {
+          ai_reply_lock_until: string | null
           archived_at: string | null
           assigned_recruiter_id: string | null
           association_id: string | null
@@ -2198,6 +2223,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_reply_lock_until?: string | null
           archived_at?: string | null
           assigned_recruiter_id?: string | null
           association_id?: string | null
@@ -2219,6 +2245,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_reply_lock_until?: string | null
           archived_at?: string | null
           assigned_recruiter_id?: string | null
           association_id?: string | null
@@ -7598,6 +7625,18 @@ export type Database = {
           current_count: number
         }[]
       }
+      chat_consume_ai_tokens: {
+        Args: { p_tenant_id: string; p_tokens: number }
+        Returns: {
+          allowed: boolean
+          cap: number
+          tokens_after: number
+        }[]
+      }
+      chat_release_thread_ai_lock: {
+        Args: { p_thread_id: string }
+        Returns: undefined
+      }
       chat_retention_sweep: {
         Args: never
         Returns: {
@@ -7605,6 +7644,10 @@ export type Database = {
           rate_limits_deleted: number
           tokens_deleted: number
         }[]
+      }
+      chat_try_lock_thread_for_ai: {
+        Args: { p_seconds?: number; p_thread_id: string }
+        Returns: boolean
       }
       check_application_limits:
         | {
