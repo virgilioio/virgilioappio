@@ -84,5 +84,23 @@ Deno.serve(async (req) => {
     metadata: { body_length: body.length, ip },
   });
 
+  // Fire-and-forget Gio AI reply when the thread is still in AI mode.
+  if (ctx.mode === "ai") {
+    const internal = Deno.env.get("CHAT_TOKEN_SECRET");
+    const projectUrl = Deno.env.get("SUPABASE_URL");
+    if (internal && projectUrl) {
+      // Don't await — the candidate response shouldn't wait on the model.
+      fetch(`${projectUrl}/functions/v1/chat-agent-reply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": internal,
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
+        },
+        body: JSON.stringify({ threadId: ctx.threadId }),
+      }).catch((e) => console.warn("[chat-candidate-send] agent dispatch failed", e));
+    }
+  }
+
   return jsonResponse(200, { message: inserted });
 });
