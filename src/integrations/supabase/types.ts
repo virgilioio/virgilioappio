@@ -1893,6 +1893,8 @@ export type Database = {
           body: string | null
           created_at: string
           direction: string
+          email_opened_at: string | null
+          external_message_id: string | null
           id: string
           parts: Json
           read_by_recipient_at: string | null
@@ -1906,6 +1908,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -1919,6 +1923,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction?: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -1935,6 +1941,8 @@ export type Database = {
           body: string | null
           created_at: string
           direction: string
+          email_opened_at: string | null
+          external_message_id: string | null
           id: string
           parts: Json
           read_by_recipient_at: string | null
@@ -1948,6 +1956,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -1961,6 +1971,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction?: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -1977,6 +1989,8 @@ export type Database = {
           body: string | null
           created_at: string
           direction: string
+          email_opened_at: string | null
+          external_message_id: string | null
           id: string
           parts: Json
           read_by_recipient_at: string | null
@@ -1990,6 +2004,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2003,6 +2019,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction?: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2019,6 +2037,8 @@ export type Database = {
           body: string | null
           created_at: string
           direction: string
+          email_opened_at: string | null
+          external_message_id: string | null
           id: string
           parts: Json
           read_by_recipient_at: string | null
@@ -2032,6 +2052,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2045,6 +2067,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction?: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2061,6 +2085,8 @@ export type Database = {
           body: string | null
           created_at: string
           direction: string
+          email_opened_at: string | null
+          external_message_id: string | null
           id: string
           parts: Json
           read_by_recipient_at: string | null
@@ -2074,6 +2100,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2087,6 +2115,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction?: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2103,6 +2133,8 @@ export type Database = {
           body: string | null
           created_at: string
           direction: string
+          email_opened_at: string | null
+          external_message_id: string | null
           id: string
           parts: Json
           read_by_recipient_at: string | null
@@ -2116,6 +2148,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2129,6 +2163,8 @@ export type Database = {
           body?: string | null
           created_at?: string
           direction?: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
           id?: string
           parts?: Json
           read_by_recipient_at?: string | null
@@ -2276,6 +2312,8 @@ export type Database = {
           context_summary: string | null
           created_at: string
           deleted_at: string | null
+          email_subject: string | null
+          external_thread_ref: string | null
           id: string
           job_id: string
           last_candidate_read_at: string | null
@@ -2299,6 +2337,8 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           deleted_at?: string | null
+          email_subject?: string | null
+          external_thread_ref?: string | null
           id?: string
           job_id: string
           last_candidate_read_at?: string | null
@@ -2322,6 +2362,8 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           deleted_at?: string | null
+          email_subject?: string | null
+          external_thread_ref?: string | null
           id?: string
           job_id?: string
           last_candidate_read_at?: string | null
