@@ -11,6 +11,7 @@ export type NotificationCategory =
   | 'offer_event'
   | 'posting_status'
   | 'daily_digest'
+  | 'chat_message'
 
 export type NotificationChannel = 'in_app' | 'email' | 'push'
 
