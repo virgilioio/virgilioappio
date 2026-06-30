@@ -180,9 +180,9 @@ export async function issueCandidateChatToken(
     await supabase.from("chat_audit_log").insert({
       tenant_id: input.tenantId,
       thread_id: threadId,
-      actor_kind: "system",
+      actor_type: "system",
       event: "chat_token_issued",
-      payload: {
+      metadata: {
         candidate_id: input.candidateId,
         job_id: input.jobId,
         expires_at: expiresAt.toISOString(),
