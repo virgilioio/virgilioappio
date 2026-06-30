@@ -71,13 +71,14 @@ type ThreadCtx = {
   mode: string;
   status: string;
   messageCount: number;
+  visibleMessageCount: number;
   contextSummary: RollingSummary;
 };
 
 async function loadThread(sb: ReturnType<typeof adminClient>, id: string): Promise<ThreadCtx | null> {
   const { data } = await sb
     .from("chat_threads")
-    .select("id, tenant_id, candidate_id, job_id, mode, status, deleted_at, message_count, context_summary")
+    .select("id, tenant_id, candidate_id, job_id, mode, status, deleted_at, message_count, candidate_visible_message_count, context_summary")
     .eq("id", id)
     .maybeSingle();
   if (!data || data.deleted_at) return null;
@@ -89,6 +90,7 @@ async function loadThread(sb: ReturnType<typeof adminClient>, id: string): Promi
     mode: data.mode,
     status: data.status,
     messageCount: Number(data.message_count ?? 0),
+    visibleMessageCount: Number(data.candidate_visible_message_count ?? 0),
     contextSummary: (data.context_summary ?? null) as RollingSummary,
   };
 }
