@@ -109,8 +109,9 @@ async function loadRecentMessages(sb: ReturnType<typeof adminClient>, threadId: 
 }
 
 // ----- Rolling context summary (Step 3.6) ---------------------------------
-// Refresh `chat_threads.context_summary` every 50 new messages so the agent
-// keeps long-running threads grounded without re-sending the entire history.
+// Refresh `chat_threads.context_summary` every N new *candidate-visible*
+// messages (excludes recruiter notes / system messages) so long-running
+// threads stay grounded without re-sending the entire history.
 const ROLLING_SUMMARY_EVERY = 50;
 
 async function maybeRefreshRollingSummary(
@@ -118,14 +119,15 @@ async function maybeRefreshRollingSummary(
   ctx: ThreadCtx,
   ai: ReturnType<typeof getChatAi>,
 ) {
+  let reserved = 0;
   try {
-    // Re-read the latest message_count after the just-inserted assistant turn.
+    // Re-read the latest visible message_count after the just-inserted assistant turn.
     const { data: fresh } = await sb
       .from("chat_threads")
-      .select("message_count, context_summary")
+      .select("candidate_visible_message_count, context_summary")
       .eq("id", ctx.threadId)
       .maybeSingle();
-    const currentCount = Number(fresh?.message_count ?? ctx.messageCount);
+    const currentCount = Number(fresh?.candidate_visible_message_count ?? ctx.visibleMessageCount);
     const prev = (fresh?.context_summary ?? ctx.contextSummary) as RollingSummary;
     const lastAt = Number(prev?.message_count ?? 0);
     if (currentCount - lastAt < ROLLING_SUMMARY_EVERY) return;
@@ -147,6 +149,20 @@ async function maybeRefreshRollingSummary(
       })
       .join("\n");
 
+    // Reserve summarize tokens up front; refund overage on failure.
+    reserved = CHAT_TOKEN_CAPS.summarize;
+    const { data: reserveRow } = await sb.rpc("chat_consume_ai_tokens", {
+      p_tenant_id: ctx.tenantId,
+      p_tokens: reserved,
+    });
+    const reserveCheck = Array.isArray(reserveRow) ? reserveRow[0] : reserveRow;
+    if (reserveCheck && reserveCheck.allowed === false) {
+      // Cap exceeded — refund and bail; the main reply already succeeded.
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserved });
+      reserved = 0;
+      return;
+    }
+
     const priorBlock = prev?.text ? `Prior summary:\n${prev.text}\n\n` : "";
     const result = await generateText({
       model: ai.model(CHAT_MODELS.summarize),
@@ -155,12 +171,17 @@ async function maybeRefreshRollingSummary(
       prompt: `${priorBlock}Recent transcript (most recent last):\n${transcript}\n\nWrite the updated rolling summary now.`,
     });
     const text = (result.text ?? "").trim();
-    if (!text) return;
-
     const used = result.usage?.totalTokens ?? 0;
-    if (used > 0) {
-      await sb.rpc("chat_consume_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: used });
+    // True-up: refund any unused reserve, charge any overage.
+    const delta = used - reserved;
+    if (delta > 0) {
+      await sb.rpc("chat_consume_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: delta });
+    } else if (delta < 0) {
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: -delta });
     }
+    reserved = 0;
+
+    if (!text) return;
 
     await sb
       .from("chat_threads")
@@ -185,6 +206,9 @@ async function maybeRefreshRollingSummary(
     });
   } catch (e) {
     // Rolling summary is best-effort; never fail the reply because of it.
+    if (reserved > 0) {
+      try { await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserved }); } catch { /* noop */ }
+    }
     console.error("[chat-agent-reply] rolling summary refresh failed", e);
   }
 }
