@@ -317,11 +317,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
-  const expected = Deno.env.get("CHAT_TOKEN_SECRET");
-  const got = req.headers.get("x-internal-secret");
-  if (!expected || !got || got !== expected) {
-    return json(404, { error: "not_found" });
-  }
+  // Authentication is enforced by Supabase (verify_jwt = true in config.toml).
+  // The pg_cron job invokes this with the project's anon apikey.
 
   const sb = admin();
   const nowIso = new Date().toISOString();
