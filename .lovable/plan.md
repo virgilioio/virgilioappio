@@ -1,56 +1,79 @@
-# Phase 1 — Chat Foundation Audit
+# Phase 2.3 — `chat-token-verify` edge function
 
-Review only. No code changes proposed here — this confirms what's shipped and flags the gaps a senior engineer would close before calling Phase 1 "done."
+Build the candidate-side token verification endpoint that the public `/c/chat/:token` page (Step 2.4) and the candidate send/fetch endpoints (Step 2.5) will all call before doing anything sensitive.
 
-## Step-by-step verification
+Note on email: Step 2.2 minted the token + magic-link path but did not wire the actual send. We'll fold the magic-link email into Step 2.4 (when the public page exists and has a real URL to link to), using the existing Resend/Supabase email pipeline. This step (2.3) is server-side verification only — no email work.
 
-| # | Item | Status | Evidence |
-|---|---|---|---|
-| 1.1 | `chat_threads`, partitioned `chat_messages`, `chat_access_tokens`, `chat_rate_limits`, `chat_audit_log`, `job_postings.chat_enabled/chat_mode`, `tenants.chat_retention_*`, RLS + GRANTs | ✅ | `20260629231422_…sql` + realtime publication migration |
-| 1.2 | `canUseChat` gate + sidebar/route hide | ✅ | `useCanUseChat`, `ChatRouteGuard` in `App.tsx`, `AppSidebar.tsx` filter |
-| 1.3 | Wizard "Candidate chat" master toggle + AI/Recruiter radio | ✅ | `JobPostingStep.tsx` SectionCard + persistence on `chat_enabled/chat_mode` |
-| 1.4 | `/chat` three-pane shell + `/chat/:threadId` routing | ✅ | `pages/Chat.tsx`, route pair registered |
-| 1.5 | ConversationList (scope tabs, filters, search, empty state) | ✅ | `ConversationListPane.tsx` + `ScopeTabs.tsx` + `useChatThreads.ts` |
-| 1.6 | Thread pane (header, messages, day separators, bubbles, internal notes, optimistic) | ✅ | `ThreadPane.tsx`, `MessageList.tsx`, `MessageBubble.tsx`, `DaySeparator.tsx` |
-| 1.7 | Composer (Reply/Note toggle, Enter/Shift+Enter, disabled stubs) | ✅ | `Composer.tsx` + `useSendChatMessage.ts` |
-| 1.8 | Context panel (Snapshot, Stepper, Quick actions) | ✅ | `ContextPane.tsx`, `ContextSnapshot.tsx`, `ContextStepper.tsx`, `ContextQuickActions.tsx` |
-| 1.9 | Realtime + unread badge | ✅ | `useChatRealtime.ts`, `useChatUnreadCount.ts`, sidebar pill |
-| 1.10 | Tenant kill switch | ✅ | `tenants.chat_paused`, `useChatKillSwitch.ts`, `OrganizationTab.tsx`, banner in `ThreadPane` |
+## What this function does
 
-All ten checklist items are present in code and DB. Phase 1 acceptance scope is materially complete.
+`POST /functions/v1/chat-token-verify` with `{ token: string }`:
 
-## Senior-engineer gaps to fix before Phase 2
+1. **Zod validation** of the body shape; 400 on malformed input.
+2. **Structural parse** of the token (`tenant.candidate.thread.jti.exp.sig`) — any shape mismatch returns the anti-enumeration `404 { error: "not_found" }`.
+3. **HMAC-SHA256 signature check** against `CHAT_TOKEN_SECRET` using constant-time comparison. Mismatch → `404 not_found`.
+4. **Expiry check** against `exp` epoch → `404 not_found` (not 401, to avoid leaking "token was real but expired").
+5. **DB lookup** of `chat_access_tokens` by `jti_hash` (sha256 of jti). Must match tenant/candidate/thread, not be revoked, not expired. Any miss → `404 not_found`.
+6. **Posting gate**: re-verify `job_postings.chat_enabled = true` for the thread's job. If chat got disabled after issuance → `403 { error: "chat_disabled" }`.
+7. **Kill-switch gate**: check `tenants.chat_paused`. If paused → `200` with `{ paused: true, … }` so the candidate page can render a "chat is paused" state instead of a hard error.
+8. **Rate limiting** (anti-enumeration + brute force): IP-based bucket using `chat_rate_limits` (already in schema) — 30 verify attempts / IP / 5 min. Over limit → `429`. This is the natural place to finally wire item 7 from the Phase 1 audit, scoped to verification only (send-path rate limit comes in Step 2.5).
+9. **Audit log**: `chat_token_used` event on success, `chat_token_verify_failed` on signature/expiry/revoked failures (best-effort, never blocks response).
+10. **Success response** (`200`):
+    ```json
+    {
+      "threadId": "...",
+      "tenantId": "...",
+      "candidateId": "...",
+      "jobId": "...",
+      "mode": "ai" | "recruiter",
+      "paused": false,
+      "expiresAt": "ISO",
+      "candidate": { "firstName": "...", "displayName": "..." },
+      "job": { "title": "...", "companyName": "..." }
+    }
+    ```
+    No PII beyond what the candidate already knows about themselves. No tokens echoed back.
 
-These don't block the checklist but a careful reviewer would flag them now:
+## Files
 
-1. **Partition runway is finite.** Migration pre-creates `chat_messages_2026_05..08`. After Aug 2026 inserts will fail. Need a scheduled `pg_cron` job (or edge cron) calling a `create_chat_message_partitions(months_ahead int)` function monthly.
-2. **`last_message_at` / `last_message_preview` are not maintained.** `chat_threads` has the columns and an index on them, but no trigger updates them on insert into `chat_messages`. The conversation list ordering and previews will drift / stay null.
-3. **Unread is recruiter-global, not per-recruiter.** `useChatUnreadCount` compares `last_message_at` to a single `last_read_at` on the thread. Two recruiters sharing a thread will clear each other's badge. Needs a `chat_thread_reads(thread_id, user_id, last_read_at)` table (or JSON map) before multi-recruiter inboxes ship.
-4. **Kill switch is UI-only.** `chat_paused` disables the composer in React but there is no DB-level guard. An RLS predicate or `BEFORE INSERT` trigger on `chat_messages` should reject sends when `tenants.chat_paused = true`, otherwise a stale tab or future candidate endpoint bypasses it.
-5. **`chat_mode` / `chat_enabled` are stored per posting but never read at thread creation.** Nothing today refuses to create a thread when a job's chat is disabled, and `chat_mode='ai'` has no behavioural branch yet (expected for Phase 2/3, but should at least be surfaced as a thread-level snapshot column to avoid retroactive mode changes).
-6. **No audit writes.** `chat_audit_log` table exists with RLS but no code path inserts into it (send, internal note, kill-switch toggle, thread assignment). Compliance story is incomplete.
-7. **Rate limit table is unused.** `chat_rate_limits` exists; `useSendChatMessage` does not consult or increment it. Recruiter side is low-risk, but the table should at least be wired for internal-note/send to validate the schema before candidate side opens.
-8. **Realtime payload trust.** `REPLICA IDENTITY FULL` is set, but `useChatRealtime` should still re-fetch via RLS-scoped query rather than trusting the payload row directly (defence in depth if RLS ever regresses).
-9. **Retention defaults exist, enforcement does not.** `chat_retention_days_*` columns are added on `tenants` but no purge job/edge function reads them. Should at minimum land a stub edge function + cron registration so retention is visible in ops.
-10. **Tests.** No Deno tests for the RLS policies on `chat_messages` / `chat_threads` / `chat_audit_log`. Given the cross-tenant blast radius, a small `*_test.ts` proving "user in tenant A cannot read tenant B's messages" should land before Phase 2 adds the candidate surface.
+**New:** `supabase/functions/chat-token-verify/index.ts`
+- CORS via `npm:@supabase/supabase-js@2/cors` (per project rule).
+- Zod body validation.
+- Imports a new shared verifier from `_shared/chat-token.ts`.
+- `verify_jwt = false` (candidate-side, no Supabase session).
 
-## Suggested next move
+**Edited:** `supabase/functions/_shared/chat-token.ts`
+- Add `verifyCandidateChatToken(rawToken)` that does steps 2–5 above and returns either `{ ok: true, payload }` or `{ ok: false, reason }`. Keeps cryptography in one file, mirrors the minting helper.
+- Add small `constantTimeEqual(a, b)` helper.
 
-Before starting Phase 2 (candidate-side magic link, AI auto-reply), close items **1, 2, 3, 4, 6** at minimum — they are foundational and cheaper to fix now than after the candidate channel is live. Items 5, 7, 8, 9, 10 can be tracked as Phase 1.5 hardening.
+**New (migration):** light index to keep verify fast
+- `create index if not exists idx_chat_access_tokens_jti_hash_active on public.chat_access_tokens (jti_hash) where revoked_at is null;`
+- `create index if not exists idx_chat_rate_limits_bucket on public.chat_rate_limits (bucket_key, window_start);` (if not already present)
 
-Say the word and I'll turn the must-fix subset into a Phase 1.5 plan.
+**Edited:** `supabase/config.toml`
+- Register `chat-token-verify` with `verify_jwt = false`.
 
----
+## Security posture
 
-## Phase 1.6 — Pre-Phase-2 hardening (shipped)
+- **Anti-enumeration:** every "wrong" outcome (bad shape, bad signature, expired, revoked, unknown jti, wrong tenant/candidate) returns the identical `404 { error: "not_found" }` body with the same latency profile (we always do the DB lookup, even on signature failure, before responding — cheap because `jti_hash` is indexed and we early-exit on the actual check).
+- **No secret echo:** raw token never logged; `jti_hash` only in audit metadata.
+- **Constant-time HMAC compare** via `crypto.subtle` digest comparison.
+- **IP rate limit** uses the `x-forwarded-for` first hop; if missing, falls back to a `tenant.candidate` bucket parsed from the token *shape* (still safe — failed-shape tokens hit a global "unknown" bucket).
+- **Audit:** verify failures recorded but capped at one row per (ip, minute) to avoid log flooding from scanners.
 
-| Audit item | Status | Where |
-|---|---|---|
-| 5 — Enforce `chat_enabled` + snapshot `chat_mode` on thread creation | ✅ | `chat_threads_enforce_posting_settings()` BEFORE INSERT trigger |
-| 8 — Realtime payloads not trusted | ✅ (already correct) | `useChatRealtime.ts` invalidates queries; refetch goes through RLS — no payload row consumed directly |
-| 9 — Retention enforcement | ✅ | `purge_expired_chat_threads()` RPC + `purge-expired-chat-threads` edge function + `chat-retention-purge-nightly` pg_cron at 03:15 UTC |
-| 10 — Cross-tenant RLS tests | ✅ (baseline) | `supabase/functions/_shared/chat-rls.test.ts` proves anon cannot read `chat_threads` / `chat_messages` / `chat_audit_log` and probes for 2-tenant fixtures for future E2E auth assertions |
+## Out of scope (intentional)
 
-Item 7 (rate limits) intentionally deferred — folded into Phase 2 candidate-send work where it actually matters.
+- No `/c/chat/:token` UI — that's Step 2.4.
+- No candidate message send/fetch — that's Step 2.5.
+- No magic-link email wiring — folded into Step 2.4 once the page exists.
+- Send-path rate limit table wiring — done in Step 2.5 where the send endpoint lives.
 
-Phase 1 + 1.5 + 1.6 are now closed. Ready to start Phase 2 (candidate magic link + AI auto-reply).
+## Acceptance
+
+- `curl` with a valid token returns 200 + thread context.
+- Tampered signature, expired exp, revoked row, unknown jti, wrong shape, wrong content-type → all return identical `404 not_found`.
+- 31st verify in 5 min from same IP → `429`.
+- Paused tenant → `200 { paused: true }`.
+- Posting `chat_enabled` flipped off after issuance → `403 chat_disabled`.
+- Audit log shows `chat_token_used` / `chat_token_verify_failed` events.
+
+Say **"Go ahead"** to implement.
