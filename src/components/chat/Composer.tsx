@@ -3,6 +3,7 @@ import { Send, StickyNote, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
+import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
 
 interface ComposerProps {
   threadId: string
@@ -78,6 +79,24 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
           label="Internal note"
           tone="note"
         />
+        {!isNote && (
+          <div className="ml-auto">
+            <DraftWithGioPopover
+              threadId={threadId}
+              disabled={disabled}
+              onUseDraft={(text) => {
+                setDraft(text)
+                requestAnimationFrame(() => {
+                  const el = textareaRef.current
+                  if (el) {
+                    el.focus()
+                    el.setSelectionRange(text.length, text.length)
+                  }
+                })
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <div
