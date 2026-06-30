@@ -270,6 +270,7 @@ export async function issueCandidateChatToken(
     threadId,
     expiresAt: expiresAt.toISOString(),
     magicLinkPath: `/c/chat/${encodeURIComponent(token)}`,
+    reused: false,
   };
 }
 
