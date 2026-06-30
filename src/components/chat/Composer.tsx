@@ -100,6 +100,25 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
         )}
       </div>
 
+      {!isNote && (
+        <SuggestedReplies
+          threadId={threadId}
+          disabled={disabled}
+          onPick={(text) => {
+            setDraft(text)
+            requestAnimationFrame(() => {
+              const el = textareaRef.current
+              if (el) {
+                el.focus()
+                el.setSelectionRange(text.length, text.length)
+              }
+            })
+          }}
+        />
+      )}
+
+
+
       <div
         className={cn(
           'rounded-lg border transition-colors',
