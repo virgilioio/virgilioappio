@@ -39,3 +39,18 @@ These don't block the checklist but a careful reviewer would flag them now:
 Before starting Phase 2 (candidate-side magic link, AI auto-reply), close items **1, 2, 3, 4, 6** at minimum — they are foundational and cheaper to fix now than after the candidate channel is live. Items 5, 7, 8, 9, 10 can be tracked as Phase 1.5 hardening.
 
 Say the word and I'll turn the must-fix subset into a Phase 1.5 plan.
+
+---
+
+## Phase 1.6 — Pre-Phase-2 hardening (shipped)
+
+| Audit item | Status | Where |
+|---|---|---|
+| 5 — Enforce `chat_enabled` + snapshot `chat_mode` on thread creation | ✅ | `chat_threads_enforce_posting_settings()` BEFORE INSERT trigger |
+| 8 — Realtime payloads not trusted | ✅ (already correct) | `useChatRealtime.ts` invalidates queries; refetch goes through RLS — no payload row consumed directly |
+| 9 — Retention enforcement | ✅ | `purge_expired_chat_threads()` RPC + `purge-expired-chat-threads` edge function + `chat-retention-purge-nightly` pg_cron at 03:15 UTC |
+| 10 — Cross-tenant RLS tests | ✅ (baseline) | `supabase/functions/_shared/chat-rls.test.ts` proves anon cannot read `chat_threads` / `chat_messages` / `chat_audit_log` and probes for 2-tenant fixtures for future E2E auth assertions |
+
+Item 7 (rate limits) intentionally deferred — folded into Phase 2 candidate-send work where it actually matters.
+
+Phase 1 + 1.5 + 1.6 are now closed. Ready to start Phase 2 (candidate magic link + AI auto-reply).
