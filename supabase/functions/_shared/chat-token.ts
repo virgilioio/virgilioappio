@@ -20,15 +20,24 @@ export interface IssueChatTokenInput {
   associationId?: string | null;
   /** Override the default 14d window. */
   expiresInDays?: number;
+  /**
+   * When true, revoke any active token and mint a fresh one. Default false:
+   * if an active non-expired token already exists, return `{ reused: true }`
+   * with no raw token (caller must decide whether to re-send the magic link).
+   * Set true only when the caller actually wants to invalidate live sessions.
+   */
+  forceRotate?: boolean;
 }
 
 export interface IssueChatTokenResult {
-  /** Raw token to embed in the magic link. Never persisted. */
-  token: string;
+  /** Raw token to embed in the magic link. Null when `reused` is true. */
+  token: string | null;
   threadId: string;
   expiresAt: string;
-  /** Absolute /c/chat/:token URL the candidate should open. */
-  magicLinkPath: string;
+  /** Absolute /c/chat/:token URL the candidate should open. Null when reused. */
+  magicLinkPath: string | null;
+  /** True when an existing active token was returned instead of minting a new one. */
+  reused: boolean;
 }
 
 export interface ParsedChatToken {
