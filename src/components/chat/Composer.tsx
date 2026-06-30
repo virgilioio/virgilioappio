@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
+import { SuggestedReplies } from '@/components/chat/SuggestedReplies'
 
 interface ComposerProps {
   threadId: string
