@@ -62,35 +62,43 @@ export async function bumpRateLimit(
   max: number,
   windowSeconds: number,
 ): Promise<boolean> {
-  const windowStart = new Date(
-    Math.floor(Date.now() / 1000 / windowSeconds) * windowSeconds * 1000,
-  ).toISOString();
   try {
-    const { data } = await supabase
-      .from("chat_rate_limits")
-      .select("id, count")
-      .eq("scope", scope)
-      .eq("scope_key", key)
-      .eq("window_start", windowStart)
-      .maybeSingle();
-    if (data?.id) {
-      if ((data.count ?? 0) >= max) return false;
-      await supabase
-        .from("chat_rate_limits")
-        .update({ count: (data.count ?? 0) + 1 })
-        .eq("id", data.id);
-    } else {
-      await supabase.from("chat_rate_limits").insert({
-        scope,
-        scope_key: key,
-        window_start: windowStart,
-        count: 1,
-      });
+    const { data, error } = await supabase.rpc("chat_bump_rate_limit", {
+      p_scope: scope,
+      p_scope_key: key,
+      p_window_seconds: windowSeconds,
+      p_max: max,
+    });
+    if (error) {
+      console.warn("[chat-candidate-auth] rate-limit rpc failed", error);
+      return true; // fail-open on infra error — never block a legit user
     }
+    const row = Array.isArray(data) ? data[0] : data;
+    return row?.allowed !== false;
   } catch (e) {
-    console.warn("[chat-candidate-auth] rate-limit lookup failed", e);
+    console.warn("[chat-candidate-auth] rate-limit rpc threw", e);
+    return true;
   }
-  return true;
+}
+
+/**
+ * Audit a `chat_token_verify_failed` event but cap it at one row per
+ * (ip, minute) so scanners can't flood `chat_audit_log` between sweeps.
+ */
+export async function auditVerifyFailure(
+  supabase: SupabaseClient,
+  row: Record<string, unknown>,
+  ip: string,
+): Promise<void> {
+  const allowed = await bumpRateLimit(
+    supabase,
+    "audit_verify_fail_ip",
+    ip,
+    1,
+    60,
+  );
+  if (!allowed) return;
+  await audit(supabase, row);
 }
 
 export async function audit(
