@@ -12,6 +12,9 @@ import {
   type ChatThreadRow,
   type ChatThreadScope,
 } from '@/hooks/chat/useChatThreads'
+import { ChatSlaWidget } from '@/components/chat/ChatSlaWidget'
+import { AdminChatAuditViewer } from '@/components/chat/AdminChatAuditViewer'
+import { usePermissions } from '@/hooks/usePermissions'
 
 function initials(row: ChatThreadRow) {
   const f = row.candidate?.first_name?.[0] ?? ''
