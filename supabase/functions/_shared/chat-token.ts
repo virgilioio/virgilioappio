@@ -213,3 +213,54 @@ export async function issueCandidateChatToken(
     magicLinkPath: `/c/chat/${encodeURIComponent(token)}`,
   };
 }
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Stateless verification (shape + signature + expiry). Does NOT touch the DB.
+ * Returns `jtiHash` so callers can immediately look up chat_access_tokens.
+ */
+export async function verifyCandidateChatToken(
+  rawToken: string,
+): Promise<VerifyChatTokenResult> {
+  const secret = Deno.env.get("CHAT_TOKEN_SECRET");
+  if (!secret) throw new Error("CHAT_TOKEN_SECRET is not configured");
+
+  if (typeof rawToken !== "string" || rawToken.length < 32 || rawToken.length > 2048) {
+    return { ok: false, reason: "shape" };
+  }
+  const parts = rawToken.split(".");
+  if (parts.length !== 6) return { ok: false, reason: "shape" };
+  const [tenantId, candidateId, threadId, jti, expStr, signature] = parts;
+  if (!UUID_RE.test(tenantId) || !UUID_RE.test(candidateId) || !UUID_RE.test(threadId)) {
+    return { ok: false, reason: "shape" };
+  }
+  const expEpoch = Number(expStr);
+  if (!Number.isFinite(expEpoch) || expEpoch <= 0) return { ok: false, reason: "shape" };
+  if (!jti || jti.length < 16 || jti.length > 64) return { ok: false, reason: "shape" };
+  if (!signature || signature.length < 16) return { ok: false, reason: "shape" };
+
+  const payload = [tenantId, candidateId, threadId, jti, expStr].join(".");
+  const expectedSig = await hmacSha256Hex(secret, payload);
+  if (!constantTimeEqual(signature, expectedSig)) {
+    return { ok: false, reason: "signature" };
+  }
+  if (Date.now() / 1000 >= expEpoch) {
+    return { ok: false, reason: "expired" };
+  }
+
+  const jtiHash = await sha256Hex(jti);
+  return {
+    ok: true,
+    payload: { tenantId, candidateId, threadId, jti, expEpoch, signature },
+    jtiHash,
+  };
+}
+
