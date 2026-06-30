@@ -178,15 +178,31 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
             </kbd>{' '}
             for newline
           </span>
-          <Button
-            size="sm"
-            variant={isNote ? 'secondary' : undefined}
-            onClick={handleSend}
-            disabled={!canSend}
-            icon={Send}
-          >
-            {send.isPending ? 'Sending…' : isNote ? 'Add note' : 'Send'}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isEmail && (
+              <span
+                className="inline-flex items-center gap-1 rounded-md bg-[#EEF1FF] px-1.5 py-0.5 text-[10.5px] font-poppins font-medium text-[#3F4FBF]"
+                title="This reply will be delivered by email"
+              >
+                <Mail className="h-3 w-3" /> via email
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant={isNote ? 'secondary' : undefined}
+              onClick={handleSend}
+              disabled={!canSend}
+              icon={Send}
+            >
+              {send.isPending
+                ? 'Sending…'
+                : isNote
+                  ? 'Add note'
+                  : isEmail
+                    ? 'Send email'
+                    : 'Send'}
+            </Button>
+          </div>
         </div>
       </div>
     </footer>
