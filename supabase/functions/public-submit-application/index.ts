@@ -461,6 +461,37 @@ serve(async (req) => {
       console.log("ℹ️ Candidate already associated with this job, skipping duplicate association insert.");
     }
 
+    // Phase 2.2 — Issue a candidate chat magic-link token if the posting
+    // has Candidate chat enabled. Best-effort: failures must NOT block the
+    // application submission, since chat is an opt-in enhancement.
+    let chatMagicLinkPath: string | null = null;
+    try {
+      const issued = await issueCandidateChatToken({
+        tenantId: posting.tenant_id,
+        candidateId: globalCandidateId!,
+        jobId: posting.job_id,
+      });
+      chatMagicLinkPath = issued.magicLinkPath;
+      console.log(
+        "💬 Issued candidate chat token — thread",
+        issued.threadId,
+        "expires",
+        issued.expiresAt,
+      );
+      // TODO(phase-2.2-email): once email domain is configured, queue the
+      // magic-link email here via send-transactional-email. The path
+      // `${chatMagicLinkPath}` should be appended to the public app URL.
+    } catch (chatErr) {
+      // Disabled chat / config issues are expected and silent at info level.
+      const msg = chatErr instanceof Error ? chatErr.message : String(chatErr);
+      if (msg.includes("disabled")) {
+        console.log("💬 Chat not enabled for this posting — skipping token issuance");
+      } else {
+        console.warn("⚠️ Chat token issuance failed (non-fatal):", msg);
+      }
+    }
+
+
     // Track application in limits system
     console.log('📊 Recording application for limits tracking');
     const { error: limitsTrackErr } = await supabase
