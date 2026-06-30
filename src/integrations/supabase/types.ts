@@ -7977,6 +7977,13 @@ export type Database = {
         Args: { org_id_param: string }
         Returns: boolean
       }
+      purge_expired_chat_threads: {
+        Args: never
+        Returns: {
+          purged_threads: number
+          tenant_id: string
+        }[]
+      }
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
