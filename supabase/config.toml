@@ -226,3 +226,7 @@ verify_jwt = false
 
 [functions.chat-candidate-handoff]
 verify_jwt = false
+
+[functions.chat-token-revoke]
+verify_jwt = true
+
