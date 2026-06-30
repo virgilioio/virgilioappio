@@ -1,12 +1,20 @@
 // chat-notification-processor
 // ----------------------------------------------------------------------------
-// Cron-triggered worker (every minute). Pulls due `pending` rows from
-// chat_notification_queue (batch 25), runs cancel checks (read receipts,
-// suppression, candidate already polling), renders an HTML email, sends it
-// via Resend, and marks the row sent/failed.
+// Worker contract
+//   Invocation:  pg_cron job `chat-notification-processor` every minute, posting
+//                with the project anon apikey. verify_jwt = true in config.toml.
+//   Concurrency: Single-runner expected. Even on overlap it is safe: each row
+//                is selected `pending` ordered + limit 25, then flipped to
+//                `sent` / `cancelled` / `failed` (or rescheduled) immediately,
+//                so a second concurrent invocation drains a disjoint batch.
+//   Retries:     `markFailedOrRetry` reschedules in 5min intervals up to
+//                MAX_ATTEMPTS=5; the 5th failure marks the row `failed`.
 //
-// Internal-only: requires `x-internal-secret` matching CHAT_TOKEN_SECRET.
+// Pipeline: pull due `pending` rows from chat_notification_queue → cancel
+// checks (read receipts, suppression, candidate polling, handoff handled) →
+// render HTML email → send via Resend → mark sent/failed.
 // ----------------------------------------------------------------------------
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createEmailTemplate } from "../_shared/emailTemplate.ts";
