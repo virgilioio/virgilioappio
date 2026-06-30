@@ -230,3 +230,7 @@ verify_jwt = false
 [functions.chat-token-revoke]
 verify_jwt = true
 
+[functions.chat-agent-reply]
+verify_jwt = false
+
+
