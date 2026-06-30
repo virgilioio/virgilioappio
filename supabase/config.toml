@@ -237,3 +237,9 @@ verify_jwt = false
 [functions.chat-notification-processor]
 verify_jwt = true
 
+
+[functions.chat-send-email]
+verify_jwt = true
+
+[functions.chat-email-pixel]
+verify_jwt = false
