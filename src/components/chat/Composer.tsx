@@ -3,6 +3,7 @@ import { Send, StickyNote, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
+import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
 
 interface ComposerProps {
   threadId: string
