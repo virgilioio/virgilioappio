@@ -45,6 +45,8 @@ function timeAgo(iso: string | null) {
 export function ConversationListPane() {
   const navigate = useNavigate()
   const { threadId: activeId } = useParams<{ threadId: string }>()
+  const { isPlatformAdmin, isWorkspaceOwner, isAdmin } = usePermissions()
+  const isChatAdmin = isPlatformAdmin || isWorkspaceOwner || isAdmin
   const [scope, setScope] = useState<ChatThreadScope>('all')
   const [search, setSearch] = useState('')
 
