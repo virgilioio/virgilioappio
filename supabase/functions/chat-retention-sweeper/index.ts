@@ -1,5 +1,13 @@
 // Phase 4.3 — Chat retention sweeper.
 //
+// Worker contract
+//   Invocation:  pg_cron job `chat-retention-sweeper` nightly at 03:20 UTC,
+//                posting with the project anon apikey. verify_jwt enforced.
+//   Concurrency: Single-runner; each RPC stage is idempotent (selects by
+//                window/age and deletes). Re-running the same night is safe.
+//   Retries:     None — failures are surfaced via HTTP 207 and a per-stage
+//                error in `results`. Next nightly run retries the world.
+//
 // Runs the four-stage chat retention pipeline:
 //   1. closed-job purge        → public.purge_expired_chat_threads()
 //   2. inactivity soft-archive → public.chat_soft_delete_inactive_threads()
@@ -7,11 +15,12 @@
 //   4. drop expired monthly partitions → public.chat_drop_expired_message_partitions()
 //   5. opportunistic cleanup of rate limits / audit / revoked tokens → public.chat_retention_sweep()
 //
-// Invoked nightly via pg_cron and also callable on demand by an operator
-// with the service role.
+// After the pipeline, writes a single `system`-actor row to chat_audit_log
+// summarising counts so admins can see "last sweep ran at X, removed Y".
 
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+
 
 type RpcResult = { name: string; ok: boolean; data?: unknown; error?: string }
 
