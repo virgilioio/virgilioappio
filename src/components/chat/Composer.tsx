@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
+import { SuggestedReplies } from '@/components/chat/SuggestedReplies'
 
 interface ComposerProps {
   threadId: string
@@ -98,6 +99,25 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
           </div>
         )}
       </div>
+
+      {!isNote && (
+        <SuggestedReplies
+          threadId={threadId}
+          disabled={disabled}
+          onPick={(text) => {
+            setDraft(text)
+            requestAnimationFrame(() => {
+              const el = textareaRef.current
+              if (el) {
+                el.focus()
+                el.setSelectionRange(text.length, text.length)
+              }
+            })
+          }}
+        />
+      )}
+
+
 
       <div
         className={cn(
