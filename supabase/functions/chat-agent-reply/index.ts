@@ -437,12 +437,15 @@ Deno.serve(async (req) => {
         : {}),
     });
 
-    // True-up token usage (reserve was conservative; add overage if any).
+    // True-up token usage: charge any overage, refund any unused reserve.
     const used = result.usage?.totalTokens ?? 0;
-    const delta = Math.max(used - reserve, 0);
+    const delta = used - reserveOutstanding;
     if (delta > 0) {
       await sb.rpc("chat_consume_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: delta });
+    } else if (delta < 0) {
+      await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: -delta });
     }
+    reserveOutstanding = 0;
 
     // If the model already triggered a handoff tool, the system message is
     // posted by the tool. Only emit a fresh assistant message when there's
@@ -466,14 +469,14 @@ Deno.serve(async (req) => {
       });
       if (insertErr) {
         console.error("[chat-agent-reply] assistant insert failed", insertErr);
-        await failSoftHandoff(sb, ctx, "assistant_insert_failed");
+        await failSoftHandoff(sb, ctx, "assistant_insert_failed", insertErr.message);
       }
     } else if (stillAi && !text) {
       // Model returned nothing usable → fail-soft.
       await failSoftHandoff(sb, ctx, "empty_reply");
     }
 
-    // ---- Rolling context summary refresh (every 50 messages) -----------
+    // ---- Rolling context summary refresh (every N visible messages) -----
     if (stillAi && text) {
       await maybeRefreshRollingSummary(sb, ctx, ai);
     }
@@ -492,7 +495,12 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("[chat-agent-reply] generation failed", e);
-    await failSoftHandoff(sb, ctx, `exception:${(e as Error).message?.slice(0, 200) ?? "unknown"}`);
+    if (reserveOutstanding > 0) {
+      try { await sb.rpc("chat_refund_ai_tokens", { p_tenant_id: ctx.tenantId, p_tokens: reserveOutstanding }); } catch { /* noop */ }
+      reserveOutstanding = 0;
+    }
+    const err = e as Error;
+    await failSoftHandoff(sb, ctx, "exception", `${err.name ?? "Error"}: ${err.message?.slice(0, 200) ?? "unknown"}`);
     return jsonResponse(200, { handoff: true, reason: "exception" });
   } finally {
     await release();
