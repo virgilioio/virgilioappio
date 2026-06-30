@@ -89,7 +89,11 @@ Deno.serve(async (req) => {
     const internal = Deno.env.get("CHAT_TOKEN_SECRET");
     const projectUrl = Deno.env.get("SUPABASE_URL");
     if (internal && projectUrl) {
-      // Don't await — the candidate response shouldn't wait on the model.
+      // Abort the dispatch attempt after 4s so a hung fetch never lingers
+      // past the candidate response. The agent function itself runs on its
+      // own invocation, so this only guards the *handoff* of the request.
+      const dispatchController = new AbortController();
+      const dispatchTimer = setTimeout(() => dispatchController.abort(), 4_000);
       fetch(`${projectUrl}/functions/v1/chat-agent-reply`, {
         method: "POST",
         headers: {
@@ -98,7 +102,23 @@ Deno.serve(async (req) => {
           Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
         },
         body: JSON.stringify({ threadId: ctx.threadId }),
-      }).catch((e) => console.warn("[chat-candidate-send] agent dispatch failed", e));
+        signal: dispatchController.signal,
+      })
+        .catch(async (e) => {
+          console.warn("[chat-candidate-send] agent dispatch failed", e);
+          // Best-effort audit so we can detect dispatch outages without
+          // grepping logs. Never let auditing throw out of this branch.
+          try {
+            await audit(supabase, {
+              tenant_id: ctx.tenantId,
+              thread_id: ctx.threadId,
+              actor_type: "system",
+              event: "chat_ai_dispatch_failed",
+              metadata: { error: String((e as Error)?.message ?? e).slice(0, 200) },
+            });
+          } catch { /* noop */ }
+        })
+        .finally(() => clearTimeout(dispatchTimer));
     }
   }
 
