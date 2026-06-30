@@ -29,10 +29,28 @@ type Mode = 'reply' | 'note'
 export function Composer({ threadId, disabled = false }: ComposerProps) {
   const [draft, setDraft] = useState('')
   const [mode, setMode] = useState<Mode>('reply')
+  const [channel, setChannel] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const send = useSendChatMessage()
 
+  useEffect(() => {
+    let cancelled = false
+    if (!threadId) return
+    void supabase
+      .from('chat_threads')
+      .select('channel')
+      .eq('id', threadId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setChannel((data?.channel as string | undefined) ?? null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [threadId])
+
   const isNote = mode === 'note'
+  const isEmail = !isNote && channel === 'email'
   const canSend = draft.trim().length > 0 && !send.isPending && !disabled
 
   const handleSend = async () => {
