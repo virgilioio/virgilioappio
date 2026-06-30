@@ -76,10 +76,6 @@ export function ConversationListPane() {
         <h2 className="font-poppins font-semibold text-[15px] tracking-[-0.02em] text-virgilio-text">
           Chat<span className="text-[#d7c5fb]">.</span>
         </h2>
-      <header className="flex items-center justify-between px-4 h-14 border-b border-virgilio-border">
-        <h2 className="font-poppins font-semibold text-[15px] tracking-[-0.02em] text-virgilio-text">
-          Chat<span className="text-[#d7c5fb]">.</span>
-        </h2>
         {isChatAdmin && <AdminChatAuditViewer />}
       </header>
 
