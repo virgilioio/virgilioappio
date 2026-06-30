@@ -104,7 +104,7 @@ export function AiSummaryCard({ threadId }: AiSummaryCardProps) {
           <Button
             variant="ghost"
             size="xs"
-            icon={<RefreshCw className="h-3 w-3" />}
+            icon={RefreshCw}
             loading={running}
             onClick={() => run(true)}
             aria-label="Regenerate summary"
