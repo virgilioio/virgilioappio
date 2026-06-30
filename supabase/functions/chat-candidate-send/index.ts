@@ -1,0 +1,88 @@
+// Phase 2.5 — Candidate-side message send.
+//
+// POST /functions/v1/chat-candidate-send
+// Body: { token: string, body: string }
+//
+// Inserts an inbound (direction='in', sender_type='candidate') message on
+// behalf of the magic-link holder. Refuses sends when the tenant has paused
+// chat or the posting has chat disabled. Tight per-IP rate limit to defend
+// against spam and runaway clients.
+
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod@3.23.8";
+import {
+  audit,
+  authenticateCandidateRequest,
+  bumpRateLimit,
+  jsonResponse,
+} from "../_shared/chat-candidate-auth.ts";
+
+const BodySchema = z.object({
+  token: z.string().min(32).max(2048),
+  body: z.string().min(1).max(4000),
+});
+
+const RATE_MAX = 20; // 20 sends / IP / minute
+const RATE_WINDOW = 60;
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") {
+    return jsonResponse(405, { error: "method_not_allowed" });
+  }
+
+  let raw: unknown;
+  try { raw = await req.json(); } catch { return jsonResponse(400, { error: "bad_request" }); }
+  const parsed = BodySchema.safeParse(raw);
+  if (!parsed.success) return jsonResponse(400, { error: "bad_request" });
+
+  const auth = await authenticateCandidateRequest(req, parsed.data.token);
+  if (!auth.ok) return auth.response;
+
+  const { supabase, ctx, ip } = auth;
+
+  if (ctx.paused) {
+    return jsonResponse(423, { error: "chat_paused" });
+  }
+
+  const allowed = await bumpRateLimit(
+    supabase,
+    "candidate_send_ip",
+    ip,
+    RATE_MAX,
+    RATE_WINDOW,
+  );
+  if (!allowed) {
+    return jsonResponse(429, { error: "rate_limited" }, { "Retry-After": String(RATE_WINDOW) });
+  }
+
+  const body = parsed.data.body.trim();
+  if (!body) return jsonResponse(400, { error: "empty_body" });
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from("chat_messages")
+    .insert({
+      thread_id: ctx.threadId,
+      tenant_id: ctx.tenantId,
+      direction: "in",
+      sender_type: "candidate",
+      body,
+    })
+    .select("id, thread_id, direction, sender_type, body, parts, created_at")
+    .single();
+
+  if (insertErr || !inserted) {
+    console.error("[chat-candidate-send] insert failed", insertErr);
+    return jsonResponse(500, { error: "internal_error" });
+  }
+
+  await audit(supabase, {
+    tenant_id: ctx.tenantId,
+    thread_id: ctx.threadId,
+    actor_type: "candidate",
+    event: "message_sent",
+    metadata: { body_length: body.length, ip },
+  });
+
+  return jsonResponse(200, { message: inserted });
+});

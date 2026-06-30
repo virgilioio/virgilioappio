@@ -217,3 +217,9 @@ verify_jwt = true
 
 [functions.chat-token-verify]
 verify_jwt = false
+
+[functions.chat-candidate-send]
+verify_jwt = false
+
+[functions.chat-candidate-fetch]
+verify_jwt = false

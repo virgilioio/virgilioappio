@@ -102,11 +102,54 @@ export default function CandidateChat() {
     return ctx.job.companyName ?? ctx.job.title ?? 'Chat'
   }, [ctx])
 
+  // Initial + polling fetch once the token is verified.
+  useEffect(() => {
+    if (state.kind !== 'ready' || !token) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const tick = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('chat-candidate-fetch', {
+          body: { token },
+        })
+        if (!cancelled && !error && data?.messages) {
+          const mapped: ChatMessage[] = (data.messages as Array<{
+            id: string
+            direction: 'in' | 'out'
+            body: string | null
+            created_at: string
+          }>).map((m) => ({
+            id: m.id,
+            role: m.direction === 'in' ? 'user' : 'assistant',
+            text: m.body ?? '',
+            createdAt: new Date(m.created_at).getTime(),
+          }))
+          setMessages((prev) => {
+            // Preserve any optimistic messages not yet returned by the server.
+            const serverIds = new Set(mapped.map((m) => m.id))
+            const pending = prev.filter((m) => m.id.startsWith('optimistic-') && !serverIds.has(m.id))
+            return [...mapped, ...pending]
+          })
+        }
+      } catch (e) {
+        console.warn('[CandidateChat] fetch failed', e)
+      }
+      if (!cancelled) timer = setTimeout(tick, 5_000)
+    }
+    void tick()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [state.kind, token])
+
   async function handleSubmit(message: { text?: string; files?: unknown[] }) {
     const text = (message?.text ?? input).trim()
-    if (!text || status !== 'ready' || state.kind !== 'ready') return
+    if (!text || status !== 'ready' || state.kind !== 'ready' || !token) return
+    const optimisticId = `optimistic-${crypto.randomUUID()}`
     const msg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: optimisticId,
       role: 'user',
       text,
       createdAt: Date.now(),
@@ -115,11 +158,30 @@ export default function CandidateChat() {
     setInput('')
     setStatus('submitted')
     submittedAt.current = Date.now()
-    // Phase 2.5 will replace this stub with chat-candidate-send.
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('chat-candidate-send', {
+        body: { token, body: text },
+      })
+      if (error) throw error
+      const saved = (data as { message?: { id: string; created_at: string } }).message
+      if (saved) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === optimisticId
+              ? { ...m, id: saved.id, createdAt: new Date(saved.created_at).getTime() }
+              : m,
+          ),
+        )
+      }
+    } catch (e) {
+      console.error('[CandidateChat] send failed', e)
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+      setInput(text)
+    } finally {
       setStatus('ready')
-    }, 600)
+    }
   }
+
 
   // ---- Render -------------------------------------------------------------
 
