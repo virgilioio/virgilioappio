@@ -22,16 +22,17 @@ export interface ChatThreadRow {
   updated_at: string
   candidate?: {
     id: string
-    first_name: string | null
-    last_name: string | null
+    candidate_name: string | null
     email: string | null
-    avatar_url: string | null
+    role_current: string | null
+    current_job_title: string | null
   } | null
   job?: {
     id: string
     title: string | null
   } | null
   isUnread: boolean
+  unreadCount: number
 }
 
 interface UseChatThreadsOptions {
@@ -67,7 +68,7 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
             channel, mode, status, assigned_recruiter_id,
             last_message_at, last_message_preview,
             message_count, created_at, updated_at,
-            candidate:candidates(id, first_name, last_name, email, avatar_url),
+            candidate:candidates(id, candidate_name, email, role_current, current_job_title),
             job:jobs(id, title)
           `,
           )
@@ -98,6 +99,7 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
           candidate: Array.isArray(t.candidate) ? t.candidate[0] ?? null : t.candidate,
           job: Array.isArray(t.job) ? t.job[0] ?? null : t.job,
           isUnread: lastMsg > 0 && lastMsg > lastRead,
+          unreadCount: lastMsg > 0 && lastMsg > lastRead ? 1 : 0,
         }
       })
 
@@ -111,11 +113,14 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
       if (!q) return scoped
 
       return scoped.filter((row) => {
-        const name =
-          `${row.candidate?.first_name ?? ''} ${row.candidate?.last_name ?? ''}`.toLowerCase()
+        const name = row.candidate?.candidate_name?.toLowerCase() ?? ''
         const email = row.candidate?.email?.toLowerCase() ?? ''
+        const role =
+          row.candidate?.role_current?.toLowerCase() ??
+          row.candidate?.current_job_title?.toLowerCase() ??
+          ''
         const job = row.job?.title?.toLowerCase() ?? ''
-        return name.includes(q) || email.includes(q) || job.includes(q)
+        return name.includes(q) || email.includes(q) || role.includes(q) || job.includes(q)
       })
     },
   })
