@@ -83,8 +83,12 @@ export function ConversationListPane() {
     if (pillFilters.unreadOnly) list = list.filter((r) => r.isUnread)
     if (pillFilters.jobIds.length > 0)
       list = list.filter((r) => r.job_id && pillFilters.jobIds.includes(r.job_id))
+    if (activeId && !list.some((r) => r.id === activeId)) {
+      const activeRow = allQuery.data?.find((r) => r.id === activeId)
+      if (activeRow) list = [activeRow, ...list]
+    }
     return list
-  }, [filteredQuery.data, pillFilters])
+  }, [activeId, allQuery.data, filteredQuery.data, pillFilters])
 
   const isLoading = filteredQuery.isLoading
   const totalThreadCount = allQuery.data?.length ?? 0
