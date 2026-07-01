@@ -60,6 +60,16 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
     }
   }, [threadId])
 
+  // Listen for external "open booking picker" requests (e.g. Quick Actions → Schedule interview).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ threadId?: string }>).detail
+      if (!detail?.threadId || detail.threadId === threadId) setBookingOpen(true)
+    }
+    window.addEventListener('chat:open-booking-picker', handler as EventListener)
+    return () => window.removeEventListener('chat:open-booking-picker', handler as EventListener)
+  }, [threadId])
+
   // Auto-grow textarea up to 96px.
   useEffect(() => {
     const el = textareaRef.current
