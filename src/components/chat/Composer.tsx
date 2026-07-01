@@ -40,6 +40,7 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
   const [mode, setMode] = useState<Mode>('reply')
   const [channel, setChannel] = useState<string>('in_app')
   const [draftOpen, setDraftOpen] = useState(false)
+  const [bookingOpen, setBookingOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const send = useSendChatMessage()
 
