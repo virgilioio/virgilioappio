@@ -243,3 +243,6 @@ verify_jwt = true
 
 [functions.chat-email-pixel]
 verify_jwt = false
+
+[functions.chat-send-whatsapp]
+verify_jwt = true
