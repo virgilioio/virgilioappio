@@ -1,5 +1,5 @@
-import { Mail, Phone, MapPin, Briefcase, ExternalLink } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { MapPin, ExternalLink } from 'lucide-react'
 
 export interface ContextSnapshotData {
   candidateId: string
@@ -12,99 +12,121 @@ export interface ContextSnapshotData {
   locationCountry: string | null
   jobId: string | null
   jobTitle: string | null
+  jobDepartment: string | null
+  jobEmploymentType: string | null
 }
 
 interface ContextSnapshotProps {
   data: ContextSnapshotData
 }
 
-/**
- * ContextSnapshot — candidate identity card at the top of the context pane (Step 1.8).
- * Pure presentational: name, role @ company, location, email, phone, and a deep link
- * to the in-job candidate profile.
- */
-export function ContextSnapshot({ data }: ContextSnapshotProps) {
-  const name = data.candidateName?.trim() || data.email || 'Candidate'
-  const initial = (name[0] ?? '?').toUpperCase()
-  const roleLine = [data.roleCurrent, data.companyCurrent].filter(Boolean).join(' · ')
-  const locationLine = [data.locationCity, data.locationCountry].filter(Boolean).join(', ')
-
-  const profileHref =
-    data.jobId && data.candidateId
-      ? `/jobs/${data.jobId}/candidates/${data.candidateId}`
-      : null
-
+const AVATAR_PALETTE = [
+  { bg: '#EDE4FF', fg: '#5B3FBF' },
+  { bg: '#DBEAFE', fg: '#1E40AF' },
+  { bg: '#D1FAE5', fg: '#065F46' },
+  { bg: '#FEF3C7', fg: '#92400E' },
+  { bg: '#FCE7F3', fg: '#9D174D' },
+  { bg: '#FEE2E2', fg: '#991B1B' },
+  { bg: '#E0E7FF', fg: '#3730A3' },
+  { bg: '#CFFAFE', fg: '#155E75' },
+]
+function avatarColor(seed: string) {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0
+  return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length]
+}
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
   return (
-    <div className="px-4 py-4">
-      <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-full bg-[#EDE4FF] text-[#5B3FBF] flex items-center justify-center font-poppins font-semibold text-[15px] shrink-0">
-          {initial}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="font-poppins font-semibold text-[14px] tracking-[-0.02em] text-virgilio-text truncate">
-            {name}
-          </div>
-          {roleLine && (
-            <div className="text-[11.5px] text-text-secondary truncate mt-0.5">{roleLine}</div>
-          )}
-        </div>
-      </div>
-
-      <dl className="mt-4 space-y-2">
-        {data.jobTitle && (
-          <SnapshotRow icon={<Briefcase className="h-3.5 w-3.5" />}>
-            {profileHref ? (
-              <Link
-                to={profileHref}
-                className="inline-flex items-center gap-1 hover:text-virgilio-purple transition-colors"
-              >
-                <span className="truncate">{data.jobTitle}</span>
-                <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
-              </Link>
-            ) : (
-              <span className="truncate">{data.jobTitle}</span>
-            )}
-          </SnapshotRow>
-        )}
-        {locationLine && (
-          <SnapshotRow icon={<MapPin className="h-3.5 w-3.5" />}>{locationLine}</SnapshotRow>
-        )}
-        {data.email && (
-          <SnapshotRow icon={<Mail className="h-3.5 w-3.5" />}>
-            <a
-              href={`mailto:${data.email}`}
-              className="truncate hover:text-virgilio-purple transition-colors"
-            >
-              {data.email}
-            </a>
-          </SnapshotRow>
-        )}
-        {data.phone && (
-          <SnapshotRow icon={<Phone className="h-3.5 w-3.5" />}>
-            <a
-              href={`tel:${data.phone}`}
-              className="truncate hover:text-virgilio-purple transition-colors"
-            >
-              {data.phone}
-            </a>
-          </SnapshotRow>
-        )}
-      </dl>
-    </div>
+    ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() ||
+    '?'
   )
 }
 
-function SnapshotRow({
-  icon,
-  children,
-}: {
-  icon: React.ReactNode
-  children: React.ReactNode
-}) {
+/**
+ * ContextSnapshot — centered avatar, name, role, location + "View full profile".
+ */
+export function ContextSnapshot({ data }: ContextSnapshotProps) {
+  const name = data.candidateName?.trim() || data.email || 'Candidate'
+  const location = [data.locationCity, data.locationCountry].filter(Boolean).join(', ')
+  const color = avatarColor(data.candidateId)
+  const navigate = useNavigate()
+  const canOpen = Boolean(data.jobId && data.candidateId)
+
   return (
-    <div className="flex items-center gap-2 text-[12px] text-virgilio-text/85 font-inter">
-      <span className="text-text-secondary shrink-0">{icon}</span>
-      <div className="min-w-0 flex-1 truncate">{children}</div>
+    <div
+      className="flex flex-col items-center text-center"
+      style={{ paddingTop: 4 }}
+    >
+      <div
+        className="flex items-center justify-center font-poppins font-semibold"
+        style={{
+          height: 56,
+          width: 56,
+          borderRadius: 999,
+          background: color.bg,
+          color: color.fg,
+          fontSize: 18,
+          letterSpacing: '-0.02em',
+        }}
+        aria-hidden
+      >
+        {initials(name)}
+      </div>
+      <div
+        className="font-poppins"
+        style={{
+          marginTop: 11,
+          fontSize: 16,
+          fontWeight: 600,
+          color: '#0d0d09',
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {name}
+      </div>
+      {data.roleCurrent && (
+        <div
+          className="font-inter"
+          style={{ marginTop: 2, fontSize: 12, color: '#5A6072' }}
+        >
+          {data.companyCurrent
+            ? `${data.roleCurrent} · ${data.companyCurrent}`
+            : data.roleCurrent}
+        </div>
+      )}
+      {location && (
+        <div
+          className="inline-flex items-center font-inter"
+          style={{ marginTop: 9, gap: 5, fontSize: 11.5, color: '#5A6072' }}
+        >
+          <MapPin style={{ height: 12, width: 12 }} strokeWidth={2} />
+          {location}
+        </div>
+      )}
+      <button
+        type="button"
+        disabled={!canOpen}
+        onClick={() =>
+          canOpen && navigate(`/jobs/${data.jobId}/candidates/${data.candidateId}`)
+        }
+        className="inline-flex items-center justify-center font-poppins transition-colors disabled:opacity-60"
+        style={{
+          marginTop: 13,
+          width: '100%',
+          height: 34,
+          gap: 7,
+          borderRadius: 9,
+          background: '#FFFFFF',
+          border: '1px solid #E7E8EE',
+          color: '#1F2230',
+          fontSize: 12.5,
+          fontWeight: 500,
+        }}
+      >
+        View full profile
+        <ExternalLink style={{ height: 13, width: 13 }} strokeWidth={2} />
+      </button>
     </div>
   )
 }
