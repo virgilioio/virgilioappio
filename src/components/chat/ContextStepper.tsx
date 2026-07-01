@@ -52,7 +52,7 @@ export function ContextStepper({
   }, [jobId, loadHiringPlanInstances])
 
   const currentIdx =
-    instances && currentStageId ? instances.findIndex((i) => i.stage.id === currentStageId) : -1
+    instances && currentStageId ? instances.findIndex((i) => i.jhsId === currentStageId) : -1
   const employmentLabel = formatEmploymentType(jobEmploymentType)
   const subLine = [jobDepartment, employmentLabel].filter(Boolean).join(' · ')
 
