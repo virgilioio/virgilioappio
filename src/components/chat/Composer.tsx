@@ -124,6 +124,24 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
           }}
         />
 
+        <BookingLinkPopover
+          threadId={threadId}
+          open={bookingOpen}
+          onOpenChange={setBookingOpen}
+          onPick={async (payload: BookingCardPayload) => {
+            try {
+              await send.mutateAsync({
+                threadId,
+                body: payload.url,
+                parts: payload as unknown as Record<string, unknown>,
+              })
+            } catch {
+              /* toast is handled inside the hook */
+            }
+          }}
+        />
+
+
         {/* Top row: mode toggle + indicator */}
         <div className="flex items-center" style={{ marginBottom: 11 }}>
           <div
