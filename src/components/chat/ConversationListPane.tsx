@@ -51,7 +51,7 @@ export function ConversationListPane() {
   const navigate = useNavigate()
   const location = useLocation()
   const { threadId: activeId } = useParams<{ threadId: string }>()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const scope = ((params.get('scope') as ChatThreadScope) || 'all') as ChatThreadScope
   const { isPlatformAdmin, isWorkspaceOwner, isAdmin } = usePermissions()
   const isChatAdmin = isPlatformAdmin || isWorkspaceOwner || isAdmin
@@ -68,7 +68,12 @@ export function ConversationListPane() {
     if (!(location.state as { chatNotificationOpen?: boolean } | null)?.chatNotificationOpen) return
     setSearch('')
     setPillFilters({ unreadOnly: false, jobIds: [], stageIds: [] })
-  }, [activeId, location.state])
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('scope')
+      return next
+    }, { replace: true })
+  }, [activeId, location.state, setParams])
 
   const allQuery = useChatThreads({ scope: 'all', search: '' })
   const filteredQuery = useChatThreads({ scope, search })
@@ -78,8 +83,12 @@ export function ConversationListPane() {
     if (pillFilters.unreadOnly) list = list.filter((r) => r.isUnread)
     if (pillFilters.jobIds.length > 0)
       list = list.filter((r) => r.job_id && pillFilters.jobIds.includes(r.job_id))
+    if (activeId && !list.some((r) => r.id === activeId)) {
+      const activeRow = allQuery.data?.find((r) => r.id === activeId)
+      if (activeRow) list = [activeRow, ...list]
+    }
     return list
-  }, [filteredQuery.data, pillFilters])
+  }, [activeId, allQuery.data, filteredQuery.data, pillFilters])
 
   const isLoading = filteredQuery.isLoading
   const totalThreadCount = allQuery.data?.length ?? 0
