@@ -58,12 +58,23 @@ type Attachment = {
   url?: string
 }
 
+type BookingCardPart = {
+  kind: 'booking_link'
+  variant: 'job' | 'personal' | 'custom'
+  url: string
+  title: string
+  meta: string
+  status?: 'awaiting' | 'booked'
+  bookedSlotLabel?: string | null
+}
+
 type ChatMessage = {
   id: string
   role: 'candidate' | 'recruiter'
   text: string
   createdAt: number
   attachments?: Attachment[]
+  bookingCard?: BookingCardPart
   status?: 'sending' | 'sent'
 }
 
