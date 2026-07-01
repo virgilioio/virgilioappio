@@ -104,16 +104,13 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
           : Promise.resolve({ data: [], error: null }),
       ])
 
-      if (candidatesRes.error) throw candidatesRes.error
-      if (jobsRes.error) throw jobsRes.error
-
       const candidates = new Map<string, ChatThreadRow['candidate']>()
-      for (const candidate of candidatesRes.data ?? []) {
+      for (const candidate of candidatesRes.error ? [] : candidatesRes.data ?? []) {
         candidates.set((candidate as any).id, candidate as ChatThreadRow['candidate'])
       }
 
       const jobs = new Map<string, ChatThreadRow['job']>()
-      for (const job of jobsRes.data ?? []) {
+      for (const job of jobsRes.error ? [] : jobsRes.data ?? []) {
         jobs.set((job as any).id, job as ChatThreadRow['job'])
       }
 
@@ -132,9 +129,7 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
           .eq('direction', 'in')
           .in('thread_id', threadIds)
 
-        if (messageError) throw messageError
-
-        for (const message of messageRows ?? []) {
+        for (const message of messageError ? [] : messageRows ?? []) {
           const threadId = message.thread_id as string
           const createdAt = message.created_at ? new Date(message.created_at as string).getTime() : 0
           const lastRead = reads.get(threadId) ?? 0
