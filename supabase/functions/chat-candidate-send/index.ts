@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   const attachment = parsed.data.attachment ?? null;
   if (!body && !attachment) return jsonResponse(400, { error: "empty_body" });
 
-  const parts = attachment ? { attachments: [attachment] } : null;
+  const parts = attachment ? { attachments: [attachment] } : {};
 
   const { data: inserted, error: insertErr } = await supabase
     .from("chat_messages")
