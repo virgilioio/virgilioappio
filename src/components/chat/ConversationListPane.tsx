@@ -68,10 +68,12 @@ export function ConversationListPane() {
     if (!(location.state as { chatNotificationOpen?: boolean } | null)?.chatNotificationOpen) return
     setSearch('')
     setPillFilters({ unreadOnly: false, jobIds: [], stageIds: [] })
-    const next = new URLSearchParams(params)
-    next.delete('scope')
-    setParams(next, { replace: true })
-  }, [activeId, location.state, params, setParams])
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('scope')
+      return next
+    }, { replace: true })
+  }, [activeId, location.state, setParams])
 
   const allQuery = useChatThreads({ scope: 'all', search: '' })
   const filteredQuery = useChatThreads({ scope, search })
