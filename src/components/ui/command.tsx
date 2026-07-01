@@ -116,13 +116,37 @@ CommandSeparator.displayName = CommandPrimitive.Separator.displayName
 const CommandItem = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.Item
-    ref={ref}
-    className={cn(menuItem, className)}
-    {...props}
-  />
-))
+>(({ className, value, children, ...props }, ref) => {
+  const fallbackValue = React.useMemo(() => {
+    if (typeof value === "string") return value
+    if (typeof children === "string") return children
+
+    const text = React.Children.toArray(children)
+      .map((child) => {
+        if (typeof child === "string" || typeof child === "number") return String(child)
+        if (React.isValidElement(child)) {
+          const childProps = child.props as { children?: React.ReactNode }
+          return typeof childProps.children === "string" ? childProps.children : ""
+        }
+        return ""
+      })
+      .join(" ")
+      .trim()
+
+    return text || props.id || "command-item"
+  }, [children, props.id, value])
+
+  return (
+    <CommandPrimitive.Item
+      ref={ref}
+      value={fallbackValue}
+      className={cn(menuItem, className)}
+      {...props}
+    >
+      {children}
+    </CommandPrimitive.Item>
+  )
+})
 CommandItem.displayName = CommandPrimitive.Item.displayName
 
 const CommandShortcut = ({
