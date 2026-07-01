@@ -118,18 +118,18 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
           ? supabase.from('jobs').select('id, title').in('id', jobIds)
           : Promise.resolve({ data: [], error: null }),
         associationIds.length > 0
-          ? supabase
+          ? (supabase
               .from('job_candidate_associations')
               .select(
                 'id, job_hiring_stages!job_candidate_associations_current_stage_id_fkey(custom_stage_name, job_stages!job_hiring_stages_stage_id_fkey(stage_name))',
               )
-              .in('id', associationIds)
+              .in('id', associationIds) as any)
           : Promise.resolve({ data: [], error: null }),
         recruiterIds.length > 0
-          ? supabase
+          ? (supabase
               .from('profiles')
               .select('id, first_name, last_name')
-              .in('id', recruiterIds)
+              .in('id', recruiterIds) as any)
           : Promise.resolve({ data: [], error: null }),
       ])
 
