@@ -153,7 +153,7 @@ export function BookingLinkPopover({ threadId, open, onOpenChange, onPick }: Pro
     config?.display_name ||
     'You'
   const personalDuration = config?.duration_minutes ?? 30
-  const personalSlug = config?.short_code ? `cal.gio/${config.short_code}` : ''
+  const personalSlug = config?.short_code ? `${window.location.host}/schedule/${config.short_code}` : ''
 
   const showJobRow = Boolean(jobLink.contextualLink && jobLink.hasAssignedBookingConfig)
   const jobUrl = jobLink.contextualLink
