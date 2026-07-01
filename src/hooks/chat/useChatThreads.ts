@@ -107,31 +107,31 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
         ),
       ) as string[]
 
-      const [candidatesRes, jobsRes, associationsRes, recruitersRes] = await Promise.all([
+      const [candidatesRes, jobsRes, associationsRes, recruitersRes] = (await Promise.all([
         candidateIds.length > 0
-          ? supabase
+          ? (supabase as any)
               .from('candidates')
               .select('id, candidate_name, email, role_current, current_job_title')
               .in('id', candidateIds)
           : Promise.resolve({ data: [], error: null }),
         jobIds.length > 0
-          ? supabase.from('jobs').select('id, title').in('id', jobIds)
+          ? (supabase as any).from('jobs').select('id, title').in('id', jobIds)
           : Promise.resolve({ data: [], error: null }),
         associationIds.length > 0
-          ? (supabase
+          ? (supabase as any)
               .from('job_candidate_associations')
               .select(
                 'id, job_hiring_stages!job_candidate_associations_current_stage_id_fkey(custom_stage_name, job_stages!job_hiring_stages_stage_id_fkey(stage_name))',
               )
-              .in('id', associationIds) as any)
+              .in('id', associationIds)
           : Promise.resolve({ data: [], error: null }),
         recruiterIds.length > 0
-          ? (supabase
+          ? (supabase as any)
               .from('profiles')
               .select('id, first_name, last_name')
-              .in('id', recruiterIds) as any)
+              .in('id', recruiterIds)
           : Promise.resolve({ data: [], error: null }),
-      ])
+      ])) as any[]
 
       const candidates = new Map<string, ChatThreadRow['candidate']>()
       for (const candidate of candidatesRes.error ? [] : candidatesRes.data ?? []) {
