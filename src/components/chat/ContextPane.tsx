@@ -166,6 +166,7 @@ export function ContextPane({ threadId }: ContextPaneProps) {
           <ContextQuickActions
             jobId={data.snapshot.jobId}
             candidateId={data.snapshot.candidateId}
+            threadId={threadId ?? null}
           />
         </>
       )}
