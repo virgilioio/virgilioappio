@@ -307,7 +307,12 @@ export function NotificationCenter() {
       qc.invalidateQueries({ queryKey: ['chat-threads'] })
       qc.invalidateQueries({ queryKey: ['chat-unread-count'] })
     }
-    if (n.action_url) navigate(n.action_url)
+    if (n.action_url) {
+      navigate(
+        n.action_url,
+        n.category === 'chat_message' ? { state: { chatNotificationOpen: true } } : undefined,
+      )
+    }
   }
 
   return (
