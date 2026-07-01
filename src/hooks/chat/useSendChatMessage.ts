@@ -11,6 +11,8 @@ interface SendArgs {
   direction?: Exclude<ChatDirection, 'in'>
   /** Convenience flag — overrides `direction` to 'note' when true. */
   isInternalNote?: boolean
+  /** Optional structured payload (e.g. booking-link card). Written to `parts`. */
+  parts?: Record<string, unknown> | null
 }
 
 function resolveDirection(args: SendArgs): Exclude<ChatDirection, 'in'> {
