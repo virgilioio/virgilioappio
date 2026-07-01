@@ -17,10 +17,22 @@ import {
   jsonResponse,
 } from "../_shared/chat-candidate-auth.ts";
 
+const AttachmentSchema = z.object({
+  path: z.string().min(1).max(400),
+  name: z.string().min(1).max(200),
+  mime: z.string().min(1).max(120),
+  size: z.number().int().positive().max(10 * 1024 * 1024),
+  url: z.string().url().optional(),
+});
+
 const BodySchema = z.object({
   token: z.string().min(32).max(2048),
-  body: z.string().min(1).max(4000),
+  body: z.string().max(4000).optional().default(""),
+  attachment: AttachmentSchema.optional(),
+}).refine((v) => (v.body?.trim().length ?? 0) > 0 || !!v.attachment, {
+  message: "empty_message",
 });
+
 
 const RATE_MAX = 20; // 20 sends / IP / minute
 const RATE_WINDOW = 60;
