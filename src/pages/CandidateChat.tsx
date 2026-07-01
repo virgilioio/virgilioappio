@@ -778,6 +778,13 @@ function MessageRow({
       )}
 
       <div style={{ maxWidth: bubbleMax, minWidth: 0 }}>
+        {message.bookingCard ? (
+          <BookingLinkCard
+            data={message.bookingCard}
+            isOutbound={!isRecruiter}
+            isCandidateView
+          />
+        ) : (
         <div
           className="font-inter"
           style={{
@@ -803,6 +810,7 @@ function MessageRow({
             </div>
           )}
         </div>
+        )}
         <div
           className="mt-[5px] font-inter"
           style={{
