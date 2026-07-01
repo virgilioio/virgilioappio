@@ -1,50 +1,44 @@
-import { useState } from 'react'
-import { Sparkles, ArrowRight } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
+import { useEffect, useState } from 'react'
+import { Sparkles, Wand2, X, CornerDownLeft, RefreshCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 
 interface DraftWithGioPopoverProps {
   threadId: string
-  disabled?: boolean
-  onUseDraft: (text: string) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onInsert: (text: string) => void
 }
 
-type Tone = 'friendly' | 'direct' | 'enthusiastic' | 'apologetic'
-
-const TONES: { id: Tone; label: string }[] = [
-  { id: 'friendly', label: 'Friendly' },
-  { id: 'direct', label: 'Direct' },
-  { id: 'enthusiastic', label: 'Enthusiastic' },
-  { id: 'apologetic', label: 'Apologetic' },
-]
-
 /**
- * DraftWithGioPopover — Step 3.4
+ * DraftWithGioPopover — anchored above the composer.
  *
- * Recruiter-only popover that asks the chat-ai-draft edge function for a
- * suggested reply. The recruiter can swap tone, add an instruction, regenerate,
- * and "Use draft" to pipe the text into the composer textarea.
+ * Layout is absolute-positioned by the Composer parent; this component just
+ * renders the popover shell + interactions.
  */
-export function DraftWithGioPopover({ threadId, disabled, onUseDraft }: DraftWithGioPopoverProps) {
-  const [open, setOpen] = useState(false)
-  const [tone, setTone] = useState<Tone | undefined>(undefined)
+export function DraftWithGioPopover({
+  threadId,
+  open,
+  onOpenChange,
+  onInsert,
+}: DraftWithGioPopoverProps) {
   const [instruction, setInstruction] = useState('')
   const [draft, setDraft] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const run = async () => {
+  useEffect(() => {
+    if (!open) {
+      setDraft(null)
+      setLoading(false)
+    }
+  }, [open])
+
+  const generate = async () => {
     setLoading(true)
     try {
       const { data, error } = await supabase.functions.invoke('chat-ai-draft', {
-        body: {
-          threadId,
-          tone,
-          instruction: instruction.trim() || undefined,
-        },
+        body: { threadId, instruction: instruction.trim() || undefined },
       })
       if (error) throw error
       const text = (data as { draft?: string })?.draft?.trim()
@@ -57,126 +51,177 @@ export function DraftWithGioPopover({ threadId, disabled, onUseDraft }: DraftWit
     }
   }
 
-  const useDraft = () => {
+  const insert = () => {
     if (!draft) return
-    onUseDraft(draft)
-    setOpen(false)
-    // Reset for next invocation but keep tone/instruction the recruiter chose.
-    setDraft(null)
+    onInsert(draft)
+    onOpenChange(false)
   }
 
+  if (!open) return null
+
   return (
-    <Popover
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o)
-        if (!o) {
-          setDraft(null)
-          setLoading(false)
-        }
+    <div
+      role="dialog"
+      aria-label="Draft with Gio"
+      style={{
+        position: 'absolute',
+        left: 22,
+        right: 22,
+        bottom: '100%',
+        marginBottom: 10,
+        background: '#FFFFFF',
+        border: '1px solid #E4D8FF',
+        borderRadius: 14,
+        boxShadow: '0 12px 32px rgba(15,18,34,0.14)',
+        padding: 16,
+        zIndex: 30,
       }}
     >
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          size="xs"
-          variant="ghost"
-          icon={Sparkles}
-          disabled={disabled}
-          className="text-[#5B3FBF] hover:bg-[#EDE4FF]"
+      <header className="flex items-center" style={{ gap: 10, marginBottom: 12 }}>
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{
+            height: 22,
+            width: 22,
+            borderRadius: 7,
+            background: '#EDE4FF',
+            color: '#6F3FF5',
+          }}
+        >
+          <Sparkles style={{ height: 13, width: 13 }} strokeWidth={2} />
+        </div>
+        <span
+          className="font-poppins"
+          style={{ fontSize: 13, fontWeight: 600, color: '#0d0d09', letterSpacing: '-0.01em' }}
         >
           Draft with Gio
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        side="top"
-        sideOffset={8}
-        className="w-[380px] p-3 rounded-xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] border-virgilio-border"
+        </span>
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          aria-label="Close"
+          className="ml-auto flex items-center justify-center hover:opacity-70"
+          style={{ color: '#8B8F9E' }}
+        >
+          <X style={{ height: 14, width: 14 }} strokeWidth={2} />
+        </button>
+      </header>
+
+      {/* Prompt field */}
+      <div
+        className="flex items-center"
+        style={{
+          background: '#F6F5F1',
+          borderRadius: 10,
+          padding: '9px 12px',
+          gap: 9,
+          marginBottom: 12,
+        }}
       >
-        <div className="flex items-center gap-2 mb-2">
-          <div className="h-6 w-6 rounded-md bg-[#EDE4FF] text-[#5B3FBF] flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5" />
-          </div>
-          <span className="font-poppins font-semibold text-[12.5px] tracking-[-0.01em] text-virgilio-text">
-            Draft with Gio
-          </span>
-        </div>
-
-        {/* Tone chips */}
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {TONES.map((t) => {
-            const active = tone === t.id
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTone(active ? undefined : t.id)}
-                className={cn(
-                  'inline-flex items-center h-6 px-2 rounded-md transition-colors',
-                  'font-poppins font-medium text-[11px] tracking-[-0.005em]',
-                  active
-                    ? 'bg-[#EDE4FF] text-[#5B3FBF]'
-                    : 'text-text-secondary hover:bg-[#F1F0EC]',
-                )}
-              >
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Optional instruction */}
-        <textarea
+        <Wand2 style={{ height: 14, width: 14, color: '#6F3FF5' }} strokeWidth={2} />
+        <input
+          type="text"
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
-          placeholder="Optional: tell Gio what to focus on (e.g. confirm Friday 3pm)…"
-          rows={2}
-          maxLength={500}
-          className="w-full resize-none rounded-lg border border-virgilio-border bg-surface-primary px-2.5 py-2 text-[12.5px] font-inter text-virgilio-text outline-none focus:ring-2 focus:ring-virgilio-purple/30 placeholder:text-text-secondary"
+          placeholder="Ask for availability next week for a panel interview…"
+          className="flex-1 bg-transparent outline-none font-inter"
+          style={{ fontSize: 12.5, color: '#1F2230' }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void generate()
+            }
+          }}
         />
+      </div>
 
-        {/* Result */}
-        <div className="mt-2 min-h-[88px] rounded-lg bg-[#FAF8FF] border border-virgilio-border p-2.5">
-          {loading ? (
-            <div className="space-y-1.5">
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-11/12" />
-              <Skeleton className="h-3 w-9/12" />
-            </div>
-          ) : draft ? (
-            <p className="font-inter text-[12.5px] leading-[1.55] text-virgilio-text whitespace-pre-wrap">
-              {draft}
-            </p>
-          ) : (
-            <p className="font-inter text-[11.5px] text-text-secondary">
-              Pick a tone (or skip), add an optional instruction, then generate a draft you can edit before sending.
-            </p>
-          )}
+      {/* Suggested draft */}
+      <div
+        style={{
+          background: '#F4EFFF',
+          border: '1px solid #E4D8FF',
+          borderRadius: 12,
+          padding: '12px 14px',
+          minHeight: 90,
+        }}
+      >
+        <div
+          className="font-inter uppercase"
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: '#6F3FF5',
+            letterSpacing: '0.06em',
+            marginBottom: 6,
+          }}
+        >
+          Suggested draft
         </div>
+        {loading ? (
+          <div className="space-y-1.5">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-11/12" />
+            <Skeleton className="h-3 w-8/12" />
+          </div>
+        ) : draft ? (
+          <p
+            className="font-inter whitespace-pre-wrap"
+            style={{ fontSize: 12.5, lineHeight: 1.55, color: '#1F2230', margin: 0 }}
+          >
+            {draft}
+          </p>
+        ) : (
+          <p
+            className="font-inter"
+            style={{ fontSize: 12, color: '#5A6072', margin: 0 }}
+          >
+            Type an instruction above and Gio will draft a reply grounded in this conversation.
+          </p>
+        )}
+      </div>
 
-        <div className="flex items-center justify-end gap-2 mt-3">
-          <Button
-            type="button"
-            variant="secondary"
-            size="xs"
-            loading={loading}
-            onClick={run}
-          >
-            {draft ? 'Regenerate' : 'Generate'}
-          </Button>
-          <Button
-            type="button"
-            variant="purple"
-            size="xs"
-            iconRight={ArrowRight}
-            disabled={!draft || loading}
-            onClick={useDraft}
-          >
-            Use draft
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+      <div className="flex items-center justify-end" style={{ gap: 8, marginTop: 14 }}>
+        <button
+          type="button"
+          onClick={generate}
+          disabled={loading}
+          className="inline-flex items-center font-poppins transition-colors disabled:opacity-60"
+          style={{
+            gap: 6,
+            height: 32,
+            padding: '0 12px',
+            borderRadius: 8,
+            border: '1px solid #E7E8EE',
+            background: '#FFFFFF',
+            color: '#1F2230',
+            fontSize: 12,
+            fontWeight: 500,
+          }}
+        >
+          <RefreshCw style={{ height: 13, width: 13 }} strokeWidth={2} />
+          {draft ? 'Regenerate' : 'Generate'}
+        </button>
+        <button
+          type="button"
+          onClick={insert}
+          disabled={!draft || loading}
+          className="inline-flex items-center font-poppins transition-colors disabled:opacity-55"
+          style={{
+            gap: 6,
+            height: 32,
+            padding: '0 12px',
+            borderRadius: 8,
+            background: '#6F3FF5',
+            color: '#FFFFFF',
+            fontSize: 12,
+            fontWeight: 600,
+            border: 0,
+          }}
+        >
+          <CornerDownLeft style={{ height: 13, width: 13 }} strokeWidth={2} />
+          Insert draft
+        </button>
+      </div>
+    </div>
   )
 }
