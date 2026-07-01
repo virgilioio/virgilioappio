@@ -98,7 +98,16 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
         new Set(rawThreads.map((t: any) => t.job_id as string | null).filter(Boolean)),
       ) as string[]
 
-      const [candidatesRes, jobsRes] = await Promise.all([
+      const associationIds = Array.from(
+        new Set(rawThreads.map((t: any) => t.association_id as string | null).filter(Boolean)),
+      ) as string[]
+      const recruiterIds = Array.from(
+        new Set(
+          rawThreads.map((t: any) => t.assigned_recruiter_id as string | null).filter(Boolean),
+        ),
+      ) as string[]
+
+      const [candidatesRes, jobsRes, associationsRes, recruitersRes] = await Promise.all([
         candidateIds.length > 0
           ? supabase
               .from('candidates')
@@ -107,6 +116,20 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
           : Promise.resolve({ data: [], error: null }),
         jobIds.length > 0
           ? supabase.from('jobs').select('id, title').in('id', jobIds)
+          : Promise.resolve({ data: [], error: null }),
+        associationIds.length > 0
+          ? supabase
+              .from('job_candidate_associations')
+              .select(
+                'id, job_hiring_stages!job_candidate_associations_current_stage_id_fkey(custom_stage_name, job_stages!job_hiring_stages_stage_id_fkey(stage_name))',
+              )
+              .in('id', associationIds)
+          : Promise.resolve({ data: [], error: null }),
+        recruiterIds.length > 0
+          ? supabase
+              .from('profiles')
+              .select('id, first_name, last_name')
+              .in('id', recruiterIds)
           : Promise.resolve({ data: [], error: null }),
       ])
 
@@ -118,6 +141,18 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
       const jobs = new Map<string, ChatThreadRow['job']>()
       for (const job of jobsRes.error ? [] : jobsRes.data ?? []) {
         jobs.set((job as any).id, job as ChatThreadRow['job'])
+      }
+
+      const stages = new Map<string, string | null>()
+      for (const a of associationsRes.error ? [] : (associationsRes.data as any[]) ?? []) {
+        const hs = a.job_hiring_stages
+        const name = hs?.custom_stage_name || hs?.job_stages?.stage_name || null
+        stages.set(a.id, name)
+      }
+
+      const recruiters = new Map<string, ChatThreadRow['recruiter']>()
+      for (const r of recruitersRes.error ? [] : (recruitersRes.data as any[]) ?? []) {
+        recruiters.set(r.id, r as ChatThreadRow['recruiter'])
       }
 
       const reads = new Map<string, number>()
@@ -153,10 +188,16 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
           ...t,
           candidate: t.candidate_id ? candidates.get(t.candidate_id) ?? null : null,
           job: t.job_id ? jobs.get(t.job_id) ?? null : null,
+          stageName: t.association_id ? stages.get(t.association_id) ?? null : null,
+          recruiter: t.assigned_recruiter_id
+            ? recruiters.get(t.assigned_recruiter_id) ?? null
+            : null,
           isUnread: unreadCount > 0 || (lastMsg > 0 && lastMsg > lastRead),
           unreadCount,
         }
       })
+
+
 
       const scoped = rows.filter((row) => {
         if (scope === 'unread') return row.isUnread
