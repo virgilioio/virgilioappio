@@ -13,8 +13,8 @@ interface ChannelDotProps {
 }
 
 /**
- * ChannelDot — small colored dot overlaid on an avatar to indicate the
- * conversation's channel (in-app / email / whatsapp).
+ * ChannelDot — 13×13 white circle punched into the avatar corner,
+ * containing an 8px colored dot indicating the conversation channel.
  */
 export function ChannelDot({ channel, className }: ChannelDotProps) {
   const color = CHANNEL_COLOR[channel ?? 'in_app'] ?? '#6F3FF5'
@@ -22,10 +22,14 @@ export function ChannelDot({ channel, className }: ChannelDotProps) {
     <span
       aria-hidden
       className={cn(
-        'absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-white',
+        'absolute -bottom-px -right-px flex h-[13px] w-[13px] items-center justify-center rounded-full bg-white',
         className,
       )}
-      style={{ backgroundColor: color }}
-    />
+    >
+      <span
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+    </span>
   )
 }
