@@ -39,6 +39,12 @@ function roleLabel(row: ChatThreadRow) {
   return row.candidate?.role_current || row.candidate?.current_job_title || row.job?.title || ''
 }
 
+function previewLabel(row: ChatThreadRow) {
+  const preview = row.last_message_preview?.trim()
+  if (!preview) return 'No messages yet'
+  return preview.replace(/\s+/g, ' ')
+}
+
 function timeAgo(iso: string | null) {
   if (!iso) return ''
   try {
@@ -185,7 +191,7 @@ export function ConversationListPane() {
               <InlineEmpty text="No conversations here" />
             </div>
           ) : (
-            <ul className="p-2 space-y-0.5">
+            <ul className="p-2 space-y-1">
               {rows.map((row) => {
                 const isActive = row.id === activeId
                 return (
@@ -193,15 +199,15 @@ export function ConversationListPane() {
                     <button
                       onClick={() => navigate(`/chat/${row.id}`)}
                       className={cn(
-                        'relative w-full text-left rounded-lg pl-3 pr-2.5 py-2.5 flex items-start gap-2.5 transition-colors',
+                        'group relative w-full text-left rounded-[14px] pl-3 pr-3 py-3 flex items-start gap-3 transition-colors',
                         isActive
-                          ? 'bg-[#FAF8FF] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2px] before:bg-virgilio-purple before:rounded-r'
+                          ? 'bg-[#F7F3FF] shadow-[inset_0_0_0_1px_rgba(110,80,200,0.08)] before:absolute before:left-0 before:top-3 before:bottom-3 before:w-[3px] before:bg-virgilio-purple before:rounded-r-full'
                           : 'hover:bg-[#FAFAF7]',
                       )}
                     >
                       <div className="relative shrink-0">
                         <div
-                          className="h-10 w-10 rounded-full flex items-center justify-center text-[12px] font-poppins font-semibold tracking-[-0.02em] bg-[#EDE4FF] text-[#5B3FBF] overflow-hidden"
+                          className="h-11 w-11 rounded-full flex items-center justify-center text-[12.5px] font-poppins font-semibold tracking-[-0.02em] bg-[#EDE4FF] text-[#5B3FBF] overflow-hidden"
                           aria-hidden
                         >
                           {initials(row)}
@@ -212,7 +218,7 @@ export function ConversationListPane() {
                         <div className="flex items-center justify-between gap-2">
                           <span
                             className={cn(
-                              'font-poppins text-[13px] tracking-[-0.01em] truncate',
+                              'font-poppins text-[13.5px] tracking-[-0.02em] truncate',
                               row.isUnread
                                 ? 'font-semibold text-virgilio-text'
                                 : 'font-medium text-virgilio-text',
@@ -220,29 +226,29 @@ export function ConversationListPane() {
                           >
                             {fullName(row)}
                           </span>
-                          <span className="text-[10.5px] text-[#8B8F9E] shrink-0 font-mono">
+                          <span className="text-[10.5px] text-[#8B8F9E] shrink-0 font-poppins font-medium tabular-nums">
                             {timeAgo(row.last_message_at)}
                           </span>
                         </div>
                         {roleLabel(row) && (
-                          <div className="text-[11px] text-[#8B8F9E] truncate mt-0.5 font-inter">
+                          <div className="text-[11px] text-[#8B8F9E] truncate mt-[1px] font-inter">
                             {roleLabel(row)}
                           </div>
                         )}
-                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <div className="flex items-end justify-between gap-2 mt-1">
                           <span
                             className={cn(
-                              'text-[12px] truncate leading-snug line-clamp-2',
+                              'text-[12px] leading-[1.3] line-clamp-2',
                               row.isUnread
                                 ? 'text-virgilio-text font-medium'
                                 : 'text-[#5A6072]',
                             )}
                           >
-                            {row.last_message_preview || 'No messages yet'}
+                            {previewLabel(row)}
                           </span>
                           {row.isUnread && (
                             <span
-                              className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-virgilio-purple text-white text-[10px] font-semibold shrink-0"
+                              className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-virgilio-purple text-white text-[10px] font-poppins font-semibold shrink-0 mb-[1px]"
                               aria-label="Unread messages"
                             >
                               {row.unreadCount || 1}
