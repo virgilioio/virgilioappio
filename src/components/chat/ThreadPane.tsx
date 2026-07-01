@@ -22,8 +22,22 @@ interface ThreadHeader {
   status: string
   mode: string
   last_message_at: string | null
-  candidate: { first_name: string | null; last_name: string | null; email: string | null } | null
-  job: { title: string | null } | null
+  candidate_id: string | null
+  job_id: string | null
+  candidate: {
+    id: string
+    candidate_name: string | null
+    email: string | null
+    role_current: string | null
+    current_job_title: string | null
+  } | null
+  job: { id: string; title: string | null } | null
+}
+
+function candidateInitial(candidate: ThreadHeader['candidate']) {
+  const name = candidate?.candidate_name?.trim()
+  if (!name) return candidate?.email?.[0]?.toUpperCase() || '?'
+  return name[0]?.toUpperCase() || '?'
 }
 
 function useThreadHeader(threadId: string | undefined) {
@@ -37,28 +51,41 @@ function useThreadHeader(threadId: string | undefined) {
       return
     }
     setLoading(true)
-    supabase
-      .from('chat_threads')
-      .select(
-        'id, status, mode, last_message_at, candidate:candidates(first_name, last_name, email), job:jobs(title)',
-      )
-      .eq('id', threadId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!alive) return
-        setData(
-          data
-            ? ({
-                ...(data as any),
-                candidate: Array.isArray((data as any).candidate)
-                  ? (data as any).candidate[0]
-                  : (data as any).candidate,
-                job: Array.isArray((data as any).job) ? (data as any).job[0] : (data as any).job,
-              } as ThreadHeader)
-            : null,
-        )
+    ;(async () => {
+      const { data: thread, error: threadError } = await supabase
+        .from('chat_threads')
+        .select('id, status, mode, last_message_at, candidate_id, job_id')
+        .eq('id', threadId)
+        .maybeSingle()
+
+      if (!alive) return
+      if (threadError || !thread) {
+        setData(null)
         setLoading(false)
-      })
+        return
+      }
+
+      const [candidateRes, jobRes] = await Promise.all([
+        thread.candidate_id
+          ? supabase
+              .from('candidates')
+              .select('id, candidate_name, email, role_current, current_job_title')
+              .eq('id', thread.candidate_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        thread.job_id
+          ? supabase.from('jobs').select('id, title').eq('id', thread.job_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ])
+
+      if (!alive) return
+      setData({
+        ...(thread as any),
+        candidate: candidateRes.error ? null : ((candidateRes.data as ThreadHeader['candidate']) ?? null),
+        job: jobRes.error ? null : ((jobRes.data as ThreadHeader['job']) ?? null),
+      } as ThreadHeader)
+      setLoading(false)
+    })()
     return () => {
       alive = false
     }
@@ -143,10 +170,11 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
   }
 
   const fullName = header?.candidate
-    ? `${header.candidate.first_name ?? ''} ${header.candidate.last_name ?? ''}`.trim() ||
-      header.candidate.email ||
-      'Candidate'
+    ? header.candidate.candidate_name?.trim() || header.candidate.email || 'Candidate'
     : 'Candidate'
+
+  const subtitle =
+    header?.candidate?.role_current || header?.candidate?.current_job_title || header?.job?.title || ''
 
   return (
     <section className="flex-1 min-w-0 flex flex-col bg-surface-primary" aria-label="Thread">
@@ -159,15 +187,15 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
         ) : (
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-full bg-[#EDE4FF] text-[#5B3FBF] flex items-center justify-center font-poppins font-semibold text-[12px]">
-              {(header?.candidate?.first_name?.[0] ?? '?').toUpperCase()}
+              {candidateInitial(header?.candidate ?? null)}
             </div>
             <div className="min-w-0">
               <div className="font-poppins font-semibold text-[14px] tracking-[-0.02em] text-virgilio-text truncate">
                 {fullName}
               </div>
-              {header?.job?.title && (
+              {subtitle && (
                 <div className="text-[11.5px] text-text-secondary truncate">
-                  {header.job.title}
+                  {subtitle}
                 </div>
               )}
             </div>
