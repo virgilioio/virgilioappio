@@ -376,28 +376,21 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
         </div>
       )}
 
-      {/* Messages area */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto" style={{ padding: '20px 22px 8px' }}>
+      {/* Messages area (scrolls) */}
+      <MessageList
+        threadId={threadId}
+        topSlot={
           <AiSummaryCard
             threadId={threadId}
             open={summaryOpen}
             reloadKey={summaryKey}
             onClose={() => setSummaryOpen(false)}
           />
-          <MessageListInner threadId={threadId} />
-        </div>
-      </div>
+        }
+      />
 
       <Composer threadId={threadId} disabled={isPaused} />
     </section>
   )
 }
 
-// Thin wrapper so we don't add another scroller inside the outer scroller.
-function MessageListInner({ threadId }: { threadId: string }) {
-  return <MessageList threadId={threadId} />
-}
-
-// Re-export helpers (unused externally) so hoisted format is not tree-shaken by mistake.
-export const __threadHeaderFormat = format
