@@ -350,7 +350,7 @@ export function ConversationListPane() {
                             className="font-inter truncate flex-1 min-w-0"
                             style={{ fontSize: 11, color: '#8B8F9E' }}
                           >
-                            {roleLabel(row) || '\u00A0'}
+                            {jobLabel(row) || '\u00A0'}
                           </span>
                           {stage && row.stageName && (
                             <span
