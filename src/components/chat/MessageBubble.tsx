@@ -2,10 +2,12 @@ import { format } from 'date-fns'
 import { Lock, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ChatMessageRow } from '@/hooks/chat/useChatMessages'
+import { BookingLinkCard, type BookingCardData } from './BookingLinkCard'
 
 interface MessageBubbleProps {
   message: ChatMessageRow
   authorName?: string | null
+  isCandidateView?: boolean
 }
 
 /**
@@ -16,11 +18,44 @@ interface MessageBubbleProps {
  * meta line ends with a purple check-check read receipt.
  * Internal note: centered amber card with a header row and body.
  */
-export function MessageBubble({ message, authorName }: MessageBubbleProps) {
+export function MessageBubble({ message, authorName, isCandidateView }: MessageBubbleProps) {
   const isNote = message.direction === 'note'
   const isOutbound = message.direction === 'out'
   const time = message.created_at ? format(new Date(message.created_at), 'h:mm a') : ''
   const isRead = Boolean(message.read_by_recipient_at) && !message._optimistic
+  const bookingCard =
+    message.parts && typeof message.parts === 'object' && (message.parts as any).kind === 'booking_link'
+      ? (message.parts as BookingCardData)
+      : null
+
+  if (bookingCard) {
+    return (
+      <div
+        className={cn('flex w-full', isOutbound ? 'justify-end' : 'justify-start')}
+        style={{ marginBottom: 16 }}
+      >
+        <div className={cn('flex flex-col', isOutbound ? 'items-end' : 'items-start')}>
+          <BookingLinkCard data={bookingCard} isOutbound={isOutbound} isCandidateView={isCandidateView} />
+          <div
+            className={cn(
+              'flex items-center font-inter',
+              isOutbound ? 'justify-end' : 'justify-start',
+            )}
+            style={{ marginTop: 5, gap: 5, fontSize: 10.5, color: '#8B8F9E' }}
+          >
+            <span>{message._optimistic ? 'Sending…' : time}</span>
+            {isOutbound && !message._optimistic && (
+              <CheckCheck
+                style={{ height: 13, width: 13, color: isRead ? '#6F3FF5' : '#8B8F9E' }}
+                strokeWidth={2}
+                aria-label={isRead ? 'Read' : 'Sent'}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isNote) {
     return (

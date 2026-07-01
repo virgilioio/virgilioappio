@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { GioWordmark } from '@/components/icons/GioWordmark'
+import { BookingLinkCard } from '@/components/chat/BookingLinkCard'
 
 // ---------- Types ----------------------------------------------------------
 
@@ -58,12 +59,23 @@ type Attachment = {
   url?: string
 }
 
+type BookingCardPart = {
+  kind: 'booking_link'
+  variant: 'job' | 'personal' | 'custom'
+  url: string
+  title: string
+  meta: string
+  status?: 'awaiting' | 'booked'
+  bookedSlotLabel?: string | null
+}
+
 type ChatMessage = {
   id: string
   role: 'candidate' | 'recruiter'
   text: string
   createdAt: number
   attachments?: Attachment[]
+  bookingCard?: BookingCardPart
   status?: 'sending' | 'sent'
 }
 
@@ -192,13 +204,18 @@ export default function CandidateChat() {
           parts: unknown
           created_at: string
         }>).map((m) => {
-          const parts = (m.parts ?? null) as { attachments?: Attachment[] } | null
+          const parts = (m.parts ?? null) as
+            | { attachments?: Attachment[]; kind?: string }
+            | null
+          const bookingCard =
+            parts && parts.kind === 'booking_link' ? (parts as unknown as BookingCardPart) : undefined
           return {
             id: m.id,
             role: m.direction === 'in' ? 'candidate' : 'recruiter',
-            text: m.body ?? '',
+            text: bookingCard ? '' : m.body ?? '',
             createdAt: new Date(m.created_at).getTime(),
             attachments: parts?.attachments ?? undefined,
+            bookingCard,
             status: 'sent',
           }
         })
@@ -762,6 +779,13 @@ function MessageRow({
       )}
 
       <div style={{ maxWidth: bubbleMax, minWidth: 0 }}>
+        {message.bookingCard ? (
+          <BookingLinkCard
+            data={message.bookingCard}
+            isOutbound={!isRecruiter}
+            isCandidateView
+          />
+        ) : (
         <div
           className="font-inter"
           style={{
@@ -787,6 +811,7 @@ function MessageRow({
             </div>
           )}
         </div>
+        )}
         <div
           className="mt-[5px] font-inter"
           style={{

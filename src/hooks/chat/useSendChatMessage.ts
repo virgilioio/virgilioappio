@@ -11,6 +11,8 @@ interface SendArgs {
   direction?: Exclude<ChatDirection, 'in'>
   /** Convenience flag — overrides `direction` to 'note' when true. */
   isInternalNote?: boolean
+  /** Optional structured payload (e.g. booking-link card). Written to `parts`. */
+  parts?: Record<string, unknown> | null
 }
 
 function resolveDirection(args: SendArgs): Exclude<ChatDirection, 'in'> {
@@ -75,6 +77,7 @@ export function useSendChatMessage() {
           sender_type: 'recruiter',
           sender_user_id: user.id,
           body: args.body,
+          parts: (args.parts ?? null) as any,
         })
         .select()
         .single()
@@ -102,7 +105,7 @@ export function useSendChatMessage() {
         sender_type: 'recruiter',
         sender_user_id: user?.id ?? null,
         body,
-        parts: null,
+        parts: (args.parts ?? null) as any,
         read_by_recipient_at: null,
         redacted_at: null,
         created_at: new Date().toISOString(),

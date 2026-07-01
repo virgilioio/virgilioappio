@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
 import { SuggestedReplies } from '@/components/chat/SuggestedReplies'
+import { BookingLinkPopover, type BookingCardPayload } from '@/components/chat/BookingLinkPopover'
 import { supabase } from '@/lib/supabaseClient'
 
 interface ComposerProps {
@@ -39,6 +40,7 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
   const [mode, setMode] = useState<Mode>('reply')
   const [channel, setChannel] = useState<string>('in_app')
   const [draftOpen, setDraftOpen] = useState(false)
+  const [bookingOpen, setBookingOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const send = useSendChatMessage()
 
@@ -121,6 +123,24 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
             requestAnimationFrame(() => textareaRef.current?.focus())
           }}
         />
+
+        <BookingLinkPopover
+          threadId={threadId}
+          open={bookingOpen}
+          onOpenChange={setBookingOpen}
+          onPick={async (payload: BookingCardPayload) => {
+            try {
+              await send.mutateAsync({
+                threadId,
+                body: payload.url,
+                parts: payload as unknown as Record<string, unknown>,
+              })
+            } catch {
+              /* toast is handled inside the hook */
+            }
+          }}
+        />
+
 
         {/* Top row: mode toggle + indicator */}
         <div className="flex items-center" style={{ marginBottom: 11 }}>
@@ -210,7 +230,12 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
         {/* Toolbar row */}
         <div className="flex items-center" style={{ gap: 4, marginTop: 11 }}>
           <ToolbarIcon icon={Paperclip} label="Attach" />
-          <ToolbarIcon icon={CalendarPlus} label="Insert scheduling link" />
+          <ToolbarIcon
+            icon={CalendarPlus}
+            label="Send a booking link"
+            active={bookingOpen}
+            onClick={() => setBookingOpen((o) => !o)}
+          />
           <ToolbarIcon icon={Smile} label="Emoji" />
 
           {!isNote && (
@@ -277,19 +302,35 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
 function ToolbarIcon({
   icon: Icon,
   label,
+  active = false,
+  onClick,
 }: {
   icon: typeof Paperclip
   label: string
+  active?: boolean
+  onClick?: () => void
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
+      onClick={onClick}
       className="inline-flex items-center justify-center transition-colors"
-      style={{ height: 32, width: 32, borderRadius: 8, color: '#5A6072', background: 'transparent' }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = '#F6F5F1')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      style={{
+        height: 32,
+        width: 32,
+        borderRadius: 8,
+        color: active ? '#6F3FF5' : '#5A6072',
+        background: active ? '#EDE4FF' : 'transparent',
+        border: 0,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = '#F6F5F1'
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = 'transparent'
+      }}
     >
       <Icon style={{ height: 17, width: 17 }} strokeWidth={1.9} />
     </button>
