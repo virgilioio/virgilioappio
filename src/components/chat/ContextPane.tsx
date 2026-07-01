@@ -28,37 +28,65 @@ function useThreadContext(threadId: string | undefined) {
     setLoading(true)
 
     ;(async () => {
-      const { data: row } = await (supabase as any)
+      const sb = supabase as any
+      const { data: row, error: threadErr } = await sb
         .from('chat_threads')
-        .select(
-          `
-          candidate_id, job_id, association_id,
-          candidate:candidates(id, candidate_name, email, phone, role_current, company_current, location_city, location_country),
-          job:jobs(id, title, employment_type, department),
-          association:job_candidate_associations(
-            current_stage_id,
-            job_hiring_stages!job_candidate_associations_current_stage_id_fkey(
-              custom_stage_name,
-              job_stages!job_hiring_stages_stage_id_fkey(stage_name)
-            )
-          )
-          `,
-        )
+        .select('candidate_id, job_id, association_id')
         .eq('id', threadId)
         .maybeSingle()
 
       if (!alive) return
-      if (!row) {
+      if (threadErr || !row) {
+        if (threadErr) console.error('[ContextPane] thread fetch failed', threadErr)
         setData(null)
         setLoading(false)
         return
       }
-      const candidate = Array.isArray(row.candidate) ? row.candidate[0] : row.candidate
-      const job = Array.isArray(row.job) ? row.job[0] : row.job
-      const association = Array.isArray(row.association) ? row.association[0] : row.association
-      const hs = association?.job_hiring_stages
-      const currentStageName = hs?.custom_stage_name || hs?.job_stages?.stage_name || null
 
+      const [candidateRes, jobRes, assocRes] = await Promise.all([
+        row.candidate_id
+          ? sb
+              .from('candidates')
+              .select(
+                'id, candidate_name, email, phone, role_current, company_current, location_city, location_country',
+              )
+              .eq('id', row.candidate_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        row.job_id
+          ? sb
+              .from('jobs')
+              .select('id, title, employment_type, department')
+              .eq('id', row.job_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        row.association_id
+          ? sb
+              .from('job_candidate_associations')
+              .select('current_stage_id')
+              .eq('id', row.association_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ])
+
+      if (!alive) return
+
+      const candidate = candidateRes?.data ?? null
+      const job = jobRes?.data ?? null
+      const association = assocRes?.data ?? null
+
+      let currentStageName: string | null = null
+      if (association?.current_stage_id) {
+        const { data: hs } = await sb
+          .from('job_hiring_stages')
+          .select('custom_stage_name, stage_id, job_stages:job_stages(stage_name)')
+          .eq('id', association.current_stage_id)
+          .maybeSingle()
+        const js = Array.isArray(hs?.job_stages) ? hs?.job_stages[0] : hs?.job_stages
+        currentStageName = hs?.custom_stage_name || js?.stage_name || null
+      }
+
+      if (!alive) return
       setData({
         snapshot: {
           candidateId: candidate?.id ?? row.candidate_id,
