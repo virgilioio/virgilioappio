@@ -31,6 +31,12 @@ export interface ChatThreadRow {
     id: string
     title: string | null
   } | null
+  stageName: string | null
+  recruiter?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+  } | null
   isUnread: boolean
   unreadCount: number
 }
