@@ -209,8 +209,9 @@ export function Header() {
       style={{ backgroundColor: '#0d0d09' }}
     >
       <div className="flex w-full items-center justify-between gap-6 px-3">
-        {/* Left: section nav */}
+        {/* Left: section nav (or Chat slot on /chat routes) */}
         <nav className="flex items-center gap-0.5 min-w-0">
+          {location.pathname.startsWith('/chat') && <ChatHeaderSlot />}
           {visibleNavItems.map((item) => {
             const Icon = item.icon
             const isActive =
