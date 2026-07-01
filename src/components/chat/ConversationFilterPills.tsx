@@ -43,7 +43,7 @@ const Pill = forwardRef<HTMLButtonElement, PillProps>(function Pill(
         className,
       )}
     >
-      <Icon className="h-3 w-3" strokeWidth={1.9} />
+      <Icon className="h-3 w-3" strokeWidth={2} />
       <span>{label}</span>
       {typeof count === 'number' && count > 0 && (
         <span
