@@ -56,13 +56,21 @@ function useThreadBookingCtx(threadId: string | undefined, enabled: boolean) {
         row.association_id
           ? sb
               .from('job_candidate_associations')
-              .select('current_stage_id')
+              .select('id, current_stage_id')
               .eq('id', row.association_id)
               .maybeSingle()
-          : Promise.resolve({ data: null }),
+          : row.candidate_id && row.job_id
+            ? sb
+                .from('job_candidate_associations')
+                .select('id, current_stage_id')
+                .eq('candidate_id', row.candidate_id)
+                .eq('job_id', row.job_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
       ])
       let stageName: string | null = null
       const jhsId = assoc?.data?.current_stage_id ?? null
+      const associationId = assoc?.data?.id ?? row.association_id ?? null
       if (jhsId) {
         const { data: hs } = await sb
           .from('job_hiring_stages')
@@ -76,7 +84,7 @@ function useThreadBookingCtx(threadId: string | undefined, enabled: boolean) {
       setCtx({
         jobId: row.job_id ?? null,
         candidateId: row.candidate_id ?? null,
-        associationId: row.association_id ?? null,
+        associationId,
         jhsId,
         jobTitle: job?.data?.title ?? null,
         candidateName: cand?.data?.candidate_name ?? null,
