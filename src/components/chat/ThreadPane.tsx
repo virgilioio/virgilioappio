@@ -22,8 +22,19 @@ interface ThreadHeader {
   status: string
   mode: string
   last_message_at: string | null
-  candidate: { first_name: string | null; last_name: string | null; email: string | null } | null
+  candidate: {
+    candidate_name: string | null
+    email: string | null
+    role_current: string | null
+    current_job_title: string | null
+  } | null
   job: { title: string | null } | null
+}
+
+function candidateInitial(candidate: ThreadHeader['candidate']) {
+  const name = candidate?.candidate_name?.trim()
+  if (!name) return candidate?.email?.[0]?.toUpperCase() || '?'
+  return name[0]?.toUpperCase() || '?'
 }
 
 function useThreadHeader(threadId: string | undefined) {
@@ -40,7 +51,7 @@ function useThreadHeader(threadId: string | undefined) {
     supabase
       .from('chat_threads')
       .select(
-        'id, status, mode, last_message_at, candidate:candidates(first_name, last_name, email), job:jobs(title)',
+        'id, status, mode, last_message_at, candidate:candidates(candidate_name, email, role_current, current_job_title), job:jobs(title)',
       )
       .eq('id', threadId)
       .maybeSingle()
@@ -143,10 +154,11 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
   }
 
   const fullName = header?.candidate
-    ? `${header.candidate.first_name ?? ''} ${header.candidate.last_name ?? ''}`.trim() ||
-      header.candidate.email ||
-      'Candidate'
+    ? header.candidate.candidate_name?.trim() || header.candidate.email || 'Candidate'
     : 'Candidate'
+
+  const subtitle =
+    header?.candidate?.role_current || header?.candidate?.current_job_title || header?.job?.title || ''
 
   return (
     <section className="flex-1 min-w-0 flex flex-col bg-surface-primary" aria-label="Thread">
@@ -159,15 +171,15 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
         ) : (
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-full bg-[#EDE4FF] text-[#5B3FBF] flex items-center justify-center font-poppins font-semibold text-[12px]">
-              {(header?.candidate?.first_name?.[0] ?? '?').toUpperCase()}
+              {candidateInitial(header?.candidate ?? null)}
             </div>
             <div className="min-w-0">
               <div className="font-poppins font-semibold text-[14px] tracking-[-0.02em] text-virgilio-text truncate">
                 {fullName}
               </div>
-              {header?.job?.title && (
+              {subtitle && (
                 <div className="text-[11.5px] text-text-secondary truncate">
-                  {header.job.title}
+                  {subtitle}
                 </div>
               )}
             </div>
