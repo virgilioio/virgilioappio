@@ -85,14 +85,12 @@ export function ContextSnapshot({ data }: ContextSnapshotProps) {
       >
         {name}
       </div>
-      {data.roleCurrent && (
+      {data.jobTitle && (
         <div
           className="font-inter"
           style={{ marginTop: 2, fontSize: 12, color: '#5A6072' }}
         >
-          {data.companyCurrent
-            ? `${data.roleCurrent} · ${data.companyCurrent}`
-            : data.roleCurrent}
+          {data.jobTitle}
         </div>
       )}
       {location && (
