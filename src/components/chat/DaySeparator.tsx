@@ -5,7 +5,8 @@ interface DaySeparatorProps {
 }
 
 /**
- * DaySeparator — date label between message groups (Step 1.6).
+ * DaySeparator — centered pill between message groups.
+ * Spec: bg #F1F0EC · radius 999 · Inter 500 10.5 · #8B8F9E · letter-spacing 0.02em.
  */
 export function DaySeparator({ date }: DaySeparatorProps) {
   const d = new Date(date)
@@ -13,14 +14,28 @@ export function DaySeparator({ date }: DaySeparatorProps) {
     ? 'Today'
     : isYesterday(d)
       ? 'Yesterday'
-      : format(d, 'EEEE, MMM d')
+      : format(d, 'EEEE, MMMM d')
   return (
-    <div className="flex items-center gap-3 my-4" role="separator" aria-label={label}>
-      <div className="flex-1 h-px bg-virgilio-border" />
-      <span className="font-poppins text-[10.5px] tracking-[0.06em] uppercase text-text-secondary">
+    <div
+      className="flex justify-center"
+      role="separator"
+      aria-label={label}
+      style={{ margin: '8px 0 18px' }}
+    >
+      <span
+        className="inline-flex items-center font-inter"
+        style={{
+          padding: '3px 12px',
+          background: '#F1F0EC',
+          borderRadius: 999,
+          fontSize: 10.5,
+          fontWeight: 500,
+          color: '#8B8F9E',
+          letterSpacing: '0.02em',
+        }}
+      >
         {label}
       </span>
-      <div className="flex-1 h-px bg-virgilio-border" />
     </div>
   )
 }

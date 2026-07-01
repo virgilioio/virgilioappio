@@ -1,61 +1,111 @@
 import { format } from 'date-fns'
-import { Lock, Sparkles } from 'lucide-react'
+import { Lock, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ChatMessageRow } from '@/hooks/chat/useChatMessages'
 
 interface MessageBubbleProps {
   message: ChatMessageRow
+  authorName?: string | null
 }
 
 /**
- * MessageBubble — chat bubble with variants for inbound / outbound / internal note (Step 1.6).
+ * MessageBubble — spec-exact bubbles for inbound / outbound / internal note.
+ *
+ * Inbound: left-aligned #F1F0EC bubble, bottom-left corner tightened to 5px.
+ * Outbound: right-aligned #0d0d09 bubble, cream text, bottom-right tightened,
+ * meta line ends with a purple check-check read receipt.
+ * Internal note: centered amber card with a header row and body.
  */
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, authorName }: MessageBubbleProps) {
   const isNote = message.direction === 'note'
   const isOutbound = message.direction === 'out'
-  const isAi = message.sender_type === 'ai'
   const time = message.created_at ? format(new Date(message.created_at), 'h:mm a') : ''
+  const isRead = Boolean(message.read_by_recipient_at) && !message._optimistic
 
   if (isNote) {
     return (
-      <div className="my-2 px-3 py-2 rounded-lg border border-[#FCE7AC] bg-[#FFF8E1]">
-        <div className="flex items-center gap-1.5 mb-1 text-[10.5px] font-poppins font-semibold tracking-[0.04em] uppercase text-[#8A6D1F]">
-          <Lock className="h-3 w-3" />
-          Internal note
-          <span className="ml-auto font-mono text-[10.5px] tracking-normal normal-case text-[#8A6D1F]/70">
-            {time}
-          </span>
+      <div className="flex justify-center" style={{ margin: '4px 0 18px' }}>
+        <div
+          style={{
+            maxWidth: '82%',
+            background: '#FEF8E7',
+            border: '1px solid #FDE9B8',
+            borderRadius: 12,
+            padding: '11px 14px',
+          }}
+        >
+          <div className="flex items-center" style={{ gap: 6, marginBottom: 5 }}>
+            <Lock style={{ height: 12, width: 12, color: '#B45309' }} strokeWidth={2} />
+            <span
+              className="font-inter"
+              style={{ fontSize: 11, fontWeight: 600, color: '#B45309' }}
+            >
+              Internal note · your team only
+            </span>
+            <span
+              className="ml-auto font-inter"
+              style={{ fontSize: 10.5, color: '#A98321' }}
+            >
+              {authorName ? `${authorName} · ${time}` : time}
+            </span>
+          </div>
+          <p
+            className="font-inter whitespace-pre-wrap break-words"
+            style={{ fontSize: 13, lineHeight: 1.5, color: '#1F2230', margin: 0 }}
+          >
+            {message.body}
+          </p>
         </div>
-        <p className="text-[13px] leading-[1.45] text-[#5C4A14] whitespace-pre-wrap break-words">
-          {message.body}
-        </p>
       </div>
     )
   }
 
   return (
-    <div className={cn('flex w-full my-1', isOutbound ? 'justify-end' : 'justify-start')}>
-      <div className={cn('max-w-[78%] flex flex-col', isOutbound ? 'items-end' : 'items-start')}>
+    <div
+      className={cn('flex w-full', isOutbound ? 'justify-end' : 'justify-start')}
+      style={{ marginBottom: 16 }}
+    >
+      <div
+        className={cn('flex flex-col', isOutbound ? 'items-end' : 'items-start')}
+        style={{ maxWidth: '62%' }}
+      >
         <div
           className={cn(
-            'px-3 py-2 rounded-2xl text-[13.5px] leading-[1.45] whitespace-pre-wrap break-words',
-            isOutbound
-              ? 'bg-[#0d0d09] text-[#FFFCF9] rounded-br-md'
-              : 'bg-[#F1F0EC] text-virgilio-text rounded-bl-md',
+            'font-inter whitespace-pre-wrap break-words',
             message._optimistic && 'opacity-70',
           )}
+          style={{
+            padding: '11px 15px',
+            fontSize: 13.5,
+            lineHeight: 1.55,
+            borderRadius: 16,
+            borderBottomLeftRadius: isOutbound ? 16 : 5,
+            borderBottomRightRadius: isOutbound ? 5 : 16,
+            background: isOutbound ? '#0d0d09' : '#F1F0EC',
+            color: isOutbound ? '#fffcf9' : '#1F2230',
+          }}
         >
           {message.body}
         </div>
-        <div className="flex items-center gap-1.5 mt-1 px-1 text-[10.5px] text-text-secondary font-mono">
-          {isAi && (
-            <span className="inline-flex items-center gap-1 text-[#5B3FBF] font-poppins font-medium tracking-[-0.01em]">
-              <Sparkles className="h-3 w-3" />
-              Gio
-            </span>
+        <div
+          className={cn(
+            'flex items-center font-inter',
+            isOutbound ? 'justify-end' : 'justify-start',
           )}
-          <span>{time}</span>
-          {message._optimistic && <span>· Sending…</span>}
+          style={{ marginTop: 5, gap: 5, fontSize: 10.5, color: '#8B8F9E' }}
+        >
+          <span>{message._optimistic ? 'Sending…' : time}</span>
+          {isOutbound && !message._optimistic && (
+            <CheckCheck
+              style={{
+                height: 13,
+                width: 13,
+                color: isRead ? '#6F3FF5' : '#8B8F9E',
+              }}
+              strokeWidth={2}
+              aria-label={isRead ? 'Read' : 'Sent'}
+            />
+          )}
         </div>
       </div>
     </div>
