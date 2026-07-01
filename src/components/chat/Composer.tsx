@@ -230,7 +230,12 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
         {/* Toolbar row */}
         <div className="flex items-center" style={{ gap: 4, marginTop: 11 }}>
           <ToolbarIcon icon={Paperclip} label="Attach" />
-          <ToolbarIcon icon={CalendarPlus} label="Insert scheduling link" />
+          <ToolbarIcon
+            icon={CalendarPlus}
+            label="Send a booking link"
+            active={bookingOpen}
+            onClick={() => setBookingOpen((o) => !o)}
+          />
           <ToolbarIcon icon={Smile} label="Emoji" />
 
           {!isNote && (
