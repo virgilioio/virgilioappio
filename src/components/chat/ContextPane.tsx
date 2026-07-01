@@ -66,7 +66,14 @@ function useThreadContext(threadId: string | undefined) {
               .select('current_stage_id')
               .eq('id', row.association_id)
               .maybeSingle()
-          : Promise.resolve({ data: null }),
+          : row.candidate_id && row.job_id
+            ? sb
+                .from('job_candidate_associations')
+                .select('current_stage_id')
+                .eq('candidate_id', row.candidate_id)
+                .eq('job_id', row.job_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
       ])
 
       if (!alive) return
