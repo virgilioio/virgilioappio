@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell, Check, CheckCheck, SlidersHorizontal, ArrowLeft, ChevronRight,
@@ -276,6 +277,7 @@ export function NotificationCenter() {
   const [view, setView] = useState<'feed' | 'prefs'>('feed')
   const [tab, setTab] = useState<Tab>('all')
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const { data: notifications = [], markAsRead, markAllAsRead } = useNotifications()
 
   const counts = useMemo(() => {
@@ -301,6 +303,10 @@ export function NotificationCenter() {
 
   const handleClick = (n: NotificationRow) => {
     setOpen(false)
+    if (n.category === 'chat_message') {
+      qc.invalidateQueries({ queryKey: ['chat-threads'] })
+      qc.invalidateQueries({ queryKey: ['chat-unread-count'] })
+    }
     if (n.action_url) navigate(n.action_url)
   }
 

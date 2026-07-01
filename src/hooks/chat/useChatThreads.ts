@@ -53,6 +53,7 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
     queryKey: ['chat-threads', tenantId, userId, scope, search],
     enabled: Boolean(tenantId && userId),
     staleTime: 30_000,
+    refetchOnMount: 'always',
     queryFn: async (): Promise<ChatThreadRow[]> => {
       if (!tenantId || !userId) return []
 
