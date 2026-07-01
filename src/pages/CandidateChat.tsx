@@ -438,11 +438,11 @@ function DesktopBrandBar({ candidateName }: { candidateName?: string }) {
   return (
     <header
       className="flex items-center bg-white"
-      style={{ height: 56, borderBottom: '1px solid #E7E8EE', padding: '0 26px' }}
+      style={{ borderBottom: '1px solid #E7E8EE', padding: '16px 26px' }}
     >
-      <GioWordmark height={22} />
-      <span className="mx-4 h-4 w-px" style={{ backgroundColor: '#E7E8EE' }} />
-      <ChatGlyph size={16} />
+      <GioWordmark height={96} />
+      <span className="mx-4 h-6 w-px" style={{ backgroundColor: '#E7E8EE' }} />
+      <ChatGlyph size={18} />
       <span className="ml-2 font-inter text-[13px]" style={{ color: '#5A6072' }}>
         Chat with the hiring team
       </span>
