@@ -46,7 +46,13 @@ Deno.serve(async (req) => {
   if (!auth.ok) return auth.response;
   const { ctx } = auth;
 
-  // Enrichment: candidate display + job + tenant name (for header rendering).
+  // Fetch thread to discover assigned recruiter (fallback to job creator).
+  const { data: threadRow } = await supabase
+    .from("chat_threads")
+    .select("assigned_recruiter_id")
+    .eq("id", ctx.threadId)
+    .maybeSingle();
+
   const [candidateRes, jobRes, tenantRes, tokenRes] = await Promise.all([
     supabase
       .from("candidates")
@@ -55,12 +61,12 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     supabase
       .from("jobs")
-      .select("id, title")
+      .select("id, title, created_by")
       .eq("id", ctx.jobId)
       .maybeSingle(),
     supabase
       .from("tenants")
-      .select("id, name")
+      .select("id, name, settings")
       .eq("id", ctx.tenantId)
       .maybeSingle(),
     supabase
@@ -72,6 +78,37 @@ Deno.serve(async (req) => {
 
   if (!candidateRes.data || !tenantRes.data) return NOT_FOUND();
 
+  const recruiterId = threadRow?.assigned_recruiter_id ?? jobRes.data?.created_by ?? null;
+  let recruiter: {
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    title: string | null;
+    avatarUrl: string | null;
+    initials: string;
+  } | null = null;
+  if (recruiterId) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, title, avatar_url")
+      .eq("user_id", recruiterId)
+      .maybeSingle();
+    if (prof) {
+      const fn = (prof.first_name ?? "").trim();
+      const ln = (prof.last_name ?? "").trim();
+      const display = `${fn} ${ln}`.trim() || "Your recruiter";
+      const initials = ((fn[0] ?? "") + (ln[0] ?? "")).toUpperCase() || "R";
+      recruiter = {
+        firstName: fn,
+        lastName: ln,
+        displayName: display,
+        title: prof.title ?? null,
+        avatarUrl: prof.avatar_url ?? null,
+        initials,
+      };
+    }
+  }
+
   await audit(supabase, {
     tenant_id: ctx.tenantId,
     thread_id: ctx.threadId,
@@ -82,6 +119,20 @@ Deno.serve(async (req) => {
 
   const fullName = (candidateRes.data.candidate_name ?? "").trim();
   const firstName = fullName.split(/\s+/)[0] ?? "";
+
+  const defaultSuggestions = [
+    "What's the interview process?",
+    "What's the salary range?",
+    "When would I start?",
+    "Is this role remote?",
+    "Tell me about the team",
+  ];
+  const tenantSettings = (tenantRes.data.settings ?? {}) as Record<string, unknown>;
+  const custom = Array.isArray(tenantSettings.chat_suggested_questions)
+    ? (tenantSettings.chat_suggested_questions as unknown[])
+        .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+        .slice(0, 8)
+    : null;
 
   return jsonResponse(200, {
     threadId: ctx.threadId,
@@ -99,5 +150,8 @@ Deno.serve(async (req) => {
       title: jobRes.data?.title ?? null,
       companyName: tenantRes.data.name ?? null,
     },
+    recruiter,
+    suggestedQuestions: custom && custom.length > 0 ? custom : defaultSuggestions,
   });
 });
+
