@@ -19,6 +19,7 @@ export interface ChatThreadRow {
   last_message_preview: string | null
   message_count: number
   created_at: string
+  updated_at: string
   candidate?: {
     id: string
     first_name: string | null
@@ -65,14 +66,14 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
             id, tenant_id, job_id, candidate_id, association_id,
             channel, mode, status, assigned_recruiter_id,
             last_message_at, last_message_preview,
-            message_count, created_at,
+            message_count, created_at, updated_at,
             candidate:candidates(id, first_name, last_name, email, avatar_url),
             job:jobs(id, title)
           `,
           )
           .eq('tenant_id', tenantId)
           .is('deleted_at', null)
-          .order('last_message_at', { ascending: false, nullsFirst: false })
+          .order('updated_at', { ascending: false })
           .limit(200),
         supabase
           .from('chat_thread_reads')
