@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
 import { SuggestedReplies } from '@/components/chat/SuggestedReplies'
+import { BookingLinkPopover, type BookingCardPayload } from '@/components/chat/BookingLinkPopover'
 import { supabase } from '@/lib/supabaseClient'
 
 interface ComposerProps {
