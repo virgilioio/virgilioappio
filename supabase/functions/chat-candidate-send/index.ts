@@ -68,8 +68,11 @@ Deno.serve(async (req) => {
     return jsonResponse(429, { error: "rate_limited" }, { "Retry-After": String(RATE_WINDOW) });
   }
 
-  const body = parsed.data.body.trim();
-  if (!body) return jsonResponse(400, { error: "empty_body" });
+  const body = (parsed.data.body ?? "").trim();
+  const attachment = parsed.data.attachment ?? null;
+  if (!body && !attachment) return jsonResponse(400, { error: "empty_body" });
+
+  const parts = attachment ? { attachments: [attachment] } : null;
 
   const { data: inserted, error: insertErr } = await supabase
     .from("chat_messages")
@@ -78,7 +81,8 @@ Deno.serve(async (req) => {
       tenant_id: ctx.tenantId,
       direction: "in",
       sender_type: "candidate",
-      body,
+      body: body || null,
+      parts,
     })
     .select("id, thread_id, direction, sender_type, body, parts, created_at")
     .single();
@@ -87,6 +91,7 @@ Deno.serve(async (req) => {
     console.error("[chat-candidate-send] insert failed", insertErr);
     return jsonResponse(500, { error: "internal_error" });
   }
+
 
   await audit(supabase, {
     tenant_id: ctx.tenantId,
