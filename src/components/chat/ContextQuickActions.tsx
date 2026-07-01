@@ -4,17 +4,19 @@ import { CalendarClock, ArrowRightLeft, StickyNote, ChevronRight } from 'lucide-
 interface ContextQuickActionsProps {
   jobId: string | null
   candidateId: string | null
+  threadId?: string | null
 }
 
 interface QuickActionDef {
   key: string
   label: string
   icon: typeof CalendarClock
-  hash: string
+  hash?: string
+  action?: 'open-booking-picker'
 }
 
 const ACTIONS: QuickActionDef[] = [
-  { key: 'schedule', label: 'Schedule interview', icon: CalendarClock, hash: '#schedule' },
+  { key: 'schedule', label: 'Schedule interview', icon: CalendarClock, action: 'open-booking-picker' },
   { key: 'move', label: 'Move stage', icon: ArrowRightLeft, hash: '#move-stage' },
   { key: 'note', label: 'Add note', icon: StickyNote, hash: '#notes' },
 ]
@@ -22,7 +24,7 @@ const ACTIONS: QuickActionDef[] = [
 /**
  * ContextQuickActions — white card with three action rows.
  */
-export function ContextQuickActions({ jobId, candidateId }: ContextQuickActionsProps) {
+export function ContextQuickActions({ jobId, candidateId, threadId }: ContextQuickActionsProps) {
   const navigate = useNavigate()
   const disabled = !jobId || !candidateId
   const base = jobId && candidateId ? `/jobs/${jobId}/candidates/${candidateId}` : ''
@@ -49,12 +51,23 @@ export function ContextQuickActions({ jobId, candidateId }: ContextQuickActionsP
         Quick actions
       </h4>
       <div className="flex flex-col">
-        {ACTIONS.map(({ key, label, icon: Icon, hash }) => (
+        {ACTIONS.map(({ key, label, icon: Icon, hash, action }) => (
           <button
             key={key}
             type="button"
             disabled={disabled}
-            onClick={() => !disabled && navigate(`${base}${hash}`)}
+            onClick={() => {
+              if (disabled) return
+              if (action === 'open-booking-picker') {
+                window.dispatchEvent(
+                  new CustomEvent('chat:open-booking-picker', {
+                    detail: { threadId: threadId ?? null },
+                  }),
+                )
+                return
+              }
+              if (hash) navigate(`${base}${hash}`)
+            }}
             className="flex items-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               padding: '9px 10px',
