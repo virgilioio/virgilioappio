@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { forwardRef, useState } from 'react'
 import { Briefcase, GitBranch, MailOpen } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { InlineEmpty } from '@/components/ui/empty-state'
@@ -18,21 +18,21 @@ interface ConversationFilterPillsProps {
 const PILL_BASE =
   'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full font-inter text-[11.5px] font-medium transition-colors'
 
-function Pill({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-  count,
-}: {
+interface PillProps {
   icon: typeof Briefcase
   label: string
   active: boolean
   onClick?: () => void
   count?: number
-}) {
+}
+
+const Pill = forwardRef<HTMLButtonElement, PillProps>(function Pill(
+  { icon: Icon, label, active, onClick, count },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       className={cn(
@@ -56,7 +56,7 @@ function Pill({
       )}
     </button>
   )
-}
+})
 
 /**
  * ConversationFilterPills — Unread / By job / By stage filter row.
@@ -76,14 +76,12 @@ export function ConversationFilterPills({ value, onChange }: ConversationFilterP
       />
       <Popover open={jobOpen} onOpenChange={setJobOpen}>
         <PopoverTrigger asChild>
-          <button type="button" className="contents">
-            <Pill
-              icon={Briefcase}
-              label="By job"
-              active={value.jobIds.length > 0}
-              count={value.jobIds.length || undefined}
-            />
-          </button>
+          <Pill
+            icon={Briefcase}
+            label="By job"
+            active={value.jobIds.length > 0}
+            count={value.jobIds.length || undefined}
+          />
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={8} className="w-[240px] p-3">
           <InlineEmpty text="No jobs to filter yet" />
@@ -91,14 +89,12 @@ export function ConversationFilterPills({ value, onChange }: ConversationFilterP
       </Popover>
       <Popover open={stageOpen} onOpenChange={setStageOpen}>
         <PopoverTrigger asChild>
-          <button type="button" className="contents">
-            <Pill
-              icon={GitBranch}
-              label="By stage"
-              active={value.stageIds.length > 0}
-              count={value.stageIds.length || undefined}
-            />
-          </button>
+          <Pill
+            icon={GitBranch}
+            label="By stage"
+            active={value.stageIds.length > 0}
+            count={value.stageIds.length || undefined}
+          />
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={8} className="w-[240px] p-3">
           <InlineEmpty text="No stages to filter yet" />
