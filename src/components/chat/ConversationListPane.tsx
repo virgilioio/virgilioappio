@@ -15,6 +15,7 @@ import {
 import { ChatSlaWidget } from '@/components/chat/ChatSlaWidget'
 import { AdminChatAuditViewer } from '@/components/chat/AdminChatAuditViewer'
 import { usePermissions } from '@/hooks/usePermissions'
+import { ConnectChannelCTA } from '@/components/chat/ConnectChannelCTA'
 
 function initials(row: ChatThreadRow) {
   const f = row.candidate?.first_name?.[0] ?? ''
@@ -125,12 +126,15 @@ export function ConversationListPane() {
                 description="Try a different filter or search term."
               />
             ) : (
-              <EmptyState
-                size="card"
-                illustration={<SoftBubble />}
-                title="No conversations yet"
-                body="When a candidate replies to a chat invite, the thread will land here."
-              />
+              <>
+                <EmptyState
+                  size="card"
+                  illustration={<SoftBubble />}
+                  title="No conversations yet"
+                  body="When a candidate replies to a chat invite, the thread will land here."
+                />
+                <ConnectChannelCTA compact />
+              </>
             )}
           </div>
         ) : (

@@ -11,6 +11,7 @@ import { CurrencySettings } from "./CurrencySettings";
 import { SettingsCard } from "@/components/settings/shared/SettingsCard";
 import { stripHtmlToPlainText } from "@/utils/templateUtils";
 import { useChatKillSwitch } from "@/hooks/chat/useChatKillSwitch";
+import { ChatChannelsCard } from "@/components/chat/ChatChannelsCard";
 
 interface TenantFormData {
   name: string;
@@ -201,6 +202,8 @@ export default function OrganizationTab() {
       </SettingsCard>
 
       <CurrencySettings />
+
+      <ChatChannelsCard canEdit={canEdit} />
 
       <ChatKillSwitchCard canEdit={canEdit} />
     </div>
