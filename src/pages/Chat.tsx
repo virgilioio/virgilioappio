@@ -5,18 +5,27 @@ import { ContextPane } from '@/components/chat/ContextPane'
 import { useChatRealtime } from '@/hooks/chat/useChatRealtime'
 
 /**
- * Chat — 3-pane workspace shell (Step 1.4).
- * Layout: List (320px) · Thread (flexible) · Context (304px).
+ * Chat — module shell.
+ * White rounded content frame wraps the list + thread panes.
+ * ContextPane only mounts when a conversation is selected.
  */
 export default function Chat() {
   const { threadId } = useParams<{ threadId: string }>()
   useChatRealtime({ activeThreadId: threadId })
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] w-full bg-surface-secondary">
-      <ConversationListPane />
-      <ThreadPane threadId={threadId} />
-      <ContextPane threadId={threadId} />
+    <div className="h-[calc(100dvh-4rem)] w-full" style={{ background: '#F6F5F1' }}>
+      <div
+        className="flex h-full w-full overflow-hidden bg-white"
+        style={{
+          borderRadius: 16,
+          border: '1px solid #E7E8EE',
+        }}
+      >
+        <ConversationListPane />
+        <ThreadPane threadId={threadId} />
+        {threadId && <ContextPane threadId={threadId} />}
+      </div>
     </div>
   )
 }
