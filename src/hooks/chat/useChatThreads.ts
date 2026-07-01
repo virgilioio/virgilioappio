@@ -67,9 +67,7 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
             id, tenant_id, job_id, candidate_id, association_id,
             channel, mode, status, assigned_recruiter_id,
             last_message_at, last_message_preview,
-            message_count, created_at, updated_at,
-            candidate:candidates(id, candidate_name, email, role_current, current_job_title),
-            job:jobs(id, title)
+            message_count, created_at, updated_at
           `,
           )
           .eq('tenant_id', tenantId)
@@ -86,12 +84,45 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
       if (threadsRes.error) throw threadsRes.error
       if (readsRes.error) throw readsRes.error
 
+      const rawThreads = threadsRes.data ?? []
+      const candidateIds = Array.from(
+        new Set(rawThreads.map((t: any) => t.candidate_id as string | null).filter(Boolean)),
+      ) as string[]
+      const jobIds = Array.from(
+        new Set(rawThreads.map((t: any) => t.job_id as string | null).filter(Boolean)),
+      ) as string[]
+
+      const [candidatesRes, jobsRes] = await Promise.all([
+        candidateIds.length > 0
+          ? supabase
+              .from('candidates')
+              .select('id, candidate_name, email, role_current, current_job_title')
+              .in('id', candidateIds)
+          : Promise.resolve({ data: [], error: null }),
+        jobIds.length > 0
+          ? supabase.from('jobs').select('id, title').in('id', jobIds)
+          : Promise.resolve({ data: [], error: null }),
+      ])
+
+      if (candidatesRes.error) throw candidatesRes.error
+      if (jobsRes.error) throw jobsRes.error
+
+      const candidates = new Map<string, ChatThreadRow['candidate']>()
+      for (const candidate of candidatesRes.data ?? []) {
+        candidates.set((candidate as any).id, candidate as ChatThreadRow['candidate'])
+      }
+
+      const jobs = new Map<string, ChatThreadRow['job']>()
+      for (const job of jobsRes.data ?? []) {
+        jobs.set((job as any).id, job as ChatThreadRow['job'])
+      }
+
       const reads = new Map<string, number>()
       for (const r of readsRes.data ?? []) {
         reads.set(r.thread_id as string, new Date(r.last_read_at as string).getTime())
       }
 
-      const threadIds = (threadsRes.data ?? []).map((t: any) => t.id as string).filter(Boolean)
+      const threadIds = rawThreads.map((t: any) => t.id as string).filter(Boolean)
       const unreadCounts = new Map<string, number>()
       if (threadIds.length > 0) {
         const { data: messageRows, error: messageError } = await supabase
@@ -113,14 +144,14 @@ export function useChatThreads({ scope = 'all', search = '' }: UseChatThreadsOpt
         }
       }
 
-      const rows: ChatThreadRow[] = (threadsRes.data ?? []).map((t: any) => {
+      const rows: ChatThreadRow[] = rawThreads.map((t: any) => {
         const lastMsg = t.last_message_at ? new Date(t.last_message_at).getTime() : 0
         const lastRead = reads.get(t.id) ?? 0
         const unreadCount = unreadCounts.get(t.id) ?? 0
         return {
           ...t,
-          candidate: Array.isArray(t.candidate) ? t.candidate[0] ?? null : t.candidate,
-          job: Array.isArray(t.job) ? t.job[0] ?? null : t.job,
+          candidate: t.candidate_id ? candidates.get(t.candidate_id) ?? null : null,
+          job: t.job_id ? jobs.get(t.job_id) ?? null : null,
           isUnread: unreadCount > 0 || (lastMsg > 0 && lastMsg > lastRead),
           unreadCount,
         }
