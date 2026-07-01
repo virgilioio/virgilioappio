@@ -1,152 +1,161 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { Button } from '@/components/ui/button'
+import { Sparkles, X, AlertTriangle } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Sparkles, RefreshCw, AlertTriangle } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 
 interface AiSummaryCardProps {
   threadId: string
+  open: boolean
+  onClose: () => void
+  /** Increment to force regeneration (recruiter re-opened Summarize). */
+  reloadKey?: number
 }
 
 interface SummaryState {
-  summary: string
+  bullets: string[]
   generated_at: string
-  message_count: number
-  cached: boolean
+}
+
+function splitBullets(text: string): string[] {
+  return text
+    .split(/\n+/)
+    .map((l) => l.replace(/^[-•*\d.\s]+/, '').trim())
+    .filter((l) => l.length > 0)
+    .slice(0, 8)
 }
 
 /**
- * AiSummaryCard — "Catch me up" briefing for a chat thread (Step 3.3).
- *
- * On mount, loads the persisted summary from chat_threads.context_summary (if
- * any). The Summarize button calls the chat-ai-summarize edge function which
- * regenerates and re-persists.
+ * AiSummaryCard — lilac "Conversation summary" card pinned above the messages.
+ * Renders each summary line as a purple-bulleted point.
  */
-export function AiSummaryCard({ threadId }: AiSummaryCardProps) {
+export function AiSummaryCard({ threadId, open, onClose, reloadKey = 0 }: AiSummaryCardProps) {
   const [state, setState] = useState<SummaryState | null>(null)
-  const [initialLoading, setInitialLoading] = useState(true)
-  const [running, setRunning] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load any persisted summary (RLS-gated read).
   useEffect(() => {
+    if (!open) return
     let alive = true
-    setInitialLoading(true)
-    setState(null)
+    setLoading(true)
     setError(null)
-    supabase
-      .from('chat_threads')
-      .select('context_summary')
-      .eq('id', threadId)
-      .maybeSingle()
-      .then(({ data }) => {
+    ;(async () => {
+      try {
+        const { data, error: fnErr } = await supabase.functions.invoke('chat-ai-summarize', {
+          body: { threadId, force: reloadKey > 0 },
+        })
+        if (fnErr) throw fnErr
+        const s = data as { summary?: string; generated_at?: string } | null
         if (!alive) return
-        const raw = (data?.context_summary ?? null) as
-          | { text?: string; generated_at?: string; message_count?: number }
-          | null
-        if (raw && typeof raw.text === 'string' && raw.text.trim()) {
-          setState({
-            summary: raw.text,
-            generated_at: raw.generated_at ?? new Date().toISOString(),
-            message_count: raw.message_count ?? 0,
-            cached: true,
-          })
-        }
-        setInitialLoading(false)
-      })
+        if (!s?.summary) throw new Error('No summary returned')
+        setState({
+          bullets: splitBullets(s.summary),
+          generated_at: s.generated_at ?? new Date().toISOString(),
+        })
+      } catch (e: any) {
+        if (!alive) return
+        const msg = e?.message || 'Could not generate a summary right now.'
+        setError(msg)
+        toast.error(msg)
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
     return () => {
       alive = false
     }
-  }, [threadId])
+  }, [threadId, open, reloadKey])
 
-  const run = async (force: boolean) => {
-    setRunning(true)
-    setError(null)
-    try {
-      const { data, error: fnErr } = await supabase.functions.invoke('chat-ai-summarize', {
-        body: { threadId, force },
-      })
-      if (fnErr) throw fnErr
-      const s = data as {
-        summary: string
-        generated_at: string
-        message_count: number
-        cached: boolean
-      } | null
-      if (!s?.summary) throw new Error('No summary returned')
-      setState(s)
-    } catch (e: any) {
-      const msg = e?.message || 'Could not generate a summary right now.'
-      setError(msg)
-      toast.error(msg)
-    } finally {
-      setRunning(false)
-    }
-  }
+  if (!open) return null
 
   return (
     <section
       aria-label="Conversation summary"
-      className="rounded-xl border border-virgilio-border bg-[#FAF8FF] p-4"
+      style={{
+        background: '#F4EFFF',
+        border: '1px solid #E4D8FF',
+        borderRadius: 14,
+        padding: '14px 16px',
+        marginBottom: 20,
+      }}
     >
-      <header className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-[#EDE4FF] text-[#5B3FBF] flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5" />
-          </div>
-          <span className="font-poppins font-semibold text-[12.5px] tracking-[-0.01em] text-virgilio-text">
-            Catch me up
-          </span>
+      <header className="flex items-center" style={{ gap: 10, marginBottom: 10 }}>
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{
+            height: 22,
+            width: 22,
+            borderRadius: 7,
+            background: '#EDE4FF',
+            color: '#6F3FF5',
+          }}
+        >
+          <Sparkles style={{ height: 13, width: 13 }} strokeWidth={2} />
         </div>
-        {state ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            icon={RefreshCw}
-            loading={running}
-            onClick={() => run(true)}
-            aria-label="Regenerate summary"
-          >
-            Refresh
-          </Button>
-        ) : (
-          <Button
-            variant="purple"
-            size="xs"
-            loading={running}
-            disabled={initialLoading}
-            onClick={() => run(false)}
-          >
-            Summarize
-          </Button>
-        )}
+        <span
+          className="font-poppins"
+          style={{ fontSize: 13, fontWeight: 600, color: '#0d0d09', letterSpacing: '-0.01em' }}
+        >
+          Conversation summary
+        </span>
+        <span
+          className="ml-auto font-inter"
+          style={{ fontSize: 10.5, color: '#7C3AED' }}
+        >
+          by Gio
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Hide summary"
+          className="flex items-center justify-center hover:opacity-70 transition-opacity"
+          style={{ color: '#8B8F9E' }}
+        >
+          <X style={{ height: 14, width: 14 }} strokeWidth={2} />
+        </button>
       </header>
 
-      {initialLoading ? (
-        <div className="space-y-1.5">
+      {loading ? (
+        <div className="space-y-2">
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-11/12" />
           <Skeleton className="h-3 w-9/12" />
         </div>
-      ) : state ? (
-        <>
-          <p className="font-inter text-[12.5px] leading-[1.55] text-virgilio-text whitespace-pre-wrap">
-            {state.summary}
-          </p>
-          <div className="mt-2 text-[10.5px] uppercase tracking-[0.06em] text-text-secondary">
-            Updated {formatDistanceToNow(new Date(state.generated_at), { addSuffix: true })}
-          </div>
-        </>
       ) : error ? (
-        <div className="flex items-start gap-2 text-[12px] text-[#7A1F1F]">
-          <AlertTriangle className="h-3.5 w-3.5 mt-[1px] shrink-0" />
+        <div
+          className="flex items-start font-inter"
+          style={{ gap: 8, fontSize: 12, color: '#7A1F1F' }}
+        >
+          <AlertTriangle style={{ height: 14, width: 14, marginTop: 1 }} strokeWidth={2} />
           <span>{error}</span>
         </div>
+      ) : state && state.bullets.length > 0 ? (
+        <ul className="flex flex-col" style={{ gap: 7 }}>
+          {state.bullets.map((b, i) => (
+            <li key={i} className="flex items-start" style={{ gap: 10 }}>
+              <span
+                aria-hidden
+                style={{
+                  height: 5,
+                  width: 5,
+                  minWidth: 5,
+                  marginTop: 8,
+                  borderRadius: 999,
+                  background: '#6F3FF5',
+                }}
+              />
+              <span
+                className="font-inter"
+                style={{ fontSize: 12.5, lineHeight: 1.55, color: '#1F2230' }}
+              >
+                {b}
+              </span>
+            </li>
+          ))}
+        </ul>
       ) : (
-        <p className="font-inter text-[12px] text-text-secondary">
-          Get a quick briefing of where this conversation stands.
+        <p className="font-inter" style={{ fontSize: 12, color: '#5A6072' }}>
+          Nothing to summarize yet.
         </p>
       )}
     </section>

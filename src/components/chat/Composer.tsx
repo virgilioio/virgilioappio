@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { Send, StickyNote, MessageSquare, Mail } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import {
+  Send,
+  Lock,
+  Paperclip,
+  CalendarPlus,
+  Smile,
+  Sparkles,
+  EyeOff,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
@@ -14,22 +21,24 @@ interface ComposerProps {
 
 type Mode = 'reply' | 'note'
 
+const CHANNEL_META: Record<string, { color: string; label: string }> = {
+  in_app: { color: '#6F3FF5', label: 'In-app' },
+  email: { color: '#2563EB', label: 'Email' },
+  whatsapp: { color: '#12B886', label: 'WhatsApp' },
+}
+
 /**
- * Composer — Step 1.7
+ * Composer — bottom of the thread pane.
  *
- * Real message composer for the thread pane. Supports two modes:
- *  - reply: outbound message to the candidate
- *  - note:  internal note visible only to the team
- *
- * Keyboard:
- *  - Enter        → send
- *  - Shift+Enter  → newline
- *  - ⌘/Ctrl + .   → toggle mode
+ * Message ↔ Internal note segmented toggle, channel indicator, auto-growing
+ * textarea, toolbar (Attach · Scheduling · Emoji · Draft with Gio), Send/Save-note
+ * button, and the Draft-with-Gio popover anchored above.
  */
 export function Composer({ threadId, disabled = false }: ComposerProps) {
   const [draft, setDraft] = useState('')
   const [mode, setMode] = useState<Mode>('reply')
-  const [channel, setChannel] = useState<string | null>(null)
+  const [channel, setChannel] = useState<string>('in_app')
+  const [draftOpen, setDraftOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const send = useSendChatMessage()
 
@@ -42,15 +51,22 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
       .eq('id', threadId)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelled) setChannel((data?.channel as string | undefined) ?? null)
+        if (!cancelled) setChannel(((data?.channel as string | undefined) ?? 'in_app'))
       })
     return () => {
       cancelled = true
     }
   }, [threadId])
 
+  // Auto-grow textarea up to 96px.
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 96)}px`
+  }, [draft])
+
   const isNote = mode === 'note'
-  const isEmail = !isNote && channel === 'email'
   const canSend = draft.trim().length > 0 && !send.isPending && !disabled
 
   const handleSend = async () => {
@@ -61,178 +77,260 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
       await send.mutateAsync({ threadId, body, isInternalNote: isNote })
       requestAnimationFrame(() => textareaRef.current?.focus())
     } catch {
-      // Restore draft on failure so the user doesn't lose their message.
       setDraft(body)
     }
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-      e.preventDefault()
-      setMode((m) => (m === 'reply' ? 'note' : 'reply'))
-      return
-    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
 
-  return (
-    <footer className="border-t border-virgilio-border p-3 bg-surface-primary">
-      {/* Mode tabs */}
-      <div
-        role="tablist"
-        aria-label="Composer mode"
-        className="flex items-center gap-1 px-1 pb-2"
-      >
-        <ModeTab
-          active={mode === 'reply'}
-          onClick={() => setMode('reply')}
-          icon={<MessageSquare className="h-3.5 w-3.5" />}
-          label="Reply"
-        />
-        <ModeTab
-          active={mode === 'note'}
-          onClick={() => setMode('note')}
-          icon={<StickyNote className="h-3.5 w-3.5" />}
-          label="Internal note"
-          tone="note"
-        />
-        {!isNote && (
-          <div className="ml-auto">
-            <DraftWithGioPopover
-              threadId={threadId}
-              disabled={disabled}
-              onUseDraft={(text) => {
-                setDraft(text)
-                requestAnimationFrame(() => {
-                  const el = textareaRef.current
-                  if (el) {
-                    el.focus()
-                    el.setSelectionRange(text.length, text.length)
-                  }
-                })
-              }}
-            />
-          </div>
-        )}
-      </div>
+  const channelMeta = CHANNEL_META[channel] ?? CHANNEL_META.in_app
 
+  return (
+    <>
       {!isNote && (
         <SuggestedReplies
           threadId={threadId}
           disabled={disabled}
+          hidden={draftOpen}
           onPick={(text) => {
             setDraft(text)
-            requestAnimationFrame(() => {
-              const el = textareaRef.current
-              if (el) {
-                el.focus()
-                el.setSelectionRange(text.length, text.length)
-              }
-            })
+            requestAnimationFrame(() => textareaRef.current?.focus())
           }}
         />
       )}
 
-
-
-      <div
-        className={cn(
-          'rounded-lg border transition-colors',
-          'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
-          isNote
-            ? 'border-[#F4E4A4] bg-[#FFFBEB]'
-            : 'border-virgilio-border bg-surface-primary',
-        )}
+      <footer
+        className="relative shrink-0"
+        style={{
+          padding: '14px 22px 18px',
+          borderTop: '1px solid #E7E8EE',
+          background: isNote ? '#FEFBF0' : '#FFFFFF',
+        }}
       >
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            isNote
-              ? 'Add an internal note — only your team can see this.'
-              : 'Write a message to the candidate…'
-          }
-          rows={3}
-          disabled={disabled}
-          aria-label={isNote ? 'Internal note' : 'Reply to candidate'}
-          className={cn(
-            'w-full resize-none bg-transparent px-3 py-2.5 outline-none',
-            'text-[13.5px] leading-[1.5] font-inter text-virgilio-text',
-            'placeholder:text-text-secondary',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
-          )}
+        <DraftWithGioPopover
+          threadId={threadId}
+          open={draftOpen}
+          onOpenChange={setDraftOpen}
+          onInsert={(text) => {
+            setDraft(text)
+            requestAnimationFrame(() => textareaRef.current?.focus())
+          }}
         />
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-current/10">
-          <span className="text-[10.5px] text-text-secondary font-inter px-1">
-            <kbd className="px-1 py-0.5 rounded border border-virgilio-border bg-surface-secondary font-mono text-[10px]">
-              Enter
-            </kbd>{' '}
-            to send ·{' '}
-            <kbd className="px-1 py-0.5 rounded border border-virgilio-border bg-surface-secondary font-mono text-[10px]">
-              Shift+Enter
-            </kbd>{' '}
-            for newline
-          </span>
-          <div className="flex items-center gap-2">
-            {isEmail && (
-              <span
-                className="inline-flex items-center gap-1 rounded-md bg-[#EEF1FF] px-1.5 py-0.5 text-[10.5px] font-poppins font-medium text-[#3F4FBF]"
-                title="This reply will be delivered by email"
-              >
-                <Mail className="h-3 w-3" /> via email
-              </span>
+
+        {/* Top row: mode toggle + indicator */}
+        <div className="flex items-center" style={{ marginBottom: 11 }}>
+          <div
+            role="tablist"
+            aria-label="Composer mode"
+            className="inline-flex items-center"
+            style={{ background: '#F6F5F1', borderRadius: 8, padding: 3, gap: 2 }}
+          >
+            <ModeSegment
+              active={mode === 'reply'}
+              onClick={() => setMode('reply')}
+              icon={<Send style={{ height: 12, width: 12 }} strokeWidth={2} />}
+              label="Message"
+              tone="reply"
+            />
+            <ModeSegment
+              active={mode === 'note'}
+              onClick={() => setMode('note')}
+              icon={<Lock style={{ height: 12, width: 12 }} strokeWidth={2} />}
+              label="Internal note"
+              tone="note"
+            />
+          </div>
+
+          <div
+            className="ml-auto flex items-center font-inter"
+            style={{ gap: 6, fontSize: 11.5, color: isNote ? '#B45309' : '#5A6072' }}
+          >
+            {isNote ? (
+              <>
+                <EyeOff style={{ height: 12, width: 12, color: '#B45309' }} strokeWidth={2} />
+                Not sent to candidate
+              </>
+            ) : (
+              <>
+                <span
+                  aria-hidden
+                  style={{
+                    height: 6,
+                    width: 6,
+                    borderRadius: 999,
+                    background: channelMeta.color,
+                    display: 'inline-block',
+                  }}
+                />
+                Sending via {channelMeta.label}
+              </>
             )}
-            <Button
-              size="sm"
-              variant={isNote ? 'secondary' : undefined}
-              onClick={handleSend}
-              disabled={!canSend}
-              icon={Send}
-            >
-              {send.isPending
-                ? 'Sending…'
-                : isNote
-                  ? 'Add note'
-                  : isEmail
-                    ? 'Send email'
-                    : 'Send'}
-            </Button>
           </div>
         </div>
-      </div>
-    </footer>
+
+        {/* Input box */}
+        <div
+          style={{
+            border: `1px solid ${isNote ? '#FDE9B8' : '#E7E8EE'}`,
+            borderRadius: 12,
+            padding: '10px 14px',
+            background: '#FFFFFF',
+          }}
+        >
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              isNote
+                ? "Write a note for your team — the candidate won't see this…"
+                : 'Write a message…'
+            }
+            rows={1}
+            disabled={disabled}
+            aria-label={isNote ? 'Internal note' : 'Message'}
+            className="w-full resize-none bg-transparent outline-none font-inter disabled:opacity-60"
+            style={{
+              fontSize: 13.5,
+              lineHeight: 1.5,
+              color: '#1F2230',
+              maxHeight: 96,
+              minHeight: 20,
+              border: 0,
+            }}
+          />
+        </div>
+
+        {/* Toolbar row */}
+        <div className="flex items-center" style={{ gap: 4, marginTop: 11 }}>
+          <ToolbarIcon icon={Paperclip} label="Attach" />
+          <ToolbarIcon icon={CalendarPlus} label="Insert scheduling link" />
+          <ToolbarIcon icon={Smile} label="Emoji" />
+
+          {!isNote && (
+            <button
+              type="button"
+              onClick={() => setDraftOpen((o) => !o)}
+              className="inline-flex items-center font-poppins transition-colors"
+              style={{
+                marginLeft: 2,
+                gap: 6,
+                height: 32,
+                padding: '0 11px',
+                borderRadius: 8,
+                background: draftOpen ? '#E4D8FF' : '#EDE4FF',
+                color: '#6F3FF5',
+                fontSize: 12,
+                fontWeight: 500,
+                border: 0,
+              }}
+            >
+              <Sparkles style={{ height: 14, width: 14 }} strokeWidth={2} />
+              Draft with Gio
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!canSend}
+            aria-label={isNote ? 'Save note' : 'Send message'}
+            className="ml-auto inline-flex items-center font-poppins transition-opacity"
+            style={{
+              gap: 6,
+              height: 36,
+              padding: '0 16px',
+              borderRadius: 9,
+              background: isNote ? '#B45309' : '#0d0d09',
+              color: '#fffcf9',
+              fontSize: 13,
+              fontWeight: 600,
+              border: 0,
+              opacity: draft.trim().length === 0 ? 0.55 : 1,
+              cursor: canSend ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {isNote ? (
+              <>
+                <Lock style={{ height: 14, width: 14 }} strokeWidth={2} />
+                {send.isPending ? 'Saving…' : 'Save note'}
+              </>
+            ) : (
+              <>
+                {send.isPending ? 'Sending…' : 'Send'}
+                <Send style={{ height: 14, width: 14 }} strokeWidth={2} />
+              </>
+            )}
+          </button>
+        </div>
+      </footer>
+    </>
   )
 }
 
-interface ModeTabProps {
+function ToolbarIcon({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof Paperclip
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className="inline-flex items-center justify-center transition-colors"
+      style={{ height: 32, width: 32, borderRadius: 8, color: '#5A6072', background: 'transparent' }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = '#F6F5F1')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+    >
+      <Icon style={{ height: 17, width: 17 }} strokeWidth={1.9} />
+    </button>
+  )
+}
+
+interface ModeSegmentProps {
   active: boolean
   onClick: () => void
   icon: React.ReactNode
   label: string
-  tone?: 'reply' | 'note'
+  tone: 'reply' | 'note'
 }
 
-function ModeTab({ active, onClick, icon, label, tone = 'reply' }: ModeTabProps) {
+function ModeSegment({ active, onClick, icon, label, tone }: ModeSegmentProps) {
+  const activeStyle =
+    tone === 'note'
+      ? { background: '#FEF3C7', color: '#B45309' }
+      : {
+          background: '#FFFFFF',
+          color: '#0d0d09',
+          boxShadow: '0 1px 2px rgba(15,18,34,0.06)',
+        }
   return (
     <button
       type="button"
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={cn(
-        'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md transition-colors',
-        'font-poppins font-medium text-[11.5px] tracking-[-0.005em]',
-        active
-          ? tone === 'note'
-            ? 'bg-[#FFF4CC] text-[#7A5A00]'
-            : 'bg-[#EDE4FF] text-[#5B3FBF]'
-          : 'text-text-secondary hover:bg-[#F1F0EC]',
-      )}
+      className={cn('inline-flex items-center font-poppins transition-colors')}
+      style={{
+        gap: 6,
+        padding: '4px 11px',
+        borderRadius: 6,
+        fontSize: 11.5,
+        fontWeight: 500,
+        border: 0,
+        ...(active
+          ? activeStyle
+          : { background: 'transparent', color: '#8B8F9E' }),
+      }}
     >
       {icon}
       {label}

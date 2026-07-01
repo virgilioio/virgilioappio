@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
-import { User2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
-import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ContextSnapshot, type ContextSnapshotData } from '@/components/chat/ContextSnapshot'
 import { ContextStepper } from '@/components/chat/ContextStepper'
@@ -14,6 +12,7 @@ interface ContextPaneProps {
 interface ThreadContext {
   snapshot: ContextSnapshotData
   currentStageId: string | null
+  currentStageName: string | null
 }
 
 function useThreadContext(threadId: string | undefined) {
@@ -28,52 +27,58 @@ function useThreadContext(threadId: string | undefined) {
     }
     setLoading(true)
 
-    supabase
-      .from('chat_threads')
-      .select(
-        `
-        candidate_id,
-        job_id,
-        association_id,
-        candidate:candidates(id, candidate_name, email, phone, role_current, company_current, location_city, location_country),
-        job:jobs(id, title),
-        association:job_candidate_associations(current_stage_id)
-        `,
-      )
-      .eq('id', threadId)
-      .maybeSingle()
-      .then(({ data: row }) => {
-        if (!alive) return
-        if (!row) {
-          setData(null)
-          setLoading(false)
-          return
-        }
-        const candidate = Array.isArray((row as any).candidate)
-          ? (row as any).candidate[0]
-          : (row as any).candidate
-        const job = Array.isArray((row as any).job) ? (row as any).job[0] : (row as any).job
-        const association = Array.isArray((row as any).association)
-          ? (row as any).association[0]
-          : (row as any).association
+    ;(async () => {
+      const { data: row } = await (supabase as any)
+        .from('chat_threads')
+        .select(
+          `
+          candidate_id, job_id, association_id,
+          candidate:candidates(id, candidate_name, email, phone, role_current, company_current, location_city, location_country),
+          job:jobs(id, title, employment_type, department),
+          association:job_candidate_associations(
+            current_stage_id,
+            job_hiring_stages!job_candidate_associations_current_stage_id_fkey(
+              custom_stage_name,
+              job_stages!job_hiring_stages_stage_id_fkey(stage_name)
+            )
+          )
+          `,
+        )
+        .eq('id', threadId)
+        .maybeSingle()
 
-        setData({
-          snapshot: {
-            candidateId: candidate?.id ?? (row as any).candidate_id,
-            candidateName: candidate?.candidate_name ?? null,
-            email: candidate?.email ?? null,
-            phone: candidate?.phone ?? null,
-            roleCurrent: candidate?.role_current ?? null,
-            companyCurrent: candidate?.company_current ?? null,
-            locationCity: candidate?.location_city ?? null,
-            locationCountry: candidate?.location_country ?? null,
-            jobId: job?.id ?? (row as any).job_id,
-            jobTitle: job?.title ?? null,
-          },
-          currentStageId: association?.current_stage_id ?? null,
-        })
+      if (!alive) return
+      if (!row) {
+        setData(null)
         setLoading(false)
+        return
+      }
+      const candidate = Array.isArray(row.candidate) ? row.candidate[0] : row.candidate
+      const job = Array.isArray(row.job) ? row.job[0] : row.job
+      const association = Array.isArray(row.association) ? row.association[0] : row.association
+      const hs = association?.job_hiring_stages
+      const currentStageName = hs?.custom_stage_name || hs?.job_stages?.stage_name || null
+
+      setData({
+        snapshot: {
+          candidateId: candidate?.id ?? row.candidate_id,
+          candidateName: candidate?.candidate_name ?? null,
+          email: candidate?.email ?? null,
+          phone: candidate?.phone ?? null,
+          roleCurrent: candidate?.role_current ?? null,
+          companyCurrent: candidate?.company_current ?? null,
+          locationCity: candidate?.location_city ?? null,
+          locationCountry: candidate?.location_country ?? null,
+          jobId: job?.id ?? row.job_id,
+          jobTitle: job?.title ?? null,
+          jobDepartment: job?.department ?? null,
+          jobEmploymentType: job?.employment_type ?? null,
+        },
+        currentStageId: association?.current_stage_id ?? null,
+        currentStageName,
       })
+      setLoading(false)
+    })()
 
     return () => {
       alive = false
@@ -84,64 +89,51 @@ function useThreadContext(threadId: string | undefined) {
 }
 
 /**
- * ContextPane — Snapshot · Pipeline stepper · Quick actions (Step 1.8).
+ * ContextPane — right rail. 304px, warm canvas background, three stacked
+ * blocks (Snapshot · Pipeline card · Quick actions).
  */
 export function ContextPane({ threadId }: ContextPaneProps) {
   const { data, loading } = useThreadContext(threadId)
 
   return (
     <aside
-      className="hidden xl:flex w-[304px] shrink-0 flex-col border-l border-virgilio-border bg-surface-primary"
+      className="hidden xl:flex shrink-0 flex-col overflow-auto"
+      style={{
+        width: 304,
+        borderLeft: '1px solid #E7E8EE',
+        background: '#F6F5F1',
+        padding: 18,
+        gap: 14,
+      }}
       aria-label="Candidate context"
     >
-      <header className="flex items-center h-14 px-4 border-b border-virgilio-border">
-        <h3 className="font-poppins font-semibold text-[13px] tracking-[-0.02em] text-virgilio-text">
-          Context<span className="text-[#d7c5fb]">.</span>
-        </h3>
-      </header>
+      {(!threadId || (loading && !data)) && (
+        <div className="flex flex-col items-center" style={{ gap: 10, paddingTop: 4 }}>
+          <Skeleton className="h-14 w-14 rounded-full" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="mt-4 h-24 w-full rounded-xl" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+        </div>
+      )}
 
-      <div className="flex-1 overflow-auto">
-        {!threadId && (
-          <div className="p-4">
-            <EmptyState
-              variant="inline"
-              size="sm"
-              mascot={false}
-              icon={User2}
-              title="No candidate selected"
-              description="Snapshot and pipeline appear once a thread is open."
-            />
-          </div>
-        )}
-
-        {threadId && loading && !data && (
-          <div className="p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <Skeleton className="h-11 w-11 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-24" />
-              </div>
-            </div>
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-3/4" />
-          </div>
-        )}
-
-        {threadId && data && (
-          <div className="divide-y divide-virgilio-border">
-            <ContextSnapshot data={data.snapshot} />
-            <ContextStepper
-              jobId={data.snapshot.jobId}
-              currentStageId={data.currentStageId}
-            />
-            <ContextQuickActions
-              jobId={data.snapshot.jobId}
-              candidateId={data.snapshot.candidateId}
-            />
-          </div>
-        )}
-      </div>
+      {threadId && data && (
+        <>
+          <ContextSnapshot data={data.snapshot} />
+          <ContextStepper
+            jobId={data.snapshot.jobId}
+            currentStageId={data.currentStageId}
+            currentStageName={data.currentStageName}
+            jobTitle={data.snapshot.jobTitle}
+            jobDepartment={data.snapshot.jobDepartment}
+            jobEmploymentType={data.snapshot.jobEmploymentType}
+          />
+          <ContextQuickActions
+            jobId={data.snapshot.jobId}
+            candidateId={data.snapshot.candidateId}
+          />
+        </>
+      )}
     </aside>
   )
 }
