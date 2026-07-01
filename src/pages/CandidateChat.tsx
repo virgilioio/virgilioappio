@@ -203,13 +203,18 @@ export default function CandidateChat() {
           parts: unknown
           created_at: string
         }>).map((m) => {
-          const parts = (m.parts ?? null) as { attachments?: Attachment[] } | null
+          const parts = (m.parts ?? null) as
+            | { attachments?: Attachment[]; kind?: string }
+            | null
+          const bookingCard =
+            parts && parts.kind === 'booking_link' ? (parts as unknown as BookingCardPart) : undefined
           return {
             id: m.id,
             role: m.direction === 'in' ? 'candidate' : 'recruiter',
-            text: m.body ?? '',
+            text: bookingCard ? '' : m.body ?? '',
             createdAt: new Date(m.created_at).getTime(),
             attachments: parts?.attachments ?? undefined,
+            bookingCard,
             status: 'sent',
           }
         })
