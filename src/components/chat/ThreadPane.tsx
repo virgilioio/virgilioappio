@@ -22,13 +22,16 @@ interface ThreadHeader {
   status: string
   mode: string
   last_message_at: string | null
+  candidate_id: string | null
+  job_id: string | null
   candidate: {
+    id: string
     candidate_name: string | null
     email: string | null
     role_current: string | null
     current_job_title: string | null
   } | null
-  job: { title: string | null } | null
+  job: { id: string; title: string | null } | null
 }
 
 function candidateInitial(candidate: ThreadHeader['candidate']) {
@@ -48,28 +51,41 @@ function useThreadHeader(threadId: string | undefined) {
       return
     }
     setLoading(true)
-    supabase
-      .from('chat_threads')
-      .select(
-        'id, status, mode, last_message_at, candidate:candidates(candidate_name, email, role_current, current_job_title), job:jobs(title)',
-      )
-      .eq('id', threadId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!alive) return
-        setData(
-          data
-            ? ({
-                ...(data as any),
-                candidate: Array.isArray((data as any).candidate)
-                  ? (data as any).candidate[0]
-                  : (data as any).candidate,
-                job: Array.isArray((data as any).job) ? (data as any).job[0] : (data as any).job,
-              } as ThreadHeader)
-            : null,
-        )
+    ;(async () => {
+      const { data: thread, error: threadError } = await supabase
+        .from('chat_threads')
+        .select('id, status, mode, last_message_at, candidate_id, job_id')
+        .eq('id', threadId)
+        .maybeSingle()
+
+      if (!alive) return
+      if (threadError || !thread) {
+        setData(null)
         setLoading(false)
-      })
+        return
+      }
+
+      const [candidateRes, jobRes] = await Promise.all([
+        thread.candidate_id
+          ? supabase
+              .from('candidates')
+              .select('id, candidate_name, email, role_current, current_job_title')
+              .eq('id', thread.candidate_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        thread.job_id
+          ? supabase.from('jobs').select('id, title').eq('id', thread.job_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ])
+
+      if (!alive) return
+      setData({
+        ...(thread as any),
+        candidate: candidateRes.error ? null : ((candidateRes.data as ThreadHeader['candidate']) ?? null),
+        job: jobRes.error ? null : ((jobRes.data as ThreadHeader['job']) ?? null),
+      } as ThreadHeader)
+      setLoading(false)
+    })()
     return () => {
       alive = false
     }
