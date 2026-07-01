@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react'
+import { forwardRef, useState, type ComponentPropsWithoutRef } from 'react'
 import { Briefcase, GitBranch, MailOpen } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { InlineEmpty } from '@/components/ui/empty-state'
@@ -18,16 +18,15 @@ interface ConversationFilterPillsProps {
 const PILL_BASE =
   'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full font-inter text-[11.5px] font-medium transition-colors'
 
-interface PillProps {
+interface PillProps extends Omit<ComponentPropsWithoutRef<'button'>, 'children'> {
   icon: typeof Briefcase
   label: string
   active: boolean
-  onClick?: () => void
   count?: number
 }
 
 const Pill = forwardRef<HTMLButtonElement, PillProps>(function Pill(
-  { icon: Icon, label, active, onClick, count },
+  { icon: Icon, label, active, onClick, count, className, ...props },
   ref,
 ) {
   return (
@@ -35,11 +34,13 @@ const Pill = forwardRef<HTMLButtonElement, PillProps>(function Pill(
       ref={ref}
       type="button"
       onClick={onClick}
+      {...props}
       className={cn(
         PILL_BASE,
         active
           ? 'bg-[#0d0d09] text-[#fffcf9] border border-[#0d0d09]'
           : 'bg-white text-[#5A6072] border border-[#E7E8EE] hover:text-[#1F2230]',
+        className,
       )}
     >
       <Icon className="h-3 w-3" strokeWidth={1.9} />
