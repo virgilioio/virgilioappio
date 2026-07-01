@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PenLine, Search } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { InlineEmpty } from '@/components/ui/empty-state'
@@ -49,6 +49,7 @@ function timeAgo(iso: string | null) {
  */
 export function ConversationListPane() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { threadId: activeId } = useParams<{ threadId: string }>()
   const [params] = useSearchParams()
   const scope = ((params.get('scope') as ChatThreadScope) || 'all') as ChatThreadScope
@@ -62,6 +63,12 @@ export function ConversationListPane() {
     stageIds: [],
   })
   const [composeOpen, setComposeOpen] = useState(false)
+
+  useEffect(() => {
+    if (!(location.state as { chatNotificationOpen?: boolean } | null)?.chatNotificationOpen) return
+    setSearch('')
+    setPillFilters({ unreadOnly: false, jobIds: [], stageIds: [] })
+  }, [activeId, location.state])
 
   const allQuery = useChatThreads({ scope: 'all', search: '' })
   const filteredQuery = useChatThreads({ scope, search })
