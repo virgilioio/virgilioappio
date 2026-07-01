@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PenLine, Search } from 'lucide-react'
-import { formatDistanceToNowStrict } from 'date-fns'
+import { formatDistanceToNowStrict, isYesterday } from 'date-fns'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -20,15 +20,36 @@ import {
 } from '@/components/chat/ConversationFilterPills'
 import { NewMessageSheet } from '@/components/chat/NewMessageSheet'
 
-function initials(row: ChatThreadRow) {
-  const name = row.candidate?.candidate_name?.trim()
-  if (name) {
-    const parts = name.split(/\s+/).filter(Boolean)
+const AVATAR_PALETTE = [
+  { bg: '#EDE4FF', fg: '#5B3FBF' },
+  { bg: '#DBEAFE', fg: '#1E40AF' },
+  { bg: '#D1FAE5', fg: '#065F46' },
+  { bg: '#FEF3C7', fg: '#92400E' },
+  { bg: '#FCE7F3', fg: '#9D174D' },
+  { bg: '#FEE2E2', fg: '#991B1B' },
+  { bg: '#E0E7FF', fg: '#3730A3' },
+  { bg: '#CFFAFE', fg: '#155E75' },
+]
+
+function hashIndex(seed: string, len: number) {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0
+  return Math.abs(h) % len
+}
+
+function avatarColor(seed: string) {
+  return AVATAR_PALETTE[hashIndex(seed, AVATAR_PALETTE.length)]
+}
+
+function initialsOf(name: string | null | undefined, fallback: string) {
+  const n = name?.trim()
+  if (n) {
+    const parts = n.split(/\s+/).filter(Boolean)
     const first = parts[0]?.[0] ?? ''
     const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : ''
-    return (first + last).toUpperCase() || '?'
+    return (first + last).toUpperCase() || fallback
   }
-  return row.candidate?.email?.[0]?.toUpperCase() || '?'
+  return fallback
 }
 
 function fullName(row: ChatThreadRow) {
@@ -48,7 +69,9 @@ function previewLabel(row: ChatThreadRow) {
 function timeAgo(iso: string | null) {
   if (!iso) return ''
   try {
-    return formatDistanceToNowStrict(new Date(iso), { addSuffix: false }).replace(
+    const d = new Date(iso)
+    if (isYesterday(d)) return 'Yesterday'
+    return formatDistanceToNowStrict(d, { addSuffix: false }).replace(
       /( seconds?| minutes?| hours?| days?| months?| years?)/,
       (m) => m.trim()[0],
     )
@@ -57,9 +80,29 @@ function timeAgo(iso: string | null) {
   }
 }
 
+const STAGE_TONES: Array<{
+  match: RegExp
+  dot: string
+  fg: string
+  bg: string
+  label?: string
+}> = [
+  { match: /hired/i, dot: '#12B886', fg: '#065F46', bg: '#D1FAE5' },
+  { match: /offer/i, dot: '#12B886', fg: '#065F46', bg: '#D1FAE5' },
+  { match: /interview|onsite|take.?home/i, dot: '#6F3FF5', fg: '#5B21B6', bg: '#EDE4FF' },
+  { match: /screen|phone/i, dot: '#2563EB', fg: '#1E40AF', bg: '#DBEAFE' },
+  { match: /appl|sourced|new/i, dot: '#8B8F9E', fg: '#5A6072', bg: '#F1F0EC' },
+]
+
+function stageTone(name: string | null) {
+  if (!name) return null
+  for (const t of STAGE_TONES) if (t.match.test(name)) return t
+  return { dot: '#8B8F9E', fg: '#5A6072', bg: '#F1F0EC' }
+}
+
 /**
  * ConversationListPane — left conversation pane.
- * Scope comes from ?scope in the URL (set by the top-bar ChatHeaderSlot).
+ * Fixed 320px, per Gio Chat spec.
  */
 export function ConversationListPane() {
   const navigate = useNavigate()
@@ -82,11 +125,14 @@ export function ConversationListPane() {
     if (!(location.state as { chatNotificationOpen?: boolean } | null)?.chatNotificationOpen) return
     setSearch('')
     setPillFilters({ unreadOnly: false, jobIds: [], stageIds: [] })
-    setParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.delete('scope')
-      return next
-    }, { replace: true })
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('scope')
+        return next
+      },
+      { replace: true },
+    )
   }, [activeId, location.state, setParams])
 
   const allQuery = useChatThreads({ scope: 'all', search: '' })
@@ -113,45 +159,73 @@ export function ConversationListPane() {
   return (
     <>
       <aside
-        className="hidden md:flex w-[320px] shrink-0 flex-col border-r border-virgilio-border bg-surface-primary"
+        className="hidden md:flex flex-col bg-white"
+        style={{ width: 320, flexShrink: 0, borderRight: '1px solid #E7E8EE' }}
         aria-label="Conversations"
       >
         {/* Header block */}
-        <div className="px-4 pt-[18px] pb-3 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h2 className="font-poppins font-semibold text-[16px] tracking-[-0.02em] text-virgilio-text">
-                Conversations
-              </h2>
-              <span
-                className="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full text-[11px] font-poppins font-medium text-[#5A6072] bg-[#F1F0EC]"
-                aria-label={`${totalThreadCount} conversations`}
-              >
-                {totalThreadCount}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
+        <div style={{ padding: '18px 16px 12px' }}>
+          <div className="flex items-center gap-2" style={{ marginBottom: 13 }}>
+            <h2
+              className="font-poppins font-semibold"
+              style={{ fontSize: 16, letterSpacing: '-0.025em', color: '#0d0d09' }}
+            >
+              Conversations
+            </h2>
+            <span
+              className="inline-flex items-center justify-center font-inter"
+              style={{
+                padding: '2px 8px',
+                background: '#F1F0EC',
+                color: '#5A6072',
+                fontWeight: 500,
+                fontSize: 11,
+                borderRadius: 999,
+              }}
+              aria-label={`${totalThreadCount} conversations`}
+            >
+              {totalThreadCount}
+            </span>
+            <div className="ml-auto flex items-center gap-1">
               {isChatAdmin && <AdminChatAuditViewer />}
               <button
                 type="button"
                 onClick={() => setComposeOpen(true)}
                 aria-label="New message"
                 title="New message"
-                className="h-[30px] w-[30px] inline-flex items-center justify-center rounded-lg bg-white border border-virgilio-border text-[#1F2230] hover:bg-[#FAFAF7] transition-colors"
+                className="inline-flex items-center justify-center bg-white hover:bg-[#FAFAF7] transition-colors"
+                style={{
+                  height: 30,
+                  width: 30,
+                  borderRadius: 8,
+                  border: '1px solid #E7E8EE',
+                  color: '#0d0d09',
+                }}
               >
-                <PenLine className="h-3.5 w-3.5" strokeWidth={1.9} />
+                <PenLine style={{ height: 15, width: 15 }} strokeWidth={2} />
               </button>
             </div>
           </div>
 
-          <label className="flex items-center gap-2 h-[34px] px-2.5 rounded-[9px] bg-[#F6F5F1] focus-within:ring-2 focus-within:ring-virgilio-purple/25">
-            <Search className="h-3.5 w-3.5 text-[#8B8F9E]" />
+          <label
+            className="flex items-center"
+            style={{
+              marginBottom: 11,
+              height: 34,
+              padding: '0 11px',
+              background: '#F6F5F1',
+              borderRadius: 9,
+              gap: 8,
+            }}
+          >
+            <Search style={{ height: 14, width: 14, color: '#8B8F9E' }} strokeWidth={2} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search conversations"
-              className="flex-1 bg-transparent outline-none text-[12.5px] placeholder:text-[#8B8F9E]"
+              className="flex-1 bg-transparent outline-none font-inter"
+              style={{ fontSize: 12.5, color: '#1F2230' }}
               aria-label="Search conversations"
             />
           </label>
@@ -165,7 +239,7 @@ export function ConversationListPane() {
           </div>
         )}
 
-        <div className="flex-1 overflow-auto border-t border-[#F1F0EC]">
+        <div className="flex-1 overflow-auto" style={{ borderTop: '1px solid #F1F0EC' }}>
           {isLoading ? (
             <ul className="p-2 space-y-1">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -191,69 +265,166 @@ export function ConversationListPane() {
               <InlineEmpty text="No conversations here" />
             </div>
           ) : (
-            <ul className="p-2 space-y-1">
+            <ul>
               {rows.map((row) => {
                 const isActive = row.id === activeId
+                const name = fullName(row)
+                const seed = row.candidate?.id ?? row.id
+                const color = avatarColor(seed)
+                const stage = stageTone(row.stageName)
+                const recruiter = row.recruiter
+                const recruiterInitials = recruiter
+                  ? initialsOf(
+                      `${recruiter.first_name ?? ''} ${recruiter.last_name ?? ''}`.trim(),
+                      '?',
+                    )
+                  : null
+                const recruiterColor = recruiter ? avatarColor(recruiter.id) : null
+
                 return (
                   <li key={row.id}>
                     <button
                       onClick={() => navigate(`/chat/${row.id}`)}
-                      className={cn(
-                        'group relative w-full text-left rounded-[14px] pl-3 pr-3 py-3 flex items-start gap-3 transition-colors',
-                        isActive
-                          ? 'bg-[#F7F3FF] shadow-[inset_0_0_0_1px_rgba(110,80,200,0.08)] before:absolute before:left-0 before:top-3 before:bottom-3 before:w-[3px] before:bg-virgilio-purple before:rounded-r-full'
-                          : 'hover:bg-[#FAFAF7]',
-                      )}
+                      className="w-full text-left flex gap-3 transition-colors"
+                      style={{
+                        padding: '14px 16px',
+                        borderLeft: `2px solid ${isActive ? '#6F3FF5' : 'transparent'}`,
+                        background: isActive ? '#F1F0EC' : 'transparent',
+                        transitionDuration: '150ms',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.background = '#FAFAF7'
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) e.currentTarget.style.background = 'transparent'
+                      }}
                     >
+                      {/* Avatar block */}
                       <div className="relative shrink-0">
                         <div
-                          className="h-11 w-11 rounded-full flex items-center justify-center text-[12.5px] font-poppins font-semibold tracking-[-0.02em] bg-[#EDE4FF] text-[#5B3FBF] overflow-hidden"
+                          className="flex items-center justify-center font-poppins font-semibold"
+                          style={{
+                            height: 40,
+                            width: 40,
+                            borderRadius: 999,
+                            background: color.bg,
+                            color: color.fg,
+                            fontSize: 13,
+                            letterSpacing: '-0.01em',
+                          }}
                           aria-hidden
                         >
-                          {initials(row)}
+                          {initialsOf(name, '?')}
                         </div>
                         <ChannelDot channel={row.channel} />
                       </div>
+
+                      {/* Content column */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
+                        {/* Line 1 — name + time */}
+                        <div className="flex items-baseline" style={{ gap: 8 }}>
                           <span
-                            className={cn(
-                              'font-poppins text-[13.5px] tracking-[-0.02em] truncate',
-                              row.isUnread
-                                ? 'font-semibold text-virgilio-text'
-                                : 'font-medium text-virgilio-text',
-                            )}
+                            className="font-poppins font-semibold truncate"
+                            style={{
+                              fontSize: 13,
+                              color: '#0d0d09',
+                              letterSpacing: '-0.01em',
+                            }}
                           >
-                            {fullName(row)}
+                            {name}
                           </span>
-                          <span className="text-[10.5px] text-[#8B8F9E] shrink-0 font-poppins font-medium tabular-nums">
+                          <span
+                            className="font-inter shrink-0 ml-auto tabular-nums"
+                            style={{ fontSize: 10.5, color: '#8B8F9E' }}
+                          >
                             {timeAgo(row.last_message_at)}
                           </span>
                         </div>
-                        {roleLabel(row) && (
-                          <div className="text-[11px] text-[#8B8F9E] truncate mt-[1px] font-inter">
-                            {roleLabel(row)}
-                          </div>
-                        )}
-                        <div className="flex items-end justify-between gap-2 mt-1">
+
+                        {/* Line 2 — role + stage */}
+                        <div
+                          className="flex items-center"
+                          style={{ gap: 8, marginTop: 2, marginBottom: 5 }}
+                        >
                           <span
-                            className={cn(
-                              'text-[12px] leading-[1.3] line-clamp-2',
-                              row.isUnread
-                                ? 'text-virgilio-text font-medium'
-                                : 'text-[#5A6072]',
-                            )}
+                            className="font-inter truncate flex-1 min-w-0"
+                            style={{ fontSize: 11, color: '#8B8F9E' }}
+                          >
+                            {roleLabel(row) || '\u00A0'}
+                          </span>
+                          {stage && row.stageName && (
+                            <span
+                              className="inline-flex items-center shrink-0 font-inter font-semibold"
+                              style={{
+                                padding: '1px 7px 1px 6px',
+                                borderRadius: 999,
+                                fontSize: 10,
+                                gap: 4,
+                                background: stage.bg,
+                                color: stage.fg,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  height: 5,
+                                  width: 5,
+                                  borderRadius: 999,
+                                  background: stage.dot,
+                                  display: 'inline-block',
+                                }}
+                              />
+                              {row.stageName}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Line 3 — preview + trailing marker */}
+                        <div className="flex items-end" style={{ gap: 8 }}>
+                          <span
+                            className={cn('font-inter flex-1 min-w-0 line-clamp-2')}
+                            style={{
+                              fontSize: 12,
+                              lineHeight: 1.4,
+                              color: row.isUnread ? '#1F2230' : '#5A6072',
+                              fontWeight: row.isUnread ? 500 : 400,
+                            }}
                           >
                             {previewLabel(row)}
                           </span>
-                          {row.isUnread && (
+                          {row.isUnread ? (
                             <span
-                              className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-virgilio-purple text-white text-[10px] font-poppins font-semibold shrink-0 mb-[1px]"
-                              aria-label="Unread messages"
+                              className="inline-flex items-center justify-center shrink-0 font-inter"
+                              style={{
+                                minWidth: 18,
+                                height: 18,
+                                padding: '0 5px',
+                                borderRadius: 999,
+                                background: '#6F3FF5',
+                                color: '#FFFFFF',
+                                fontWeight: 700,
+                                fontSize: 10.5,
+                              }}
+                              aria-label={`${row.unreadCount || 1} unread messages`}
                             >
                               {row.unreadCount || 1}
                             </span>
-                          )}
+                          ) : recruiterInitials && recruiterColor ? (
+                            <span
+                              className="inline-flex items-center justify-center shrink-0 font-poppins font-semibold"
+                              title="Assigned recruiter"
+                              style={{
+                                height: 18,
+                                width: 18,
+                                borderRadius: 999,
+                                background: recruiterColor.bg,
+                                color: recruiterColor.fg,
+                                fontSize: 9,
+                                letterSpacing: '-0.01em',
+                              }}
+                            >
+                              {recruiterInitials}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     </button>

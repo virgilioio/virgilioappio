@@ -16,7 +16,7 @@ interface ConversationFilterPillsProps {
 }
 
 const PILL_BASE =
-  'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full font-inter text-[11.5px] font-medium transition-colors'
+  'inline-flex items-center gap-[5px] px-2.5 py-[4px] rounded-full font-inter text-[11.5px] font-medium transition-colors'
 
 interface PillProps extends Omit<ComponentPropsWithoutRef<'button'>, 'children'> {
   icon: typeof Briefcase
@@ -43,7 +43,7 @@ const Pill = forwardRef<HTMLButtonElement, PillProps>(function Pill(
         className,
       )}
     >
-      <Icon className="h-3 w-3" strokeWidth={1.9} />
+      <Icon className="h-3 w-3" strokeWidth={2} />
       <span>{label}</span>
       {typeof count === 'number' && count > 0 && (
         <span
