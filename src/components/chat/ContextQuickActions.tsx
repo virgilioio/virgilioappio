@@ -51,12 +51,23 @@ export function ContextQuickActions({ jobId, candidateId, threadId }: ContextQui
         Quick actions
       </h4>
       <div className="flex flex-col">
-        {ACTIONS.map(({ key, label, icon: Icon, hash }) => (
+        {ACTIONS.map(({ key, label, icon: Icon, hash, action }) => (
           <button
             key={key}
             type="button"
             disabled={disabled}
-            onClick={() => !disabled && navigate(`${base}${hash}`)}
+            onClick={() => {
+              if (disabled) return
+              if (action === 'open-booking-picker') {
+                window.dispatchEvent(
+                  new CustomEvent('chat:open-booking-picker', {
+                    detail: { threadId: threadId ?? null },
+                  }),
+                )
+                return
+              }
+              if (hash) navigate(`${base}${hash}`)
+            }}
             className="flex items-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               padding: '9px 10px',
