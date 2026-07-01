@@ -482,23 +482,19 @@ function MobileStatusBar() {
   )
 }
 
-function ChatGlyph({ size = 16 }: { size?: number }) {
+function ChatGlyph({ size = 18 }: { size?: number }) {
   return (
-    <span className="relative inline-block" style={{ width: size, height: size }}>
-      <span
-        className="absolute inset-0 rounded-[6px]"
-        style={{ backgroundColor: '#0d0d09' }}
-      />
-      <span
-        className="absolute"
-        style={{
-          right: -2, bottom: -1, width: size * 0.42, height: size * 0.42,
-          backgroundColor: '#6F3FF5',
-          clipPath: 'polygon(0 0, 100% 0, 100% 100%)',
-          borderRadius: '2px',
-        }}
-      />
-    </span>
+    <svg
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      aria-hidden
+      className="inline-block"
+      style={{ color: '#0d0d09' }}
+    >
+      <rect x="8" y="9" width="32" height="22" rx="9" fill="currentColor" />
+      <circle cx="13.5" cy="36.5" r="3.6" fill="#6F3FF5" />
+    </svg>
   )
 }
 
