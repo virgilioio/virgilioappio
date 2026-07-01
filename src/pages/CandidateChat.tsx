@@ -204,17 +204,23 @@ export default function CandidateChat() {
           parts: unknown
           created_at: string
         }>).map((m) => {
-          const parts = (m.parts ?? null) as
-            | { attachments?: Attachment[]; kind?: string }
-            | null
+          let parsedParts: { attachments?: Attachment[]; kind?: string } | null = null
+          const raw = m.parts
+          if (raw && typeof raw === 'object') {
+            parsedParts = raw as any
+          } else if (typeof raw === 'string' && raw.trim().startsWith('{')) {
+            try { parsedParts = JSON.parse(raw) } catch { parsedParts = null }
+          }
           const bookingCard =
-            parts && parts.kind === 'booking_link' ? (parts as unknown as BookingCardPart) : undefined
+            parsedParts && parsedParts.kind === 'booking_link'
+              ? (parsedParts as unknown as BookingCardPart)
+              : undefined
           return {
             id: m.id,
             role: m.direction === 'in' ? 'candidate' : 'recruiter',
             text: bookingCard ? '' : m.body ?? '',
             createdAt: new Date(m.created_at).getTime(),
-            attachments: parts?.attachments ?? undefined,
+            attachments: parsedParts?.attachments ?? undefined,
             bookingCard,
             status: 'sent',
           }
