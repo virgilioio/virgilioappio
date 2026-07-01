@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { GioWordmark } from '@/components/icons/GioWordmark'
+import { BookingLinkCard } from '@/components/chat/BookingLinkCard'
 
 // ---------- Types ----------------------------------------------------------
 
