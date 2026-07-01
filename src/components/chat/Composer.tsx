@@ -302,19 +302,35 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
 function ToolbarIcon({
   icon: Icon,
   label,
+  active = false,
+  onClick,
 }: {
   icon: typeof Paperclip
   label: string
+  active?: boolean
+  onClick?: () => void
 }) {
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
+      onClick={onClick}
       className="inline-flex items-center justify-center transition-colors"
-      style={{ height: 32, width: 32, borderRadius: 8, color: '#5A6072', background: 'transparent' }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = '#F6F5F1')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      style={{
+        height: 32,
+        width: 32,
+        borderRadius: 8,
+        color: active ? '#6F3FF5' : '#5A6072',
+        background: active ? '#EDE4FF' : 'transparent',
+        border: 0,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = '#F6F5F1'
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = 'transparent'
+      }}
     >
       <Icon style={{ height: 17, width: 17 }} strokeWidth={1.9} />
     </button>
