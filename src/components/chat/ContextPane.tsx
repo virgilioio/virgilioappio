@@ -97,7 +97,7 @@ export function ContextPane({ threadId }: ContextPaneProps) {
 
   return (
     <aside
-      className="hidden xl:flex shrink-0 flex-col overflow-auto"
+      className="hidden lg:flex shrink-0 flex-col overflow-auto"
       style={{
         width: 304,
         borderLeft: '1px solid #E7E8EE',
