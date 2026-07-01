@@ -105,7 +105,7 @@ export function useSendChatMessage() {
         sender_type: 'recruiter',
         sender_user_id: user?.id ?? null,
         body,
-        parts: null,
+        parts: (args.parts ?? null) as any,
         read_by_recipient_at: null,
         redacted_at: null,
         created_at: new Date().toISOString(),
