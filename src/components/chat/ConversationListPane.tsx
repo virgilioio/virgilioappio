@@ -21,14 +21,22 @@ import {
 import { NewMessageSheet } from '@/components/chat/NewMessageSheet'
 
 function initials(row: ChatThreadRow) {
-  const f = row.candidate?.first_name?.[0] ?? ''
-  const l = row.candidate?.last_name?.[0] ?? ''
-  return (f + l).toUpperCase() || row.candidate?.email?.[0]?.toUpperCase() || '?'
+  const name = row.candidate?.candidate_name?.trim()
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean)
+    const first = parts[0]?.[0] ?? ''
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : ''
+    return (first + last).toUpperCase() || '?'
+  }
+  return row.candidate?.email?.[0]?.toUpperCase() || '?'
 }
 
 function fullName(row: ChatThreadRow) {
-  const name = `${row.candidate?.first_name ?? ''} ${row.candidate?.last_name ?? ''}`.trim()
-  return name || row.candidate?.email || 'Unknown candidate'
+  return row.candidate?.candidate_name?.trim() || row.candidate?.email || 'Unknown candidate'
+}
+
+function roleLabel(row: ChatThreadRow) {
+  return row.candidate?.role_current || row.candidate?.current_job_title || row.job?.title || ''
 }
 
 function timeAgo(iso: string | null) {
@@ -91,9 +99,10 @@ export function ConversationListPane() {
   }, [activeId, allQuery.data, filteredQuery.data, pillFilters])
 
   const isLoading = filteredQuery.isLoading
+  const hasError = filteredQuery.isError || allQuery.isError
   const totalThreadCount = allQuery.data?.length ?? 0
-  const isTrueZero = !isLoading && totalThreadCount === 0
-  const isFilteredEmpty = !isLoading && !isTrueZero && rows.length === 0
+  const isTrueZero = !isLoading && !hasError && totalThreadCount === 0
+  const isFilteredEmpty = !isLoading && !hasError && !isTrueZero && rows.length === 0
 
   return (
     <>
@@ -163,6 +172,10 @@ export function ConversationListPane() {
                 </li>
               ))}
             </ul>
+          ) : hasError ? (
+            <div className="p-3">
+              <InlineEmpty text="Conversations could not load" />
+            </div>
           ) : isTrueZero ? (
             <div className="p-3">
               <InlineEmpty text="No conversations yet" />
@@ -191,15 +204,7 @@ export function ConversationListPane() {
                           className="h-10 w-10 rounded-full flex items-center justify-center text-[12px] font-poppins font-semibold tracking-[-0.02em] bg-[#EDE4FF] text-[#5B3FBF] overflow-hidden"
                           aria-hidden
                         >
-                          {row.candidate?.avatar_url ? (
-                            <img
-                              src={row.candidate.avatar_url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            initials(row)
-                          )}
+                          {initials(row)}
                         </div>
                         <ChannelDot channel={row.channel} />
                       </div>
@@ -219,9 +224,9 @@ export function ConversationListPane() {
                             {timeAgo(row.last_message_at)}
                           </span>
                         </div>
-                        {row.job?.title && (
+                        {roleLabel(row) && (
                           <div className="text-[11px] text-[#8B8F9E] truncate mt-0.5 font-inter">
-                            {row.job.title}
+                            {roleLabel(row)}
                           </div>
                         )}
                         <div className="flex items-center justify-between gap-2 mt-0.5">
@@ -240,7 +245,7 @@ export function ConversationListPane() {
                               className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-virgilio-purple text-white text-[10px] font-semibold shrink-0"
                               aria-label="Unread messages"
                             >
-                              •
+                              {row.unreadCount || 1}
                             </span>
                           )}
                         </div>
