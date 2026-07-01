@@ -56,8 +56,8 @@ function fullName(row: ChatThreadRow) {
   return row.candidate?.candidate_name?.trim() || row.candidate?.email || 'Unknown candidate'
 }
 
-function roleLabel(row: ChatThreadRow) {
-  return row.candidate?.role_current || row.candidate?.current_job_title || row.job?.title || ''
+function jobLabel(row: ChatThreadRow) {
+  return row.job?.title || row.candidate?.role_current || row.candidate?.current_job_title || ''
 }
 
 function previewLabel(row: ChatThreadRow) {
