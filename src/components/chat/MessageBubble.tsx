@@ -2,10 +2,12 @@ import { format } from 'date-fns'
 import { Lock, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ChatMessageRow } from '@/hooks/chat/useChatMessages'
+import { BookingLinkCard, type BookingCardData } from './BookingLinkCard'
 
 interface MessageBubbleProps {
   message: ChatMessageRow
   authorName?: string | null
+  isCandidateView?: boolean
 }
 
 /**
