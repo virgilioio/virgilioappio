@@ -34,6 +34,7 @@ import { SourcingCreditIndicator } from '@/components/layout/SourcingCreditIndic
 import { GlobalSearchBar } from '@/components/search/GlobalSearchBar'
 import { NotificationCenter } from '@/components/layout/NotificationCenter'
 import { getActiveSection, type AppSection } from '@/components/layout/AppSidebar'
+import { ChatHeaderSlot } from '@/components/chat/ChatHeaderSlot'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -208,8 +209,9 @@ export function Header() {
       style={{ backgroundColor: '#0d0d09' }}
     >
       <div className="flex w-full items-center justify-between gap-6 px-3">
-        {/* Left: section nav */}
+        {/* Left: section nav (or Chat slot on /chat routes) */}
         <nav className="flex items-center gap-0.5 min-w-0">
+          {location.pathname.startsWith('/chat') && <ChatHeaderSlot />}
           {visibleNavItems.map((item) => {
             const Icon = item.icon
             const isActive =

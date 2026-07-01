@@ -1,85 +1,83 @@
 
-# Phase 4 — Recap & senior review
+## Goal
 
-## What's in place (verified end-to-end)
+Scaffold the front end of the Chat module for a brand-new workspace: the shell chrome, the Chat label + scope control inside the **existing** dark top bar (single bar, no second one), the left conversation pane, and the canonical zero state. Frontend only, no data/AI/realtime changes.
 
-**4.1 — Email notifications**
-- Dedicated `chat_notification_queue` (separate from `automation_email_queue` so chat throttling doesn't compete with onboarding/marketing-style sends).
-- `chat_notif_enqueue` RPC + DB triggers (`chat_messages_notify`, `chat_threads_notify_handoff`) auto-queue on every new message and on handoff status transitions.
-- 10-minute digest coalescing (`message_count` + `last_message_*`) before send.
-- `chat-notification-processor` edge function: batch 25, attempts/backoff (5min × 5), suppression list re-check, "already read" / "candidate active" / "thread handled" cancellations, Resend send with `EMAIL_DEFAULT_FROM` fallback to `chat@app.gogio.io`.
-- pg_cron `chat-notification-processor` runs every minute (verified active).
-- Triggers attached to all current chat_messages monthly partitions (2026_05 → 2026_09).
+## Shell integration (single top bar)
 
-**4.2 — In-app bell**
-- `chat_message` notification category in `notification_preferences` (in-app on, email on, push off).
-- `chat_bell_enqueue` RPC coalesces repeats per (thread, recipient) so one thread = one unread bell entry.
-- `NotificationCenter` renders the category with the purple "CHAT" chip and links to `/chat/{threadId}`.
-- Respects each recruiter's per-channel toggle.
+The existing `Header` renders the dark bar with section nav (Dashboard/Analytics/CRM). Its left cluster is empty on `/chat` because Chat has no section nav. We slot Chat-specific items into that same bar — no second bar.
 
-**4.3 — Retention sweeper**
-- `chat-retention-sweeper` edge function orchestrates: closed-job purge → 30d soft-archive → 90d hard-delete → partition drop (keep last 4 months) → opportunistic rate-limit/audit/token cleanup.
-- Tenant-tunable windows (`chat_inactivity_soft_delete_days`, `chat_hard_delete_days`).
-- pg_cron `chat-retention-sweeper` runs nightly 03:20 UTC (verified).
-- `chat-messages-create-partitions` continues to roll forward partitions monthly.
+Edit `src/components/layout/Header.tsx`:
+- Detect `location.pathname.startsWith('/chat')`.
+- When true, render a new `ChatHeaderSlot` in place of `visibleNavItems`.
+- `ChatHeaderSlot` shows: `messages-square` icon + "Chat" (Poppins 600, 13.5px, cream) · `ScopeSegmented` pill group with **All / Unread / Assigned to me** (bg `rgba(255,255,255,0.06)`, radius 9, pad 3; active pill = cream fill, citron-noir text, Poppins 600; inactive = `rgba(255,255,255,0.72)` weight 500).
+- Scope state is stored in the URL as `?scope=all|unread|assigned` via `useSearchParams` so the Chat page can read it without prop drilling. Default `all`.
+- The right utility cluster (Global Search, Create, credits, bell, avatar) stays untouched — no separate "New message" button is added there.
 
-**4.4 — Admin observability**
-- `chat_audit_log` RLS restricts reads to admins / workspace owners (verified policy).
-- `AdminChatAuditViewer` sheet: 200 most recent events, event filter, search, tone-mapped badges, JSON metadata, mounted in the chat list header (admin-only).
-- `ChatSlaWidget` + `useChatSlaMetrics`: awaiting-human count + oldest age, median / p95 first-response over last 7 days, refreshed every 60s, capped to 1k messages.
+## Chat page (`src/pages/Chat.tsx`)
 
----
+- Wrap the content area in the white rounded-16 frame inset `top 72 · left 88 · right/bottom 12`, `1px hairline` border, over canvas `#F6F5F1`.
+- Inside frame: `ConversationListPane` (320px, white, right border hairline) + `ThreadPane` (flex-1, bg `#FAFAF7`).
+- `ContextPane` is only mounted when `threadId` is present (already handled).
+- Read `scope` from `useSearchParams` and pass to the list pane.
 
-## Audit findings — issues to fix in this pass
+## Left pane rebuild (`ConversationListPane`)
 
-### F1 (bug, blocking the SLA widget). Direction values mismatch
-`useChatSlaMetrics.ts` filters on `direction === 'inbound'` / `'outbound'`, but the database stores `'in'` / `'out'` (confirmed in `chat-candidate-send`, `chat-agent-reply`, `useChatMessages`). Result: the latency loop never collects samples — median/p95 always render as `—`.
+Header block (`padding 18 16 12`):
+- Title row: **"Conversations"** (Poppins 600 16) + `<Badge tone="neutral">` **count tag** reflecting the filtered list length + right-aligned icon-only Button (`pen-line`, 30px white square, hairline border, tooltip "New message") — this is the Chat compose entry point.
+- Search input "Search conversations" (canvas bg `#F6F5F1`, `search` icon, h-34, radius 9).
+- Filter pill row (wrap, gap 6): **Unread** (`mail-open`, toggle), **By job** (`briefcase`, multi-select popover), **By stage** (`git-branch`, multi-select popover). Pill style: rounded-full, Inter 500 11.5, inactive white + hairline + muted, active citron-noir + cream. Job/stage popovers show an `InlineEmpty` placeholder for this pass (no new data hooks).
 
-Fix: change the two comparisons to `'in'` and `'out'`. Also add a defensive `direction.startsWith('in')` if we keep both representations.
+List body (scrollable, `border-top soft-hairline`):
+- Uses existing `useChatThreads({ scope, search })` plus local Unread pill + selected job/stage sets applied client-side.
+- Row (~72px): 40px Avatar with `ChannelDot` overlay (in-app purple / email blue / whatsapp green), Name (Poppins 600 13) + timestamp (tertiary 10.5 top-right), role/job line (tertiary 11), 2-line preview clamp (unread → weight 500 + darker, read → 400 muted), right side = purple count badge if unread else assigned recruiter mini-avatar (18px, initials fallback). Selected = soft-hairline bg + 2px purple left border; hover `#FAFAF7`.
+- **Filtered empty**: `<InlineEmpty text="No conversations here" />`.
+- **True zero** (no threads at all): `<InlineEmpty text="No conversations yet" />`; count tag reads `0`.
+- Keep admin `AdminChatAuditViewer` and `ChatSlaWidget` mounted for admins as they are today (compact, in header area).
 
-### F2 (correctness, small). Oldest-awaiting clock
-Widget computes oldest awaiting age from `chat_threads.updated_at`, which moves on any thread-row change (e.g. `context_summary` refresh). Use `last_message_at` instead — it more accurately reflects "how long has the candidate been waiting".
+## Thread pane zero states (`ThreadPane`)
 
-### F3 (defensive). Add explicit ordering by `created_at` in `useChatSlaMetrics`
-We currently order by `thread_id, created_at` so per-thread arrays remain chronological — but Supabase chains the two `.order(...)` calls correctly; verify and add a comment. No code change beyond a comment unless `EXPLAIN` shows otherwise.
+Two variants using canonical `<EmptyState>` + `SoftBubble`:
 
-### F4 (observability gap). Retention sweeper has no audit row
-Successful sweeper runs aren't reflected in `chat_audit_log`, so admins can't see "last cleaned at X, removed Y threads". Add a single `system`-actor audit insert at the end of `chat-retention-sweeper` with `{ purged, soft_archived, hard_deleted, partitions_dropped }` counts pulled from the RPC results. Cheap, one row per night, very useful when debugging retention questions.
+1. **Brand-new (no threads at all)** — detect via `useChatThreads({ scope: 'all' }).data?.length === 0`:
+   - Card variant, `SoftBubble` illustration.
+   - Title "No conversations yet".
+   - Body: "Chat brings every conversation — in-app, email, and WhatsApp — into one calm space, with Gio drafting and summarizing alongside you."
+   - Buttons: primary `New message` (`pen-line`, opens recipient picker) + secondary `Connect a channel` (`link`, navigates to `/settings?tab=organization#chat-channels`).
+2. **No conversation selected (threads exist)** — bare variant (no card border):
+   - Title "Select a conversation".
+   - Body: "Choose a candidate from the left to pick up where you left off — or start a new message."
+   - Single primary `New message`.
 
-### F5 (resilience). Notification processor cancellation typo-tolerance
-`shouldCancel` uses `email_suppression_list` (`.ilike("email", row.recipient_email)`). `ilike` without `%` wildcards is just case-insensitive equality — that's fine, but flag it as `.eq` with `email.toLowerCase()` for clarity and to avoid future regex-style confusion. Behavior identical.
+Removes the current `ConnectChannelCTA` from the thread empty (component stays available elsewhere).
 
-### F6 (housekeeping). Document the worker contract
-Add a one-paragraph header to `chat-notification-processor` and `chat-retention-sweeper` documenting:
-- Invocation source (`pg_cron`, anon apikey)
-- Concurrency assumptions (single-runner; processor selects `pending` ordered + limit 25 — safe even on overlap because rows flip to `sent`/`failed` immediately).
-- Retry semantics (5min × 5 attempts → `failed`).
+## Compose / connect-channel handlers
 
-No code shape change; just inline docs for the next on-call engineer.
+- `New message` (list pencil + empty-state buttons) opens a shared `NewMessageSheet` — placeholder Sheet titled "New message" with a search field and `<InlineEmpty text="Recipient picker coming soon" />`. Real picker is out of scope.
+- `Connect a channel` routes to `/settings?tab=organization#chat-channels` where `ChatChannelsCard` already lives.
 
----
+## Files
 
-## What I deliberately did NOT change
+**Create**
+- `src/components/chat/ChatHeaderSlot.tsx` — `messages-square` + "Chat" label + scope segmented control; reads/writes `?scope` via `useSearchParams`.
+- `src/components/chat/ConversationFilterPills.tsx` — Unread / By job / By stage row with popovers.
+- `src/components/chat/ChannelDot.tsx` — channel-color dot for avatar overlay.
+- `src/components/chat/NewMessageSheet.tsx` — placeholder recipient picker Sheet.
 
-- Queue table choice. Keeping `chat_notification_queue` separate from `automation_email_queue` is the right call: chat is high-volume + needs digesting + per-thread cancellation; mixing into the general queue would force generic schemas and complicate suppression rules. Revisit only if we later need a single observability pane across all email senders.
-- `verify_jwt = true` on workers. Both worker functions stay JWT-verified; pg_cron passes the anon key. This is the supported pattern and keeps Resend keys out of any unauthenticated path.
-- SLA sample cap of 1k messages / 7 days. Adequate for current volumes; revisit once any tenant exceeds ~1k inbound chat msgs per week (we'll switch to a materialized SLA snapshot computed by the nightly sweeper).
+**Edit**
+- `src/components/layout/Header.tsx` — conditional Chat slot in the left cluster.
+- `src/pages/Chat.tsx` — white rounded frame, read `scope` from URL, conditional `ContextPane`.
+- `src/components/chat/ConversationListPane.tsx` — new header (title + count tag + pencil), new pill row via `ConversationFilterPills`, channel dot on avatars, InlineEmpty for true-zero and filtered-empty.
+- `src/components/chat/ThreadPane.tsx` — two zero-state variants (brand-new vs no-selection); shared compose handler.
+- `src/components/chat/ScopeTabs.tsx` — deprecated (superseded by `ChatHeaderSlot`); keep the `ChatThreadScope` type export in `useChatThreads`.
 
----
+## Acceptance
 
-## Plan of execution (small, self-contained)
-
-```text
-1. Fix F1: useChatSlaMetrics.ts — change 'inbound'/'outbound' → 'in'/'out'.
-2. Fix F2: switch oldest-awaiting clock to last_message_at + fallback to updated_at.
-3. F4: append audit row in chat-retention-sweeper after RPC stage, with totals.
-4. F5: replace .ilike with .eq(lowercased) in chat-notification-processor.
-5. F6: header docstrings on both worker functions.
-6. Smoke: curl chat-retention-sweeper once, confirm `results` array + new audit row;
-         open chat as admin, confirm ChatSlaWidget now shows median/p95 (or sampleSize=0
-         only when truly no recruiter replies).
-```
-
-No DB migration needed — all fixes are code-only.
-
-After this pass Phase 4 is closed and we can move to Phase 5 with clean observability.
+- Single dark top bar; Chat label + All/Unread/Assigned pills live inside it on `/chat`.
+- Global Search, Create, credits, bell, avatar unchanged in the top bar.
+- Left pane header: "Conversations" + count tag + pencil + search + Unread/By job/By stage pills.
+- True zero: left list `InlineEmpty "No conversations yet"` (count 0); thread area `SoftBubble` `EmptyState` with New message + Connect a channel.
+- No conversation selected (threads exist): bare `EmptyState "Select a conversation"` with single `New message`.
+- Filtered empty: `InlineEmpty "No conversations here"`.
+- `ContextPane` absent whenever no `threadId` is in the URL.
+- All tokens, fonts, radii come from the existing system.

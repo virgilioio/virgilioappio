@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
 import { SoftBubble } from '@/components/ui/EmptyIllustrations'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MessageList } from '@/components/chat/MessageList'
 import { Composer } from '@/components/chat/Composer'
 import { useChatKillSwitch } from '@/hooks/chat/useChatKillSwitch'
 import { useMarkThreadRead } from '@/hooks/chat/useMarkThreadRead'
-import { PauseCircle } from 'lucide-react'
+import { PauseCircle, PenLine, Link as LinkIcon } from 'lucide-react'
 import { AiSummaryCard } from '@/components/chat/AiSummaryCard'
-import { ConnectChannelCTA } from '@/components/chat/ConnectChannelCTA'
+import { useChatThreads } from '@/hooks/chat/useChatThreads'
+import { NewMessageSheet } from '@/components/chat/NewMessageSheet'
 
 interface ThreadPaneProps {
   threadId?: string
@@ -66,25 +68,76 @@ function useThreadHeader(threadId: string | undefined) {
 }
 
 /**
- * ThreadPane — header, messages, and composer (Step 1.7).
+ * ThreadPane — header, messages, composer, and Chat zero-state variants.
  */
 export function ThreadPane({ threadId }: ThreadPaneProps) {
   const { data: header, loading } = useThreadHeader(threadId)
   const { isPaused } = useChatKillSwitch()
   useMarkThreadRead(threadId, header?.last_message_at ?? null)
+  const navigate = useNavigate()
+  const allThreads = useChatThreads({ scope: 'all', search: '' })
+  const [composeOpen, setComposeOpen] = useState(false)
 
   if (!threadId) {
+    const hasAnyThreads = (allThreads.data?.length ?? 0) > 0
+
     return (
-      <section className="flex-1 min-w-0 flex flex-col bg-surface-primary" aria-label="Thread">
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <EmptyState
-            size="route"
-            illustration={<SoftBubble />}
-            title="Select a conversation"
-            body="Pick a candidate thread on the left to start messaging. New incoming chats will appear here."
-          />
-          <ConnectChannelCTA />
+      <section
+        className="flex-1 min-w-0 flex flex-col"
+        style={{ background: '#FAFAF7' }}
+        aria-label="Thread"
+      >
+        <div className="flex-1 flex items-center justify-center p-8">
+          {hasAnyThreads ? (
+            // Bare "no selection" state — no card border.
+            <div className="flex flex-col items-center text-center max-w-[420px]">
+              <div className="mb-2">
+                <SoftBubble />
+              </div>
+              <h2 className="font-poppins font-semibold text-[22px] tracking-[-0.025em] text-[#0d0d09]">
+                Select a conversation
+              </h2>
+              <p className="mt-2.5 font-inter text-[14px] leading-[1.55] text-[#5A6072]">
+                Choose a candidate from the left to pick up where you left off — or start a new
+                message.
+              </p>
+              <div className="mt-5">
+                <EmptyAction
+                  icon={<PenLine size={16} strokeWidth={1.9} />}
+                  onClick={() => setComposeOpen(true)}
+                >
+                  New message
+                </EmptyAction>
+              </div>
+            </div>
+          ) : (
+            // True zero — canonical card EmptyState.
+            <EmptyState
+              size="route"
+              illustration={<SoftBubble />}
+              title="No conversations yet"
+              body="Chat brings every conversation — in-app, email, and WhatsApp — into one calm space, with Gio drafting and summarizing alongside you."
+              primary={
+                <EmptyAction
+                  icon={<PenLine size={16} strokeWidth={1.9} />}
+                  onClick={() => setComposeOpen(true)}
+                >
+                  New message
+                </EmptyAction>
+              }
+              secondary={
+                <EmptyAction
+                  variant="secondary"
+                  icon={<LinkIcon size={16} strokeWidth={1.9} />}
+                  onClick={() => navigate('/settings?tab=organization#chat-channels')}
+                >
+                  Connect a channel
+                </EmptyAction>
+              }
+            />
+          )}
         </div>
+        <NewMessageSheet open={composeOpen} onOpenChange={setComposeOpen} />
       </section>
     )
   }
