@@ -57,6 +57,13 @@ export function useSendChatMessage() {
           if (rErr || !row) throw rErr ?? new Error('message_not_found_after_send')
           return row as ChatMessageRow
         }
+        // Phase 5.2 (deferred): WhatsApp channel is scaffolded but not wired to
+        // a provider yet. Fail loudly so the UI can prompt to switch channel.
+        if (t?.channel === 'whatsapp') {
+          throw new Error(
+            'WhatsApp channel isn\u2019t connected yet. Reply through in-app chat or email for now.',
+          )
+        }
       }
 
       const { data, error } = await supabase
