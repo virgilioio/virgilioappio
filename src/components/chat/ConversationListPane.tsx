@@ -51,7 +51,7 @@ export function ConversationListPane() {
   const navigate = useNavigate()
   const location = useLocation()
   const { threadId: activeId } = useParams<{ threadId: string }>()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const scope = ((params.get('scope') as ChatThreadScope) || 'all') as ChatThreadScope
   const { isPlatformAdmin, isWorkspaceOwner, isAdmin } = usePermissions()
   const isChatAdmin = isPlatformAdmin || isWorkspaceOwner || isAdmin
@@ -68,7 +68,10 @@ export function ConversationListPane() {
     if (!(location.state as { chatNotificationOpen?: boolean } | null)?.chatNotificationOpen) return
     setSearch('')
     setPillFilters({ unreadOnly: false, jobIds: [], stageIds: [] })
-  }, [activeId, location.state])
+    const next = new URLSearchParams(params)
+    next.delete('scope')
+    setParams(next, { replace: true })
+  }, [activeId, location.state, params, setParams])
 
   const allQuery = useChatThreads({ scope: 'all', search: '' })
   const filteredQuery = useChatThreads({ scope, search })
