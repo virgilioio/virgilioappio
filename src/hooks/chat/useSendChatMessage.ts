@@ -77,7 +77,7 @@ export function useSendChatMessage() {
           sender_type: 'recruiter',
           sender_user_id: user.id,
           body: args.body,
-          parts: (args.parts ?? null) as any,
+          parts: (args.parts ?? {}) as any,
         })
         .select()
         .single()
