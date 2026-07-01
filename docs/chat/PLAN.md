@@ -208,8 +208,10 @@
 ### Step 5.1 — Email channel
 ### Step 5.2 — WhatsApp channel
 ### Step 5.3 — "Connect a channel" CTA
-
-(Manifests to be filled when Phase 5 is approved.)
+- **Goal:** Surface connected/available channels on chat zero states and add a `ChatChannelsCard` in Settings → Workspace so admins can see what's live and request WhatsApp when ready.
+- **Files allowed:** `src/components/chat/ChatChannelsCard.tsx` (new), `src/components/chat/ConnectChannelCTA.tsx` (new), `src/components/chat/ThreadPane.tsx` (zero state only), `src/components/chat/ConversationListPane.tsx` (empty list only), `src/components/settings/OrganizationTab.tsx` (mount card).
+- **DB changes:** No.
+- **Acceptance criteria:** Settings shows In-app + Email as **Active** and WhatsApp as **Coming soon** with a "Notify me" button; chat empty states link to the Settings tab; no runtime channel provisioning yet.
 
 ---
 

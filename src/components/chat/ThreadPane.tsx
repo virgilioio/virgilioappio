@@ -9,6 +9,7 @@ import { useChatKillSwitch } from '@/hooks/chat/useChatKillSwitch'
 import { useMarkThreadRead } from '@/hooks/chat/useMarkThreadRead'
 import { PauseCircle } from 'lucide-react'
 import { AiSummaryCard } from '@/components/chat/AiSummaryCard'
+import { ConnectChannelCTA } from '@/components/chat/ConnectChannelCTA'
 
 interface ThreadPaneProps {
   threadId?: string
@@ -75,13 +76,14 @@ export function ThreadPane({ threadId }: ThreadPaneProps) {
   if (!threadId) {
     return (
       <section className="flex-1 min-w-0 flex flex-col bg-surface-primary" aria-label="Thread">
-        <div className="flex-1 flex items-center justify-center p-8">
+        <div className="flex-1 flex flex-col items-center justify-center p-8">
           <EmptyState
             size="route"
             illustration={<SoftBubble />}
             title="Select a conversation"
             body="Pick a candidate thread on the left to start messaging. New incoming chats will appear here."
           />
+          <ConnectChannelCTA />
         </div>
       </section>
     )
