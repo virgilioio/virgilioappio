@@ -483,49 +483,83 @@ serve(async (req) => {
         issued.reused ? "(reused)" : "(new)",
       );
 
-      // Phase 2.4 — send the candidate magic-link email via Resend.
-      // Best-effort: a delivery failure must not roll back the application.
+      // Send the candidate magic-link email via Resend using the branded
+      // Gio chat-invite template. Best-effort: a delivery failure must not
+      // roll back the application.
       try {
         const resendKey = Deno.env.get("RESEND_API_KEY");
-        if (!resendKey) {
-          console.warn("⚠️ RESEND_API_KEY missing — skipping chat magic-link email");
+        if (!resendKey || !chatMagicLinkPath) {
+          if (!resendKey) console.warn("⚠️ RESEND_API_KEY missing — skipping chat magic-link email");
         } else {
           const appBase =
             Deno.env.get("PUBLIC_APP_URL")?.replace(/\/$/, "") ||
             "https://app.gogio.io";
           const magicUrl = `${appBase}${chatMagicLinkPath}`;
           const jobTitle = (posting as any).job?.title ?? "the role";
-          const companyName =
-            (posting as any).job?.organization?.name ??
-            (posting as any).tenant?.name ??
-            "the hiring team";
+
+          // Look up the recruiter that owns this job so the invite can carry
+          // a real face + title. Falls back to a friendly "hiring team" voice.
+          let recruiterFullName = "The hiring team";
+          let recruiterTitle = "Talent Partner";
+          let recruiterAvatar: string | null = null;
+          try {
+            const { data: jobRow } = await supabase
+              .from("jobs")
+              .select("created_by")
+              .eq("id", posting.job_id)
+              .maybeSingle();
+            if (jobRow?.created_by) {
+              const { data: prof } = await supabase
+                .from("profiles")
+                .select("first_name, last_name, title, avatar_url")
+                .eq("user_id", jobRow.created_by)
+                .maybeSingle();
+              if (prof) {
+                const full = `${prof.first_name ?? ""} ${prof.last_name ?? ""}`.trim();
+                if (full) recruiterFullName = full;
+                if (prof.title) recruiterTitle = prof.title;
+                recruiterAvatar = prof.avatar_url ?? null;
+              }
+            }
+          } catch (lookupErr) {
+            console.warn("[chat-invite] recruiter lookup failed", lookupErr);
+          }
+
+          const recruiterFirstName =
+            recruiterFullName.split(/\s+/)[0] ?? "The hiring team";
+          const candidateFirstName =
+            (candidateName || candidateEmail).split(/\s+/)[0] ?? "there";
 
           const { Resend } = await import("npm:resend@2.0.0");
-          const { createEmailTemplate } = await import("../_shared/emailTemplate.ts");
+          const {
+            renderChatInviteEmail,
+            initialsFor,
+            colorForName,
+          } = await import("../_shared/chatInviteEmail.ts");
           const resend = new Resend(resendKey);
           const emailFrom =
-            Deno.env.get("EMAIL_DEFAULT_FROM") || "GoGio <noreply@app.gogio.io>";
+            Deno.env.get("EMAIL_DEFAULT_FROM") || "Gio <noreply@app.gogio.io>";
 
-          const recipientName = (candidateName || candidateEmail).split(/\s+/)[0] ?? "there";
-          const html = createEmailTemplate({
-            recipientName,
-            preheaderText: `Open a private chat about ${jobTitle}`,
-            title: `Chat with ${companyName}`,
-            content: `
-              <p>Thanks for applying to <strong>${jobTitle}</strong>.</p>
-              <p>We've opened a private chat so you can ask questions, get updates, and hear back from the team — all in one place.</p>
-              <p>Your secure link is valid for <strong>14 days</strong>.</p>
-            `,
-            ctaText: "Open chat",
-            ctaUrl: magicUrl,
-            footerNote: "If you didn't apply, you can safely ignore this email.",
+          const rendered = renderChatInviteEmail({
+            recruiter_first_name: recruiterFirstName,
+            recruiter_full_name: recruiterFullName,
+            recruiter_title: recruiterTitle,
+            recruiter_initials: initialsFor(recruiterFullName),
+            recruiter_color: colorForName(recruiterFullName),
+            recruiter_avatar: recruiterAvatar,
+            candidate_first_name: candidateFirstName,
+            job_title: jobTitle,
+            recruiter_message: `Hi ${candidateFirstName} 👋 Thanks for applying to ${jobTitle}. I'll be your point of contact — feel free to send any questions here and I'll get right back to you.`,
+            chat_url: magicUrl,
+            link_expiry: "14 days",
           });
 
           const emailRes = await resend.emails.send({
             from: emailFrom,
             to: [candidateEmail],
-            subject: `Chat with ${companyName} about ${jobTitle}`,
-            html,
+            subject: rendered.subject,
+            html: rendered.html,
+            text: rendered.text,
           });
           console.log("💌 Candidate chat magic-link email queued:", emailRes?.data?.id ?? "(no id)");
         }
