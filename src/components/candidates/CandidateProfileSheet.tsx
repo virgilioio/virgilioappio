@@ -1883,7 +1883,10 @@ const stageHasAutomation = useMemo(() => {
                                 stats={{ activeDays: daysInStage, eventsLogged: null, touchesFromUs: null, lastContact: null }}
                               />
                             )
-                          // 'emails' tab not yet wired — EmailsSidebar reserved for future use
+                          case 'emails':
+                            return candidate ? (
+                              <EmailsSidebarContainer candidateId={candidate.id} jobId={jobId} />
+                            ) : null
                           case 'comments':
                             return (
                               <CommentsSidebar mentions={[]} hiringTeamCount={0} />
