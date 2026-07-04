@@ -35,6 +35,7 @@ import { Link } from 'react-router-dom';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 import { normalizeToTemplateString } from '@/utils/templateStringNormalizer';
 import { AIDraftPopover } from './AIDraftPopover';
+import { BookingLinkPopover, type BookingCardPayload } from '@/components/chat/BookingLinkPopover';
 import { cn } from '@/lib/utils';
 
 const emailSchema = z.object({
@@ -112,6 +113,7 @@ export function EmailComposer({
   const formRef = useRef<HTMLFormElement>(null);
   const bodyEditorRef = useRef<BodyTemplateEditorHandle | null>(null);
   const [aiSuggestion, setAiSuggestion] = useState<{ title: string; reason: string; apply: () => void } | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
 
   const activeIdentities = identities.filter((id) => id.is_active);
 
@@ -151,6 +153,16 @@ export function EmailComposer({
   useEffect(() => { setValue('to', toChips.join(', ')); }, [toChips, setValue]);
   useEffect(() => { setValue('cc', ccChips.join(', ')); }, [ccChips, setValue]);
   useEffect(() => { setValue('bcc', bccChips.join(', ')); }, [bccChips, setValue]);
+
+  const insertBookingLinkIntoBody = useCallback((payload: BookingCardPayload) => {
+    const safeUrl = payload.url.replace(/"/g, '&quot;');
+    const label = payload.title || payload.url;
+    const snippet = `<p><a href="${safeUrl}">${label}</a><br/><span style="color:#8B8F9E;font-size:12px;">${payload.meta || ''}</span></p><p><br/></p>`;
+    const next = (bodyHtml || '') + snippet;
+    setBodyHtml(next);
+    setValue('body_html', next);
+  }, [bodyHtml, setValue]);
+
 
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -478,23 +490,6 @@ export function EmailComposer({
             <ToolbarIcon icon={<List className="h-3.5 w-3.5" />} label="List" />
             <ToolbarIcon icon={<LinkIcon className="h-3.5 w-3.5" />} label="Link" />
             <ToolbarDivider />
-            {templates.length > 0 && (
-              <TemplatePicker
-                templates={templates}
-                loading={loadingTemplates}
-                value={selectedTemplateId}
-                onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
-                trigger={
-                  <span
-                    className="inline-flex flex-nowrap items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0 leading-none"
-                    style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
-                  >
-                    <Sparkles className="h-3 w-3 shrink-0" />
-                    <span className="whitespace-nowrap">Templates</span>
-                  </span>
-                }
-              />
-            )}
             <VariablesPicker
               onSelect={(key) => bodyEditorRef.current?.insertPlaceholder(key)}
               trigger={
@@ -674,19 +669,33 @@ export function EmailComposer({
 
         {/* Footer */}
         <div
-          className="flex items-center gap-2 shrink-0"
+          className="relative flex items-center gap-2 shrink-0"
           style={{
             padding: '10px 16px',
             borderTop: '1px solid #F1F0EC',
             background: '#FAFAF7',
           }}
         >
+          <BookingLinkPopover
+            source={{ candidateId, jobId, associationId, jhsId }}
+            open={bookingOpen}
+            onOpenChange={setBookingOpen}
+            onPick={(payload) => {
+              insertBookingLinkIntoBody(payload);
+              setBookingOpen(false);
+            }}
+            anchorStyle={{ left: 12, right: 12, bottom: '100%', marginBottom: 8 }}
+          />
           <FooterIcon
             icon={<Paperclip className="h-3.5 w-3.5" />}
             label="Attach files"
             onClick={() => fileInputRef.current?.click()}
           />
-          <FooterIcon icon={<Calendar className="h-3.5 w-3.5" />} label="Insert availability" />
+          <FooterIcon
+            icon={<Calendar className="h-3.5 w-3.5" />}
+            label="Insert booking link"
+            onClick={() => setBookingOpen((v) => !v)}
+          />
           <FooterIcon icon={<Bookmark className="h-3.5 w-3.5" />} label="Save as template" />
           <div className="flex-1" />
           <span style={{ fontSize: 10.5, color: '#8B8F9E', fontFamily: 'Inter' }}>

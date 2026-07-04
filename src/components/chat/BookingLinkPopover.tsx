@@ -16,7 +16,11 @@ export interface BookingCardPayload {
 }
 
 interface Props {
-  threadId: string
+  threadId?: string
+  /** Alternative to threadId — pass known IDs directly (e.g., from the email composer). */
+  source?: { candidateId?: string | null; jobId?: string | null; associationId?: string | null; jhsId?: string | null }
+  /** Absolute positioning overrides (defaults suit the chat composer). */
+  anchorStyle?: React.CSSProperties
   open: boolean
   onOpenChange: (open: boolean) => void
   onPick: (payload: BookingCardPayload) => void
@@ -33,44 +37,60 @@ interface ThreadCtx {
   stageName: string | null
 }
 
-function useThreadBookingCtx(threadId: string | undefined, enabled: boolean) {
+function useBookingCtx(
+  threadId: string | undefined,
+  source: Props['source'] | undefined,
+  enabled: boolean,
+) {
   const [ctx, setCtx] = useState<ThreadCtx | null>(null)
   useEffect(() => {
     let alive = true
-    if (!threadId || !enabled) return
+    if (!enabled) return
+    if (!threadId && !source) return
     ;(async () => {
       const sb = supabase as any
-      const { data: row } = await sb
-        .from('chat_threads')
-        .select('candidate_id, job_id, association_id')
-        .eq('id', threadId)
-        .maybeSingle()
-      if (!row || !alive) return
+
+      let candidateId: string | null = source?.candidateId ?? null
+      let jobId: string | null = source?.jobId ?? null
+      let associationId: string | null = source?.associationId ?? null
+
+      if (threadId) {
+        const { data: row } = await sb
+          .from('chat_threads')
+          .select('candidate_id, job_id, association_id')
+          .eq('id', threadId)
+          .maybeSingle()
+        if (!row || !alive) return
+        candidateId = row.candidate_id ?? null
+        jobId = row.job_id ?? null
+        associationId = row.association_id ?? null
+      }
+
       const [cand, job, assoc] = await Promise.all([
-        row.candidate_id
-          ? sb.from('candidates').select('candidate_name, email').eq('id', row.candidate_id).maybeSingle()
+        candidateId
+          ? sb.from('candidates').select('candidate_name, email').eq('id', candidateId).maybeSingle()
           : Promise.resolve({ data: null }),
-        row.job_id
-          ? sb.from('jobs').select('title').eq('id', row.job_id).maybeSingle()
+        jobId
+          ? sb.from('jobs').select('title').eq('id', jobId).maybeSingle()
           : Promise.resolve({ data: null }),
-        row.association_id
+        associationId
           ? sb
               .from('job_candidate_associations')
               .select('id, current_stage_id')
-              .eq('id', row.association_id)
+              .eq('id', associationId)
               .maybeSingle()
-          : row.candidate_id && row.job_id
+          : candidateId && jobId
             ? sb
                 .from('job_candidate_associations')
                 .select('id, current_stage_id')
-                .eq('candidate_id', row.candidate_id)
-                .eq('job_id', row.job_id)
+                .eq('candidate_id', candidateId)
+                .eq('job_id', jobId)
                 .maybeSingle()
             : Promise.resolve({ data: null }),
       ])
       let stageName: string | null = null
-      const jhsId = assoc?.data?.current_stage_id ?? null
-      const associationId = assoc?.data?.id ?? row.association_id ?? null
+      const jhsId = source?.jhsId ?? assoc?.data?.current_stage_id ?? null
+      const resolvedAssocId = assoc?.data?.id ?? associationId ?? null
       if (jhsId) {
         const { data: hs } = await sb
           .from('job_hiring_stages')
@@ -82,9 +102,9 @@ function useThreadBookingCtx(threadId: string | undefined, enabled: boolean) {
       }
       if (!alive) return
       setCtx({
-        jobId: row.job_id ?? null,
-        candidateId: row.candidate_id ?? null,
-        associationId,
+        jobId,
+        candidateId,
+        associationId: resolvedAssocId,
         jhsId,
         jobTitle: job?.data?.title ?? null,
         candidateName: cand?.data?.candidate_name ?? null,
@@ -95,7 +115,7 @@ function useThreadBookingCtx(threadId: string | undefined, enabled: boolean) {
     return () => {
       alive = false
     }
-  }, [threadId, enabled])
+  }, [threadId, source?.candidateId, source?.jobId, source?.associationId, source?.jhsId, enabled])
   return ctx
 }
 
@@ -104,10 +124,10 @@ function useThreadBookingCtx(threadId: string | undefined, enabled: boolean) {
  * current-stage job link (if configured) + the signed-in recruiter's personal
  * link. Selecting a row inserts a booking-link card into the thread.
  */
-export function BookingLinkPopover({ threadId, open, onOpenChange, onPick }: Props) {
+export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpenChange, onPick }: Props) {
   const navigate = useNavigate()
   const rootRef = useRef<HTMLDivElement>(null)
-  const ctx = useThreadBookingCtx(threadId, open)
+  const ctx = useBookingCtx(threadId, source, open)
   const { config } = useBookingConfig()
   const { profile } = useUserProfile()
 
@@ -220,6 +240,7 @@ export function BookingLinkPopover({ threadId, open, onOpenChange, onPick }: Pro
         boxShadow: '0 12px 32px rgba(15,18,34,0.14)',
         padding: 14,
         zIndex: 30,
+        ...anchorStyle,
       }}
     >
       {/* Header */}
