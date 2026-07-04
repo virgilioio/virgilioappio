@@ -113,6 +113,16 @@ export function EmailComposer({
   const formRef = useRef<HTMLFormElement>(null);
   const bodyEditorRef = useRef<BodyTemplateEditorHandle | null>(null);
   const [aiSuggestion, setAiSuggestion] = useState<{ title: string; reason: string; apply: () => void } | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
+
+  const insertBookingLinkIntoBody = useCallback((payload: BookingCardPayload) => {
+    const safeUrl = payload.url.replace(/"/g, '&quot;');
+    const label = payload.title || payload.url;
+    const snippet = `<p><a href="${safeUrl}">${label}</a><br/><span style="color:#8B8F9E;font-size:12px;">${payload.meta || ''}</span></p><p><br/></p>`;
+    const next = (bodyHtml || '') + snippet;
+    setBodyHtml(next);
+    setValue('body_html', next);
+  }, [bodyHtml, setValue]);
 
   const activeIdentities = identities.filter((id) => id.is_active);
 
