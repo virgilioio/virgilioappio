@@ -408,12 +408,11 @@ export function EmailComposer({
                   value={selectedTemplateId}
                   onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
                   trigger={
-                    <button
-                      type="button"
+                    <span
                       style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
                     >
                       Change
-                    </button>
+                    </span>
                   }
                 />
               }
