@@ -29,7 +29,7 @@ interface AIDraftPopoverProps {
   children: React.ReactNode;
 }
 
-type ChipDef = { label: string; icon: React.ComponentType<{ className?: string }>; prompt: string };
+type ChipDef = { label: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement> & { size?: number | string }>; prompt: string };
 
 const DRAFT_CHIPS: ChipDef[] = [
   { label: 'Follow-up', icon: Reply, prompt: 'Write a friendly follow-up email to check on the candidate and keep them engaged.' },
