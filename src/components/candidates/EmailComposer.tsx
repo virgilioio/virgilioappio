@@ -110,6 +110,8 @@ export function EmailComposer({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const bodyEditorRef = useRef<BodyTemplateEditorHandle | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{ title: string; reason: string; apply: () => void } | null>(null);
 
   const activeIdentities = identities.filter((id) => id.is_active);
 
