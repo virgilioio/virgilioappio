@@ -408,12 +408,11 @@ export function EmailComposer({
                   value={selectedTemplateId}
                   onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
                   trigger={
-                    <button
-                      type="button"
+                    <span
                       style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
                     >
                       Change
-                    </button>
+                    </span>
                   }
                 />
               }
@@ -461,14 +460,13 @@ export function EmailComposer({
                 value={selectedTemplateId}
                 onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
                 trigger={
-                  <button
-                    type="button"
+                  <span
                     className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors"
                     style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
                   >
                     <Sparkles className="h-2.5 w-2.5" />
                     Templates
-                  </button>
+                  </span>
                 }
               />
             )}
@@ -788,8 +786,10 @@ function TemplatePicker({
       onValueChange={(v) => onChange(v === '__none__' ? null : v)}
       disabled={loading}
     >
-      <SelectTrigger asChild>
-        <div className="cursor-pointer">{trigger}</div>
+      <SelectTrigger
+        className="border-0 shadow-none bg-transparent p-0 h-auto w-auto hover:bg-transparent focus:ring-0 focus-visible:ring-0 [&>svg]:hidden"
+      >
+        {trigger}
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="__none__">No template</SelectItem>
