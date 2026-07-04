@@ -1658,6 +1658,19 @@ const stageHasAutomation = useMemo(() => {
                         </Card>
                       </>
                     )}
+                    {/* Emails Tab */}
+                    {activeTab === 'emails' && candidate && (
+                      <EmailsTabContent
+                        candidateId={candidate.id}
+                        jobId={jobId}
+                        onCompose={() => {
+                          resetEmailComposer()
+                          setEmailComposerOpen(true)
+                        }}
+                        onReply={handleEmailReply}
+                        onForward={handleEmailForward}
+                      />
+                    )}
 
                     {/* Comments Tab */}
                     {activeTab === 'comments' && (
