@@ -154,6 +154,16 @@ export function EmailComposer({
   useEffect(() => { setValue('cc', ccChips.join(', ')); }, [ccChips, setValue]);
   useEffect(() => { setValue('bcc', bccChips.join(', ')); }, [bccChips, setValue]);
 
+  const insertBookingLinkIntoBody = useCallback((payload: BookingCardPayload) => {
+    const safeUrl = payload.url.replace(/"/g, '&quot;');
+    const label = payload.title || payload.url;
+    const snippet = `<p><a href="${safeUrl}">${label}</a><br/><span style="color:#8B8F9E;font-size:12px;">${payload.meta || ''}</span></p><p><br/></p>`;
+    const next = (bodyHtml || '') + snippet;
+    setBodyHtml(next);
+    setValue('body_html', next);
+  }, [bodyHtml, setValue]);
+
+
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
