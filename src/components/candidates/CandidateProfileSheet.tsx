@@ -1266,6 +1266,7 @@ const stageHasAutomation = useMemo(() => {
                             ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
                             { value: 'activity', label: 'Activity', Icon: Activity },
+                            { value: 'emails', label: 'Emails', Icon: Mail },
                             { value: 'comments', label: 'Comments', Icon: MessageSquare },
                           ]}
                         />
