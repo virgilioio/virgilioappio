@@ -156,14 +156,17 @@ function buildQueue(
       const d = Math.floor(h / 24)
       const urgency: Urgency = d >= 2 ? 'overdue' : d >= 1 ? 'today' : 'normal'
       const waitLabel = d >= 1 ? `waiting ${d}d` : `waiting ${Math.max(1, h)}h`
+      const replyHref = a.jobId
+        ? `/jobs/${a.jobId}/candidates/${a.candidateId}?tab=communications`
+        : `/candidates/${a.candidateId}?tab=communications`
       out.push({
         id: `e-${a.id}`,
         type: 'reply',
         label: 'Reply needed',
         candidateName: a.candidateName,
         candidateId: a.candidateId,
-        context: `${a.jobTitle ?? ''}${a.emailSubject ? ` — ${a.emailSubject}` : ''}`,
-        href: `/jobs/${a.jobId}?candidate=${a.candidateId}&tab=communications`,
+        context: `${a.jobTitle || 'No job'}${a.emailSubject ? ` — ${a.emailSubject}` : ''}`,
+        href: replyHref,
         urgency,
         urgencyLabel: waitLabel,
         sortRank: urgency === 'overdue' ? -0.4 - d * 0.01 : urgency === 'today' ? 1.4 : 2.4,
