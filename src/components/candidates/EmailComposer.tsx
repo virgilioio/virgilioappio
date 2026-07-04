@@ -141,6 +141,12 @@ export function EmailComposer({
   const fromEmail = watch('from_email');
   const fromIdentity = activeIdentities.find((i) => i.email_address === fromEmail) || activeIdentities[0];
 
+  // Keep RHF fields in sync with chip state
+  useEffect(() => { setValue('to', toChips.join(', ')); }, [toChips, setValue]);
+  useEffect(() => { setValue('cc', ccChips.join(', ')); }, [ccChips, setValue]);
+  useEffect(() => { setValue('bcc', bccChips.join(', ')); }, [bccChips, setValue]);
+
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const newAttachments: Attachment[] = [];
