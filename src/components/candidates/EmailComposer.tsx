@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
+import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplateEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
+import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils';
 import {
   Paperclip,
   X,
@@ -107,6 +110,8 @@ export function EmailComposer({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const bodyEditorRef = useRef<BodyTemplateEditorHandle | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{ title: string; reason: string; apply: () => void } | null>(null);
 
   const activeIdentities = identities.filter((id) => id.is_active);
 
@@ -409,12 +414,12 @@ export function EmailComposer({
 
 
 
-          {/* Template */}
-          {appliedTemplate && (
-            <MetaRow
-              label="Template"
-              hairline={false}
-              right={
+          {/* Template — always visible */}
+          <MetaRow
+            label="Template"
+            hairline={false}
+            right={
+              appliedTemplate ? (
                 <TemplatePicker
                   templates={templates}
                   loading={loadingTemplates}
@@ -428,23 +433,30 @@ export function EmailComposer({
                     </span>
                   }
                 />
-              }
-            >
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5"
-                style={{
-                  background: '#EDE4FF',
-                  color: '#5B21B6',
-                  fontSize: 11,
-                  fontFamily: 'Poppins, sans-serif',
-                  fontWeight: 500,
-                }}
-              >
-                <Sparkles className="h-2.5 w-2.5" />
+              ) : null
+            }
+          >
+            {appliedTemplate ? (
+              <Badge tone="purple" size="sm" icon={Sparkles}>
                 {appliedTemplate.name}
-              </span>
-            </MetaRow>
-          )}
+              </Badge>
+            ) : (
+              <TemplatePicker
+                templates={templates}
+                loading={loadingTemplates}
+                value={selectedTemplateId}
+                onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
+                trigger={
+                  <span
+                    className="inline-flex items-center cursor-pointer hover:text-[#6F3FF5] transition-colors"
+                    style={{ fontSize: 12, color: '#8B8F9E', fontFamily: 'Inter' }}
+                  >
+                    Choose a template…
+                  </span>
+                }
+              />
+            )}
+          </MetaRow>
         </div>
 
         {/* Body region — flex column, editor grows to fill */}
@@ -466,7 +478,7 @@ export function EmailComposer({
             <ToolbarIcon icon={<List className="h-3.5 w-3.5" />} label="List" />
             <ToolbarIcon icon={<LinkIcon className="h-3.5 w-3.5" />} label="Link" />
             <ToolbarDivider />
-            {!appliedTemplate && templates.length > 0 && (
+            {templates.length > 0 && (
               <TemplatePicker
                 templates={templates}
                 loading={loadingTemplates}
@@ -474,23 +486,28 @@ export function EmailComposer({
                 onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
                 trigger={
                   <span
-                    className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0"
+                    className="inline-flex flex-nowrap items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0 leading-none"
                     style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
                   >
-                    <Sparkles className="h-2.5 w-2.5" />
-                    Templates
+                    <Sparkles className="h-3 w-3 shrink-0" />
+                    <span className="whitespace-nowrap">Templates</span>
                   </span>
                 }
               />
             )}
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0"
-              style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
-            >
-              <AtSign className="h-2.5 w-2.5" />
-              Variables
-            </button>
+            <VariablesPicker
+              onSelect={(key) => bodyEditorRef.current?.insertPlaceholder(key)}
+              trigger={
+                <button
+                  type="button"
+                  className="inline-flex flex-nowrap items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0 leading-none"
+                  style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
+                >
+                  <AtSign className="h-3 w-3 shrink-0" />
+                  <span className="whitespace-nowrap">Variables</span>
+                </button>
+              }
+            />
             <div className="flex-1 min-w-0" />
             {candidateId && jobId && (
               <AIDraftPopover
@@ -535,6 +552,7 @@ export function EmailComposer({
             )}
           >
             <BodyTemplateEditor
+              ref={bodyEditorRef}
               value={bodyHtml}
               onChange={(content) => {
                 setBodyHtml(content);
@@ -545,6 +563,63 @@ export function EmailComposer({
               minHeight="220px"
             />
           </div>
+
+          {/* Gio suggests — renders only when AI produces a real suggestion */}
+          {aiSuggestion && (
+            <div
+              className="flex items-center gap-2.5 shrink-0"
+              style={{
+                marginTop: 10,
+                padding: 10,
+                background: 'linear-gradient(180deg, #FAF8FF, #ffffff)',
+                border: '1px solid #EDE4FF',
+                borderRadius: 8,
+              }}
+            >
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{ width: 22, height: 22, borderRadius: 6, background: '#6F3FF5' }}
+              >
+                <Sparkles className="h-3 w-3" style={{ color: '#fff' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className="truncate"
+                  style={{ fontFamily: 'Poppins, sans-serif', fontSize: 11.5, fontWeight: 600, color: '#1F2230' }}
+                >
+                  Gio suggests · "{aiSuggestion.title}"
+                </div>
+                <div
+                  className="truncate"
+                  style={{ fontFamily: 'Inter, sans-serif', fontSize: 10.5, color: '#5A6072', marginTop: 1 }}
+                >
+                  {aiSuggestion.reason}
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  aiSuggestion.apply();
+                  setAiSuggestion(null);
+                }}
+                style={{ background: '#6F3FF5', color: '#fff' }}
+              >
+                Apply
+              </Button>
+              <button
+                type="button"
+                aria-label="Dismiss suggestion"
+                onClick={() => setAiSuggestion(null)}
+                className="shrink-0"
+                style={{ color: '#8B8F9E' }}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+
+
 
 
 
@@ -919,4 +994,72 @@ function applyTemplate(
   setBodyHtml(bodyNormalized);
   setValue('body_html', bodyNormalized);
   toast.success('Template applied');
+}
+
+// Variables picker — surfaces the existing AVAILABLE_PLACEHOLDERS system
+function VariablesPicker({
+  onSelect,
+  trigger,
+}: {
+  onSelect: (key: string) => void;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const grouped = AVAILABLE_PLACEHOLDERS.reduce<Record<string, typeof AVAILABLE_PLACEHOLDERS>>(
+    (acc, p) => {
+      (acc[p.category] ||= []).push(p);
+      return acc;
+    },
+    {},
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-64 p-1 max-h-[320px] overflow-auto"
+      >
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category} className="mb-1 last:mb-0">
+            <div
+              className="px-2 pt-1.5 pb-1"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: '#8B8F9E',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 600,
+              }}
+            >
+              {category}
+            </div>
+            {items.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => {
+                  onSelect(p.value);
+                  setOpen(false);
+                }}
+                className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-[#F1F0EC] transition-colors"
+              >
+                <span style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}>
+                  {p.label}
+                </span>
+                <span
+                  className="font-mono truncate max-w-[110px]"
+                  style={{ fontSize: 10.5, color: '#8B8F9E' }}
+                >
+                  {p.value}
+                </span>
+              </button>
+            ))}
+          </div>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
 }
