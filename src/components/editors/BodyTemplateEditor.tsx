@@ -194,7 +194,7 @@ function BodyEditorInner({
 
   return (
     <div className={cn("border rounded-brand bg-surface-primary", className)}>
-      <Toolbar />
+      {!hideToolbar && <Toolbar />}
       <div className="relative" style={{ minHeight }}>
         <RichTextPlugin
           contentEditable={
