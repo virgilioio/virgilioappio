@@ -217,9 +217,37 @@ export default function Dashboard() {
   const openJobs = useMemo(() => (jobs ?? []).filter(j => j.status === 'open'), [jobs])
   const { data: jobMetrics } = usePipelineJobMetrics(openJobs.map(j => j.id))
 
-  const queue = useMemo(() => buildQueue(pending, newApps), [pending, newApps])
+  const rawQueue = useMemo(() => buildQueue(pending, newApps), [pending, newApps])
   const [filter, setFilter] = useState<'all' | QueueType>('all')
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
+
+  // Persist dismissed ("done") queue items per-user with a 7-day expiry.
+  const dismissKey = user?.id ? `dashboard.queue.dismissed.${user.id}` : null
+  const [doneIds, setDoneIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined' || !dismissKey) return new Set()
+    try {
+      const raw = window.localStorage.getItem(dismissKey)
+      if (!raw) return new Set()
+      const parsed = JSON.parse(raw) as { id: string; dismissedAt: number }[]
+      const cutoff = Date.now() - 7 * 86_400_000
+      return new Set(parsed.filter(p => p.dismissedAt >= cutoff).map(p => p.id))
+    } catch {
+      return new Set()
+    }
+  })
+
+  const persistDone = (next: Set<string>) => {
+    if (typeof window === 'undefined' || !dismissKey) return
+    try {
+      const now = Date.now()
+      const payload = Array.from(next).map(id => ({ id, dismissedAt: now }))
+      window.localStorage.setItem(dismissKey, JSON.stringify(payload))
+    } catch {
+      /* ignore quota errors */
+    }
+  }
+
+  // Hide dismissed rows entirely so counts + list stay consistent after reload.
+  const queue = useMemo(() => rawQueue.filter(q => !doneIds.has(q.id)), [rawQueue, doneIds])
 
   const counts = useMemo(() => {
     const c = { all: queue.length, scorecard: 0, decision: 0, reply: 0, application: 0 }
