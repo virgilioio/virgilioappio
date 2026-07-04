@@ -742,7 +742,7 @@ export default function IndependentCandidateProfile() {
             onOpenChange={setEmailComposerOpen}
             candidateId={candidate.id}
             defaultTo={emailComposerTo ?? candidate.email ?? undefined}
-            candidateName={`${candidate.first_name ?? ''} ${candidate.last_name ?? ''}`.trim() || undefined}
+            candidateName={candidate.candidate_name || undefined}
             mode={emailComposerMode}
             inReplyToMessageId={emailComposerReplyToId}
             defaultSubject={emailComposerSubject}
