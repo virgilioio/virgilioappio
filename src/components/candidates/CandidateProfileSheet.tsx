@@ -473,7 +473,8 @@ const stageHasAutomation = useMemo(() => {
       let initialTab: typeof activeTab = 'job'
       if (typeof window !== 'undefined') {
         const tabParam = new URLSearchParams(window.location.search).get('tab')
-        if (tabParam === 'communications' || tabParam === 'activity') initialTab = 'activity'
+        if (tabParam === 'communications' || tabParam === 'emails') initialTab = 'emails'
+        else if (tabParam === 'activity') initialTab = 'activity'
       }
       setActiveTab(initialTab)
     }
