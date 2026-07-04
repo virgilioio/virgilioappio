@@ -34,6 +34,10 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
+import { EmailsTabContent } from '@/components/candidates/profile/tabs/EmailsTabContent'
+import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
+import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistoryCard'
+import { getReplySubject, getForwardSubject, formatQuotedReply, formatForwardedMessage } from '@/utils/emailFormatUtils'
 
 import { useIndependentCandidates, type IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations'
