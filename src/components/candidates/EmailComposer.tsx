@@ -523,14 +523,7 @@ export function EmailComposer({
 
           {/* Editor */}
           <div
-            style={{
-              background: '#fff',
-              border: '1px solid #E0DDD3',
-              borderRadius: 8,
-              padding: 12,
-              minHeight: 200,
-            }}
-            className="[&_.lexical-root]:min-h-[180px] [&_.lexical-root]:outline-none"
+            className="[&_.lexical-root]:min-h-[260px] [&_.lexical-root]:outline-none [&>div]:border-[#E0DDD3] [&>div]:rounded-lg"
           >
             <BodyTemplateEditor
               value={bodyHtml}
@@ -539,8 +532,11 @@ export function EmailComposer({
                 setValue('body_html', content);
               }}
               placeholder="Write your message…"
+              hideToolbar
+              minHeight="260px"
             />
           </div>
+
 
           {errors.body_html && (
             <p className="mt-2" style={{ fontSize: 11, color: 'hsl(var(--destructive))' }}>
