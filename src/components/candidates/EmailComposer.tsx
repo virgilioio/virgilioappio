@@ -334,11 +334,10 @@ export function EmailComposer({
               </div>
             }
           >
-            <input
-              {...register('to')}
-              placeholder="Add recipient"
-              className="w-full bg-transparent border-0 outline-none p-0"
-              style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}
+            <ChipInput
+              value={toChips}
+              onChange={setToChips}
+              placeholder="Add recipient…"
             />
           </MetaRow>
 
@@ -351,7 +350,7 @@ export function EmailComposer({
                   type="button"
                   onClick={() => {
                     setShowCC(false);
-                    setValue('cc', '');
+                    setCcChips([]);
                   }}
                   style={{ color: '#8B8F9E' }}
                 >
@@ -359,11 +358,10 @@ export function EmailComposer({
                 </button>
               }
             >
-              <input
-                {...register('cc')}
-                placeholder="cc@example.com"
-                className="w-full bg-transparent border-0 outline-none p-0"
-                style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}
+              <ChipInput
+                value={ccChips}
+                onChange={setCcChips}
+                placeholder="Add recipient…"
               />
             </MetaRow>
           )}
@@ -376,7 +374,7 @@ export function EmailComposer({
                   type="button"
                   onClick={() => {
                     setShowBCC(false);
-                    setValue('bcc', '');
+                    setBccChips([]);
                   }}
                   style={{ color: '#8B8F9E' }}
                 >
@@ -384,29 +382,30 @@ export function EmailComposer({
                 </button>
               }
             >
-              <input
-                {...register('bcc')}
-                placeholder="bcc@example.com"
-                className="w-full bg-transparent border-0 outline-none p-0"
-                style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}
+              <ChipInput
+                value={bccChips}
+                onChange={setBccChips}
+                placeholder="Add recipient…"
               />
             </MetaRow>
           )}
 
           {/* Subject */}
           <MetaRow label="Subject" hairline={!!appliedTemplate}>
-            <div className="w-full [&_.lexical-root]:min-h-[18px] [&_.lexical-paragraph]:m-0">
-              <SubjectTemplateEditor
-                id="subject"
-                value={subjectHtml}
-                onChange={(value) => {
-                  setSubjectHtml(value);
-                  setValue('subject', value);
-                }}
-                placeholder="Subject"
-              />
-            </div>
+            <input
+              type="text"
+              value={subjectHtml}
+              onChange={(e) => {
+                setSubjectHtml(e.target.value);
+                setValue('subject', e.target.value);
+              }}
+              placeholder="Subject"
+              className="w-full bg-transparent border-0 outline-none p-0 placeholder:text-[#8B8F9E]"
+              style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter', fontWeight: 500 }}
+            />
           </MetaRow>
+
+
 
           {/* Template */}
           {appliedTemplate && (
