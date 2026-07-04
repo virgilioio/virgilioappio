@@ -490,23 +490,6 @@ export function EmailComposer({
             <ToolbarIcon icon={<List className="h-3.5 w-3.5" />} label="List" />
             <ToolbarIcon icon={<LinkIcon className="h-3.5 w-3.5" />} label="Link" />
             <ToolbarDivider />
-            {templates.length > 0 && (
-              <TemplatePicker
-                templates={templates}
-                loading={loadingTemplates}
-                value={selectedTemplateId}
-                onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
-                trigger={
-                  <span
-                    className="inline-flex flex-nowrap items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0 leading-none"
-                    style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
-                  >
-                    <Sparkles className="h-3 w-3 shrink-0" />
-                    <span className="whitespace-nowrap">Templates</span>
-                  </span>
-                }
-              />
-            )}
             <VariablesPicker
               onSelect={(key) => bodyEditorRef.current?.insertPlaceholder(key)}
               trigger={
