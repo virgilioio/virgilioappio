@@ -181,13 +181,14 @@ function buildQueue(
   for (const app of apps ?? []) {
     const d = daysSince(app.enteredAt)
     const urgency: Urgency = d >= 5 ? 'overdue' : d >= 2 ? 'today' : 'normal'
+    const appJobTitle = cleanJob(app.jobTitle)
     out.push({
       id: `a-${app.associationId}`,
       type: 'application',
       label: 'New application',
       candidateName: app.candidateName,
       candidateId: app.candidateId,
-      context: `${app.jobTitle} — applied${app.source ? ` via ${app.source}` : ''}`,
+      context: `${appJobTitle} — applied${app.source ? ` via ${app.source}` : ''}`,
       href: `/jobs/${app.jobId}?candidate=${app.candidateId}`,
       urgency,
       urgencyLabel: d === 0 ? 'just now' : `${d}d in queue`,
