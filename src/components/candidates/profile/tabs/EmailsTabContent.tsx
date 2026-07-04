@@ -73,9 +73,8 @@ export default EmailsTabContent
 // Sidebar container — derives Engagement/Activity/Connected-inbox
 // props from the same email_logs feed the tab uses.
 // ────────────────────────────────────────────────────────────────
-import { EmailsSidebar } from '@/components/candidates/profile/tabs/SidebarRouter'
-import { useEffect, useState } from 'react'
-import { supabase } from '@/integrations/supabase/client'
+
+
 
 export function EmailsSidebarContainer({ candidateId, jobId }: { candidateId: string; jobId?: string }) {
   const { data: emails } = useEmailLogs(candidateId, jobId)
