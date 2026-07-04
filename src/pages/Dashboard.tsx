@@ -309,17 +309,22 @@ export default function Dashboard() {
   const toggleDone = (item: QueueItem) => {
     setDoneIds(prev => {
       const next = new Set(prev)
-      if (next.has(item.id)) next.delete(item.id)
+      const wasDone = next.has(item.id)
+      if (wasDone) next.delete(item.id)
       else next.add(item.id)
+      persistDone(next)
       return next
     })
-    // Optimistic email-read for reply rows
+    // Optimistic email-read for reply rows (only when marking done, not undoing)
     if (item.type === 'reply' && item.emailId && !doneIds.has(item.id)) {
-      void supabase
+      supabase
         .from('email_logs')
         .update({ is_read: true })
         .eq('id', item.emailId)
-        .then(() => queryClient.invalidateQueries({ queryKey: ['pending-activities'] }))
+        .then(({ error }) => {
+          if (error) console.error('Failed to mark email as read', error)
+          queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+        })
     }
   }
 
