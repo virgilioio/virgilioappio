@@ -1,16 +1,37 @@
-## Objective
-Add the job name below the candidate’s name in both the Chat conversation list and the candidate context pane.
+## Problem
 
-## Changes
+Clicking the trash icon on a hiring-plan stage does nothing — no confirm dialog, no error, no toast.
 
-### 1. Conversation list row (`src/components/chat/ConversationListPane.tsx`)
-- Update Line 2 (currently role + stage badge) to display the **job title** as the primary subtitle under the candidate name.
-- Keep the stage badge on the same line or adjust layout so job name is clearly visible.
+## Root cause
 
-### 2. Context snapshot (`src/components/chat/ContextSnapshot.tsx`)
-- Insert a new line directly under the candidate name showing `jobTitle`.
-- Keep the existing location line below it; remove or demote the current role/company line since job name now occupies that position.
+`DraggableStageItem` is documented (and typed) so that `onRemove` receives the row's **instance id** (persisted `jhsId` or the temporary client id used for unsaved rows). The parent `HiringPlanTab.handleRemoveRowRequest` looks the row up by `instanceId`:
 
-## Technical details
-- `ChatThreadRow` from `useChatThreads` already carries `job?.title`, and `ContextSnapshotData` already carries `jobTitle`, so no backend or hook changes are required.
-- Both edits are presentational-only (layout + copy). No new dependencies or state logic.
+```ts
+const row = planRows.find((r) => r.instanceId === instanceId)
+if (!row) return   // ← silent early-return
+```
+
+But inside `DraggableStageItem` the click handler is wired to the wrong value:
+
+```tsx
+onClick={(e) => {
+  e.stopPropagation()
+  onRemove(stage.id)   // ← passes job_stages.id, not the row's instanceId
+}}
+```
+
+`stage.id` is the shared `job_stages` catalog id, never equal to a row's `instanceId`, so `find(...)` returns undefined and the handler silently bails out. This affects both the Create Job wizard and the Edit Job hiring plan tab (both render the same component).
+
+## Fix
+
+Change one line in `src/components/jobs/DraggableStageItem.tsx` (line ~152) inside the delete `<Button>` onClick:
+
+- Replace `onRemove(stage.id)` with `onRemove(instanceId)`.
+
+That's it — `instanceId` is already a prop on the component and is the value the handler expects.
+
+## Verification
+
+- In Edit Job → Hiring Plan: click trash on a non-default stage → confirmation dialog opens with the candidate-count check, then removal saves and toast appears.
+- In Create Job wizard: click trash on a newly added stage → row is removed from the unsaved plan.
+- Default/locked stages still hide the trash button (unchanged).

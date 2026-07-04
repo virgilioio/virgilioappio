@@ -149,7 +149,7 @@ export function DraggableStageItem({ stage, index, onRemove, onConfigure, instan
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onRemove(stage.id)
+                  onRemove(instanceId)
                 }}
                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 title="Remove stage"
