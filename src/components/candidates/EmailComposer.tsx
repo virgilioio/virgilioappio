@@ -401,10 +401,11 @@ export function EmailComposer({
                 setValue('subject', e.target.value);
               }}
               placeholder="Subject"
-              className="w-full bg-transparent border-0 outline-none p-0 placeholder:text-[#8B8F9E]"
-              style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter', fontWeight: 500 }}
+              className="w-full bg-transparent border-0 outline-none p-0 placeholder:text-[#8B8F9E] placeholder:font-normal"
+              style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter', fontWeight: 400 }}
             />
           </MetaRow>
+
 
 
 
