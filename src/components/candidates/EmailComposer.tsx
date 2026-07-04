@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
+import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplateEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
+import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils';
 import {
   Paperclip,
   X,
