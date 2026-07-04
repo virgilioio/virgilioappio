@@ -509,6 +509,7 @@ export function EmailComposer({
                 candidateId={candidateId}
                 jobId={jobId}
                 senderName={fromIdentity?.display_name || undefined}
+                currentBody={bodyHtml}
                 onInsert={(subject, body) => {
                   setSubjectHtml(subject);
                   setValue('subject', subject);
