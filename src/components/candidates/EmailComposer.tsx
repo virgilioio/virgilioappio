@@ -995,3 +995,71 @@ function applyTemplate(
   setValue('body_html', bodyNormalized);
   toast.success('Template applied');
 }
+
+// Variables picker — surfaces the existing AVAILABLE_PLACEHOLDERS system
+function VariablesPicker({
+  onSelect,
+  trigger,
+}: {
+  onSelect: (key: string) => void;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const grouped = AVAILABLE_PLACEHOLDERS.reduce<Record<string, typeof AVAILABLE_PLACEHOLDERS>>(
+    (acc, p) => {
+      (acc[p.category] ||= []).push(p);
+      return acc;
+    },
+    {},
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-64 p-1 max-h-[320px] overflow-auto"
+      >
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category} className="mb-1 last:mb-0">
+            <div
+              className="px-2 pt-1.5 pb-1"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: '#8B8F9E',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 600,
+              }}
+            >
+              {category}
+            </div>
+            {items.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => {
+                  onSelect(p.value);
+                  setOpen(false);
+                }}
+                className="w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left hover:bg-[#F1F0EC] transition-colors"
+              >
+                <span style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}>
+                  {p.label}
+                </span>
+                <span
+                  className="font-mono truncate max-w-[110px]"
+                  style={{ fontSize: 10.5, color: '#8B8F9E' }}
+                >
+                  {p.value}
+                </span>
+              </button>
+            ))}
+          </div>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
