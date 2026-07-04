@@ -447,11 +447,11 @@ export function EmailComposer({
           )}
         </div>
 
-        {/* Body region (scrolls) */}
-        <div className="flex-1 min-h-0 overflow-auto" style={{ padding: '12px 16px' }}>
-          {/* Toolbar */}
+        {/* Body region — flex column, editor grows to fill */}
+        <div className="flex-1 min-h-0 flex flex-col" style={{ padding: '12px 16px' }}>
+          {/* Toolbar — single row, no wrap */}
           <div
-            className="flex items-center gap-0.5 mb-2.5"
+            className="flex items-center gap-1 mb-2.5 shrink-0 flex-nowrap overflow-hidden"
             style={{
               padding: '5px 8px',
               background: '#FAFAF7',
@@ -474,7 +474,7 @@ export function EmailComposer({
                 onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
                 trigger={
                   <span
-                    className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors"
+                    className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0"
                     style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
                   >
                     <Sparkles className="h-2.5 w-2.5" />
@@ -485,13 +485,13 @@ export function EmailComposer({
             )}
             <button
               type="button"
-              className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors"
+              className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0"
               style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
             >
               <AtSign className="h-2.5 w-2.5" />
               Variables
             </button>
-            <div className="flex-1" />
+            <div className="flex-1 min-w-0" />
             {candidateId && jobId && (
               <AIDraftPopover
                 candidateId={candidateId}
@@ -507,7 +507,7 @@ export function EmailComposer({
               >
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 h-6 px-2.5 rounded-md transition-colors"
+                  className="inline-flex items-center gap-1 h-6 px-2.5 rounded-md transition-colors whitespace-nowrap shrink-0"
                   style={{
                     background: '#EDE4FF',
                     color: '#5B21B6',
@@ -523,9 +523,16 @@ export function EmailComposer({
             )}
           </div>
 
-          {/* Editor */}
+          {/* Editor — grows to fill remaining space */}
           <div
-            className="[&_.lexical-root]:min-h-[260px] [&_.lexical-root]:outline-none [&>div]:border-[#E0DDD3] [&>div]:rounded-lg"
+            className={cn(
+              'flex-1 min-h-0 flex flex-col',
+              '[&>div]:flex-1 [&>div]:flex [&>div]:flex-col [&>div]:min-h-0',
+              '[&>div]:border [&>div]:border-[#E0DDD3] [&>div]:rounded-lg [&>div]:bg-white',
+              '[&_.lexical-root]:flex-1 [&_.lexical-root]:min-h-[220px] [&_.lexical-root]:outline-none [&_.lexical-root]:overflow-auto',
+              '[&_.lexical-root]:text-[13px] [&_.lexical-root]:leading-[1.6] [&_.lexical-root]:text-[#1F2230]',
+              '[&_.lexical-editor-placeholder]:!text-[13px] [&_.lexical-editor-placeholder]:!leading-[1.6] [&_.lexical-editor-placeholder]:!font-normal [&_.lexical-editor-placeholder]:!text-[#8B8F9E] [&_.lexical-editor-placeholder]:!top-3 [&_.lexical-editor-placeholder]:!left-3',
+            )}
           >
             <BodyTemplateEditor
               value={bodyHtml}
@@ -535,9 +542,10 @@ export function EmailComposer({
               }}
               placeholder="Write your message…"
               hideToolbar
-              minHeight="260px"
+              minHeight="220px"
             />
           </div>
+
 
 
           {errors.body_html && (
