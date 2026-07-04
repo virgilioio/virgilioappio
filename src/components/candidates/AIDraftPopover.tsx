@@ -86,8 +86,10 @@ export function AIDraftPopover({
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (wrapperRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('mousedown', onDown);
