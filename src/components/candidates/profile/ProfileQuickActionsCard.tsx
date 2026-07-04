@@ -36,7 +36,7 @@ export function ProfileQuickActionsCard({
         <Button variant="secondary" size="md" icon={ArrowLeftRight} onClick={onAddTransfer} className="w-full justify-center">
           Add/Transfer to job
         </Button>
-        {!isRejected && !isHired && (
+        {isOfferStatus && (
           <Button variant="purple" size="md" icon={FileText} onClick={onCreateOffer} className="w-full justify-center">
             Create offer
           </Button>
