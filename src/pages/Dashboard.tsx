@@ -168,7 +168,7 @@ function buildQueue(
         label: 'Reply needed',
         candidateName: a.candidateName,
         candidateId: a.candidateId,
-        context: `${a.jobTitle || 'No job'}${a.emailSubject ? ` — ${a.emailSubject}` : ''}`,
+        context: `${jobTitle}${a.emailSubject ? ` — ${a.emailSubject}` : ''}`,
         href: replyHref,
         urgency,
         urgencyLabel: waitLabel,
