@@ -460,14 +460,13 @@ export function EmailComposer({
                 value={selectedTemplateId}
                 onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
                 trigger={
-                  <button
-                    type="button"
+                  <span
                     className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors"
                     style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
                   >
                     <Sparkles className="h-2.5 w-2.5" />
                     Templates
-                  </button>
+                  </span>
                 }
               />
             )}
