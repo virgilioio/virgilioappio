@@ -669,19 +669,33 @@ export function EmailComposer({
 
         {/* Footer */}
         <div
-          className="flex items-center gap-2 shrink-0"
+          className="relative flex items-center gap-2 shrink-0"
           style={{
             padding: '10px 16px',
             borderTop: '1px solid #F1F0EC',
             background: '#FAFAF7',
           }}
         >
+          <BookingLinkPopover
+            source={{ candidateId, jobId, associationId, jhsId }}
+            open={bookingOpen}
+            onOpenChange={setBookingOpen}
+            onPick={(payload) => {
+              insertBookingLinkIntoBody(payload);
+              setBookingOpen(false);
+            }}
+            anchorStyle={{ left: 12, right: 12, bottom: '100%', marginBottom: 8 }}
+          />
           <FooterIcon
             icon={<Paperclip className="h-3.5 w-3.5" />}
             label="Attach files"
             onClick={() => fileInputRef.current?.click()}
           />
-          <FooterIcon icon={<Calendar className="h-3.5 w-3.5" />} label="Insert availability" />
+          <FooterIcon
+            icon={<Calendar className="h-3.5 w-3.5" />}
+            label="Insert booking link"
+            onClick={() => setBookingOpen((v) => !v)}
+          />
           <FooterIcon icon={<Bookmark className="h-3.5 w-3.5" />} label="Save as template" />
           <div className="flex-1" />
           <span style={{ fontSize: 10.5, color: '#8B8F9E', fontFamily: 'Inter' }}>
