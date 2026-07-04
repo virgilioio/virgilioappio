@@ -148,9 +148,9 @@ export function MinimizableEmailComposer({
           'bg-white'
         )}
         style={{
-          width: 660,
-          maxWidth: 'min(95vw, 660px)',
-          maxHeight: 'min(760px, 90vh)',
+          width: 680,
+          maxWidth: 'min(95vw, 680px)',
+          height: 'min(84vh, 720px)',
           borderRadius: 14,
           border: '1px solid #E7E8EE',
           boxShadow:
