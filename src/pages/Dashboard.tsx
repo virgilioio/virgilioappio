@@ -661,23 +661,6 @@ function QueueRow({
         {item.urgencyLabel}
       </span>
 
-      {/* Avatar */}
-      <div
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 999,
-          background: C.purpleLight,
-          color: C.purpleText,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          font: '600 9px/1 Poppins',
-          flexShrink: 0,
-        }}
-      >
-        {initials(item.candidateName)}
-      </div>
     </div>
   )
 }
