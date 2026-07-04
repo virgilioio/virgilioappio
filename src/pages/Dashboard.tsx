@@ -120,7 +120,10 @@ function buildQueue(
 ): QueueItem[] {
   const out: QueueItem[] = []
 
+  const cleanJob = (t?: string | null) => (t && t !== 'Unknown Job' ? t : 'No job')
+
   for (const a of activities ?? []) {
+    const jobTitle = cleanJob(a.jobTitle)
     if (a.type === 'scorecard') {
       const d = daysSince(a.timestamp)
       const urgency: Urgency = d >= 1 ? 'overdue' : 'today'
@@ -130,7 +133,7 @@ function buildQueue(
         label: 'Scorecard due',
         candidateName: a.candidateName,
         candidateId: a.candidateId,
-        context: a.jobTitle ? `${a.jobTitle} — interviewed ${d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`}` : '',
+        context: `${jobTitle} — interviewed ${d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`}`,
         href: `/jobs/${a.jobId}?candidate=${a.candidateId}&open=scorecard&stage=${a.stageInstanceId ?? ''}`,
         urgency,
         urgencyLabel: urgency === 'overdue' ? `${d}d overdue` : 'due today',
@@ -145,7 +148,7 @@ function buildQueue(
         label: 'Stage decision',
         candidateName: a.candidateName,
         candidateId: a.candidateId,
-        context: `${a.jobTitle ?? ''} — ${d > 0 ? `${d} days` : 'today'} in ${a.stageName ?? 'Stage'}`,
+        context: `${jobTitle} — ${d > 0 ? `${d} days` : 'today'} in ${a.stageName ?? 'Stage'}`,
         href: `/jobs/${a.jobId}?candidate=${a.candidateId}`,
         urgency,
         urgencyLabel: d >= 7 ? `stuck ${d}d` : d > 0 ? `waiting ${d}d` : 'today',
