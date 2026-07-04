@@ -16,7 +16,11 @@ export interface BookingCardPayload {
 }
 
 interface Props {
-  threadId: string
+  threadId?: string
+  /** Alternative to threadId — pass known IDs directly (e.g., from the email composer). */
+  source?: { candidateId?: string | null; jobId?: string | null; associationId?: string | null; jhsId?: string | null }
+  /** Absolute positioning overrides (defaults suit the chat composer). */
+  anchorStyle?: React.CSSProperties
   open: boolean
   onOpenChange: (open: boolean) => void
   onPick: (payload: BookingCardPayload) => void
