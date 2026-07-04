@@ -414,12 +414,12 @@ export function EmailComposer({
 
 
 
-          {/* Template */}
-          {appliedTemplate && (
-            <MetaRow
-              label="Template"
-              hairline={false}
-              right={
+          {/* Template — always visible */}
+          <MetaRow
+            label="Template"
+            hairline={false}
+            right={
+              appliedTemplate ? (
                 <TemplatePicker
                   templates={templates}
                   loading={loadingTemplates}
@@ -433,23 +433,30 @@ export function EmailComposer({
                     </span>
                   }
                 />
-              }
-            >
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5"
-                style={{
-                  background: '#EDE4FF',
-                  color: '#5B21B6',
-                  fontSize: 11,
-                  fontFamily: 'Poppins, sans-serif',
-                  fontWeight: 500,
-                }}
-              >
-                <Sparkles className="h-2.5 w-2.5" />
+              ) : null
+            }
+          >
+            {appliedTemplate ? (
+              <Badge tone="purple" size="sm" icon={Sparkles}>
                 {appliedTemplate.name}
-              </span>
-            </MetaRow>
-          )}
+              </Badge>
+            ) : (
+              <TemplatePicker
+                templates={templates}
+                loading={loadingTemplates}
+                value={selectedTemplateId}
+                onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
+                trigger={
+                  <span
+                    className="inline-flex items-center cursor-pointer hover:text-[#6F3FF5] transition-colors"
+                    style={{ fontSize: 12, color: '#8B8F9E', fontFamily: 'Inter' }}
+                  >
+                    Choose a template…
+                  </span>
+                }
+              />
+            )}
+          </MetaRow>
         </div>
 
         {/* Body region — flex column, editor grows to fill */}
