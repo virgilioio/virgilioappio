@@ -1,10 +1,14 @@
+import { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { EmailHistoryList } from '@/components/candidates/EmailHistoryList'
+import { EmailsSidebar } from '@/components/candidates/profile/tabs/SidebarRouter'
 import { useEmailLogs } from '@/hooks/useEmailLogs'
-import { formatDistanceToNow } from 'date-fns'
+import { supabase } from '@/integrations/supabase/client'
 import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistoryCard'
+
 
 interface EmailsTabContentProps {
   candidateId: string
