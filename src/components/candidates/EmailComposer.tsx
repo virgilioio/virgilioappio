@@ -552,6 +552,7 @@ export function EmailComposer({
             )}
           >
             <BodyTemplateEditor
+              ref={bodyEditorRef}
               value={bodyHtml}
               onChange={(content) => {
                 setBodyHtml(content);
@@ -562,6 +563,63 @@ export function EmailComposer({
               minHeight="220px"
             />
           </div>
+
+          {/* Gio suggests — renders only when AI produces a real suggestion */}
+          {aiSuggestion && (
+            <div
+              className="flex items-center gap-2.5 shrink-0"
+              style={{
+                marginTop: 10,
+                padding: 10,
+                background: 'linear-gradient(180deg, #FAF8FF, #ffffff)',
+                border: '1px solid #EDE4FF',
+                borderRadius: 8,
+              }}
+            >
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{ width: 22, height: 22, borderRadius: 6, background: '#6F3FF5' }}
+              >
+                <Sparkles className="h-3 w-3" style={{ color: '#fff' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className="truncate"
+                  style={{ fontFamily: 'Poppins, sans-serif', fontSize: 11.5, fontWeight: 600, color: '#1F2230' }}
+                >
+                  Gio suggests · "{aiSuggestion.title}"
+                </div>
+                <div
+                  className="truncate"
+                  style={{ fontFamily: 'Inter, sans-serif', fontSize: 10.5, color: '#5A6072', marginTop: 1 }}
+                >
+                  {aiSuggestion.reason}
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  aiSuggestion.apply();
+                  setAiSuggestion(null);
+                }}
+                style={{ background: '#6F3FF5', color: '#fff' }}
+              >
+                Apply
+              </Button>
+              <button
+                type="button"
+                aria-label="Dismiss suggestion"
+                onClick={() => setAiSuggestion(null)}
+                className="shrink-0"
+                style={{ color: '#8B8F9E' }}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+
+
 
 
 
