@@ -214,9 +214,10 @@ export function EmailComposer({
     setShowBCC(false);
     setSelectedTemplateId(null);
     setValue('subject', '');
-    setValue('cc', '');
-    setValue('bcc', '');
-    if (!defaultTo) setValue('to', '');
+    setCcChips([]);
+    setBccChips([]);
+    if (!defaultTo) setToChips([]);
+
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     onSuccess?.();
