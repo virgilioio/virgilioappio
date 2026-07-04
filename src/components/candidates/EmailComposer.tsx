@@ -815,7 +815,7 @@ function ChipInput({
     </div>
   );
 }
-}
+
 
 function ToolbarIcon({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
   return (
