@@ -478,7 +478,7 @@ export function EmailComposer({
             <ToolbarIcon icon={<List className="h-3.5 w-3.5" />} label="List" />
             <ToolbarIcon icon={<LinkIcon className="h-3.5 w-3.5" />} label="Link" />
             <ToolbarDivider />
-            {!appliedTemplate && templates.length > 0 && (
+            {templates.length > 0 && (
               <TemplatePicker
                 templates={templates}
                 loading={loadingTemplates}
@@ -486,23 +486,28 @@ export function EmailComposer({
                 onChange={(id) => applyTemplate(id, templates, setSelectedTemplateId, setSubjectHtml, setBodyHtml, setValue)}
                 trigger={
                   <span
-                    className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0"
+                    className="inline-flex flex-nowrap items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0 leading-none"
                     style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
                   >
-                    <Sparkles className="h-2.5 w-2.5" />
-                    Templates
+                    <Sparkles className="h-3 w-3 shrink-0" />
+                    <span className="whitespace-nowrap">Templates</span>
                   </span>
                 }
               />
             )}
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0"
-              style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
-            >
-              <AtSign className="h-2.5 w-2.5" />
-              Variables
-            </button>
+            <VariablesPicker
+              onSelect={(key) => bodyEditorRef.current?.insertPlaceholder(key)}
+              trigger={
+                <button
+                  type="button"
+                  className="inline-flex flex-nowrap items-center gap-1 h-6 px-2 rounded hover:bg-white transition-colors whitespace-nowrap shrink-0 leading-none"
+                  style={{ color: '#5A6072', fontSize: 11, fontFamily: 'Inter' }}
+                >
+                  <AtSign className="h-3 w-3 shrink-0" />
+                  <span className="whitespace-nowrap">Variables</span>
+                </button>
+              }
+            />
             <div className="flex-1 min-w-0" />
             {candidateId && jobId && (
               <AIDraftPopover
