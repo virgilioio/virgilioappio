@@ -788,8 +788,10 @@ function TemplatePicker({
       onValueChange={(v) => onChange(v === '__none__' ? null : v)}
       disabled={loading}
     >
-      <SelectTrigger asChild>
-        <div className="cursor-pointer">{trigger}</div>
+      <SelectTrigger
+        className="border-0 shadow-none bg-transparent p-0 h-auto w-auto hover:bg-transparent focus:ring-0 focus-visible:ring-0 [&>svg]:hidden"
+      >
+        {trigger}
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="__none__">No template</SelectItem>
