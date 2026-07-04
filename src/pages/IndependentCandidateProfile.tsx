@@ -74,7 +74,7 @@ function looksLikeHtml(s?: string | null) {
 
 // ───────────────────────────── page ─────────────────────────────
 
-type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'comments'
+type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'emails' | 'comments'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
