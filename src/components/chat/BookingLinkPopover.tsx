@@ -240,6 +240,7 @@ export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpen
         boxShadow: '0 12px 32px rgba(15,18,34,0.14)',
         padding: 14,
         zIndex: 30,
+        ...anchorStyle,
       }}
     >
       {/* Header */}
