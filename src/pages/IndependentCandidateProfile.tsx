@@ -689,6 +689,16 @@ export default function IndependentCandidateProfile() {
                   </>
                 )}
 
+
+                {activeTab === 'emails' && (
+                  <EmailsTabContent
+                    candidateId={candidate.id}
+                    onCompose={openComposeEmail}
+                    onReply={openReplyEmail}
+                    onForward={openForwardEmail}
+                  />
+                )}
+
                 {activeTab === 'comments' && (
                   <ProfileCard title="Comments" subtitle="Person-level — visible across all jobs">
                     <CandidateComments
