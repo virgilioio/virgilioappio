@@ -163,6 +163,43 @@ export function EmailComposer({
     setValue('body_html', next);
   }, [bodyHtml, setValue]);
 
+  // Lightweight suggestion trigger: once the body has substantive content, propose a warmer rewrite.
+  const rewriteMutation = useAIDraftEmail();
+  useEffect(() => {
+    const text = (bodyHtml || '').replace(/<[^>]*>/g, '').trim();
+    if (text.length < 120) {
+      setAiSuggestion((prev) => (prev ? null : prev));
+      return;
+    }
+    if (aiSuggestion) return;
+    if (!candidateId || !jobId) return;
+    setAiSuggestion({
+      title: 'Make warmer',
+      reason: 'A warmer tone often gets better response rates from candidates.',
+      apply: async () => {
+        try {
+          const prompt = `Rewrite the following email to sound warmer, more personal, and empathetic. Keep the meaning and length similar.\n\n--- Current email body ---\n${text}`;
+          const result = await rewriteMutation.mutateAsync({
+            candidateId,
+            jobId,
+            prompt,
+            senderName: fromIdentity?.display_name || undefined,
+          });
+          const templateBody = normalizeToTemplateString(result.body);
+          setBodyHtml(templateBody);
+          setValue('body_html', templateBody);
+          if (result.subject) {
+            setSubjectHtml(result.subject);
+            setValue('subject', result.subject);
+          }
+        } catch {
+          toast.error('Failed to rewrite. Please try again.');
+        }
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bodyHtml, candidateId, jobId]);
+
 
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
