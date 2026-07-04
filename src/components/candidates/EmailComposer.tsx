@@ -740,6 +740,83 @@ function MetaRow({
   );
 }
 
+// Chip-input for recipients (To/Cc/Bcc). Commits on Enter, comma, Tab, blur, paste.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function ChipInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = (raw: string) => {
+    const parts = raw.split(/[,;\s]+/).map((p) => p.trim()).filter(Boolean);
+    if (!parts.length) return;
+    const next = [...value];
+    for (const p of parts) if (!next.includes(p)) next.push(p);
+    onChange(next);
+    setDraft('');
+  };
+
+  const removeAt = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1 cursor-text"
+      style={{ minHeight: 28, padding: '2px 0' }}
+      onClick={() => inputRef.current?.focus()}
+    >
+      {value.map((addr, i) => {
+        const invalid = !EMAIL_RE.test(addr);
+        return (
+          <Badge
+            key={`${addr}-${i}`}
+            tone={invalid ? 'red' : 'neutral'}
+            size="sm"
+            icon={Mail}
+            onRemove={() => removeAt(i)}
+          >
+            {addr}
+          </Badge>
+        );
+      })}
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+            if (draft.trim()) {
+              e.preventDefault();
+              commit(draft);
+            }
+          } else if (e.key === 'Backspace' && !draft && value.length) {
+            e.preventDefault();
+            removeAt(value.length - 1);
+          }
+        }}
+        onBlur={() => { if (draft.trim()) commit(draft); }}
+        onPaste={(e) => {
+          const text = e.clipboardData.getData('text');
+          if (/[,;\s]/.test(text)) {
+            e.preventDefault();
+            commit(text);
+          }
+        }}
+        placeholder={value.length === 0 ? placeholder : ''}
+        className="flex-1 min-w-[120px] bg-transparent border-0 outline-none p-1 placeholder:text-[#8B8F9E]"
+        style={{ fontSize: 12, color: '#1F2230', fontFamily: 'Inter' }}
+      />
+    </div>
+  );
+}
+}
+
 function ToolbarIcon({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
   return (
     <button
