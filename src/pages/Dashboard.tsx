@@ -686,7 +686,6 @@ function QueueSkeleton() {
             <div style={{ width: '35%', height: 9, background: C.hairline, borderRadius: 4, marginTop: 6 }} />
           </div>
           <div style={{ width: 60, height: 16, background: C.hairline, borderRadius: 999 }} />
-          <div style={{ width: 22, height: 22, borderRadius: 999, background: C.hairline }} />
         </div>
       ))}
     </div>
