@@ -467,7 +467,16 @@ const stageHasAutomation = useMemo(() => {
   }
 
   useEffect(() => {
-    if (open) setActiveTab('job')
+    if (open) {
+      // Honor `?tab=communications` (from dashboard reply queue) by landing on
+      // the Activity tab, which surfaces the email history.
+      let initialTab: typeof activeTab = 'job'
+      if (typeof window !== 'undefined') {
+        const tabParam = new URLSearchParams(window.location.search).get('tab')
+        if (tabParam === 'communications' || tabParam === 'activity') initialTab = 'activity'
+      }
+      setActiveTab(initialTab)
+    }
     
     // CRITICAL: Clear stale data immediately when candidateId changes to prevent race conditions
     // This fixes a data integrity bug where booking links could contain wrong candidate info

@@ -120,7 +120,10 @@ function buildQueue(
 ): QueueItem[] {
   const out: QueueItem[] = []
 
+  const cleanJob = (t?: string | null) => (t && t !== 'Unknown Job' ? t : 'No job')
+
   for (const a of activities ?? []) {
+    const jobTitle = cleanJob(a.jobTitle)
     if (a.type === 'scorecard') {
       const d = daysSince(a.timestamp)
       const urgency: Urgency = d >= 1 ? 'overdue' : 'today'
@@ -130,7 +133,7 @@ function buildQueue(
         label: 'Scorecard due',
         candidateName: a.candidateName,
         candidateId: a.candidateId,
-        context: a.jobTitle ? `${a.jobTitle} — interviewed ${d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`}` : '',
+        context: `${jobTitle} — interviewed ${d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`}`,
         href: `/jobs/${a.jobId}?candidate=${a.candidateId}&open=scorecard&stage=${a.stageInstanceId ?? ''}`,
         urgency,
         urgencyLabel: urgency === 'overdue' ? `${d}d overdue` : 'due today',
@@ -145,7 +148,7 @@ function buildQueue(
         label: 'Stage decision',
         candidateName: a.candidateName,
         candidateId: a.candidateId,
-        context: `${a.jobTitle ?? ''} — ${d > 0 ? `${d} days` : 'today'} in ${a.stageName ?? 'Stage'}`,
+        context: `${jobTitle} — ${d > 0 ? `${d} days` : 'today'} in ${a.stageName ?? 'Stage'}`,
         href: `/jobs/${a.jobId}?candidate=${a.candidateId}`,
         urgency,
         urgencyLabel: d >= 7 ? `stuck ${d}d` : d > 0 ? `waiting ${d}d` : 'today',
@@ -156,14 +159,17 @@ function buildQueue(
       const d = Math.floor(h / 24)
       const urgency: Urgency = d >= 2 ? 'overdue' : d >= 1 ? 'today' : 'normal'
       const waitLabel = d >= 1 ? `waiting ${d}d` : `waiting ${Math.max(1, h)}h`
+      const replyHref = a.jobId
+        ? `/jobs/${a.jobId}/candidates/${a.candidateId}?tab=communications`
+        : `/candidates/${a.candidateId}?tab=communications`
       out.push({
         id: `e-${a.id}`,
         type: 'reply',
         label: 'Reply needed',
         candidateName: a.candidateName,
         candidateId: a.candidateId,
-        context: `${a.jobTitle ?? ''}${a.emailSubject ? ` — ${a.emailSubject}` : ''}`,
-        href: `/jobs/${a.jobId}?candidate=${a.candidateId}&tab=communications`,
+        context: `${jobTitle}${a.emailSubject ? ` — ${a.emailSubject}` : ''}`,
+        href: replyHref,
         urgency,
         urgencyLabel: waitLabel,
         sortRank: urgency === 'overdue' ? -0.4 - d * 0.01 : urgency === 'today' ? 1.4 : 2.4,
@@ -175,13 +181,14 @@ function buildQueue(
   for (const app of apps ?? []) {
     const d = daysSince(app.enteredAt)
     const urgency: Urgency = d >= 5 ? 'overdue' : d >= 2 ? 'today' : 'normal'
+    const appJobTitle = cleanJob(app.jobTitle)
     out.push({
       id: `a-${app.associationId}`,
       type: 'application',
       label: 'New application',
       candidateName: app.candidateName,
       candidateId: app.candidateId,
-      context: `${app.jobTitle} — applied${app.source ? ` via ${app.source}` : ''}`,
+      context: `${appJobTitle} — applied${app.source ? ` via ${app.source}` : ''}`,
       href: `/jobs/${app.jobId}?candidate=${app.candidateId}`,
       urgency,
       urgencyLabel: d === 0 ? 'just now' : `${d}d in queue`,
@@ -210,9 +217,37 @@ export default function Dashboard() {
   const openJobs = useMemo(() => (jobs ?? []).filter(j => j.status === 'open'), [jobs])
   const { data: jobMetrics } = usePipelineJobMetrics(openJobs.map(j => j.id))
 
-  const queue = useMemo(() => buildQueue(pending, newApps), [pending, newApps])
+  const rawQueue = useMemo(() => buildQueue(pending, newApps), [pending, newApps])
   const [filter, setFilter] = useState<'all' | QueueType>('all')
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
+
+  // Persist dismissed ("done") queue items per-user with a 7-day expiry.
+  const dismissKey = user?.id ? `dashboard.queue.dismissed.${user.id}` : null
+  const [doneIds, setDoneIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined' || !dismissKey) return new Set()
+    try {
+      const raw = window.localStorage.getItem(dismissKey)
+      if (!raw) return new Set()
+      const parsed = JSON.parse(raw) as { id: string; dismissedAt: number }[]
+      const cutoff = Date.now() - 7 * 86_400_000
+      return new Set(parsed.filter(p => p.dismissedAt >= cutoff).map(p => p.id))
+    } catch {
+      return new Set()
+    }
+  })
+
+  const persistDone = (next: Set<string>) => {
+    if (typeof window === 'undefined' || !dismissKey) return
+    try {
+      const now = Date.now()
+      const payload = Array.from(next).map(id => ({ id, dismissedAt: now }))
+      window.localStorage.setItem(dismissKey, JSON.stringify(payload))
+    } catch {
+      /* ignore quota errors */
+    }
+  }
+
+  // Hide dismissed rows entirely so counts + list stay consistent after reload.
+  const queue = useMemo(() => rawQueue.filter(q => !doneIds.has(q.id)), [rawQueue, doneIds])
 
   const counts = useMemo(() => {
     const c = { all: queue.length, scorecard: 0, decision: 0, reply: 0, application: 0 }
@@ -274,17 +309,22 @@ export default function Dashboard() {
   const toggleDone = (item: QueueItem) => {
     setDoneIds(prev => {
       const next = new Set(prev)
-      if (next.has(item.id)) next.delete(item.id)
+      const wasDone = next.has(item.id)
+      if (wasDone) next.delete(item.id)
       else next.add(item.id)
+      persistDone(next)
       return next
     })
-    // Optimistic email-read for reply rows
+    // Optimistic email-read for reply rows (only when marking done, not undoing)
     if (item.type === 'reply' && item.emailId && !doneIds.has(item.id)) {
-      void supabase
+      supabase
         .from('email_logs')
         .update({ is_read: true })
         .eq('id', item.emailId)
-        .then(() => queryClient.invalidateQueries({ queryKey: ['pending-activities'] }))
+        .then(({ error }) => {
+          if (error) console.error('Failed to mark email as read', error)
+          queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
+        })
     }
   }
 
@@ -621,23 +661,6 @@ function QueueRow({
         {item.urgencyLabel}
       </span>
 
-      {/* Avatar */}
-      <div
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 999,
-          background: C.purpleLight,
-          color: C.purpleText,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          font: '600 9px/1 Poppins',
-          flexShrink: 0,
-        }}
-      >
-        {initials(item.candidateName)}
-      </div>
     </div>
   )
 }
@@ -663,7 +686,6 @@ function QueueSkeleton() {
             <div style={{ width: '35%', height: 9, background: C.hairline, borderRadius: 4, marginTop: 6 }} />
           </div>
           <div style={{ width: 60, height: 16, background: C.hairline, borderRadius: 999 }} />
-          <div style={{ width: 22, height: 22, borderRadius: 999, background: C.hairline }} />
         </div>
       ))}
     </div>

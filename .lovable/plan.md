@@ -1,37 +1,49 @@
-## Problem
+## Fixes for Dashboard "Your queue" card
 
-Clicking the trash icon on a hiring-plan stage does nothing — no confirm dialog, no error, no toast.
+Scope: `src/pages/Dashboard.tsx` and `src/hooks/usePendingActivities.ts`. Frontend/data-shape only — no schema changes.
 
-## Root cause
+### 1. Checkbox doesn't persist as "done"
 
-`DraggableStageItem` is documented (and typed) so that `onRemove` receives the row's **instance id** (persisted `jhsId` or the temporary client id used for unsaved rows). The parent `HiringPlanTab.handleRemoveRowRequest` looks the row up by `instanceId`:
+Today `doneIds` lives only in local React state, so refreshing the dashboard brings every task back. Additionally, only "reply" rows try to persist anything (marking the email read).
 
-```ts
-const row = planRows.find((r) => r.instanceId === instanceId)
-if (!row) return   // ← silent early-return
-```
+Fix:
+- Persist `doneIds` per-user in `localStorage` (key like `dashboard.queue.dismissed.<userId>`) so a checked row stays crossed-off after refresh.
+- Store as `{ id, dismissedAt }` and auto-expire entries older than 7 days so the store doesn't grow forever.
+- Keep the current optimistic behavior for `reply` rows (mark `email_logs.is_read = true`), but also make sure the mutation errors are logged so a silent RLS failure is visible in the console.
+- Filter dismissed items out of the visible queue (and out of the tab counts) so the "done" state is coherent after reload, not just a local strike-through that resets.
 
-But inside `DraggableStageItem` the click handler is wired to the wrong value:
+Note: this is a UI-level dismissal — it doesn't complete the underlying task (scorecard, decision, application). We're only honoring the user's intent to hide it from their queue, which matches what the checkbox visually implies today.
 
-```tsx
-onClick={(e) => {
-  e.stopPropagation()
-  onRemove(stage.id)   // ← passes job_stages.id, not the row's instanceId
-}}
-```
+### 2. Reply tasks open the Jobs page, not the candidate profile at the reply
 
-`stage.id` is the shared `job_stages` catalog id, never equal to a row's `instanceId`, so `find(...)` returns undefined and the handler silently bails out. This affects both the Create Job wizard and the Edit Job hiring plan tab (both render the same component).
+Root cause: reply items are built from `email_logs`, and `email_logs.job_id` is frequently `null` for inbound candidate emails. The current href is `/jobs/${jobId}?candidate=...&tab=communications` — with an empty `jobId` this navigates to `/jobs/` (the list) and the `tab` param is never consumed by `JobDetail` anyway.
 
-## Fix
+Fix:
+- In `usePendingActivities.fetchUnreadEmails`, when an email has no `job_id`, look up the candidate's active job association (via `job_candidate_associations` filtered to `status = 'active'`, most recent) and use that `job_id` + title to hydrate the activity. Fall back to the standalone `/candidates/:candidateId` route if none exists.
+- Update `buildQueue` in `Dashboard.tsx` so reply rows navigate to `/jobs/${jobId}/candidates/${candidateId}?tab=communications` (the real candidate profile route) instead of the job page. When no job is resolvable, use `/candidates/${candidateId}?tab=communications`.
+- Wire the `tab=communications` param in the candidate profile sheet so it selects the Communications/Emails tab on open (mirroring the existing `open=scorecard` handling). The `IndependentCandidateProfile` already reads `tab` from search params — we replicate the same read inside `CandidateProfileSheet` / `JobDetail`'s profile opener.
 
-Change one line in `src/components/jobs/DraggableStageItem.tsx` (line ~152) inside the delete `<Button>` onClick:
+### 3. Most rows show "Unknown Job"
 
-- Replace `onRemove(stage.id)` with `onRemove(instanceId)`.
+Same root cause as #2 for reply rows: `email_logs.job_id` is null, so `(email.jobs as any)?.title` falls back to `'Unknown Job'`. For decision/scorecard/application rows the job is already joined via `job_candidate_associations`, so those should be fine — but if any show "Unknown Job" it's because the join returned null (e.g. deleted job). The same association-based fallback used in fix #2 covers the reply case here too.
 
-That's it — `instanceId` is already a prop on the component and is the value the handler expects.
+Fix:
+- After the association lookup above, populate `jobId` and `jobTitle` from the resolved association before returning the activity. If we still can't resolve one, tag the row as "No job" (neutral) rather than "Unknown Job" so it doesn't read like a bug.
 
-## Verification
+### 4. Remove the trailing avatar
 
-- In Edit Job → Hiring Plan: click trash on a non-default stage → confirmation dialog opens with the candidate-count check, then removal saves and toast appears.
-- In Create Job wizard: click trash on a newly added stage → row is removed from the unsaved plan.
-- Default/locked stages still hide the trash button (unchanged).
+In `QueueRow` (right side of the row, after the urgency badge) there's a 22px purple initials circle that's purely decorative.
+
+Fix:
+- Delete the avatar `<div>` block from `QueueRow`.
+- Delete the matching skeleton circle in `QueueSkeleton` so the loading state stays aligned.
+- Leave the type-icon chip (left of the label) untouched — that one carries meaning.
+
+### Technical details
+
+- Files touched:
+  - `src/pages/Dashboard.tsx` — persisted `doneIds`, updated `buildQueue` hrefs for reply rows, removed avatar from `QueueRow` + `QueueSkeleton`.
+  - `src/hooks/usePendingActivities.ts` — resolve missing `job_id`/`jobTitle` for email activities via `job_candidate_associations`.
+  - `src/components/candidates/CandidateProfileSheet.tsx` (small change) — honor `?tab=communications` on open, matching the existing `open=scorecard` pattern.
+- No DB migrations, no RLS changes, no new packages.
+- Verification: check via preview that (a) checking a row and reloading keeps it hidden, (b) clicking a Reply row opens the candidate profile on the Communications tab, (c) rows show a real job name, (d) the avatar circle is gone and row spacing still looks right.
