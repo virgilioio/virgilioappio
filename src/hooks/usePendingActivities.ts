@@ -340,18 +340,52 @@ async function fetchUnreadEmails(userId: string, isAdmin: boolean, assignedJobId
     return true;
   });
 
-  return dedupedEmails.map(email => ({
-    type: 'email' as const,
-    id: email.id,
-    emailId: email.id,
-    candidateId: email.candidate_id!,
-    candidateName: (email.candidates as any)?.candidate_name || 'Unknown',
-    jobId: email.job_id || '',
-    jobTitle: (email.jobs as any)?.title || 'Unknown Job',
-    emailSubject: email.subject || 'No subject',
-    emailSnippet: email.snippet || '',
-    timestamp: email.received_at || new Date().toISOString(),
-  }));
+  // Resolve missing job_id/title via candidate's most recent active job association.
+  // email_logs.job_id is often null for inbound replies, which caused "Unknown Job"
+  // and routing to /jobs/ (the list) instead of the candidate profile.
+  const candidateIdsMissingJob = [
+    ...new Set(
+      dedupedEmails
+        .filter(e => !e.job_id && e.candidate_id)
+        .map(e => e.candidate_id as string),
+    ),
+  ];
+
+  const resolvedByCandidate = new Map<string, { jobId: string; jobTitle: string }>();
+  if (candidateIdsMissingJob.length > 0) {
+    const { data: assocRows } = await supabase
+      .from('job_candidate_associations')
+      .select('candidate_id, job_id, updated_at, jobs(id, title)')
+      .in('candidate_id', candidateIdsMissingJob)
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false });
+
+    for (const row of (assocRows as any[]) || []) {
+      if (!row?.candidate_id || resolvedByCandidate.has(row.candidate_id)) continue;
+      resolvedByCandidate.set(row.candidate_id, {
+        jobId: row.job_id ?? '',
+        jobTitle: row.jobs?.title ?? '',
+      });
+    }
+  }
+
+  return dedupedEmails.map(email => {
+    const fallback = email.candidate_id ? resolvedByCandidate.get(email.candidate_id) : undefined;
+    const jobId = email.job_id || fallback?.jobId || '';
+    const jobTitle = (email.jobs as any)?.title || fallback?.jobTitle || '';
+    return {
+      type: 'email' as const,
+      id: email.id,
+      emailId: email.id,
+      candidateId: email.candidate_id!,
+      candidateName: (email.candidates as any)?.candidate_name || 'Unknown',
+      jobId,
+      jobTitle,
+      emailSubject: email.subject || 'No subject',
+      emailSnippet: email.snippet || '',
+      timestamp: email.received_at || new Date().toISOString(),
+    };
+  });
 }
 
 async function fetchPendingOfferApprovals(userId: string): Promise<PendingActivity[]> {
