@@ -146,21 +146,47 @@ export function AIDraftPopover({
     runGenerate(base, null);
   };
 
+  // Track trigger rect to position portal panel
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const el = triggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const width = 400;
+      const left = Math.max(8, Math.min(window.innerWidth - width - 8, r.right - width));
+      setCoords({ top: r.bottom + 8, left });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
+
   return (
     <div ref={wrapperRef} className="relative inline-flex">
-      <div onClick={() => !isGenerating && setOpen((v) => !v)} className="inline-flex">
+      <div
+        ref={triggerRef}
+        onClick={() => !isGenerating && setOpen((v) => !v)}
+        className="inline-flex"
+      >
         {children}
       </div>
 
-      {open && (
+      {open && coords && createPortal(
         <div
           ref={panelRef}
           role="dialog"
           aria-label={isRewrite ? 'Rewrite with Gio' : 'Draft with Gio'}
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
             width: 400,
             background: '#FFFFFF',
             border: '1px solid #E7E8EE',
@@ -168,7 +194,7 @@ export function AIDraftPopover({
             boxShadow:
               '0 24px 64px -12px rgba(13,13,9,0.28), 0 0 0 1px rgba(13,13,9,0.04)',
             overflow: 'hidden',
-            zIndex: 60,
+            zIndex: 9999,
           }}
         >
           {/* Header */}
