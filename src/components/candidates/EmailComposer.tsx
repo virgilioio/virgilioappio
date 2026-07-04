@@ -98,6 +98,11 @@ export function EmailComposer({
   const [showCC, setShowCC] = useState(!!defaultCc);
   const [showBCC, setShowBCC] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const splitAddrs = (s?: string) =>
+    (s || '').split(/[,;\s]+/).map((v) => v.trim()).filter(Boolean);
+  const [toChips, setToChips] = useState<string[]>(splitAddrs(defaultTo));
+  const [ccChips, setCcChips] = useState<string[]>(splitAddrs(defaultCc));
+  const [bccChips, setBccChips] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
