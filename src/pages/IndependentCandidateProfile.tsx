@@ -207,6 +207,7 @@ export default function IndependentCandidateProfile() {
     { value: 'experience', label: 'Experience', Icon: Briefcase, count: workExperience.length || null },
     { value: 'education', label: 'Education', Icon: GraduationCap, count: education.length || null },
     { value: 'details', label: 'Details', Icon: Info },
+    { value: 'emails', label: 'Emails', Icon: Mail },
     { value: 'comments', label: 'Comments', Icon: MessageSquare },
   ]
 
