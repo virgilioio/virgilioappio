@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -98,6 +99,11 @@ export function EmailComposer({
   const [showCC, setShowCC] = useState(!!defaultCc);
   const [showBCC, setShowBCC] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const splitAddrs = (s?: string) =>
+    (s || '').split(/[,;\s]+/).map((v) => v.trim()).filter(Boolean);
+  const [toChips, setToChips] = useState<string[]>(splitAddrs(defaultTo));
+  const [ccChips, setCcChips] = useState<string[]>(splitAddrs(defaultCc));
+  const [bccChips, setBccChips] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -135,6 +141,12 @@ export function EmailComposer({
 
   const fromEmail = watch('from_email');
   const fromIdentity = activeIdentities.find((i) => i.email_address === fromEmail) || activeIdentities[0];
+
+  // Keep RHF fields in sync with chip state
+  useEffect(() => { setValue('to', toChips.join(', ')); }, [toChips, setValue]);
+  useEffect(() => { setValue('cc', ccChips.join(', ')); }, [ccChips, setValue]);
+  useEffect(() => { setValue('bcc', bccChips.join(', ')); }, [bccChips, setValue]);
+
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -203,9 +215,10 @@ export function EmailComposer({
     setShowBCC(false);
     setSelectedTemplateId(null);
     setValue('subject', '');
-    setValue('cc', '');
-    setValue('bcc', '');
-    if (!defaultTo) setValue('to', '');
+    setCcChips([]);
+    setBccChips([]);
+    if (!defaultTo) setToChips([]);
+
 
     await new Promise((resolve) => setTimeout(resolve, 500));
     onSuccess?.();
@@ -322,11 +335,10 @@ export function EmailComposer({
               </div>
             }
           >
-            <input
-              {...register('to')}
-              placeholder="Add recipient"
-              className="w-full bg-transparent border-0 outline-none p-0"
-              style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}
+            <ChipInput
+              value={toChips}
+              onChange={setToChips}
+              placeholder="Add recipient…"
             />
           </MetaRow>
 
@@ -339,7 +351,7 @@ export function EmailComposer({
                   type="button"
                   onClick={() => {
                     setShowCC(false);
-                    setValue('cc', '');
+                    setCcChips([]);
                   }}
                   style={{ color: '#8B8F9E' }}
                 >
@@ -347,11 +359,10 @@ export function EmailComposer({
                 </button>
               }
             >
-              <input
-                {...register('cc')}
-                placeholder="cc@example.com"
-                className="w-full bg-transparent border-0 outline-none p-0"
-                style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}
+              <ChipInput
+                value={ccChips}
+                onChange={setCcChips}
+                placeholder="Add recipient…"
               />
             </MetaRow>
           )}
@@ -364,7 +375,7 @@ export function EmailComposer({
                   type="button"
                   onClick={() => {
                     setShowBCC(false);
-                    setValue('bcc', '');
+                    setBccChips([]);
                   }}
                   style={{ color: '#8B8F9E' }}
                 >
@@ -372,29 +383,30 @@ export function EmailComposer({
                 </button>
               }
             >
-              <input
-                {...register('bcc')}
-                placeholder="bcc@example.com"
-                className="w-full bg-transparent border-0 outline-none p-0"
-                style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}
+              <ChipInput
+                value={bccChips}
+                onChange={setBccChips}
+                placeholder="Add recipient…"
               />
             </MetaRow>
           )}
 
           {/* Subject */}
           <MetaRow label="Subject" hairline={!!appliedTemplate}>
-            <div className="w-full [&_.lexical-root]:min-h-[18px] [&_.lexical-paragraph]:m-0">
-              <SubjectTemplateEditor
-                id="subject"
-                value={subjectHtml}
-                onChange={(value) => {
-                  setSubjectHtml(value);
-                  setValue('subject', value);
-                }}
-                placeholder="Subject"
-              />
-            </div>
+            <input
+              type="text"
+              value={subjectHtml}
+              onChange={(e) => {
+                setSubjectHtml(e.target.value);
+                setValue('subject', e.target.value);
+              }}
+              placeholder="Subject"
+              className="w-full bg-transparent border-0 outline-none p-0 placeholder:text-[#8B8F9E]"
+              style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter', fontWeight: 500 }}
+            />
           </MetaRow>
+
+
 
           {/* Template */}
           {appliedTemplate && (
@@ -512,14 +524,7 @@ export function EmailComposer({
 
           {/* Editor */}
           <div
-            style={{
-              background: '#fff',
-              border: '1px solid #E0DDD3',
-              borderRadius: 8,
-              padding: 12,
-              minHeight: 200,
-            }}
-            className="[&_.lexical-root]:min-h-[180px] [&_.lexical-root]:outline-none"
+            className="[&_.lexical-root]:min-h-[260px] [&_.lexical-root]:outline-none [&>div]:border-[#E0DDD3] [&>div]:rounded-lg"
           >
             <BodyTemplateEditor
               value={bodyHtml}
@@ -528,8 +533,11 @@ export function EmailComposer({
                 setValue('body_html', content);
               }}
               placeholder="Write your message…"
+              hideToolbar
+              minHeight="260px"
             />
           </div>
+
 
           {errors.body_html && (
             <p className="mt-2" style={{ fontSize: 11, color: 'hsl(var(--destructive))' }}>
@@ -732,6 +740,83 @@ function MetaRow({
     </div>
   );
 }
+
+// Chip-input for recipients (To/Cc/Bcc). Commits on Enter, comma, Tab, blur, paste.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function ChipInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const commit = (raw: string) => {
+    const parts = raw.split(/[,;\s]+/).map((p) => p.trim()).filter(Boolean);
+    if (!parts.length) return;
+    const next = [...value];
+    for (const p of parts) if (!next.includes(p)) next.push(p);
+    onChange(next);
+    setDraft('');
+  };
+
+  const removeAt = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1 cursor-text"
+      style={{ minHeight: 28, padding: '2px 0' }}
+      onClick={() => inputRef.current?.focus()}
+    >
+      {value.map((addr, i) => {
+        const invalid = !EMAIL_RE.test(addr);
+        return (
+          <Badge
+            key={`${addr}-${i}`}
+            tone={invalid ? 'red' : 'neutral'}
+            size="sm"
+            icon={Mail}
+            onRemove={() => removeAt(i)}
+          >
+            {addr}
+          </Badge>
+        );
+      })}
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+            if (draft.trim()) {
+              e.preventDefault();
+              commit(draft);
+            }
+          } else if (e.key === 'Backspace' && !draft && value.length) {
+            e.preventDefault();
+            removeAt(value.length - 1);
+          }
+        }}
+        onBlur={() => { if (draft.trim()) commit(draft); }}
+        onPaste={(e) => {
+          const text = e.clipboardData.getData('text');
+          if (/[,;\s]/.test(text)) {
+            e.preventDefault();
+            commit(text);
+          }
+        }}
+        placeholder={value.length === 0 ? placeholder : ''}
+        className="flex-1 min-w-[120px] bg-transparent border-0 outline-none p-1 placeholder:text-[#8B8F9E]"
+        style={{ fontSize: 12, color: '#1F2230', fontFamily: 'Inter' }}
+      />
+    </div>
+  );
+}
+
 
 function ToolbarIcon({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
   return (

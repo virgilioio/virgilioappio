@@ -55,6 +55,7 @@ export interface BodyTemplateEditorProps {
   minHeight?: string;
   disabled?: boolean;
   onFocus?: () => void;
+  hideToolbar?: boolean;
 }
 
 export interface BodyTemplateEditorHandle {
@@ -117,6 +118,7 @@ function BodyEditorInner({
   minHeight = '200px',
   disabled,
   onFocus,
+  hideToolbar,
   editorRef,
 }: BodyTemplateEditorProps & { editorRef: React.MutableRefObject<LexicalEditor | null> }) {
   const [editor] = useLexicalComposerContext();
@@ -192,7 +194,7 @@ function BodyEditorInner({
 
   return (
     <div className={cn("border rounded-brand bg-surface-primary", className)}>
-      <Toolbar />
+      {!hideToolbar && <Toolbar />}
       <div className="relative" style={{ minHeight }}>
         <RichTextPlugin
           contentEditable={
