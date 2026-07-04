@@ -398,7 +398,8 @@ export function AIDraftPopover({
               Gio uses this candidate's profile &amp; stage as context.
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
