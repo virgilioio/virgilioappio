@@ -1,10 +1,21 @@
-import { useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, RefreshCw, Check, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  Loader2,
+  X,
+  Info,
+  Reply,
+  GitBranch,
+  Calendar,
+  Clock,
+  PartyPopper,
+  Heart,
+  Minimize2,
+  Feather,
+  SpellCheck,
+  Maximize2,
+} from 'lucide-react';
 import { useAIDraftEmail } from '@/hooks/useAIDraftEmail';
 import { toast } from 'sonner';
 
@@ -12,225 +23,356 @@ interface AIDraftPopoverProps {
   candidateId?: string;
   senderName?: string;
   jobId?: string;
+  /** Current body HTML — when non-empty the panel switches to Rewrite mode. */
+  currentBody?: string;
   onInsert: (subject: string, body: string) => void;
   children: React.ReactNode;
 }
 
-const QUICK_SUGGESTIONS = [
-  {
-    label: 'Follow-up',
-    prompt: 'Write a friendly follow-up email to check on the candidate and keep them engaged in the process',
-  },
-  {
-    label: 'Process Update',
-    prompt: 'Write an email updating the candidate on where they are in our hiring process and what to expect next',
-  },
-  {
-    label: 'Reply to Last',
-    prompt: 'Write a thoughtful reply to the candidate\'s most recent email, addressing their message professionally',
-  },
-  {
-    label: 'Schedule Interview',
-    prompt: 'Write an email to invite the candidate to schedule their next interview round',
-  },
-  {
-    label: 'Request Availability',
-    prompt: 'Write an email asking the candidate for their availability for upcoming interviews',
-  },
-  {
-    label: 'Share Good News',
-    prompt: 'Write a positive email sharing that we\'d like to move forward with the candidate to the next stage',
-  },
+type ChipDef = { label: string; icon: React.ComponentType<{ className?: string }>; prompt: string };
+
+const DRAFT_CHIPS: ChipDef[] = [
+  { label: 'Follow-up', icon: Reply, prompt: 'Write a friendly follow-up email to check on the candidate and keep them engaged.' },
+  { label: 'Process update', icon: GitBranch, prompt: 'Write an email updating the candidate on where they are in our hiring process and what comes next.' },
+  { label: 'Schedule interview', icon: Calendar, prompt: 'Write an email to invite the candidate to schedule their next interview round.' },
+  { label: 'Request availability', icon: Clock, prompt: 'Write an email asking the candidate for their availability for upcoming interviews.' },
+  { label: 'Share good news', icon: PartyPopper, prompt: 'Write a positive email letting the candidate know we\'d like to move them forward to the next stage.' },
 ];
 
-export function AIDraftPopover({ candidateId, jobId, onInsert, senderName, children }: AIDraftPopoverProps) {
+const REWRITE_CHIPS: ChipDef[] = [
+  { label: 'Make warmer', icon: Heart, prompt: 'Rewrite the following email to sound warmer, more personal, and empathetic while keeping the meaning and length similar.' },
+  { label: 'More concise', icon: Minimize2, prompt: 'Rewrite the following email to be significantly more concise without losing any key information.' },
+  { label: 'More formal', icon: Feather, prompt: 'Rewrite the following email in a more formal, professional tone suitable for executive candidates.' },
+  { label: 'Fix grammar', icon: SpellCheck, prompt: 'Correct any grammar, spelling, or punctuation issues in the following email. Preserve tone and meaning.' },
+  { label: 'Expand', icon: Maximize2, prompt: 'Expand the following email with helpful detail, keeping the tone consistent and staying on topic.' },
+];
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export function AIDraftPopover({
+  candidateId,
+  jobId,
+  onInsert,
+  senderName,
+  currentBody,
+  children,
+}: AIDraftPopoverProps) {
   const [open, setOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
-  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
-  const [generatedDraft, setGeneratedDraft] = useState<{ subject: string; body: string } | null>(null);
-  
-  const draftMutation = useAIDraftEmail();
+  const [activeChip, setActiveChip] = useState<string | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  const handleGenerate = async (prompt: string) => {
+  const draftMutation = useAIDraftEmail();
+  const isGenerating = draftMutation.isPending;
+
+  const plainBody = stripHtml(currentBody || '');
+  const isRewrite = plainBody.length > 0;
+  const chips = isRewrite ? REWRITE_CHIPS : DRAFT_CHIPS;
+
+  // Close on outside click / Esc
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setCustomPrompt('');
+      setActiveChip(null);
+    }
+  }, [open]);
+
+  const runGenerate = async (basePrompt: string, chipLabel: string | null) => {
     if (!candidateId || !jobId) {
       toast.error('Missing candidate or job context');
       return;
     }
+    const finalPrompt = isRewrite
+      ? `${basePrompt}\n\n--- Current email body ---\n${plainBody}`
+      : basePrompt;
 
     try {
+      setActiveChip(chipLabel);
       const result = await draftMutation.mutateAsync({
         candidateId,
         jobId,
-        prompt,
+        prompt: finalPrompt,
         senderName: senderName || undefined,
       });
-      setGeneratedDraft(result);
+      onInsert(result.subject, result.body);
+      setOpen(false);
+      setCustomPrompt('');
+      setActiveChip(null);
     } catch (error) {
-      toast.error('Failed to generate draft. Please try again.');
+      toast.error('Failed to generate. Please try again.');
       console.error('AI draft error:', error);
+      setActiveChip(null);
     }
   };
 
-  const handleSuggestionClick = (suggestion: typeof QUICK_SUGGESTIONS[0]) => {
-    setSelectedSuggestion(suggestion.label);
-    setCustomPrompt('');
-    handleGenerate(suggestion.prompt);
+  const handleChip = (chip: ChipDef) => {
+    if (isGenerating) return;
+    runGenerate(chip.prompt, chip.label);
   };
 
-  const handleCustomSubmit = () => {
-    if (!customPrompt.trim()) {
-      toast.error('Please describe what you want to write');
-      return;
-    }
-    setSelectedSuggestion(null);
-    handleGenerate(customPrompt);
+  const handleCustom = () => {
+    if (!customPrompt.trim() || isGenerating) return;
+    const base = isRewrite
+      ? `Rewrite the following email based on this instruction: ${customPrompt.trim()}`
+      : customPrompt.trim();
+    runGenerate(base, null);
   };
-
-  const handleInsert = () => {
-    if (generatedDraft) {
-      // Pass plain text - the editor will handle formatting
-      onInsert(generatedDraft.subject, generatedDraft.body);
-      handleReset();
-    }
-  };
-
-  const handleRegenerate = () => {
-    const prompt = selectedSuggestion 
-      ? QUICK_SUGGESTIONS.find(s => s.label === selectedSuggestion)?.prompt || customPrompt
-      : customPrompt;
-    if (prompt) {
-      handleGenerate(prompt);
-    }
-  };
-
-  const handleReset = () => {
-    setGeneratedDraft(null);
-    setCustomPrompt('');
-    setSelectedSuggestion(null);
-    setOpen(false);
-  };
-
-  const isGenerating = draftMutation.isPending;
 
   return (
-    <Popover open={open} modal={true} onOpenChange={(value) => {
-      if (!value) handleReset();
-      else setOpen(value);
-    }}>
-      <PopoverTrigger asChild>
+    <div ref={wrapperRef} className="relative inline-flex">
+      <div onClick={() => !isGenerating && setOpen((v) => !v)} className="inline-flex">
         {children}
-      </PopoverTrigger>
-      <PopoverContent className="w-96" align="end">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-purple-500" />
-            <span className="font-medium text-sm">AI Email Draft</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Choose a suggestion or describe what you want to write.
-          </p>
+      </div>
 
-          {/* Quick Suggestions */}
-          {!generatedDraft && (
-            <>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Quick suggestions</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {QUICK_SUGGESTIONS.map((suggestion) => (
-                    <Badge
-                      key={suggestion.label}
-                      variant={selectedSuggestion === suggestion.label ? 'default' : 'outline'}
-                      className="cursor-pointer hover:bg-primary/10 transition-colors px-2 py-1 text-xs"
-                      onClick={() => !isGenerating && handleSuggestionClick(suggestion)}
-                    >
-                      {isGenerating && selectedSuggestion === suggestion.label ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      ) : null}
-                      {suggestion.label}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-popover px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-
-              {/* Custom Prompt */}
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="e.g., Invite them to a final round interview..."
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  rows={2}
-                  disabled={isGenerating}
-                  className="text-sm"
-                />
-                <Button 
-                  onClick={handleCustomSubmit} 
-                  disabled={isGenerating || !customPrompt.trim()}
-                  className="w-full"
-                  size="sm"
+      {open && (
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-label={isRewrite ? 'Rewrite with Gio' : 'Draft with Gio'}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            right: 0,
+            width: 400,
+            background: '#FFFFFF',
+            border: '1px solid #E7E8EE',
+            borderRadius: 14,
+            boxShadow:
+              '0 24px 64px -12px rgba(13,13,9,0.28), 0 0 0 1px rgba(13,13,9,0.04)',
+            overflow: 'hidden',
+            zIndex: 60,
+          }}
+        >
+          {/* Header */}
+          <div
+            className="flex items-center"
+            style={{
+              padding: '13px 16px',
+              borderBottom: '1px solid #F1F0EC',
+              background: 'linear-gradient(180deg, #FAF8FF, #ffffff)',
+              gap: 11,
+            }}
+          >
+            <span
+              className="flex items-center justify-center shrink-0"
+              style={{ height: 26, width: 26, borderRadius: 7, background: '#6F3FF5' }}
+            >
+              <Sparkles style={{ height: 14, width: 14, color: '#fff' }} strokeWidth={2} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center" style={{ gap: 7 }}>
+                <span
+                  className="font-poppins"
+                  style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2230' }}
                 >
-                  {isGenerating && !selectedSuggestion ? (
-                    <>
-                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3 w-3 mr-2" />
-                      Generate Draft
-                    </>
-                  )}
-                </Button>
+                  {isRewrite ? 'Rewrite with Gio' : 'Draft with Gio'}
+                </span>
+                <Badge tone="lilac" size="xs">Gio</Badge>
               </div>
-            </>
-          )}
-
-          {/* Generated Draft Preview */}
-          {generatedDraft && (
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Subject</Label>
-                <div className="p-2 bg-muted rounded-md text-xs">
-                  {generatedDraft.subject}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Body</Label>
-                <div className="p-2 bg-muted rounded-md text-xs whitespace-pre-wrap max-h-40 overflow-y-auto">
-                  {/* Strip HTML tags for clean preview */}
-                  {generatedDraft.body.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={handleInsert} className="flex-1" size="sm">
-                  <Check className="h-3 w-3 mr-2" />
-                  Use Draft
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={isGenerating}>
-                  {isGenerating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3" />
-                  )}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setGeneratedDraft(null)}>
-                  Edit
-                </Button>
+              <div
+                className="font-inter"
+                style={{ marginTop: 2, fontSize: 11, color: '#5A6072' }}
+              >
+                {isRewrite
+                  ? 'Pick a rewrite style or tell Gio what to change.'
+                  : 'Pick a starting point or tell Gio what to write.'}
               </div>
             </div>
-          )}
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center justify-center shrink-0"
+              style={{ height: 24, width: 24, borderRadius: 6, background: 'transparent', color: '#8B8F9E', border: 0 }}
+            >
+              <X style={{ height: 14, width: 14 }} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div style={{ padding: '14px 16px 16px' }}>
+            <div
+              className="font-inter"
+              style={{
+                marginBottom: 9,
+                fontSize: 10.5,
+                fontWeight: 600,
+                letterSpacing: '0.07em',
+                textTransform: 'uppercase',
+                color: '#8B8F9E',
+              }}
+            >
+              {isRewrite ? 'Rewrite actions' : 'Quick starts'}
+            </div>
+
+            <div className="flex flex-wrap" style={{ gap: 6 }}>
+              {chips.map((chip) => {
+                const Icon = chip.icon;
+                const busy = isGenerating && activeChip === chip.label;
+                return (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => handleChip(chip)}
+                    disabled={isGenerating}
+                    className="inline-flex items-center transition-colors font-inter group"
+                    style={{
+                      height: 30,
+                      padding: '0 12px',
+                      borderRadius: 999,
+                      border: '1px solid #E7E8EE',
+                      background: '#FFFFFF',
+                      color: '#1F2230',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                      gap: 7,
+                      cursor: isGenerating ? 'not-allowed' : 'pointer',
+                      opacity: isGenerating && !busy ? 0.55 : 1,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isGenerating) return;
+                      e.currentTarget.style.background = '#EDE4FF';
+                      e.currentTarget.style.color = '#5B21B6';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#FFFFFF';
+                      e.currentTarget.style.color = '#1F2230';
+                      e.currentTarget.style.borderColor = '#E7E8EE';
+                    }}
+                  >
+                    {busy ? (
+                      <Loader2 style={{ height: 12, width: 12, color: '#6F3FF5' }} className="animate-spin" />
+                    ) : (
+                      <Icon className="shrink-0" style={{ height: 12, width: 12, color: '#6F3FF5' }} />
+                    )}
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* OR divider */}
+            <div className="flex items-center" style={{ margin: '14px 0', gap: 10 }}>
+              <span style={{ flex: 1, height: 1, background: '#F1F0EC' }} />
+              <span
+                className="font-inter"
+                style={{ fontSize: 10, fontWeight: 500, color: '#8B8F9E', letterSpacing: '0.05em' }}
+              >
+                OR
+              </span>
+              <span style={{ flex: 1, height: 1, background: '#F1F0EC' }} />
+            </div>
+
+            {/* Prompt textarea */}
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              disabled={isGenerating}
+              placeholder={
+                isRewrite
+                  ? 'e.g. Tighten the second paragraph and add a warm closing…'
+                  : 'e.g. Invite them to a final-round interview next week…'
+              }
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#6F3FF5';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(111,63,245,0.10)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#E0DDD3';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  handleCustom();
+                }
+              }}
+              className="w-full font-inter outline-none resize-none placeholder:text-[#B5B9C4]"
+              style={{
+                border: '1.5px solid #E0DDD3',
+                borderRadius: 10,
+                padding: 12,
+                minHeight: 72,
+                fontSize: 12.5,
+                color: '#1F2230',
+                background: '#fff',
+                transition: 'border-color 120ms, box-shadow 120ms',
+              }}
+            />
+
+            {/* Generate / Rewrite button */}
+            <button
+              type="button"
+              onClick={handleCustom}
+              disabled={isGenerating || !customPrompt.trim()}
+              className="w-full inline-flex items-center justify-center font-poppins transition-opacity"
+              style={{
+                marginTop: 10,
+                height: 40,
+                borderRadius: 9,
+                background: '#6F3FF5',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                border: 0,
+                gap: 7,
+                cursor: isGenerating || !customPrompt.trim() ? 'not-allowed' : 'pointer',
+                opacity: isGenerating ? 0.45 : !customPrompt.trim() ? 0.55 : 1,
+              }}
+            >
+              {isGenerating && activeChip === null ? (
+                <>
+                  <Loader2 style={{ height: 14, width: 14 }} className="animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <Sparkles style={{ height: 14, width: 14 }} strokeWidth={2} />
+                  {isRewrite ? 'Rewrite' : 'Generate draft'}
+                </>
+              )}
+            </button>
+
+            {/* Footnote */}
+            <div
+              className="flex items-center justify-center font-inter"
+              style={{ marginTop: 10, gap: 5, fontSize: 10.5, color: '#8B8F9E' }}
+            >
+              <Info style={{ height: 11, width: 11 }} strokeWidth={2} />
+              Gio uses this candidate's profile &amp; stage as context.
+            </div>
+          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
