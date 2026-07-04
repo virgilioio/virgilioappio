@@ -107,6 +107,44 @@ export default function IndependentCandidateProfile() {
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
 
+  // Email composer state — shared for Compose / Reply / Forward
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const [emailComposerMode, setEmailComposerMode] = useState<'compose' | 'reply' | 'forward'>('compose')
+  const [emailComposerTo, setEmailComposerTo] = useState<string | undefined>(undefined)
+  const [emailComposerCc, setEmailComposerCc] = useState<string | undefined>(undefined)
+  const [emailComposerSubject, setEmailComposerSubject] = useState<string | undefined>(undefined)
+  const [emailComposerBody, setEmailComposerBody] = useState<string | undefined>(undefined)
+  const [emailComposerReplyToId, setEmailComposerReplyToId] = useState<string | undefined>(undefined)
+
+  const openComposeEmail = () => {
+    setEmailComposerMode('compose')
+    setEmailComposerTo(undefined)
+    setEmailComposerCc(undefined)
+    setEmailComposerSubject(undefined)
+    setEmailComposerBody(undefined)
+    setEmailComposerReplyToId(undefined)
+    setEmailComposerOpen(true)
+  }
+  const openReplyEmail = (email: EmailHistoryCardEmail) => {
+    const isReceived = email.direction === 'received'
+    setEmailComposerMode('reply')
+    setEmailComposerTo(isReceived ? email.from_address : email.to_addresses[0])
+    setEmailComposerCc(email.cc_addresses?.join(', ') || undefined)
+    setEmailComposerSubject(getReplySubject(email.subject))
+    setEmailComposerBody(formatQuotedReply(email))
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
+  const openForwardEmail = (email: EmailHistoryCardEmail) => {
+    setEmailComposerMode('forward')
+    setEmailComposerTo('')
+    setEmailComposerCc(undefined)
+    setEmailComposerSubject(getForwardSubject(email.subject))
+    setEmailComposerBody(formatForwardedMessage(email))
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
+
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
 
