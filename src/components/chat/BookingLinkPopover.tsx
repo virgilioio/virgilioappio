@@ -124,10 +124,10 @@ function useBookingCtx(
  * current-stage job link (if configured) + the signed-in recruiter's personal
  * link. Selecting a row inserts a booking-link card into the thread.
  */
-export function BookingLinkPopover({ threadId, open, onOpenChange, onPick }: Props) {
+export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpenChange, onPick }: Props) {
   const navigate = useNavigate()
   const rootRef = useRef<HTMLDivElement>(null)
-  const ctx = useThreadBookingCtx(threadId, open)
+  const ctx = useBookingCtx(threadId, source, open)
   const { config } = useBookingConfig()
   const { profile } = useUserProfile()
 
