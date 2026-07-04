@@ -736,11 +736,25 @@ export default function IndependentCandidateProfile() {
               onClose={() => setAddToPipelineOpen(false)}
             />
           )}
+
+          <MinimizableEmailComposer
+            isOpen={emailComposerOpen}
+            onOpenChange={setEmailComposerOpen}
+            candidateId={candidate.id}
+            defaultTo={emailComposerTo ?? candidate.email ?? undefined}
+            candidateName={`${candidate.first_name ?? ''} ${candidate.last_name ?? ''}`.trim() || undefined}
+            mode={emailComposerMode}
+            inReplyToMessageId={emailComposerReplyToId}
+            defaultSubject={emailComposerSubject}
+            defaultBody={emailComposerBody}
+            defaultCc={emailComposerCc}
+          />
         </div>
       </PermissionGate>
     </AuthGate>
   )
 }
+
 
 /**
  * AddToJobPipelineDialog ships its own trigger; we mount it auto-opened
