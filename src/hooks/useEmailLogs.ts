@@ -1,18 +1,24 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useEmailLogs(candidateId?: string, jobId?: string) {
   const queryClient = useQueryClient();
+  const instanceIdRef = useRef<string>(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
+  );
 
   // Setup Realtime subscription for email_logs
   useEffect(() => {
     if (!candidateId) return;
 
-    console.log('[Email Logs] Setting up Realtime subscription for candidate:', candidateId);
+    const channelName = `email-logs-changes:${candidateId}:${jobId ?? 'all'}:${instanceIdRef.current}`;
+    console.log('[Email Logs] Setting up Realtime subscription:', channelName);
 
     const channel = supabase
-      .channel('email-logs-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
