@@ -34,6 +34,10 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
+import { EmailsTabContent } from '@/components/candidates/profile/tabs/EmailsTabContent'
+import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
+import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistoryCard'
+import { getReplySubject, getForwardSubject, formatQuotedReply, formatForwardedMessage } from '@/utils/emailFormatUtils'
 
 import { useIndependentCandidates, type IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations'
@@ -74,7 +78,7 @@ function looksLikeHtml(s?: string | null) {
 
 // ───────────────────────────── page ─────────────────────────────
 
-type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'comments'
+type TabKey = 'overview' | 'resume' | 'experience' | 'education' | 'details' | 'emails' | 'comments'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -102,6 +106,44 @@ export default function IndependentCandidateProfile() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
+
+  // Email composer state — shared for Compose / Reply / Forward
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false)
+  const [emailComposerMode, setEmailComposerMode] = useState<'compose' | 'reply' | 'forward'>('compose')
+  const [emailComposerTo, setEmailComposerTo] = useState<string | undefined>(undefined)
+  const [emailComposerCc, setEmailComposerCc] = useState<string | undefined>(undefined)
+  const [emailComposerSubject, setEmailComposerSubject] = useState<string | undefined>(undefined)
+  const [emailComposerBody, setEmailComposerBody] = useState<string | undefined>(undefined)
+  const [emailComposerReplyToId, setEmailComposerReplyToId] = useState<string | undefined>(undefined)
+
+  const openComposeEmail = () => {
+    setEmailComposerMode('compose')
+    setEmailComposerTo(undefined)
+    setEmailComposerCc(undefined)
+    setEmailComposerSubject(undefined)
+    setEmailComposerBody(undefined)
+    setEmailComposerReplyToId(undefined)
+    setEmailComposerOpen(true)
+  }
+  const openReplyEmail = (email: EmailHistoryCardEmail) => {
+    const isReceived = email.direction === 'received'
+    setEmailComposerMode('reply')
+    setEmailComposerTo(isReceived ? email.from_address : email.to_addresses[0])
+    setEmailComposerCc(email.cc_addresses?.join(', ') || undefined)
+    setEmailComposerSubject(getReplySubject(email.subject))
+    setEmailComposerBody(formatQuotedReply(email))
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
+  const openForwardEmail = (email: EmailHistoryCardEmail) => {
+    setEmailComposerMode('forward')
+    setEmailComposerTo('')
+    setEmailComposerCc(undefined)
+    setEmailComposerSubject(getForwardSubject(email.subject))
+    setEmailComposerBody(formatForwardedMessage(email))
+    setEmailComposerReplyToId(email.id)
+    setEmailComposerOpen(true)
+  }
 
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
@@ -207,6 +249,7 @@ export default function IndependentCandidateProfile() {
     { value: 'experience', label: 'Experience', Icon: Briefcase, count: workExperience.length || null },
     { value: 'education', label: 'Education', Icon: GraduationCap, count: education.length || null },
     { value: 'details', label: 'Details', Icon: Info },
+    { value: 'emails', label: 'Emails', Icon: Mail },
     { value: 'comments', label: 'Comments', Icon: MessageSquare },
   ]
 
@@ -646,6 +689,16 @@ export default function IndependentCandidateProfile() {
                   </>
                 )}
 
+
+                {activeTab === 'emails' && (
+                  <EmailsTabContent
+                    candidateId={candidate.id}
+                    onCompose={openComposeEmail}
+                    onReply={openReplyEmail}
+                    onForward={openForwardEmail}
+                  />
+                )}
+
                 {activeTab === 'comments' && (
                   <ProfileCard title="Comments" subtitle="Person-level — visible across all jobs">
                     <CandidateComments
@@ -683,11 +736,25 @@ export default function IndependentCandidateProfile() {
               onClose={() => setAddToPipelineOpen(false)}
             />
           )}
+
+          <MinimizableEmailComposer
+            isOpen={emailComposerOpen}
+            onOpenChange={setEmailComposerOpen}
+            candidateId={candidate.id}
+            defaultTo={emailComposerTo ?? candidate.email ?? undefined}
+            candidateName={candidate.candidate_name || undefined}
+            mode={emailComposerMode}
+            inReplyToMessageId={emailComposerReplyToId}
+            defaultSubject={emailComposerSubject}
+            defaultBody={emailComposerBody}
+            defaultCc={emailComposerCc}
+          />
         </div>
       </PermissionGate>
     </AuthGate>
   )
 }
+
 
 /**
  * AddToJobPipelineDialog ships its own trigger; we mount it auto-opened

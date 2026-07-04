@@ -62,6 +62,7 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { EmailHistoryList } from './EmailHistoryList'
+import { EmailsTabContent, EmailsSidebarContainer } from '@/components/candidates/profile/tabs/EmailsTabContent'
 import { EmailHistoryCardEmail } from './EmailHistoryCard'
 import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
 import { ActivityFeedList } from './ActivityFeedList'
@@ -176,7 +177,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
@@ -473,7 +474,8 @@ const stageHasAutomation = useMemo(() => {
       let initialTab: typeof activeTab = 'job'
       if (typeof window !== 'undefined') {
         const tabParam = new URLSearchParams(window.location.search).get('tab')
-        if (tabParam === 'communications' || tabParam === 'activity') initialTab = 'activity'
+        if (tabParam === 'communications' || tabParam === 'emails') initialTab = 'emails'
+        else if (tabParam === 'activity') initialTab = 'activity'
       }
       setActiveTab(initialTab)
     }
@@ -1265,6 +1267,7 @@ const stageHasAutomation = useMemo(() => {
                             ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
                             { value: 'activity', label: 'Activity', Icon: Activity },
+                            { value: 'emails', label: 'Emails', Icon: Mail },
                             { value: 'comments', label: 'Comments', Icon: MessageSquare },
                           ]}
                         />
@@ -1655,6 +1658,19 @@ const stageHasAutomation = useMemo(() => {
                         </Card>
                       </>
                     )}
+                    {/* Emails Tab */}
+                    {activeTab === 'emails' && candidate && (
+                      <EmailsTabContent
+                        candidateId={candidate.id}
+                        jobId={jobId}
+                        onCompose={() => {
+                          resetEmailComposer()
+                          setEmailComposerOpen(true)
+                        }}
+                        onReply={handleEmailReply}
+                        onForward={handleEmailForward}
+                      />
+                    )}
 
                     {/* Comments Tab */}
                     {activeTab === 'comments' && (
@@ -1867,7 +1883,10 @@ const stageHasAutomation = useMemo(() => {
                                 stats={{ activeDays: daysInStage, eventsLogged: null, touchesFromUs: null, lastContact: null }}
                               />
                             )
-                          // 'emails' tab not yet wired — EmailsSidebar reserved for future use
+                          case 'emails':
+                            return candidate ? (
+                              <EmailsSidebarContainer candidateId={candidate.id} jobId={jobId} />
+                            ) : null
                           case 'comments':
                             return (
                               <CommentsSidebar mentions={[]} hiringTeamCount={0} />
