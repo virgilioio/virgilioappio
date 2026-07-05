@@ -338,11 +338,21 @@ export function ScorecardsSidebar(p: ScorecardsSidebarProps) {
                     <div className="font-inter text-[10.5px] text-[#8B8F9E] truncate">{row.role}</div>
                   )}
                 </div>
-                {row.onNudge && (
+                {row.required && row.onRequest ? (
+                  row.requested ? (
+                    <Button variant="ghost" size="sm" icon={CheckCircle2} onClick={() => row.onRequest?.()}>
+                      Requested
+                    </Button>
+                  ) : (
+                    <Button variant="purple" size="sm" icon={Send} onClick={() => row.onRequest?.()}>
+                      Request
+                    </Button>
+                  )
+                ) : row.onNudge ? (
                   <Button variant="purple" size="sm" onClick={row.onNudge}>
                     Nudge
                   </Button>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
