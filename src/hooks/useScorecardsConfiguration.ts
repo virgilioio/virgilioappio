@@ -86,12 +86,20 @@ export interface InterviewQuestion {
 }
 
 export type ScorecardVisibility = 'private' | 'public'
+export type ScorecardReminderCadence = 'daily' | 'every_2_days' | 'weekly'
+
+export interface ScorecardRequirements {
+  requireScorecard: boolean
+  remindersEnabled: boolean
+  reminderCadence: ScorecardReminderCadence
+}
 
 export interface ScorecardTemplate {
   id: string
   job_hiring_stage_id: string
   visibility: ScorecardVisibility
   questions: InterviewQuestion[]
+  requirements: ScorecardRequirements
 }
 
 export function useScorecardsConfiguration(jhsId: string | null) {
@@ -164,11 +172,26 @@ export function useScorecardsConfiguration(jhsId: string | null) {
         visibility = templateData.visibility as ScorecardVisibility
       }
 
+      // Load per-stage requirements from job_hiring_stages
+      const { data: stageRow } = await supabase
+        .from('job_hiring_stages')
+        .select('require_scorecard, scorecard_reminders_enabled, scorecard_reminder_cadence')
+        .eq('id', jhsId)
+        .maybeSingle()
+
+      const requirements: ScorecardRequirements = {
+        requireScorecard: !!(stageRow as any)?.require_scorecard,
+        remindersEnabled: !!(stageRow as any)?.scorecard_reminders_enabled,
+        reminderCadence:
+          ((stageRow as any)?.scorecard_reminder_cadence as ScorecardReminderCadence) || 'daily',
+      }
+
       setTemplate({
         id: templateId,
         job_hiring_stage_id: jhsId,
         visibility,
-        questions: formattedQuestions
+        questions: formattedQuestions,
+        requirements,
       })
     } catch (err) {
       console.error('Error loading scorecard template:', err)
@@ -313,6 +336,43 @@ export function useScorecardsConfiguration(jhsId: string | null) {
     }
   })
 
+  const updateRequirements = useMutation({
+    mutationFn: async (payload: Partial<ScorecardRequirements>) => {
+      if (!jhsId) throw new Error('Stage not loaded')
+      const updates: Record<string, unknown> = {}
+      if (payload.requireScorecard !== undefined) updates.require_scorecard = payload.requireScorecard
+      if (payload.remindersEnabled !== undefined)
+        updates.scorecard_reminders_enabled = payload.remindersEnabled
+      if (payload.reminderCadence !== undefined)
+        updates.scorecard_reminder_cadence = payload.reminderCadence
+      const { error } = await supabase
+        .from('job_hiring_stages')
+        .update(updates)
+        .eq('id', jhsId)
+      if (error) throw error
+      return payload
+    },
+    onMutate: (payload) => {
+      // Optimistic UI
+      if (template) {
+        setTemplate({
+          ...template,
+          requirements: { ...template.requirements, ...payload },
+        })
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scorecard-configuration', jhsId] })
+      queryClient.invalidateQueries({ queryKey: ['job-hiring-plan'] })
+    },
+    onError: (error) => {
+      console.error('Error updating scorecard requirements:', error)
+      toast.error('Failed to save scorecard requirements')
+      // Revert by reloading
+      loadTemplate()
+    },
+  })
+
   return {
     template,
     isLoading,
@@ -322,6 +382,8 @@ export function useScorecardsConfiguration(jhsId: string | null) {
     updateQuestion,
     deleteQuestion,
     reorderQuestions,
-    updateVisibility
+    updateVisibility,
+    updateRequirements,
   }
 }
+
