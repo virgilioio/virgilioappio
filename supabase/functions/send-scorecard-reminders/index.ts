@@ -6,6 +6,13 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import {
+  renderScorecardReminderEmail,
+  initialsFor,
+  colorForName,
+  formatInterviewedWhen,
+  type ScorecardCadence,
+} from "../_shared/scorecardReminderEmail.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -13,7 +20,7 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY") || "");
 const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "GoGio <noreply@app.gogio.io>";
 const appUrl = Deno.env.get("APP_URL") || "https://app.gogio.io";
 
-type Cadence = "daily" | "every_2_days" | "weekly";
+type Cadence = ScorecardCadence;
 const CADENCE_HOURS: Record<Cadence, number> = {
   daily: 24,
   every_2_days: 48,
