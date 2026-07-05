@@ -1468,6 +1468,17 @@ const stageHasAutomation = useMemo(() => {
                               }}
                               onDismissAiDraft={handleDismissAiDraft}
                               refreshNonce={scorecardsRefreshNonce}
+                              requirement={
+                                currentStage.jhsId === activeStageInstanceId && scorecardRequirement.requireScorecard
+                                  ? {
+                                      active: true,
+                                      totalExpected: scorecardRequirement.totalExpected,
+                                      pendingRequired: scorecardRequirement.pending,
+                                      onRequest: (uid) => handleRequestScorecard(uid),
+                                      onRequestAll: () => handleRequestScorecard(),
+                                    }
+                                  : undefined
+                              }
                             />
                           )}
 
