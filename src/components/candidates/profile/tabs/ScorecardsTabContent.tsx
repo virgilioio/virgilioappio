@@ -1,4 +1,5 @@
-import { BarChart3, Plus, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check } from 'lucide-react'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +9,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SoftRosette } from '@/components/ui/EmptyIllustrations'
 import { RATING_META } from '@/lib/scorecardRatings'
 import type { ScoreRating } from '@/hooks/useScorecards'
+import type { RequiredPanelist, ScorecardReminderCadence } from '@/hooks/useStageScorecardRequirement'
+import { cadenceLabel, timeAgoShort } from '@/hooks/useStageScorecardRequirement'
 
 export type SubmittedVerdict =
   | { label: 'Strong yes'; tone: 'green' }
