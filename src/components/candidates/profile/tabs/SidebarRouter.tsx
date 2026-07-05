@@ -19,6 +19,7 @@ import {
   Star,
   Inbox,
   XCircle,
+  PenLine,
 } from 'lucide-react'
 import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/ProfileSidebar'
 import { ProfileQuickActionsCard } from '../ProfileQuickActionsCard'
