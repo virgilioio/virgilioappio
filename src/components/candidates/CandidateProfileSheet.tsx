@@ -1672,6 +1672,21 @@ const stageHasAutomation = useMemo(() => {
                             setScoreOpen(true)
                           }
                         }}
+                        requirement={
+                          scorecardRequirement.requireScorecard
+                            ? {
+                                active: true,
+                                totalExpected: scorecardRequirement.totalExpected,
+                                pendingRequired: scorecardRequirement.pending,
+                                remindersEnabled: scorecardRequirement.remindersEnabled,
+                                cadence: scorecardRequirement.cadence,
+                                candidateFirstName: scorecardRequirement.candidateFirstName,
+                                nextStageName: scorecardRequirement.nextStageName,
+                                onRequest: (uid) => handleRequestScorecard(uid),
+                                onRequestAll: () => handleRequestScorecard(),
+                              }
+                            : undefined
+                        }
                       />
                     )}
 
