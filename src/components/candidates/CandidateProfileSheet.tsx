@@ -1939,17 +1939,28 @@ const stageHasAutomation = useMemo(() => {
                                   { label: 'Lean no',    tone: 'orange', count: scorecardSummary.counts.lean_no },
                                   { label: 'Strong no',  tone: 'red',    count: scorecardSummary.counts.strong_no },
                                 ]}
-                                pending={pendingPanelists.map((row) => ({
-                                  id: row.userId,
-                                  name: row.name,
-                                  role: row.role ?? null,
-                                  onNudge: () => {
-                                    toast({
-                                      title: 'Nudge sent',
-                                      description: `Reminder sent to ${row.name}.`,
-                                    })
-                                  },
-                                }))}
+                                pending={
+                                  scorecardRequirement.requireScorecard
+                                    ? scorecardRequirement.pending.map((row) => ({
+                                        id: row.userId,
+                                        name: row.name,
+                                        role: row.roleLabel ?? null,
+                                        required: true,
+                                        requested: !!row.lastRequestedAt,
+                                        onRequest: () => handleRequestScorecard(row.userId),
+                                      }))
+                                    : pendingPanelists.map((row) => ({
+                                        id: row.userId,
+                                        name: row.name,
+                                        role: row.role ?? null,
+                                        onNudge: () => {
+                                          toast({
+                                            title: 'Nudge sent',
+                                            description: `Reminder sent to ${row.name}.`,
+                                          })
+                                        },
+                                      }))
+                                }
                               />
                             )
                           case 'activity':
