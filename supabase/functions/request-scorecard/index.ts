@@ -231,7 +231,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, sent, skipped, targeted: targets.length }),
+      JSON.stringify({ ok: true, sent, skipped, targeted: targets.length, skipped_self: skippedSelf }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
