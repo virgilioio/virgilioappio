@@ -1717,6 +1717,8 @@ const stageHasAutomation = useMemo(() => {
                                 nextStageName: scorecardRequirement.nextStageName,
                                 onRequest: (uid) => handleRequestScorecard(uid),
                                 onRequestAll: () => handleRequestScorecard(),
+                                onCompleteMine: handleCompleteMyScorecard,
+                                currentUserId: user?.id,
                               }
                             : undefined
                         }
