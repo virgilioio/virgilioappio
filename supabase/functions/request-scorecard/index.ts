@@ -5,6 +5,13 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import {
+  renderScorecardReminderEmail,
+  initialsFor,
+  colorForName,
+  formatInterviewedWhen,
+  type ScorecardCadence,
+} from "../_shared/scorecardReminderEmail.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,10 +40,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { association_id: assocId, job_hiring_stage_id: jhsId } = body;
 
-    // Stage context
+    // Stage context (also read the cadence so the email copy matches setting).
     const { data: stage } = await supabase
       .from("job_hiring_stages")
-      .select("id, job_id, custom_stage_name, job_stages!inner(stage_name)")
+      .select("id, job_id, scorecard_reminder_cadence, custom_stage_name, job_stages!inner(stage_name)")
       .eq("id", jhsId)
       .maybeSingle();
     if (!stage) {
@@ -50,29 +57,46 @@ serve(async (req) => {
       (stage as any).job_stages?.stage_name ||
       "this stage";
     const jobId = (stage as any).job_id;
+    const cadence = (((stage as any).scorecard_reminder_cadence) || "daily") as ScorecardCadence;
 
-    // Assoc + candidate
-    const { data: assoc } = await supabase
-      .from("job_candidate_associations")
-      .select("id, candidate_id, candidates!inner(first_name, last_name, candidate_name)")
-      .eq("id", assocId)
-      .maybeSingle();
+    // Assoc + candidate + job title
+    const [{ data: assoc }, { data: job }] = await Promise.all([
+      supabase
+        .from("job_candidate_associations")
+        .select("id, candidate_id, candidates!inner(first_name, last_name, candidate_name)")
+        .eq("id", assocId)
+        .maybeSingle(),
+      supabase
+        .from("jobs")
+        .select("id, title")
+        .eq("id", jobId)
+        .maybeSingle(),
+    ]);
     const candidate = (assoc as any)?.candidates;
-    const candidateName =
+    const candidateFullName =
       candidate?.candidate_name ||
       [candidate?.first_name, candidate?.last_name].filter(Boolean).join(" ") ||
       "the candidate";
+    const candidateFirstName =
+      candidate?.first_name ||
+      (candidate?.candidate_name ? String(candidate.candidate_name).split(" ")[0] : "there");
+    const jobTitle = (job as any)?.title || "this role";
 
     // Compute currently pending interviewers for this stage/assoc
     const { data: bookings } = await supabase
       .from("scheduled_bookings")
-      .select("id, interviewer_id")
+      .select("id, interviewer_id, scheduled_end")
       .eq("job_hiring_stage_id", jhsId)
       .eq("job_candidate_association_id", assocId)
       .not("status", "eq", "cancelled");
 
     const expected = new Set<string>();
-    for (const b of bookings || []) if ((b as any).interviewer_id) expected.add((b as any).interviewer_id);
+    let latestInterviewedAt: string | null = null;
+    for (const b of bookings || []) {
+      if ((b as any).interviewer_id) expected.add((b as any).interviewer_id);
+      const end = (b as any).scheduled_end as string | null;
+      if (end && (!latestInterviewedAt || end > latestInterviewedAt)) latestInterviewedAt = end;
+    }
     const bookingIds = (bookings || []).map((b) => (b as any).id);
     if (bookingIds.length) {
       const { data: attendees } = await supabase
@@ -108,6 +132,8 @@ serve(async (req) => {
         .filter((s: any) => !s.is_ai_draft && !!s.rating)
         .map((s: any) => s.created_by),
     );
+    const submittedCount = submittedIds.size;
+    const totalCount = expected.size;
 
     const stillPending = [...expected].filter((u) => !submittedIds.has(u));
     const requested = (body.interviewer_user_ids || []).filter(Boolean);
@@ -129,25 +155,32 @@ serve(async (req) => {
         skipped++;
         continue;
       }
-      const firstName = (profile as any)?.first_name || "there";
       const scorecardUrl = `${appUrl}/jobs/${jobId}?openCandidate=${(assoc as any)?.candidate_id}&tab=scorecards`;
 
-      const subject = `Scorecard requested: ${candidateName} · ${stageName}`;
-      const html = `
-        <p>Hi ${firstName},</p>
-        <p>The hiring team has asked for your scorecard on <strong>${candidateName}</strong> at the <strong>${stageName}</strong> stage.</p>
-        <p>${candidateName} can't move to the next stage until your feedback is in.</p>
-        <p><a href="${scorecardUrl}" style="display:inline-block;background:#6F3FF5;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-family:sans-serif">Open scorecard</a></p>
-      `;
+      const { subject, html, text } = renderScorecardReminderEmail({
+        interviewer_first_name: (profile as any)?.first_name || "there",
+        candidate_first_name: candidateFirstName,
+        candidate_full_name: candidateFullName,
+        candidate_initials: initialsFor(candidateFullName),
+        candidate_color: colorForName(candidateFullName),
+        job_title: jobTitle,
+        stage_name: stageName,
+        interviewed_when: formatInterviewedWhen(latestInterviewedAt),
+        submitted_count: submittedCount,
+        total_count: totalCount,
+        cadence,
+        scorecard_url: scorecardUrl,
+      });
 
       try {
-        await resend.emails.send({ from: emailFrom, to: [toEmail], subject, html });
+        await resend.emails.send({ from: emailFrom, to: [toEmail], subject, html, text });
         sent++;
       } catch (e) {
         console.error("[request-scorecard] send failed", e);
         skipped++;
         continue;
       }
+
 
       // Upsert tracker row (unique on association+stage+interviewer)
       const { data: existing } = await supabase
