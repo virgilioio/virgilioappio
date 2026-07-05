@@ -141,7 +141,12 @@ export function StageScorecardsCard({
       </div>
 
       {/* Required-to-advance banner */}
-      {requiredActive && requiredPending.length > 0 && (
+      {requiredActive && requiredPending.length > 0 && (() => {
+        const onlyMinePending =
+          !!currentUserId &&
+          requiredPending.length === 1 &&
+          requiredPending[0]?.userId === currentUserId
+        return (
         <div className="mx-5 sm:mx-6 mt-4 flex items-center gap-3 rounded-[10px] border border-[#EDE4FF] bg-[#FAF8FF] px-3.5 py-3">
           <div
             className="h-8 w-8 rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0"
@@ -160,17 +165,24 @@ export function StageScorecardsCard({
               {requirement!.totalExpected === 1 ? '' : 's'} still owe{requiredPending.length === 1 ? 's' : ''} a scorecard for this stage.
             </div>
           </div>
-          <Button
-            variant="purple"
-            size="sm"
-            icon={Send}
-            onClick={handleRequestAll}
-            loading={requestingAll}
-          >
-            Request all
-          </Button>
+          {onlyMinePending && requirement!.onCompleteMine ? (
+            <Button variant="primary" size="sm" icon={PenLine} onClick={requirement!.onCompleteMine}>
+              Complete scorecard
+            </Button>
+          ) : (
+            <Button
+              variant="purple"
+              size="sm"
+              icon={Send}
+              onClick={handleRequestAll}
+              loading={requestingAll}
+            >
+              Request all
+            </Button>
+          )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Rows */}
       <div className="mt-4 divide-y divide-virgilio-border/60">
