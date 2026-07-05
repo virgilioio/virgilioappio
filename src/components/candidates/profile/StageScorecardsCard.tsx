@@ -20,6 +20,8 @@ export interface ScorecardRequirementInfo {
   pendingRequired: RequiredPanelist[]
   onRequest: (interviewerUserId: string) => Promise<void>
   onRequestAll: () => Promise<void>
+  /** Opens the current user's own scorecard editor. */
+  onCompleteMine?: () => void
 }
 
 interface StageScorecardsCardProps {
