@@ -110,6 +110,7 @@ import {
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
+import { checkScorecardGate } from '@/utils/scorecardGate'
 
 interface StageScorecardProps {
   stageInstanceId: string;
