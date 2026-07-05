@@ -249,7 +249,16 @@ export interface ScorecardsSidebarProps {
   average: number | null
   panelistCount: number
   verdictBreakdown: { label: string; tone: ScorecardVerdictTone; count: number }[]
-  pending: { id: string; name: string; role?: string | null; onNudge?: () => void }[]
+  pending: {
+    id: string
+    name: string
+    role?: string | null
+    onNudge?: () => void
+    /** When set, primary action becomes Request/Requested (scorecard-gated stage). */
+    required?: boolean
+    requested?: boolean
+    onRequest?: () => Promise<void> | void
+  }[]
 }
 
 const VERDICT_DOT_BG: Record<ScorecardVerdictTone, string> = {
