@@ -86,12 +86,20 @@ export interface InterviewQuestion {
 }
 
 export type ScorecardVisibility = 'private' | 'public'
+export type ScorecardReminderCadence = 'daily' | 'every_2_days' | 'weekly'
+
+export interface ScorecardRequirements {
+  requireScorecard: boolean
+  remindersEnabled: boolean
+  reminderCadence: ScorecardReminderCadence
+}
 
 export interface ScorecardTemplate {
   id: string
   job_hiring_stage_id: string
   visibility: ScorecardVisibility
   questions: InterviewQuestion[]
+  requirements: ScorecardRequirements
 }
 
 export function useScorecardsConfiguration(jhsId: string | null) {
