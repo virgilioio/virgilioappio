@@ -74,6 +74,7 @@ export function StageScorecardsCard({
   expectedPanelists,
   onOpenFullSheet, onSubmitScorecard, onCompare, onDismissAiDraft,
   refreshNonce,
+  requirement,
 }: StageScorecardsCardProps) {
   const { scorecards, loading } = useAllStageScorecards(stageInstanceId, associationId, refreshNonce)
 
@@ -82,14 +83,33 @@ export function StageScorecardsCard({
     [scorecards],
   )
 
-  const pendingPanelists = useMemo(() => {
-    if (!expectedPanelists) return []
+  // If a requirement is active use its list (authoritative). Otherwise, fall
+  // back to any explicitly-provided expected panelist list.
+  const requiredActive = !!requirement?.active
+  const requiredPending = requirement?.pendingRequired ?? []
+  const fallbackPending = useMemo(() => {
+    if (requiredActive || !expectedPanelists) return []
     const submittedIds = new Set(submitted.map(s => s.created_by))
     return expectedPanelists.filter(p => !submittedIds.has(p.userId))
-  }, [expectedPanelists, submitted])
+  }, [requiredActive, expectedPanelists, submitted])
 
-  const totalExpected = expectedPanelists?.length ?? submitted.length
-  const pendingCount = pendingPanelists.length || Math.max(0, totalExpected - submitted.length)
+  const pendingCount = requiredActive
+    ? requiredPending.length
+    : fallbackPending.length || Math.max(0, (expectedPanelists?.length ?? submitted.length) - submitted.length)
+
+  const [requestingId, setRequestingId] = useState<string | null>(null)
+  const [requestingAll, setRequestingAll] = useState(false)
+
+  const handleRequest = async (uid: string) => {
+    if (!requirement) return
+    setRequestingId(uid)
+    try { await requirement.onRequest(uid) } finally { setRequestingId(null) }
+  }
+  const handleRequestAll = async () => {
+    if (!requirement) return
+    setRequestingAll(true)
+    try { await requirement.onRequestAll() } finally { setRequestingAll(false) }
+  }
 
   return (
     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm">
@@ -101,6 +121,7 @@ export function StageScorecardsCard({
           </h3>
           <p className="mt-1 text-[12.5px] text-text-tertiary font-poppins">
             {submitted.length} submitted{pendingCount > 0 && <> · {pendingCount} pending</>}
+            {requiredActive && <> · required to advance</>}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -117,11 +138,43 @@ export function StageScorecardsCard({
         </div>
       </div>
 
+      {/* Required-to-advance banner */}
+      {requiredActive && requiredPending.length > 0 && (
+        <div className="mx-5 sm:mx-6 mt-4 flex items-center gap-3 rounded-[10px] border border-[#EDE4FF] bg-[#FAF8FF] px-3.5 py-3">
+          <div
+            className="h-8 w-8 rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-poppins font-semibold text-[12.5px] text-[#1F2230]">
+                Scorecard required to advance
+              </span>
+              <Badge tone="purple" size="xs" dot>Required</Badge>
+            </div>
+            <div className="mt-0.5 font-inter text-[11px] text-[#5A6072]">
+              {requiredPending.length} of {requirement!.totalExpected} interviewer
+              {requirement!.totalExpected === 1 ? '' : 's'} still owe{requiredPending.length === 1 ? 's' : ''} a scorecard for this stage.
+            </div>
+          </div>
+          <Button
+            variant="purple"
+            size="sm"
+            icon={Send}
+            onClick={handleRequestAll}
+            loading={requestingAll}
+          >
+            Request all
+          </Button>
+        </div>
+      )}
+
       {/* Rows */}
       <div className="mt-4 divide-y divide-virgilio-border/60">
-        {loading && submitted.length === 0 && pendingPanelists.length === 0 ? (
+        {loading && submitted.length === 0 && fallbackPending.length === 0 && requiredPending.length === 0 ? (
           <div className="px-5 sm:px-6 py-6 text-[13px] text-text-tertiary">Loading scorecards…</div>
-        ) : submitted.length === 0 && pendingPanelists.length === 0 ? (
+        ) : submitted.length === 0 && fallbackPending.length === 0 && requiredPending.length === 0 ? (
           <div className="px-5 sm:px-6 py-4">
             <InlineEmpty
               text="No scorecards yet"
