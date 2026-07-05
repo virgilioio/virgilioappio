@@ -1983,6 +1983,8 @@ const stageHasAutomation = useMemo(() => {
                                         required: true,
                                         requested: !!row.lastRequestedAt,
                                         onRequest: () => handleRequestScorecard(row.userId),
+                                        isMe: !!user?.id && row.userId === user.id,
+                                        onComplete: handleCompleteMyScorecard,
                                       }))
                                     : pendingPanelists.map((row) => ({
                                         id: row.userId,
