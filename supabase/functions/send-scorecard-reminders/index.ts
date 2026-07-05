@@ -160,7 +160,7 @@ serve(async (req) => {
             continue;
           }
 
-          const scorecardUrl = `${appUrl}/jobs/${jobId}?openCandidate=${(assoc as any).candidate_id}&tab=scorecards`;
+          const scorecardUrl = `${appUrl}/jobs/${jobId}/candidates/${(assoc as any).candidate_id}?tab=scorecards&focus=my-scorecard`;
           const { subject, html, text } = renderScorecardReminderEmail({
             interviewer_first_name: (profile as any)?.first_name || "there",
             candidate_first_name: candidateFirstName,

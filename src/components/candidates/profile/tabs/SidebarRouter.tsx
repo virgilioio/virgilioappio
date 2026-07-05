@@ -19,6 +19,7 @@ import {
   Star,
   Inbox,
   XCircle,
+  PenLine,
 } from 'lucide-react'
 import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/ProfileSidebar'
 import { ProfileQuickActionsCard } from '../ProfileQuickActionsCard'
@@ -258,6 +259,10 @@ export interface ScorecardsSidebarProps {
     required?: boolean
     requested?: boolean
     onRequest?: () => Promise<void> | void
+    /** True when this pending row is the current user's own scorecard. */
+    isMe?: boolean
+    /** Opens the current user's own scorecard editor (used when isMe). */
+    onComplete?: () => void
   }[]
 }
 
@@ -338,7 +343,11 @@ export function ScorecardsSidebar(p: ScorecardsSidebarProps) {
                     <div className="font-inter text-[10.5px] text-[#8B8F9E] truncate">{row.role}</div>
                   )}
                 </div>
-                {row.required && row.onRequest ? (
+                {row.isMe && row.onComplete ? (
+                  <Button variant="primary" size="sm" icon={PenLine} onClick={row.onComplete}>
+                    Complete
+                  </Button>
+                ) : row.required && row.onRequest ? (
                   row.requested ? (
                     <Button variant="ghost" size="sm" icon={CheckCircle2} onClick={() => row.onRequest?.()}>
                       Requested

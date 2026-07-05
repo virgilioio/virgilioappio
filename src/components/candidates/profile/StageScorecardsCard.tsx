@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check } from 'lucide-react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -20,6 +20,8 @@ export interface ScorecardRequirementInfo {
   pendingRequired: RequiredPanelist[]
   onRequest: (interviewerUserId: string) => Promise<void>
   onRequestAll: () => Promise<void>
+  /** Opens the current user's own scorecard editor. */
+  onCompleteMine?: () => void
 }
 
 interface StageScorecardsCardProps {
@@ -139,7 +141,12 @@ export function StageScorecardsCard({
       </div>
 
       {/* Required-to-advance banner */}
-      {requiredActive && requiredPending.length > 0 && (
+      {requiredActive && requiredPending.length > 0 && (() => {
+        const onlyMinePending =
+          !!currentUserId &&
+          requiredPending.length === 1 &&
+          requiredPending[0]?.userId === currentUserId
+        return (
         <div className="mx-5 sm:mx-6 mt-4 flex items-center gap-3 rounded-[10px] border border-[#EDE4FF] bg-[#FAF8FF] px-3.5 py-3">
           <div
             className="h-8 w-8 rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0"
@@ -158,17 +165,24 @@ export function StageScorecardsCard({
               {requirement!.totalExpected === 1 ? '' : 's'} still owe{requiredPending.length === 1 ? 's' : ''} a scorecard for this stage.
             </div>
           </div>
-          <Button
-            variant="purple"
-            size="sm"
-            icon={Send}
-            onClick={handleRequestAll}
-            loading={requestingAll}
-          >
-            Request all
-          </Button>
+          {onlyMinePending && requirement!.onCompleteMine ? (
+            <Button variant="primary" size="sm" icon={PenLine} onClick={requirement!.onCompleteMine}>
+              Complete scorecard
+            </Button>
+          ) : (
+            <Button
+              variant="purple"
+              size="sm"
+              icon={Send}
+              onClick={handleRequestAll}
+              loading={requestingAll}
+            >
+              Request all
+            </Button>
+          )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Rows */}
       <div className="mt-4 divide-y divide-virgilio-border/60">
@@ -287,6 +301,7 @@ export function StageScorecardsCard({
                   const requested = !!p.lastRequestedAt
                   const timeStr = requested ? timeAgoShort(p.lastRequestedAt) : ''
                   const isBusy = requestingId === p.userId
+                  const isMe = !!currentUserId && p.userId === currentUserId
                   return (
                     <div key={p.userId} className="px-5 sm:px-6 py-4 flex items-start gap-3">
                       <Avatar className="h-[26px] w-[26px] shrink-0">
@@ -295,14 +310,28 @@ export function StageScorecardsCard({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-poppins font-medium text-[13px] text-text-primary">{p.name}</span>
+                          {isMe && <Badge tone="lilac" size="xs">You</Badge>}
                           <Badge tone="purple" size="xs" dot>Required</Badge>
                         </div>
                         <div className="mt-0.5 text-[12px] text-text-tertiary font-poppins">
                           {p.roleLabel ? `${p.roleLabel} · ` : ''}
-                          {requested ? `requested ${timeStr}` : 'awaiting scorecard'}
+                          {isMe
+                            ? 'your scorecard is pending'
+                            : requested
+                              ? `requested ${timeStr}`
+                              : 'awaiting scorecard'}
                         </div>
                       </div>
-                      {requested ? (
+                      {isMe && requirement?.onCompleteMine ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon={PenLine}
+                          onClick={requirement.onCompleteMine}
+                        >
+                          Complete scorecard
+                        </Button>
+                      ) : requested ? (
                         <Button
                           variant="ghost"
                           size="sm"

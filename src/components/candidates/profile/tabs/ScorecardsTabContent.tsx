@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check } from 'lucide-react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine } from 'lucide-react'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -207,6 +207,10 @@ export interface ScorecardsRequirementUiInfo {
   nextStageName: string | null
   onRequest: (interviewerUserId: string) => Promise<void>
   onRequestAll: () => Promise<void>
+  /** Opens the current user's own scorecard editor. */
+  onCompleteMine?: () => void
+  /** So we can swap Request → Complete for the current user. */
+  currentUserId?: string
 }
 
 export interface ScorecardsTabContentProps {
@@ -223,12 +227,16 @@ function RequiredPendingRow({
   remindersEnabled,
   onRequest,
   isLast,
+  isMe,
+  onCompleteMine,
 }: {
   p: RequiredPanelist
   cadence: ScorecardReminderCadence
   remindersEnabled: boolean
   onRequest: (uid: string) => Promise<void>
   isLast: boolean
+  isMe?: boolean
+  onCompleteMine?: () => void
 }) {
   const [busy, setBusy] = useState(false)
   const requested = !!p.lastRequestedAt
@@ -236,9 +244,11 @@ function RequiredPendingRow({
     setBusy(true)
     try { await onRequest(p.userId) } finally { setBusy(false) }
   }
-  const subline = requested
-    ? `Requested ${timeAgoShort(p.lastRequestedAt)}${remindersEnabled ? ` · reminder emailed ${cadenceLabel(cadence)}` : ''}`
-    : 'Awaiting scorecard'
+  const subline = isMe
+    ? 'Your scorecard is pending — this is holding up the pipeline'
+    : requested
+      ? `Requested ${timeAgoShort(p.lastRequestedAt)}${remindersEnabled ? ` · reminder emailed ${cadenceLabel(cadence)}` : ''}`
+      : 'Awaiting scorecard'
   return (
     <div className={cn('px-5 py-4 bg-[#FCFCFA]', !isLast && 'border-b border-[#F1F0EC]')}>
       <div className="flex items-start gap-3">
@@ -252,12 +262,17 @@ function RequiredPendingRow({
             <span className="font-poppins font-semibold text-[13.5px] tracking-[-0.005em] text-[#1F2230]">
               {p.name}
             </span>
+            {isMe && <Badge tone="lilac" size="xs">You</Badge>}
             {p.roleLabel && <Badge tone="neutral" size="xs">{p.roleLabel}</Badge>}
             <Badge tone="purple" size="xs" dot>Required</Badge>
           </div>
           <div className="font-inter text-[11.5px] text-[#8B8F9E] mt-0.5">{subline}</div>
         </div>
-        {requested ? (
+        {isMe && onCompleteMine ? (
+          <Button variant="primary" size="sm" icon={PenLine} onClick={onCompleteMine}>
+            Complete scorecard
+          </Button>
+        ) : requested ? (
           <Button variant="ghost" size="sm" icon={Check} onClick={handle} loading={busy}>
             Requested
           </Button>
@@ -332,7 +347,12 @@ export function ScorecardsTabContent({
           </>
         }
       >
-        {requiredActive && requiredPending.length > 0 && (
+        {requiredActive && requiredPending.length > 0 && (() => {
+          const onlyMinePending =
+            !!requirement!.currentUserId &&
+            requiredPending.length === 1 &&
+            requiredPending[0]?.userId === requirement!.currentUserId
+          return (
           <div className="mt-3 mx-5 flex items-center gap-3 rounded-[10px] border border-[#EDE4FF] bg-[#FAF8FF] px-4 py-3">
             <div className="h-[34px] w-[34px] rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0">
               <ClipboardCheck className="h-[18px] w-[18px]" />
@@ -346,11 +366,18 @@ export function ScorecardsTabContent({
               </div>
               <div className="mt-0.5 font-inter text-[11.5px] text-[#5A6072]">{bannerSubline}</div>
             </div>
-            <Button variant="purple" size="sm" icon={Send} onClick={handleRequestAll} loading={requestingAll}>
-              Request all
-            </Button>
+            {onlyMinePending && requirement!.onCompleteMine ? (
+              <Button variant="primary" size="sm" icon={PenLine} onClick={requirement!.onCompleteMine}>
+                Complete scorecard
+              </Button>
+            ) : (
+              <Button variant="purple" size="sm" icon={Send} onClick={handleRequestAll} loading={requestingAll}>
+                Request all
+              </Button>
+            )}
           </div>
-        )}
+          )
+        })()}
         {submitted.length === 0 && !(requiredActive && requiredPending.length > 0) ? (
           <EmptyState
             size="card"
@@ -379,6 +406,8 @@ export function ScorecardsTabContent({
                 remindersEnabled={requirement!.remindersEnabled}
                 onRequest={requirement!.onRequest}
                 isLast={i === requiredPending.length - 1}
+                isMe={!!requirement!.currentUserId && p.userId === requirement!.currentUserId}
+                onCompleteMine={requirement!.onCompleteMine}
               />
             ))}
           </div>

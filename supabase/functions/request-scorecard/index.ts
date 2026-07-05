@@ -40,6 +40,18 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { association_id: assocId, job_hiring_stage_id: jhsId } = body;
 
+    // Identify the caller so we can filter their own user id out of targets
+    // (an interviewer shouldn't be able to email a scorecard request to themselves).
+    let callerUserId: string | null = null;
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      try {
+        const { data: userData } = await supabase.auth.getUser(token);
+        callerUserId = userData?.user?.id ?? null;
+      } catch { /* anonymous */ }
+    }
+
     // Stage context (also read the cadence so the email copy matches setting).
     const { data: stage } = await supabase
       .from("job_hiring_stages")
@@ -137,9 +149,16 @@ serve(async (req) => {
 
     const stillPending = [...expected].filter((u) => !submittedIds.has(u));
     const requested = (body.interviewer_user_ids || []).filter(Boolean);
-    const targets = requested.length
+    let targets = requested.length
       ? stillPending.filter((u) => requested.includes(u))
       : stillPending;
+    // Never email the caller their own scorecard request.
+    let skippedSelf = 0;
+    if (callerUserId) {
+      const before = targets.length;
+      targets = targets.filter((u) => u !== callerUserId);
+      skippedSelf = before - targets.length;
+    }
 
     let sent = 0;
     let skipped = 0;
@@ -155,7 +174,7 @@ serve(async (req) => {
         skipped++;
         continue;
       }
-      const scorecardUrl = `${appUrl}/jobs/${jobId}?openCandidate=${(assoc as any)?.candidate_id}&tab=scorecards`;
+      const scorecardUrl = `${appUrl}/jobs/${jobId}/candidates/${(assoc as any)?.candidate_id}?tab=scorecards&focus=my-scorecard`;
 
       const { subject, html, text } = renderScorecardReminderEmail({
         interviewer_first_name: (profile as any)?.first_name || "there",
@@ -212,7 +231,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, sent, skipped, targeted: targets.length }),
+      JSON.stringify({ ok: true, sent, skipped, targeted: targets.length, skipped_self: skippedSelf }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

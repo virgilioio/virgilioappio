@@ -167,10 +167,10 @@ const BODY_TEMPLATE = `<!doctype html>
               <td class="gio-pad-40" style="padding:38px 40px 34px;">
                 <p style="margin:0 0 14px;font-family:'Inter',-apple-system,'Segoe UI',Arial,sans-serif;font-weight:600;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6F3FF5;">Your scorecard is needed</p>
                 <h1 class="gio-headline" style="margin:0 0 18px;font-family:'Poppins','Helvetica Neue',Arial,sans-serif;font-weight:600;font-size:30px;line-height:1.12;letter-spacing:-0.035em;color:#0d0d09;">
-                  Your feedback on {{candidate_first_name}} is holding up the pipeline<span style="color:#D7C5FB;">.</span>
+                  Your feedback on {{candidate_full_name}} is holding up the pipeline<span style="color:#D7C5FB;">.</span>
                 </h1>
                 <p style="margin:0 0 24px;font-family:'Inter',-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;line-height:1.62;color:#5A6072;">
-                  Hi <strong style="color:#1F2230;font-weight:600;">{{interviewer_first_name}}</strong> — you interviewed <strong style="color:#1F2230;font-weight:600;">{{candidate_full_name}}</strong> for <strong style="color:#1F2230;font-weight:600;">{{job_title}}</strong>, and a scorecard is required for the <strong style="color:#1F2230;font-weight:600;">{{stage_name}}</strong> stage before they can advance. It only takes a couple of minutes.
+                  Hi <strong style="color:#1F2230;font-weight:600;">{{interviewer_first_name}}</strong> — you interviewed <strong style="color:#1F2230;font-weight:600;">{{candidate_full_name}}</strong> for <strong style="color:#1F2230;font-weight:600;">{{job_title}}</strong>, and a scorecard is required for the <strong style="color:#1F2230;font-weight:600;">{{stage_name}}</strong> stage before {{candidate_first_name}} can advance. It only takes a couple of minutes.
                 </p>
 
                 <!-- PREVIEW CARD -->
@@ -254,9 +254,9 @@ const BODY_TEMPLATE = `<!doctype html>
   </body>
 </html>`;
 
-const TEXT_TEMPLATE = `Your feedback on {{candidate_first_name}} is holding up the pipeline.
+const TEXT_TEMPLATE = `Your feedback on {{candidate_full_name}} is holding up the pipeline.
 
-Hi {{interviewer_first_name}} — you interviewed {{candidate_full_name}} for {{job_title}}, and a scorecard is required for the {{stage_name}} stage before they can advance. It only takes a couple of minutes.
+Hi {{interviewer_first_name}} — you interviewed {{candidate_full_name}} for {{job_title}}, and a scorecard is required for the {{stage_name}} stage before {{candidate_first_name}} can advance. It only takes a couple of minutes.
 
 Interviewed: {{interviewed_when}}
 Scorecards in: {{submitted_count}} of {{total_count}} submitted

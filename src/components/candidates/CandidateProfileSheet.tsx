@@ -248,6 +248,8 @@ const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, ref
 const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
+// Set from a `?focus=my-scorecard` deep link — opens the current-stage scorecard editor once the stage is resolved.
+const [pendingFocusMyScorecard, setPendingFocusMyScorecard] = useState(false)
 // Bump to force per-stage useAllStageScorecards instances to refetch after a save/delete.
 const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
@@ -301,6 +303,24 @@ const handleRequestScorecard = async (interviewerUserId?: string) => {
   scorecardRequirement.refresh()
   bumpScorecardsRefresh()
 }
+
+// Open the current-stage scorecard editor for the current user (the "Complete scorecard" path).
+const handleCompleteMyScorecard = () => {
+  if (!activeStageOption) return
+  setScoreStageInstId(activeStageOption.jhsId)
+  setScoreStageName(activeStageOption.stage.stage_name)
+  setActiveTab('scorecards')
+  setScoreOpen(true)
+}
+
+// Consume the `?focus=my-scorecard` deep link once the active stage is resolved.
+useEffect(() => {
+  if (!pendingFocusMyScorecard) return
+  if (!activeStageOption) return
+  setPendingFocusMyScorecard(false)
+  handleCompleteMyScorecard()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [pendingFocusMyScorecard, activeStageOption?.jhsId])
 
 
 const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
@@ -503,15 +523,27 @@ const stageHasAutomation = useMemo(() => {
 
   useEffect(() => {
     if (open) {
-      // Honor `?tab=communications` (from dashboard reply queue) by landing on
-      // the Activity tab, which surfaces the email history.
+      // Honor `?tab=...` so email/deep-links land on the right tab.
       let initialTab: typeof activeTab = 'job'
+      let focusMine = false
       if (typeof window !== 'undefined') {
-        const tabParam = new URLSearchParams(window.location.search).get('tab')
+        const params = new URLSearchParams(window.location.search)
+        const tabParam = params.get('tab')
         if (tabParam === 'communications' || tabParam === 'emails') initialTab = 'emails'
         else if (tabParam === 'activity') initialTab = 'activity'
+        else if (tabParam === 'scorecards') initialTab = 'scorecards'
+        else if (tabParam === 'overview') initialTab = 'overview'
+        else if (tabParam === 'comments') initialTab = 'comments'
+        else if (tabParam === 'offer') initialTab = 'offer'
+        focusMine = params.get('focus') === 'my-scorecard'
       }
       setActiveTab(initialTab)
+      if (focusMine) {
+        // Defer to the next tick so the tab has mounted before we open the editor.
+        setTimeout(() => {
+          setPendingFocusMyScorecard(true)
+        }, 0)
+      }
     }
     
     // CRITICAL: Clear stale data immediately when candidateId changes to prevent race conditions
@@ -1476,6 +1508,7 @@ const stageHasAutomation = useMemo(() => {
                                       pendingRequired: scorecardRequirement.pending,
                                       onRequest: (uid) => handleRequestScorecard(uid),
                                       onRequestAll: () => handleRequestScorecard(),
+                                      onCompleteMine: handleCompleteMyScorecard,
                                     }
                                   : undefined
                               }
@@ -1684,6 +1717,8 @@ const stageHasAutomation = useMemo(() => {
                                 nextStageName: scorecardRequirement.nextStageName,
                                 onRequest: (uid) => handleRequestScorecard(uid),
                                 onRequestAll: () => handleRequestScorecard(),
+                                onCompleteMine: handleCompleteMyScorecard,
+                                currentUserId: user?.id,
                               }
                             : undefined
                         }
@@ -1948,6 +1983,8 @@ const stageHasAutomation = useMemo(() => {
                                         required: true,
                                         requested: !!row.lastRequestedAt,
                                         onRequest: () => handleRequestScorecard(row.userId),
+                                        isMe: !!user?.id && row.userId === user.id,
+                                        onComplete: handleCompleteMyScorecard,
                                       }))
                                     : pendingPanelists.map((row) => ({
                                         id: row.userId,
