@@ -1,16 +1,25 @@
-import { useMemo } from 'react'
-import { BarChart3, Plus, Star, Sparkles } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
-import { cn } from '@/lib/utils'
 import { InlineEmpty } from '@/components/ui/empty-state'
+import type { RequiredPanelist } from '@/hooks/useStageScorecardRequirement'
+import { timeAgoShort } from '@/hooks/useStageScorecardRequirement'
 
 interface PanelistRow {
   userId: string
   name: string
   roleLabel?: string  // e.g. "Hiring manager", "Panel", "Recruiter"
+}
+
+export interface ScorecardRequirementInfo {
+  active: boolean
+  totalExpected: number
+  pendingRequired: RequiredPanelist[]
+  onRequest: (interviewerUserId: string) => Promise<void>
+  onRequestAll: () => Promise<void>
 }
 
 interface StageScorecardsCardProps {
@@ -26,6 +35,8 @@ interface StageScorecardsCardProps {
   onDismissAiDraft?: (scorecardId: string) => Promise<void>
   /** Bump to force the internal scorecards fetch to refresh (e.g. after submit). */
   refreshNonce?: number
+  /** When set + active, renders the "required to advance" banner and request actions. */
+  requirement?: ScorecardRequirementInfo
 }
 
 import { ratingLabel as sharedRatingLabel, ratingTone as sharedRatingTone, RATING_META, coerceRating } from '@/lib/scorecardRatings'
