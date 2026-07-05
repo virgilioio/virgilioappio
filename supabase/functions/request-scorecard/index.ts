@@ -149,9 +149,16 @@ serve(async (req) => {
 
     const stillPending = [...expected].filter((u) => !submittedIds.has(u));
     const requested = (body.interviewer_user_ids || []).filter(Boolean);
-    const targets = requested.length
+    let targets = requested.length
       ? stillPending.filter((u) => requested.includes(u))
       : stillPending;
+    // Never email the caller their own scorecard request.
+    let skippedSelf = 0;
+    if (callerUserId) {
+      const before = targets.length;
+      targets = targets.filter((u) => u !== callerUserId);
+      skippedSelf = before - targets.length;
+    }
 
     let sent = 0;
     let skipped = 0;
