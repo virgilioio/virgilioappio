@@ -128,42 +128,18 @@ export function ScorecardsTab({ jhsId, jobId, stageName, stageType }: Scorecards
 
   return (
     <div className="space-y-6">
-      {/* Visibility row */}
-      <div
-        className="flex items-center justify-between gap-4"
-        style={{ background: '#fff', border: '1px solid #E7E8EE', borderRadius: 12, padding: 16 }}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className="flex items-center justify-center shrink-0"
-            style={{ width: 40, height: 40, background: '#F1F0EC', borderRadius: 10 }}
-          >
-            {isPublic ? (
-              <Globe className="h-5 w-5" style={{ color: '#5A6072' }} />
-            ) : (
-              <Lock className="h-5 w-5" style={{ color: '#5A6072' }} />
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className="font-poppins font-semibold" style={{ fontSize: 13, color: '#0d0d09' }}>
-                Scorecard visibility
-              </h4>
-              <Badge tone="neutral" size="xs">{isPublic ? 'Public' : 'Private'}</Badge>
-            </div>
-            <p className="font-inter mt-0.5" style={{ fontSize: 12.5, color: '#5A6072' }}>
-              {isPublic
-                ? 'All team members with access to this job can view scorecard responses.'
-                : 'Only the interviewer who submitted and admins/recruiters can view scorecard responses.'}
-            </p>
-          </div>
-        </div>
-        <Switch
-          checked={isPublic}
-          onCheckedChange={handleVisibilityToggle}
-          disabled={updateVisibility.isPending}
-        />
-      </div>
+      <ScorecardRequirementsCard
+        requireScorecard={template.requirements.requireScorecard}
+        remindersEnabled={template.requirements.remindersEnabled}
+        reminderCadence={template.requirements.reminderCadence}
+        isPublic={isPublic}
+        onToggleRequire={(v) => updateRequirements.mutate({ requireScorecard: v })}
+        onToggleReminders={(v) => updateRequirements.mutate({ remindersEnabled: v })}
+        onChangeCadence={(v) => updateRequirements.mutate({ reminderCadence: v })}
+        onToggleVisibility={handleVisibilityToggle}
+        visibilityDisabled={updateVisibility.isPending}
+      />
+
 
       {/* AI Question Generator card */}
       <div
