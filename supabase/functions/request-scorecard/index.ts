@@ -174,7 +174,7 @@ serve(async (req) => {
         skipped++;
         continue;
       }
-      const scorecardUrl = `${appUrl}/jobs/${jobId}?openCandidate=${(assoc as any)?.candidate_id}&tab=scorecards`;
+      const scorecardUrl = `${appUrl}/jobs/${jobId}/candidates/${(assoc as any)?.candidate_id}?tab=scorecards&focus=my-scorecard`;
 
       const { subject, html, text } = renderScorecardReminderEmail({
         interviewer_first_name: (profile as any)?.first_name || "there",
