@@ -281,24 +281,69 @@ export function StageScorecardsCard({
               </div>
             ))}
 
-            {/* Pending rows */}
-            {pendingPanelists.map((p) => (
-              <div key={p.userId} className="px-5 sm:px-6 py-4 flex items-start gap-3">
-                <Avatar className="h-7 w-7 shrink-0 opacity-70">
-                  <AvatarFallback className="text-[10.5px] font-medium">{initials(p.name)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-poppins font-medium text-[13px] text-text-primary">{p.name}</span>
-                    {p.roleLabel && <Badge tone="neutral" size="xs">{p.roleLabel}</Badge>}
+            {/* Pending rows — required or fallback */}
+            {requiredActive
+              ? requiredPending.map((p) => {
+                  const requested = !!p.lastRequestedAt
+                  const timeStr = requested ? timeAgoShort(p.lastRequestedAt) : ''
+                  const isBusy = requestingId === p.userId
+                  return (
+                    <div key={p.userId} className="px-5 sm:px-6 py-4 flex items-start gap-3">
+                      <Avatar className="h-[26px] w-[26px] shrink-0">
+                        <AvatarFallback className="text-[10.5px] font-medium">{initials(p.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-poppins font-medium text-[13px] text-text-primary">{p.name}</span>
+                          <Badge tone="purple" size="xs" dot>Required</Badge>
+                        </div>
+                        <div className="mt-0.5 text-[12px] text-text-tertiary font-poppins">
+                          {p.roleLabel ? `${p.roleLabel} · ` : ''}
+                          {requested ? `requested ${timeStr}` : 'awaiting scorecard'}
+                        </div>
+                      </div>
+                      {requested ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={Check}
+                          onClick={() => handleRequest(p.userId)}
+                          loading={isBusy}
+                        >
+                          Requested
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="purple"
+                          size="sm"
+                          icon={Send}
+                          onClick={() => handleRequest(p.userId)}
+                          loading={isBusy}
+                        >
+                          Request
+                        </Button>
+                      )}
+                      <Badge tone="yellow" size="sm" dot className="shrink-0">Pending</Badge>
+                    </div>
+                  )
+                })
+              : fallbackPending.map((p) => (
+                  <div key={p.userId} className="px-5 sm:px-6 py-4 flex items-start gap-3">
+                    <Avatar className="h-7 w-7 shrink-0 opacity-70">
+                      <AvatarFallback className="text-[10.5px] font-medium">{initials(p.name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-poppins font-medium text-[13px] text-text-primary">{p.name}</span>
+                        {p.roleLabel && <Badge tone="neutral" size="xs">{p.roleLabel}</Badge>}
+                      </div>
+                      <div className="mt-0.5 text-[12px] text-text-tertiary font-poppins">
+                        Pending submission
+                      </div>
+                    </div>
+                    <Badge tone="yellow" size="sm" dot className="shrink-0">Pending</Badge>
                   </div>
-                  <div className="mt-0.5 text-[12px] text-text-tertiary font-poppins">
-                    Pending submission
-                  </div>
-                </div>
-                <Badge tone="yellow" size="sm" dot className="shrink-0">Pending</Badge>
-              </div>
-            ))}
+                ))}
           </>
         )}
       </div>
