@@ -249,7 +249,16 @@ export interface ScorecardsSidebarProps {
   average: number | null
   panelistCount: number
   verdictBreakdown: { label: string; tone: ScorecardVerdictTone; count: number }[]
-  pending: { id: string; name: string; role?: string | null; onNudge?: () => void }[]
+  pending: {
+    id: string
+    name: string
+    role?: string | null
+    onNudge?: () => void
+    /** When set, primary action becomes Request/Requested (scorecard-gated stage). */
+    required?: boolean
+    requested?: boolean
+    onRequest?: () => Promise<void> | void
+  }[]
 }
 
 const VERDICT_DOT_BG: Record<ScorecardVerdictTone, string> = {
@@ -329,11 +338,21 @@ export function ScorecardsSidebar(p: ScorecardsSidebarProps) {
                     <div className="font-inter text-[10.5px] text-[#8B8F9E] truncate">{row.role}</div>
                   )}
                 </div>
-                {row.onNudge && (
+                {row.required && row.onRequest ? (
+                  row.requested ? (
+                    <Button variant="ghost" size="sm" icon={CheckCircle2} onClick={() => row.onRequest?.()}>
+                      Requested
+                    </Button>
+                  ) : (
+                    <Button variant="purple" size="sm" icon={Send} onClick={() => row.onRequest?.()}>
+                      Request
+                    </Button>
+                  )
+                ) : row.onNudge ? (
                   <Button variant="purple" size="sm" onClick={row.onNudge}>
                     Nudge
                   </Button>
-                )}
+                ) : null}
               </div>
             ))}
           </div>

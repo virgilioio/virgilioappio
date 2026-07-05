@@ -98,6 +98,8 @@ import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCa
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
 import { ScorecardsTabContent, type SubmittedScorecardRow, type SubmittedVerdict } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
 import { useStagePendingPanelists } from '@/hooks/useStagePendingPanelists'
+import { useStageScorecardRequirement } from '@/hooks/useStageScorecardRequirement'
+import { requestScorecard } from '@/utils/requestScorecard'
 import {
   JobOverviewSidebar,
   ResumeSidebar,
@@ -269,6 +271,37 @@ const { pending: pendingPanelists } = useStagePendingPanelists(
   associationId,
   scorecardsRefreshNonce,
 )
+
+// Per-stage scorecard requirement (drives banners + Request actions).
+const scorecardRequirement = useStageScorecardRequirement(
+  activeStageInstanceId,
+  associationId,
+  scorecardsRefreshNonce,
+)
+
+const handleRequestScorecard = async (interviewerUserId?: string) => {
+  if (!activeStageInstanceId || !associationId) return
+  const result = await requestScorecard({
+    associationId,
+    jobHiringStageId: activeStageInstanceId,
+    interviewerUserIds: interviewerUserId ? [interviewerUserId] : undefined,
+  })
+  if (!result.ok) {
+    toast({
+      title: "Couldn't send request",
+      description: result.error || 'Please try again.',
+      variant: 'destructive',
+    })
+    return
+  }
+  toast({
+    title: interviewerUserId ? 'Scorecard requested' : 'Scorecard requests sent',
+    description: `Sent ${result.sent ?? 0} email${(result.sent ?? 0) === 1 ? '' : 's'}.`,
+  })
+  scorecardRequirement.refresh()
+  bumpScorecardsRefresh()
+}
+
 
 const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
   switch (r) {
@@ -1435,6 +1468,17 @@ const stageHasAutomation = useMemo(() => {
                               }}
                               onDismissAiDraft={handleDismissAiDraft}
                               refreshNonce={scorecardsRefreshNonce}
+                              requirement={
+                                currentStage.jhsId === activeStageInstanceId && scorecardRequirement.requireScorecard
+                                  ? {
+                                      active: true,
+                                      totalExpected: scorecardRequirement.totalExpected,
+                                      pendingRequired: scorecardRequirement.pending,
+                                      onRequest: (uid) => handleRequestScorecard(uid),
+                                      onRequestAll: () => handleRequestScorecard(),
+                                    }
+                                  : undefined
+                              }
                             />
                           )}
 
@@ -1628,6 +1672,21 @@ const stageHasAutomation = useMemo(() => {
                             setScoreOpen(true)
                           }
                         }}
+                        requirement={
+                          scorecardRequirement.requireScorecard
+                            ? {
+                                active: true,
+                                totalExpected: scorecardRequirement.totalExpected,
+                                pendingRequired: scorecardRequirement.pending,
+                                remindersEnabled: scorecardRequirement.remindersEnabled,
+                                cadence: scorecardRequirement.cadence,
+                                candidateFirstName: scorecardRequirement.candidateFirstName,
+                                nextStageName: scorecardRequirement.nextStageName,
+                                onRequest: (uid) => handleRequestScorecard(uid),
+                                onRequestAll: () => handleRequestScorecard(),
+                              }
+                            : undefined
+                        }
                       />
                     )}
 
@@ -1880,17 +1939,28 @@ const stageHasAutomation = useMemo(() => {
                                   { label: 'Lean no',    tone: 'orange', count: scorecardSummary.counts.lean_no },
                                   { label: 'Strong no',  tone: 'red',    count: scorecardSummary.counts.strong_no },
                                 ]}
-                                pending={pendingPanelists.map((row) => ({
-                                  id: row.userId,
-                                  name: row.name,
-                                  role: row.role ?? null,
-                                  onNudge: () => {
-                                    toast({
-                                      title: 'Nudge sent',
-                                      description: `Reminder sent to ${row.name}.`,
-                                    })
-                                  },
-                                }))}
+                                pending={
+                                  scorecardRequirement.requireScorecard
+                                    ? scorecardRequirement.pending.map((row) => ({
+                                        id: row.userId,
+                                        name: row.name,
+                                        role: row.roleLabel ?? null,
+                                        required: true,
+                                        requested: !!row.lastRequestedAt,
+                                        onRequest: () => handleRequestScorecard(row.userId),
+                                      }))
+                                    : pendingPanelists.map((row) => ({
+                                        id: row.userId,
+                                        name: row.name,
+                                        role: row.role ?? null,
+                                        onNudge: () => {
+                                          toast({
+                                            title: 'Nudge sent',
+                                            description: `Reminder sent to ${row.name}.`,
+                                          })
+                                        },
+                                      }))
+                                }
                               />
                             )
                           case 'activity':
