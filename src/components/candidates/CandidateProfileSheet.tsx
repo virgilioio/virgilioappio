@@ -272,6 +272,37 @@ const { pending: pendingPanelists } = useStagePendingPanelists(
   scorecardsRefreshNonce,
 )
 
+// Per-stage scorecard requirement (drives banners + Request actions).
+const scorecardRequirement = useStageScorecardRequirement(
+  activeStageInstanceId,
+  associationId,
+  scorecardsRefreshNonce,
+)
+
+const handleRequestScorecard = async (interviewerUserId?: string) => {
+  if (!activeStageInstanceId || !associationId) return
+  const result = await requestScorecard({
+    associationId,
+    jobHiringStageId: activeStageInstanceId,
+    interviewerUserIds: interviewerUserId ? [interviewerUserId] : undefined,
+  })
+  if (!result.ok) {
+    toast({
+      title: "Couldn't send request",
+      description: result.error || 'Please try again.',
+      variant: 'destructive',
+    })
+    return
+  }
+  toast({
+    title: interviewerUserId ? 'Scorecard requested' : 'Scorecard requests sent',
+    description: `Sent ${result.sent ?? 0} email${(result.sent ?? 0) === 1 ? '' : 's'}.`,
+  })
+  scorecardRequirement.refresh()
+  bumpScorecardsRefresh()
+}
+
+
 const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
   switch (r) {
     case 'strong_yes': return { label: 'Strong yes', tone: 'green' }
