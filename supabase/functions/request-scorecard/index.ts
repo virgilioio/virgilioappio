@@ -40,6 +40,18 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { association_id: assocId, job_hiring_stage_id: jhsId } = body;
 
+    // Identify the caller so we can filter their own user id out of targets
+    // (an interviewer shouldn't be able to email a scorecard request to themselves).
+    let callerUserId: string | null = null;
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      try {
+        const { data: userData } = await supabase.auth.getUser(token);
+        callerUserId = userData?.user?.id ?? null;
+      } catch { /* anonymous */ }
+    }
+
     // Stage context (also read the cadence so the email copy matches setting).
     const { data: stage } = await supabase
       .from("job_hiring_stages")
