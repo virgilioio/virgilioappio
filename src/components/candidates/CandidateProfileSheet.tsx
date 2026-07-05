@@ -1508,6 +1508,7 @@ const stageHasAutomation = useMemo(() => {
                                       pendingRequired: scorecardRequirement.pending,
                                       onRequest: (uid) => handleRequestScorecard(uid),
                                       onRequestAll: () => handleRequestScorecard(),
+                                      onCompleteMine: handleCompleteMyScorecard,
                                     }
                                   : undefined
                               }
