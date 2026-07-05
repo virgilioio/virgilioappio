@@ -347,7 +347,12 @@ export function ScorecardsTabContent({
           </>
         }
       >
-        {requiredActive && requiredPending.length > 0 && (
+        {requiredActive && requiredPending.length > 0 && (() => {
+          const onlyMinePending =
+            !!requirement!.currentUserId &&
+            requiredPending.length === 1 &&
+            requiredPending[0]?.userId === requirement!.currentUserId
+          return (
           <div className="mt-3 mx-5 flex items-center gap-3 rounded-[10px] border border-[#EDE4FF] bg-[#FAF8FF] px-4 py-3">
             <div className="h-[34px] w-[34px] rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0">
               <ClipboardCheck className="h-[18px] w-[18px]" />
@@ -361,11 +366,18 @@ export function ScorecardsTabContent({
               </div>
               <div className="mt-0.5 font-inter text-[11.5px] text-[#5A6072]">{bannerSubline}</div>
             </div>
-            <Button variant="purple" size="sm" icon={Send} onClick={handleRequestAll} loading={requestingAll}>
-              Request all
-            </Button>
+            {onlyMinePending && requirement!.onCompleteMine ? (
+              <Button variant="primary" size="sm" icon={PenLine} onClick={requirement!.onCompleteMine}>
+                Complete scorecard
+              </Button>
+            ) : (
+              <Button variant="purple" size="sm" icon={Send} onClick={handleRequestAll} loading={requestingAll}>
+                Request all
+              </Button>
+            )}
           </div>
-        )}
+          )
+        })()}
         {submitted.length === 0 && !(requiredActive && requiredPending.length > 0) ? (
           <EmptyState
             size="card"
@@ -394,6 +406,8 @@ export function ScorecardsTabContent({
                 remindersEnabled={requirement!.remindersEnabled}
                 onRequest={requirement!.onRequest}
                 isLast={i === requiredPending.length - 1}
+                isMe={!!requirement!.currentUserId && p.userId === requirement!.currentUserId}
+                onCompleteMine={requirement!.onCompleteMine}
               />
             ))}
           </div>
