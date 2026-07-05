@@ -1275,6 +1275,15 @@ const stageHasAutomation = useMemo(() => {
                       }
                       nextStageLabel={nextStage?.stage.stage_name ?? (currentIdx >= 0 && associationStatus === 'active' ? 'Offer' : null)}
                       onAdvance={async () => {
+                        const gate = await checkScorecardGate(currentStageId, associationId)
+                        if (gate.blocked) {
+                          toast({
+                            title: 'Scorecard required',
+                            description: gate.reason,
+                            variant: 'destructive',
+                          })
+                          return
+                        }
                         if (nextStage) {
                           if (!associationId) return
                           await moveAssociationToStage(associationId, nextStage.jhsId)
