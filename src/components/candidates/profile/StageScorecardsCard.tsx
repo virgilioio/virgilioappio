@@ -301,6 +301,7 @@ export function StageScorecardsCard({
                   const requested = !!p.lastRequestedAt
                   const timeStr = requested ? timeAgoShort(p.lastRequestedAt) : ''
                   const isBusy = requestingId === p.userId
+                  const isMe = !!currentUserId && p.userId === currentUserId
                   return (
                     <div key={p.userId} className="px-5 sm:px-6 py-4 flex items-start gap-3">
                       <Avatar className="h-[26px] w-[26px] shrink-0">
@@ -309,14 +310,28 @@ export function StageScorecardsCard({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-poppins font-medium text-[13px] text-text-primary">{p.name}</span>
+                          {isMe && <Badge tone="lilac" size="xs">You</Badge>}
                           <Badge tone="purple" size="xs" dot>Required</Badge>
                         </div>
                         <div className="mt-0.5 text-[12px] text-text-tertiary font-poppins">
                           {p.roleLabel ? `${p.roleLabel} · ` : ''}
-                          {requested ? `requested ${timeStr}` : 'awaiting scorecard'}
+                          {isMe
+                            ? 'your scorecard is pending'
+                            : requested
+                              ? `requested ${timeStr}`
+                              : 'awaiting scorecard'}
                         </div>
                       </div>
-                      {requested ? (
+                      {isMe && requirement?.onCompleteMine ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon={PenLine}
+                          onClick={requirement.onCompleteMine}
+                        >
+                          Complete scorecard
+                        </Button>
+                      ) : requested ? (
                         <Button
                           variant="ghost"
                           size="sm"
