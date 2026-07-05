@@ -254,9 +254,9 @@ const BODY_TEMPLATE = `<!doctype html>
   </body>
 </html>`;
 
-const TEXT_TEMPLATE = `Your feedback on {{candidate_first_name}} is holding up the pipeline.
+const TEXT_TEMPLATE = `Your feedback on {{candidate_full_name}} is holding up the pipeline.
 
-Hi {{interviewer_first_name}} — you interviewed {{candidate_full_name}} for {{job_title}}, and a scorecard is required for the {{stage_name}} stage before they can advance. It only takes a couple of minutes.
+Hi {{interviewer_first_name}} — you interviewed {{candidate_full_name}} for {{job_title}}, and a scorecard is required for the {{stage_name}} stage before {{candidate_first_name}} can advance. It only takes a couple of minutes.
 
 Interviewed: {{interviewed_when}}
 Scorecards in: {{submitted_count}} of {{total_count}} submitted
