@@ -227,12 +227,16 @@ function RequiredPendingRow({
   remindersEnabled,
   onRequest,
   isLast,
+  isMe,
+  onCompleteMine,
 }: {
   p: RequiredPanelist
   cadence: ScorecardReminderCadence
   remindersEnabled: boolean
   onRequest: (uid: string) => Promise<void>
   isLast: boolean
+  isMe?: boolean
+  onCompleteMine?: () => void
 }) {
   const [busy, setBusy] = useState(false)
   const requested = !!p.lastRequestedAt
@@ -240,9 +244,11 @@ function RequiredPendingRow({
     setBusy(true)
     try { await onRequest(p.userId) } finally { setBusy(false) }
   }
-  const subline = requested
-    ? `Requested ${timeAgoShort(p.lastRequestedAt)}${remindersEnabled ? ` · reminder emailed ${cadenceLabel(cadence)}` : ''}`
-    : 'Awaiting scorecard'
+  const subline = isMe
+    ? 'Your scorecard is pending — this is holding up the pipeline'
+    : requested
+      ? `Requested ${timeAgoShort(p.lastRequestedAt)}${remindersEnabled ? ` · reminder emailed ${cadenceLabel(cadence)}` : ''}`
+      : 'Awaiting scorecard'
   return (
     <div className={cn('px-5 py-4 bg-[#FCFCFA]', !isLast && 'border-b border-[#F1F0EC]')}>
       <div className="flex items-start gap-3">
@@ -256,12 +262,17 @@ function RequiredPendingRow({
             <span className="font-poppins font-semibold text-[13.5px] tracking-[-0.005em] text-[#1F2230]">
               {p.name}
             </span>
+            {isMe && <Badge tone="lilac" size="xs">You</Badge>}
             {p.roleLabel && <Badge tone="neutral" size="xs">{p.roleLabel}</Badge>}
             <Badge tone="purple" size="xs" dot>Required</Badge>
           </div>
           <div className="font-inter text-[11.5px] text-[#8B8F9E] mt-0.5">{subline}</div>
         </div>
-        {requested ? (
+        {isMe && onCompleteMine ? (
+          <Button variant="primary" size="sm" icon={PenLine} onClick={onCompleteMine}>
+            Complete scorecard
+          </Button>
+        ) : requested ? (
           <Button variant="ghost" size="sm" icon={Check} onClick={handle} loading={busy}>
             Requested
           </Button>
