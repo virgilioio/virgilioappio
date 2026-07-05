@@ -503,15 +503,27 @@ const stageHasAutomation = useMemo(() => {
 
   useEffect(() => {
     if (open) {
-      // Honor `?tab=communications` (from dashboard reply queue) by landing on
-      // the Activity tab, which surfaces the email history.
+      // Honor `?tab=...` so email/deep-links land on the right tab.
       let initialTab: typeof activeTab = 'job'
+      let focusMine = false
       if (typeof window !== 'undefined') {
-        const tabParam = new URLSearchParams(window.location.search).get('tab')
+        const params = new URLSearchParams(window.location.search)
+        const tabParam = params.get('tab')
         if (tabParam === 'communications' || tabParam === 'emails') initialTab = 'emails'
         else if (tabParam === 'activity') initialTab = 'activity'
+        else if (tabParam === 'scorecards') initialTab = 'scorecards'
+        else if (tabParam === 'overview') initialTab = 'overview'
+        else if (tabParam === 'comments') initialTab = 'comments'
+        else if (tabParam === 'offer') initialTab = 'offer'
+        focusMine = params.get('focus') === 'my-scorecard'
       }
       setActiveTab(initialTab)
+      if (focusMine) {
+        // Defer to the next tick so the tab has mounted before we open the editor.
+        setTimeout(() => {
+          setPendingFocusMyScorecard(true)
+        }, 0)
+      }
     }
     
     // CRITICAL: Clear stale data immediately when candidateId changes to prevent race conditions
