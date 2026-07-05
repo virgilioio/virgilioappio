@@ -207,6 +207,10 @@ export interface ScorecardsRequirementUiInfo {
   nextStageName: string | null
   onRequest: (interviewerUserId: string) => Promise<void>
   onRequestAll: () => Promise<void>
+  /** Opens the current user's own scorecard editor. */
+  onCompleteMine?: () => void
+  /** So we can swap Request → Complete for the current user. */
+  currentUserId?: string
 }
 
 export interface ScorecardsTabContentProps {
