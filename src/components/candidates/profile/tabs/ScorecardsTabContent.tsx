@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check } from 'lucide-react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine } from 'lucide-react'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
