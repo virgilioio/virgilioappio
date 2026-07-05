@@ -3724,6 +3724,9 @@ export type Database = {
           interviewer_scheduling_mode: string
           job_id: string
           position: number
+          require_scorecard: boolean
+          scorecard_reminder_cadence: string
+          scorecard_reminders_enabled: boolean
           sla_days: number | null
           sla_enabled: boolean
           stage_id: string
@@ -3740,6 +3743,9 @@ export type Database = {
           interviewer_scheduling_mode?: string
           job_id: string
           position: number
+          require_scorecard?: boolean
+          scorecard_reminder_cadence?: string
+          scorecard_reminders_enabled?: boolean
           sla_days?: number | null
           sla_enabled?: boolean
           stage_id: string
@@ -3756,6 +3762,9 @@ export type Database = {
           interviewer_scheduling_mode?: string
           job_id?: string
           position?: number
+          require_scorecard?: boolean
+          scorecard_reminder_cadence?: string
+          scorecard_reminders_enabled?: boolean
           sla_days?: number | null
           sla_enabled?: boolean
           stage_id?: string
@@ -6221,6 +6230,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scorecard_reminder_sends: {
+        Row: {
+          association_id: string
+          created_at: string
+          id: string
+          interviewer_user_id: string
+          job_hiring_stage_id: string
+          last_sent_at: string
+          sent_count: number
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          id?: string
+          interviewer_user_id: string
+          job_hiring_stage_id: string
+          last_sent_at?: string
+          sent_count?: number
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          id?: string
+          interviewer_user_id?: string
+          job_hiring_stage_id?: string
+          last_sent_at?: string
+          sent_count?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       sourcing_credits_usage: {
         Row: {
