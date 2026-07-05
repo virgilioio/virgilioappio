@@ -98,6 +98,8 @@ import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCa
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
 import { ScorecardsTabContent, type SubmittedScorecardRow, type SubmittedVerdict } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
 import { useStagePendingPanelists } from '@/hooks/useStagePendingPanelists'
+import { useStageScorecardRequirement } from '@/hooks/useStageScorecardRequirement'
+import { requestScorecard } from '@/utils/requestScorecard'
 import {
   JobOverviewSidebar,
   ResumeSidebar,
