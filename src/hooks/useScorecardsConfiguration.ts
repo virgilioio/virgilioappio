@@ -172,11 +172,26 @@ export function useScorecardsConfiguration(jhsId: string | null) {
         visibility = templateData.visibility as ScorecardVisibility
       }
 
+      // Load per-stage requirements from job_hiring_stages
+      const { data: stageRow } = await supabase
+        .from('job_hiring_stages')
+        .select('require_scorecard, scorecard_reminders_enabled, scorecard_reminder_cadence')
+        .eq('id', jhsId)
+        .maybeSingle()
+
+      const requirements: ScorecardRequirements = {
+        requireScorecard: !!(stageRow as any)?.require_scorecard,
+        remindersEnabled: !!(stageRow as any)?.scorecard_reminders_enabled,
+        reminderCadence:
+          ((stageRow as any)?.scorecard_reminder_cadence as ScorecardReminderCadence) || 'daily',
+      }
+
       setTemplate({
         id: templateId,
         job_hiring_stage_id: jhsId,
         visibility,
-        questions: formattedQuestions
+        questions: formattedQuestions,
+        requirements,
       })
     } catch (err) {
       console.error('Error loading scorecard template:', err)
