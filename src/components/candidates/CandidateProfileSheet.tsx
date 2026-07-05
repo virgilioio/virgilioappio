@@ -304,6 +304,24 @@ const handleRequestScorecard = async (interviewerUserId?: string) => {
   bumpScorecardsRefresh()
 }
 
+// Open the current-stage scorecard editor for the current user (the "Complete scorecard" path).
+const handleCompleteMyScorecard = () => {
+  if (!activeStageOption) return
+  setScoreStageInstId(activeStageOption.jhsId)
+  setScoreStageName(activeStageOption.stage.stage_name)
+  setActiveTab('scorecards')
+  setScoreOpen(true)
+}
+
+// Consume the `?focus=my-scorecard` deep link once the active stage is resolved.
+useEffect(() => {
+  if (!pendingFocusMyScorecard) return
+  if (!activeStageOption) return
+  setPendingFocusMyScorecard(false)
+  handleCompleteMyScorecard()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [pendingFocusMyScorecard, activeStageOption?.jhsId])
+
 
 const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
   switch (r) {
