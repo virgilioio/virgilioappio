@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check } from 'lucide-react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
