@@ -248,6 +248,8 @@ const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, ref
 const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
+// Set from a `?focus=my-scorecard` deep link — opens the current-stage scorecard editor once the stage is resolved.
+const [pendingFocusMyScorecard, setPendingFocusMyScorecard] = useState(false)
 // Bump to force per-stage useAllStageScorecards instances to refetch after a save/delete.
 const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
