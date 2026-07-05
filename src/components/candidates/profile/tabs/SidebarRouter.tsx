@@ -259,6 +259,10 @@ export interface ScorecardsSidebarProps {
     required?: boolean
     requested?: boolean
     onRequest?: () => Promise<void> | void
+    /** True when this pending row is the current user's own scorecard. */
+    isMe?: boolean
+    /** Opens the current user's own scorecard editor (used when isMe). */
+    onComplete?: () => void
   }[]
 }
 
