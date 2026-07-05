@@ -197,11 +197,79 @@ function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean 
   )
 }
 
+export interface ScorecardsRequirementUiInfo {
+  active: boolean
+  totalExpected: number
+  pendingRequired: RequiredPanelist[]
+  remindersEnabled: boolean
+  cadence: ScorecardReminderCadence
+  candidateFirstName: string | null
+  nextStageName: string | null
+  onRequest: (interviewerUserId: string) => Promise<void>
+  onRequestAll: () => Promise<void>
+}
+
 export interface ScorecardsTabContentProps {
   submitted: SubmittedScorecardRow[]
   pendingCount: number
   onCompare?: () => void
   onAddMine?: () => void
+  requirement?: ScorecardsRequirementUiInfo
+}
+
+function RequiredPendingRow({
+  p,
+  cadence,
+  remindersEnabled,
+  onRequest,
+  isLast,
+}: {
+  p: RequiredPanelist
+  cadence: ScorecardReminderCadence
+  remindersEnabled: boolean
+  onRequest: (uid: string) => Promise<void>
+  isLast: boolean
+}) {
+  const [busy, setBusy] = useState(false)
+  const requested = !!p.lastRequestedAt
+  const handle = async () => {
+    setBusy(true)
+    try { await onRequest(p.userId) } finally { setBusy(false) }
+  }
+  const subline = requested
+    ? `Requested ${timeAgoShort(p.lastRequestedAt)}${remindersEnabled ? ` · reminder emailed ${cadenceLabel(cadence)}` : ''}`
+    : 'Awaiting scorecard'
+  return (
+    <div className={cn('px-5 py-4 bg-[#FCFCFA]', !isLast && 'border-b border-[#F1F0EC]')}>
+      <div className="flex items-start gap-3">
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarFallback className="bg-[#FAFAF7] text-[#5A6072] font-poppins font-semibold text-[12px]">
+            {initials(p.name)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-poppins font-semibold text-[13.5px] tracking-[-0.005em] text-[#1F2230]">
+              {p.name}
+            </span>
+            {p.roleLabel && <Badge tone="neutral" size="xs">{p.roleLabel}</Badge>}
+            <Badge tone="purple" size="xs" dot>Required</Badge>
+          </div>
+          <div className="font-inter text-[11.5px] text-[#8B8F9E] mt-0.5">{subline}</div>
+        </div>
+        {requested ? (
+          <Button variant="ghost" size="sm" icon={Check} onClick={handle} loading={busy}>
+            Requested
+          </Button>
+        ) : (
+          <Button variant="purple" size="sm" icon={Send} onClick={handle} loading={busy}>
+            Request scorecard
+          </Button>
+        )}
+        <Badge tone="yellow" size="md" dot>Pending</Badge>
+      </div>
+    </div>
+  )
 }
 
 export function ScorecardsTabContent({
@@ -209,14 +277,39 @@ export function ScorecardsTabContent({
   pendingCount,
   onCompare,
   onAddMine,
+  requirement,
 }: ScorecardsTabContentProps) {
   const total = submitted.length + pendingCount
-  const subtitle =
+  const requiredActive = !!requirement?.active
+  const requiredPending = requirement?.pendingRequired ?? []
+  const [requestingAll, setRequestingAll] = useState(false)
+
+  const baseSubtitle =
     total === 0
       ? 'No scorecards yet'
       : `${submitted.length} of ${total} panelist${total === 1 ? '' : 's'} submitted`
+  const subtitle = requiredActive && requiredPending.length > 0
+    ? `${baseSubtitle} · ${requiredPending.length} required scorecard${requiredPending.length === 1 ? '' : 's'} pending`
+    : baseSubtitle
 
   const canCompare = submitted.length >= 2
+
+  const bannerSubline = (() => {
+    if (!requirement) return ''
+    const first = requirement.candidateFirstName || 'This candidate'
+    const next = requirement.nextStageName || 'the next stage'
+    const remaining = requiredPending.length
+    const base = `${first} can't move to ${next} until the ${remaining} remaining interviewer${remaining === 1 ? '' : 's'} submit${remaining === 1 ? 's' : ''}.`
+    return requirement.remindersEnabled
+      ? `${base} Reminders are emailed ${cadenceLabel(requirement.cadence)}.`
+      : base
+  })()
+
+  const handleRequestAll = async () => {
+    if (!requirement) return
+    setRequestingAll(true)
+    try { await requirement.onRequestAll() } finally { setRequestingAll(false) }
+  }
 
   return (
     <div className="space-y-4">
@@ -239,7 +332,26 @@ export function ScorecardsTabContent({
           </>
         }
       >
-        {submitted.length === 0 ? (
+        {requiredActive && requiredPending.length > 0 && (
+          <div className="mt-3 mx-5 flex items-center gap-3 rounded-[10px] border border-[#EDE4FF] bg-[#FAF8FF] px-4 py-3">
+            <div className="h-[34px] w-[34px] rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0">
+              <ClipboardCheck className="h-[18px] w-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-poppins font-semibold text-[13px] text-[#1F2230]">
+                  Scorecard required to advance
+                </span>
+                <Badge tone="purple" size="xs" dot>Required this stage</Badge>
+              </div>
+              <div className="mt-0.5 font-inter text-[11.5px] text-[#5A6072]">{bannerSubline}</div>
+            </div>
+            <Button variant="purple" size="sm" icon={Send} onClick={handleRequestAll} loading={requestingAll}>
+              Request all
+            </Button>
+          </div>
+        )}
+        {submitted.length === 0 && !(requiredActive && requiredPending.length > 0) ? (
           <EmptyState
             size="card"
             illustration={<SoftRosette />}
@@ -251,9 +363,23 @@ export function ScorecardsTabContent({
             }
           />
         ) : (
-          <div>
+          <div className={submitted.length > 0 || requiredActive ? 'mt-3' : ''}>
             {submitted.map((p, i) => (
-              <PanelistRow key={p.id} p={p} isLast={i === submitted.length - 1} />
+              <PanelistRow
+                key={p.id}
+                p={p}
+                isLast={i === submitted.length - 1 && !(requiredActive && requiredPending.length > 0)}
+              />
+            ))}
+            {requiredActive && requiredPending.map((p, i) => (
+              <RequiredPendingRow
+                key={p.userId}
+                p={p}
+                cadence={requirement!.cadence}
+                remindersEnabled={requirement!.remindersEnabled}
+                onRequest={requirement!.onRequest}
+                isLast={i === requiredPending.length - 1}
+              />
             ))}
           </div>
         )}
