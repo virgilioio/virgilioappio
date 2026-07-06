@@ -71,15 +71,15 @@ export function MessageList({ threadId, topSlot }: MessageListProps) {
         </div>
       )}
       {messages.length === 0 ? (
-        <div className="flex items-center justify-center py-14">
+        <div className="flex items-center justify-center py-10">
           <EmptyState
-            variant="inline"
-            mascot={false}
-            icon={MessageSquare}
+            size="card"
+            illustration={<SoftBubble />}
             title="No messages yet"
-            description="Send the first message to start the conversation."
+            body="Send the first message to start the conversation."
           />
         </div>
+
       ) : (
         messages.map((m, idx) => {
           const prev = messages[idx - 1]
