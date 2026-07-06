@@ -431,6 +431,7 @@ interface QueueCardProps {
   doneIds: Set<string>
   onToggleDone: (item: QueueItem) => void
   onRowClick: (href: string) => void
+  onSeeMore?: () => void
 }
 
 function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggleDone, onRowClick }: QueueCardProps) {
