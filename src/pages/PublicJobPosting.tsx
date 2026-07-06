@@ -325,9 +325,14 @@ export default function PublicJobPosting() {
     const d: any = (posting?.details as any) || {}
     const comp: any = d.compensation || {}
     // Prefer posting.details, fall back to job-level salary configured on the job record
-    const salaryAmount = d.salary_amount ?? (jobSalary.max ?? jobSalary.min ?? null)
+    const detailMin = d.salary_min ?? null
+    const detailMax = d.salary_max ?? null
+    const salaryAmount = d.salary_amount ?? detailMax ?? detailMin ?? (jobSalary.max ?? jobSalary.min ?? null)
     const salaryCurrency = d.salary_currency || jobSalary.currency || null
-    const showSalary = !!d.show_salary || jobSalary.show
+    const showSalary =
+      typeof d.show_salary_public === 'boolean'
+        ? d.show_salary_public
+        : !!d.show_salary || jobSalary.show
     const hasCommissions = !!d.has_commissions || !!comp.variable_enabled
     return {
       location: d.location || null,
