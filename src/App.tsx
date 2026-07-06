@@ -72,6 +72,7 @@ const Analytics = lazy(() => import('./pages/Analytics'))
 
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
 const SharedList = lazy(() => import('./pages/SharedList'))
+const OAuthConsent = lazy(() => import('./pages/OAuthConsent'))
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -128,6 +129,7 @@ function AppContent() {
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
         <Route path="/chrome-oauth/start" element={<ChromeOAuthStart />} />
         <Route path="/c/chat/:token" element={<CandidateChat />} />
+        <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />

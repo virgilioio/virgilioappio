@@ -53,13 +53,18 @@ export default function AuthCallback() {
           // This ensures OAuth users who were invited are automatically joined to their org
           const reconcileResult = await reconcilePendingInvitation(session.user.id)
           
+          // Preserved post-auth destination (e.g. /.lovable/oauth/consent?...)
+          const nextParam = new URLSearchParams(window.location.search).get('redirect')
+          const nextDestination =
+            nextParam && nextParam.startsWith('/') ? nextParam : null
+
           if (wasInvitationAccepted(reconcileResult)) {
             toast({
               title: `Welcome to ${reconcileResult?.organization_name}!`,
               description: `You've been added as ${reconcileResult?.system_role === 'admin' ? 'Admin' : 'Member'}.`,
             })
-            // User was auto-linked to org - go straight to dashboard
-            navigate('/dashboard', { replace: true })
+            // User was auto-linked to org - go straight to dashboard (or preserved next)
+            navigate(nextDestination ?? '/dashboard', { replace: true })
             return
           }
 
@@ -74,8 +79,8 @@ export default function AuthCallback() {
             navigate('/account-setup', { replace: true })
             return
           }
-          
-          navigate('/dashboard', { replace: true })
+
+          navigate(nextDestination ?? '/dashboard', { replace: true })
           return
         }
 

@@ -118,9 +118,14 @@ export default function Login() {
             setError('')
             setIsGoogleSubmitting(true)
             try {
+              const nextParam =
+                redirectTo && redirectTo.startsWith('/') ? redirectTo : null
+              const callback = nextParam
+                ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(nextParam)}`
+                : `${window.location.origin}/auth/callback`
               const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: `${window.location.origin}/auth/callback` },
+                options: { redirectTo: callback },
               })
               if (error) {
                 setError(error.message)
