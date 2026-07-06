@@ -315,7 +315,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
             <Row
               icon={Users}
               label="Members & invites"
-              to="/settings?tab=members"
+              to="/members"
               chevron
               closeMenu={close}
             />
