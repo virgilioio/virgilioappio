@@ -208,7 +208,7 @@ export default function Dashboard() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  const { data: pending, isLoading: pendingLoading } = usePendingActivities()
+  const { data: pending, isLoading: pendingLoading, markEmailAsRead } = usePendingActivities()
   const { data: stale } = useStaleCandidates()
   const { data: newApps, isLoading: appsLoading } = useNewApplicationsQueue()
   const { bookings: todayBookings, isLoading: bookingsLoading } =
@@ -315,16 +315,12 @@ export default function Dashboard() {
       persistDone(next)
       return next
     })
-    // Optimistic email-read for reply rows (only when marking done, not undoing)
+    // Mark email as read for reply rows (only when marking done, not undoing).
+    // The mutation updates all email_logs rows sharing the same
+    // rfc822_message_id, so Gmail-sync + inbound-webhook duplicates can't
+    // resurface the row on the next refetch.
     if (item.type === 'reply' && item.emailId && !doneIds.has(item.id)) {
-      supabase
-        .from('email_logs')
-        .update({ is_read: true })
-        .eq('id', item.emailId)
-        .then(({ error }) => {
-          if (error) console.error('Failed to mark email as read', error)
-          queryClient.invalidateQueries({ queryKey: ['pending-activities'] })
-        })
+      markEmailAsRead.mutate(item.emailId)
     }
   }
 
