@@ -208,7 +208,7 @@ export default function Dashboard() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  const { data: pending, isLoading: pendingLoading } = usePendingActivities()
+  const { data: pending, isLoading: pendingLoading, markEmailAsRead } = usePendingActivities()
   const { data: stale } = useStaleCandidates()
   const { data: newApps, isLoading: appsLoading } = useNewApplicationsQueue()
   const { bookings: todayBookings, isLoading: bookingsLoading } =
