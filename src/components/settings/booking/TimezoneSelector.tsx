@@ -1,8 +1,6 @@
-import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { Button } from '@/components/ui/button';
 import { useEffect, useMemo, useState } from 'react';
-import { Globe, X } from 'lucide-react';
+import { Globe, Clock } from 'lucide-react';
 
 interface TimezoneSelectorProps {
   value: string;
@@ -18,6 +16,7 @@ const TIMEZONE_GROUPS = [
       { value: 'America/Denver', label: 'Mountain Time (MT)' },
       { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
       { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+      { value: 'America/Mexico_City', label: 'Mexico City (CST)' },
       { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
     ],
   },
@@ -48,25 +47,15 @@ const TIMEZONE_GROUPS = [
       { value: 'Pacific/Auckland', label: 'Auckland (NZDT)' },
     ],
   },
-  {
-    label: 'Other',
-    options: [
-      { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
-    ],
-  },
+  { label: 'Other', options: [{ value: 'UTC', label: 'UTC (Coordinated Universal Time)' }] },
 ];
 
-// Flatten all options for searchable select
 const ALL_TIMEZONE_OPTIONS = TIMEZONE_GROUPS.flatMap((group) =>
-  group.options.map((option) => ({
-    ...option,
-    group: group.label,
-  }))
+  group.options.map((option) => ({ ...option, group: group.label }))
 );
 
 export function TimezoneSelector({ value, onChange }: TimezoneSelectorProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
-  const [dismissed, setDismissed] = useState<boolean>(false);
 
   const browserTz = useMemo(() => {
     try {
@@ -76,72 +65,66 @@ export function TimezoneSelector({ value, onChange }: TimezoneSelectorProps) {
     }
   }, []);
 
-  const showMismatch =
-    !!browserTz && !!value && browserTz !== value && !dismissed;
+  const showMismatch = !!browserTz && !!value && browserTz !== value;
 
   useEffect(() => {
     const updateTime = () => {
       try {
-        const now = new Date();
         const timeString = new Intl.DateTimeFormat('en-US', {
           timeZone: value,
           hour: 'numeric',
           minute: '2-digit',
           hour12: true,
-        }).format(now);
+        }).format(new Date());
         setCurrentTime(timeString);
-      } catch (error) {
+      } catch {
         setCurrentTime('');
       }
     };
-
     updateTime();
-    const interval = setInterval(updateTime, 60000); // Update every minute
-
+    const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
   }, [value]);
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor="timezone">Timezone</Label>
+    <div className="space-y-3">
       {showMismatch && (
-        <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
-          <Globe className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-          <div className="flex-1">
-            <p className="text-foreground">
-              Your browser is set to <strong>{browserTz}</strong>.
-            </p>
-            <Button
-              type="button"
-              variant="link"
-              className="h-auto p-0 text-primary"
-              onClick={() => onChange(browserTz)}
-            >
-              Use this timezone
-            </Button>
-          </div>
+        <div
+          className="flex items-center gap-2.5 rounded-[10px] px-3 py-2.5"
+          style={{ background: '#FAF8FF', border: '1px solid #EDE4FF' }}
+        >
+          <Globe className="w-4 h-4 text-[#6F3FF5] shrink-0" />
+          <p className="flex-1 font-inter text-[12px] text-[#1F2230]">
+            Your browser is set to{' '}
+            <strong className="font-semibold text-[#0d0d09]">{browserTz}</strong>.
+          </p>
           <button
             type="button"
-            onClick={() => setDismissed(true)}
-            className="text-muted-foreground hover:text-foreground"
-            aria-label="Dismiss"
+            onClick={() => onChange(browserTz)}
+            className="shrink-0 font-poppins font-medium text-[11.5px] text-[#6F3FF5] hover:text-[#5B21B6] transition-colors"
           >
-            <X className="h-4 w-4" />
+            Use this
           </button>
         </div>
       )}
-      <SearchableSelect
-        options={ALL_TIMEZONE_OPTIONS}
-        value={value}
-        onValueChange={onChange}
-        placeholder="Select timezone..."
-        emptyMessage="No timezone found"
-      />
-      {currentTime && (
-        <p className="text-xs text-text-secondary">
-          Current time: {currentTime}
-        </p>
-      )}
+      <div>
+        <label className="block font-inter text-[11.5px] font-medium text-[#5A6072] mb-1.5">
+          Timezone
+        </label>
+        <SearchableSelect
+          options={ALL_TIMEZONE_OPTIONS}
+          value={value}
+          onValueChange={onChange}
+          placeholder="Select timezone..."
+          emptyMessage="No timezone found"
+        />
+        {currentTime && (
+          <p className="mt-1.5 font-inter text-[11px] text-[#8B8F9E] flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            Current time · {currentTime}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
