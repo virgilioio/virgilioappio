@@ -1,8 +1,17 @@
 import { useState } from 'react'
-import { Copy, Check, ExternalLink, Plus, Info, Loader2, AlertCircle } from 'lucide-react'
+import {
+  Copy,
+  Check,
+  ExternalLink,
+  Plus,
+  Loader2,
+  AlertCircle,
+  Clock,
+  Link2,
+  Pencil,
+} from 'lucide-react'
 import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useBookingConfig } from '@/hooks/useBookingConfig'
@@ -41,7 +50,10 @@ export function BookingTab() {
 
   if (isLoading || isCreating) {
     return (
-      <SettingsCard title="Booking link" description="Your public scheduling page — share it with candidates and clients.">
+      <SettingsCard
+        title="Booking link"
+        description="Your public scheduling page — share it with candidates and clients."
+      >
         <div className="flex items-center justify-center py-10">
           <Loader2 className="w-5 h-5 animate-spin text-[#8B8F9E]" />
         </div>
@@ -51,7 +63,10 @@ export function BookingTab() {
 
   if (needsProfileCompletion) {
     return (
-      <SettingsCard title="Booking link" description="Your public scheduling page — share it with candidates and clients.">
+      <SettingsCard
+        title="Booking link"
+        description="Your public scheduling page — share it with candidates and clients."
+      >
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Profile incomplete</AlertTitle>
@@ -90,6 +105,22 @@ export function BookingTab() {
     setSheetOpen(true)
   }
 
+  const handleDuplicate = (et: BookingEventType) => {
+    createEventType({
+      title: `${et.title} (copy)`,
+      description: et.description || undefined,
+      color: et.color,
+      duration_minutes: et.duration_minutes,
+      buffer_time_minutes: et.buffer_time_minutes,
+      min_notice_hours: et.min_notice_hours,
+      max_days_ahead: et.max_days_ahead,
+      meeting_location: et.meeting_location || undefined,
+      custom_event_title: et.custom_event_title || undefined,
+      weekly_schedule: et.weekly_schedule,
+      timezone: et.timezone,
+    })
+  }
+
   const handleSave = (data: Partial<BookingEventType> & { title: string }) => {
     if (data.id) {
       updateEventType(data as any, { onSuccess: () => setSheetOpen(false) })
@@ -98,7 +129,6 @@ export function BookingTab() {
     }
   }
 
-  // Display URL without protocol for the input
   const displayUrl = bookingUrl.replace(/^https?:\/\//, '')
 
   return (
@@ -110,13 +140,20 @@ export function BookingTab() {
           description="Your public scheduling page — share it with candidates and clients."
           action={
             <div className="flex items-center gap-2">
-              <Badge
-                tone={config.is_active ? 'green' : 'neutral'}
-                size="sm"
-                dot={false}
+              <span
+                className="inline-flex items-center gap-1.5 px-2 h-[22px] rounded-md font-inter font-semibold text-[10.5px]"
+                style={{
+                  background: config.is_active ? '#E5F4EC' : '#F1F0EC',
+                  color: config.is_active ? '#0B7A57' : '#5A6072',
+                  letterSpacing: '0.02em',
+                }}
               >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: config.is_active ? '#12B886' : '#8B8F9E' }}
+                />
                 {config.is_active ? 'Active' : 'Inactive'}
-              </Badge>
+              </span>
               <Switch
                 checked={config.is_active}
                 onCheckedChange={handleToggleActive}
@@ -126,10 +163,18 @@ export function BookingTab() {
           }
         >
           <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0 h-9 px-3 flex items-center rounded-lg bg-[#F7F7F4] border border-[#EFEFEA] font-mono text-[12.5px] text-[#0d0d09] truncate">
+            <div
+              className="flex-1 min-w-0 h-9 px-3 flex items-center rounded-lg font-mono text-[12px] text-[#0d0d09] truncate"
+              style={{ background: '#F6F5F1' }}
+            >
               {displayUrl}
             </div>
-            <Button variant="secondary" size="sm" icon={copied ? Check : Copy} onClick={handleCopyMain}>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={copied ? Check : Copy}
+              onClick={handleCopyMain}
+            >
               {copied ? 'Copied' : 'Copy'}
             </Button>
             <Button
@@ -152,15 +197,6 @@ export function BookingTab() {
               Create event type
             </Button>
           }
-          footer={
-            <div className="flex items-start gap-2 text-[12px] text-[#5A6072] font-inter leading-relaxed">
-              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[#8B8F9E]" />
-              <p>
-                Editing opens the event sheet: Weekly hours (presets · per-event timezone) · Meeting (calendar title with{' '}
-                <span className="font-mono text-[11.5px]">{'{candidate_name}'}</span>, duration, buffer, location — Google Meet auto-generated) · Rules (minimum notice, max days ahead).
-              </p>
-            </div>
-          }
           bodyClassName="px-0 pb-0"
         >
           {isLoadingEventTypes ? (
@@ -169,7 +205,9 @@ export function BookingTab() {
             </div>
           ) : eventTypes.length === 0 ? (
             <div className="px-5 py-10 text-center">
-              <p className="font-poppins text-[13px] font-medium text-[#0d0d09]">No event types yet</p>
+              <p className="font-poppins text-[13px] font-medium text-[#0d0d09]">
+                No event types yet
+              </p>
               <p className="font-inter text-[12px] text-[#5A6072] mt-1">
                 Create your first event type to let candidates pick what to book.
               </p>
@@ -180,56 +218,96 @@ export function BookingTab() {
               </div>
             </div>
           ) : (
-            <ul className="divide-y divide-[#EFEFEA]">
+            <ul className="divide-y divide-[#F1F0EC]">
               {eventTypes.map((et) => {
                 const eventUrl = `${bookingUrl}/${et.slug}`
                 return (
                   <li
                     key={et.id}
-                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-[#FAFAF7] transition-colors"
+                    className="group flex items-center gap-3 px-[18px] py-[13px] hover:bg-[#FAFAF7] transition-colors"
                   >
-                    {/* Color dot */}
+                    {/* Color tile */}
                     <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: et.color }}
-                    />
+                      className="w-[30px] h-[30px] rounded-[8px] shrink-0 flex items-center justify-center"
+                      style={{ background: `${et.color}1A` }}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ background: et.color }}
+                      />
+                    </span>
+
                     {/* Title + description */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-poppins text-[13px] font-medium text-[#0d0d09] truncate">
+                      <p
+                        className="font-inter text-[12.5px] font-semibold text-[#0d0d09] truncate"
+                        style={{ letterSpacing: '-0.005em' }}
+                      >
                         {et.title}
                       </p>
                       {et.description && (
-                        <p className="font-inter text-[12px] text-[#5A6072] truncate">
+                        <p className="font-inter text-[11px] text-[#8B8F9E] truncate mt-0.5">
                           {et.description}
                         </p>
                       )}
                     </div>
-                    {/* Duration pill */}
-                    <span className="shrink-0 h-[22px] px-2 rounded-md bg-[#F1F0EC] flex items-center font-poppins text-[11px] font-medium text-[#5A6072]">
+
+                    {/* Duration meta */}
+                    <span className="hidden sm:inline-flex shrink-0 items-center gap-1 font-inter text-[11.5px] text-[#5A6072]">
+                      <Clock className="w-3 h-3 text-[#8B8F9E]" />
                       {et.duration_minutes}m
                     </span>
-                    {/* Copy direct link */}
+
+                    {/* Status chip */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateEventType({ id: et.id, is_active: !et.is_active } as any)
+                      }
+                      disabled={isUpdatingEventType}
+                      className="inline-flex items-center gap-1.5 px-2 h-[22px] rounded-md font-inter font-semibold text-[10.5px] transition-colors"
+                      style={{
+                        background: et.is_active ? '#E5F4EC' : '#F1F0EC',
+                        color: et.is_active ? '#0B7A57' : '#5A6072',
+                        letterSpacing: '0.02em',
+                      }}
+                      aria-label={et.is_active ? 'Deactivate' : 'Activate'}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: et.is_active ? '#12B886' : '#8B8F9E' }}
+                      />
+                      {et.is_active ? 'Active' : 'Off'}
+                    </button>
+
+                    {/* Duplicate */}
                     <Button
                       variant="ghost"
                       size="xs"
                       iconOnly
                       icon={Copy}
+                      aria-label="Duplicate event type"
+                      onClick={() => handleDuplicate(et)}
+                    />
+                    {/* Copy link */}
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      iconOnly
+                      icon={Link2}
                       aria-label="Copy direct link"
                       onClick={() => {
                         navigator.clipboard.writeText(eventUrl)
                         toast.success('Event type link copied')
                       }}
                     />
-                    {/* Active toggle */}
-                    <Switch
-                      checked={et.is_active}
-                      onCheckedChange={(checked) =>
-                        updateEventType({ id: et.id, is_active: checked } as any)
-                      }
-                      disabled={isUpdatingEventType}
-                    />
                     {/* Edit */}
-                    <Button variant="link" size="sm" onClick={() => handleOpenEdit(et)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={Pencil}
+                      onClick={() => handleOpenEdit(et)}
+                    >
                       Edit
                     </Button>
                   </li>
