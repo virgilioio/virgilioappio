@@ -70,7 +70,12 @@ function buildContextBlock(jobData: JobDataInput): string {
   }
   if (jobData.include_signing_bonus) lines.push(`- Includes signing bonus`);
 
-  return lines.join("\n");
+  const notes = typeof jobData.description === "string" ? jobData.description.trim() : "";
+  let block = lines.join("\n");
+  if (notes) {
+    block += `\n\n## Author notes / rough draft (from the recruiter)\n${notes}`;
+  }
+  return block;
 }
 
 serve(async (req) => {

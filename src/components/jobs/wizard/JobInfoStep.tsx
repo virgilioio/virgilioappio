@@ -166,11 +166,6 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
       setGenValidationMsg('Add at least a job title and job level so Gio can draft a description.')
       return
     }
-    const existing = (jobData.description || '').trim()
-    if (existing.length > 20) {
-      const ok = window.confirm('Replace the current description with an AI-generated one?')
-      if (!ok) return
-    }
     setGenValidationMsg(null)
     setIsGenerating(true)
     try {
