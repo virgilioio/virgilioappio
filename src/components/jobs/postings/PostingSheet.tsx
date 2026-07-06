@@ -283,7 +283,7 @@ export function PostingSheet({
     show_in_search: showInSearch,
     show_24h_badge: show24h,
     is_primary: isPrimary,
-    // legacy compensation & location
+    // Compensation & location — unified with wizard shape
     location: location || null,
     // Department (denormalized name + id for careers page grouping)
     department_id: departmentId || null,
@@ -291,9 +291,11 @@ export function PostingSheet({
     employment_type: employmentType || null,
     location_type: locationType || null,
     salary_currency: salaryCurrency || null,
-    salary_amount: salaryAmount ? Number(salaryAmount) : null,
-    salary_period: salaryPeriod || null,
-    show_salary: showSalary,
+    salary_min: salaryMin ?? null,
+    salary_max: salaryMax ?? null,
+    show_salary_public: showSalaryPublic,
+    include_equity: includeEquity,
+    include_signing_bonus: includeSigningBonus,
     has_commissions: hasCommissions,
     commissions_currency: hasCommissions ? commissionsCurrency : null,
     commissions_amount:
