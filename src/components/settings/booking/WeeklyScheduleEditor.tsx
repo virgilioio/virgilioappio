@@ -95,23 +95,17 @@ export function WeeklyScheduleEditor({ schedule, onChange }: WeeklyScheduleEdito
 
               {day.enabled ? (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="relative">
-                    <Clock className="w-3 h-3 text-[#8B8F9E] absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
-                    <TimePickerVirgilio
-                      value={day.start}
-                      onChange={(t) => handleTimeChange(key, 'start', t)}
-                      className="w-[120px] [&_input]:pl-7 [&_button]:pl-7"
-                    />
-                  </div>
+                  <TimePickerVirgilio
+                    value={day.start}
+                    onChange={(t) => handleTimeChange(key, 'start', t)}
+                    className="w-[120px]"
+                  />
                   <span className="font-inter text-[11.5px] text-[#8B8F9E]">to</span>
-                  <div className="relative">
-                    <Clock className="w-3 h-3 text-[#8B8F9E] absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
-                    <TimePickerVirgilio
-                      value={day.end}
-                      onChange={(t) => handleTimeChange(key, 'end', t)}
-                      className="w-[120px] [&_input]:pl-7 [&_button]:pl-7"
-                    />
-                  </div>
+                  <TimePickerVirgilio
+                    value={day.end}
+                    onChange={(t) => handleTimeChange(key, 'end', t)}
+                    className="w-[120px]"
+                  />
                 </div>
               ) : (
                 <span className="font-inter text-[12px] italic text-[#8B8F9E]">
