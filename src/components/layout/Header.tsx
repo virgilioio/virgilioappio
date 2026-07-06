@@ -35,6 +35,7 @@ import { GlobalSearchBar } from '@/components/search/GlobalSearchBar'
 import { NotificationCenter } from '@/components/layout/NotificationCenter'
 import { getActiveSection, type AppSection } from '@/components/layout/AppSidebar'
 import { ChatHeaderSlot } from '@/components/chat/ChatHeaderSlot'
+import { AccountMenu } from '@/components/layout/AccountMenu'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -323,48 +324,20 @@ export function Header() {
             </DropdownMenu>
           )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Account"
-                className="relative h-7 w-7 rounded-full p-0 transition-all hover:ring-2 hover:ring-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40"
-              >
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
-                  <AvatarFallback className="text-[10px] bg-virgilio-purple text-white font-poppins font-semibold">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <div className="px-2 pt-1.5 pb-2">
-                <p className="text-[12.5px] font-poppins font-semibold text-virgilio-text leading-tight truncate">
-                  {userDisplayName}
-                </p>
-                <p className="text-[11px] font-inter leading-tight text-[hsl(var(--menu-group-color))] truncate">
-                  {user?.email}
-                </p>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/settings">
-                  <Settings className="h-3.5 w-3.5" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <AccountMenu>
+            <button
+              type="button"
+              aria-label="Account"
+              className="relative h-7 w-7 rounded-full p-0 transition-all hover:ring-2 hover:ring-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40"
+            >
+              <Avatar className="h-7 w-7">
+                <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
+                <AvatarFallback className="text-[10px] bg-virgilio-purple text-white font-poppins font-semibold">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </AccountMenu>
         </div>
       </div>
     </header>
