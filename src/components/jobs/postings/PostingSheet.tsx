@@ -43,6 +43,7 @@ import {
   PostingBrandingCard,
   type BrandingValue,
 } from './PostingBrandingCard'
+import { ToggleRow, SalaryInput, FieldLabel, FieldHint } from '@/components/jobs/wizard/_parts'
 
 interface PostingSheetProps {
   jobId: string
