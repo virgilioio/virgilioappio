@@ -366,6 +366,22 @@ export function PostingSheet({
       const syndication = {
         google_jobs: { enabled: channels.channels?.google_jobs?.enabled !== false },
       }
+      // Keep the parent job in sync — it is the source of truth used by the
+      // wizard and by the public posting page as a fallback.
+      if (jobId) {
+        const { error: jobErr } = await supabase
+          .from('jobs')
+          .update({
+            salary_min: salaryMin ?? null,
+            salary_max: salaryMax ?? null,
+            currency: salaryCurrency || null,
+            show_salary_public: showSalaryPublic,
+            include_equity: includeEquity,
+            include_signing_bonus: includeSigningBonus,
+          } as any)
+          .eq('id', jobId)
+        if (jobErr) console.error('Error syncing job compensation:', jobErr)
+      }
       if (localId) {
         await updatePosting(localId, {
           title,
