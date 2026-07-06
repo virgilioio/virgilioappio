@@ -1,6 +1,6 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Copy, CopyCheck, Clock } from 'lucide-react';
+import { Copy, CopyCheck } from 'lucide-react';
 import { WeeklySchedule } from '@/hooks/useBookingConfig';
 import { TimePickerVirgilio } from '@/components/ui/time-picker-virgilio';
 
