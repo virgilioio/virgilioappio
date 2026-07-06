@@ -389,6 +389,7 @@ export default function Dashboard() {
           doneIds={doneIds}
           onToggleDone={toggleDone}
           onRowClick={(href) => navigate(href)}
+          onSeeMore={() => navigate('/jobs')}
         />
 
         {/* RIGHT rail */}
@@ -434,7 +435,7 @@ interface QueueCardProps {
   onSeeMore?: () => void
 }
 
-function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggleDone, onRowClick }: QueueCardProps) {
+function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggleDone, onRowClick, onSeeMore }: QueueCardProps) {
   const chips: { id: 'all' | QueueType; label: string; count: number }[] = [
     { id: 'all', label: 'Everything', count: counts.all },
     { id: 'scorecard', label: 'Scorecards', count: counts.scorecard },
