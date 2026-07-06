@@ -389,6 +389,7 @@ export default function Dashboard() {
           doneIds={doneIds}
           onToggleDone={toggleDone}
           onRowClick={(href) => navigate(href)}
+          onSeeMore={() => navigate('/jobs')}
         />
 
         {/* RIGHT rail */}
@@ -431,9 +432,10 @@ interface QueueCardProps {
   doneIds: Set<string>
   onToggleDone: (item: QueueItem) => void
   onRowClick: (href: string) => void
+  onSeeMore?: () => void
 }
 
-function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggleDone, onRowClick }: QueueCardProps) {
+function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggleDone, onRowClick, onSeeMore }: QueueCardProps) {
   const chips: { id: 'all' | QueueType; label: string; count: number }[] = [
     { id: 'all', label: 'Everything', count: counts.all },
     { id: 'scorecard', label: 'Scorecards', count: counts.scorecard },
@@ -503,12 +505,12 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
         <EmptyQueue filter={filter} totalAll={counts.all} onClear={() => onFilter('all')} />
       ) : (
         <div>
-          {items.map((item, idx) => (
+          {items.slice(0, 10).map((item, idx) => (
             <QueueRow
               key={item.id}
               item={item}
               isDone={doneIds.has(item.id)}
-              isLast={idx === items.length - 1}
+              isLast={idx === Math.min(items.length, 10) - 1}
               onToggleDone={() => onToggleDone(item)}
               onClick={() => onRowClick(item.href)}
             />
@@ -518,20 +520,37 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
 
       {/* Footer */}
       <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: `1px solid ${C.hairline}` }}>
-        <a
-          href="#"
-          onClick={(e) => { e.preventDefault(); onFilter('all') }}
-          style={{
-            font: '500 11.5px/1 Inter',
-            color: C.purple,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          Open all tasks <ArrowRight size={11} strokeWidth={2} />
-        </a>
+        {items.length > 10 ? (
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); onSeeMore?.() }}
+            style={{
+              font: '500 11.5px/1 Inter',
+              color: C.purple,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            See {items.length - 10} more <ArrowRight size={11} strokeWidth={2} />
+          </a>
+        ) : filter !== 'all' ? (
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); onFilter('all') }}
+            style={{
+              font: '500 11.5px/1 Inter',
+              color: C.purple,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            Open all tasks <ArrowRight size={11} strokeWidth={2} />
+          </a>
+        ) : null}
       </div>
     </div>
   )
