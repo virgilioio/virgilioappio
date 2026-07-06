@@ -1,38 +1,33 @@
 ## Problem
 
-On the Dashboard **"Your queue"** card, checking off a **Reply needed** row briefly hides it, then the same reply comes back on the next refetch.
+When a conversation is selected but has no messages yet, `src/components/chat/MessageList.tsx` renders a hand-rolled empty state using the **legacy** `<EmptyState variant="inline" mascot={false} icon={MessageSquare}>` path. This bypasses the canonical illustration-based empty state used elsewhere in Chat (e.g. `ThreadPane` no-thread state uses `<EmptyState size="card|route" illustration={<SoftBubble />} … />`), so it looks out of place — a small purple-circle icon instead of the Gio soft illustration, and inconsistent typography.
 
-## Root cause
+Per `mem://style/ui/empty-states-canonical-primitive` and the Empty States Build Spec, we should use the canonical primitive with an illustration. No other empty state in the chat module needs changes — `ConversationListPane` and `ThreadPane` already use canonical variants.
 
-Inbound emails commonly land in `email_logs` **twice** — once from Gmail sync and once from the inbound webhook — as two rows with different `id`s but the **same `rfc822_message_id`**.
+## Change
 
-- `fetchUnreadEmails` (`src/hooks/usePendingActivities.ts`) queries `is_read = false`, then dedupes the results by `rfc822_message_id` in JS.
-- When the user checks off a Reply row, `Dashboard.tsx` (`toggleDone`) runs `update({ is_read: true }).eq('id', item.emailId)` — updating **only one** of the duplicate rows.
-- On the invalidated refetch, the *other* duplicate (still `is_read = false`) is returned. It has a different `email.id`, so the queue builds a new row id `e-<otherId>` that isn't in the persisted `doneIds` set — the reply reappears.
+**File:** `src/components/chat/MessageList.tsx` (only)
 
-The dismissed-ids set and the 7-day localStorage persistence work correctly; the mismatch is on the DB side.
+Replace the current empty block (the `<div className="flex items-center justify-center py-14">…</div>` wrapping the legacy `<EmptyState>`) with the canonical card-sized empty state:
 
-## Fix
+```tsx
+<div className="flex items-center justify-center py-10">
+  <EmptyState
+    size="card"
+    illustration={<SoftBubble />}
+    title="No messages yet"
+    body="Send the first message to start the conversation."
+  />
+</div>
+```
 
-Mark **every** `email_logs` row that shares the same `rfc822_message_id` as read, so the deduped fetch can never resurface a sibling row.
+- Import `SoftBubble` from `@/components/ui/EmptyIllustrations`.
+- Drop the now-unused `MessageSquare` import.
+- Keep everything else in `MessageList` unchanged (loading skeleton, pagination button, day separators, scroll behavior, `topSlot`).
 
-### Change 1 — `src/hooks/usePendingActivities.ts`
-
-Update `markEmailAsRead.mutationFn`:
-
-1. Read the row's `rfc822_message_id` (single `select`).
-2. If present, `update({ is_read: true })` filtered by `rfc822_message_id` (updates all duplicates).
-3. If null/absent, fall back to the existing `.eq('id', emailId)` update.
-
-Keep the same `onSuccess` invalidation.
-
-### Change 2 — `src/pages/Dashboard.tsx` (`toggleDone`)
-
-Replace the inline `supabase.from('email_logs').update(...).eq('id', item.emailId)` block with a call to the shared `markEmailAsRead` mutation exposed by `usePendingActivities`, so the reply/duplicate-safe logic lives in one place. Preserve current behavior: only fire when transitioning to done (not when un-checking), and keep the existing `queryClient.invalidateQueries({ queryKey: ['pending-activities'] })` (already handled by the mutation's `onSuccess`).
-
-No schema changes, no UI changes, no other queue types touched.
+No changes to data hooks, ThreadPane, ConversationListPane, or the empty-state primitive itself.
 
 ## Verification
 
-- Type-check the project.
-- Manually confirm: check a Reply row → row disappears and stays gone after the pending-activities refetch and after a page reload (within the 7-day dismiss window).
+- Type-check with `bunx tsgo --noEmit`.
+- Visually confirm in preview: open a thread with zero messages → canonical SoftBubble illustration, Poppins title with purple period, Inter body copy, matching the pane-level empty states.

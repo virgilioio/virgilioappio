@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { format } from 'date-fns'
-import { MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SoftBubble } from '@/components/ui/EmptyIllustrations'
 import { MessageBubble } from '@/components/chat/MessageBubble'
 import { DaySeparator } from '@/components/chat/DaySeparator'
 import { useChatMessages, type ChatMessageRow } from '@/hooks/chat/useChatMessages'
+
 
 interface MessageListProps {
   threadId: string
@@ -70,15 +71,15 @@ export function MessageList({ threadId, topSlot }: MessageListProps) {
         </div>
       )}
       {messages.length === 0 ? (
-        <div className="flex items-center justify-center py-14">
+        <div className="flex items-center justify-center py-10">
           <EmptyState
-            variant="inline"
-            mascot={false}
-            icon={MessageSquare}
+            size="card"
+            illustration={<SoftBubble />}
             title="No messages yet"
-            description="Send the first message to start the conversation."
+            body="Send the first message to start the conversation."
           />
         </div>
+
       ) : (
         messages.map((m, idx) => {
           const prev = messages[idx - 1]
