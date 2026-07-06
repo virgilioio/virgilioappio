@@ -1,33 +1,31 @@
-## Problem
+## Goal
 
-When a conversation is selected but has no messages yet, `src/components/chat/MessageList.tsx` renders a hand-rolled empty state using the **legacy** `<EmptyState variant="inline" mascot={false} icon={MessageSquare}>` path. This bypasses the canonical illustration-based empty state used elsewhere in Chat (e.g. `ThreadPane` no-thread state uses `<EmptyState size="card|route" illustration={<SoftBubble />} … />`), so it looks out of place — a small purple-circle icon instead of the Gio soft illustration, and inconsistent typography.
+In the Job Wizard → Step 1 → Job Description field, when the user clicks **Generate with Gio**, also send any text already present in the Job Description textarea to the AI so it can be used as notes / rough draft to nurture the generated output. All other behavior stays exactly the same.
 
-Per `mem://style/ui/empty-states-canonical-primitive` and the Empty States Build Spec, we should use the canonical primitive with an illustration. No other empty state in the chat module needs changes — `ConversationListPane` and `ThreadPane` already use canonical variants.
+## Understanding
 
-## Change
+Yes — I understand. Today the wizard sends the full `jobData` object to the `generate-job-description` edge function, but the function's prompt builder (`buildContextBlock`) ignores `jobData.description`. So even though the text technically travels, it is dropped before hitting the model. We need to surface it into the prompt.
 
-**File:** `src/components/chat/MessageList.tsx` (only)
+Also, the current UX asks "Replace the current description with an AI-generated one?" whenever the field has >20 chars. Since the whole point is now to *seed* the generation with those notes, that confirm would fire every time and feel wrong. I'll remove that confirm so the notes flow through silently (the field is replaced by the newly generated draft, which now incorporates the notes).
 
-Replace the current empty block (the `<div className="flex items-center justify-center py-14">…</div>` wrapping the legacy `<EmptyState>`) with the canonical card-sized empty state:
+## Changes
 
-```tsx
-<div className="flex items-center justify-center py-10">
-  <EmptyState
-    size="card"
-    illustration={<SoftBubble />}
-    title="No messages yet"
-    body="Send the first message to start the conversation."
-  />
-</div>
-```
+### 1. `supabase/functions/generate-job-description/index.ts`
+- In `buildContextBlock`, append the user's existing description (if any, trimmed, non-empty) as a distinct block labeled as author notes / rough draft — kept clearly separate from the structured field list so the model treats it as source material to expand, not as a field to echo.
+- Add a short instruction line to the system prompt: if "Author notes / rough draft" is provided, treat it as the recruiter's own notes — preserve their intent, facts, and any specifics they mention (tools, responsibilities, must-haves), and expand/polish rather than discard.
+- No other prompt, model, or response changes.
 
-- Import `SoftBubble` from `@/components/ui/EmptyIllustrations`.
-- Drop the now-unused `MessageSquare` import.
-- Keep everything else in `MessageList` unchanged (loading skeleton, pagination button, day separators, scroll behavior, `topSlot`).
+### 2. `src/components/jobs/wizard/JobInfoStep.tsx`
+- Remove the "Replace the current description…" `window.confirm` in `handleGenerateDescription` (lines 169–173), since the existing text is now intentional input, not something being clobbered.
+- No change to the request payload — `jobData` already carries `description`.
 
-No changes to data hooks, ThreadPane, ConversationListPane, or the empty-state primitive itself.
+## Out of scope
+
+- No UI/label/placement changes to the Generate button, textarea, or wizard layout.
+- No changes to other steps, other edge functions, or the non-wizard `JobFormSheet` path.
+- No changes to model selection or response handling.
 
 ## Verification
 
-- Type-check with `bunx tsgo --noEmit`.
-- Visually confirm in preview: open a thread with zero messages → canonical SoftBubble illustration, Poppins title with purple period, Inter body copy, matching the pane-level empty states.
+- Type-check.
+- Manually: open Job Wizard → step 1 → type "Need strong Rust + Tokio background, remote EU only, must have led a team of 3+" into Job Description → fill Title + Level → click Generate with Gio → confirm the produced markdown reflects those notes (Rust/Tokio, remote EU, team lead) instead of ignoring them.
