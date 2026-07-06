@@ -142,6 +142,24 @@ export function PostingSheet({
   useEffect(() => {
     if (!open) return
     const load = async () => {
+      // Fetch the parent job so we can seed compensation from the wizard-written
+      // fields when the posting has no local overrides.
+      let job: any = null
+      if (jobId) {
+        const { data } = await supabase
+          .from('jobs')
+          .select('salary_min, salary_max, currency, show_salary_public, include_equity, include_signing_bonus')
+          .eq('id', jobId)
+          .maybeSingle()
+        job = data || null
+      }
+
+      const pick = <T,>(detailValue: T | null | undefined, jobValue: T | null | undefined, fallback: T): T => {
+        if (detailValue !== undefined && detailValue !== null) return detailValue
+        if (jobValue !== undefined && jobValue !== null) return jobValue
+        return fallback
+      }
+
       if (postingId) {
         const p = await getPosting(postingId)
         if (p) {
@@ -173,10 +191,25 @@ export function PostingSheet({
           }
           setEmploymentType(d.employment_type || 'full_time')
           setLocationType(d.location_type || 'onsite')
-          setSalaryCurrency(d.salary_currency || 'USD')
-          setSalaryAmount(d.salary_amount != null ? String(d.salary_amount) : '')
-          setSalaryPeriod(d.salary_period || 'annually')
-          setShowSalary(!!d.show_salary)
+
+          // Compensation — prefer posting.details override, fall back to job (wizard values).
+          // Legacy postings may only have salary_amount → map to both min and max.
+          const legacyAmount = d.salary_amount != null ? Number(d.salary_amount) : null
+          const detailMin = d.salary_min != null ? Number(d.salary_min) : legacyAmount
+          const detailMax = d.salary_max != null ? Number(d.salary_max) : legacyAmount
+          setSalaryCurrency(pick(d.salary_currency, job?.currency, 'USD'))
+          setSalaryMin(pick<number | undefined>(detailMin ?? undefined, job?.salary_min ?? undefined, undefined as any))
+          setSalaryMax(pick<number | undefined>(detailMax ?? undefined, job?.salary_max ?? undefined, undefined as any))
+          const detailShow =
+            typeof d.show_salary_public === 'boolean'
+              ? d.show_salary_public
+              : typeof d.show_salary === 'boolean'
+                ? d.show_salary
+                : null
+          setShowSalaryPublic(pick<boolean>(detailShow, job?.show_salary_public, false))
+          setIncludeEquity(pick<boolean>(typeof d.include_equity === 'boolean' ? d.include_equity : null, job?.include_equity, false))
+          setIncludeSigningBonus(pick<boolean>(typeof d.include_signing_bonus === 'boolean' ? d.include_signing_bonus : null, job?.include_signing_bonus, false))
+
           setHasCommissions(!!d.has_commissions)
           setCommissionsCurrency(d.commissions_currency || 'USD')
           setCommissionsAmount(d.commissions_amount != null ? String(d.commissions_amount) : '')
@@ -218,10 +251,13 @@ export function PostingSheet({
         setDepartmentId('')
         setEmploymentType('full_time')
         setLocationType('onsite')
-        setSalaryCurrency('USD')
-        setSalaryAmount('')
-        setSalaryPeriod('annually')
-        setShowSalary(false)
+        // Seed from parent job so a new posting inherits wizard compensation.
+        setSalaryCurrency(job?.currency || 'USD')
+        setSalaryMin(job?.salary_min ?? undefined)
+        setSalaryMax(job?.salary_max ?? undefined)
+        setShowSalaryPublic(!!job?.show_salary_public)
+        setIncludeEquity(!!job?.include_equity)
+        setIncludeSigningBonus(!!job?.include_signing_bonus)
         setHasCommissions(false)
         setCommissionsCurrency('USD')
         setCommissionsAmount('')
