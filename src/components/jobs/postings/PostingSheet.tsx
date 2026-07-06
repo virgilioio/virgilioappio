@@ -43,6 +43,7 @@ import {
   PostingBrandingCard,
   type BrandingValue,
 } from './PostingBrandingCard'
+import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint } from '@/components/jobs/wizard/_parts'
 
 interface PostingSheetProps {
   jobId: string
@@ -91,14 +92,16 @@ export function PostingSheet({
   // Department
   const [departmentId, setDepartmentId] = useState<string>('')
 
-  // Compensation & location (legacy preserved)
+  // Compensation & location (unified with wizard shape)
   const [location, setLocation] = useState('')
   const [employmentType, setEmploymentType] = useState('full_time')
   const [locationType, setLocationType] = useState('onsite')
   const [salaryCurrency, setSalaryCurrency] = useState('USD')
-  const [salaryAmount, setSalaryAmount] = useState('')
-  const [salaryPeriod, setSalaryPeriod] = useState('annually')
-  const [showSalary, setShowSalary] = useState(false)
+  const [salaryMin, setSalaryMin] = useState<number | undefined>(undefined)
+  const [salaryMax, setSalaryMax] = useState<number | undefined>(undefined)
+  const [showSalaryPublic, setShowSalaryPublic] = useState(false)
+  const [includeEquity, setIncludeEquity] = useState(false)
+  const [includeSigningBonus, setIncludeSigningBonus] = useState(false)
   const [hasCommissions, setHasCommissions] = useState(false)
   const [commissionsCurrency, setCommissionsCurrency] = useState('USD')
   const [commissionsAmount, setCommissionsAmount] = useState('')
@@ -139,6 +142,24 @@ export function PostingSheet({
   useEffect(() => {
     if (!open) return
     const load = async () => {
+      // Fetch the parent job so we can seed compensation from the wizard-written
+      // fields when the posting has no local overrides.
+      let job: any = null
+      if (jobId) {
+        const { data } = await supabase
+          .from('jobs')
+          .select('salary_min, salary_max, currency, show_salary_public, include_equity, include_signing_bonus')
+          .eq('id', jobId)
+          .maybeSingle()
+        job = data || null
+      }
+
+      const pick = <T,>(detailValue: T | null | undefined, jobValue: T | null | undefined, fallback: T): T => {
+        if (detailValue !== undefined && detailValue !== null) return detailValue
+        if (jobValue !== undefined && jobValue !== null) return jobValue
+        return fallback
+      }
+
       if (postingId) {
         const p = await getPosting(postingId)
         if (p) {
@@ -170,10 +191,25 @@ export function PostingSheet({
           }
           setEmploymentType(d.employment_type || 'full_time')
           setLocationType(d.location_type || 'onsite')
-          setSalaryCurrency(d.salary_currency || 'USD')
-          setSalaryAmount(d.salary_amount != null ? String(d.salary_amount) : '')
-          setSalaryPeriod(d.salary_period || 'annually')
-          setShowSalary(!!d.show_salary)
+
+          // Compensation — prefer posting.details override, fall back to job (wizard values).
+          // Legacy postings may only have salary_amount → map to both min and max.
+          const legacyAmount = d.salary_amount != null ? Number(d.salary_amount) : null
+          const detailMin = d.salary_min != null ? Number(d.salary_min) : legacyAmount
+          const detailMax = d.salary_max != null ? Number(d.salary_max) : legacyAmount
+          setSalaryCurrency(pick(d.salary_currency, job?.currency, 'USD'))
+          setSalaryMin(pick<number | undefined>(detailMin ?? undefined, job?.salary_min ?? undefined, undefined as any))
+          setSalaryMax(pick<number | undefined>(detailMax ?? undefined, job?.salary_max ?? undefined, undefined as any))
+          const detailShow =
+            typeof d.show_salary_public === 'boolean'
+              ? d.show_salary_public
+              : typeof d.show_salary === 'boolean'
+                ? d.show_salary
+                : null
+          setShowSalaryPublic(pick<boolean>(detailShow, job?.show_salary_public, false))
+          setIncludeEquity(pick<boolean>(typeof d.include_equity === 'boolean' ? d.include_equity : null, job?.include_equity, false))
+          setIncludeSigningBonus(pick<boolean>(typeof d.include_signing_bonus === 'boolean' ? d.include_signing_bonus : null, job?.include_signing_bonus, false))
+
           setHasCommissions(!!d.has_commissions)
           setCommissionsCurrency(d.commissions_currency || 'USD')
           setCommissionsAmount(d.commissions_amount != null ? String(d.commissions_amount) : '')
@@ -215,10 +251,13 @@ export function PostingSheet({
         setDepartmentId('')
         setEmploymentType('full_time')
         setLocationType('onsite')
-        setSalaryCurrency('USD')
-        setSalaryAmount('')
-        setSalaryPeriod('annually')
-        setShowSalary(false)
+        // Seed from parent job so a new posting inherits wizard compensation.
+        setSalaryCurrency(job?.currency || 'USD')
+        setSalaryMin(job?.salary_min ?? undefined)
+        setSalaryMax(job?.salary_max ?? undefined)
+        setShowSalaryPublic(!!job?.show_salary_public)
+        setIncludeEquity(!!job?.include_equity)
+        setIncludeSigningBonus(!!job?.include_signing_bonus)
         setHasCommissions(false)
         setCommissionsCurrency('USD')
         setCommissionsAmount('')
@@ -244,7 +283,7 @@ export function PostingSheet({
     show_in_search: showInSearch,
     show_24h_badge: show24h,
     is_primary: isPrimary,
-    // legacy compensation & location
+    // Compensation & location — unified with wizard shape
     location: location || null,
     // Department (denormalized name + id for careers page grouping)
     department_id: departmentId || null,
@@ -252,9 +291,11 @@ export function PostingSheet({
     employment_type: employmentType || null,
     location_type: locationType || null,
     salary_currency: salaryCurrency || null,
-    salary_amount: salaryAmount ? Number(salaryAmount) : null,
-    salary_period: salaryPeriod || null,
-    show_salary: showSalary,
+    salary_min: salaryMin ?? null,
+    salary_max: salaryMax ?? null,
+    show_salary_public: showSalaryPublic,
+    include_equity: includeEquity,
+    include_signing_bonus: includeSigningBonus,
     has_commissions: hasCommissions,
     commissions_currency: hasCommissions ? commissionsCurrency : null,
     commissions_amount:
@@ -324,6 +365,22 @@ export function PostingSheet({
       const details = buildDetails()
       const syndication = {
         google_jobs: { enabled: channels.channels?.google_jobs?.enabled !== false },
+      }
+      // Keep the parent job in sync — it is the source of truth used by the
+      // wizard and by the public posting page as a fallback.
+      if (jobId) {
+        const { error: jobErr } = await supabase
+          .from('jobs')
+          .update({
+            salary_min: salaryMin ?? null,
+            salary_max: salaryMax ?? null,
+            currency: salaryCurrency || null,
+            show_salary_public: showSalaryPublic,
+            include_equity: includeEquity,
+            include_signing_bonus: includeSigningBonus,
+          } as any)
+          .eq('id', jobId)
+        if (jobErr) console.error('Error syncing job compensation:', jobErr)
       }
       if (localId) {
         await updatePosting(localId, {
@@ -553,33 +610,61 @@ export function PostingSheet({
                   </FormField>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <FormField label="Salary currency">
+                  <FormField label="Currency">
                     <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} disabled={readOnly} />
                   </FormField>
-                  <FormField label="Salary amount">
-                    <Input type="number" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} placeholder="120000" disabled={readOnly} />
-                  </FormField>
-                  <FormField label="Period">
-                    <Select value={salaryPeriod} onValueChange={setSalaryPeriod} disabled={readOnly}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hourly">Hourly</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="annually">Annually</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormField>
+                  <div>
+                    <FieldLabel required>Min salary</FieldLabel>
+                    <div className="mt-2">
+                      <SalaryInput
+                        value={salaryMin}
+                        onChange={setSalaryMin}
+                        placeholder="80,000"
+                        invalid={salaryMin != null && salaryMax != null && salaryMin > salaryMax}
+                      />
+                    </div>
+                    {salaryMin != null && salaryMax != null && salaryMin > salaryMax && (
+                      <FieldHint tone="error">Min must be lower than max</FieldHint>
+                    )}
+                  </div>
+                  <div>
+                    <FieldLabel required>Max salary</FieldLabel>
+                    <div className="mt-2">
+                      <SalaryInput
+                        value={salaryMax}
+                        onChange={setSalaryMax}
+                        placeholder="120,000"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="show-salary" checked={showSalary} onCheckedChange={(c) => setShowSalary(!!c)} disabled={readOnly} />
-                    <Label htmlFor="show-salary">Show salary on posting</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Checkbox id="has-commissions" checked={hasCommissions} onCheckedChange={(c) => setHasCommissions(!!c)} disabled={readOnly} />
-                    <Label htmlFor="has-commissions">+ Commissions</Label>
-                  </div>
+                <div className="border-t border-virgilio-border pt-3 space-y-1">
+                  <WizardToggleRow
+                    label="Show salary on public posting"
+                    hint="Recommended — applicant quality jumps 40% on jobs that publish salary."
+                    checked={showSalaryPublic}
+                    onChange={setShowSalaryPublic}
+                    disabled={readOnly}
+                  />
+                  <WizardToggleRow
+                    label="Include equity"
+                    checked={includeEquity}
+                    onChange={setIncludeEquity}
+                    disabled={readOnly}
+                  />
+                  <WizardToggleRow
+                    label="Include signing bonus"
+                    checked={includeSigningBonus}
+                    onChange={setIncludeSigningBonus}
+                    disabled={readOnly}
+                  />
+                  <WizardToggleRow
+                    label="Include variable / commission"
+                    hint="On-target earnings, sales commission, or bonus structure."
+                    checked={hasCommissions}
+                    onChange={setHasCommissions}
+                    disabled={readOnly}
+                  />
                 </div>
                 {hasCommissions && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
