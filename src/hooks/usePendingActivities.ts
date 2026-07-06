@@ -76,12 +76,30 @@ export function usePendingActivities() {
 
   const markEmailAsRead = useMutation({
     mutationFn: async (emailId: string) => {
-      const { error } = await supabase
+      // Inbound emails can be recorded twice (Gmail sync + inbound webhook) as
+      // separate rows sharing the same rfc822_message_id. Mark all duplicates
+      // as read so the deduped fetch can't resurface a sibling row.
+      const { data: row } = await supabase
         .from('email_logs')
-        .update({ is_read: true })
-        .eq('id', emailId);
-      
-      if (error) throw error;
+        .select('rfc822_message_id')
+        .eq('id', emailId)
+        .maybeSingle();
+
+      const msgId = (row as any)?.rfc822_message_id as string | null | undefined;
+
+      if (msgId) {
+        const { error } = await supabase
+          .from('email_logs')
+          .update({ is_read: true })
+          .eq('rfc822_message_id', msgId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('email_logs')
+          .update({ is_read: true })
+          .eq('id', emailId);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-activities'] });

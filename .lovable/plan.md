@@ -1,48 +1,38 @@
-Fix three real issues with the Scorecard-required flow: (1) candidate name missing in the reminder email, (2) "Submit scorecard" CTA lands on the job page instead of the actual scorecard, (3) an interviewer sees "Request scorecard" for their own pending scorecard when they should see "Complete scorecard".
+## Problem
 
-## 1. Fix candidate name in reminder email
+On the Dashboard **"Your queue"** card, checking off a **Reply needed** row briefly hides it, then the same reply comes back on the next refetch.
 
-**Files:** `supabase/functions/request-scorecard/index.ts`, `supabase/functions/send-scorecard-reminders/index.ts`, `supabase/functions/_shared/scorecardReminderEmail.ts`
+## Root cause
 
-- Harden the candidate name resolution in both functions:
-  - Select `first_name, last_name, candidate_name, full_name` (if present) from `candidates`.
-  - Build `candidate_full_name` as first non-empty of: `candidate_name`, `first_name + last_name`, `first_name`, `last_name`, otherwise `"the candidate"`.
-  - Build `candidate_first_name` similarly.
-- Include the candidate's full name explicitly in the headline (not just first name) so it always appears in the body — e.g. `Your feedback on {{candidate_full_name}} is holding up the pipeline.` and keep first name in the intro line.
-- Keep subject/preheader referencing the full name.
+Inbound emails commonly land in `email_logs` **twice** — once from Gmail sync and once from the inbound webhook — as two rows with different `id`s but the **same `rfc822_message_id`**.
 
-## 2. Route "Submit scorecard" CTA directly to the candidate's Scorecards tab
+- `fetchUnreadEmails` (`src/hooks/usePendingActivities.ts`) queries `is_read = false`, then dedupes the results by `rfc822_message_id` in JS.
+- When the user checks off a Reply row, `Dashboard.tsx` (`toggleDone`) runs `update({ is_read: true }).eq('id', item.emailId)` — updating **only one** of the duplicate rows.
+- On the invalidated refetch, the *other* duplicate (still `is_read = false`) is returned. It has a different `email.id`, so the queue builds a new row id `e-<otherId>` that isn't in the persisted `doneIds` set — the reply reappears.
 
-**Files:** `supabase/functions/request-scorecard/index.ts`, `supabase/functions/send-scorecard-reminders/index.ts`, `src/components/candidates/CandidateProfileSheet.tsx`
+The dismissed-ids set and the 7-day localStorage persistence work correctly; the mismatch is on the DB side.
 
-- Change the `scorecard_url` in both edge functions from `/jobs/{jobId}?openCandidate={candidateId}&tab=scorecards` to the real profile route:
-  `${appUrl}/jobs/{jobId}/candidates/{candidateId}?tab=scorecards&focus=my-scorecard`.
-- In `CandidateProfileSheet.tsx`, extend the initial-tab effect (around line 508) to also honor `tab=scorecards`, `tab=overview`, `tab=comments`, `tab=offer` — currently only `communications`/`emails`/`activity` are handled. Set `activeTab = 'scorecards'` when the URL param says so.
-- When `focus=my-scorecard` is present, scroll to and expand the current user's pending scorecard form on mount (best-effort: pass an `initialFocusUserId` prop into the Scorecards tab content that matches on `currentUserId`).
+## Fix
 
-## 3. Self vs. others: "Complete scorecard" instead of "Request scorecard"
+Mark **every** `email_logs` row that shares the same `rfc822_message_id` as read, so the deduped fetch can never resurface a sibling row.
 
-**Files:** `src/components/candidates/profile/StageScorecardsCard.tsx`, `src/components/candidates/profile/tabs/ScorecardsTabContent.tsx`, `src/components/candidates/profile/tabs/SidebarRouter.tsx`, `src/components/candidates/CandidateProfileSheet.tsx`
+### Change 1 — `src/hooks/usePendingActivities.ts`
 
-- Plumb `currentUserId` into all three components (already present in `StageScorecardsCard`; add to `ScorecardsTabContent` and the pending-block section of `SidebarRouter`).
-- For each pending row where `row.userId === currentUserId`:
-  - Replace the "Request" / "Requested Xd ago" button with a **primary** `Button` labeled **"Complete scorecard"** (icon: `PenLine` from lucide).
-  - Clicking it switches `activeTab` to `'scorecards'` and scrolls to that interviewer's scorecard form (reuse the same focus mechanism from Fix #2).
-  - Hide the row's "Requested Xd ago" hint for self (irrelevant — you can't nudge yourself).
-- For the "Request all" button in the banner: if the only remaining pending interviewer is the current user, swap the banner CTA to "Complete scorecard" too; otherwise keep "Request all" but ensure it never triggers a self-email in the edge function.
-- Backend guard: in `request-scorecard/index.ts`, filter out the caller's own `user_id` from `targets` (resolve the caller from the JWT via `supabase.auth.getUser` using the request `Authorization` header). Return `{ ok: true, skipped_self: 1 }` so the UI can react gracefully.
+Update `markEmailAsRead.mutationFn`:
 
-## Technical details
+1. Read the row's `rfc822_message_id` (single `select`).
+2. If present, `update({ is_read: true })` filtered by `rfc822_message_id` (updates all duplicates).
+3. If null/absent, fall back to the existing `.eq('id', emailId)` update.
 
-- Route param handling in `CandidateProfileSheet` uses `window.location.search`; extend the switch, don't restructure.
-- Self-detection uses the existing `currentUserId` already loaded via `useAuth`/`useUserProfile` in `CandidateProfileSheet` — pass it down as a prop.
-- Scroll target: give each pending scorecard form a stable `id={`scorecard-form-${userId}`}` and, when `focus=my-scorecard` or the "Complete scorecard" button is clicked, call `document.getElementById(...)?.scrollIntoView({ behavior: 'smooth', block: 'center' })` after the tab switch (next tick via `requestAnimationFrame`).
-- No new visual system: reuse existing `Button` variants (`primary` for "Complete scorecard", keep `purple` for "Request"), existing `Badge`, existing card styling.
-- No new email service — same shared template, same Resend pipeline.
-- Edge functions redeploy: `request-scorecard`, `send-scorecard-reminders`.
+Keep the same `onSuccess` invalidation.
 
-## What NOT to do
+### Change 2 — `src/pages/Dashboard.tsx` (`toggleDone`)
 
-- Don't add a new top-level `/scorecards/:id` route — the candidate profile already owns scorecards, and adding a param + focus keeps deep-links stable.
-- Don't rewrite the email template shell — only tweak the headline copy and merge-var resolution.
-- Don't change the Scorecards tab layout, AI synthesis card, or Configure-Stage toggle behavior.
+Replace the inline `supabase.from('email_logs').update(...).eq('id', item.emailId)` block with a call to the shared `markEmailAsRead` mutation exposed by `usePendingActivities`, so the reply/duplicate-safe logic lives in one place. Preserve current behavior: only fire when transitioning to done (not when un-checking), and keep the existing `queryClient.invalidateQueries({ queryKey: ['pending-activities'] })` (already handled by the mutation's `onSuccess`).
+
+No schema changes, no UI changes, no other queue types touched.
+
+## Verification
+
+- Type-check the project.
+- Manually confirm: check a Reply row → row disappears and stays gone after the pending-activities refetch and after a page reload (within the 7-day dismiss window).
