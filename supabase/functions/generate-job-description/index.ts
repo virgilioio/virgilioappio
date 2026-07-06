@@ -138,6 +138,7 @@ Rules:
 - Match the language of the job title. If the title is in English, write in English. If clearly Portuguese/Spanish/French/Italian, write in that language.
 - Do NOT invent a company name, perks, or compensation that wasn't provided.
 - Reflect work mode, location, employment type, and seniority naturally in the copy.
+- If an "Author notes / rough draft" section is provided, treat it as the recruiter's own notes: preserve their intent, facts, and any specifics they mention (tools, responsibilities, must-haves, context) and expand/polish rather than discard or contradict them.
 - Keep total length between 250 and 450 words.`;
 
     const userPrompt = `Draft a job description based on the following structured inputs. Synthesize naturally — do not just list the fields back.
