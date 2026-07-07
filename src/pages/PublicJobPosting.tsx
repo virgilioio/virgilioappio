@@ -444,6 +444,20 @@ export default function PublicJobPosting() {
               </div>
             </div>
           )}
+          {/* Render commissions as its own row when salary is hidden or unset, so the toggle isn't silently dropped. */}
+          {details.hasCommissions && !(details.showSalary && (details.salaryAmount || details.salaryMin || details.salaryMax)) && (
+            <div className="flex items-start gap-3">
+              <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-sm font-medium">Variable compensation</div>
+                <div className="text-sm text-muted-foreground">
+                  {details.commissionsAmount
+                    ? `Avg commissions: ${details.commissionsCurrency || ''} ${Number(details.commissionsAmount).toLocaleString()}`.trim()
+                    : 'Included'}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     )
