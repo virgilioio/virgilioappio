@@ -8,6 +8,31 @@ Deno.serve(async (req) => {
   const preflightResponse = handlePreflight(req);
   if (preflightResponse) return preflightResponse;
 
+  // --- internal auth gate (log-only mode; enforcement flipped later) ---
+
+  const expectedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+
+  const gotSecret = req.headers.get("x-internal-secret");
+
+  const isAuthorized = !!expectedSecret && gotSecret === expectedSecret;
+
+  const ENFORCE_INTERNAL_AUTH = false; // flip to true only in a later, separate change
+
+  if (!isAuthorized) {
+    console.warn(`[auth-gate] Unauthorized call. enforce=${ENFORCE_INTERNAL_AUTH}`);
+
+    if (ENFORCE_INTERNAL_AUTH) {
+      return new Response(JSON.stringify({ error: "not_found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  } else {
+    console.log("[auth-gate] Authorized internal call.");
+  }
+
+  // --- end internal auth gate ---
+
   const origin = req.headers.get('Origin') ?? undefined;
 
   try {
