@@ -228,7 +228,7 @@ function calculateDurationMonths(startDate?: string | null, endDate?: string | n
 
 // ---------- Main enrichment ----------
 
-async function enrichCandidateProfile(candidateId: string, resumeText: string, candidateName?: string): Promise<void> {
+async function enrichCandidateProfile(candidateId: string, resumeText: string, candidateName?: string, jobId?: string): Promise<void> {
   console.log(`[enrich] Starting enrichment for candidate ${candidateId}`);
   
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
