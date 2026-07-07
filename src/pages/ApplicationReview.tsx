@@ -289,6 +289,7 @@ export default function ApplicationReviewPage() {
           rejectedList={review.rejectedList}
           stageName={review.firstStageName || 'the next stage'}
           jobId={jobId!}
+          jobTitle={jobTitle}
           onDone={handleClose}
         />
       ) : total === 0 ? (
