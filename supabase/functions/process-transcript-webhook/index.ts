@@ -3,6 +3,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Webhook } from "npm:svix@1.24.0";
 import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',
@@ -93,7 +94,7 @@ async function ocrPdfWithVision(pdfBytes: Uint8Array, openaiApiKey: string): Pro
     }
     const base64Pdf = btoa(binary);
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
@@ -110,7 +111,7 @@ async function ocrPdfWithVision(pdfBytes: Uint8Array, openaiApiKey: string): Pro
         }],
         max_tokens: 8000,
       }),
-    });
+    }, 'process-transcript-webhook');
 
     if (!res.ok) {
       console.error('[Transcript Webhook] OCR vision API error:', res.status, await res.text());

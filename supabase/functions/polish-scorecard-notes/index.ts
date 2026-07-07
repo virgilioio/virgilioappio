@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 function stripHtml(html: string): string {
   if (!html) return '';
   return html
@@ -172,7 +173,7 @@ IMPORTANT - Language Rule: Detect the language used in the "Interviewer's Raw No
     console.log('Calling OpenAI API...');
 
     // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -186,7 +187,7 @@ IMPORTANT - Language Rule: Detect the language used in the "Interviewer's Raw No
         ],
         max_completion_tokens: 2000,
       }),
-    });
+    }, 'polish-scorecard-notes');
 
     if (!response.ok) {
       const errorText = await response.text();

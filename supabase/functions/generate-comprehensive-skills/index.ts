@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -158,7 +159,7 @@ async function getTitleKeywords(jobTitle: string): Promise<string[]> {
 
     // AI micro-call: generate bilingual synonyms + core fragments
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
@@ -206,7 +207,7 @@ Return ONLY a JSON array of unique strings. No duplicates. Max 12 items.`
           temperature: 0.1,
           max_tokens: 300,
         }),
-      });
+      }, 'generate-comprehensive-skills');
 
       if (response.ok) {
         const aiData = await response.json();
@@ -234,7 +235,7 @@ Return ONLY a JSON array of unique strings. No duplicates. Max 12 items.`
  */
 async function extractDomainKeywords(jobTitle: string, description: string): Promise<string[]> {
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -281,7 +282,7 @@ This ensures candidates with resumes in either language will match. Return ONLY 
         temperature: 0.2,
         max_tokens: 400,
       }),
-    });
+    }, 'generate-comprehensive-skills');
 
     if (!response.ok) {
       console.error('Domain keyword extraction failed:', response.status);
@@ -418,7 +419,7 @@ Guidelines:
       })();
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -433,7 +434,7 @@ Guidelines:
         temperature: 0.2,
         max_tokens: 1200,
       }),
-    });
+    }, 'generate-comprehensive-skills');
 
     if (!response.ok) {
       throw new Error(`OpenAI API error: ${response.status}`);

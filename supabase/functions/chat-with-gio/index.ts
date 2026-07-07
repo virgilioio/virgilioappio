@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(
@@ -158,7 +159,7 @@ Example responses:
     ];
 
     // Call OpenAI with streaming enabled
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -171,7 +172,7 @@ Example responses:
         temperature: 0.7,
         stream: true
       }),
-    });
+    }, 'chat-with-gio');
 
     if (!response.ok) {
       const errorText = await response.text();

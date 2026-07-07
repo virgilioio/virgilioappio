@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Resend } from "npm:resend@2.0.0";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -271,14 +272,14 @@ ${questionsContext}`;
       requestBody.tool_choice = { type: 'function', function: { name: 'submit_scorecard' } };
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
-    });
+    }, 'generate-scorecard-from-transcript');
 
     if (!response.ok) {
       const errorText = await response.text();

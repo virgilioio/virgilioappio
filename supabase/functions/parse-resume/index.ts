@@ -3,6 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
 // Country name/keyword → phone country code (for inferring when resume lacks +prefix)
@@ -191,7 +192,7 @@ Return ONLY the JSON object, no markdown, no commentary.`;
   const startTime = Date.now();
 
   try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -206,7 +207,7 @@ Return ONLY the JSON object, no markdown, no commentary.`;
         temperature: 0.1,
         max_tokens: 500, // Room for the extra current-role fields
       }),
-    });
+    }, 'parse-resume');
 
     const elapsed = Date.now() - startTime;
     console.log(`[parse-resume] Core AI extraction completed in ${elapsed}ms`);
@@ -358,7 +359,7 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
   console.log(`[parse-resume] Full AI extraction starting for: ${fileName || 'unknown'}`);
   const startTime = Date.now();
 
-  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+  const resp = await openaiFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -373,7 +374,7 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
       temperature: 0.2,
       max_tokens: 2500,
     }),
-  });
+  }, 'parse-resume');
 
   const elapsed = Date.now() - startTime;
   console.log(`[parse-resume] Full AI extraction completed in ${elapsed}ms`);
