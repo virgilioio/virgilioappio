@@ -298,15 +298,33 @@ export function EmailComposer({
     });
 
   const onSubmit = async (data: EmailFormData) => {
+    const subjectWithPlaceholders = convertHtmlToPlaceholders(subjectHtml);
+    const bodyHtmlWithPlaceholders = convertHtmlToPlaceholders(bodyHtml);
+
+    if (isBulk) {
+      if (bulkAssociationIds.length === 0) {
+        toast.error('No recipients with a valid email address.');
+        return;
+      }
+      await bulkSend.sendBulkEmailAsync({
+        associationIds: bulkAssociationIds,
+        emailData: {
+          fromEmail: data.from_email,
+          subject: subjectWithPlaceholders,
+          bodyHtml: bodyHtmlWithPlaceholders,
+        },
+        scheduleFor: scheduledAt || undefined,
+      });
+      onSuccess?.();
+      return;
+    }
+
     const attachmentPromises = attachments.map(async (att) => ({
       filename: att.name,
       content: await fileToBase64(att.file),
       content_type: att.file.type || 'application/octet-stream',
     }));
     const processedAttachments = await Promise.all(attachmentPromises);
-
-    const subjectWithPlaceholders = convertHtmlToPlaceholders(subjectHtml);
-    const bodyHtmlWithPlaceholders = convertHtmlToPlaceholders(bodyHtml);
     const bodyTextWithPlaceholders = bodyHtmlWithPlaceholders.replace(/<[^>]*>/g, '');
 
     const request: SendEmailRequest = {
