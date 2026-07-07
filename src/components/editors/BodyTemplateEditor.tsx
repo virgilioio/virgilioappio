@@ -117,6 +117,7 @@ function BodyEditorInner({
   placeholder,
   className,
   minHeight = '200px',
+  maxHeight = '400px',
   disabled,
   onFocus,
   hideToolbar,
