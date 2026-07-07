@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { corsHeadersFor, handlePreflight } from '../_shared/mod.ts';
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 interface JobSpecs {
   title?: string;
   skills?: string[];
@@ -435,7 +436,7 @@ Return as JSON:
   }
 }`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openAIApiKey}`,
@@ -449,7 +450,7 @@ Return as JSON:
       ],
       temperature: 0.3,
     }),
-  });
+  }, 'normalize-job-specs');
 
   if (!response.ok) {
     throw new Error(`OpenAI API error: ${response.status}`);

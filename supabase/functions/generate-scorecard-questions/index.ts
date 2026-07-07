@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -122,7 +123,7 @@ Generate 5-8 tailored interview questions with interviewer notes.`;
 
     console.log(`Generating questions for job "${job.title}" at stage "${stageName}" (${stageType})`);
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await openaiFetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${openAIApiKey}`,
@@ -178,7 +179,7 @@ Generate 5-8 tailored interview questions with interviewer notes.`;
         tool_choice: { type: "function", function: { name: "suggest_interview_questions" } },
         temperature: 0.7,
       }),
-    });
+    }, 'generate-scorecard-questions');
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();

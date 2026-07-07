@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(
@@ -366,7 +367,7 @@ Use this market data to provide SPECIFIC salary recommendations instead of gener
       }
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -547,7 +548,7 @@ DO NOT translate, adapt, or localize text fields to match the geographic locatio
         temperature: 0.7,
         max_tokens: 1500,
       }),
-    });
+    }, 'generate-job-spec');
 
     if (!response.ok) {
       throw new Error(`OpenAI API error: ${response.status}`);

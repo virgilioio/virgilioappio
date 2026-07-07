@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -323,7 +324,7 @@ serve(async (req) => {
     }
 
     // Call OpenAI
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await openaiFetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -339,7 +340,7 @@ serve(async (req) => {
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
         temperature: 0.2,
       }),
-    });
+    }, 'analyze-candidate-fit');
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();

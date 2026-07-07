@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { extractText } from "https://esm.sh/unpdf@0.12.1";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -253,7 +254,7 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     // 1. AI Extraction via tool calling
     const userPrompt = `Extract the full structured profile from this resume${candidateName ? ` for ${candidateName}` : ''}:\n\n${resumeText.slice(0, 14000)}`;
 
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
@@ -270,7 +271,7 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
         temperature: 0.2,
         max_tokens: 4000,
       }),
-    });
+    }, 'enrich-candidate-profile');
 
     if (!resp.ok) {
       const errText = await resp.text();

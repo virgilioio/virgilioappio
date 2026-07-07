@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 
+import { openaiFetch } from '../_shared/openaiFetch.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(
@@ -146,7 +147,7 @@ Even if the role is in Latin America, all titles and keywords must be in English
 
     console.log('🤖 Calling OpenAI for research with reduced caps...');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -205,7 +206,7 @@ Even if the role is in Latin America, all titles and keywords must be in English
         tool_choice: { type: 'function', function: { name: 'provide_research_results' } },
         temperature: 0.5  // Lower temperature for more consistent, focused results
       }),
-    });
+    }, 'research-sourcing-criteria');
 
     if (!response.ok) {
       const errorText = await response.text();
