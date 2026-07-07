@@ -799,6 +799,57 @@ export function EmailComposer({
           />
         </div>
 
+        {/* Bulk: schedule strip */}
+        {isBulk && (scheduledAt || showScheduler) && (
+          <div
+            className="flex items-center gap-2 shrink-0"
+            style={{
+              padding: '8px 16px',
+              borderTop: '1px solid #F1F0EC',
+              background: '#FAF8FF',
+            }}
+          >
+            <Clock className="h-3.5 w-3.5" style={{ color: '#5B21B6' }} />
+            <span
+              style={{ fontSize: 11.5, color: '#5B21B6', fontFamily: 'Poppins, sans-serif', fontWeight: 500 }}
+            >
+              Scheduled send
+            </span>
+            <div className="flex-1" />
+            <DateTimePickerVirgilio
+              value={scheduledAt || new Date(Date.now() + 60 * 60 * 1000)}
+              onChange={(d) => setScheduledAt(d)}
+              minDate={new Date()}
+            />
+            <button
+              type="button"
+              aria-label="Cancel schedule"
+              onClick={() => {
+                setScheduledAt(null);
+                setShowScheduler(false);
+              }}
+              className="ml-1"
+              style={{ color: '#8B8F9E' }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Bulk: progress hairline */}
+        {isBulk && bulkSend.isPending && bulkSend.progress.total > 0 && (
+          <div className="shrink-0" style={{ height: 2, background: '#F1F0EC' }}>
+            <div
+              style={{
+                height: '100%',
+                width: `${((bulkSend.progress.completed + bulkSend.progress.failed) / bulkSend.progress.total) * 100}%`,
+                background: '#6F3FF5',
+                transition: 'width 200ms ease',
+              }}
+            />
+          </div>
+        )}
+
         {/* Footer */}
         <div
           className="relative flex items-center gap-2 shrink-0"
@@ -822,6 +873,7 @@ export function EmailComposer({
             icon={<Paperclip className="h-3.5 w-3.5" />}
             label="Attach files"
             onClick={() => fileInputRef.current?.click()}
+            disabled={isBulk}
           />
           <FooterIcon
             icon={<Calendar className="h-3.5 w-3.5" />}
@@ -838,20 +890,56 @@ export function EmailComposer({
             variant="secondary"
             size="sm"
             onClick={handleDiscard}
-            disabled={sendEmail.isPending}
+            disabled={sendEmail.isPending || bulkSend.isPending}
           >
             Discard
           </Button>
-          <Button type="submit" size="sm" disabled={sendEmail.isPending}>
-            {sendEmail.isPending ? (
-              'Sending…'
-            ) : (
-              <>
-                <Send className="h-3.5 w-3.5" />
-                Send
-              </>
-            )}
-          </Button>
+          {isBulk ? (
+            <SplitButton
+              size="sm"
+              onClick={() => formRef.current?.requestSubmit()}
+              disabled={bulkSend.isPending || bulkAssociationIds.length === 0 || (showScheduler && !scheduledAt)}
+              options={[
+                {
+                  label: scheduledAt ? 'Send immediately' : 'Schedule for later…',
+                  onSelect: () => {
+                    if (scheduledAt) {
+                      setScheduledAt(null);
+                      setShowScheduler(false);
+                    } else {
+                      setShowScheduler(true);
+                      setScheduledAt(new Date(Date.now() + 60 * 60 * 1000));
+                    }
+                  },
+                },
+              ]}
+            >
+              {bulkSend.isPending ? (
+                `Sending ${bulkSend.progress.completed + bulkSend.progress.failed}/${bulkSend.progress.total}…`
+              ) : scheduledAt ? (
+                <>
+                  <Clock className="h-3.5 w-3.5" />
+                  {`Schedule ${bulkAssociationIds.length} email${bulkAssociationIds.length === 1 ? '' : 's'}`}
+                </>
+              ) : (
+                <>
+                  <Send className="h-3.5 w-3.5" />
+                  {`Send ${bulkAssociationIds.length || ''} email${bulkAssociationIds.length === 1 ? '' : 's'}`.trim()}
+                </>
+              )}
+            </SplitButton>
+          ) : (
+            <Button type="submit" size="sm" disabled={sendEmail.isPending}>
+              {sendEmail.isPending ? (
+                'Sending…'
+              ) : (
+                <>
+                  <Send className="h-3.5 w-3.5" />
+                  Send
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </form>
     );
