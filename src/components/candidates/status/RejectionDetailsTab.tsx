@@ -1,6 +1,38 @@
 import { format } from 'date-fns';
 import { ReactNode } from 'react';
+import DOMPurify from 'dompurify';
 import { Badge } from '@/components/ui/badge';
+
+const SAFE_HTML_CONFIG = {
+  ALLOWED_TAGS: [
+    'h1','h2','h3','h4','h5','h6',
+    'p','ul','ol','li','table','thead','tbody','tr','td','th',
+    'strong','b','em','i','a','img','br','span','div',
+  ],
+  ALLOWED_ATTR: ['href','src','alt','title','colspan','rowspan','class','target','rel'],
+  FORBID_TAGS: ['script','style'],
+};
+
+function sanitizeExternalHtml(html: string): string {
+  if (!html) return '';
+  const clean = DOMPurify.sanitize(html, SAFE_HTML_CONFIG);
+  try {
+    const div = document.createElement('div');
+    div.innerHTML = clean;
+    div.querySelectorAll('a').forEach(a => {
+      const href = a.getAttribute('href') || '';
+      if (/^\s*javascript:/i.test(href)) a.removeAttribute('href');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+    div.querySelectorAll('img').forEach(img => {
+      const src = img.getAttribute('src') || '';
+      if (/^\s*javascript:/i.test(src)) img.removeAttribute('src');
+    });
+    return div.innerHTML;
+  } catch {
+    return clean;
+  }
+}
 
 interface RejectionDetailsTabProps {
   rejectedAt: string | null;
@@ -135,7 +167,7 @@ export function RejectionDetailsTab({
           <div
             className="font-inter rounded-[10px] p-4 border"
             style={{ fontSize: 13, color: '#1F2230', backgroundColor: '#FAFAF7', borderColor: '#F1F0EC', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}
-            dangerouslySetInnerHTML={rejectionEmailBody ? { __html: rejectionEmailBody } : undefined}
+            dangerouslySetInnerHTML={rejectionEmailBody ? { __html: sanitizeExternalHtml(rejectionEmailBody) } : undefined}
           >
             {!rejectionEmailBody ? '—' : null}
           </div>
