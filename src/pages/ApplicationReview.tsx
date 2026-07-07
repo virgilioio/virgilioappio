@@ -1183,6 +1183,7 @@ function CompletionState({
   rejectedList,
   stageName,
   jobId,
+  jobTitle,
   onDone,
 }: {
   stats: { rejected: number; passed: number; advanced: number }
@@ -1191,6 +1192,7 @@ function CompletionState({
   rejectedList: ReviewCandidate[]
   stageName: string
   jobId: string
+  jobTitle: string
   onDone: () => void
 }) {
   const navigate = useNavigate()
