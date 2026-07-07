@@ -289,6 +289,7 @@ export default function ApplicationReviewPage() {
           rejectedList={review.rejectedList}
           stageName={review.firstStageName || 'the next stage'}
           jobId={jobId!}
+          jobTitle={jobTitle}
           onDone={handleClose}
         />
       ) : total === 0 ? (
@@ -1173,251 +1174,6 @@ function PileRow({
   )
 }
 
-/* ---------- Bulk outreach slide-over sheet ---------- */
-
-function BulkOutreachSheet({
-  open,
-  onClose,
-  candidates,
-  jobId,
-  stageName,
-  onGoToStage,
-}: {
-  open: boolean
-  onClose: () => void
-  candidates: ReviewCandidate[]
-  jobId: string
-  stageName: string
-  onGoToStage: () => void
-}) {
-  const [recipients, setRecipients] = useState<ReviewCandidate[]>(candidates)
-  const [subject, setSubject] = useState('Next step — quick chat about the role')
-  const [sent, setSent] = useState<number | null>(null)
-  const { identities } = useMailIdentities()
-  const fromEmail = identities?.[0]?.email_address || ''
-  const bulk = useBulkSendEmail()
-
-  useEffect(() => {
-    if (open) {
-      setRecipients(candidates)
-      setSent(null)
-    }
-  }, [open, candidates])
-
-  if (!open) return null
-
-  const bodyHtml = `<p>Hi {{candidate.first_name}},</p>
-<p>Thanks for your application — we'd love to move you forward to a quick screening chat.</p>
-<p>Pick a time that works for you here: <a href="{{scheduling.link}}">{{scheduling.link}}</a></p>
-<p>Talk soon.</p>`
-
-  const handleSend = async () => {
-    const ids = recipients.map(r => r.associationId)
-    if (ids.length === 0) return
-    try {
-      const res = await bulk.sendBulkEmailAsync({
-        associationIds: ids,
-        emailData: { fromEmail, subject, bodyHtml },
-      })
-      setSent(res.succeeded)
-    } catch (e) {
-      /* toast handled inside hook */
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[70]">
-      <div
-        className="absolute inset-0"
-        style={{ background: 'rgba(13,13,9,0.34)' }}
-        onClick={onClose}
-      />
-      <aside
-        className="absolute top-0 right-0 h-full bg-white flex flex-col"
-        style={{ width: 468, boxShadow: '-16px 0 48px rgba(13,13,9,0.18)' }}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-2 shrink-0" style={{ background: '#0d0d09', padding: '10px 14px' }}>
-          <Mail className="h-[13px] w-[13px]" style={{ color: '#fffcf9' }} />
-          <span className="font-poppins font-semibold" style={{ fontSize: 13, color: '#fffcf9', letterSpacing: '-0.01em' }}>
-            Start outreach
-          </span>
-          <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 font-poppins"
-            style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 10.5, fontWeight: 500 }}
-          >
-            Screening invite
-          </span>
-          <span className="flex-1" />
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className="h-[26px] w-[26px] inline-flex items-center justify-center rounded-md hover:bg-white/10"
-            style={{ color: 'rgba(255,252,249,0.7)' }}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {sent != null ? (
-          <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-8 text-center">
-            <div className="mx-auto mb-4 h-[68px] w-[68px] rounded-full bg-[#E7F7EF] flex items-center justify-center">
-              <Send className="h-7 w-7 text-[#0F9D58]" />
-            </div>
-            <h3 className="font-poppins text-[#0d0d09]" style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.03em' }}>
-              Invited {sent} candidate{sent !== 1 ? 's' : ''} to schedule
-            </h3>
-            <p className="mt-2 font-inter text-[13px] text-[#5A6072]">
-              Each got a personal email with your booking link. They stay in {stageName} until they pick a time — you'll be notified as they book.
-            </p>
-            <div className="mt-6 w-full flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={onGoToStage}
-                className="h-11 rounded-[11px] bg-[#0d0d09] text-[#fffcf9] font-poppins text-[13px] font-semibold hover:bg-[#1a1a15]"
-              >
-                Go to Recruiting process
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="h-11 rounded-[11px] bg-white border border-[#E7E8EE] text-[#1F2230] font-poppins text-[13px] font-semibold hover:bg-[#FAFAF7]"
-              >
-                Back to summary
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Meta rows */}
-            <div className="shrink-0">
-              <MetaRow label="From">
-                <div className="flex items-center gap-2">
-                  <Avatar name={fromEmail || 'me'} size={22} />
-                  <span className="font-inter text-[12.5px] text-[#1F2230]">{fromEmail || '—'}</span>
-                </div>
-              </MetaRow>
-              <MetaRow label="To">
-                <div className="flex flex-wrap gap-1.5">
-                  {recipients.map(r => (
-                    <span
-                      key={r.associationId}
-                      className="inline-flex items-center gap-1.5 rounded-full font-inter"
-                      style={{ background: '#F1F0EC', border: '1px solid #E4E2DB', padding: '2px 8px 2px 3px', fontSize: 11.5, color: '#1F2230' }}
-                    >
-                      <Avatar name={r.candidateName} size={16} />
-                      {r.candidateName}
-                      <button
-                        type="button"
-                        aria-label="Remove"
-                        onClick={() => setRecipients(prev => prev.filter(x => x.associationId !== r.associationId))}
-                        className="text-[#8B8F9E] hover:text-[#1F2230]"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-1.5 font-inter text-[11px] text-[#8B8F9E]">
-                  Advanced from this review · each gets their own thread.
-                </div>
-              </MetaRow>
-              <MetaRow label="Template">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-flex items-center rounded-full px-2 py-0.5 font-poppins"
-                    style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 10.5, fontWeight: 500 }}
-                  >
-                    Screening invite · booking link
-                  </span>
-                </div>
-              </MetaRow>
-              <MetaRow label="Subject">
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full font-inter text-[13px] text-[#1F2230] bg-transparent outline-none"
-                />
-              </MetaRow>
-            </div>
-
-            {/* Body preview */}
-            <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: '14px 20px' }}>
-              <div className="rounded-[12px] border border-[#E7E8EE] bg-white p-4">
-                <p className="font-inter text-[13px] text-[#1F2230]">
-                  Hi{' '}
-                  <span
-                    className="inline-flex items-center rounded-md px-1.5 py-0.5 font-poppins"
-                    style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 11, fontWeight: 500 }}
-                  >
-                    @candidate.first_name
-                  </span>
-                  ,
-                </p>
-                <p className="mt-2 font-inter text-[13px] text-[#1F2230]">
-                  Thanks for your application — we'd love to move you forward to a quick screening chat.
-                </p>
-                <div
-                  className="mt-3 flex items-center gap-3 rounded-[10px]"
-                  style={{ background: '#F8F5FF', border: '1px solid #ECE3FF', padding: '10px 12px' }}
-                >
-                  <span
-                    className="inline-flex items-center justify-center rounded-[8px] shrink-0"
-                    style={{ height: 32, width: 32, background: '#ECE3FF', color: '#6F3FF5' }}
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-poppins text-[12.5px] font-semibold text-[#1F2230]">
-                      Pick a time that works for you →
-                    </div>
-                    <div className="font-inter text-[11px] text-[#5A6072] truncate">your live availability</div>
-                  </div>
-                </div>
-                <p className="mt-3 font-inter text-[13px] text-[#1F2230]">Talk soon.</p>
-              </div>
-              <p className="mt-3 font-inter text-[11.5px] text-[#8B8F9E]">
-                Personalized per candidate and sent individually — recipients never see each other.
-              </p>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center gap-2 shrink-0 border-t border-[#E7E8EE]" style={{ background: '#FAFAF7', padding: '10px 16px' }}>
-              <span className="font-inter text-[12px] text-[#5A6072]">{recipients.length} recipient{recipients.length !== 1 ? 's' : ''}</span>
-              <span className="flex-1" />
-              <button
-                type="button"
-                onClick={onClose}
-                className="h-9 px-3 rounded-[9px] bg-white border border-[#E7E8EE] text-[#1F2230] font-poppins text-[12.5px] font-medium hover:bg-[#F1F0EC]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={recipients.length === 0 || bulk.isPending}
-                onClick={handleSend}
-                className="h-9 px-3.5 inline-flex items-center gap-1.5 rounded-[9px] bg-[#0d0d09] text-[#fffcf9] font-poppins text-[12.5px] font-semibold hover:bg-[#1a1a15] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {bulk.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                Send to {recipients.length}
-              </button>
-            </div>
-          </>
-        )}
-      </aside>
-    </div>
-  )
-}
-
-function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid" style={{ gridTemplateColumns: '64px 1fr', gap: 12, padding: '10px 20px', borderBottom: '1px solid #F1F0EC' }}>
-      <div className="font-inter text-[11.5px] text-[#8B8F9E] pt-1 text-right uppercase tracking-[0.04em]">{label}</div>
-      <div className="min-w-0">{children}</div>
-    </div>
-  )
-}
 
 /* ---------- CompletionState (Recap + Shortlist) ---------- */
 
@@ -1428,6 +1184,7 @@ function CompletionState({
   rejectedList,
   stageName,
   jobId,
+  jobTitle,
   onDone,
 }: {
   stats: { rejected: number; passed: number; advanced: number }
@@ -1436,6 +1193,7 @@ function CompletionState({
   rejectedList: ReviewCandidate[]
   stageName: string
   jobId: string
+  jobTitle: string
   onDone: () => void
 }) {
   const navigate = useNavigate()
@@ -1596,15 +1354,17 @@ function CompletionState({
         />
       )}
 
-      {/* Bulk outreach slide-over */}
-      <BulkOutreachSheet
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        candidates={advancedList}
-        jobId={jobId}
-        stageName={stageName}
-        onGoToStage={() => { setBulkOpen(false); goStage() }}
-      />
+      {/* Bulk outreach — standard email composer in bulk mode */}
+      {bulkOpen && advancedList.length > 0 && (
+        <MinimizableEmailComposer
+          isOpen={bulkOpen}
+          onOpenChange={(o) => { if (!o) setBulkOpen(false) }}
+          jobId={jobId}
+          bulk={{ candidateIds: advancedList.map(c => c.candidateId), jobId }}
+          bulkJobTitle={jobTitle}
+          onSuccess={() => { setBulkOpen(false); goStage() }}
+        />
+      )}
     </div>
   )
 }
