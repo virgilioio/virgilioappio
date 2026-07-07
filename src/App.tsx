@@ -34,6 +34,8 @@ const CompanyDetail = lazy(() => import('./pages/CompanyDetail'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const JobDetail = lazy(() => import('./pages/JobDetail'))
+const ApplicationReviewPage = lazy(() => import('./pages/ApplicationReview'))
+
 const Members = lazy(() => import('./pages/Members'))
 const Candidates = lazy(() => import('./pages/Candidates'))
 const Chat = lazy(() => import('./pages/Chat'))
