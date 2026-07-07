@@ -182,6 +182,13 @@ function buildQueue(
     const d = daysSince(app.enteredAt)
     const urgency: Urgency = d >= 5 ? 'overdue' : d >= 2 ? 'today' : 'normal'
     const appJobTitle = cleanJob(app.jobTitle)
+    // Applications share sort bands with scorecards/decisions/replies so a
+    // same-day applicant is visible on the "Everything" tab instead of being
+    // pushed past the 10-row cap by other work.
+    const sortRank =
+      urgency === 'overdue' ? -0.3 - d * 0.01
+      : urgency === 'today' ? 1.3
+      : 1.7
     out.push({
       id: `a-${app.associationId}`,
       type: 'application',
@@ -192,7 +199,7 @@ function buildQueue(
       href: `/jobs/${app.jobId}?candidate=${app.candidateId}`,
       urgency,
       urgencyLabel: d === 0 ? 'just now' : `${d}d in queue`,
-      sortRank: urgency === 'overdue' ? -0.3 - d * 0.01 : urgency === 'today' ? 1.6 : 2.6,
+      sortRank,
     })
   }
 
