@@ -167,7 +167,7 @@ export function RejectionDetailsTab({
           <div
             className="font-inter rounded-[10px] p-4 border"
             style={{ fontSize: 13, color: '#1F2230', backgroundColor: '#FAFAF7', borderColor: '#F1F0EC', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}
-            dangerouslySetInnerHTML={rejectionEmailBody ? { __html: rejectionEmailBody } : undefined}
+            dangerouslySetInnerHTML={rejectionEmailBody ? { __html: sanitizeExternalHtml(rejectionEmailBody) } : undefined}
           >
             {!rejectionEmailBody ? '—' : null}
           </div>
