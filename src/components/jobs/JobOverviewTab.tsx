@@ -243,7 +243,7 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
                     fontSize: 13.5,
                     lineHeight: 1.7,
                   }}
-                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeExternalHtml(descriptionHtml) }}
                 />
               ) : (
                 <p
