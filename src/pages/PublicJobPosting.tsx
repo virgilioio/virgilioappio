@@ -814,6 +814,7 @@ export default function PublicJobPosting() {
     { label: 'Location', value: details.location || null },
     { label: 'Type', value: formatLabel(details.employmentType) || null },
     { label: 'Compensation', value: compensationLabel },
+    { label: 'Variable comp', value: variableCompLabel },
     { label: 'Reports to', value: reportsTo },
     { label: 'Ref', value: referenceCode },
   ]
