@@ -64,23 +64,34 @@ export function Layout() {
     }
   }, [location.pathname, location.search, navigate, toast, queryClient])
 
+  const isReview = /^\/jobs\/[^/]+\/review(\/|$|\?)/.test(location.pathname + (location.search || ''))
+
   return (
     <AuthGate>
       <OrgGate>
         <BulkUploadProvider>
           <AppSidebar />
-          <div aria-hidden className="hidden sm:block fixed top-0 left-[5.5rem] right-3 h-3 z-40 bg-background pointer-events-none" />
-          <div className="bg-background sm:pl-[5.5rem] sm:pr-3">
-            <Header />
-            <HeaderContextBands />
-            <main className="pt-0 sm:pt-16 pb-24 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)]">
+          {!isReview && (
+            <div aria-hidden className="hidden sm:block fixed top-0 left-[5.5rem] right-3 h-3 z-40 bg-background pointer-events-none" />
+          )}
+          <div className={isReview ? 'bg-background sm:pl-[5.5rem]' : 'bg-background sm:pl-[5.5rem] sm:pr-3'}>
+            {!isReview && <Header />}
+            {!isReview && <HeaderContextBands />}
+            <main
+              className={
+                isReview
+                  ? 'pt-0 pb-0 min-h-[100dvh]'
+                  : 'pt-0 sm:pt-16 pb-24 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)]'
+              }
+            >
               <Outlet />
             </main>
           </div>
           <GlobalBulkUploadWidget />
-          <MobileBottomNav />
+          {!isReview && <MobileBottomNav />}
         </BulkUploadProvider>
       </OrgGate>
     </AuthGate>
   )
 }
+

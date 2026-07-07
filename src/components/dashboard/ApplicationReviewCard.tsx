@@ -121,11 +121,10 @@ export function ApplicationReviewCard({ size = 'small' }: ApplicationReviewCardP
               {displayed?.map(item => (
                 <Link
                   key={item.jobId}
-                  to={`/jobs/${item.jobId}?tab=application-review`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  to={`/jobs/${item.jobId}/review`}
                   className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border hover:bg-accent hover:border-accent-foreground/20 transition-all group"
                 >
+
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium text-foreground truncate block">{item.jobTitle}</span>
                     {item.jobLocation && (
@@ -194,11 +193,10 @@ export function ApplicationReviewCard({ size = 'small' }: ApplicationReviewCardP
               {displayed?.map((item, idx) => (
                 <Link
                   key={item.jobId}
-                  to={`/jobs/${item.jobId}?tab=application-review`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  to={`/jobs/${item.jobId}/review`}
                   className={`grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-3 py-2.5 hover:bg-accent transition-colors group ${idx < (displayed?.length ?? 0) - 1 ? 'border-b border-border' : ''}`}
                 >
+
                   <span className="text-sm font-medium text-foreground truncate">{item.jobTitle}</span>
                   <span className="text-xs text-muted-foreground truncate max-w-[120px]">
                     {item.jobLocation || '—'}

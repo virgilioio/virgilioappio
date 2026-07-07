@@ -34,6 +34,8 @@ const CompanyDetail = lazy(() => import('./pages/CompanyDetail'))
 const Pipeline = lazy(() => import('./pages/Pipeline'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const JobDetail = lazy(() => import('./pages/JobDetail'))
+const ApplicationReviewPage = lazy(() => import('./pages/ApplicationReview'))
+
 const Members = lazy(() => import('./pages/Members'))
 const Candidates = lazy(() => import('./pages/Candidates'))
 const Chat = lazy(() => import('./pages/Chat'))
@@ -167,7 +169,9 @@ function AppContent() {
             <Route path="/talent-intelligence" element={<TalentIntelligence />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
             <Route path="/jobs/:jobId/pipeline" element={<JobDetail />} />
+            <Route path="/jobs/:jobId/review" element={<ApplicationReviewPage />} />
             <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
             <Route path="/lists/:id" element={<SharedList />} />

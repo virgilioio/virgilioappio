@@ -55,8 +55,17 @@ export function useApplicationReview(jobId: string) {
   const [isActioning, setIsActioning] = useState(false)
   const [firstStageId, setFirstStageId] = useState<string | null>(null)
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
+  const [applicationReviewStageId, setApplicationReviewStageId] = useState<string | null>(null)
   const [stats, setStats] = useState<ReviewSessionStats>({ rejected: 0, passed: 0, advanced: 0 })
   const [hasActioned, setHasActioned] = useState(false)
+  const [lastAction, setLastAction] = useState<
+    | {
+        type: 'reject' | 'pass' | 'advance'
+        candidate: ReviewCandidate
+        prevIndex: number
+      }
+    | null
+  >(null)
   const [rejectionConfig, setRejectionConfig] = useState<RejectionConfig>(() => {
     try {
       const stored = localStorage.getItem('app-review-rejection-config')
@@ -64,6 +73,7 @@ export function useApplicationReview(jobId: string) {
     } catch {}
     return { sendEmail: false }
   })
+
 
   const currentCandidate = queue[currentIndex] ?? null
   const isComplete = hasActioned && currentCandidate === null
@@ -97,9 +107,12 @@ export function useApplicationReview(jobId: string) {
       const arStageId = arStages?.[0]?.id
       if (!arStageId) {
         setQueue([])
+        setApplicationReviewStageId(null)
         setIsLoading(false)
         return
       }
+      setApplicationReviewStageId(arStageId)
+
 
       // Get all associations in the application_review stage
       const { data: associations, error: assocError } = await supabase
@@ -276,11 +289,14 @@ export function useApplicationReview(jobId: string) {
 
       const candidateToReject = currentCandidate
 
+      const prevIndex = currentIndex
       const finalizeLocally = () => {
         setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
         setHasActioned(true)
         setQueue(prev => prev.filter(c => c.associationId !== candidateToReject.associationId))
+        setLastAction({ type: 'reject', candidate: candidateToReject, prevIndex })
       }
+
 
       try {
         // Compose scheduleFor if user chose "later"
@@ -334,34 +350,81 @@ export function useApplicationReview(jobId: string) {
 
   const handlePass = useCallback(() => {
     if (!currentCandidate) return
+    const c = currentCandidate
+    const prevIndex = currentIndex
     setStats(prev => ({ ...prev, passed: prev.passed + 1 }))
     setHasActioned(true)
-    moveToNext()
-  }, [currentCandidate, moveToNext])
+    setQueue(prev => prev.filter(x => x.associationId !== c.associationId))
+    setLastAction({ type: 'pass', candidate: c, prevIndex })
+  }, [currentCandidate, currentIndex])
 
   const handleAdvance = useCallback(async () => {
     if (!currentCandidate || !firstStageId || isActioning) return
     setIsActioning(true)
 
+    const c = currentCandidate
+    const prevIndex = currentIndex
     try {
-      await moveAssociationToStage(currentCandidate.associationId, firstStageId, { silent: true })
-      
-      toast({
-        title: 'Candidate advanced',
-        description: `${currentCandidate.candidateName} moved to ${firstStageName}`,
-      })
+      await moveAssociationToStage(c.associationId, firstStageId, { silent: true })
 
       setStats(prev => ({ ...prev, advanced: prev.advanced + 1 }))
       setHasActioned(true)
-      // Remove from queue so advanced candidate disappears immediately
-      setQueue(prev => prev.filter(c => c.associationId !== currentCandidate.associationId))
+      setQueue(prev => prev.filter(x => x.associationId !== c.associationId))
+      setLastAction({ type: 'advance', candidate: c, prevIndex })
     } catch (error) {
       console.error('Advance failed:', error)
       toast({ title: 'Error', description: 'Failed to advance candidate.', variant: 'destructive' })
     } finally {
       setIsActioning(false)
     }
-  }, [currentCandidate, firstStageId, firstStageName, isActioning, moveAssociationToStage])
+  }, [currentCandidate, currentIndex, firstStageId, isActioning, moveAssociationToStage])
+
+  const handleUndo = useCallback(async () => {
+    if (!lastAction) return
+    const { type, candidate, prevIndex } = lastAction
+    // Best-effort DB rollback
+    try {
+      if (type === 'reject') {
+        await supabase
+          .from('job_candidate_associations')
+          .update({
+            status: 'active',
+            rejection_reason_id: null,
+            rejection_notes: null,
+            rejected_at: null,
+            rejected_by: null,
+            rejection_email_scheduled_for: null,
+          } as any)
+          .eq('id', candidate.associationId)
+      } else if (type === 'advance' && applicationReviewStageId) {
+        await moveAssociationToStage(candidate.associationId, applicationReviewStageId, { silent: true })
+      }
+    } catch (e) {
+      console.warn('Undo DB rollback failed:', e)
+    }
+
+    setStats(prev => ({
+      ...prev,
+      rejected: type === 'reject' ? Math.max(0, prev.rejected - 1) : prev.rejected,
+      passed: type === 'pass' ? Math.max(0, prev.passed - 1) : prev.passed,
+      advanced: type === 'advance' ? Math.max(0, prev.advanced - 1) : prev.advanced,
+    }))
+    setQueue(prev => {
+      if (prev.some(x => x.associationId === candidate.associationId)) return prev
+      const next = [...prev]
+      const insertAt = Math.max(0, Math.min(prevIndex, next.length))
+      next.splice(insertAt, 0, candidate)
+      return next
+    })
+    setCurrentIndex(prevIndex)
+    setLastAction(null)
+  }, [lastAction, applicationReviewStageId, moveAssociationToStage])
+
+  const selectByCandidateId = useCallback((candidateId: string) => {
+    const idx = queue.findIndex(c => c.candidateId === candidateId)
+    if (idx >= 0) setCurrentIndex(idx)
+  }, [queue])
+
 
   const invalidateQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['job-candidates'] })
@@ -389,5 +452,9 @@ export function useApplicationReview(jobId: string) {
     navigateTo,
     persistRejectionConfig,
     invalidateQueries,
+    handleUndo,
+    selectByCandidateId,
+    lastAction,
+
   }
 }
