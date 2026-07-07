@@ -12,10 +12,17 @@ export interface StageBookingInterviewer {
   has_scorecard: boolean;
 }
 
+export interface UseStageBookingsOptions {
+  jobId?: string | null;
+  enteredStageAt?: string | null;
+}
+
 export function useStageBookings(
   jhsId: string | null,
-  candidateId: string | null
+  candidateId: string | null,
+  options: UseStageBookingsOptions = {}
 ) {
+  const { jobId = null, enteredStageAt = null } = options;
   const queryClient = useQueryClient();
 
   // Real-time subscription for booking updates
@@ -34,8 +41,8 @@ export function useStageBookings(
         },
         (payload) => {
           console.log('[StageBookings] Real-time update received:', payload.eventType);
-          queryClient.invalidateQueries({ 
-            queryKey: ['stage-bookings', jhsId, candidateId] 
+          queryClient.invalidateQueries({
+            queryKey: ['stage-bookings', jhsId, candidateId],
           });
         }
       )
@@ -47,20 +54,37 @@ export function useStageBookings(
   }, [jhsId, candidateId, queryClient]);
 
   return useQuery({
-    queryKey: ['stage-bookings', jhsId, candidateId],
+    queryKey: ['stage-bookings', jhsId, candidateId, jobId, enteredStageAt],
     queryFn: async () => {
       if (!jhsId || !candidateId) return [];
-      
-      const { data, error } = await supabase
+
+      // Fetch all confirmed bookings for the candidate; filter client-side to
+      // include strict-stage matches plus loosely-linked bookings (job-only,
+      // or booking-link / calendar-synced ones that happened during this stage).
+      const { data: allRows, error } = await supabase
         .from('scheduled_bookings')
         .select('*')
-        .eq('job_hiring_stage_id', jhsId)
         .eq('candidate_id', candidateId)
         .eq('status', 'confirmed')
         .order('scheduled_start', { ascending: true });
-      
+
       if (error) throw error;
-      if (!data) return [];
+      if (!allRows) return [];
+
+      const enteredMs = enteredStageAt ? new Date(enteredStageAt).getTime() : null;
+      const data = allRows.filter((b: any) => {
+        if (b.job_hiring_stage_id && b.job_hiring_stage_id === jhsId) return true;
+        if (b.job_hiring_stage_id && b.job_hiring_stage_id !== jhsId) return false;
+        // job_hiring_stage_id is null → loose link
+        if (jobId && b.job_id && b.job_id === jobId) return true;
+        if (!b.job_id && enteredMs != null) {
+          const startMs = b.scheduled_start ? new Date(b.scheduled_start).getTime() : NaN;
+          return Number.isFinite(startMs) && startMs >= enteredMs;
+        }
+        return false;
+      });
+
+      if (data.length === 0) return [];
 
       const bookingIds = data.map(b => b.id);
 

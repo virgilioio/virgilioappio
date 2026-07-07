@@ -1,37 +1,32 @@
-## Problem
+## What's happening
 
-Two related issues in the "Review complete" screen's bulk outreach flow:
+Hugo's two interviews exist in `scheduled_bookings` and RLS lets you read them (tenant-wide SELECT policy), but they were created via a **personal booking link** (`booking_config_id` set, `job_id` / `job_candidate_association_id` / `job_hiring_stage_id` all `NULL`). The second one also came in via `sync_source = google_calendar`.
 
-1. Clicking **Start outreach to advanced (N)** opens a custom right-side `BulkOutreachSheet` — but the app already has a real email composer (`MinimizableEmailComposer`) that supports bulk mode natively. Behavior should match single-send.
-2. When sending, an **error toast appears even though the email is actually delivered** (edge-function logs confirm `Email sent successfully` for Allan Bravo). The false error originates inside `BulkOutreachSheet`'s local send path — the standard composer's bulk path does not have this bug.
+`useStageBookings` filters strictly by `.eq('job_hiring_stage_id', jhsId)`, so any booking that didn't originate from the in-stage "Schedule" button — booking-link bookings, calendar-synced bookings, or bookings made before the candidate reached this stage — is invisible on the profile's Current stage card. That's why you don't see the event even though it's on your calendar and belongs to Hugo.
 
-## Root cause of the false error
+## Fix: broaden what the Current stage card considers "this candidate's interviews"
 
-`BulkOutreachSheet` calls `bulk.sendBulkEmailAsync(...)` but only passes `associationIds` + `emailData`. The recipients selection in the sheet UI never trims `associationIds` (e.g. removed rows), and the sheet sets its own local `sent` state — but it doesn't distinguish `mutation.onError` (fires the destructive toast) from partial-success. In practice the mutation's `mutationFn` promise resolves fine, but the `.single()` profile fetch inside `useBulkSendEmail` can throw (no matching profile row / RLS edge), causing `onError` to fire the toast *after* the actual email has already been sent by the edge function.
+Read-side only. No booking-write changes, no RLS changes.
 
-Rather than patching this parallel implementation, we retire it and route through the same composer used everywhere else — which already handles bulk cleanly (subject, per-candidate personalization, progress, "Skipped: no email" pill, success/failure toast, minimize).
+Update `src/hooks/useStageBookings.ts` so, in addition to strict-stage matches, it also surfaces bookings for the same candidate that are loosely linked to this job:
 
-## Fix
+- Query all confirmed bookings for `candidate_id`, ordered by `scheduled_start`.
+- Keep a booking when **any** of these is true:
+  1. `job_hiring_stage_id === jhsId` (today's behavior), OR
+  2. `job_id === jobId` and `job_hiring_stage_id IS NULL` (booked for the job but not tagged to a stage), OR
+  3. `job_id IS NULL` and `job_hiring_stage_id IS NULL` and the booking's `scheduled_start` is at/after `enteredStageAt` for this candidate on this job (personal-link / calendar-synced bookings that happened while the candidate was in this stage).
+- Everything downstream (attendees, interviewer profiles, scorecard aggregation) stays the same.
 
-Replace `BulkOutreachSheet` with `MinimizableEmailComposer` in bulk mode.
+To support rule 3, `useStageBookings` needs `jobId` and the association's `entered_stage_at` (or `updated_at` on `job_candidate_associations` for the current stage). Extend the hook signature to `useStageBookings(jhsId, candidateId, { jobId, enteredStageAt })` and pass those from `CurrentStageCard` (both are already available there as props).
 
-### Changes in `src/pages/ApplicationReview.tsx`
+Realtime channel filter (`candidate_id=eq.${candidateId}`) already covers all of these — no channel change needed.
 
-1. Delete the `BulkOutreachSheet` component (lines ~1178–1330) and its render block (lines ~1599–1607).
-2. When the user clicks **Start outreach to advanced (N)**, open a second `MinimizableEmailComposer` instance with:
-   - `bulk={{ candidateIds: advancedList.map(c => c.candidateId), jobId }}`
-   - `bulkJobTitle={jobTitle}` (already available)
-   - `jobId={jobId}`
-   - `onSuccess={() => { closeBulk(); goStage() }}` — after send succeeds, navigate to the advance-destination stage (existing `goStage` handler from the completion state).
-3. Keep the existing per-candidate `MinimizableEmailComposer` (single-send) untouched.
-4. State: replace `const [bulkOpen, setBulkOpen]` with a single `bulkOpen` boolean gate; render the composer only when `bulkOpen && advancedList.length > 0`.
+## Not in scope
 
-### Verification
+- Fixing the write path so booking-link / Google-Calendar-created bookings automatically populate `job_id` / `job_candidate_association_id` / `job_hiring_stage_id` when the candidate is already on a job. Worth doing later, but a bigger change touching `create-booking`, `resolve-booking-token`, and the Google Calendar webhook — call it out separately if you want it.
+- The unrelated `useStageBookingInterviewers` "Maximum update depth exceeded" warning already visible in the console.
 
-- `bunx tsgo --noEmit` for type safety.
-- Manually re-test: complete a review with ≥1 advanced candidate → click **Start outreach to advanced** → composer opens as our standard email composer with the recipients pill showing N recipients → send → single success toast, no destructive toast, navigation to the advance stage.
+## Files touched
 
-## Non-goals
-
-- No changes to `useBulkSendEmail` internals, `send-user-email` edge function, or single-send composer behavior.
-- No visual changes elsewhere on the completion screen.
+- `src/hooks/useStageBookings.ts` — widen query + filter, extend signature.
+- `src/components/candidates/profile/CurrentStageCard.tsx` — pass `jobId` and `enteredStageAt` into the hook.
