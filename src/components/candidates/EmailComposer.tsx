@@ -196,9 +196,13 @@ export function EmailComposer({
     setValue,
     watch,
   } = useForm<EmailFormData>({
-    resolver: zodResolver(emailSchema),
+    resolver: zodResolver(
+      isBulk
+        ? (emailSchema.extend({ to: z.string().optional().default('') }) as any)
+        : emailSchema,
+    ),
     defaultValues: {
-      to: defaultTo || '',
+      to: isBulk ? 'bulk' : (defaultTo || ''),
       from_email: activeIdentities[0]?.email_address || '',
       subject: defaultSubject || '',
       cc: defaultCc || '',
