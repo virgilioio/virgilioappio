@@ -3,7 +3,8 @@ import { InlineEmpty } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Link, Calendar, Hash, Type, List, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FileText, Link, Calendar, Hash, Type, List, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { CURRENCY_SYMBOLS } from "@/constants/currencies";
 import { SalaryFieldConfig } from "@/hooks/useJobPostingFields";
@@ -43,6 +44,41 @@ const getFieldIcon = (fieldType: string) => {
   }
 };
 
+function ExpandableAnswer({ value }: { value: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const shouldTruncate = value.length > 200;
+
+  if (!shouldTruncate) {
+    return <div className="whitespace-pre-wrap text-sm">{value}</div>;
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="whitespace-pre-wrap text-sm">
+        {expanded ? value : `${value.substring(0, 200)}...`}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setExpanded(!expanded)}
+        className="h-7 text-xs px-2 py-0 font-medium"
+      >
+        {expanded ? (
+          <>
+            <ChevronUp className="h-3 w-3 mr-1" />
+            Show less
+          </>
+        ) : (
+          <>
+            <ChevronDown className="h-3 w-3 mr-1" />
+            Show more
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}
+
 const formatSalaryValue = (value: string | null, config: SalaryFieldConfig | null) => {
   if (!value) return "Not provided";
   const num = Number(value);
@@ -60,7 +96,7 @@ const formatSalaryValue = (value: string | null, config: SalaryFieldConfig | nul
 
 const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?: SalaryFieldConfig | null) => {
   if (!value) return "Not provided";
-  
+
   if (fieldType === 'salary') return formatSalaryValue(value, fieldConfig ?? null);
 
   switch (fieldType) {
@@ -85,11 +121,7 @@ const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?:
         </a>
       );
     case 'textarea':
-      return (
-        <div className="whitespace-pre-wrap text-sm">
-          {value.length > 200 ? `${value.substring(0, 200)}...` : value}
-        </div>
-      );
+      return <ExpandableAnswer value={value} />;
     case 'location': {
       try {
         const loc = JSON.parse(value);
@@ -122,7 +154,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
     const fetchResponses = async () => {
       try {
         console.log('[ApplicationResponses] Fetching for candidateId:', candidateId, 'jobId:', jobId);
-        
+
         const { data, error } = await supabase
           .from('candidate_application_responses')
           .select('*')
@@ -134,34 +166,34 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
           console.error('[ApplicationResponses] Query error:', error);
           throw error;
         }
-        
+
         console.log('[ApplicationResponses] Raw data count:', data?.length ?? 0);
-        
+
         // Create exclusion set from core fields + additional excluded fields
         const coreFieldNames = new Set(coreFields.map(f => f.field_name.toLowerCase()));
         const allExcludedFields = new Set([
           ...excludedFields.map(f => f.toLowerCase()),
           ...coreFieldNames
         ]);
-        
+
         // Filter out core fields - only show custom fields
         const filteredResponses = (data || []).filter(response => {
           return !allExcludedFields.has(response.field_name.toLowerCase());
         });
-        
+
         console.log('[ApplicationResponses] After filtering:', filteredResponses.length, 'of', data?.length);
 
         // Fetch field_config for salary/location fields from posting fields
         const postingIds = [...new Set(filteredResponses.map(r => r.posting_id).filter(Boolean))];
         const salaryFieldNames = filteredResponses.filter(r => r.field_type === 'salary').map(r => r.field_name);
-        
+
         if (postingIds.length > 0 && salaryFieldNames.length > 0) {
           const { data: fieldRows } = await supabase
             .from('job_posting_application_fields')
             .select('field_name, field_config')
             .in('posting_id', postingIds)
             .in('field_name', salaryFieldNames);
-          
+
           const configMap: Record<string, SalaryFieldConfig> = {};
           (fieldRows || []).forEach((row: any) => {
             if (row.field_config) configMap[row.field_name] = row.field_config as SalaryFieldConfig;
