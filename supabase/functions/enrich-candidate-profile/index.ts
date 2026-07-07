@@ -567,9 +567,9 @@ serve(async (req) => {
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, resumeText, body.candidateName));
+      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId));
     } else {
-      enrichCandidateProfile(body.candidateId, resumeText, body.candidateName).catch(console.error);
+      enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId).catch(console.error);
     }
 
     return response;
