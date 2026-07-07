@@ -64,7 +64,7 @@ import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 import { BulkRejectionDialog } from '@/components/candidates/BulkRejectionDialog'
-import { BulkEmailDialog } from '@/components/candidates/BulkEmailDialog'
+import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
