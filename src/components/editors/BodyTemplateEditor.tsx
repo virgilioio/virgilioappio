@@ -197,12 +197,12 @@ function BodyEditorInner({
   return (
     <div className={cn("border rounded-brand bg-surface-primary", className)}>
       {!hideToolbar && <Toolbar />}
-      <div className="relative" style={{ minHeight }}>
+      <div className="relative overflow-y-auto" style={{ minHeight, maxHeight }}>
         <RichTextPlugin
           contentEditable={
             <ContentEditable
               className={cn(
-                "lexical-root p-3 outline-none",
+                "lexical-root p-3 outline-none break-words",
                 disabled && "opacity-50 cursor-not-allowed"
               )}
               style={{ minHeight }}
