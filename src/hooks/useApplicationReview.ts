@@ -298,6 +298,7 @@ export function useApplicationReview(jobId: string) {
       const prevIndex = currentIndex
       const finalizeLocally = () => {
         setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
+        setRejectedList(prev => [...prev, candidateToReject])
         setHasActioned(true)
         setQueue(prev => prev.filter(c => c.associationId !== candidateToReject.associationId))
         setLastAction({ type: 'reject', candidate: candidateToReject, prevIndex })
