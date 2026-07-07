@@ -57,6 +57,9 @@ export function useApplicationReview(jobId: string) {
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
   const [applicationReviewStageId, setApplicationReviewStageId] = useState<string | null>(null)
   const [stats, setStats] = useState<ReviewSessionStats>({ rejected: 0, passed: 0, advanced: 0 })
+  const [advancedList, setAdvancedList] = useState<ReviewCandidate[]>([])
+  const [passedList, setPassedList] = useState<ReviewCandidate[]>([])
+  const [rejectedList, setRejectedList] = useState<ReviewCandidate[]>([])
   const [hasActioned, setHasActioned] = useState(false)
   const [lastAction, setLastAction] = useState<
     | {
