@@ -1608,9 +1608,3 @@ function CompletionState({
     </div>
   )
 }
-
-        </div>
-      </div>
-    </div>
-  )
-}
