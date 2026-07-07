@@ -16,6 +16,7 @@ interface CurrentStageCardProps {
   candidateEmail?: string
   jobTitle?: string
   enteredStageAt?: string | null
+  stageWindowStartAt?: string | null
   onSchedule?: () => void
   onReschedule?: (bookingId: string) => void
   scorecardsSubmittedCount?: number
@@ -48,9 +49,9 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 export function CurrentStageCard({
   stageName, stageType, jhsId, candidateId,
   jobId, associationId, candidateName, candidateEmail, jobTitle,
-  enteredStageAt, onSchedule, onReschedule, scorecardsSubmittedCount,
+  enteredStageAt, stageWindowStartAt, onSchedule, onReschedule, scorecardsSubmittedCount,
 }: CurrentStageCardProps) {
-  const { data: bookings } = useStageBookings(jhsId, candidateId, { jobId, enteredStageAt })
+  const { data: bookings } = useStageBookings(jhsId, candidateId, { jobId, stageWindowStartAt: stageWindowStartAt ?? enteredStageAt })
   const isInterviewStage = stageType === 'interview' || stageType === 'screening' || stageType === 'assessment'
 
   // Pick the next upcoming booking (else most recent past as fallback for context)
