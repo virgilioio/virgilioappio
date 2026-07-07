@@ -1137,7 +1137,7 @@ export default function JobDetail() {
                             variant="purple"
                             size="sm"
                             icon={ClipboardCheck}
-                            onClick={() => setShowApplicationReview(true)}
+                            onClick={() => navigate(`/jobs/${id}/review`)}
                           >
                             Review applications
                           </Button>
