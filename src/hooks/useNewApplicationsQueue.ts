@@ -66,7 +66,11 @@ export function useNewApplicationsQueue() {
           .in('current_stage_id', chunk)
           .eq('status', 'active')
           .order('entered_stage_at', { ascending: false })
-        if (error || !data) continue
+        if (error) {
+          console.warn('[useNewApplicationsQueue] job_candidate_associations chunk failed', { chunk, error })
+          continue
+        }
+        if (!data) continue
         for (const row of data as any[]) {
           const jobId = stageToJob.get(row.current_stage_id)
           if (!jobId) continue
