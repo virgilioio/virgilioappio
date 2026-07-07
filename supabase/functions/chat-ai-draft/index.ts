@@ -112,8 +112,13 @@ Deno.serve(async (req) => {
     .reverse()
     .filter((r) => r.direction !== "note" && r.body && r.body.trim());
 
-  // ---- Pull candidate + job context for grounding --------------------
-  const [{ data: candidate }, { data: job }] = await Promise.all([
+  // ---- Pull candidate + job + stages context for grounding -----------
+  const [
+    { data: candidate },
+    { data: job },
+    { data: hiringStages },
+    { data: association },
+  ] = await Promise.all([
     sbAdmin
       .from("candidates")
       .select("first_name, last_name")
@@ -121,8 +126,19 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     sbAdmin
       .from("jobs")
-      .select("title, location, work_mode, employment_type, department")
+      .select("title, location, work_mode, employment_type, department, description, must_have_skills, skills")
       .eq("id", thread.job_id)
+      .maybeSingle(),
+    sbAdmin
+      .from("job_hiring_stages")
+      .select("stage_id, position, custom_stage_name, job_stages:stage_id ( stage_name )")
+      .eq("job_id", thread.job_id)
+      .order("position", { ascending: true }),
+    sbAdmin
+      .from("job_candidate_associations")
+      .select("current_stage_id, status")
+      .eq("job_id", thread.job_id)
+      .eq("candidate_id", thread.candidate_id)
       .maybeSingle(),
   ]);
 
@@ -145,6 +161,39 @@ Deno.serve(async (req) => {
   if (job?.location) ctxLines.push(`Location: ${job.location}`);
   if (job?.work_mode) ctxLines.push(`Work mode: ${job.work_mode}`);
   if (job?.employment_type) ctxLines.push(`Employment type: ${job.employment_type}`);
+
+  // Job description (bounded, HTML stripped)
+  const descRaw = (job?.description ?? "").toString().replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (descRaw) {
+    const desc = descRaw.length > 1500 ? descRaw.slice(0, 1500).trimEnd() + "…" : descRaw;
+    ctxLines.push(`\nRole summary:\n${desc}`);
+  }
+
+  // Key requirements from structured fields, if any
+  const mustHave = Array.isArray(job?.must_have_skills) ? (job!.must_have_skills as string[]).filter(Boolean) : [];
+  const skills = Array.isArray(job?.skills) ? (job!.skills as string[]).filter(Boolean) : [];
+  const reqs = (mustHave.length ? mustHave : skills).slice(0, 12);
+  if (reqs.length) ctxLines.push(`Key requirements: ${reqs.join(", ")}`);
+
+  // Hiring stages + current/next
+  const stageRows = (hiringStages ?? []).map((s: any) => ({
+    id: s.stage_id as string,
+    name: (s.custom_stage_name?.trim() || s.job_stages?.stage_name?.trim() || "Stage") as string,
+    position: s.position as number,
+  }));
+  if (stageRows.length) {
+    ctxLines.push(
+      `Hiring stages: ${stageRows.map((s, i) => `${i + 1}. ${s.name}`).join(" → ")}`,
+    );
+    const currentIdx = association?.current_stage_id
+      ? stageRows.findIndex((s) => s.id === association.current_stage_id)
+      : -1;
+    if (currentIdx >= 0) {
+      ctxLines.push(`Candidate is currently at: ${stageRows[currentIdx].name}`);
+      const next = stageRows[currentIdx + 1];
+      if (next) ctxLines.push(`Next stage: ${next.name}`);
+    }
+  }
 
   const summary = (thread.context_summary as { text?: string } | null)?.text?.trim();
   if (summary) ctxLines.push(`\nPrior summary:\n${summary}`);
