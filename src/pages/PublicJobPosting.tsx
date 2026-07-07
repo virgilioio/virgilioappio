@@ -761,6 +761,14 @@ export default function PublicJobPosting() {
     }`.trim()
   })()
 
+  const variableCompLabel = (() => {
+    if (!details.hasCommissions) return null
+    if (details.commissionsAmount) {
+      return `${details.commissionsCurrency || ''} ${Number(details.commissionsAmount).toLocaleString()}`.trim()
+    }
+    return 'Included'
+  })()
+
   const metaChips: { icon?: any; label: string }[] = []
   if (details.location || details.locationType) {
     metaChips.push({
@@ -806,6 +814,7 @@ export default function PublicJobPosting() {
     { label: 'Location', value: details.location || null },
     { label: 'Type', value: formatLabel(details.employmentType) || null },
     { label: 'Compensation', value: compensationLabel },
+    { label: 'Variable comp', value: variableCompLabel },
     { label: 'Reports to', value: reportsTo },
     { label: 'Ref', value: referenceCode },
   ]
