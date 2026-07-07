@@ -74,6 +74,14 @@ interface EmailComposerProps {
   defaultCc?: string;
   /** Notify the docked wrapper when a template chip should appear in the header. */
   onTemplateAppliedChange?: (applied: boolean) => void;
+  /** Enable bulk-send mode: composes one email personalized per candidate in the job. */
+  bulk?: { candidateIds: string[]; jobId: string };
+}
+
+interface Attachment {
+  file: File;
+  name: string;
+  size: number;
 }
 
 interface Attachment {
