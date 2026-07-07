@@ -23,7 +23,8 @@ export function useNewApplicationsQueue() {
   return useQuery({
     queryKey: ['new-applications-queue', jobIds],
     enabled: !jobsLoading && jobIds.length > 0,
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<NewApplicationItem[]> => {
       const chunkSize = 40
       const hiringStages: { id: string; job_id: string }[] = []
