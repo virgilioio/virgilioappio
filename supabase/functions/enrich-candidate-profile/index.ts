@@ -12,6 +12,10 @@ interface EnrichRequest {
   candidateId: string;
   resumeText?: string;
   candidateName?: string;
+  // Optional: when set, analyze-candidate-fit is fired ONCE after enrichment
+  // writes complete, so the fit analysis reads fully-populated candidate data
+  // (skills, work history, years_experience, ...) instead of racing enrichment.
+  jobId?: string;
 }
 
 // ---------- OpenAI Tool-Calling Schema ----------
@@ -224,7 +228,7 @@ function calculateDurationMonths(startDate?: string | null, endDate?: string | n
 
 // ---------- Main enrichment ----------
 
-async function enrichCandidateProfile(candidateId: string, resumeText: string, candidateName?: string): Promise<void> {
+async function enrichCandidateProfile(candidateId: string, resumeText: string, candidateName?: string, jobId?: string): Promise<void> {
   console.log(`[enrich] Starting enrichment for candidate ${candidateId}`);
   
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -416,6 +420,26 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     }
 
     console.log(`[enrich] Successfully enriched candidate ${candidateId}`);
+
+    // Tail-fire AI fit analysis now that skills / work_exp / education / years_experience
+    // are committed. Prevents the previous race where analyze-candidate-fit ran on a
+    // bare candidate row and returned null on every knowledge-based dimension.
+    if (jobId) {
+      try {
+        const fitUrl = `${SUPABASE_URL}/functions/v1/analyze-candidate-fit`;
+        fetch(fitUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({ candidate_id: candidateId, job_id: jobId }),
+        }).catch((e) => console.error('[enrich] Post-enrichment fit analysis call failed:', e));
+        console.log(`[enrich] Triggered post-enrichment fit analysis for candidate ${candidateId} / job ${jobId}`);
+      } catch (fitErr) {
+        console.error('[enrich] Failed to trigger post-enrichment fit analysis:', fitErr);
+      }
+    }
   } catch (err) {
     console.error(`[enrich] Error:`, err);
     await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidateId);
@@ -543,9 +567,9 @@ serve(async (req) => {
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, resumeText, body.candidateName));
+      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId));
     } else {
-      enrichCandidateProfile(body.candidateId, resumeText, body.candidateName).catch(console.error);
+      enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId).catch(console.error);
     }
 
     return response;

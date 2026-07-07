@@ -23,7 +23,8 @@ export function useNewApplicationsQueue() {
   return useQuery({
     queryKey: ['new-applications-queue', jobIds],
     enabled: !jobsLoading && jobIds.length > 0,
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<NewApplicationItem[]> => {
       const chunkSize = 40
       const hiringStages: { id: string; job_id: string }[] = []
@@ -33,7 +34,10 @@ export function useNewApplicationsQueue() {
           .from('job_hiring_stages')
           .select('id, job_id, job_stages!job_hiring_stages_stage_id_fkey(stage_type)')
           .in('job_id', chunk)
-        if (error) continue
+        if (error) {
+          console.warn('[useNewApplicationsQueue] job_hiring_stages chunk failed', { chunk, error })
+          continue
+        }
         const filtered = (data ?? []).filter(
           (r: any) => r.job_stages?.stage_type === 'application_review',
         )
@@ -62,7 +66,11 @@ export function useNewApplicationsQueue() {
           .in('current_stage_id', chunk)
           .eq('status', 'active')
           .order('entered_stage_at', { ascending: false })
-        if (error || !data) continue
+        if (error) {
+          console.warn('[useNewApplicationsQueue] job_candidate_associations chunk failed', { chunk, error })
+          continue
+        }
+        if (!data) continue
         for (const row of data as any[]) {
           const jobId = stageToJob.get(row.current_stage_id)
           if (!jobId) continue
