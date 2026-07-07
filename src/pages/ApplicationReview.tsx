@@ -569,55 +569,13 @@ function ResponsesInsightsColumn({
 }
 
 function ResponsesPanel({ candidateId, jobId }: { candidateId: string; jobId: string }) {
-  const { responses, isLoading } = useApplicationResponses(candidateId, jobId)
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-14 w-full" />
-        <Skeleton className="h-14 w-full" />
-        <Skeleton className="h-14 w-full" />
-      </div>
-    )
-  }
-
-  if (!responses || responses.length === 0) {
-    return (
-      <div className="rounded-[12px] border border-dashed border-[#E7E8EE] bg-white p-6 text-center">
-        <p className="font-inter text-[13px] text-[#5A6072]">No application responses were captured.</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-3.5">
-      {responses.map((r: any, i: number) => {
-        const kind = (r.question_type || '').toLowerCase()
-        const Icon = kind.includes('num') ? Hash : kind.includes('long') || kind.includes('text_area') ? FileText : Type
-        const isLong = kind.includes('long') || kind.includes('text_area')
-        const val = Array.isArray(r.answer) ? r.answer.join(', ') : String(r.answer ?? '')
-        return (
-          <div key={r.id || i} className="flex items-start gap-3">
-            <div className="h-[30px] w-[30px] rounded-[8px] bg-[#F4F3EF] flex items-center justify-center shrink-0">
-              <Icon className="h-3.5 w-3.5 text-[#5A6072]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-inter text-[13px] font-semibold text-[#1F2230]">{r.question_text || r.question || 'Question'}</p>
-              <p
-                className={
-                  'mt-1 font-inter text-[13px] ' +
-                  (isLong ? 'text-[#5A6072]' : 'font-semibold text-[#1F2230]')
-                }
-                style={{ whiteSpace: 'pre-wrap' }}
-              >
-                {val || '—'}
-              </p>
-            </div>
-          </div>
-        )
-      })}
+    <div className="rounded-[12px] bg-white border border-[#E7E8EE] p-4">
+      <CandidateApplicationResponses candidateId={candidateId} jobId={jobId} />
     </div>
   )
+}
+
 }
 
 function InsightsPanel({ analysis }: { analysis: any }) {
