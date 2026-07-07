@@ -210,9 +210,15 @@ export function PostingSheet({
           setIncludeEquity(pick<boolean>(typeof d.include_equity === 'boolean' ? d.include_equity : null, job?.include_equity, false))
           setIncludeSigningBonus(pick<boolean>(typeof d.include_signing_bonus === 'boolean' ? d.include_signing_bonus : null, job?.include_signing_bonus, false))
 
-          setHasCommissions(!!d.has_commissions)
-          setCommissionsCurrency(d.commissions_currency || 'USD')
-          setCommissionsAmount(d.commissions_amount != null ? String(d.commissions_amount) : '')
+          // Canonical shape is details.compensation.* (written by the wizard);
+          // fall back to legacy top-level keys so pre-migration postings still hydrate.
+          const comp = (d.compensation as any) || {}
+          const commEnabled = typeof comp.variable_enabled === 'boolean' ? comp.variable_enabled : !!d.has_commissions
+          const commCurrency = comp.commission_currency ?? d.commissions_currency ?? 'USD'
+          const commAmount = comp.commission_amount ?? d.commissions_amount ?? null
+          setHasCommissions(commEnabled)
+          setCommissionsCurrency(commCurrency || 'USD')
+          setCommissionsAmount(commAmount != null ? String(commAmount) : '')
 
           setBranding(d.branding || {})
           const loadedChannels = d.channels || {}
@@ -296,10 +302,16 @@ export function PostingSheet({
     show_salary_public: showSalaryPublic,
     include_equity: includeEquity,
     include_signing_bonus: includeSigningBonus,
-    has_commissions: hasCommissions,
-    commissions_currency: hasCommissions ? commissionsCurrency : null,
-    commissions_amount:
-      hasCommissions && commissionsAmount ? Number(commissionsAmount) : null,
+    // Unified with wizard: canonical nested shape under `compensation`.
+    // Null out legacy top-level keys so the two representations can't diverge.
+    compensation: {
+      variable_enabled: hasCommissions,
+      commission_currency: hasCommissions ? commissionsCurrency : null,
+      commission_amount: hasCommissions && commissionsAmount ? Number(commissionsAmount) : null,
+    },
+    has_commissions: null,
+    commissions_currency: null,
+    commissions_amount: null,
     // new
     branding,
     channels: channels.channels,

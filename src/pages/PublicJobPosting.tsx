@@ -434,9 +434,11 @@ export default function PublicJobPosting() {
                     : Number(details.salaryAmount ?? details.salaryMax ?? details.salaryMin).toLocaleString()}
                   {details.salaryPeriod ? ` ${formatLabel(details.salaryPeriod)}` : ''}
                 </div>
-                {details.hasCommissions && details.commissionsAmount && (
+                {details.hasCommissions && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Avg commissions: {details.commissionsCurrency} {Number(details.commissionsAmount).toLocaleString()}
+                    {details.commissionsAmount
+                      ? `Avg commissions: ${details.commissionsCurrency || ''} ${Number(details.commissionsAmount).toLocaleString()}`.trim()
+                      : 'Variable compensation included'}
                   </div>
                 )}
               </div>
