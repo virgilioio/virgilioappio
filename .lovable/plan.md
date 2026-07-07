@@ -1,45 +1,53 @@
-## Diagnosis
+# Enrich "Draft with Gio" context
 
-Hugo’s scheduled booking does exist and is readable:
+## Current behavior
 
-- Candidate: `Hugo Sanchez Rasgado`
-- Booking: `077ff2a3-28a2-440f-a7af-c9f97973f78c`
-- Time: `2026-07-07 23:00–23:30 UTC`
-- Status: `confirmed`
-- Interviewer/organizer: Allan Bravo
-- `candidate_id` is correctly set
-- But `job_id`, `job_candidate_association_id`, and `job_hiring_stage_id` are all `NULL`
+`supabase/functions/chat-ai-draft/index.ts` grounds drafts on a thin slice of context:
 
-The previous read-side fix still misses this booking because Hugo’s `job_candidate_associations.entered_stage_at` is also `NULL`. The hook only includes unlinked personal/calendar bookings when `scheduled_start >= enteredStageAt`, so with no `enteredStageAt`, rule 3 never runs.
+- Candidate first name
+- Job title, department, location, work_mode, employment_type
+- Thread `context_summary`
+- Last 20 candidate-visible messages
 
-## Plan
+It does **not** include the job description, requirements, hiring pipeline stages, or the candidate's current stage. So when a recruiter asks "propose next steps" or "explain the process", Gio has no grounding beyond the role's title and the recent chat, and the SYSTEM prompt forbids inventing details — meaning it often falls back to generic phrasing or "Not enough context".
 
-1. **Add a fallback stage window start**
-   - In `CandidateProfileSheet.tsx`, also fetch the association `created_at`.
-   - Keep the display value as `entered_stage_at`, but pass a matching fallback to the Current Stage card:
-     - `entered_stage_at ?? association.created_at`
+## Goal
 
-2. **Extend `CurrentStageCard` options cleanly**
-   - Add a prop like `stageWindowStartAt` for matching logic.
-   - Continue using `enteredStageAt` for UI text so we don’t fake “started” dates when the explicit value is missing.
+Give the draft LLM the same job/stage grounding a recruiter would have open in the sidebar, so drafts can accurately reference:
 
-3. **Update `useStageBookings` loose-match logic**
-   - Use `stageWindowStartAt` for personal-link / Google Calendar synced bookings where:
-     - `job_id IS NULL`
-     - `job_hiring_stage_id IS NULL`
-     - `candidate_id` matches
-     - `scheduled_start >= stageWindowStartAt`
-   - Keep the existing strict matches for stage-tagged and job-tagged bookings.
+- What the role actually involves (description, key requirements)
+- Where the candidate is in the process right now
+- What the next stage typically is
 
-4. **Keep this read-side only**
-   - No RLS changes.
-   - No booking creation/sync changes.
-   - No migration needed.
+Recruiter voice, tone rules, and the "never invent facts" guardrail stay unchanged.
 
-## Expected result
+## Changes (backend only, single file)
 
-Hugo’s confirmed Allan Bravo interview should appear in the in-job candidate profile under:
+Edit `supabase/functions/chat-ai-draft/index.ts`:
 
-`Job overview → Current stage → Recruiter Screening → Next event`
+1. **Widen the job fetch** to also select:
+   - `description` (or the job's stored description/summary field — verify the exact column when implementing)
+   - Any structured requirements/skills field already present on `jobs`
+2. **Fetch pipeline stages** for the job from `job_hiring_stages` (name + position, ordered).
+3. **Fetch the candidate's current stage** from `job_candidate_associations` for `(job_id, candidate_id)` — current stage id/name, plus derive "next stage" from the ordered stage list.
+4. **Extend the `ctxLines` block** with a compact, bounded context section:
+   - `Role summary:` — job description trimmed to a hard cap (~1500 chars) to protect tokens.
+   - `Key requirements:` — short bullet list if a structured field exists; otherwise omitted.
+   - `Hiring stages:` — `1. Applied → 2. Screen → 3. …` on one line.
+   - `Candidate is currently at:` — stage name.
+   - `Next stage:` — derived from stage order, if any.
+5. **Do all new reads in parallel** with the existing `Promise.all`, using `sbAdmin` (RLS already enforced by the thread read up top).
+6. **No changes** to: SYSTEM prompt, tone hints, token-cap logic, model selection, audit log shape, response shape, or the frontend `DraftWithGioPopover`.
 
-because the booking has the correct `candidate_id`, is confirmed, and happened after the candidate association was created, even though the calendar-sync row lacks job/stage linkage.
+## Technical notes
+
+- Token budget: cap description at ~1500 chars and stages list at whatever fits on one line; the draft model is small and we already reserve `CHAT_TOKEN_CAPS.draft`.
+- Missing data must degrade silently — if a job has no description or the candidate has no association row, just omit those lines (don't emit "unknown").
+- Exact column names on `jobs`, `job_hiring_stages`, and `job_candidate_associations` will be confirmed against the schema at implementation time; the shape above is the intent.
+
+## Out of scope
+
+- Frontend UI (`DraftWithGioPopover.tsx`) — no changes.
+- Other AI functions (`chat-with-gio`, `generate-next-steps`, etc.).
+- Token cap or model changes.
+- DB migrations.
