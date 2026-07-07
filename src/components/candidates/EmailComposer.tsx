@@ -1057,6 +1057,80 @@ function MetaRow({
   );
 }
 
+// Read-only recipients pill for bulk mode. Popover lists candidate names + skipped.
+function BulkRecipientsPill({
+  loading,
+  count,
+  names,
+  skipped,
+}: {
+  loading: boolean;
+  count: number;
+  names: string[];
+  skipped: string[];
+}) {
+  if (loading) {
+    return (
+      <span style={{ fontSize: 12, color: '#8B8F9E', fontFamily: 'Inter' }}>
+        Loading recipients…
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors hover:bg-[#F1F0EC]"
+            style={{
+              background: '#EDE4FF',
+              color: '#5B21B6',
+              fontSize: 11.5,
+              fontFamily: 'Poppins, sans-serif',
+              fontWeight: 500,
+            }}
+          >
+            <Users className="h-3 w-3" />
+            {count} recipient{count === 1 ? '' : 's'}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 p-2 max-h-[280px] overflow-auto">
+          <div className="mb-1" style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B8F9E', fontFamily: 'Inter', fontWeight: 600 }}>
+            Recipients ({count})
+          </div>
+          {names.map((n, i) => (
+            <div key={`r-${i}`} className="px-2 py-1 truncate" style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}>
+              {n}
+            </div>
+          ))}
+          {skipped.length > 0 && (
+            <>
+              <div className="mt-2 mb-1" style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B8F9E', fontFamily: 'Inter', fontWeight: 600 }}>
+                Skipped — no email
+              </div>
+              {skipped.map((n, i) => (
+                <div key={`s-${i}`} className="px-2 py-1 truncate" style={{ fontSize: 12.5, color: '#8B8F9E', fontFamily: 'Inter' }}>
+                  {n}
+                </div>
+              ))}
+            </>
+          )}
+        </PopoverContent>
+      </Popover>
+      {skipped.length > 0 && (
+        <span
+          className="inline-flex items-center gap-1"
+          style={{ fontSize: 10.5, color: '#B45309', fontFamily: 'Inter', fontWeight: 500 }}
+        >
+          <AlertTriangle className="h-3 w-3" />
+          {skipped.length} skipped — no email
+        </span>
+      )}
+    </div>
+  );
+}
+
 // Chip-input for recipients (To/Cc/Bcc). Commits on Enter, comma, Tab, blur, paste.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function ChipInput({
