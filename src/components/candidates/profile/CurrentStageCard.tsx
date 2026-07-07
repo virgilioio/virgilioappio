@@ -50,7 +50,7 @@ export function CurrentStageCard({
   jobId, associationId, candidateName, candidateEmail, jobTitle,
   enteredStageAt, onSchedule, onReschedule, scorecardsSubmittedCount,
 }: CurrentStageCardProps) {
-  const { data: bookings } = useStageBookings(jhsId, candidateId)
+  const { data: bookings } = useStageBookings(jhsId, candidateId, { jobId, enteredStageAt })
   const isInterviewStage = stageType === 'interview' || stageType === 'screening' || stageType === 'assessment'
 
   // Pick the next upcoming booking (else most recent past as fallback for context)
