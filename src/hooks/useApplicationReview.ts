@@ -360,6 +360,7 @@ export function useApplicationReview(jobId: string) {
     const c = currentCandidate
     const prevIndex = currentIndex
     setStats(prev => ({ ...prev, passed: prev.passed + 1 }))
+    setPassedList(prev => [...prev, c])
     setHasActioned(true)
     setQueue(prev => prev.filter(x => x.associationId !== c.associationId))
     setLastAction({ type: 'pass', candidate: c, prevIndex })
@@ -375,6 +376,7 @@ export function useApplicationReview(jobId: string) {
       await moveAssociationToStage(c.associationId, firstStageId, { silent: true })
 
       setStats(prev => ({ ...prev, advanced: prev.advanced + 1 }))
+      setAdvancedList(prev => [...prev, c])
       setHasActioned(true)
       setQueue(prev => prev.filter(x => x.associationId !== c.associationId))
       setLastAction({ type: 'advance', candidate: c, prevIndex })
