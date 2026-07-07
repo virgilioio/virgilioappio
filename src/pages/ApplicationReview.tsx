@@ -576,7 +576,7 @@ function ResponsesPanel({ candidateId, jobId }: { candidateId: string; jobId: st
   )
 }
 
-}
+
 
 function InsightsPanel({ analysis }: { analysis: any }) {
   if (!analysis) {
