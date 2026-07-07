@@ -1,21 +1,16 @@
-## Problem
-In the candidate profile's **Job Overview** tab, the **Application Details** card (`CandidateApplicationResponses.tsx`) truncates `textarea` answers at 200 characters with `...` and offers no way to read the rest.
+Fix text overflow in the email body editor (`BodyTemplateEditor`) so long content stays contained and scrolls internally.
 
-## Solution
-Replace the static truncation with a per-answer expand/collapse, following the existing pattern used in `EmailHistoryCard.tsx`.
+### Problem
+The Lexical `ContentEditable` area in `BodyTemplateEditor.tsx` only sets `minHeight` (e.g. `150px`) with no `maxHeight` or `overflow` control. When a user types a long email, the text bleeds out of the intended text box boundaries instead of staying contained with an internal scrollbar.
 
-## Plan
-1. **Modify `src/components/candidates/CandidateApplicationResponses.tsx`**:
-   - Introduce a small inline `ExpandableAnswer` component that keeps the first ~200 characters visible.
-   - Add a "Show more" / "Show less" button (ghost style, ChevronDown/ChevronUp) when the answer exceeds 200 characters.
-   - Use local `useState` per answer row to track expanded state.
-   - Preserve existing formatting: `whitespace-pre-wrap`, existing link/email/phone formatting for other field types unchanged.
+### Changes
 
-## Out of scope
-- No changes to data fetching, filtering, or other field types.
-- No changes to the parent `CandidateProfileSheet` card layout.
+**File: `src/components/editors/BodyTemplateEditor.tsx`**
+- Add an optional `maxHeight` prop to the component (default: `400px`).
+- Apply `overflow-y: auto` to the `ContentEditable` wrapper so content scrolls internally once it exceeds `maxHeight`.
+- Apply `overflow-wrap: break-word` / `break-words` to the `ContentEditable` className so long unbroken strings (e.g. URLs) wrap instead of overflowing horizontally.
+- Ensure the existing `minHeight` behavior is preserved.
 
-## Verification
-- Open a candidate profile with a long textarea application response.
-- Confirm the text is initially truncated and a "Show more" button appears.
-- Clicking expands to full text; "Show less" collapses it back.
+### Verification
+- Run TypeScript check (`bunx tsgo --noEmit`) to confirm no type regressions.
+- Visually verify in the Rejection Email composer that typing/pasting a long body keeps text inside the box and shows a vertical scrollbar.

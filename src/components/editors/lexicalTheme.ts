@@ -40,6 +40,7 @@ export const LEXICAL_EDITOR_STYLES = `
   .lexical-root {
     outline: none;
     min-height: inherit;
+    overflow-wrap: break-word;
   }
   
   .lexical-paragraph {
