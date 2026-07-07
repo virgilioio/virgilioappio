@@ -110,10 +110,13 @@ export function EmailComposer({
   defaultBody,
   defaultCc,
   onTemplateAppliedChange,
+  bulk,
 }: EmailComposerProps) {
+  const isBulk = !!bulk;
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
   const { templates, isLoading: loadingTemplates } = useEmailTemplates('organization');
   const sendEmail = useSendEmail();
+  const bulkSend = useBulkSendEmail();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [bodyHtml, setBodyHtml] = useState(defaultBody || '');
   const [subjectHtml, setSubjectHtml] = useState(defaultSubject || '');
