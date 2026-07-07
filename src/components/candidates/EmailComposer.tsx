@@ -129,6 +129,14 @@ export function EmailComposer({
   const [ccChips, setCcChips] = useState<string[]>(splitAddrs(defaultCc));
   const [bccChips, setBccChips] = useState<string[]>([]);
 
+  // ── Bulk mode state ────────────────────────────────────────
+  const [bulkAssociationIds, setBulkAssociationIds] = useState<string[]>([]);
+  const [bulkRecipientNames, setBulkRecipientNames] = useState<string[]>([]);
+  const [bulkSkippedNames, setBulkSkippedNames] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+  const [showScheduler, setShowScheduler] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const bodyEditorRef = useRef<BodyTemplateEditorHandle | null>(null);
