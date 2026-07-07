@@ -53,6 +53,7 @@ export interface BodyTemplateEditorProps {
   placeholder?: string;
   className?: string;
   minHeight?: string;
+  maxHeight?: string;
   disabled?: boolean;
   onFocus?: () => void;
   hideToolbar?: boolean;
