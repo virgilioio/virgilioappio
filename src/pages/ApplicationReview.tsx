@@ -1549,7 +1549,7 @@ function CompletionState({
         )}
 
         {/* Footer */}
-        <div className="mt-[30px] flex items-center justify-center gap-2.5">
+        <div className="mt-12 flex items-center justify-center gap-2.5">
           {advancedList.length > 0 && (
             <button
               type="button"
