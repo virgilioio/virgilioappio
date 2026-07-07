@@ -121,11 +121,10 @@ export function ApplicationReviewCard({ size = 'small' }: ApplicationReviewCardP
               {displayed?.map(item => (
                 <Link
                   key={item.jobId}
-                  to={`/jobs/${item.jobId}?tab=application-review`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  to={`/jobs/${item.jobId}/review`}
                   className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border hover:bg-accent hover:border-accent-foreground/20 transition-all group"
                 >
+
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium text-foreground truncate block">{item.jobTitle}</span>
                     {item.jobLocation && (
