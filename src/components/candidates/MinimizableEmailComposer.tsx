@@ -233,6 +233,7 @@ export function MinimizableEmailComposer({
             defaultBody={defaultBody}
             defaultCc={defaultCc}
             onTemplateAppliedChange={setTemplateApplied}
+            bulk={bulk}
           />
         </div>
       </div>
