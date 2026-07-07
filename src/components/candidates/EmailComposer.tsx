@@ -149,6 +149,39 @@ export function EmailComposer({
     onTemplateAppliedChange?.(!!selectedTemplateId);
   }, [selectedTemplateId, onTemplateAppliedChange]);
 
+  // Resolve bulk candidateIds → association IDs & names (skips those with no email).
+  useEffect(() => {
+    if (!bulk || bulk.candidateIds.length === 0) return;
+    let cancelled = false;
+    setBulkLoading(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from('job_candidate_associations')
+        .select('id, candidate:candidates!inner(email, candidate_name)')
+        .eq('job_id', bulk.jobId)
+        .in('candidate_id', bulk.candidateIds);
+      if (cancelled) return;
+      if (error || !data) {
+        setBulkLoading(false);
+        return;
+      }
+      const withEmail: { id: string; name: string }[] = [];
+      const skipped: string[] = [];
+      for (const row of data as any[]) {
+        const name = row.candidate?.candidate_name || 'Unknown';
+        if (row.candidate?.email) withEmail.push({ id: row.id, name });
+        else skipped.push(name);
+      }
+      setBulkAssociationIds(withEmail.map((w) => w.id));
+      setBulkRecipientNames(withEmail.map((w) => w.name));
+      setBulkSkippedNames(skipped);
+      setBulkLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bulk?.jobId, bulk?.candidateIds.join(',')]);
+
   const handleFormKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
