@@ -418,6 +418,9 @@ export function useApplicationReview(jobId: string) {
       passed: type === 'pass' ? Math.max(0, prev.passed - 1) : prev.passed,
       advanced: type === 'advance' ? Math.max(0, prev.advanced - 1) : prev.advanced,
     }))
+    if (type === 'reject') setRejectedList(prev => prev.filter(x => x.associationId !== candidate.associationId))
+    if (type === 'pass') setPassedList(prev => prev.filter(x => x.associationId !== candidate.associationId))
+    if (type === 'advance') setAdvancedList(prev => prev.filter(x => x.associationId !== candidate.associationId))
     setQueue(prev => {
       if (prev.some(x => x.associationId === candidate.associationId)) return prev
       const next = [...prev]
