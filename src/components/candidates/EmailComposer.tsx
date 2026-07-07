@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,10 +10,14 @@ import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplate
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SplitButton } from '@/components/ui/split-button';
+import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
+import { useBulkSendEmail } from '@/hooks/useBulkSendEmail';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils';
+import { supabase } from '@/lib/supabaseClient';
 import {
   Paperclip,
   X,
@@ -29,7 +33,11 @@ import {
   Calendar,
   Bookmark,
   ChevronDown,
+  Users,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
