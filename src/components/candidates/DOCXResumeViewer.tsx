@@ -127,7 +127,7 @@ export function DOCXResumeViewer({ url, height = 70 }: DOCXResumeViewerProps) {
         .docx-preview a { color: #2563eb; text-decoration: underline; }
         .docx-preview img { max-width: 100%; height: auto; }
       `}</style>
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+      <div dangerouslySetInnerHTML={{ __html: sanitizeExternalHtml(html) }} />
     </div>
   )
 }
