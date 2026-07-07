@@ -193,11 +193,10 @@ export function ApplicationReviewCard({ size = 'small' }: ApplicationReviewCardP
               {displayed?.map((item, idx) => (
                 <Link
                   key={item.jobId}
-                  to={`/jobs/${item.jobId}?tab=application-review`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  to={`/jobs/${item.jobId}/review`}
                   className={`grid grid-cols-[1fr_auto_auto_auto] gap-x-4 items-center px-3 py-2.5 hover:bg-accent transition-colors group ${idx < (displayed?.length ?? 0) - 1 ? 'border-b border-border' : ''}`}
                 >
+
                   <span className="text-sm font-medium text-foreground truncate">{item.jobTitle}</span>
                   <span className="text-xs text-muted-foreground truncate max-w-[120px]">
                     {item.jobLocation || '—'}
