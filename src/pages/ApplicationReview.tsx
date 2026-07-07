@@ -1351,15 +1351,17 @@ function CompletionState({
         />
       )}
 
-      {/* Bulk outreach slide-over */}
-      <BulkOutreachSheet
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        candidates={advancedList}
-        jobId={jobId}
-        stageName={stageName}
-        onGoToStage={() => { setBulkOpen(false); goStage() }}
-      />
+      {/* Bulk outreach — standard email composer in bulk mode */}
+      {bulkOpen && advancedList.length > 0 && (
+        <MinimizableEmailComposer
+          isOpen={bulkOpen}
+          onOpenChange={(o) => { if (!o) setBulkOpen(false) }}
+          jobId={jobId}
+          bulk={{ candidateIds: advancedList.map(c => c.candidateId), jobId }}
+          bulkJobTitle={jobTitle}
+          onSuccess={() => { setBulkOpen(false); goStage() }}
+        />
+      )}
     </div>
   )
 }
