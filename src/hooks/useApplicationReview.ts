@@ -57,6 +57,9 @@ export function useApplicationReview(jobId: string) {
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
   const [applicationReviewStageId, setApplicationReviewStageId] = useState<string | null>(null)
   const [stats, setStats] = useState<ReviewSessionStats>({ rejected: 0, passed: 0, advanced: 0 })
+  const [advancedList, setAdvancedList] = useState<ReviewCandidate[]>([])
+  const [passedList, setPassedList] = useState<ReviewCandidate[]>([])
+  const [rejectedList, setRejectedList] = useState<ReviewCandidate[]>([])
   const [hasActioned, setHasActioned] = useState(false)
   const [lastAction, setLastAction] = useState<
     | {
@@ -91,6 +94,9 @@ export function useApplicationReview(jobId: string) {
     if (!jobId || !user) return
     setIsLoading(true)
     setStats({ rejected: 0, passed: 0, advanced: 0 })
+    setAdvancedList([])
+    setPassedList([])
+    setRejectedList([])
     setCurrentIndex(0)
     setHasActioned(false)
 
@@ -292,6 +298,7 @@ export function useApplicationReview(jobId: string) {
       const prevIndex = currentIndex
       const finalizeLocally = () => {
         setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
+        setRejectedList(prev => [...prev, candidateToReject])
         setHasActioned(true)
         setQueue(prev => prev.filter(c => c.associationId !== candidateToReject.associationId))
         setLastAction({ type: 'reject', candidate: candidateToReject, prevIndex })
@@ -353,6 +360,7 @@ export function useApplicationReview(jobId: string) {
     const c = currentCandidate
     const prevIndex = currentIndex
     setStats(prev => ({ ...prev, passed: prev.passed + 1 }))
+    setPassedList(prev => [...prev, c])
     setHasActioned(true)
     setQueue(prev => prev.filter(x => x.associationId !== c.associationId))
     setLastAction({ type: 'pass', candidate: c, prevIndex })
@@ -368,6 +376,7 @@ export function useApplicationReview(jobId: string) {
       await moveAssociationToStage(c.associationId, firstStageId, { silent: true })
 
       setStats(prev => ({ ...prev, advanced: prev.advanced + 1 }))
+      setAdvancedList(prev => [...prev, c])
       setHasActioned(true)
       setQueue(prev => prev.filter(x => x.associationId !== c.associationId))
       setLastAction({ type: 'advance', candidate: c, prevIndex })
@@ -409,6 +418,9 @@ export function useApplicationReview(jobId: string) {
       passed: type === 'pass' ? Math.max(0, prev.passed - 1) : prev.passed,
       advanced: type === 'advance' ? Math.max(0, prev.advanced - 1) : prev.advanced,
     }))
+    if (type === 'reject') setRejectedList(prev => prev.filter(x => x.associationId !== candidate.associationId))
+    if (type === 'pass') setPassedList(prev => prev.filter(x => x.associationId !== candidate.associationId))
+    if (type === 'advance') setAdvancedList(prev => prev.filter(x => x.associationId !== candidate.associationId))
     setQueue(prev => {
       if (prev.some(x => x.associationId === candidate.associationId)) return prev
       const next = [...prev]
@@ -444,6 +456,9 @@ export function useApplicationReview(jobId: string) {
     firstStageId,
     firstStageName,
     stats,
+    advancedList,
+    passedList,
+    rejectedList,
     rejectionConfig,
     loadQueue,
     handleReject,
