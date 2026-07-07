@@ -62,7 +62,23 @@ serve(async (req) => {
     });
   }
 
-  // Auth skipped — one-time utility, verify_jwt=false in config.toml
+  const expectedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
+
+  const gotSecret = req.headers.get("x-internal-secret");
+
+  if (!expectedSecret || gotSecret !== expectedSecret) {
+
+    console.warn("[auth-gate] Rejected unauthorized call to batch-re-enrich");
+
+    return new Response(JSON.stringify({ error: "not_found" }), {
+
+      status: 404,
+
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    });
+
+  }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
