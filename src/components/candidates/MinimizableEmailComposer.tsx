@@ -18,6 +18,10 @@ interface MinimizableEmailComposerProps {
   defaultSubject?: string;
   defaultBody?: string;
   defaultCc?: string;
+  /** Bulk mode: composes one email personalized for each candidate on this job. */
+  bulk?: { candidateIds: string[]; jobId: string };
+  /** Optional job title shown as sub-line in bulk mode header. */
+  bulkJobTitle?: string;
 }
 
 export function MinimizableEmailComposer({
@@ -35,6 +39,8 @@ export function MinimizableEmailComposer({
   defaultSubject,
   defaultBody,
   defaultCc,
+  bulk,
+  bulkJobTitle,
 }: MinimizableEmailComposerProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [templateApplied, setTemplateApplied] = useState(false);
@@ -46,14 +52,15 @@ export function MinimizableEmailComposer({
     onOpenChange(false);
   };
 
-  const title =
-    mode === 'reply'
-      ? `Reply to ${candidateName || 'candidate'}`
-      : mode === 'forward'
-      ? 'Forward email'
-      : 'New email';
+  const title = bulk
+    ? `New email · ${bulk.candidateIds.length} recipient${bulk.candidateIds.length === 1 ? '' : 's'}`
+    : mode === 'reply'
+    ? `Reply to ${candidateName || 'candidate'}`
+    : mode === 'forward'
+    ? 'Forward email'
+    : 'New email';
 
-  const subLine = defaultSubject || (candidateName ? `To ${candidateName}` : '');
+  const subLine = bulk ? (bulkJobTitle || '') : (defaultSubject || (candidateName ? `To ${candidateName}` : ''));
 
   // --- Minimized state: compact dark strip ---
   if (isMinimized) {
