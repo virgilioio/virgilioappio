@@ -289,11 +289,14 @@ export function useApplicationReview(jobId: string) {
 
       const candidateToReject = currentCandidate
 
+      const prevIndex = currentIndex
       const finalizeLocally = () => {
         setStats(prev => ({ ...prev, rejected: prev.rejected + 1 }))
         setHasActioned(true)
         setQueue(prev => prev.filter(c => c.associationId !== candidateToReject.associationId))
+        setLastAction({ type: 'reject', candidate: candidateToReject, prevIndex })
       }
+
 
       try {
         // Compose scheduleFor if user chose "later"
