@@ -307,6 +307,21 @@ serve(async (req) => {
     if (job.location) jobContext += `\nLocation: ${job.location}`;
     if (job.department) jobContext += `\nDepartment: ${job.department}`;
 
+    // Freshness guard: if the candidate row has essentially no data yet
+    // (only location captured on the application form) AND was created/updated
+    // in the last 60s, enrichment is likely still in flight. Defer rather than
+    // persist an empty analysis that would overwrite any prior good score.
+    const nonLocationSources = dataSources.filter(s => s !== 'location');
+    const candidateTouchedAt = new Date(candidate.updated_at || candidate.created_at || 0).getTime();
+    const ageMs = Date.now() - candidateTouchedAt;
+    if (nonLocationSources.length === 0 && ageMs < 60_000 && ageMs >= 0) {
+      console.log(`[analyze-candidate-fit] Deferring: candidate ${candidate_id} has only ${dataSources.length} data source(s) and was touched ${Math.round(ageMs / 1000)}s ago — awaiting enrichment.`);
+      return new Response(
+        JSON.stringify({ status: 'deferred', reason: 'awaiting_enrichment' }),
+        { status: 202, headers: { ...headers, 'Content-Type': 'application/json' } },
+      );
+    }
+
     // Call OpenAI
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
