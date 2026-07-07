@@ -875,6 +875,7 @@ export function EmailComposer({
             onClick={() => fileInputRef.current?.click()}
             disabled={isBulk}
           />
+
           <FooterIcon
             icon={<Calendar className="h-3.5 w-3.5" />}
             label="Insert booking link"
