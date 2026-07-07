@@ -275,7 +275,11 @@ export default function ApplicationReviewPage() {
       ) : review.isComplete ? (
         <CompletionState
           stats={review.stats}
+          advancedList={review.advancedList}
+          passedList={review.passedList}
+          rejectedList={review.rejectedList}
           stageName={review.firstStageName || 'the next stage'}
+          jobId={jobId!}
           onDone={handleClose}
         />
       ) : total === 0 ? (
