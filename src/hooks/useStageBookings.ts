@@ -14,6 +14,7 @@ export interface StageBookingInterviewer {
 
 export interface UseStageBookingsOptions {
   jobId?: string | null;
+  stageWindowStartAt?: string | null;
   enteredStageAt?: string | null;
 }
 
@@ -22,7 +23,8 @@ export function useStageBookings(
   candidateId: string | null,
   options: UseStageBookingsOptions = {}
 ) {
-  const { jobId = null, enteredStageAt = null } = options;
+  const { jobId = null } = options;
+  const stageWindowStartAt = options.stageWindowStartAt ?? options.enteredStageAt ?? null;
   const queryClient = useQueryClient();
 
   // Real-time subscription for booking updates
@@ -54,7 +56,7 @@ export function useStageBookings(
   }, [jhsId, candidateId, queryClient]);
 
   return useQuery({
-    queryKey: ['stage-bookings', jhsId, candidateId, jobId, enteredStageAt],
+    queryKey: ['stage-bookings', jhsId, candidateId, jobId, stageWindowStartAt],
     queryFn: async () => {
       if (!jhsId || !candidateId) return [];
 
@@ -71,15 +73,15 @@ export function useStageBookings(
       if (error) throw error;
       if (!allRows) return [];
 
-      const enteredMs = enteredStageAt ? new Date(enteredStageAt).getTime() : null;
+      const windowStartMs = stageWindowStartAt ? new Date(stageWindowStartAt).getTime() : null;
       const data = allRows.filter((b: any) => {
         if (b.job_hiring_stage_id && b.job_hiring_stage_id === jhsId) return true;
         if (b.job_hiring_stage_id && b.job_hiring_stage_id !== jhsId) return false;
         // job_hiring_stage_id is null → loose link
         if (jobId && b.job_id && b.job_id === jobId) return true;
-        if (!b.job_id && enteredMs != null) {
+        if (!b.job_id && windowStartMs != null) {
           const startMs = b.scheduled_start ? new Date(b.scheduled_start).getTime() : NaN;
-          return Number.isFinite(startMs) && startMs >= enteredMs;
+          return Number.isFinite(startMs) && startMs >= windowStartMs;
         }
         return false;
       });

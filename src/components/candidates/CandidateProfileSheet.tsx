@@ -195,6 +195,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [isFavorite, setIsFavorite] = useState(false)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [enteredStageAt, setEnteredStageAt] = useState<string | null>(null)
+  const [stageWindowStartAt, setStageWindowStartAt] = useState<string | null>(null)
   const [rejectionDetails, setRejectionDetails] = useState<{
     rejectedAt: string | null;
     rejectedByName: string | null;
@@ -691,6 +692,7 @@ const stageHasAutomation = useMemo(() => {
             status, 
             current_stage_id,
             entered_stage_at,
+            created_at,
             rejected_at,
             rejected_by,
             rejection_notes,
@@ -711,6 +713,7 @@ const stageHasAutomation = useMemo(() => {
         setAssociationStatus((assoc?.status as any) ?? null)
         setCurrentStageId((assoc as any)?.current_stage_id ?? null)
         setEnteredStageAt((assoc as any)?.entered_stage_at ?? null)
+        setStageWindowStartAt((assoc as any)?.entered_stage_at ?? (assoc as any)?.created_at ?? null)
         setWhatsAppTemplateSentAt((assoc as any)?.whatsapp_template_sent_at ?? null)
         setIsFavorite((assoc as any)?.is_favorite ?? false)
         
@@ -1454,6 +1457,7 @@ const stageHasAutomation = useMemo(() => {
                               candidateEmail={candidate?.email || undefined}
                               jobTitle={job?.title}
                               enteredStageAt={enteredStageAt}
+                              stageWindowStartAt={stageWindowStartAt}
                               onSchedule={
                                 (currentStage.stage.stage_type === 'screening' || currentStage.stage.stage_type === 'interview')
                                   ? () => {
