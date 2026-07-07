@@ -1,48 +1,63 @@
+## Goal
+
+Unify bulk email into the same docked `MinimizableEmailComposer` used for 1:1 candidate emails, so recruiters get one consistent composer regardless of recipient count. Delete the legacy `BulkEmailDialog` centered modal.
 
 ## Root cause
 
-`src/hooks/useNewApplicationsQueue.ts` selects a non-existent column, which makes every application chunk fail:
+`src/pages/JobDetail.tsx` opens `BulkEmailDialog` (a shadcn `<Dialog>` with its own subject/body editors, template picker, scheduler, and send button) whenever the user bulk-emails from the Application Review table. Meanwhile every 1:1 path (`CandidateProfileSheet`, `CandidateOfferDetails`, `BookingDetailsDialog`, `IndependentCandidateProfile`) uses the dark-header `MinimizableEmailComposer` wrapping `EmailComposer`. Two divergent UIs, two feature sets.
 
-```ts
-.from('job_candidate_associations')
-.select(`
-  id, candidate_id, current_stage_id, entered_stage_at, created_at,
-  source,                       // ❌ this column does not exist on job_candidate_associations
-  candidates!inner(id, candidate_name)
-`)
-```
+## Plan
 
-Confirmed against the DB:
-- `job_candidate_associations` columns include `id, candidate_id, job_id, status, current_stage_id, entered_stage_at, created_at, …` — **no `source`**.
-- Pablo Sergio Guevara Herrera has a valid, active `application_review` row (assoc `073e1760…`, job "Senior Project Manager - Services", entered 2026-07-07 15:10 UTC).
+### 1. Extend `EmailComposer` (`src/components/candidates/EmailComposer.tsx`) with a bulk mode
 
-Because of the bad column, every `.in('current_stage_id', chunk)` request returns a PostgREST error. The hook logs `[useNewApplicationsQueue] job_candidate_associations chunk failed` and `continue`s, so the final `items` array is always empty. That's why:
-- The **Applications** chip count is 0.
-- The "at least one application row" safety net in `QueueCard` has nothing to swap in.
-- Pablo (and every other new applicant) is invisible.
+Add optional props (all backward-compatible; single-email callers unaffected):
 
-The `source` field was added when we tried to render "applied via LinkedIn/Referral/…". The correct source of truth is `candidates.source` (that column exists), so we should read it from the already-joined `candidates` row instead of from the association.
+- `bulk?: { associationIds: string[]; jobId: string }` — when present, activates bulk mode.
+- Keep every existing prop and behavior for the 1:1 path.
 
-## Fix
+Bulk-mode differences inside the composer:
 
-**File:** `src/hooks/useNewApplicationsQueue.ts`
+- On mount, run the same association fetch that `BulkEmailDialog` did (embedded email + candidate names), split into "with email" vs "without email", store both.
+- Recipient row: replace the To chip editor with a read-only recipients summary chip: `"N recipients"` that opens a popover listing candidate names. Show a Gio-styled inline warning strip (not a big Alert) when `withoutEmail.length > 0`: `"M skipped — no email address"`.
+- Keep CC/BCC hidden in bulk mode (personalization + CC/BCC is out of scope; matches current bulk dialog which also lacks CC/BCC).
+- Reuse the existing `SubjectTemplateEditor` + `BodyTemplateEditor` + template picker + AI Draft + Booking Link + attachments UI exactly as-is. Placeholders already work identically.
+- Footer: add a `Send / Schedule` split control matching the app style guide (`<SplitButton>` from the buttons foundation). Primary action = `Send N emails`; dropdown reveals `Schedule for later…` which opens a `DatePickerVirgilio` + hour select popover (inline within the footer, not a nested modal).
+- Replace the single-email `useSendEmail().mutate` with `useBulkSendEmail().sendBulkEmailAsync` when `bulk` is set. Wire its `progress` into a slim hairline progress bar rendered just above the footer during send (keeps the composer chrome intact — no big centered progress block).
+- On success call `onSuccess` (which closes the docked panel via `MinimizableEmailComposer`'s handler), preserving current behavior.
 
-1. Remove `source,` from the `job_candidate_associations` select list.
-2. Add `source` to the embedded candidate select: `candidates!inner(id, candidate_name, source)`.
-3. Read `row.candidates?.source ?? null` when building each `NewApplicationItem` (the `source` field on `NewApplicationItem` stays as-is, so `buildQueue` in `Dashboard.tsx` keeps rendering "applied via {source}" unchanged).
-4. Keep the chunked fetch, ordering, and error handling as they are.
+### 2. Extend `MinimizableEmailComposer` (`src/components/candidates/MinimizableEmailComposer.tsx`)
 
-No changes needed in `src/pages/Dashboard.tsx` — `buildQueue` already consumes `app.source` from the item.
+- Add pass-through `bulk?: { associationIds: string[]; jobId: string }` prop and forward to `EmailComposer`.
+- Header title logic: when `bulk` is set, title = `New email · ${associationIds.length} recipients`; sub-line = job title if available (fetch already present in JobDetail; pass down as `bulkJobTitle?: string` for the header only). Minimized strip mirrors the same text.
+- Everything else (minimize, close, scrim, dark header, template chip) unchanged.
 
-## Verification
+### 3. Swap the JobDetail integration (`src/pages/JobDetail.tsx`)
 
-1. Reload the dashboard as the tenant owner and confirm:
-   - "Applications" chip count > 0.
-   - Pablo Sergio Guevara Herrera appears as a **New application** row on both the "Everything" and "Applications" tabs, with context `Senior Project Manager - Services — applied` (or `applied via …` if `candidates.source` is set).
-2. Open browser console — the `[useNewApplicationsQueue] job_candidate_associations chunk failed` warning should be gone.
-3. Run `bunx tsgo --noEmit` to confirm no type regressions.
+- Remove the `BulkEmailDialog` import and its `<BulkEmailDialog … />` render (around line 1557).
+- Remove `showBulkEmailDialog` state; replace with `bulkEmailState: { open: boolean; associationIds: string[] } | null`.
+- The existing bulk-email trigger (line 1163) already knows the selected candidate IDs. Reuse `BulkEmailDialog`'s association-fetching logic inside the composer instead of pre-fetching here — trigger simply passes `candidateIds` down and the composer resolves them to associations. (Simpler: pass `candidateIds` + `jobId` and let the composer fetch associations, matching current behavior.)
+- Render `<MinimizableEmailComposer bulk={{ candidateIds, jobId }} … />` in place of `<BulkEmailDialog />`. Same z-index and minimize behavior users already know from 1:1 emails.
+
+Correction on the prop shape above: pass `candidateIds` (not `associationIds`) since JobDetail's bulk selection is candidate-scoped; the composer resolves associations internally, matching what `BulkEmailDialog` already does.
+
+### 4. Delete the legacy dialog
+
+- Remove `src/components/candidates/BulkEmailDialog.tsx`.
+- `useBulkSendEmail` stays — it's the send engine, now called from `EmailComposer`.
+
+### 5. Verification
+
+- `bunx tsgo --noEmit` clean.
+- Manually: on `/jobs/:id`, select ≥2 candidates → "Email" → dark-header docked composer opens (bottom-right), title reads `New email · N recipients`, minimize/close work, template picker + AI Draft + Booking link + attachments all render, `Send` and `Schedule for later` both fire the bulk flow, progress hairline animates, warning strip appears if any selected candidate lacks an email. Confirm 1:1 email flows (`CandidateProfileSheet` reply/forward) are unchanged.
+
+## Out of scope
+
+- Rewriting `useBulkSendEmail` or the placeholder resolver.
+- CC/BCC support in bulk (would need per-recipient CC UX — separate feature).
+- Any changes to `Candidates.tsx` (its bulk-email button is still a `toast("coming soon")` placeholder; wiring it up to the same composer is a trivial follow-up but not requested here).
 
 ## Technical notes
 
-- We intentionally do not add a `source` column to `job_candidate_associations`. The current data model tracks source at the candidate level, and every consumer of `NewApplicationItem.source` is happy with the candidate-level value.
-- No other hook selects `jca.source`, so this is the only site to patch (confirmed via search).
+- `<SplitButton>` and `<DatePickerVirgilio>` are already the standardized primitives per the style guide memory — no new UI kit work.
+- The `bulk` prop is intentionally a discriminated object rather than a boolean so future callers (e.g., Candidates page) can pass their own resolver without JobDetail-specific assumptions.
+- Progress hairline goes inside the composer's footer area, above the send button row — keeps chrome consistent with the docked panel's fixed footer pattern.
