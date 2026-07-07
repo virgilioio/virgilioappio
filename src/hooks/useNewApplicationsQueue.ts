@@ -34,7 +34,10 @@ export function useNewApplicationsQueue() {
           .from('job_hiring_stages')
           .select('id, job_id, job_stages!job_hiring_stages_stage_id_fkey(stage_type)')
           .in('job_id', chunk)
-        if (error) continue
+        if (error) {
+          console.warn('[useNewApplicationsQueue] job_hiring_stages chunk failed', { chunk, error })
+          continue
+        }
         const filtered = (data ?? []).filter(
           (r: any) => r.job_stages?.stage_type === 'application_review',
         )
