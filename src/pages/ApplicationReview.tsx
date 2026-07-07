@@ -1031,67 +1031,584 @@ function EmptyState({ onClose }: { onClose: () => void }) {
   )
 }
 
+/* ------------------------------------------------------------------ */
+/*  Completion — Recap + Shortlist                                     */
+/* ------------------------------------------------------------------ */
+
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/)
+  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?'
+}
+
+function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full bg-[#EDE4FF] text-[#5B21B6] font-poppins font-semibold shrink-0"
+      style={{ height: size, width: size, fontSize: size * 0.36 }}
+    >
+      {initialsOf(name)}
+    </span>
+  )
+}
+
+function AvatarStack({ names, max = 4 }: { names: string[]; max?: number }) {
+  const shown = names.slice(0, max)
+  const extra = names.length - shown.length
+  return (
+    <div className="flex items-center">
+      {shown.map((n, i) => (
+        <div key={i} style={{ marginLeft: i === 0 ? 0 : -8 }} className="ring-2 ring-white rounded-full">
+          <Avatar name={n} size={22} />
+        </div>
+      ))}
+      {extra > 0 && (
+        <span
+          style={{ marginLeft: -8, height: 22, minWidth: 22, padding: '0 6px' }}
+          className="ring-2 ring-white inline-flex items-center justify-center rounded-full bg-[#F1F0EC] text-[#5A6072] font-inter font-medium text-[10.5px]"
+        >
+          +{extra}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function RowMatchChip({ candidateId, jobId }: { candidateId: string; jobId: string }) {
+  const { insights } = useCandidateFitInsights(candidateId, jobId)
+  const score = insights?.analysis?.overall_score
+  if (score == null) return null
+  return <MatchChip score={score} />
+}
+
+function AdvancedRow({
+  c,
+  jobId,
+  onEmail,
+  onSchedule,
+  onView,
+}: {
+  c: ReviewCandidate
+  jobId: string
+  onEmail: () => void
+  onSchedule: () => void
+  onView: () => void
+}) {
+  const sub = [c.currentJobTitle, [c.locationCity, c.locationCountry].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+  return (
+    <div className="flex items-center gap-3.5 rounded-[12px] bg-white border border-[#E7E8EE]" style={{ padding: '12px 14px' }}>
+      <Avatar name={c.candidateName} size={40} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-poppins text-[14px] font-semibold text-[#1F2230] truncate">{c.candidateName}</span>
+          <RowMatchChip candidateId={c.candidateId} jobId={jobId} />
+        </div>
+        {sub && <div className="mt-0.5 font-inter text-[12px] text-[#8B8F9E] truncate">{sub}</div>}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={onEmail}
+          aria-label="Email"
+          className="h-[34px] w-[34px] inline-flex items-center justify-center rounded-[8px] bg-white border border-[#E7E8EE] text-[#1F2230] hover:bg-[#FAFAF7]"
+        >
+          <Mail className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onSchedule}
+          aria-label="Schedule"
+          className="h-[34px] w-[34px] inline-flex items-center justify-center rounded-[8px] bg-white border border-[#E7E8EE] text-[#1F2230] hover:bg-[#FAFAF7]"
+        >
+          <CalendarIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onView}
+          className="h-[34px] px-3 inline-flex items-center rounded-[8px] bg-white border border-[#E7E8EE] font-inter text-[12.5px] font-medium text-[#1F2230] hover:bg-[#FAFAF7]"
+        >
+          View
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PileRow({
+  tone,
+  icon,
+  label,
+  note,
+  names,
+  onClick,
+}: {
+  tone: 'pass' | 'reject'
+  icon: React.ReactNode
+  label: string
+  note: string
+  names: string[]
+  onClick: () => void
+}) {
+  const chipBg = tone === 'reject' ? '#FEECEC' : '#F1F0EC'
+  const chipFg = tone === 'reject' ? '#FA5252' : '#5A6072'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 rounded-[12px] bg-white border border-[#E7E8EE] hover:bg-[#FAFAF7] transition-colors text-left"
+      style={{ padding: '10px 14px' }}
+    >
+      <span
+        className="inline-flex items-center justify-center rounded-[8px] shrink-0"
+        style={{ height: 30, width: 30, background: chipBg, color: chipFg }}
+      >
+        {icon}
+      </span>
+      <span className="font-poppins text-[13px] font-semibold text-[#1F2230]">
+        {label} <span className="font-inter font-normal text-[#8B8F9E]">· {names.length} · {note}</span>
+      </span>
+      <span className="flex-1" />
+      {names.length > 0 && <AvatarStack names={names} />}
+      <ChevronRightIcon className="h-4 w-4 text-[#C2C6D2]" />
+    </button>
+  )
+}
+
+/* ---------- Bulk outreach slide-over sheet ---------- */
+
+function BulkOutreachSheet({
+  open,
+  onClose,
+  candidates,
+  jobId,
+  stageName,
+  onGoToStage,
+}: {
+  open: boolean
+  onClose: () => void
+  candidates: ReviewCandidate[]
+  jobId: string
+  stageName: string
+  onGoToStage: () => void
+}) {
+  const [recipients, setRecipients] = useState<ReviewCandidate[]>(candidates)
+  const [subject, setSubject] = useState('Next step — quick chat about the role')
+  const [sent, setSent] = useState<number | null>(null)
+  const { identities } = useMailIdentities()
+  const fromEmail = identities?.[0]?.email_address || ''
+  const bulk = useBulkSendEmail()
+
+  useEffect(() => {
+    if (open) {
+      setRecipients(candidates)
+      setSent(null)
+    }
+  }, [open, candidates])
+
+  if (!open) return null
+
+  const bodyHtml = `<p>Hi {{candidate.first_name}},</p>
+<p>Thanks for your application — we'd love to move you forward to a quick screening chat.</p>
+<p>Pick a time that works for you here: <a href="{{scheduling.link}}">{{scheduling.link}}</a></p>
+<p>Talk soon.</p>`
+
+  const handleSend = async () => {
+    const ids = recipients.map(r => r.associationId)
+    if (ids.length === 0) return
+    try {
+      const res = await bulk.sendBulkEmailAsync({
+        associationIds: ids,
+        emailData: { fromEmail, subject, bodyHtml },
+      })
+      setSent(res.succeeded)
+    } catch (e) {
+      /* toast handled inside hook */
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70]">
+      <div
+        className="absolute inset-0"
+        style={{ background: 'rgba(13,13,9,0.34)' }}
+        onClick={onClose}
+      />
+      <aside
+        className="absolute top-0 right-0 h-full bg-white flex flex-col"
+        style={{ width: 468, boxShadow: '-16px 0 48px rgba(13,13,9,0.18)' }}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-2 shrink-0" style={{ background: '#0d0d09', padding: '10px 14px' }}>
+          <Mail className="h-[13px] w-[13px]" style={{ color: '#fffcf9' }} />
+          <span className="font-poppins font-semibold" style={{ fontSize: 13, color: '#fffcf9', letterSpacing: '-0.01em' }}>
+            Start outreach
+          </span>
+          <span
+            className="inline-flex items-center rounded-full px-2 py-0.5 font-poppins"
+            style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 10.5, fontWeight: 500 }}
+          >
+            Screening invite
+          </span>
+          <span className="flex-1" />
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="h-[26px] w-[26px] inline-flex items-center justify-center rounded-md hover:bg-white/10"
+            style={{ color: 'rgba(255,252,249,0.7)' }}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {sent != null ? (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-8 text-center">
+            <div className="mx-auto mb-4 h-[68px] w-[68px] rounded-full bg-[#E7F7EF] flex items-center justify-center">
+              <Send className="h-7 w-7 text-[#0F9D58]" />
+            </div>
+            <h3 className="font-poppins text-[#0d0d09]" style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.03em' }}>
+              Invited {sent} candidate{sent !== 1 ? 's' : ''} to schedule
+            </h3>
+            <p className="mt-2 font-inter text-[13px] text-[#5A6072]">
+              Each got a personal email with your booking link. They stay in {stageName} until they pick a time — you'll be notified as they book.
+            </p>
+            <div className="mt-6 w-full flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={onGoToStage}
+                className="h-11 rounded-[11px] bg-[#0d0d09] text-[#fffcf9] font-poppins text-[13px] font-semibold hover:bg-[#1a1a15]"
+              >
+                Go to Recruiting process
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-11 rounded-[11px] bg-white border border-[#E7E8EE] text-[#1F2230] font-poppins text-[13px] font-semibold hover:bg-[#FAFAF7]"
+              >
+                Back to summary
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Meta rows */}
+            <div className="shrink-0">
+              <MetaRow label="From">
+                <div className="flex items-center gap-2">
+                  <Avatar name={fromEmail || 'me'} size={22} />
+                  <span className="font-inter text-[12.5px] text-[#1F2230]">{fromEmail || '—'}</span>
+                </div>
+              </MetaRow>
+              <MetaRow label="To">
+                <div className="flex flex-wrap gap-1.5">
+                  {recipients.map(r => (
+                    <span
+                      key={r.associationId}
+                      className="inline-flex items-center gap-1.5 rounded-full font-inter"
+                      style={{ background: '#F1F0EC', border: '1px solid #E4E2DB', padding: '2px 8px 2px 3px', fontSize: 11.5, color: '#1F2230' }}
+                    >
+                      <Avatar name={r.candidateName} size={16} />
+                      {r.candidateName}
+                      <button
+                        type="button"
+                        aria-label="Remove"
+                        onClick={() => setRecipients(prev => prev.filter(x => x.associationId !== r.associationId))}
+                        className="text-[#8B8F9E] hover:text-[#1F2230]"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-1.5 font-inter text-[11px] text-[#8B8F9E]">
+                  Advanced from this review · each gets their own thread.
+                </div>
+              </MetaRow>
+              <MetaRow label="Template">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex items-center rounded-full px-2 py-0.5 font-poppins"
+                    style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 10.5, fontWeight: 500 }}
+                  >
+                    Screening invite · booking link
+                  </span>
+                </div>
+              </MetaRow>
+              <MetaRow label="Subject">
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full font-inter text-[13px] text-[#1F2230] bg-transparent outline-none"
+                />
+              </MetaRow>
+            </div>
+
+            {/* Body preview */}
+            <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: '14px 20px' }}>
+              <div className="rounded-[12px] border border-[#E7E8EE] bg-white p-4">
+                <p className="font-inter text-[13px] text-[#1F2230]">
+                  Hi{' '}
+                  <span
+                    className="inline-flex items-center rounded-md px-1.5 py-0.5 font-poppins"
+                    style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 11, fontWeight: 500 }}
+                  >
+                    @candidate.first_name
+                  </span>
+                  ,
+                </p>
+                <p className="mt-2 font-inter text-[13px] text-[#1F2230]">
+                  Thanks for your application — we'd love to move you forward to a quick screening chat.
+                </p>
+                <div
+                  className="mt-3 flex items-center gap-3 rounded-[10px]"
+                  style={{ background: '#F8F5FF', border: '1px solid #ECE3FF', padding: '10px 12px' }}
+                >
+                  <span
+                    className="inline-flex items-center justify-center rounded-[8px] shrink-0"
+                    style={{ height: 32, width: 32, background: '#ECE3FF', color: '#6F3FF5' }}
+                  >
+                    <CalendarIcon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-poppins text-[12.5px] font-semibold text-[#1F2230]">
+                      Pick a time that works for you →
+                    </div>
+                    <div className="font-inter text-[11px] text-[#5A6072] truncate">your live availability</div>
+                  </div>
+                </div>
+                <p className="mt-3 font-inter text-[13px] text-[#1F2230]">Talk soon.</p>
+              </div>
+              <p className="mt-3 font-inter text-[11.5px] text-[#8B8F9E]">
+                Personalized per candidate and sent individually — recipients never see each other.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center gap-2 shrink-0 border-t border-[#E7E8EE]" style={{ background: '#FAFAF7', padding: '10px 16px' }}>
+              <span className="font-inter text-[12px] text-[#5A6072]">{recipients.length} recipient{recipients.length !== 1 ? 's' : ''}</span>
+              <span className="flex-1" />
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-9 px-3 rounded-[9px] bg-white border border-[#E7E8EE] text-[#1F2230] font-poppins text-[12.5px] font-medium hover:bg-[#F1F0EC]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={recipients.length === 0 || bulk.isPending}
+                onClick={handleSend}
+                className="h-9 px-3.5 inline-flex items-center gap-1.5 rounded-[9px] bg-[#0d0d09] text-[#fffcf9] font-poppins text-[12.5px] font-semibold hover:bg-[#1a1a15] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bulk.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Send to {recipients.length}
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+    </div>
+  )
+}
+
+function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid" style={{ gridTemplateColumns: '64px 1fr', gap: 12, padding: '10px 20px', borderBottom: '1px solid #F1F0EC' }}>
+      <div className="font-inter text-[11.5px] text-[#8B8F9E] pt-1 text-right uppercase tracking-[0.04em]">{label}</div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
+/* ---------- CompletionState (Recap + Shortlist) ---------- */
+
 function CompletionState({
   stats,
+  advancedList,
+  passedList,
+  rejectedList,
   stageName,
+  jobId,
   onDone,
 }: {
   stats: { rejected: number; passed: number; advanced: number }
+  advancedList: ReviewCandidate[]
+  passedList: ReviewCandidate[]
+  rejectedList: ReviewCandidate[]
   stageName: string
+  jobId: string
   onDone: () => void
 }) {
+  const navigate = useNavigate()
+  const { organizationId } = useAuth()
   const total = stats.rejected + stats.passed + stats.advanced
 
-  const cards: { label: string; value: number; color: string }[] = [
-    { label: 'Rejected', value: stats.rejected, color: '#FA5252' },
-    { label: 'Passed', value: stats.passed, color: '#5A6072' },
-    { label: 'Advanced', value: stats.advanced, color: '#0F9D58' },
+  const [emailFor, setEmailFor] = useState<ReviewCandidate | null>(null)
+  const [scheduleFor, setScheduleFor] = useState<ReviewCandidate | null>(null)
+  const [bulkOpen, setBulkOpen] = useState(false)
+
+  const goStage = () => navigate(`/jobs/${jobId}?tab=pipeline`)
+  const goPassed = () => navigate(`/jobs/${jobId}?tab=pipeline&filter=on-hold`)
+  const goRejected = () => navigate(`/jobs/${jobId}?tab=pipeline&filter=rejected`)
+
+  const tiles: { label: string; value: number; color: string; onClick?: () => void }[] = [
+    { label: 'Rejected', value: stats.rejected, color: '#FA5252', onClick: stats.rejected ? goRejected : undefined },
+    { label: 'Passed', value: stats.passed, color: '#5A6072', onClick: stats.passed ? goPassed : undefined },
+    { label: 'Advanced', value: stats.advanced, color: '#0F9D58', onClick: stats.advanced ? goStage : undefined },
   ]
 
   return (
-    <div className="flex-1 min-h-0 flex items-center justify-center px-6">
-      <div className="w-full max-w-[520px] text-center">
-        <div className="mx-auto mb-5 h-[74px] w-[74px] rounded-full bg-[#E7F7EF] flex items-center justify-center">
-          <PartyPopper className="h-8 w-8 text-[#0F9D58]" />
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: '#F6F5F1' }}>
+      <div className="mx-auto w-full" style={{ maxWidth: 720, padding: '48px 24px 64px' }}>
+        {/* Celebration */}
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-[#E7F7EF] flex items-center justify-center">
+            <PartyPopper className="h-7 w-7 text-[#0F9D58]" />
+          </div>
+          <h2
+            className="font-poppins text-[#0d0d09]"
+            style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em' }}
+          >
+            Review complete<span className="text-[#D7C5FB]">.</span>
+          </h2>
+          <p className="mt-2 font-inter text-[14px] text-[#5A6072]">
+            You reviewed {total} candidate{total !== 1 ? 's' : ''} in this session.
+          </p>
         </div>
-        <h2
-          className="font-poppins text-[#0d0d09]"
-          style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.03em' }}
-        >
-          Review complete<span className="text-[#D7C5FB]">.</span>
-        </h2>
-        <p className="mt-2 font-inter text-[14px] text-[#5A6072]">
-          You reviewed {total} candidate{total !== 1 ? 's' : ''} in this session.
-        </p>
 
+        {/* Outcome tiles */}
         <div className="mt-6 grid grid-cols-3 gap-3">
-          {cards.map((c) => (
-            <div key={c.label} className="rounded-[14px] bg-white border border-[#E7E8EE] p-4">
-              <p className="font-poppins" style={{ fontSize: 26, fontWeight: 700, color: c.color }}>
-                {c.value}
+          {tiles.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={t.onClick}
+              disabled={!t.onClick}
+              className="rounded-[14px] bg-white border border-[#E7E8EE] p-4 text-center hover:bg-[#FAFAF7] transition-colors disabled:hover:bg-white disabled:cursor-default"
+            >
+              <p className="font-poppins" style={{ fontSize: 24, fontWeight: 700, color: t.color }}>
+                {t.value}
               </p>
-              <p className="mt-1 font-inter text-[12.5px] text-[#5A6072]">{c.label}</p>
-            </div>
+              <p className="mt-1 font-inter text-[12px] text-[#5A6072]">{t.label}</p>
+            </button>
           ))}
         </div>
 
-        {stats.advanced > 0 && (
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#F8F5FF] border border-[#ECE3FF] px-4 py-2">
-            <ArrowRight className="h-3.5 w-3.5 text-[#6F3FF5]" />
-            <span className="font-inter text-[12.5px] text-[#1F2230]">
-              {stats.advanced} candidate{stats.advanced !== 1 ? 's' : ''} waiting for you in {stageName}
-            </span>
+        {/* Shortlist */}
+        {advancedList.length > 0 && (
+          <div className="mt-[30px]">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="font-poppins text-[#1F2230]" style={{ fontSize: 15, fontWeight: 600 }}>
+                Advanced to {stageName}
+              </h3>
+              <span
+                className="inline-flex items-center rounded-full px-2 py-0.5 font-poppins"
+                style={{ background: '#E7F7EF', color: '#0F9D58', fontSize: 11.5, fontWeight: 600 }}
+              >
+                {advancedList.length}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {advancedList.map((c) => (
+                <AdvancedRow
+                  key={c.associationId}
+                  c={c}
+                  jobId={jobId}
+                  onEmail={() => setEmailFor(c)}
+                  onSchedule={() => setScheduleFor(c)}
+                  onView={() => navigate(`/jobs/${jobId}/candidates/${c.candidateId}`)}
+                />
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="mt-7">
+        {/* Secondary piles */}
+        {(passedList.length > 0 || rejectedList.length > 0) && (
+          <div className="mt-[14px] flex flex-col gap-2">
+            {passedList.length > 0 && (
+              <PileRow
+                tone="pass"
+                icon={<SkipForward className="h-3.5 w-3.5" />}
+                label="Passed"
+                note="revisit later"
+                names={passedList.map(c => c.candidateName)}
+                onClick={goPassed}
+              />
+            )}
+            {rejectedList.length > 0 && (
+              <PileRow
+                tone="reject"
+                icon={<ThumbsDown className="h-3.5 w-3.5" />}
+                label="Rejected"
+                note="emails sent"
+                names={rejectedList.map(c => c.candidateName)}
+                onClick={goRejected}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-[30px] flex items-center justify-center gap-2.5">
+          {advancedList.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="inline-flex items-center gap-2 h-12 px-5 rounded-[11px] bg-[#0d0d09] text-[#fffcf9] font-poppins text-[13.5px] font-semibold hover:bg-[#1a1a15]"
+            >
+              <Mail className="h-4 w-4" />
+              Start outreach to advanced ({advancedList.length})
+            </button>
+          )}
           <button
             type="button"
             onClick={onDone}
-            className="h-11 px-6 rounded-[11px] bg-[#0d0d09] text-[#fffcf9] font-poppins text-[13px] font-semibold hover:bg-[#1a1a15]"
+            className="h-12 px-5 rounded-[11px] bg-white border border-[#E7E8EE] text-[#1F2230] font-poppins text-[13.5px] font-semibold hover:bg-[#FAFAF7]"
           >
             Done
           </button>
+        </div>
+      </div>
+
+      {/* Per-candidate email composer */}
+      {emailFor && (
+        <MinimizableEmailComposer
+          isOpen={!!emailFor}
+          onOpenChange={(o) => { if (!o) setEmailFor(null) }}
+          candidateId={emailFor.candidateId}
+          jobId={jobId}
+          defaultTo={emailFor.email || undefined}
+          candidateName={emailFor.candidateName}
+          onSuccess={() => setEmailFor(null)}
+        />
+      )}
+
+      {/* Per-candidate scheduling sheet */}
+      {scheduleFor && organizationId && (
+        <SimpleScheduleInterviewSheet
+          open={!!scheduleFor}
+          onOpenChange={(o) => { if (!o) setScheduleFor(null) }}
+          candidateId={scheduleFor.candidateId}
+          candidateName={scheduleFor.candidateName}
+          candidateEmail={scheduleFor.email || ''}
+          candidatePhone={scheduleFor.phone || undefined}
+          organizationId={organizationId}
+        />
+      )}
+
+      {/* Bulk outreach slide-over */}
+      <BulkOutreachSheet
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        candidates={advancedList}
+        jobId={jobId}
+        stageName={stageName}
+        onGoToStage={() => { setBulkOpen(false); goStage() }}
+      />
+    </div>
+  )
+}
+
         </div>
       </div>
     </div>
