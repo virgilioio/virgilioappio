@@ -107,9 +107,12 @@ export function useApplicationReview(jobId: string) {
       const arStageId = arStages?.[0]?.id
       if (!arStageId) {
         setQueue([])
+        setApplicationReviewStageId(null)
         setIsLoading(false)
         return
       }
+      setApplicationReviewStageId(arStageId)
+
 
       // Get all associations in the application_review stage
       const { data: associations, error: assocError } = await supabase
