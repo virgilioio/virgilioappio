@@ -452,5 +452,9 @@ export function useApplicationReview(jobId: string) {
     navigateTo,
     persistRejectionConfig,
     invalidateQueries,
+    handleUndo,
+    selectByCandidateId,
+    lastAction,
+
   }
 }
