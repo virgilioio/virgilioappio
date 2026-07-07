@@ -19,7 +19,7 @@ serve(async (req) => {
 
   const isAuthorized = !!expectedSecret && gotSecret === expectedSecret;
 
-  const ENFORCE_INTERNAL_AUTH = false; // flip to true only in a later, separate change
+  const ENFORCE_INTERNAL_AUTH = true;
 
   if (!isAuthorized) {
     console.warn(`[auth-gate] Unauthorized call. enforce=${ENFORCE_INTERNAL_AUTH}`);
