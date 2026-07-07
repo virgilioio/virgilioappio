@@ -33,7 +33,7 @@ import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationRev
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
 import { useRejectionReasons } from '@/hooks/useRejectionReasons'
-import { useApplicationResponses } from '@/hooks/useApplicationResponses'
+import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { RejectionReasonSelector } from '@/components/candidates/RejectionReasonSelector'
