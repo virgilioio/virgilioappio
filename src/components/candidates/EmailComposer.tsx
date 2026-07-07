@@ -447,36 +447,47 @@ export function EmailComposer({
             label="To"
             hairline
             right={
-              <div className="flex items-center gap-2">
-                {!showCC && (
-                  <button
-                    type="button"
-                    onClick={() => setShowCC(true)}
-                    style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
-                  >
-                    Cc
-                  </button>
-                )}
-                {!showBCC && (
-                  <>
-                    <span style={{ color: '#8B8F9E', fontSize: 11 }}>·</span>
+              isBulk ? null : (
+                <div className="flex items-center gap-2">
+                  {!showCC && (
                     <button
                       type="button"
-                      onClick={() => setShowBCC(true)}
+                      onClick={() => setShowCC(true)}
                       style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
                     >
-                      Bcc
+                      Cc
                     </button>
-                  </>
-                )}
-              </div>
+                  )}
+                  {!showBCC && (
+                    <>
+                      <span style={{ color: '#8B8F9E', fontSize: 11 }}>·</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowBCC(true)}
+                        style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
+                      >
+                        Bcc
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
             }
           >
-            <ChipInput
-              value={toChips}
-              onChange={setToChips}
-              placeholder="Add recipient…"
-            />
+            {isBulk ? (
+              <BulkRecipientsPill
+                loading={bulkLoading}
+                count={bulkAssociationIds.length}
+                names={bulkRecipientNames}
+                skipped={bulkSkippedNames}
+              />
+            ) : (
+              <ChipInput
+                value={toChips}
+                onChange={setToChips}
+                placeholder="Add recipient…"
+              />
+            )}
           </MetaRow>
 
           {showCC && (
