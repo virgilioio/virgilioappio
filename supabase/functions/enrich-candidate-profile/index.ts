@@ -12,6 +12,10 @@ interface EnrichRequest {
   candidateId: string;
   resumeText?: string;
   candidateName?: string;
+  // Optional: when set, analyze-candidate-fit is fired ONCE after enrichment
+  // writes complete, so the fit analysis reads fully-populated candidate data
+  // (skills, work history, years_experience, ...) instead of racing enrichment.
+  jobId?: string;
 }
 
 // ---------- OpenAI Tool-Calling Schema ----------
