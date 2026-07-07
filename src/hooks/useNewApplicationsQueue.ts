@@ -60,8 +60,7 @@ export function useNewApplicationsQueue() {
             current_stage_id,
             entered_stage_at,
             created_at,
-            source,
-            candidates!inner(id, candidate_name)
+            candidates!inner(id, candidate_name, source)
           `)
           .in('current_stage_id', chunk)
           .eq('status', 'active')
@@ -82,7 +81,7 @@ export function useNewApplicationsQueue() {
             jobId,
             jobTitle: job?.title ?? 'Unknown Job',
             enteredAt: row.entered_stage_at ?? row.created_at,
-            source: row.source ?? null,
+            source: row.candidates?.source ?? null,
           })
         }
       }
