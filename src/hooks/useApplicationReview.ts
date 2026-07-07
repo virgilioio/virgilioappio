@@ -94,6 +94,9 @@ export function useApplicationReview(jobId: string) {
     if (!jobId || !user) return
     setIsLoading(true)
     setStats({ rejected: 0, passed: 0, advanced: 0 })
+    setAdvancedList([])
+    setPassedList([])
+    setRejectedList([])
     setCurrentIndex(0)
     setHasActioned(false)
 
