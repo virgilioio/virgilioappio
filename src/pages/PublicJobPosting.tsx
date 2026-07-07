@@ -761,6 +761,14 @@ export default function PublicJobPosting() {
     }`.trim()
   })()
 
+  const variableCompLabel = (() => {
+    if (!details.hasCommissions) return null
+    if (details.commissionsAmount) {
+      return `${details.commissionsCurrency || ''} ${Number(details.commissionsAmount).toLocaleString()}`.trim()
+    }
+    return 'Included'
+  })()
+
   const metaChips: { icon?: any; label: string }[] = []
   if (details.location || details.locationType) {
     metaChips.push({
