@@ -863,31 +863,21 @@ serve(async (req) => {
       fileUploadResults: fileUploadResults.length > 0 ? fileUploadResults : undefined
     });
 
-    // Fire-and-forget background AI enrichment (skills + profile summary)
+    // Fire-and-forget background AI enrichment (skills + profile summary).
+    // Enrichment is now responsible for tail-firing analyze-candidate-fit once
+    // the candidate row is fully populated — this fixes the previous race that
+    // produced empty Fit Dimensions on public applications.
     if (globalCandidateId) {
       supabase.functions.invoke('enrich-candidate-profile', {
         body: {
           candidateId: globalCandidateId,
           resumeText: body.resumeText || '',
           candidateName: candidateName,
+          jobId: posting.job_id,
         }
       }).catch(err => console.error('Background enrichment call failed:', err));
-      
-      console.log('🧠 Triggered background enrichment for candidate:', globalCandidateId);
 
-      // Fire-and-forget: pre-generate AI fit insights
-      try {
-        const fitUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/analyze-candidate-fit`
-        fetch(fitUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          },
-          body: JSON.stringify({ candidate_id: globalCandidateId, job_id: posting.job_id }),
-        }).catch(() => {})
-        console.log('🔮 Triggered AI fit analysis for candidate:', globalCandidateId);
-      } catch {}
+      console.log('🧠 Triggered background enrichment (+ chained fit analysis) for candidate:', globalCandidateId);
     }
 
     // Fire-and-forget: Send workspace confirmation email if automation is active
