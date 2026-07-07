@@ -420,6 +420,26 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     }
 
     console.log(`[enrich] Successfully enriched candidate ${candidateId}`);
+
+    // Tail-fire AI fit analysis now that skills / work_exp / education / years_experience
+    // are committed. Prevents the previous race where analyze-candidate-fit ran on a
+    // bare candidate row and returned null on every knowledge-based dimension.
+    if (jobId) {
+      try {
+        const fitUrl = `${SUPABASE_URL}/functions/v1/analyze-candidate-fit`;
+        fetch(fitUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({ candidate_id: candidateId, job_id: jobId }),
+        }).catch((e) => console.error('[enrich] Post-enrichment fit analysis call failed:', e));
+        console.log(`[enrich] Triggered post-enrichment fit analysis for candidate ${candidateId} / job ${jobId}`);
+      } catch (fitErr) {
+        console.error('[enrich] Failed to trigger post-enrichment fit analysis:', fitErr);
+      }
+    }
   } catch (err) {
     console.error(`[enrich] Error:`, err);
     await supabase.from('candidates').update({ enrichment_status: 'failed' }).eq('id', candidateId);
