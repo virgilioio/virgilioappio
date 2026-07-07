@@ -55,8 +55,17 @@ export function useApplicationReview(jobId: string) {
   const [isActioning, setIsActioning] = useState(false)
   const [firstStageId, setFirstStageId] = useState<string | null>(null)
   const [firstStageName, setFirstStageName] = useState<string | null>(null)
+  const [applicationReviewStageId, setApplicationReviewStageId] = useState<string | null>(null)
   const [stats, setStats] = useState<ReviewSessionStats>({ rejected: 0, passed: 0, advanced: 0 })
   const [hasActioned, setHasActioned] = useState(false)
+  const [lastAction, setLastAction] = useState<
+    | {
+        type: 'reject' | 'pass' | 'advance'
+        candidate: ReviewCandidate
+        prevIndex: number
+      }
+    | null
+  >(null)
   const [rejectionConfig, setRejectionConfig] = useState<RejectionConfig>(() => {
     try {
       const stored = localStorage.getItem('app-review-rejection-config')
@@ -64,6 +73,7 @@ export function useApplicationReview(jobId: string) {
     } catch {}
     return { sendEmail: false }
   })
+
 
   const currentCandidate = queue[currentIndex] ?? null
   const isComplete = hasActioned && currentCandidate === null
