@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,10 +10,14 @@ import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplate
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SplitButton } from '@/components/ui/split-button';
+import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
+import { useBulkSendEmail } from '@/hooks/useBulkSendEmail';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { AVAILABLE_PLACEHOLDERS } from '@/utils/placeholderUtils';
+import { supabase } from '@/lib/supabaseClient';
 import {
   Paperclip,
   X,
@@ -29,7 +33,11 @@ import {
   Calendar,
   Bookmark,
   ChevronDown,
+  Users,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
@@ -66,6 +74,14 @@ interface EmailComposerProps {
   defaultCc?: string;
   /** Notify the docked wrapper when a template chip should appear in the header. */
   onTemplateAppliedChange?: (applied: boolean) => void;
+  /** Enable bulk-send mode: composes one email personalized per candidate in the job. */
+  bulk?: { candidateIds: string[]; jobId: string };
+}
+
+interface Attachment {
+  file: File;
+  name: string;
+  size: number;
 }
 
 interface Attachment {
@@ -94,10 +110,13 @@ export function EmailComposer({
   defaultBody,
   defaultCc,
   onTemplateAppliedChange,
+  bulk,
 }: EmailComposerProps) {
+  const isBulk = !!bulk;
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
   const { templates, isLoading: loadingTemplates } = useEmailTemplates('organization');
   const sendEmail = useSendEmail();
+  const bulkSend = useBulkSendEmail();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [bodyHtml, setBodyHtml] = useState(defaultBody || '');
   const [subjectHtml, setSubjectHtml] = useState(defaultSubject || '');
@@ -110,6 +129,14 @@ export function EmailComposer({
   const [ccChips, setCcChips] = useState<string[]>(splitAddrs(defaultCc));
   const [bccChips, setBccChips] = useState<string[]>([]);
 
+  // ── Bulk mode state ────────────────────────────────────────
+  const [bulkAssociationIds, setBulkAssociationIds] = useState<string[]>([]);
+  const [bulkRecipientNames, setBulkRecipientNames] = useState<string[]>([]);
+  const [bulkSkippedNames, setBulkSkippedNames] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+  const [showScheduler, setShowScheduler] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const bodyEditorRef = useRef<BodyTemplateEditorHandle | null>(null);
@@ -121,6 +148,39 @@ export function EmailComposer({
   useEffect(() => {
     onTemplateAppliedChange?.(!!selectedTemplateId);
   }, [selectedTemplateId, onTemplateAppliedChange]);
+
+  // Resolve bulk candidateIds → association IDs & names (skips those with no email).
+  useEffect(() => {
+    if (!bulk || bulk.candidateIds.length === 0) return;
+    let cancelled = false;
+    setBulkLoading(true);
+    (async () => {
+      const { data, error } = await supabase
+        .from('job_candidate_associations')
+        .select('id, candidate:candidates!inner(email, candidate_name)')
+        .eq('job_id', bulk.jobId)
+        .in('candidate_id', bulk.candidateIds);
+      if (cancelled) return;
+      if (error || !data) {
+        setBulkLoading(false);
+        return;
+      }
+      const withEmail: { id: string; name: string }[] = [];
+      const skipped: string[] = [];
+      for (const row of data as any[]) {
+        const name = row.candidate?.candidate_name || 'Unknown';
+        if (row.candidate?.email) withEmail.push({ id: row.id, name });
+        else skipped.push(name);
+      }
+      setBulkAssociationIds(withEmail.map((w) => w.id));
+      setBulkRecipientNames(withEmail.map((w) => w.name));
+      setBulkSkippedNames(skipped);
+      setBulkLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bulk?.jobId, bulk?.candidateIds.join(',')]);
 
   const handleFormKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -136,9 +196,13 @@ export function EmailComposer({
     setValue,
     watch,
   } = useForm<EmailFormData>({
-    resolver: zodResolver(emailSchema),
+    resolver: zodResolver(
+      isBulk
+        ? (emailSchema.extend({ to: z.string().optional().default('') }) as any)
+        : emailSchema,
+    ),
     defaultValues: {
-      to: defaultTo || '',
+      to: isBulk ? 'bulk' : (defaultTo || ''),
       from_email: activeIdentities[0]?.email_address || '',
       subject: defaultSubject || '',
       cc: defaultCc || '',
@@ -234,15 +298,33 @@ export function EmailComposer({
     });
 
   const onSubmit = async (data: EmailFormData) => {
+    const subjectWithPlaceholders = convertHtmlToPlaceholders(subjectHtml);
+    const bodyHtmlWithPlaceholders = convertHtmlToPlaceholders(bodyHtml);
+
+    if (isBulk) {
+      if (bulkAssociationIds.length === 0) {
+        toast.error('No recipients with a valid email address.');
+        return;
+      }
+      await bulkSend.sendBulkEmailAsync({
+        associationIds: bulkAssociationIds,
+        emailData: {
+          fromEmail: data.from_email,
+          subject: subjectWithPlaceholders,
+          bodyHtml: bodyHtmlWithPlaceholders,
+        },
+        scheduleFor: scheduledAt || undefined,
+      });
+      onSuccess?.();
+      return;
+    }
+
     const attachmentPromises = attachments.map(async (att) => ({
       filename: att.name,
       content: await fileToBase64(att.file),
       content_type: att.file.type || 'application/octet-stream',
     }));
     const processedAttachments = await Promise.all(attachmentPromises);
-
-    const subjectWithPlaceholders = convertHtmlToPlaceholders(subjectHtml);
-    const bodyHtmlWithPlaceholders = convertHtmlToPlaceholders(bodyHtml);
     const bodyTextWithPlaceholders = bodyHtmlWithPlaceholders.replace(/<[^>]*>/g, '');
 
     const request: SendEmailRequest = {
@@ -365,36 +447,47 @@ export function EmailComposer({
             label="To"
             hairline
             right={
-              <div className="flex items-center gap-2">
-                {!showCC && (
-                  <button
-                    type="button"
-                    onClick={() => setShowCC(true)}
-                    style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
-                  >
-                    Cc
-                  </button>
-                )}
-                {!showBCC && (
-                  <>
-                    <span style={{ color: '#8B8F9E', fontSize: 11 }}>·</span>
+              isBulk ? null : (
+                <div className="flex items-center gap-2">
+                  {!showCC && (
                     <button
                       type="button"
-                      onClick={() => setShowBCC(true)}
+                      onClick={() => setShowCC(true)}
                       style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
                     >
-                      Bcc
+                      Cc
                     </button>
-                  </>
-                )}
-              </div>
+                  )}
+                  {!showBCC && (
+                    <>
+                      <span style={{ color: '#8B8F9E', fontSize: 11 }}>·</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowBCC(true)}
+                        style={{ fontSize: 11, fontWeight: 500, color: '#6F3FF5', fontFamily: 'Inter' }}
+                      >
+                        Bcc
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
             }
           >
-            <ChipInput
-              value={toChips}
-              onChange={setToChips}
-              placeholder="Add recipient…"
-            />
+            {isBulk ? (
+              <BulkRecipientsPill
+                loading={bulkLoading}
+                count={bulkAssociationIds.length}
+                names={bulkRecipientNames}
+                skipped={bulkSkippedNames}
+              />
+            ) : (
+              <ChipInput
+                value={toChips}
+                onChange={setToChips}
+                placeholder="Add recipient…"
+              />
+            )}
           </MetaRow>
 
           {showCC && (
@@ -706,6 +799,57 @@ export function EmailComposer({
           />
         </div>
 
+        {/* Bulk: schedule strip */}
+        {isBulk && (scheduledAt || showScheduler) && (
+          <div
+            className="flex items-center gap-2 shrink-0"
+            style={{
+              padding: '8px 16px',
+              borderTop: '1px solid #F1F0EC',
+              background: '#FAF8FF',
+            }}
+          >
+            <Clock className="h-3.5 w-3.5" style={{ color: '#5B21B6' }} />
+            <span
+              style={{ fontSize: 11.5, color: '#5B21B6', fontFamily: 'Poppins, sans-serif', fontWeight: 500 }}
+            >
+              Scheduled send
+            </span>
+            <div className="flex-1" />
+            <DateTimePickerVirgilio
+              value={scheduledAt || new Date(Date.now() + 60 * 60 * 1000)}
+              onChange={(d) => setScheduledAt(d)}
+              minDate={new Date()}
+            />
+            <button
+              type="button"
+              aria-label="Cancel schedule"
+              onClick={() => {
+                setScheduledAt(null);
+                setShowScheduler(false);
+              }}
+              className="ml-1"
+              style={{ color: '#8B8F9E' }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Bulk: progress hairline */}
+        {isBulk && bulkSend.isPending && bulkSend.progress.total > 0 && (
+          <div className="shrink-0" style={{ height: 2, background: '#F1F0EC' }}>
+            <div
+              style={{
+                height: '100%',
+                width: `${((bulkSend.progress.completed + bulkSend.progress.failed) / bulkSend.progress.total) * 100}%`,
+                background: '#6F3FF5',
+                transition: 'width 200ms ease',
+              }}
+            />
+          </div>
+        )}
+
         {/* Footer */}
         <div
           className="relative flex items-center gap-2 shrink-0"
@@ -725,11 +869,15 @@ export function EmailComposer({
             }}
             anchorStyle={{ left: 12, right: 12, bottom: '100%', marginBottom: 8 }}
           />
-          <FooterIcon
-            icon={<Paperclip className="h-3.5 w-3.5" />}
-            label="Attach files"
-            onClick={() => fileInputRef.current?.click()}
-          />
+          {!isBulk && (
+            <FooterIcon
+              icon={<Paperclip className="h-3.5 w-3.5" />}
+              label="Attach files"
+              onClick={() => fileInputRef.current?.click()}
+            />
+          )}
+
+
           <FooterIcon
             icon={<Calendar className="h-3.5 w-3.5" />}
             label="Insert booking link"
@@ -745,20 +893,56 @@ export function EmailComposer({
             variant="secondary"
             size="sm"
             onClick={handleDiscard}
-            disabled={sendEmail.isPending}
+            disabled={sendEmail.isPending || bulkSend.isPending}
           >
             Discard
           </Button>
-          <Button type="submit" size="sm" disabled={sendEmail.isPending}>
-            {sendEmail.isPending ? (
-              'Sending…'
-            ) : (
-              <>
-                <Send className="h-3.5 w-3.5" />
-                Send
-              </>
-            )}
-          </Button>
+          {isBulk ? (
+            <SplitButton
+              size="sm"
+              onClick={() => formRef.current?.requestSubmit()}
+              disabled={bulkSend.isPending || bulkAssociationIds.length === 0 || (showScheduler && !scheduledAt)}
+              options={[
+                {
+                  label: scheduledAt ? 'Send immediately' : 'Schedule for later…',
+                  onSelect: () => {
+                    if (scheduledAt) {
+                      setScheduledAt(null);
+                      setShowScheduler(false);
+                    } else {
+                      setShowScheduler(true);
+                      setScheduledAt(new Date(Date.now() + 60 * 60 * 1000));
+                    }
+                  },
+                },
+              ]}
+            >
+              {bulkSend.isPending ? (
+                `Sending ${bulkSend.progress.completed + bulkSend.progress.failed}/${bulkSend.progress.total}…`
+              ) : scheduledAt ? (
+                <>
+                  <Clock className="h-3.5 w-3.5" />
+                  {`Schedule ${bulkAssociationIds.length} email${bulkAssociationIds.length === 1 ? '' : 's'}`}
+                </>
+              ) : (
+                <>
+                  <Send className="h-3.5 w-3.5" />
+                  {`Send ${bulkAssociationIds.length || ''} email${bulkAssociationIds.length === 1 ? '' : 's'}`.trim()}
+                </>
+              )}
+            </SplitButton>
+          ) : (
+            <Button type="submit" size="sm" disabled={sendEmail.isPending}>
+              {sendEmail.isPending ? (
+                'Sending…'
+              ) : (
+                <>
+                  <Send className="h-3.5 w-3.5" />
+                  Send
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </form>
     );
@@ -869,6 +1053,80 @@ function MetaRow({
       </div>
       <div className="min-w-0">{children}</div>
       <div className="shrink-0">{right}</div>
+    </div>
+  );
+}
+
+// Read-only recipients pill for bulk mode. Popover lists candidate names + skipped.
+function BulkRecipientsPill({
+  loading,
+  count,
+  names,
+  skipped,
+}: {
+  loading: boolean;
+  count: number;
+  names: string[];
+  skipped: string[];
+}) {
+  if (loading) {
+    return (
+      <span style={{ fontSize: 12, color: '#8B8F9E', fontFamily: 'Inter' }}>
+        Loading recipients…
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors hover:bg-[#F1F0EC]"
+            style={{
+              background: '#EDE4FF',
+              color: '#5B21B6',
+              fontSize: 11.5,
+              fontFamily: 'Poppins, sans-serif',
+              fontWeight: 500,
+            }}
+          >
+            <Users className="h-3 w-3" />
+            {count} recipient{count === 1 ? '' : 's'}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 p-2 max-h-[280px] overflow-auto">
+          <div className="mb-1" style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B8F9E', fontFamily: 'Inter', fontWeight: 600 }}>
+            Recipients ({count})
+          </div>
+          {names.map((n, i) => (
+            <div key={`r-${i}`} className="px-2 py-1 truncate" style={{ fontSize: 12.5, color: '#1F2230', fontFamily: 'Inter' }}>
+              {n}
+            </div>
+          ))}
+          {skipped.length > 0 && (
+            <>
+              <div className="mt-2 mb-1" style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8B8F9E', fontFamily: 'Inter', fontWeight: 600 }}>
+                Skipped — no email
+              </div>
+              {skipped.map((n, i) => (
+                <div key={`s-${i}`} className="px-2 py-1 truncate" style={{ fontSize: 12.5, color: '#8B8F9E', fontFamily: 'Inter' }}>
+                  {n}
+                </div>
+              ))}
+            </>
+          )}
+        </PopoverContent>
+      </Popover>
+      {skipped.length > 0 && (
+        <span
+          className="inline-flex items-center gap-1"
+          style={{ fontSize: 10.5, color: '#B45309', fontFamily: 'Inter', fontWeight: 500 }}
+        >
+          <AlertTriangle className="h-3 w-3" />
+          {skipped.length} skipped — no email
+        </span>
+      )}
     </div>
   );
 }

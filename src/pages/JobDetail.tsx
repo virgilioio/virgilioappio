@@ -64,7 +64,7 @@ import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 import { BulkRejectionDialog } from '@/components/candidates/BulkRejectionDialog'
-import { BulkEmailDialog } from '@/components/candidates/BulkEmailDialog'
+import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
@@ -1554,14 +1554,16 @@ export default function JobDetail() {
           onSuccess={handleBulkRejectionSuccess}
         />
 
-        <BulkEmailDialog
-          open={showBulkEmailDialog}
+        <MinimizableEmailComposer
+          isOpen={showBulkEmailDialog}
           onOpenChange={setShowBulkEmailDialog}
-          candidateIds={selectedCandidateIds}
           jobId={id!}
+          bulk={{ candidateIds: selectedCandidateIds, jobId: id! }}
+          bulkJobTitle={job.title}
           onSuccess={() => {
             setSelectedCandidateIds([])
             setSelectionMode(false)
+            setShowBulkEmailDialog(false)
           }}
         />
 
