@@ -5,6 +5,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronRight as ChevronRightIcon,
   ThumbsDown,
   SkipForward,
   ArrowRight,
@@ -26,7 +27,15 @@ import {
   FileText,
   AlertTriangle,
   Undo2,
+  Mail,
+  Send,
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useBulkSendEmail } from '@/hooks/useBulkSendEmail'
+import { useMailIdentities } from '@/hooks/useMailIdentities'
+import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
+import { SimpleScheduleInterviewSheet } from '@/components/candidates/SimpleScheduleInterviewSheet'
+import type { ReviewCandidate } from '@/hooks/useApplicationReview'
 import { supabase } from '@/lib/supabaseClient'
 import { ensureAbsoluteUrl } from '@/lib/utils'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
