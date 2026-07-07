@@ -1554,14 +1554,16 @@ export default function JobDetail() {
           onSuccess={handleBulkRejectionSuccess}
         />
 
-        <BulkEmailDialog
-          open={showBulkEmailDialog}
+        <MinimizableEmailComposer
+          isOpen={showBulkEmailDialog}
           onOpenChange={setShowBulkEmailDialog}
-          candidateIds={selectedCandidateIds}
           jobId={id!}
+          bulk={{ candidateIds: selectedCandidateIds, jobId: id! }}
+          bulkJobTitle={job.title}
           onSuccess={() => {
             setSelectedCandidateIds([])
             setSelectionMode(false)
+            setShowBulkEmailDialog(false)
           }}
         />
 
