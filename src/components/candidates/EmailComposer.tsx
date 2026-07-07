@@ -869,12 +869,14 @@ export function EmailComposer({
             }}
             anchorStyle={{ left: 12, right: 12, bottom: '100%', marginBottom: 8 }}
           />
-          <FooterIcon
-            icon={<Paperclip className="h-3.5 w-3.5" />}
-            label="Attach files"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isBulk}
-          />
+          {!isBulk && (
+            <FooterIcon
+              icon={<Paperclip className="h-3.5 w-3.5" />}
+              label="Attach files"
+              onClick={() => fileInputRef.current?.click()}
+            />
+          )}
+
 
           <FooterIcon
             icon={<Calendar className="h-3.5 w-3.5" />}
