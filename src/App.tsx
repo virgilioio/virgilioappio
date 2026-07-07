@@ -169,7 +169,9 @@ function AppContent() {
             <Route path="/talent-intelligence" element={<TalentIntelligence />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
             <Route path="/jobs/:jobId/pipeline" element={<JobDetail />} />
+            <Route path="/jobs/:jobId/review" element={<ApplicationReviewPage />} />
             <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+
             <Route path="/candidates" element={<Candidates />} />
             <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
             <Route path="/lists/:id" element={<SharedList />} />
