@@ -28,8 +28,17 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     const tenantId = url.searchParams.get('tenant_id')
     const companySlug = url.searchParams.get('company_slug')
+    const board = url.searchParams.get('board') || 'talent'
 
-    console.log('[generate-talent-feed] Request params:', { tenantId, companySlug })
+    const ALLOWED_BOARDS = ['talent', 'jooble', 'adzuna', 'careerjet', 'jobrapido']
+    if (!ALLOWED_BOARDS.includes(board)) {
+      return new Response(JSON.stringify({ error: 'Unknown board' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    console.log('[generate-talent-feed] Request params:', { tenantId, companySlug, board })
 
     if (!tenantId && !companySlug) {
       return new Response(JSON.stringify({ error: 'Missing tenant_id or company_slug parameter' }), {
