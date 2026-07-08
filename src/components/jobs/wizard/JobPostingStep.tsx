@@ -800,6 +800,13 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           </div>
         </SectionCard>
 
+        {/* ---------- SYNDICATION CHANNELS (wired to DB) ---------- */}
+        <SectionCard title="Syndication channels">
+          <PostingChannelsCard value={postingChannels} onChange={setPostingChannels} />
+        </SectionCard>
+
+
+
         {/* ---------- APPLY EXPERIENCE ---------- */}
         <SectionCard title="Apply experience">
           <ToggleRow label="Send confirmation email" hint={`From noreply@app.gogio.io · 'We received your application — here's what's next'`} checked={sendConfirm} onChange={setSendConfirm} />
