@@ -117,12 +117,20 @@ export function PostingChannelsCard({ value, onChange, readOnly }: Props) {
             <div key={ch.code} className="flex items-center gap-4 px-5 py-4">
               <div
                 className={cn(
-                  'h-9 w-9 rounded-lg flex items-center justify-center text-[13px] font-semibold shrink-0',
+                  'h-9 w-9 rounded-lg flex items-center justify-center overflow-hidden shrink-0',
                   ch.glyphBg,
                   ch.glyphFg
                 )}
               >
-                {ch.glyph}
+                {ch.imageUrl ? (
+                  <img
+                    src={ch.imageUrl}
+                    alt={`${ch.name} logo`}
+                    className="h-full w-full object-contain p-1"
+                  />
+                ) : (
+                  <span className="text-[13px] font-semibold">{ch.glyph}</span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
