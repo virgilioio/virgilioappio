@@ -113,7 +113,7 @@ export function AddOrTransferCandidateDialog({
   const availableJobs = useMemo(
     () =>
       (jobs || []).filter(
-        (job) => job.id !== currentJobId && job.status !== 'archived'
+        (job) => job.id !== currentJobId && job.status === 'open'
       ),
     [jobs, currentJobId]
   )
