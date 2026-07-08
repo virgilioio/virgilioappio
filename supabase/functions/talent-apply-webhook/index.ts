@@ -88,8 +88,8 @@ Deno.serve(async (req) => {
       const updateData: any = {
         updated_at: new Date().toISOString()
       }
-      if (resumeUrl) updateData.resume_url = resumeUrl
       if (applicant.phoneNumber) updateData.phone = applicant.phoneNumber
+
 
       const { data: updated } = await supabase
         .from('candidates')
@@ -108,13 +108,13 @@ Deno.serve(async (req) => {
           candidate_name: candidateName,
           email: applicant.email,
           phone: applicant.phoneNumber || null,
-          resume_url: resumeUrl,
           source: 'talent.com',
           job_board_source: 'talent.com',
           external_application_id: talentApplicationId,
           tenant_id: posting.tenant_id,
           created_by: null
         })
+
         .select()
         .single()
 
