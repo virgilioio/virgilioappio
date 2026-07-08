@@ -28,8 +28,17 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     const tenantId = url.searchParams.get('tenant_id')
     const companySlug = url.searchParams.get('company_slug')
+    const board = url.searchParams.get('board') || 'talent'
 
-    console.log('[generate-talent-feed] Request params:', { tenantId, companySlug })
+    const ALLOWED_BOARDS = ['talent', 'jooble', 'adzuna', 'careerjet', 'jobrapido']
+    if (!ALLOWED_BOARDS.includes(board)) {
+      return new Response(JSON.stringify({ error: 'Unknown board' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    console.log('[generate-talent-feed] Request params:', { tenantId, companySlug, board })
 
     if (!tenantId && !companySlug) {
       return new Response(JSON.stringify({ error: 'Missing tenant_id or company_slug parameter' }), {
@@ -70,16 +79,16 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Check if Talent.com integration is enabled
+    // Check if the board integration is enabled
     const { data: integration } = await supabase
       .from('job_board_integrations')
       .select('is_enabled')
       .eq('tenant_id', tenant.id)
-      .eq('board_name', 'talent')
+      .eq('board_name', board)
       .single()
 
     if (!integration?.is_enabled) {
-      return new Response(JSON.stringify({ error: 'Talent.com integration not enabled' }), {
+      return new Response(JSON.stringify({ error: `${board} integration not enabled` }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -133,7 +142,7 @@ Deno.serve(async (req) => {
     ${state ? `<state><![CDATA[${escapeXml(state)}]]></state>` : ''}
     ${country ? `<country><![CDATA[${escapeXml(country)}]]></country>` : ''}
     <dateposted>${posting.created_at}</dateposted>
-    <url><![CDATA[https://app.gogio.io/p/${posting.slug}?source=talent]]></url>
+    <url><![CDATA[https://app.gogio.io/p/${posting.slug}?source=${board}]]></url>
     <description><![CDATA[${posting.description || ''}]]></description>
     ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
     ${details.location_type ? `<isremote>${details.location_type === 'remote' ? 'yes' : 'no'}</isremote>` : ''}
@@ -143,7 +152,7 @@ Deno.serve(async (req) => {
       <period>${details.salary_period || 'year'}</period>
       <min>${details.salary_amount}</min>
     </salary>` : ''}
-    <talent-apply-data><![CDATA[talent-apply-posturl=${webhookUrl}&talent-apply-questions=${questionsUrl}]]></talent-apply-data>
+    ${board === 'talent' ? `<talent-apply-data><![CDATA[talent-apply-posturl=${webhookUrl}&talent-apply-questions=${questionsUrl}]]></talent-apply-data>` : ''}
   </job>`
     }).join('\n')
 
@@ -158,7 +167,8 @@ Deno.serve(async (req) => {
     return new Response(xml, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/xml; charset=utf-8'
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600'
       }
     })
   } catch (error) {
