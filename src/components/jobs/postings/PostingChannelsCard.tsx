@@ -78,6 +78,10 @@ export function PostingChannelsCard({ value, onChange, readOnly }: Props) {
   const careersPageName = tenant?.name ? `${tenant.name}'s careers page` : 'Your careers page'
   const setChannel = (code: string, enabled: boolean) => {
     if (code === 'careers') {
+      // Always on — no-op.
+      return
+    }
+    if (code === 'talent') {
       onChange({ ...value, publishToTalent: enabled })
       return
     }
@@ -91,7 +95,8 @@ export function PostingChannelsCard({ value, onChange, readOnly }: Props) {
   }
 
   const isOn = (code: string) => {
-    if (code === 'careers') return value.publishToTalent || true // always on
+    if (code === 'careers') return true
+    if (code === 'talent') return !!value.publishToTalent
     return !!value.channels[code]?.enabled
   }
 
