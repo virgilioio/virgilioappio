@@ -42,6 +42,14 @@ Deno.serve(async (req) => {
 
     // Parse application payload
     const payload = await req.json()
+
+    if (!payload.applicant || !payload.applicant.fullName || !payload.applicant.email) {
+      return new Response(JSON.stringify({ error: 'Missing required applicant fields' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const { applicant, customFields = [], id: talentApplicationId } = payload
 
     console.log('Received Talent.com application:', { talentApplicationId, postingId })
@@ -51,33 +59,16 @@ Deno.serve(async (req) => {
     const candidateName = applicant.fullName || 'Unknown Applicant'
 
     // Handle resume upload
-    let resumeUrl: string | null = null
     let resumeBytes: Uint8Array | null = null
     let resumeOriginalName: string | null = null
+
     if (applicant.resume) {
       try {
         // Decode base64 resume
         resumeBytes = Uint8Array.from(atob(applicant.resume), c => c.charCodeAt(0))
         resumeOriginalName = applicant.resumeFilename || `talent-${talentApplicationId}.pdf`
-        const resumeFileName = `talent-${talentApplicationId}-${Date.now()}.pdf`
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('resumes')
-          .upload(`${posting.tenant_id}/${resumeFileName}`, resumeBytes, {
-            contentType: 'application/pdf',
-            upsert: false
-          })
-
-        if (uploadError) {
-          console.error('Resume upload error:', uploadError)
-        } else {
-          const { data: { publicUrl } } = supabase.storage
-            .from('resumes')
-            .getPublicUrl(uploadData.path)
-          resumeUrl = publicUrl
-        }
       } catch (error) {
-        console.error('Error processing resume:', error)
+        console.error('Error decoding resume:', error)
       }
     }
 
@@ -93,10 +84,10 @@ Deno.serve(async (req) => {
 
     if (existingCandidate) {
       // Update existing candidate
+
       const updateData: any = {
         updated_at: new Date().toISOString()
       }
-      if (resumeUrl) updateData.resume_url = resumeUrl
       if (applicant.phoneNumber) updateData.phone = applicant.phoneNumber
 
       const { data: updated } = await supabase
@@ -108,6 +99,7 @@ Deno.serve(async (req) => {
 
       candidateId = updated.id
       console.log('Updated existing candidate:', candidateId)
+
     } else {
       // Create new candidate
       const { data: newCandidate } = await supabase
@@ -116,7 +108,6 @@ Deno.serve(async (req) => {
           candidate_name: candidateName,
           email: applicant.email,
           phone: applicant.phoneNumber || null,
-          resume_url: resumeUrl,
           source: 'talent.com',
           job_board_source: 'talent.com',
           external_application_id: talentApplicationId,
@@ -132,6 +123,7 @@ Deno.serve(async (req) => {
       // Also persist the resume as a candidate_attachments record so
       // enrich-candidate-profile can locate and parse it. enrich downloads
       // from the 'candidate-attachments' bucket, not 'resumes'.
+
       if (resumeBytes && resumeOriginalName) {
         try {
           const attachmentPath = `${posting.tenant_id}/${candidateId}/${Date.now()}-${resumeOriginalName}`
