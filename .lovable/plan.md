@@ -1,53 +1,41 @@
-# Enrich "Draft with Gio" context
 
-## Current behavior
+## Context
 
-`supabase/functions/chat-ai-draft/index.ts` grounds drafts on a thin slice of context:
+When a candidate applies via a public posting with Candidate Chat enabled, `public-submit-application` sends them a warm, on-brand invite email using `renderChatInviteEmail` in `supabase/functions/_shared/chatInviteEmail.ts` ("… from the hiring team wants to chat", avatar bubble, CTA, etc.).
 
-- Candidate first name
-- Job title, department, location, work_mode, employment_type
-- Thread `context_summary`
-- Last 20 candidate-visible messages
+When a recruiter later replies inside the in-app chat, we already do notify the candidate — `chat-notification-processor` picks up `candidate_recruiter_reply` rows from `chat_notification_queue` and sends an email. But that email uses the generic `createEmailTemplate` (blue blockquote, plain "Open chat" CTA), not the branded invite design.
 
-It does **not** include the job description, requirements, hiring pipeline stages, or the candidate's current stage. So when a recruiter asks "propose next steps" or "explain the process", Gio has no grounding beyond the role's title and the recent chat, and the SYSTEM prompt forbids inventing details — meaning it often falls back to generic phrasing or "Not enough context".
+So the answer to the question is: yes, we do send a notification, but it doesn't match the initial invite. This plan aligns them.
 
-## Goal
+Scope: only the candidate-facing `candidate_recruiter_reply` branch. Recruiter-facing notifications (`recruiter_new_message`, `recruiter_handoff`) stay on the current internal template — different audience, different intent.
 
-Give the draft LLM the same job/stage grounding a recruiter would have open in the sidebar, so drafts can accurately reference:
+Out of scope: the `chat-send-email` path (that's a separate email-channel where the message *is* the email, not a notification about a new in-app message).
 
-- What the role actually involves (description, key requirements)
-- Where the candidate is in the process right now
-- What the next stage typically is
+## Change
 
-Recruiter voice, tone rules, and the "never invent facts" guardrail stay unchanged.
+Single-file edit: `supabase/functions/chat-notification-processor/index.ts`
 
-## Changes (backend only, single file)
+In `buildEmail`, replace the `candidate_recruiter_reply` branch so it renders through `renderChatInviteEmail` instead of `createEmailTemplate`:
 
-Edit `supabase/functions/chat-ai-draft/index.ts`:
+1. Import `renderChatInviteEmail` from `../_shared/chatInviteEmail.ts` (dynamic or top-level).
+2. Look up the sender (recruiter) profile from the last outbound message:
+   - Get `sender_user_id` from the latest `direction='out'` message in the thread (fallback: any recruiter on the thread).
+   - Fetch `profiles.first_name, last_name, title, avatar_url` for that user.
+   - Derive `recruiter_initials` and pick a stable `recruiter_color` (e.g. hash of user id → existing brand palette; or reuse whatever helper the invite already relies on — default to Gio purple `#6F3FF5` if none).
+3. Build merge vars:
+   - `recruiter_first_name`, `recruiter_full_name`, `recruiter_title` (fallback: "Hiring team"), `recruiter_initials`, `recruiter_color`, `recruiter_avatar`
+   - `candidate_first_name` from `ctx.candidate_name` (first token; fallback "there")
+   - `job_title` from `ctx.job_title` (fallback "the role")
+   - `recruiter_message` = the excerpt loaded via `loadLastExcerpt(..., "out")` (trim to ~600 chars to keep the email tight)
+   - `chat_url` = the same `ctaUrl` currently built (magic-link path if a live token exists, else `/chat`)
+   - `link_expiry` = "14 days" (matches token TTL used by the initial invite)
+   - `support_email` omitted → defaults to `support@gogio.com`
+4. Return `{ subject: rendered.subject, html: rendered.html, to: row.recipient_email }`. Keep `subject` from the template (not the current `"${company} replied"` string) so the design is fully consistent with the initial invite.
 
-1. **Widen the job fetch** to also select:
-   - `description` (or the job's stored description/summary field — verify the exact column when implementing)
-   - Any structured requirements/skills field already present on `jobs`
-2. **Fetch pipeline stages** for the job from `job_hiring_stages` (name + position, ordered).
-3. **Fetch the candidate's current stage** from `job_candidate_associations` for `(job_id, candidate_id)` — current stage id/name, plus derive "next stage" from the ordered stage list.
-4. **Extend the `ctxLines` block** with a compact, bounded context section:
-   - `Role summary:` — job description trimmed to a hard cap (~1500 chars) to protect tokens.
-   - `Key requirements:` — short bullet list if a structured field exists; otherwise omitted.
-   - `Hiring stages:` — `1. Applied → 2. Screen → 3. …` on one line.
-   - `Candidate is currently at:` — stage name.
-   - `Next stage:` — derived from stage order, if any.
-5. **Do all new reads in parallel** with the existing `Promise.all`, using `sbAdmin` (RLS already enforced by the thread read up top).
-6. **No changes** to: SYSTEM prompt, tone hints, token-cap logic, model selection, audit log shape, response shape, or the frontend `DraftWithGioPopover`.
+Nothing else changes: queue logic, cancel checks (read receipts, suppression, active candidate polling), retry/backoff, Resend send path, `EMAIL_DEFAULT_FROM`, cron cadence, and the recruiter-side branches stay exactly as they are.
 
-## Technical notes
+## Notes
 
-- Token budget: cap description at ~1500 chars and stages list at whatever fits on one line; the draft model is small and we already reserve `CHAT_TOKEN_CAPS.draft`.
-- Missing data must degrade silently — if a job has no description or the candidate has no association row, just omit those lines (don't emit "unknown").
-- Exact column names on `jobs`, `job_hiring_stages`, and `job_candidate_associations` will be confirmed against the schema at implementation time; the shape above is the intent.
-
-## Out of scope
-
-- Frontend UI (`DraftWithGioPopover.tsx`) — no changes.
-- Other AI functions (`chat-with-gio`, `generate-next-steps`, etc.).
-- Token cap or model changes.
-- DB migrations.
+- Best-effort lookups: if the recruiter profile can't be resolved, fall back to `first_name = "The hiring team"`, `initials = "GT"`, default color, no avatar — so we never fail to send a notification just because attribution data is missing.
+- Multi-message batches (`message_count > 1`) are naturally handled: the invite template renders `recruiter_message` as the body, so we still show the latest excerpt; no "+N more" line needed (the initial invite doesn't have one either — consistent by design).
+- No DB migrations, no frontend changes, no config.toml changes.
