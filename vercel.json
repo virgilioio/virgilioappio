@@ -1,9 +1,0 @@
-{
-  "redirects": [
-    {
-      "source": "/jobs-sitemap.xml",
-      "destination": "https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/generate-jobs-sitemap",
-      "permanent": true
-    }
-  ]
-}
