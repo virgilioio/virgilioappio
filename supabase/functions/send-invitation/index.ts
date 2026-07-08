@@ -136,30 +136,44 @@ const handler = async (req: Request): Promise<Response> => {
       day: 'numeric'
     });
 
-    // Import email template
-    const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
+    // Humanise the org-level role for the invite preview card
+    const roleLabelMap: Record<string, string> = {
+      admin: 'Admin',
+      owner: 'Owner',
+      member: 'Member',
+      sales: 'Sales',
+      recruiter: 'Recruiter',
+      hiring_manager: 'Hiring Manager',
+      interviewer: 'Interviewer',
+    };
+    const rawRole = String(member.system_role || 'member').toLowerCase();
+    const roleLabel = roleLabelMap[rawRole] || rawRole.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-    const emailContent = `
-      <p>You've been invited by ${inviterName || 'a team member'} to join <strong>${organizationName}</strong> on GoGio.</p>
-      <p>GoGio is a modern recruiting platform that helps teams hire better, faster. You'll have access to powerful tools for managing candidates, scheduling interviews, and collaborating with your team.</p>
-      <div class="divider"></div>
-      <p><strong>What's next?</strong></p>
-      ${formatEmailList([
-        'Click the button below to accept your invitation',
-        'Set up your account and profile',
-        'Start collaborating with your team'
-      ])}
-      <p style="margin-top: 24px;"><strong>Important:</strong> This invitation will expire on <strong>${expiryDate}</strong>.</p>
-    `;
+    // Deterministic avatar color from inviter name so it's stable across sends
+    const AVATAR_PALETTE = ['#6F3FF5', '#12B886', '#E8590C', '#1C7ED6', '#D6336C', '#4C6EF5', '#F59F00', '#0CA678'];
+    const inviterDisplay = (inviterName || '').trim();
+    let hash = 0;
+    for (let i = 0; i < inviterDisplay.length; i++) hash = (hash * 31 + inviterDisplay.charCodeAt(i)) >>> 0;
+    const inviterColor = AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+    const inviterInitials = (() => {
+      const parts = inviterDisplay.split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return '•';
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    })();
 
-    const emailHtml = createEmailTemplate({
-      recipientName: email.split('@')[0], // Use email prefix as fallback name
-      preheaderText: `Join ${organizationName} on GoGio`,
-      title: `Welcome to ${organizationName}!`,
-      content: emailContent,
-      ctaText: 'Accept Invitation',
-      ctaUrl: inviteUrl,
-      footerNote: `If you weren't expecting this invitation, you can safely ignore this email. The invitation will expire automatically on ${expiryDate}.`
+    // Render the gio-branded member invite email (mirrors the candidate chat invite shell)
+    const { renderMemberInviteEmail } = await import('../_shared/memberInviteEmail.ts');
+    const rendered = renderMemberInviteEmail({
+      recipient_name: email.split('@')[0],
+      organization_name: organizationName,
+      inviter_name: inviterDisplay,
+      inviter_title: 'Team member',
+      inviter_initials: inviterInitials,
+      inviter_color: inviterColor,
+      role_label: roleLabel,
+      invite_url: inviteUrl,
+      expiry_date: expiryDate,
     });
 
     // P1: Send the invitation email with retry logic
@@ -173,9 +187,12 @@ const handler = async (req: Request): Promise<Response> => {
         emailResponse = await resend.emails.send({
           from: emailFrom,
           to: [email],
-          subject: `You've been invited to join ${organizationName} on GoGio`,
-          html: emailHtml,
+          subject: rendered.subject,
+          html: rendered.html,
+          text: rendered.text,
         });
+
+
         
         console.log(`Email sent successfully on attempt ${attempt}:`, emailResponse);
         emailSent = true;
