@@ -18,6 +18,25 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createEmailTemplate } from "../_shared/emailTemplate.ts";
+import { renderChatInviteEmail } from "../_shared/chatInviteEmail.ts";
+
+const RECRUITER_AVATAR_COLORS = [
+  "#6F3FF5", "#0D0D09", "#B85CFF", "#2E7BFF", "#0EA5E9",
+  "#10B981", "#F59E0B", "#EF4444", "#EC4899", "#8B5CF6",
+];
+
+function pickRecruiterColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return RECRUITER_AVATAR_COLORS[h % RECRUITER_AVATAR_COLORS.length];
+}
+
+function initialsFrom(first?: string | null, last?: string | null): string {
+  const a = (first ?? "").trim().charAt(0);
+  const b = (last ?? "").trim().charAt(0);
+  const s = `${a}${b}`.toUpperCase();
+  return s || "GT";
+}
 
 const BATCH_SIZE = 25;
 const MAX_ATTEMPTS = 5;
