@@ -17,11 +17,6 @@ interface JobPosting {
   jobs: {
     id: string
   }
-  tenants: {
-    id: string
-    name: string
-    about: string
-  }
 }
 
 Deno.serve(async (req) => {
@@ -102,8 +97,7 @@ Deno.serve(async (req) => {
         created_at,
         location,
         job_type,
-        jobs!inner (id),
-        tenants!inner (id, name, about)
+        jobs!inner (id)
       `)
       .eq('tenant_id', tenant.id)
       .eq('is_active', true)
