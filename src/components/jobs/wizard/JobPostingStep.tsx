@@ -323,6 +323,12 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     const paidCount = enabledChannels.filter((c) => (c.cost || 0) > 0).length
     const freeCount = enabledChannels.length - paidCount
 
+    /* --- real channels (wired to DB fields) --- */
+    const [postingChannels, setPostingChannels] = useState<ChannelsValue>({
+      publishToTalent: true,
+      channels: { google_jobs: { enabled: true } },
+    })
+
     /* --- apply experience --- */
     const [sendConfirm, setSendConfirm] = useState(true)
     const [promise48, setPromise48] = useState(true)
