@@ -44,39 +44,6 @@ const CHANNELS: ChannelDef[] = [
     free: true,
   },
   {
-    code: 'linkedin',
-    name: 'LinkedIn',
-    meta: 'Sponsored job · estimated reach 12k',
-    glyph: 'in',
-    glyphBg: 'bg-[#0A66C2]',
-    glyphFg: 'text-white',
-    statusOn: 'Connected · $129 / 30 days',
-    statusOff: 'Not connected',
-    cost: 129,
-  },
-  {
-    code: 'wtj',
-    name: 'Welcome to the Jungle',
-    meta: 'Premium employer brand network',
-    glyph: 'W',
-    glyphBg: 'bg-[#FFCD00]',
-    glyphFg: 'text-[#0D0D09]',
-    statusOn: 'Connected · $0 (included)',
-    statusOff: 'Not connected',
-    free: true,
-  },
-  {
-    code: 'ziprecruiter',
-    name: 'ZipRecruiter',
-    meta: 'Aggregator · pay-per-click',
-    glyph: 'Z',
-    glyphBg: 'bg-[#5A6BFF]',
-    glyphFg: 'text-white',
-    statusOn: 'Connected · $89 / 30 days',
-    statusOff: 'Not connected',
-    cost: 89,
-  },
-  {
     code: 'google_jobs',
     name: 'Google for Jobs',
     meta: 'Free · indexed via structured data on the public posting',
@@ -88,14 +55,14 @@ const CHANNELS: ChannelDef[] = [
     free: true,
   },
   {
-    code: 'indeed',
-    name: 'Indeed',
-    meta: 'Free tier · organic placement',
-    glyph: 'I',
-    glyphBg: 'bg-[#003A9B]',
+    code: 'talent',
+    name: 'Talent.com',
+    meta: 'Free organic feed · integrated apply with screening questions',
+    glyph: 'T',
+    glyphBg: 'bg-[#1D1D1F]',
     glyphFg: 'text-white',
-    statusOn: 'Free · organic',
-    statusOff: 'Not connected',
+    statusOn: 'Live · syndicated via XML feed',
+    statusOff: 'Not syndicated',
     free: true,
   },
 ]
@@ -111,6 +78,10 @@ export function PostingChannelsCard({ value, onChange, readOnly }: Props) {
   const careersPageName = tenant?.name ? `${tenant.name}'s careers page` : 'Your careers page'
   const setChannel = (code: string, enabled: boolean) => {
     if (code === 'careers') {
+      // Always on — no-op.
+      return
+    }
+    if (code === 'talent') {
       onChange({ ...value, publishToTalent: enabled })
       return
     }
@@ -124,7 +95,8 @@ export function PostingChannelsCard({ value, onChange, readOnly }: Props) {
   }
 
   const isOn = (code: string) => {
-    if (code === 'careers') return value.publishToTalent || true // always on
+    if (code === 'careers') return true
+    if (code === 'talent') return !!value.publishToTalent
     return !!value.channels[code]?.enabled
   }
 

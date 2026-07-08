@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 import { useJobsWithPostings } from '@/hooks/useJobsWithPostings'
 import { useTenant } from '@/hooks/useTenant'
 import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, type AppField as SharedAppField, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
+import { PostingChannelsCard, type ChannelsValue } from '@/components/jobs/postings/PostingChannelsCard'
 
 
 /* ---------------- helpers ---------------- */
@@ -322,6 +323,12 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     const paidCount = enabledChannels.filter((c) => (c.cost || 0) > 0).length
     const freeCount = enabledChannels.length - paidCount
 
+    /* --- real channels (wired to DB fields) --- */
+    const [postingChannels, setPostingChannels] = useState<ChannelsValue>({
+      publishToTalent: true,
+      channels: { google_jobs: { enabled: true } },
+    })
+
     /* --- apply experience --- */
     const [sendConfirm, setSendConfirm] = useState(true)
     const [promise48, setPromise48] = useState(true)
@@ -398,6 +405,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             description,
             details,
             is_active: opts?.publish === true ? true : false,
+            publish_to_talent: postingChannels.publishToTalent,
           })
           if (!created) return { ok: false }
 
@@ -791,6 +799,13 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             <span className="text-[11.5px] bg-white/10 rounded-full px-3 py-1">{freeCount} free, {paidCount} paid</span>
           </div>
         </SectionCard>
+
+        {/* ---------- SYNDICATION CHANNELS (wired to DB) ---------- */}
+        <SectionCard title="Syndication channels">
+          <PostingChannelsCard value={postingChannels} onChange={setPostingChannels} />
+        </SectionCard>
+
+
 
         {/* ---------- APPLY EXPERIENCE ---------- */}
         <SectionCard title="Apply experience">
