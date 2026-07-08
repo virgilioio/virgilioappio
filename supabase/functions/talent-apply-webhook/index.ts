@@ -42,7 +42,16 @@ Deno.serve(async (req) => {
 
     // Parse application payload
     const payload = await req.json()
+
+    if (!payload.applicant || !payload.applicant.fullName || !payload.applicant.email) {
+      return new Response(JSON.stringify({ error: 'Missing required applicant fields' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const { applicant, customFields = [], id: talentApplicationId } = payload
+
 
     console.log('Received Talent.com application:', { talentApplicationId, postingId })
 
