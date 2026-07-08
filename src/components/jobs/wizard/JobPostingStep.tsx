@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 import { useJobsWithPostings } from '@/hooks/useJobsWithPostings'
 import { useTenant } from '@/hooks/useTenant'
 import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, type AppField as SharedAppField, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
+import { PostingChannelsCard, type ChannelsValue } from '@/components/jobs/postings/PostingChannelsCard'
 
 
 /* ---------------- helpers ---------------- */
