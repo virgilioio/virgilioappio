@@ -94,6 +94,17 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Resolve company_slug for direct careers-page URLs (fallback to /p/ if none)
+    let resolvedCompanySlug: string | null = companySlug ?? null
+    if (!resolvedCompanySlug) {
+      const { data: careersRow } = await supabase
+        .from('careers_page_settings')
+        .select('company_slug')
+        .eq('tenant_id', tenant.id)
+        .maybeSingle()
+      resolvedCompanySlug = careersRow?.company_slug ?? null
+    }
+
     // Fetch active job postings
     const { data: postings, error } = await supabase
       .from('job_postings')
@@ -142,7 +153,7 @@ Deno.serve(async (req) => {
     ${state ? `<state><![CDATA[${escapeXml(state)}]]></state>` : ''}
     ${country ? `<country><![CDATA[${escapeXml(country)}]]></country>` : ''}
     <dateposted>${posting.created_at}</dateposted>
-    <url><![CDATA[https://app.gogio.io/p/${posting.slug}?source=${board}]]></url>
+    <url><![CDATA[${resolvedCompanySlug ? `https://app.gogio.io/careers/${resolvedCompanySlug}/${posting.slug}` : `https://app.gogio.io/p/${posting.slug}`}?source=${board}]]></url>
     <description><![CDATA[${posting.description || ''}]]></description>
     ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
     ${details.location_type ? `<isremote>${details.location_type === 'remote' ? 'yes' : 'no'}</isremote>` : ''}
