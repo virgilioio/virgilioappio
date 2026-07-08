@@ -1,41 +1,44 @@
+## Problem
 
-## Context
+`https://app.gogio.io/jobs-sitemap.xml` is not a configured route. Because this is a Vite SPA, the hosting platform falls back to `index.html` for any unmatched path. That loads the React app and the Gio splash animation, which is what you're seeing. The actual sitemap lives at the Supabase edge-function URL currently listed in `public/robots.txt`.
 
-When a candidate applies via a public posting with Candidate Chat enabled, `public-submit-application` sends them a warm, on-brand invite email using `renderChatInviteEmail` in `supabase/functions/_shared/chatInviteEmail.ts` ("… from the hiring team wants to chat", avatar bubble, CTA, etc.).
+Google does **not** need `/jobs-sitemap.xml` to work — it already discovers the sitemap via `robots.txt`. But making the clean URL work is nicer for humans, monitoring tools, and future-proofing.
 
-When a recruiter later replies inside the in-app chat, we already do notify the candidate — `chat-notification-processor` picks up `candidate_recruiter_reply` rows from `chat_notification_queue` and sends an email. But that email uses the generic `createEmailTemplate` (blue blockquote, plain "Open chat" CTA), not the branded invite design.
+## Proposed fix
 
-So the answer to the question is: yes, we do send a notification, but it doesn't match the initial invite. This plan aligns them.
+Add a server-side redirect so `/jobs-sitemap.xml` returns the real XML sitemap, then point `robots.txt` at the clean URL.
 
-Scope: only the candidate-facing `candidate_recruiter_reply` branch. Recruiter-facing notifications (`recruiter_new_message`, `recruiter_handoff`) stay on the current internal template — different audience, different intent.
+### Files to change
 
-Out of scope: the `chat-send-email` path (that's a separate email-channel where the message *is* the email, not a notification about a new in-app message).
+1. **`vercel.json`** (new file at project root)
+   - Add a 308 permanent redirect from `/jobs-sitemap.xml` to the Supabase edge function.
+   - This runs before the SPA fallback, so the Gio splash never loads for that path.
 
-## Change
+   ````text
+   {
+     "redirects": [
+       {
+         "source": "/jobs-sitemap.xml",
+         "destination": "https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/generate-jobs-sitemap",
+         "permanent": true
+       }
+     ]
+   }
+   ````
 
-Single-file edit: `supabase/functions/chat-notification-processor/index.ts`
+2. **`public/robots.txt`**
+   - Update the `Sitemap:` line to use the clean URL so Google follows the same path a human would:
 
-In `buildEmail`, replace the `candidate_recruiter_reply` branch so it renders through `renderChatInviteEmail` instead of `createEmailTemplate`:
+   ````text
+   Sitemap: https://app.gogio.io/jobs-sitemap.xml
+   ````
 
-1. Import `renderChatInviteEmail` from `../_shared/chatInviteEmail.ts` (dynamic or top-level).
-2. Look up the sender (recruiter) profile from the last outbound message:
-   - Get `sender_user_id` from the latest `direction='out'` message in the thread (fallback: any recruiter on the thread).
-   - Fetch `profiles.first_name, last_name, title, avatar_url` for that user.
-   - Derive `recruiter_initials` and pick a stable `recruiter_color` (e.g. hash of user id → existing brand palette; or reuse whatever helper the invite already relies on — default to Gio purple `#6F3FF5` if none).
-3. Build merge vars:
-   - `recruiter_first_name`, `recruiter_full_name`, `recruiter_title` (fallback: "Hiring team"), `recruiter_initials`, `recruiter_color`, `recruiter_avatar`
-   - `candidate_first_name` from `ctx.candidate_name` (first token; fallback "there")
-   - `job_title` from `ctx.job_title` (fallback "the role")
-   - `recruiter_message` = the excerpt loaded via `loadLastExcerpt(..., "out")` (trim to ~600 chars to keep the email tight)
-   - `chat_url` = the same `ctaUrl` currently built (magic-link path if a live token exists, else `/chat`)
-   - `link_expiry` = "14 days" (matches token TTL used by the initial invite)
-   - `support_email` omitted → defaults to `support@gogio.com`
-4. Return `{ subject: rendered.subject, html: rendered.html, to: row.recipient_email }`. Keep `subject` from the template (not the current `"${company} replied"` string) so the design is fully consistent with the initial invite.
+## Out of scope
 
-Nothing else changes: queue logic, cancel checks (read receipts, suppression, active candidate polling), retry/backoff, Resend send path, `EMAIL_DEFAULT_FROM`, cron cadence, and the recruiter-side branches stay exactly as they are.
+- No changes to the splash component itself.
+- No changes to the edge function `supabase/functions/generate-jobs-sitemap/index.ts`.
+- No frontend routes or React code changes.
 
-## Notes
+## Note on hosting
 
-- Best-effort lookups: if the recruiter profile can't be resolved, fall back to `first_name = "The hiring team"`, `initials = "GT"`, default color, no avatar — so we never fail to send a notification just because attribution data is missing.
-- Multi-message batches (`message_count > 1`) are naturally handled: the invite template renders `recruiter_message` as the body, so we still show the latest excerpt; no "+N more" line needed (the initial invite doesn't have one either — consistent by design).
-- No DB migrations, no frontend changes, no config.toml changes.
+You mentioned Lovable hosting. Lovable deployments are typically Vercel-based, so `vercel.json` should be respected. If it isn't, the redirect can be migrated to the platform-specific format (`_redirects`, `netlify.toml`, etc.) without changing the overall approach.
