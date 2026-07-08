@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
     ${state ? `<state><![CDATA[${escapeXml(state)}]]></state>` : ''}
     ${country ? `<country><![CDATA[${escapeXml(country)}]]></country>` : ''}
     <dateposted>${posting.created_at}</dateposted>
-    <url><![CDATA[https://app.gogio.io/p/${posting.slug}?source=talent]]></url>
+    <url><![CDATA[https://app.gogio.io/p/${posting.slug}?source=${board}]]></url>
     <description><![CDATA[${posting.description || ''}]]></description>
     ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
     ${details.location_type ? `<isremote>${details.location_type === 'remote' ? 'yes' : 'no'}</isremote>` : ''}
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       <period>${details.salary_period || 'year'}</period>
       <min>${details.salary_amount}</min>
     </salary>` : ''}
-    <talent-apply-data><![CDATA[talent-apply-posturl=${webhookUrl}&talent-apply-questions=${questionsUrl}]]></talent-apply-data>
+    ${board === 'talent' ? `<talent-apply-data><![CDATA[talent-apply-posturl=${webhookUrl}&talent-apply-questions=${questionsUrl}]]></talent-apply-data>` : ''}
   </job>`
     }).join('\n')
 
