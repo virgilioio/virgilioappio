@@ -22,6 +22,7 @@ interface ChannelDef {
   glyph: string
   glyphBg: string
   glyphFg: string
+  imageUrl?: string
   alwaysOn?: boolean
   recommended?: boolean
   statusOn: string
