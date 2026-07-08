@@ -268,7 +268,7 @@ export function PostingSheet({
         setCommissionsCurrency('USD')
         setCommissionsAmount('')
         setBranding({})
-        setChannels({ publishToTalent: false, channels: { google_jobs: { enabled: true } } })
+        setChannels({ publishToTalent: true, channels: { google_jobs: { enabled: true } } })
         setConfirmationEmail(true)
         setPromise48h(false)
         setAllowMessage(false)
