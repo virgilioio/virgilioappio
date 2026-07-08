@@ -75,11 +75,11 @@ Deno.serve(async (req) => {
     // Check for existing candidate
     const { data: existingCandidate } = await supabase
       .from('candidates')
-
       .select('id')
       .eq('email', applicant.email)
       .eq('tenant_id', posting.tenant_id)
       .maybeSingle()
+
 
     let candidateId: string
 
@@ -93,10 +93,10 @@ Deno.serve(async (req) => {
       const { data: updated } = await supabase
         .from('candidates')
         .update(updateData)
-
         .eq('id', existingCandidate.id)
         .select()
         .single()
+
 
       candidateId = updated.id
       console.log('Updated existing candidate:', candidateId)
@@ -118,8 +118,8 @@ Deno.serve(async (req) => {
         .single()
 
       candidateId = newCandidate.id
-
       console.log('Created new candidate:', candidateId)
+
 
       // Also persist the resume as a candidate_attachments record so
       // enrich-candidate-profile can locate and parse it. enrich downloads
