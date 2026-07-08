@@ -79,16 +79,16 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Check if Talent.com integration is enabled
+    // Check if the board integration is enabled
     const { data: integration } = await supabase
       .from('job_board_integrations')
       .select('is_enabled')
       .eq('tenant_id', tenant.id)
-      .eq('board_name', 'talent')
+      .eq('board_name', board)
       .single()
 
     if (!integration?.is_enabled) {
-      return new Response(JSON.stringify({ error: 'Talent.com integration not enabled' }), {
+      return new Response(JSON.stringify({ error: `${board} integration not enabled` }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
