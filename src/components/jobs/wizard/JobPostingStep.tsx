@@ -405,6 +405,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
             description,
             details,
             is_active: opts?.publish === true ? true : false,
+            publish_to_talent: postingChannels.publishToTalent,
           })
           if (!created) return { ok: false }
 
