@@ -82,8 +82,8 @@ Deno.serve(async (req) => {
 
     let candidateId: string
 
-
     if (existingCandidate) {
+
       // Update existing candidate
       const updateData: any = {
         updated_at: new Date().toISOString()
@@ -98,8 +98,8 @@ Deno.serve(async (req) => {
         .single()
 
       candidateId = updated.id
-
       console.log('Updated existing candidate:', candidateId)
+
     } else {
       // Create new candidate
       const { data: newCandidate } = await supabase
@@ -121,9 +121,9 @@ Deno.serve(async (req) => {
       console.log('Created new candidate:', candidateId)
 
       // Also persist the resume as a candidate_attachments record so
-
       // enrich-candidate-profile can locate and parse it. enrich downloads
       // from the 'candidate-attachments' bucket, not 'resumes'.
+
       if (resumeBytes && resumeOriginalName) {
         try {
           const attachmentPath = `${posting.tenant_id}/${candidateId}/${Date.now()}-${resumeOriginalName}`
