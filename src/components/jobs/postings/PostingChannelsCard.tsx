@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Zap, Globe, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTenant } from '@/hooks/useTenant'
+import talentComLogoAsset from '@/assets/talent-com-logo.png.asset.json'
 
 export interface ChannelState {
   enabled: boolean
