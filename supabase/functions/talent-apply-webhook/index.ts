@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
     const candidateName = applicant.fullName || 'Unknown Applicant'
 
     // Handle resume upload
-    let resumeUrl: string | null = null
     let resumeBytes: Uint8Array | null = null
     let resumeOriginalName: string | null = null
     if (applicant.resume) {
@@ -68,27 +67,11 @@ Deno.serve(async (req) => {
         // Decode base64 resume
         resumeBytes = Uint8Array.from(atob(applicant.resume), c => c.charCodeAt(0))
         resumeOriginalName = applicant.resumeFilename || `talent-${talentApplicationId}.pdf`
-        const resumeFileName = `talent-${talentApplicationId}-${Date.now()}.pdf`
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('resumes')
-          .upload(`${posting.tenant_id}/${resumeFileName}`, resumeBytes, {
-            contentType: 'application/pdf',
-            upsert: false
-          })
-
-        if (uploadError) {
-          console.error('Resume upload error:', uploadError)
-        } else {
-          const { data: { publicUrl } } = supabase.storage
-            .from('resumes')
-            .getPublicUrl(uploadData.path)
-          resumeUrl = publicUrl
-        }
       } catch (error) {
-        console.error('Error processing resume:', error)
+        console.error('Error decoding resume:', error)
       }
     }
+
 
     // Check for existing candidate
     const { data: existingCandidate } = await supabase
