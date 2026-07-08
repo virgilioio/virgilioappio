@@ -167,7 +167,8 @@ Deno.serve(async (req) => {
     return new Response(xml, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/xml; charset=utf-8'
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600'
       }
     })
   } catch (error) {
