@@ -92,8 +92,8 @@ Deno.serve(async (req) => {
 
       const { data: updated } = await supabase
         .from('candidates')
-
         .update(updateData)
+
         .eq('id', existingCandidate.id)
         .select()
         .single()
