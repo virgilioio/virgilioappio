@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
 
     // Handle resume upload
     let resumeBytes: Uint8Array | null = null
-
     let resumeOriginalName: string | null = null
+
     if (applicant.resume) {
       try {
         // Decode base64 resume
