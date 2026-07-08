@@ -74,7 +74,7 @@ export function useJobPostings(jobId: string) {
     return data as JobPosting | null
   }, [])
 
-  const createPosting = useCallback(async ({ title, description, details, is_active }: { title: string; description?: string; details?: any; is_active?: boolean }) => {
+  const createPosting = useCallback(async ({ title, description, details, is_active, publish_to_talent }: { title: string; description?: string; details?: any; is_active?: boolean; publish_to_talent?: boolean }) => {
     const slug = generateSlug(title)
     const { data, error } = await supabase
       .from('job_postings')
@@ -85,6 +85,7 @@ export function useJobPostings(jobId: string) {
         slug,
         details: details ?? {},
         ...(typeof is_active === 'boolean' ? { is_active } : {}),
+        ...(typeof publish_to_talent === 'boolean' ? { publish_to_talent } : {}),
         // Pass null-ish placeholder; trigger overwrites with correct tenant_id
         tenant_id: '00000000-0000-0000-0000-000000000000',
       })
