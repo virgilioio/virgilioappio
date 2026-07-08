@@ -94,6 +94,17 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Resolve company_slug for direct careers-page URLs (fallback to /p/ if none)
+    let resolvedCompanySlug: string | null = companySlug ?? null
+    if (!resolvedCompanySlug) {
+      const { data: careersRow } = await supabase
+        .from('careers_page_settings')
+        .select('company_slug')
+        .eq('tenant_id', tenant.id)
+        .maybeSingle()
+      resolvedCompanySlug = careersRow?.company_slug ?? null
+    }
+
     // Fetch active job postings
     const { data: postings, error } = await supabase
       .from('job_postings')
