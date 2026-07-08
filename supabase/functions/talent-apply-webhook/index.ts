@@ -80,8 +80,8 @@ Deno.serve(async (req) => {
       .eq('tenant_id', posting.tenant_id)
       .maybeSingle()
 
-
     let candidateId: string
+
 
     if (existingCandidate) {
       // Update existing candidate
@@ -97,8 +97,8 @@ Deno.serve(async (req) => {
         .select()
         .single()
 
-
       candidateId = updated.id
+
       console.log('Updated existing candidate:', candidateId)
     } else {
       // Create new candidate
@@ -120,8 +120,8 @@ Deno.serve(async (req) => {
       candidateId = newCandidate.id
       console.log('Created new candidate:', candidateId)
 
-
       // Also persist the resume as a candidate_attachments record so
+
       // enrich-candidate-profile can locate and parse it. enrich downloads
       // from the 'candidate-attachments' bucket, not 'resumes'.
       if (resumeBytes && resumeOriginalName) {
