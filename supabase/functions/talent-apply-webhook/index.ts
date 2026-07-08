@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
 
     const { applicant, customFields = [], id: talentApplicationId } = payload
 
-
     console.log('Received Talent.com application:', { talentApplicationId, postingId })
+
 
     // Split full name
     const nameParts = (applicant.fullName || '').trim().split(' ')
@@ -72,8 +72,8 @@ Deno.serve(async (req) => {
       }
     }
 
-
     // Check for existing candidate
+
     const { data: existingCandidate } = await supabase
       .from('candidates')
       .select('id')
@@ -90,8 +90,8 @@ Deno.serve(async (req) => {
       }
       if (applicant.phoneNumber) updateData.phone = applicant.phoneNumber
 
-
       const { data: updated } = await supabase
+
         .from('candidates')
         .update(updateData)
         .eq('id', existingCandidate.id)
@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
           tenant_id: posting.tenant_id,
           created_by: null
         })
-
         .select()
+
         .single()
 
       candidateId = newCandidate.id
