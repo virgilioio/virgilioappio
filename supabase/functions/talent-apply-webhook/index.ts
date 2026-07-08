@@ -56,8 +56,8 @@ Deno.serve(async (req) => {
 
     // Split full name
     const nameParts = (applicant.fullName || '').trim().split(' ')
-
     const candidateName = applicant.fullName || 'Unknown Applicant'
+
 
     // Handle resume upload
     let resumeBytes: Uint8Array | null = null
@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
     let candidateId: string
 
     if (existingCandidate) {
-
       // Update existing candidate
+
       const updateData: any = {
         updated_at: new Date().toISOString()
       }
