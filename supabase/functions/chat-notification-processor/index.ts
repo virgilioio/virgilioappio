@@ -282,10 +282,10 @@ async function buildEmail(
     return { subject, html, to: prof.email };
   }
 
-  // candidate_recruiter_reply
+  // candidate_recruiter_reply — reuse the initial chat-invite design.
   if (!row.recipient_email) return { skip: "no_email" };
   const excerpt = await loadLastExcerpt(sb, row.thread_id, "out");
-  const subject = `${company} replied${jobLabel}`;
+
   // Look up the candidate's latest active magic-link token (best-effort).
   const { data: tok } = await sb
     .from("chat_access_tokens")
@@ -299,22 +299,64 @@ async function buildEmail(
   const ctaUrl = tok
     ? `${appBase()}/chat/c/${row.thread_id}`
     : `${appBase()}/chat`;
-  const html = createEmailTemplate({
-    recipientName: recipientName(ctx.candidate_name),
-    preheaderText: excerpt ?? subject,
-    title: subject,
-    content: `
-      <p><strong>${escapeHtml(company)}</strong> sent you a reply:</p>
-      <blockquote style="margin:12px 0;padding:10px 14px;border-left:3px solid #6366f1;background:#f9fafb;color:#374151;border-radius:4px;">
-        ${excerpt ? escapeHtml(excerpt) : "(no message body)"}
-      </blockquote>
-      ${row.message_count > 1 ? `<p style="color:#6b7280;font-size:13px;">+${row.message_count - 1} more in this conversation.</p>` : ""}
-    `,
-    ctaText: "Open chat",
-    ctaUrl,
-    footerNote: "If you didn't expect this, you can safely ignore this email.",
+
+  // Resolve the recruiter who sent the latest outbound message (best-effort).
+  const { data: lastOut } = await sb
+    .from("chat_messages")
+    .select("sender_user_id")
+    .eq("thread_id", row.thread_id)
+    .eq("direction", "out")
+    .not("sender_user_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let recruiterFirst = "The hiring team";
+  let recruiterFull = company;
+  let recruiterTitle = "Hiring team";
+  let recruiterAvatar: string | null = null;
+  let recruiterInitials = "GT";
+  let recruiterColor = RECRUITER_AVATAR_COLORS[0];
+
+  const recruiterId = (lastOut as any)?.sender_user_id as string | null | undefined;
+  if (recruiterId) {
+    const { data: prof } = await sb
+      .from("profiles")
+      .select("first_name, last_name, title, avatar_url")
+      .eq("id", recruiterId)
+      .maybeSingle();
+    if (prof) {
+      const first = (prof as any).first_name ?? "";
+      const last = (prof as any).last_name ?? "";
+      if (first || last) {
+        recruiterFirst = first || last;
+        recruiterFull = `${first} ${last}`.trim() || recruiterFull;
+      }
+      recruiterTitle = (prof as any).title || "Hiring team";
+      recruiterAvatar = (prof as any).avatar_url ?? null;
+      recruiterInitials = initialsFrom(first, last);
+      recruiterColor = pickRecruiterColor(recruiterId);
+    }
+  }
+
+  const candidateFirst = (ctx.candidate_name || "").trim().split(/\s+/)[0] || "there";
+  const bodyExcerpt = (excerpt ?? "").slice(0, 600);
+
+  const rendered = renderChatInviteEmail({
+    recruiter_first_name: recruiterFirst,
+    recruiter_full_name: recruiterFull,
+    recruiter_title: recruiterTitle,
+    recruiter_initials: recruiterInitials,
+    recruiter_color: recruiterColor,
+    recruiter_avatar: recruiterAvatar,
+    candidate_first_name: candidateFirst,
+    job_title: ctx.job_title || "the role",
+    recruiter_message: bodyExcerpt || "You have a new message from the hiring team.",
+    chat_url: ctaUrl,
+    link_expiry: "14 days",
   });
-  return { subject, html, to: row.recipient_email };
+
+  return { subject: rendered.subject, html: rendered.html, to: row.recipient_email };
 }
 
 function escapeHtml(s: string): string {
