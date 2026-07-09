@@ -449,15 +449,15 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
             {/* Hiring team */}
             <div data-section="hiring-team">
-              <section className="space-y-3">
+              <section className="space-y-5">
                 {/* Section heading */}
                 <div className="flex items-end justify-between gap-3">
                   <h2
                     className="font-poppins"
                     style={{
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: 600,
-                      letterSpacing: '-0.025em',
+                      letterSpacing: '-0.03em',
                       color: '#0d0d09',
                       lineHeight: 1.2,
                     }}
@@ -473,150 +473,122 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       fontSize: 11.5,
                       fontWeight: 500,
                       borderRadius: 999,
-                      padding: '3px 10px',
+                      padding: '4px 11px',
                     }}
                   >
                     {teamMembers.length} member{teamMembers.length === 1 ? '' : 's'}
                   </span>
                 </div>
 
-                <div className="rounded-2xl border border-virgilio-border bg-white p-5 sm:p-6 space-y-6">
-                  {/* Owners sub-section */}
-                  <div className="space-y-3">
-                    <div className="flex items-end justify-between gap-3">
-                      <div>
-                        <div
-                          className="font-poppins"
-                          style={{
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            color: '#1F2230',
-                          }}
-                        >
-                          Owners
-                        </div>
-                        <div
-                          className="font-inter"
-                          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 2 }}
-                        >
-                          Required roles for this job.
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <RoleSelect
-                        label="Primary recruiter"
-                        required
-                        helper="Owns the job — receives all candidate notifications."
-                        value={primaryRecruiterId}
-                        options={memberOptions}
-                        onChange={(v) => updatePrimary('recruiter', v)}
-                        disabled={isReadOnly}
+                {/* OWNERS block */}
+                <div className="space-y-2.5">
+                  <SubsectionLabel>Owners</SubsectionLabel>
+                  <div className="rounded-2xl border border-virgilio-border bg-white p-5 sm:p-6 space-y-5">
+                    <OwnerPickerRow
+                      label="Primary recruiter"
+                      required
+                      helper="Owns the job — receives all candidate notifications."
+                      value={primaryRecruiterId}
+                      members={members}
+                      roleLabel="Recruiter"
+                      onChange={(v) => updatePrimary('recruiter', v)}
+                      disabled={isReadOnly}
+                    />
+                    <OwnerPickerRow
+                      label="Hiring manager"
+                      required
+                      helper="Owns the bar and the final decision."
+                      value={hiringManagerId}
+                      members={members}
+                      roleLabel="Hiring manager"
+                      onChange={(v) => updatePrimary('hiring_manager', v)}
+                      disabled={isReadOnly}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                      <OptionalOwnerField
+                        label="Reports to"
+                        icon={UserRound}
+                        placeholder="Select person"
                       />
-                      <RoleSelect
-                        label="Hiring manager"
-                        required
-                        helper="Owns the bar and the final decision."
-                        value={hiringManagerId}
-                        options={memberOptions}
-                        onChange={(v) => updatePrimary('hiring_manager', v)}
-                        disabled={isReadOnly}
+                      <OptionalOwnerField
+                        label="Coordinator"
+                        icon={CalendarIcon}
+                        placeholder="Same as recruiter"
                       />
                     </div>
+                    <p
+                      className="font-inter"
+                      style={{ fontSize: 12, color: '#8B8F9E', marginTop: -6 }}
+                    >
+                      Schedules + reminders. Defaults to recruiter.
+                    </p>
+                  </div>
+                </div>
+
+                {/* TEAM MEMBERS block */}
+                <div className="space-y-2.5">
+                  <div className="flex items-end justify-between gap-3">
+                    <SubsectionLabel>Team members</SubsectionLabel>
+                    {!isReadOnly && onAddTeamMember && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={Plus}
+                        onClick={onAddTeamMember}
+                      >
+                        Add member
+                      </Button>
+                    )}
                   </div>
 
-                  <div style={{ height: 1, background: '#F1F0EC' }} />
-
-                  {/* Team members sub-section */}
-                  <div className="space-y-3">
-                    <div className="flex items-end justify-between gap-3">
-                      <div>
-                        <div
-                          className="font-poppins"
-                          style={{
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            color: '#1F2230',
-                          }}
-                        >
-                          Team members
-                        </div>
-                        <div
-                          className="font-inter"
-                          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 2 }}
-                        >
-                          Interviewers, coordinators, and observers.
-                        </div>
+                  <div className="rounded-2xl border border-virgilio-border bg-white p-3 sm:p-4">
+                    {teamMembers.length === 0 ? (
+                      <div
+                        className="font-inter"
+                        style={{
+                          textAlign: 'center',
+                          padding: '22px 12px',
+                          fontSize: 12.5,
+                          color: '#8B8F9E',
+                        }}
+                      >
+                        No team members yet.
                       </div>
-                      {!isReadOnly && onAddTeamMember && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          icon={Plus}
-                          onClick={onAddTeamMember}
-                        >
-                          Add member
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {teamMembers.length === 0 ? (
-                        <div
-                          className="font-inter"
-                          style={{
-                            textAlign: 'center',
-                            padding: '18px 12px',
-                            fontSize: 12.5,
-                            color: '#8B8F9E',
-                            background: '#FAFAF7',
-                            border: '1px dashed #EDECE6',
-                            borderRadius: 10,
-                          }}
-                        >
-                          No team members yet.
-                        </div>
-                      ) : (
-                        teamMembers.map((m) => (
+                    ) : (
+                      <div className="space-y-1">
+                        {teamMembers.map((m) => (
                           <div
                             key={m.assignmentId}
-                            className="flex items-center bg-white"
-                            style={{
-                              gap: 12,
-                              padding: '10px 12px',
-                              border: '1px solid #E7E8EE',
-                              borderRadius: 10,
-                            }}
+                            className="group flex items-center rounded-xl transition-colors hover:bg-[#FAFAF7]"
+                            style={{ gap: 12, padding: '10px 12px' }}
                           >
-                            <Avatar className="h-[26px] w-[26px]">
+                            <Avatar className="h-8 w-8">
                               {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
-                              <AvatarFallback className="text-[10px] bg-virgilio-purple text-white">
+                              <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
                                 {getInitials(m.first, m.last, m.email)}
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1">
                               <div
-                                className="font-inter truncate"
+                                className="font-poppins truncate"
                                 style={{
-                                  fontSize: 12.5,
+                                  fontSize: 13,
                                   fontWeight: 500,
                                   color: '#1F2230',
+                                  letterSpacing: '-0.01em',
                                 }}
                               >
                                 {m.name}
                               </div>
                               <div
                                 className="font-inter truncate"
-                                style={{ fontSize: 10.5, color: '#8B8F9E' }}
+                                style={{ fontSize: 11.5, color: '#8B8F9E', marginTop: 1 }}
                               >
-                                {m.email || m.title || '—'}
+                                {m.title || 'Panel · Team'}
                               </div>
                             </div>
-                            <div className="w-[180px]">
+                            <div className="w-[180px] shrink-0">
                               <Select
                                 value={m.role}
                                 onValueChange={(v) =>
@@ -644,38 +616,47 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div
+                              className="font-inter hidden lg:block shrink-0 truncate"
+                              style={{
+                                fontSize: 12,
+                                color: '#8B8F9E',
+                                minWidth: 150,
+                              }}
+                            >
+                              {ROLE_LABEL[m.role]} · scorecards
+                            </div>
                             {!isReadOnly && (
                               <button
                                 type="button"
                                 onClick={() => removeUserFromJob(m.assignmentId)}
-                                aria-label="Remove member"
-                                className="flex items-center justify-center rounded-md transition-colors"
+                                aria-label="Manage member"
+                                className="flex items-center justify-center rounded-md transition-colors opacity-60 group-hover:opacity-100"
                                 style={{
-                                  height: 28,
-                                  width: 28,
-                                  color: '#8B8F9E',
+                                  height: 30,
+                                  width: 30,
+                                  color: '#5A6072',
                                   background: 'transparent',
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.color = '#B91C1C'
-                                  e.currentTarget.style.background = '#FEF2F2'
+                                  e.currentTarget.style.background = '#F1F0EC'
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.color = '#8B8F9E'
                                   e.currentTarget.style.background = 'transparent'
                                 }}
                               >
-                                <Trash2 style={{ height: 15, width: 15 }} strokeWidth={2} />
+                                <Settings2 style={{ height: 15, width: 15 }} strokeWidth={2} />
                               </button>
                             )}
                           </div>
-                        ))
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
             </div>
+
 
             {/* Notifications */}
             <div data-section="notifications">
