@@ -19,6 +19,10 @@ import {
   Check,
   Calendar as CalendarIcon,
   UserRound,
+  MoreHorizontal,
+  Star,
+  Crown,
+  User as UserIcon,
 } from 'lucide-react'
 
 import { formatDistanceToNowStrict } from 'date-fns'
