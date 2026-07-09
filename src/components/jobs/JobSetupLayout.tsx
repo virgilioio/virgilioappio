@@ -552,99 +552,17 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                         No team members yet.
                       </div>
                     ) : (
-                      <div className="space-y-1">
+                      <div className="flex flex-col" style={{ gap: 6 }}>
                         {teamMembers.map((m) => (
-                          <div
+                          <TeamMemberRow
                             key={m.assignmentId}
-                            className="group flex items-center rounded-xl transition-colors hover:bg-[#FAFAF7]"
-                            style={{ gap: 12, padding: '10px 12px' }}
-                          >
-                            <Avatar className="h-8 w-8">
-                              {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
-                              <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
-                                {getInitials(m.first, m.last, m.email)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <div
-                                className="font-poppins truncate"
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: 500,
-                                  color: '#1F2230',
-                                  letterSpacing: '-0.01em',
-                                }}
-                              >
-                                {m.name}
-                              </div>
-                              <div
-                                className="font-inter truncate"
-                                style={{ fontSize: 11.5, color: '#8B8F9E', marginTop: 1 }}
-                              >
-                                {m.title || 'Panel · Team'}
-                              </div>
-                            </div>
-                            <div className="w-[180px] shrink-0">
-                              <Select
-                                value={m.role}
-                                onValueChange={(v) =>
-                                  handleRoleChange(m.assignmentId, v as any)
-                                }
-                                disabled={isReadOnly}
-                              >
-                                <SelectTrigger
-                                  className="text-[13px]"
-                                  style={{
-                                    height: 34,
-                                    background: '#ffffff',
-                                    borderColor: '#E0DDD3',
-                                    borderRadius: 8,
-                                  }}
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Object.entries(ROLE_LABEL).map(([v, label]) => (
-                                    <SelectItem key={v} value={v}>
-                                      {label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div
-                              className="font-inter hidden lg:block shrink-0 truncate"
-                              style={{
-                                fontSize: 12,
-                                color: '#8B8F9E',
-                                minWidth: 150,
-                              }}
-                            >
-                              {ROLE_LABEL[m.role]} · scorecards
-                            </div>
-                            {!isReadOnly && (
-                              <button
-                                type="button"
-                                onClick={() => removeUserFromJob(m.assignmentId)}
-                                aria-label="Manage member"
-                                className="flex items-center justify-center rounded-md transition-colors opacity-60 group-hover:opacity-100"
-                                style={{
-                                  height: 30,
-                                  width: 30,
-                                  color: '#5A6072',
-                                  background: 'transparent',
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = '#F1F0EC'
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = 'transparent'
-                                }}
-                              >
-                                <Settings2 style={{ height: 15, width: 15 }} strokeWidth={2} />
-                              </button>
-                            )}
-                          </div>
+                            member={m}
+                            readOnly={isReadOnly}
+                            onRoleChange={(v) => handleRoleChange(m.assignmentId, v)}
+                            onRemove={() => removeUserFromJob(m.assignmentId)}
+                            onPromotePrimary={() => updatePrimary('recruiter', m.userId)}
+                            onPromoteHM={() => updatePrimary('hiring_manager', m.userId)}
+                          />
                         ))}
                       </div>
                     )}
