@@ -327,17 +327,9 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
           <main className="space-y-8 min-w-0">
             {/* Hiring plan */}
             <div data-section="hiring-plan">
-              <SectionCard
-                title="Hiring plan · stages"
-                trailing={
-                  <span className="text-[12px] text-text-tertiary">
-                    Drag to reorder · auto-saves
-                  </span>
-                }
-              >
-                <HiringPlanTab jobId={jobId} readOnly={isReadOnly} hideHeader />
-              </SectionCard>
+              <HiringPlanTab jobId={jobId} readOnly={isReadOnly} hideHeader />
             </div>
+
 
             {/* Auto-rejection */}
             <div data-section="auto-rejection">
