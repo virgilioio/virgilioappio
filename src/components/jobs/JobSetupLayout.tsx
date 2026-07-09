@@ -15,6 +15,10 @@ import {
   Plus,
   Settings2,
   Trash2,
+  ChevronDown,
+  Check,
+  Calendar as CalendarIcon,
+  UserRound,
 } from 'lucide-react'
 
 import { formatDistanceToNowStrict } from 'date-fns'
