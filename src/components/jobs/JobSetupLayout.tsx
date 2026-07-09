@@ -881,7 +881,260 @@ function RoleSelect({
   )
 }
 
-/* ---------- Inline switch (matches ToggleRow visual) ---------- */
+/* ---------- Hiring team sub-parts ---------- */
+
+function SubsectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="font-poppins"
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.09em',
+        color: '#5A6072',
+        paddingLeft: 2,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function OwnerPickerRow({
+  label,
+  required,
+  helper,
+  value,
+  members,
+  roleLabel,
+  onChange,
+  disabled,
+}: {
+  label: string
+  required?: boolean
+  helper?: string
+  value: string
+  members: any[]
+  roleLabel: string
+  onChange: (v: string) => void
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = members.find((m) => m.user_id === value)
+  const name =
+    selected
+      ? `${selected.user_first_name || ''} ${selected.user_last_name || ''}`.trim() ||
+        selected.user_email ||
+        'Member'
+      : ''
+
+  return (
+    <div>
+      <div
+        className="font-poppins"
+        style={{
+          fontSize: 12.5,
+          fontWeight: 500,
+          color: '#1F2230',
+          marginBottom: 6,
+          letterSpacing: '-0.005em',
+        }}
+      >
+        {label}
+        {required && <span style={{ color: '#DC2626', marginLeft: 4 }}>*</span>}
+      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className="w-full flex items-center text-left transition-colors"
+            style={{
+              gap: 12,
+              padding: '10px 14px 10px 12px',
+              borderRadius: 12,
+              border: '1px solid #E7E8EE',
+              background: '#ffffff',
+              minHeight: 60,
+            }}
+            onMouseEnter={(e) => {
+              if (!disabled) e.currentTarget.style.borderColor = '#D7C5FB'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E7E8EE'
+            }}
+          >
+            {selected ? (
+              <>
+                <Avatar className="h-9 w-9 shrink-0">
+                  {selected.user_avatar_url ? (
+                    <AvatarImage src={selected.user_avatar_url} alt="" />
+                  ) : null}
+                  <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
+                    {getInitials(
+                      selected.user_first_name,
+                      selected.user_last_name,
+                      selected.user_email
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="font-poppins truncate"
+                    style={{
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      color: '#1F2230',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {name}
+                  </div>
+                  <div
+                    className="font-inter truncate"
+                    style={{ fontSize: 11.5, color: '#8B8F9E', marginTop: 1 }}
+                  >
+                    {roleLabel}
+                    {selected.user_email ? ` · ${selected.user_email}` : ''}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div
+                  className="shrink-0 rounded-full inline-flex items-center justify-center"
+                  style={{ height: 36, width: 36, background: '#F1F0EC', color: '#8B8F9E' }}
+                >
+                  <UserRound size={16} />
+                </div>
+                <div
+                  className="font-inter flex-1"
+                  style={{ fontSize: 13, color: '#8B8F9E' }}
+                >
+                  Select {label.toLowerCase()}
+                </div>
+              </>
+            )}
+            <ChevronDown size={16} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0"
+          align="start"
+          style={{ width: 'var(--radix-popover-trigger-width)', maxWidth: 480 }}
+        >
+          <Command>
+            <CommandInput placeholder="Search members…" />
+            <CommandList>
+              <CommandEmpty>No members found.</CommandEmpty>
+              <CommandGroup>
+                {members.map((m) => {
+                  const n =
+                    `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() ||
+                    m.user_email ||
+                    'Member'
+                  return (
+                    <CommandItem
+                      key={m.user_id}
+                      value={`${n} ${m.user_email || ''}`}
+                      onSelect={() => {
+                        onChange(m.user_id)
+                        setOpen(false)
+                      }}
+                      className="gap-2.5"
+                    >
+                      <Avatar className="h-7 w-7 shrink-0">
+                        {m.user_avatar_url ? <AvatarImage src={m.user_avatar_url} alt="" /> : null}
+                        <AvatarFallback className="text-[10px] bg-virgilio-purple text-white">
+                          {getInitials(m.user_first_name, m.user_last_name, m.user_email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] font-medium truncate">{n}</div>
+                        {m.user_email && (
+                          <div className="text-[11px] text-text-tertiary truncate">
+                            {m.user_email}
+                          </div>
+                        )}
+                      </div>
+                      {m.user_id === value && <Check size={14} className="text-virgilio-purple" />}
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {helper && (
+        <p
+          className="font-inter"
+          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 8, paddingLeft: 2 }}
+        >
+          {helper}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function OptionalOwnerField({
+  label,
+  icon: Icon,
+  placeholder,
+}: {
+  label: string
+  icon: any
+  placeholder: string
+}) {
+  return (
+    <div>
+      <div
+        className="font-poppins"
+        style={{
+          fontSize: 12.5,
+          fontWeight: 500,
+          color: '#1F2230',
+          marginBottom: 6,
+          letterSpacing: '-0.005em',
+        }}
+      >
+        {label}{' '}
+        <span
+          className="font-inter"
+          style={{ fontSize: 11.5, fontWeight: 400, color: '#8B8F9E' }}
+        >
+          (optional)
+        </span>
+      </div>
+      <button
+        type="button"
+        className="w-full flex items-center text-left transition-colors"
+        style={{
+          gap: 10,
+          padding: '10px 12px',
+          borderRadius: 10,
+          border: '1px solid #E7E8EE',
+          background: '#ffffff',
+          height: 44,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#D7C5FB')}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#E7E8EE')}
+      >
+        <Icon size={15} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+        <span
+          className="font-inter flex-1 truncate"
+          style={{ fontSize: 13, color: '#1F2230' }}
+        >
+          {placeholder}
+        </span>
+        <ChevronDown size={14} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+      </button>
+    </div>
+  )
+}
+
 
 function ToggleSwitch({
   checked,
