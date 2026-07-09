@@ -443,111 +443,232 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
             {/* Hiring team */}
             <div data-section="hiring-team">
-              <SectionCard
-                title="Hiring team · roles"
-                trailing={
-                  <span className="text-[12px] text-text-tertiary">
+              <section className="space-y-3">
+                {/* Section heading */}
+                <div className="flex items-end justify-between gap-3">
+                  <h2
+                    className="font-poppins"
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      letterSpacing: '-0.025em',
+                      color: '#0d0d09',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    Hiring team
+                    <span style={{ color: '#D7C5FB' }}>.</span>
+                  </h2>
+                  <span
+                    className="font-inter"
+                    style={{
+                      background: '#F1F0EC',
+                      color: '#5A6072',
+                      fontSize: 11.5,
+                      fontWeight: 500,
+                      borderRadius: 999,
+                      padding: '3px 10px',
+                    }}
+                  >
                     {teamMembers.length} member{teamMembers.length === 1 ? '' : 's'}
                   </span>
-                }
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <RoleSelect
-                    label="Primary recruiter"
-                    required
-                    helper="Owns the job — receives all candidate notifications."
-                    value={primaryRecruiterId}
-                    options={memberOptions}
-                    onChange={(v) => updatePrimary('recruiter', v)}
-                    disabled={isReadOnly}
-                  />
-                  <RoleSelect
-                    label="Hiring manager"
-                    required
-                    helper="Owns the bar and the final decision."
-                    value={hiringManagerId}
-                    options={memberOptions}
-                    onChange={(v) => updatePrimary('hiring_manager', v)}
-                    disabled={isReadOnly}
-                  />
                 </div>
 
-                <div className="pt-2 border-t border-virgilio-border" />
-
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] font-poppins font-semibold tracking-[0.12em] uppercase text-text-secondary">
-                      Team members
-                    </div>
-                    <p className="text-[12px] text-text-tertiary mt-0.5">
-                      Interviewers, coordinators, and observers.
-                    </p>
-                  </div>
-                  {!isReadOnly && onAddTeamMember && (
-                    <Button variant="secondary" size="sm" icon={Plus} onClick={onAddTeamMember}>
-                      Add member
-                    </Button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {teamMembers.length === 0 ? (
-                    <InlineEmpty text="No team members yet." />
-                  ) : (
-                    teamMembers.map((m) => (
-                      <div
-                        key={m.assignmentId}
-                        className="flex items-center gap-3 rounded-xl border border-virgilio-border bg-white px-3 py-2.5"
-                      >
-                        <Avatar className="h-8 w-8">
-                          {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
-                          <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
-                            {getInitials(m.first, m.last, m.email)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-poppins font-medium text-text-primary truncate">
-                            {m.name}
-                          </div>
-                          <div className="text-[11.5px] text-text-tertiary truncate">
-                            {m.title || m.email || '—'}
-                          </div>
+                <div className="rounded-2xl border border-virgilio-border bg-white p-5 sm:p-6 space-y-6">
+                  {/* Owners sub-section */}
+                  <div className="space-y-3">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <div
+                          className="font-poppins"
+                          style={{
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            color: '#1F2230',
+                          }}
+                        >
+                          Owners
                         </div>
-                        <div className="w-[180px]">
-                          <Select
-                            value={m.role}
-                            onValueChange={(v) =>
-                              handleRoleChange(m.assignmentId, v as any)
-                            }
-                            disabled={isReadOnly}
-                          >
-                            <SelectTrigger className="h-8 text-[13px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(ROLE_LABEL).map(([v, label]) => (
-                                <SelectItem key={v} value={v}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div
+                          className="font-inter"
+                          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 2 }}
+                        >
+                          Required roles for this job.
                         </div>
-                        {!isReadOnly && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            iconOnly
-                            icon={Trash2}
-                            aria-label="Remove member"
-                            onClick={() => removeUserFromJob(m.assignmentId)}
-                          />
-                        )}
                       </div>
-                    ))
-                  )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <RoleSelect
+                        label="Primary recruiter"
+                        required
+                        helper="Owns the job — receives all candidate notifications."
+                        value={primaryRecruiterId}
+                        options={memberOptions}
+                        onChange={(v) => updatePrimary('recruiter', v)}
+                        disabled={isReadOnly}
+                      />
+                      <RoleSelect
+                        label="Hiring manager"
+                        required
+                        helper="Owns the bar and the final decision."
+                        value={hiringManagerId}
+                        options={memberOptions}
+                        onChange={(v) => updatePrimary('hiring_manager', v)}
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ height: 1, background: '#F1F0EC' }} />
+
+                  {/* Team members sub-section */}
+                  <div className="space-y-3">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <div
+                          className="font-poppins"
+                          style={{
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            color: '#1F2230',
+                          }}
+                        >
+                          Team members
+                        </div>
+                        <div
+                          className="font-inter"
+                          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 2 }}
+                        >
+                          Interviewers, coordinators, and observers.
+                        </div>
+                      </div>
+                      {!isReadOnly && onAddTeamMember && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={Plus}
+                          onClick={onAddTeamMember}
+                        >
+                          Add member
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {teamMembers.length === 0 ? (
+                        <div
+                          className="font-inter"
+                          style={{
+                            textAlign: 'center',
+                            padding: '18px 12px',
+                            fontSize: 12.5,
+                            color: '#8B8F9E',
+                            background: '#FAFAF7',
+                            border: '1px dashed #EDECE6',
+                            borderRadius: 10,
+                          }}
+                        >
+                          No team members yet.
+                        </div>
+                      ) : (
+                        teamMembers.map((m) => (
+                          <div
+                            key={m.assignmentId}
+                            className="flex items-center bg-white"
+                            style={{
+                              gap: 12,
+                              padding: '10px 12px',
+                              border: '1px solid #E7E8EE',
+                              borderRadius: 10,
+                            }}
+                          >
+                            <Avatar className="h-[26px] w-[26px]">
+                              {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
+                              <AvatarFallback className="text-[10px] bg-virgilio-purple text-white">
+                                {getInitials(m.first, m.last, m.email)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <div
+                                className="font-inter truncate"
+                                style={{
+                                  fontSize: 12.5,
+                                  fontWeight: 500,
+                                  color: '#1F2230',
+                                }}
+                              >
+                                {m.name}
+                              </div>
+                              <div
+                                className="font-inter truncate"
+                                style={{ fontSize: 10.5, color: '#8B8F9E' }}
+                              >
+                                {m.email || m.title || '—'}
+                              </div>
+                            </div>
+                            <div className="w-[180px]">
+                              <Select
+                                value={m.role}
+                                onValueChange={(v) =>
+                                  handleRoleChange(m.assignmentId, v as any)
+                                }
+                                disabled={isReadOnly}
+                              >
+                                <SelectTrigger
+                                  className="text-[13px]"
+                                  style={{
+                                    height: 34,
+                                    background: '#ffffff',
+                                    borderColor: '#E0DDD3',
+                                    borderRadius: 8,
+                                  }}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(ROLE_LABEL).map(([v, label]) => (
+                                    <SelectItem key={v} value={v}>
+                                      {label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => removeUserFromJob(m.assignmentId)}
+                                aria-label="Remove member"
+                                className="flex items-center justify-center rounded-md transition-colors"
+                                style={{
+                                  height: 28,
+                                  width: 28,
+                                  color: '#8B8F9E',
+                                  background: 'transparent',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = '#B91C1C'
+                                  e.currentTarget.style.background = '#FEF2F2'
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = '#8B8F9E'
+                                  e.currentTarget.style.background = 'transparent'
+                                }}
+                              >
+                                <Trash2 style={{ height: 15, width: 15 }} strokeWidth={2} />
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </SectionCard>
+              </section>
             </div>
 
             {/* Notifications */}
