@@ -1083,4 +1083,293 @@ function ToggleSwitch({
   )
 }
 
+interface TeamMemberRowProps {
+  member: {
+    assignmentId: string
+    userId: string
+    role: 'recruiter' | 'hiring_manager' | 'interviewer' | string
+    name: string
+    email?: string | null
+    avatarUrl?: string | null
+    title?: string | null
+    first?: string
+    last?: string
+  }
+  readOnly: boolean
+  onRoleChange: (role: 'recruiter' | 'hiring_manager' | 'interviewer') => void
+  onRemove: () => void
+  onPromotePrimary: () => void
+  onPromoteHM: () => void
+}
+
+function TeamMemberRow({
+  member: m,
+  readOnly,
+  onRoleChange,
+  onRemove,
+  onPromotePrimary,
+  onPromoteHM,
+}: TeamMemberRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
+  return (
+    <div
+      className="relative bg-white"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr) auto',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 12px',
+        border: '1px solid #E7E8EE',
+        borderRadius: 10,
+      }}
+    >
+      {/* Identity */}
+      <div className="flex items-center min-w-0" style={{ gap: 10 }}>
+        <Avatar className="shrink-0" style={{ height: 26, width: 26 }}>
+          {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
+          <AvatarFallback className="text-[10.5px] bg-virgilio-purple text-white">
+            {getInitials(m.first, m.last, m.email)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <div
+            className="font-inter truncate"
+            style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}
+          >
+            {m.name}
+          </div>
+          <div
+            className="font-inter truncate"
+            style={{ fontSize: 10.5, color: '#8B8F9E', marginTop: 1 }}
+          >
+            {m.title || 'Panel · Team'}
+          </div>
+        </div>
+      </div>
+
+      {/* Role select */}
+      <div className="min-w-0">
+        <Select
+          value={m.role}
+          onValueChange={(v) => onRoleChange(v as any)}
+          disabled={readOnly}
+        >
+          <SelectTrigger
+            className="text-[12.5px] w-full"
+            style={{
+              height: 34,
+              background: '#ffffff',
+              borderColor: '#E0DDD3',
+              borderRadius: 8,
+            }}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recruiter">Recruiter</SelectItem>
+            <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
+            <SelectItem value="interviewer">Interviewer</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Permissions/scope */}
+      <div
+        className="font-inter truncate min-w-0"
+        style={{ fontSize: 11, color: '#5A6072' }}
+      >
+        {ROLE_LABEL[m.role] || 'Member'} · scorecards
+      </div>
+
+      {/* … menu */}
+      <div className="shrink-0">
+        {!readOnly && (
+          <button
+            type="button"
+            aria-label="Row menu"
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center justify-center rounded-lg transition-colors"
+            style={{
+              height: 28,
+              width: 28,
+              color: '#8B8F9E',
+              background: menuOpen ? '#F1F0EC' : 'transparent',
+            }}
+            onMouseEnter={(e) => {
+              if (!menuOpen) e.currentTarget.style.background = '#F1F0EC'
+            }}
+            onMouseLeave={(e) => {
+              if (!menuOpen) e.currentTarget.style.background = 'transparent'
+            }}
+          >
+            <MoreHorizontal style={{ height: 15, width: 15 }} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+
+      {menuOpen && (
+        <>
+          <div
+            onClick={() => setMenuOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+          />
+          <div
+            role="menu"
+            style={{
+              position: 'absolute',
+              top: 'calc(100% - 2px)',
+              right: 12,
+              zIndex: 50,
+              width: 226,
+              background: '#fff',
+              border: '1px solid #EDECE6',
+              borderRadius: 12,
+              boxShadow:
+                '0 16px 40px -8px rgba(13,13,9,0.24), 0 0 0 1px rgba(13,13,9,0.03)',
+              padding: 5,
+            }}
+          >
+            <div
+              style={{
+                padding: '7px 10px 8px',
+                borderBottom: '1px solid #F1F0EC',
+                marginBottom: 4,
+              }}
+            >
+              <div
+                className="font-poppins truncate"
+                style={{ fontSize: 12.5, fontWeight: 600, color: '#0d0d09' }}
+              >
+                {m.name}
+              </div>
+              {m.email && (
+                <div
+                  className="font-inter truncate"
+                  style={{ fontSize: 10.5, color: '#8B8F9E', marginTop: 1 }}
+                >
+                  {m.email}
+                </div>
+              )}
+            </div>
+
+            <MenuItem
+              icon={UserIcon}
+              label="View profile"
+              onClick={() => {
+                setMenuOpen(false)
+                window.dispatchEvent(
+                  new CustomEvent('member:view-profile', { detail: m.userId })
+                )
+              }}
+            />
+            <MenuItem
+              icon={Star}
+              label="Set as primary recruiter"
+              onClick={() => {
+                setMenuOpen(false)
+                onPromotePrimary()
+              }}
+            />
+            <MenuItem
+              icon={Crown}
+              label="Set as hiring manager"
+              onClick={() => {
+                setMenuOpen(false)
+                onPromoteHM()
+              }}
+            />
+            <MenuItem
+              icon={Bell}
+              label="Notification preferences"
+              meta="For this job only"
+              onClick={() => {
+                setMenuOpen(false)
+                window.dispatchEvent(
+                  new CustomEvent('member:notification-prefs', { detail: m.userId })
+                )
+              }}
+            />
+            <div style={{ height: 1, background: '#F1F0EC', margin: '4px 0' }} />
+            <MenuItem
+              icon={Trash2}
+              label="Remove from job"
+              danger
+              onClick={() => {
+                setMenuOpen(false)
+                onRemove()
+              }}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function MenuItem({
+  icon: Icon,
+  label,
+  meta,
+  danger,
+  onClick,
+}: {
+  icon: any
+  label: string
+  meta?: string
+  danger?: boolean
+  onClick: () => void
+}) {
+  const color = danger ? '#B91C1C' : '#1F2230'
+  const glyph = danger ? '#B91C1C' : '#5A6072'
+  const hoverBg = danger ? '#FEF2F2' : '#FAFAF7'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left flex items-center"
+      style={{
+        gap: 10,
+        padding: '8px 10px',
+        borderRadius: 8,
+        background: 'transparent',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = hoverBg
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent'
+      }}
+    >
+      <Icon style={{ height: 14, width: 14, color: glyph, flexShrink: 0 }} strokeWidth={2} />
+      <div className="min-w-0 flex-1">
+        <div
+          className="font-inter truncate"
+          style={{ fontSize: 12.5, fontWeight: 500, color }}
+        >
+          {label}
+        </div>
+        {meta && (
+          <div
+            className="font-inter truncate"
+            style={{ fontSize: 10.5, color: '#8B8F9E', marginTop: 1 }}
+          >
+            {meta}
+          </div>
+        )}
+      </div>
+    </button>
+  )
+}
+
 export default JobSetupLayout
