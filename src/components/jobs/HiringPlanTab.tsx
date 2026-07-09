@@ -292,6 +292,46 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
   // Library stages remain fully available — duplicates are allowed.
   const availableStages = stages
 
+  const addStageButton = availableStages.length > 0 ? (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={readOnly}
+          className="inline-flex items-center gap-1.5 font-poppins font-medium transition-colors disabled:opacity-50"
+          style={{
+            height: 32,
+            padding: '0 12px',
+            background: '#ffffff',
+            border: '1px solid #E0DDD3',
+            borderRadius: 8,
+            color: '#1F2230',
+            fontSize: 12.5,
+            cursor: readOnly ? 'not-allowed' : 'pointer',
+          }}
+          onMouseEnter={(e) => !readOnly && (e.currentTarget.style.background = '#FAFAF7')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+        >
+          <Plus style={{ width: 14, height: 14 }} />
+          Add stage
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-72 p-2">
+        <SearchableSelect
+          value=""
+          onValueChange={handleAddStage}
+          options={availableStages.map((stage) => ({
+            value: stage.id,
+            label: stage.stage_name,
+            description: stage.stage_description,
+          }))}
+          placeholder="Select a stage to add..."
+          searchPlaceholder="Search stages..."
+        />
+      </PopoverContent>
+    </Popover>
+  ) : null
+
   return (
     <div className="space-y-6">
       {!hideHeader && (
@@ -304,91 +344,68 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
       )}
 
       <ReadOnlyOverlay active={readOnly} message="Clients can view the hiring plan but cannot edit it.">
-        <div className="space-y-4">
-          <div>
-            <h4 className="text-base font-medium text-text-primary mb-3">Current Hiring Stages</h4>
-            {planRows.length === 0 ? (
-              <InlineEmpty text="No stages in the hiring plan yet." />
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-poppins" style={{ fontSize: 12.5, fontWeight: 600, color: '#1F2230', letterSpacing: '-0.005em' }}>
+              Stages
+            </h3>
+            {addStageButton}
+          </div>
+
+          {planRows.length === 0 ? (
+            <InlineEmpty text="No stages in the hiring plan yet." />
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={planRows.filter((r) => !r.locked).map((r) => r.instanceId)}
+                strategy={verticalListSortingStrategy}
               >
-                <SortableContext
-                  items={planRows.filter((r) => !r.locked).map((r) => r.instanceId)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-3">
-                    {planRows.map((row, index) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {planRows.map((row, index) => (
+                    <DraggableStageItem
+                      key={row.instanceId}
+                      instanceId={row.instanceId}
+                      stage={row.stage}
+                      index={index}
+                      onRemove={handleRemoveRowRequest}
+                      onConfigure={handleConfigure}
+                      onDuplicate={handleAddStage}
+                      jhsId={row.jhsId}
+                      customStageName={row.customStageName}
+                      isDragging={activeId === row.instanceId}
+                      locked={row.locked}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+                {activeId && (() => {
+                  const row = planRows.find((r) => r.instanceId === activeId)
+                  if (!row) return null
+                  const index = planRows.indexOf(row)
+                  return (
+                    <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
                       <DraggableStageItem
-                        key={row.instanceId}
                         instanceId={row.instanceId}
                         stage={row.stage}
                         index={index}
-                        onRemove={handleRemoveRowRequest}
-                        onConfigure={handleConfigure}
+                        onRemove={() => {}}
                         jhsId={row.jhsId}
                         customStageName={row.customStageName}
-                        isDragging={activeId === row.instanceId}
                         locked={row.locked}
                       />
-                    ))}
-                  </div>
-                </SortableContext>
-                <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-                  {activeId && (() => {
-                    const row = planRows.find((r) => r.instanceId === activeId)
-                    if (!row) return null
-                    const index = planRows.indexOf(row)
-                    return (
-                      <div style={{ transform: 'rotate(-1.5deg) scale(1.03)', boxShadow: '0 12px 24px rgba(0,0,0,0.15)' }}>
-                        <DraggableStageItem
-                          instanceId={row.instanceId}
-                          stage={row.stage}
-                          index={index}
-                          onRemove={() => {}}
-                          jhsId={row.jhsId}
-                          customStageName={row.customStageName}
-                          locked={row.locked}
-                        />
-                      </div>
-                    )
-                  })()}
-                </DragOverlay>
-              </DndContext>
-            )}
-          </div>
-
-          {availableStages.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="text-base font-medium text-text-primary mb-3">Add Additional Stages</h4>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <SearchableSelect
-                      value=""
-                      onValueChange={handleAddStage}
-                      options={availableStages.map((stage) => ({
-                        value: stage.id,
-                        label: stage.stage_name,
-                        description: stage.stage_description,
-                      }))}
-                      placeholder="Select a stage to add..."
-                      searchPlaceholder="Search stages..."
-                    />
-                  </div>
-                  <Plus className="h-4 w-4 text-text-secondary" />
-                </div>
-                <p className="text-xs text-text-secondary mt-2">
-                  Add a stage as many times as you need — same stage can appear multiple times.
-                </p>
-              </div>
-            </>
+                    </div>
+                  )
+                })()}
+              </DragOverlay>
+            </DndContext>
           )}
-        </div>
+        </section>
       </ReadOnlyOverlay>
 
       <div className="pt-4 border-t border-border/50">
@@ -402,6 +419,8 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
           </Button>
         </div>
       </div>
+
+
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
