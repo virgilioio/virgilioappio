@@ -15,6 +15,10 @@ import {
   Plus,
   Settings2,
   Trash2,
+  ChevronDown,
+  Check,
+  Calendar as CalendarIcon,
+  UserRound,
 } from 'lucide-react'
 
 import { formatDistanceToNowStrict } from 'date-fns'
@@ -47,6 +51,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 
 interface JobSetupLayoutProps {
   jobId: string
@@ -443,15 +449,15 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
             {/* Hiring team */}
             <div data-section="hiring-team">
-              <section className="space-y-3">
+              <section className="space-y-5">
                 {/* Section heading */}
                 <div className="flex items-end justify-between gap-3">
                   <h2
                     className="font-poppins"
                     style={{
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: 600,
-                      letterSpacing: '-0.025em',
+                      letterSpacing: '-0.03em',
                       color: '#0d0d09',
                       lineHeight: 1.2,
                     }}
@@ -467,150 +473,122 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                       fontSize: 11.5,
                       fontWeight: 500,
                       borderRadius: 999,
-                      padding: '3px 10px',
+                      padding: '4px 11px',
                     }}
                   >
                     {teamMembers.length} member{teamMembers.length === 1 ? '' : 's'}
                   </span>
                 </div>
 
-                <div className="rounded-2xl border border-virgilio-border bg-white p-5 sm:p-6 space-y-6">
-                  {/* Owners sub-section */}
-                  <div className="space-y-3">
-                    <div className="flex items-end justify-between gap-3">
-                      <div>
-                        <div
-                          className="font-poppins"
-                          style={{
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            color: '#1F2230',
-                          }}
-                        >
-                          Owners
-                        </div>
-                        <div
-                          className="font-inter"
-                          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 2 }}
-                        >
-                          Required roles for this job.
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <RoleSelect
-                        label="Primary recruiter"
-                        required
-                        helper="Owns the job — receives all candidate notifications."
-                        value={primaryRecruiterId}
-                        options={memberOptions}
-                        onChange={(v) => updatePrimary('recruiter', v)}
-                        disabled={isReadOnly}
+                {/* OWNERS block */}
+                <div className="space-y-2.5">
+                  <SubsectionLabel>Owners</SubsectionLabel>
+                  <div className="rounded-2xl border border-virgilio-border bg-white p-5 sm:p-6 space-y-5">
+                    <OwnerPickerRow
+                      label="Primary recruiter"
+                      required
+                      helper="Owns the job — receives all candidate notifications."
+                      value={primaryRecruiterId}
+                      members={members}
+                      roleLabel="Recruiter"
+                      onChange={(v) => updatePrimary('recruiter', v)}
+                      disabled={isReadOnly}
+                    />
+                    <OwnerPickerRow
+                      label="Hiring manager"
+                      required
+                      helper="Owns the bar and the final decision."
+                      value={hiringManagerId}
+                      members={members}
+                      roleLabel="Hiring manager"
+                      onChange={(v) => updatePrimary('hiring_manager', v)}
+                      disabled={isReadOnly}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                      <OptionalOwnerField
+                        label="Reports to"
+                        icon={UserRound}
+                        placeholder="Select person"
                       />
-                      <RoleSelect
-                        label="Hiring manager"
-                        required
-                        helper="Owns the bar and the final decision."
-                        value={hiringManagerId}
-                        options={memberOptions}
-                        onChange={(v) => updatePrimary('hiring_manager', v)}
-                        disabled={isReadOnly}
+                      <OptionalOwnerField
+                        label="Coordinator"
+                        icon={CalendarIcon}
+                        placeholder="Same as recruiter"
                       />
                     </div>
+                    <p
+                      className="font-inter"
+                      style={{ fontSize: 12, color: '#8B8F9E', marginTop: -6 }}
+                    >
+                      Schedules + reminders. Defaults to recruiter.
+                    </p>
+                  </div>
+                </div>
+
+                {/* TEAM MEMBERS block */}
+                <div className="space-y-2.5">
+                  <div className="flex items-end justify-between gap-3">
+                    <SubsectionLabel>Team members</SubsectionLabel>
+                    {!isReadOnly && onAddTeamMember && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={Plus}
+                        onClick={onAddTeamMember}
+                      >
+                        Add member
+                      </Button>
+                    )}
                   </div>
 
-                  <div style={{ height: 1, background: '#F1F0EC' }} />
-
-                  {/* Team members sub-section */}
-                  <div className="space-y-3">
-                    <div className="flex items-end justify-between gap-3">
-                      <div>
-                        <div
-                          className="font-poppins"
-                          style={{
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            color: '#1F2230',
-                          }}
-                        >
-                          Team members
-                        </div>
-                        <div
-                          className="font-inter"
-                          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 2 }}
-                        >
-                          Interviewers, coordinators, and observers.
-                        </div>
+                  <div className="rounded-2xl border border-virgilio-border bg-white p-3 sm:p-4">
+                    {teamMembers.length === 0 ? (
+                      <div
+                        className="font-inter"
+                        style={{
+                          textAlign: 'center',
+                          padding: '22px 12px',
+                          fontSize: 12.5,
+                          color: '#8B8F9E',
+                        }}
+                      >
+                        No team members yet.
                       </div>
-                      {!isReadOnly && onAddTeamMember && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          icon={Plus}
-                          onClick={onAddTeamMember}
-                        >
-                          Add member
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      {teamMembers.length === 0 ? (
-                        <div
-                          className="font-inter"
-                          style={{
-                            textAlign: 'center',
-                            padding: '18px 12px',
-                            fontSize: 12.5,
-                            color: '#8B8F9E',
-                            background: '#FAFAF7',
-                            border: '1px dashed #EDECE6',
-                            borderRadius: 10,
-                          }}
-                        >
-                          No team members yet.
-                        </div>
-                      ) : (
-                        teamMembers.map((m) => (
+                    ) : (
+                      <div className="space-y-1">
+                        {teamMembers.map((m) => (
                           <div
                             key={m.assignmentId}
-                            className="flex items-center bg-white"
-                            style={{
-                              gap: 12,
-                              padding: '10px 12px',
-                              border: '1px solid #E7E8EE',
-                              borderRadius: 10,
-                            }}
+                            className="group flex items-center rounded-xl transition-colors hover:bg-[#FAFAF7]"
+                            style={{ gap: 12, padding: '10px 12px' }}
                           >
-                            <Avatar className="h-[26px] w-[26px]">
+                            <Avatar className="h-8 w-8">
                               {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
-                              <AvatarFallback className="text-[10px] bg-virgilio-purple text-white">
+                              <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
                                 {getInitials(m.first, m.last, m.email)}
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1">
                               <div
-                                className="font-inter truncate"
+                                className="font-poppins truncate"
                                 style={{
-                                  fontSize: 12.5,
+                                  fontSize: 13,
                                   fontWeight: 500,
                                   color: '#1F2230',
+                                  letterSpacing: '-0.01em',
                                 }}
                               >
                                 {m.name}
                               </div>
                               <div
                                 className="font-inter truncate"
-                                style={{ fontSize: 10.5, color: '#8B8F9E' }}
+                                style={{ fontSize: 11.5, color: '#8B8F9E', marginTop: 1 }}
                               >
-                                {m.email || m.title || '—'}
+                                {m.title || 'Panel · Team'}
                               </div>
                             </div>
-                            <div className="w-[180px]">
+                            <div className="w-[180px] shrink-0">
                               <Select
                                 value={m.role}
                                 onValueChange={(v) =>
@@ -638,38 +616,47 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div
+                              className="font-inter hidden lg:block shrink-0 truncate"
+                              style={{
+                                fontSize: 12,
+                                color: '#8B8F9E',
+                                minWidth: 150,
+                              }}
+                            >
+                              {ROLE_LABEL[m.role]} · scorecards
+                            </div>
                             {!isReadOnly && (
                               <button
                                 type="button"
                                 onClick={() => removeUserFromJob(m.assignmentId)}
-                                aria-label="Remove member"
-                                className="flex items-center justify-center rounded-md transition-colors"
+                                aria-label="Manage member"
+                                className="flex items-center justify-center rounded-md transition-colors opacity-60 group-hover:opacity-100"
                                 style={{
-                                  height: 28,
-                                  width: 28,
-                                  color: '#8B8F9E',
+                                  height: 30,
+                                  width: 30,
+                                  color: '#5A6072',
                                   background: 'transparent',
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.color = '#B91C1C'
-                                  e.currentTarget.style.background = '#FEF2F2'
+                                  e.currentTarget.style.background = '#F1F0EC'
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.color = '#8B8F9E'
                                   e.currentTarget.style.background = 'transparent'
                                 }}
                               >
-                                <Trash2 style={{ height: 15, width: 15 }} strokeWidth={2} />
+                                <Settings2 style={{ height: 15, width: 15 }} strokeWidth={2} />
                               </button>
                             )}
                           </div>
-                        ))
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
             </div>
+
 
             {/* Notifications */}
             <div data-section="notifications">
@@ -894,7 +881,260 @@ function RoleSelect({
   )
 }
 
-/* ---------- Inline switch (matches ToggleRow visual) ---------- */
+/* ---------- Hiring team sub-parts ---------- */
+
+function SubsectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="font-poppins"
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.09em',
+        color: '#5A6072',
+        paddingLeft: 2,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function OwnerPickerRow({
+  label,
+  required,
+  helper,
+  value,
+  members,
+  roleLabel,
+  onChange,
+  disabled,
+}: {
+  label: string
+  required?: boolean
+  helper?: string
+  value: string
+  members: any[]
+  roleLabel: string
+  onChange: (v: string) => void
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = members.find((m) => m.user_id === value)
+  const name =
+    selected
+      ? `${selected.user_first_name || ''} ${selected.user_last_name || ''}`.trim() ||
+        selected.user_email ||
+        'Member'
+      : ''
+
+  return (
+    <div>
+      <div
+        className="font-poppins"
+        style={{
+          fontSize: 12.5,
+          fontWeight: 500,
+          color: '#1F2230',
+          marginBottom: 6,
+          letterSpacing: '-0.005em',
+        }}
+      >
+        {label}
+        {required && <span style={{ color: '#DC2626', marginLeft: 4 }}>*</span>}
+      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className="w-full flex items-center text-left transition-colors"
+            style={{
+              gap: 12,
+              padding: '10px 14px 10px 12px',
+              borderRadius: 12,
+              border: '1px solid #E7E8EE',
+              background: '#ffffff',
+              minHeight: 60,
+            }}
+            onMouseEnter={(e) => {
+              if (!disabled) e.currentTarget.style.borderColor = '#D7C5FB'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E7E8EE'
+            }}
+          >
+            {selected ? (
+              <>
+                <Avatar className="h-9 w-9 shrink-0">
+                  {selected.user_avatar_url ? (
+                    <AvatarImage src={selected.user_avatar_url} alt="" />
+                  ) : null}
+                  <AvatarFallback className="text-[11px] bg-virgilio-purple text-white">
+                    {getInitials(
+                      selected.user_first_name,
+                      selected.user_last_name,
+                      selected.user_email
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="font-poppins truncate"
+                    style={{
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      color: '#1F2230',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {name}
+                  </div>
+                  <div
+                    className="font-inter truncate"
+                    style={{ fontSize: 11.5, color: '#8B8F9E', marginTop: 1 }}
+                  >
+                    {roleLabel}
+                    {selected.user_email ? ` · ${selected.user_email}` : ''}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div
+                  className="shrink-0 rounded-full inline-flex items-center justify-center"
+                  style={{ height: 36, width: 36, background: '#F1F0EC', color: '#8B8F9E' }}
+                >
+                  <UserRound size={16} />
+                </div>
+                <div
+                  className="font-inter flex-1"
+                  style={{ fontSize: 13, color: '#8B8F9E' }}
+                >
+                  Select {label.toLowerCase()}
+                </div>
+              </>
+            )}
+            <ChevronDown size={16} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0"
+          align="start"
+          style={{ width: 'var(--radix-popover-trigger-width)', maxWidth: 480 }}
+        >
+          <Command>
+            <CommandInput placeholder="Search members…" />
+            <CommandList>
+              <CommandEmpty>No members found.</CommandEmpty>
+              <CommandGroup>
+                {members.map((m) => {
+                  const n =
+                    `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() ||
+                    m.user_email ||
+                    'Member'
+                  return (
+                    <CommandItem
+                      key={m.user_id}
+                      value={`${n} ${m.user_email || ''}`}
+                      onSelect={() => {
+                        onChange(m.user_id)
+                        setOpen(false)
+                      }}
+                      className="gap-2.5"
+                    >
+                      <Avatar className="h-7 w-7 shrink-0">
+                        {m.user_avatar_url ? <AvatarImage src={m.user_avatar_url} alt="" /> : null}
+                        <AvatarFallback className="text-[10px] bg-virgilio-purple text-white">
+                          {getInitials(m.user_first_name, m.user_last_name, m.user_email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] font-medium truncate">{n}</div>
+                        {m.user_email && (
+                          <div className="text-[11px] text-text-tertiary truncate">
+                            {m.user_email}
+                          </div>
+                        )}
+                      </div>
+                      {m.user_id === value && <Check size={14} className="text-virgilio-purple" />}
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {helper && (
+        <p
+          className="font-inter"
+          style={{ fontSize: 12, color: '#8B8F9E', marginTop: 8, paddingLeft: 2 }}
+        >
+          {helper}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function OptionalOwnerField({
+  label,
+  icon: Icon,
+  placeholder,
+}: {
+  label: string
+  icon: any
+  placeholder: string
+}) {
+  return (
+    <div>
+      <div
+        className="font-poppins"
+        style={{
+          fontSize: 12.5,
+          fontWeight: 500,
+          color: '#1F2230',
+          marginBottom: 6,
+          letterSpacing: '-0.005em',
+        }}
+      >
+        {label}{' '}
+        <span
+          className="font-inter"
+          style={{ fontSize: 11.5, fontWeight: 400, color: '#8B8F9E' }}
+        >
+          (optional)
+        </span>
+      </div>
+      <button
+        type="button"
+        className="w-full flex items-center text-left transition-colors"
+        style={{
+          gap: 10,
+          padding: '10px 12px',
+          borderRadius: 10,
+          border: '1px solid #E7E8EE',
+          background: '#ffffff',
+          height: 44,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#D7C5FB')}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#E7E8EE')}
+      >
+        <Icon size={15} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+        <span
+          className="font-inter flex-1 truncate"
+          style={{ fontSize: 13, color: '#1F2230' }}
+        >
+          {placeholder}
+        </span>
+        <ChevronDown size={14} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+      </button>
+    </div>
+  )
+}
+
 
 function ToggleSwitch({
   checked,
