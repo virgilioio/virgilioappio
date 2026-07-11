@@ -1,16 +1,23 @@
 ## Problem
-The avatar dropdown's "Members & invites" row links to `/members`, which is a standalone page (mounted in `App.tsx` as `<Route path="/members" element={<Members />} />`). That page renders members management outside the Settings shell, so the Settings side menu is missing.
 
-The Settings page (`src/pages/Settings.tsx`) already handles a `members` tab that renders `<MembersTab />` inside the standard `SettingsSidebar` + content layout — reachable via `/settings?tab=members`.
+In `/pipeline`, expanding a job and clicking a candidate card navigates to `/candidates/${candId}` (independent candidate page) instead of the in-job candidate profile for that job.
+
+## Root Cause
+
+`src/components/pipeline/InlineKanban.tsx` line 197:
+
+```ts
+onCandidateClick={(candId) => navigate(`/candidates/${candId}`)}
+```
+
+It ignores `jobId` even though the InlineKanban is scoped to a specific job.
 
 ## Fix
-Single-line change in `src/components/layout/AccountMenu.tsx`:
 
-- Update the "Members & invites" `Row` `to` prop from `"/members"` to `"/settings?tab=members"`.
+Change the navigation target to the job-scoped candidate route used elsewhere in the app (see `src/pages/CandidateProfile.tsx`, route `/jobs/:jobId/candidates/:candidateId`):
 
-That routes the user into Settings with the side menu visible and the Members tab preselected, matching every other entry in the dropdown (Profile, Availability, Settings all use `/settings?tab=…`).
+```ts
+onCandidateClick={(candId) => navigate(`/jobs/${jobId}/candidates/${candId}`)}
+```
 
-## Out of scope
-- No changes to `App.tsx`, the `/members` route, or the `Members` page itself (kept as-is so any other deep link still works).
-- No changes to `MembersTab` logic, permissions, or data.
-- No visual/style changes.
+Single-line change in `src/components/pipeline/InlineKanban.tsx`. No data, permission, or DnD logic changes.

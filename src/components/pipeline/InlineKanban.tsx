@@ -194,7 +194,7 @@ export function InlineKanban({ jobId }: { jobId: string }) {
                   stage={s}
                   isOver={overStage === s.jhsId}
                   isDragging={!!activeId}
-                  onCandidateClick={(candId) => navigate(`/candidates/${candId}`)}
+                  onCandidateClick={(candId) => navigate(`/jobs/${jobId}/candidates/${candId}`)}
                 />
               ))}
         </div>
