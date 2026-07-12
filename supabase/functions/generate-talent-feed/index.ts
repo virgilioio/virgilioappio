@@ -135,16 +135,78 @@ Deno.serve(async (req) => {
     const typedPostings = postings as unknown as JobPosting[]
     console.log('[generate-talent-feed] Found postings:', typedPostings?.length || 0)
 
-    // Generate XML feed
-    const xmlJobs = typedPostings.map(posting => {
+    // Extract shared per-job data used by all formats
+    const jobData = typedPostings.map(posting => {
       const details = posting.details || {}
       const location = posting.location || ''
       const [city, state, country] = parseLocation(location)
-      
+      const jobUrl = `${resolvedCompanySlug ? `https://app.gogio.io/careers/${resolvedCompanySlug}/${posting.slug}` : `https://app.gogio.io/p/${posting.slug}`}?source=${board}`
       const webhookUrl = encodeURIComponent(`${Deno.env.get('SUPABASE_URL')}/functions/v1/talent-apply-webhook?posting_id=${posting.id}`)
       const questionsUrl = encodeURIComponent(`${Deno.env.get('SUPABASE_URL')}/functions/v1/talent-questions?posting_id=${posting.id}`)
+      const isRemote = details.location_type === 'remote'
+      const salaryPublic = !!(details.show_salary && details.salary_amount)
+      return { posting, details, city, state, country, jobUrl, webhookUrl, questionsUrl, isRemote, salaryPublic }
+    })
 
-      return `
+    let xml: string
+
+    if (board === 'whatjobs') {
+      const xmlJobs = jobData.map(({ posting, details, city, state, country, jobUrl, isRemote, salaryPublic }) => {
+        const salaryStr = salaryPublic
+          ? `${details.salary_amount} ${details.salary_currency || 'USD'} / ${details.salary_period || 'year'}`
+          : ''
+        return `
+  <job id="${escapeXml(posting.id)}">
+    <id><![CDATA[${posting.id}]]></id>
+    <link><![CDATA[${jobUrl}]]></link>
+    <title><![CDATA[${posting.title}]]></title>
+    <city><![CDATA[${city}]]></city>
+    <region><![CDATA[${state}]]></region>
+    <state><![CDATA[${state}]]></state>
+    <country><![CDATA[${country}]]></country>
+    <language><![CDATA[en]]></language>
+    <description><![CDATA[${posting.description || ''}]]></description>
+    <pubdate><![CDATA[${formatDateDMY(posting.created_at)}]]></pubdate>
+    <company><![CDATA[${tenant.name}]]></company>
+    ${salaryStr ? `<salary><![CDATA[${salaryStr}]]></salary>` : ''}
+    ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
+    ${isRemote ? `<joblocationtype><![CDATA[telecommute]]></joblocationtype>` : ''}
+  </job>`
+      }).join('\n')
+
+      xml = `<?xml version="1.0" encoding="utf-8"?>
+<jobs>
+  ${xmlJobs}
+</jobs>`
+    } else if (board === 'juju') {
+      const xmlJobs = jobData.map(({ posting, city, state, country, jobUrl }) => {
+        return `
+  <job id="${escapeXml(posting.id)}">
+    <employer><![CDATA[${tenant.name}]]></employer>
+    <title><![CDATA[${posting.title}]]></title>
+    <description><![CDATA[${posting.description || ''}]]></description>
+    <postingdate>${formatDateYMD(posting.created_at)}</postingdate>
+    <joburl><![CDATA[${jobUrl}]]></joburl>
+    <location>
+      <city><![CDATA[${city}]]></city>
+      <state><![CDATA[${state}]]></state>
+      <nation><![CDATA[${country}]]></nation>
+    </location>
+    <type>${mapJujuType(posting.job_type)}</type>
+  </job>`
+      }).join('\n')
+
+      xml = `<?xml version="1.0" encoding="utf-8"?>
+<jobs>
+  <jobsource><![CDATA[Gio ATS]]></jobsource>
+  <sourceurl><![CDATA[https://app.gogio.io]]></sourceurl>
+  <feeddate>${new Date().toISOString()}</feeddate>
+  ${xmlJobs}
+</jobs>`
+    } else {
+      // Existing formats: talent, jooble, adzuna, careerjet, jobrapido
+      const xmlJobs = jobData.map(({ posting, details, city, state, country, jobUrl, webhookUrl, questionsUrl }) => {
+        return `
   <job>
     <referencenumber>${posting.id}</referencenumber>
     <title><![CDATA[${escapeXml(posting.title)}]]></title>
@@ -153,7 +215,7 @@ Deno.serve(async (req) => {
     ${state ? `<state><![CDATA[${escapeXml(state)}]]></state>` : ''}
     ${country ? `<country><![CDATA[${escapeXml(country)}]]></country>` : ''}
     <dateposted>${posting.created_at}</dateposted>
-    <url><![CDATA[${resolvedCompanySlug ? `https://app.gogio.io/careers/${resolvedCompanySlug}/${posting.slug}` : `https://app.gogio.io/p/${posting.slug}`}?source=${board}]]></url>
+    <url><![CDATA[${jobUrl}]]></url>
     <description><![CDATA[${posting.description || ''}]]></description>
     ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
     ${details.location_type ? `<isremote>${details.location_type === 'remote' ? 'yes' : 'no'}</isremote>` : ''}
@@ -165,15 +227,16 @@ Deno.serve(async (req) => {
     </salary>` : ''}
     ${board === 'talent' ? `<talent-apply-data><![CDATA[talent-apply-posturl=${webhookUrl}&talent-apply-questions=${questionsUrl}]]></talent-apply-data>` : ''}
   </job>`
-    }).join('\n')
+      }).join('\n')
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+      xml = `<?xml version="1.0" encoding="UTF-8"?>
 <source>
   <publisher>GoGio</publisher>
   <publisherurl>https://app.gogio.io</publisherurl>
   <lastbuilddate>${new Date().toISOString()}</lastbuilddate>
   ${xmlJobs}
 </source>`
+    }
 
     return new Response(xml, {
       headers: {
