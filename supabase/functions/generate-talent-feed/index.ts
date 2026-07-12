@@ -273,6 +273,29 @@ function mapJobType(jobType: string): string {
   return typeMap[jobType] || 'Full time'
 }
 
+function mapJujuType(jobType: string): string {
+  const typeMap: Record<string, string> = {
+    'full_time': 'fulltime',
+    'part_time': 'parttime',
+    'contract': 'contract',
+    'temporary': 'contract',
+    'internship': 'parttime'
+  }
+  return typeMap[jobType] || 'fulltime'
+}
+
+function formatDateDMY(iso: string): string {
+  const d = new Date(iso)
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const yyyy = d.getUTCFullYear()
+  return `${dd}.${mm}.${yyyy}`
+}
+
+function formatDateYMD(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
 function escapeXml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
