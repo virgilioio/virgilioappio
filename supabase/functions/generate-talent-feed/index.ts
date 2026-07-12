@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     const companySlug = url.searchParams.get('company_slug')
     const board = url.searchParams.get('board') || 'talent'
 
-    const ALLOWED_BOARDS = ['talent', 'jooble', 'adzuna', 'careerjet', 'jobrapido']
+    const ALLOWED_BOARDS = ['talent', 'jooble', 'adzuna', 'careerjet', 'jobrapido', 'whatjobs', 'juju']
     if (!ALLOWED_BOARDS.includes(board)) {
       return new Response(JSON.stringify({ error: 'Unknown board' }), {
         status: 400,
