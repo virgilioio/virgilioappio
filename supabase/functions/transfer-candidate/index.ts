@@ -77,38 +77,57 @@ serve(async (req) => {
     }
     console.log('[Transfer] Stage mapping built:', stageMapping.size, 'mappings')
 
-    // 3. Check if candidate already exists in target job
-    const { data: existingAssociation, error: existingError } = await supabaseClient
+    // 3. Check if candidate already exists in target job — if so, merge into it
+    const { data: existingAssociation } = await supabaseClient
       .from('job_candidate_associations')
-      .select('id')
+      .select('*')
       .eq('candidate_id', candidateId)
       .eq('job_id', targetJobId)
       .maybeSingle()
 
+    let newAssociation: { id: string } & Record<string, unknown>
+
     if (existingAssociation) {
-      throw new Error('Candidate already exists in target job')
+      // Merge path: reuse the existing target association. Optionally update
+      // its current_stage_id to the stage the user picked in the dialog.
+      if (targetStageId) {
+        const { data: updated, error: updateStageError } = await supabaseClient
+          .from('job_candidate_associations')
+          .update({ current_stage_id: targetStageId })
+          .eq('id', existingAssociation.id)
+          .select()
+          .single()
+        if (updateStageError || !updated) {
+          console.error('[Transfer] Failed to update existing association stage:', updateStageError)
+          throw new Error('Failed to update stage on existing target association')
+        }
+        newAssociation = updated
+      } else {
+        newAssociation = existingAssociation as typeof newAssociation
+      }
+      console.log('[Transfer] Merged into existing target association:', newAssociation.id)
+    } else {
+      // Create new association in target job
+      const { data: created, error: newAssocError } = await supabaseClient
+        .from('job_candidate_associations')
+        .insert({
+          candidate_id: candidateId,
+          job_id: targetJobId,
+          current_stage_id: targetStageId || null,
+          added_by: user.id,
+          notes: sourceAssociation.notes,
+          status: sourceAssociation.status
+        })
+        .select()
+        .single()
+
+      if (newAssocError || !created) {
+        console.error('[Transfer] Failed to create new association:', newAssocError)
+        throw new Error('Failed to create association in target job')
+      }
+      newAssociation = created
+      console.log('[Transfer] New association created:', newAssociation.id)
     }
-
-    // 3. Create new association in target job
-    const { data: newAssociation, error: newAssocError } = await supabaseClient
-      .from('job_candidate_associations')
-      .insert({
-        candidate_id: candidateId,
-        job_id: targetJobId,
-        current_stage_id: targetStageId || null,
-        added_by: user.id,
-        notes: sourceAssociation.notes,
-        status: sourceAssociation.status
-      })
-      .select()
-      .single()
-
-    if (newAssocError || !newAssociation) {
-      console.error('[Transfer] Failed to create new association:', newAssocError)
-      throw new Error('Failed to create association in target job')
-    }
-
-    console.log('[Transfer] New association created:', newAssociation.id)
 
     // 4. Transfer comments
     const { error: commentsError } = await supabaseClient
