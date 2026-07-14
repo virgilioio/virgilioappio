@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import {
   UserRoundX, X, Plus, Mail, Send, Clock, Calendar as CalendarIcon,
   Check, ChevronDown, History, TriangleAlert, Loader2, Eye, EyeOff,
-  Bold, Italic, Underline, List, ListOrdered,
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -523,25 +522,12 @@ export function RejectionDialog({
                       {/* Message */}
                       <div>
                         <FieldLabel>Message</FieldLabel>
-                        <div style={{ border: '1px solid #E0DDD3', borderRadius: 9, overflow: 'hidden' }}>
-                          <div
-                            className="flex items-center gap-0.5"
-                            style={{ backgroundColor: '#FBFAF7', borderBottom: '1px solid #EDECE6', padding: '4px 6px' }}
-                          >
-                            <ToolbarGlyph><Bold size={13} /></ToolbarGlyph>
-                            <ToolbarGlyph><Italic size={13} /></ToolbarGlyph>
-                            <ToolbarGlyph><Underline size={13} /></ToolbarGlyph>
-                            <span style={{ width: 1, height: 16, backgroundColor: '#EDECE6', margin: '0 4px' }} />
-                            <ToolbarGlyph><List size={13} /></ToolbarGlyph>
-                            <ToolbarGlyph><ListOrdered size={13} /></ToolbarGlyph>
-                          </div>
-                          <BodyTemplateEditor
-                            value={bodyHtml}
-                            onChange={setBodyHtml}
-                            placeholder="Write your rejection email…"
-                            minHeight="124px"
-                          />
-                        </div>
+                        <BodyTemplateEditor
+                          value={bodyHtml}
+                          onChange={setBodyHtml}
+                          placeholder="Write your rejection email…"
+                          minHeight="124px"
+                        />
                       </div>
 
                       {/* When to send */}
@@ -667,18 +653,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     <div className="font-poppins mb-1.5" style={{ fontSize: 12, fontWeight: 600, color: '#1F2230' }}>
       {children}
     </div>
-  );
-}
-
-function ToolbarGlyph({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center justify-center rounded-md transition hover:bg-[#F1F0EC]"
-      style={{ width: 28, height: 28, color: '#5A6072' }}
-    >
-      {children}
-    </button>
   );
 }
 

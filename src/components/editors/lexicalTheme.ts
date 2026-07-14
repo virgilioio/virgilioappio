@@ -128,18 +128,28 @@ export const LEXICAL_EDITOR_STYLES = `
   .lexical-placeholder-badge {
     background-color: rgb(168 85 247 / 0.15);
     color: rgb(147 51 234);
-    padding: 3px 10px;
-    border-radius: 12px;
+    padding: 2px 8px;
+    border-radius: 6px;
     font-weight: 500;
     font-size: 0.875em;
+    line-height: 1;
     display: inline-flex;
     align-items: center;
     margin: 0 2px;
+    max-width: 100%;
     user-select: none;
     cursor: default;
     border: 1px solid rgb(168 85 247 / 0.4);
     white-space: nowrap;
-    vertical-align: baseline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+
+  /* Tighter pill inside the single-line subject input */
+  .lexical-subject-editor .lexical-placeholder-badge {
+    font-size: 12px;
+    padding: 1px 7px;
   }
   
   .dark .lexical-placeholder-badge {
