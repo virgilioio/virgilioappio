@@ -11,6 +11,7 @@ import {
   Briefcase,
   Check,
   History,
+  Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useJobs } from '@/hooks/useJobs'
