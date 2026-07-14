@@ -630,7 +630,6 @@ export function CandidateMergeDialog({
       </div>
     </div>
   )
-}
 
   return createPortal(node, document.body)
 }
