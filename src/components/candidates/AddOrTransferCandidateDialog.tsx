@@ -84,6 +84,7 @@ export function AddOrTransferCandidateDialog({
       setMode('add')
       setSelectedJobId('')
       setSelectedStageId('')
+      setStageOptions([])
       setAck(false)
       setQuery('')
       // autofocus search
