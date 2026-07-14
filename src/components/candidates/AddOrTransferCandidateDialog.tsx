@@ -603,6 +603,107 @@ export function AddOrTransferCandidateDialog({
               </div>
             </div>
 
+            {/* 3b · Select target stage */}
+            {selectedJob && (
+              <div>
+                <div className="flex items-center justify-between" style={{ marginBottom: 8, gap: 12 }}>
+                  <div
+                    className="font-poppins"
+                    style={{ fontSize: 12.5, fontWeight: 600, color: '#1F2230' }}
+                  >
+                    {isTransfer ? 'Transfer into stage' : 'Add into stage'}
+                  </div>
+                  <div
+                    className="font-inter truncate"
+                    style={{ fontSize: 11, color: '#8B8F9E' }}
+                  >
+                    in {selectedJob.title}
+                  </div>
+                </div>
+
+                {stagesLoading ? (
+                  <div
+                    className="font-inter"
+                    style={{ fontSize: 12, color: '#8B8F9E', padding: '4px 2px' }}
+                  >
+                    Loading stages…
+                  </div>
+                ) : stageOptions.length === 0 ? (
+                  <div
+                    className="font-inter"
+                    style={{ fontSize: 12, color: '#8B8F9E', padding: '4px 2px' }}
+                  >
+                    No stages are configured for this job yet.
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap" style={{ gap: 7 }}>
+                      {stageOptions.map((opt, i) => {
+                        const isSel = opt.jhsId === selectedStageId
+                        const label = opt.customStageName || opt.stage.stage_name
+                        return (
+                          <button
+                            key={opt.jhsId}
+                            type="button"
+                            onClick={() => setSelectedStageId(opt.jhsId)}
+                            className="font-inter inline-flex items-center transition-colors"
+                            style={{
+                              height: 32,
+                              borderRadius: 999,
+                              padding: '0 12px 0 9px',
+                              gap: 8,
+                              fontSize: 12.5,
+                              background: isSel ? '#F5EFFF' : '#ffffff',
+                              border: `1px solid ${isSel ? '#DFCBFB' : '#E7E8EE'}`,
+                              boxShadow: isSel ? 'inset 0 0 0 1px #DFCBFB' : 'none',
+                              color: isSel ? '#5B21B6' : '#4A4F60',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSel) e.currentTarget.style.background = '#FAFAF7'
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSel) e.currentTarget.style.background = '#ffffff'
+                            }}
+                          >
+                            <span
+                              className="font-poppins flex items-center justify-center shrink-0"
+                              style={{
+                                height: 18,
+                                width: 18,
+                                borderRadius: 999,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                background: isSel ? '#6F3FF5' : '#F1F0EC',
+                                color: isSel ? '#ffffff' : '#8B8F9E',
+                              }}
+                            >
+                              {i + 1}
+                            </span>
+                            <span className="truncate">{label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {!selectedStageId && (
+                      <div
+                        className="flex items-center"
+                        style={{ marginTop: 8, gap: 6, color: '#8B8F9E' }}
+                      >
+                        <Info style={{ height: 12, width: 12 }} strokeWidth={2} />
+                        <span
+                          className="font-inter"
+                          style={{ fontSize: 11.5, color: '#8B8F9E' }}
+                        >
+                          Pick the stage {firstName} will land in on this job.
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* 4 · Transfer acknowledgment */}
             {isTransfer && (
               <label
