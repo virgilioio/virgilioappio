@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import {
   UserRoundX, X, Plus, Mail, Send, Clock, Calendar as CalendarIcon,
   Check, ChevronDown, History, TriangleAlert, Loader2, Eye, EyeOff,
-  Bold, Italic, Underline, List, ListOrdered,
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
