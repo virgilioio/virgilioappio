@@ -656,18 +656,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ToolbarGlyph({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center justify-center rounded-md transition hover:bg-[#F1F0EC]"
-      style={{ width: 28, height: 28, color: '#5A6072' }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function WhenCard({
   selected, onClick, icon, title, subtitle,
 }: { selected: boolean; onClick: () => void; icon: React.ReactNode; title: string; subtitle: string }) {
