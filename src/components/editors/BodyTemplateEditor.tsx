@@ -262,6 +262,22 @@ export const BodyTemplateEditor = forwardRef<BodyTemplateEditorHandle, BodyTempl
           }
         });
       },
+      insertHtml: (html: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.focus();
+        editor.update(() => {
+          const dom = new DOMParser().parseFromString(html, 'text/html');
+          const nodes = $generateNodesFromDOM(editor, dom);
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            selection.insertNodes(nodes);
+          } else {
+            const root = $getRoot();
+            nodes.forEach((n) => root.append(n));
+          }
+        });
+      },
       focus: () => {
         editorRef.current?.focus();
       }
