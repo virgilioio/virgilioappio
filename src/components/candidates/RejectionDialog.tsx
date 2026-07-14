@@ -522,25 +522,12 @@ export function RejectionDialog({
                       {/* Message */}
                       <div>
                         <FieldLabel>Message</FieldLabel>
-                        <div style={{ border: '1px solid #E0DDD3', borderRadius: 9, overflow: 'hidden' }}>
-                          <div
-                            className="flex items-center gap-0.5"
-                            style={{ backgroundColor: '#FBFAF7', borderBottom: '1px solid #EDECE6', padding: '4px 6px' }}
-                          >
-                            <ToolbarGlyph><Bold size={13} /></ToolbarGlyph>
-                            <ToolbarGlyph><Italic size={13} /></ToolbarGlyph>
-                            <ToolbarGlyph><Underline size={13} /></ToolbarGlyph>
-                            <span style={{ width: 1, height: 16, backgroundColor: '#EDECE6', margin: '0 4px' }} />
-                            <ToolbarGlyph><List size={13} /></ToolbarGlyph>
-                            <ToolbarGlyph><ListOrdered size={13} /></ToolbarGlyph>
-                          </div>
-                          <BodyTemplateEditor
-                            value={bodyHtml}
-                            onChange={setBodyHtml}
-                            placeholder="Write your rejection email…"
-                            minHeight="124px"
-                          />
-                        </div>
+                        <BodyTemplateEditor
+                          value={bodyHtml}
+                          onChange={setBodyHtml}
+                          placeholder="Write your rejection email…"
+                          minHeight="124px"
+                        />
                       </div>
 
                       {/* When to send */}
