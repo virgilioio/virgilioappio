@@ -175,16 +175,20 @@ export const LEXICAL_EDITOR_STYLES = `
     margin: 0;
   }
   
-  /* Empty placeholder text */
+  /* Empty placeholder text — positioning is owned by each editor's Tailwind classes */
   .lexical-editor-placeholder {
     color: hsl(var(--muted-foreground));
     pointer-events: none;
     position: absolute;
-    top: 0;
-    left: 0;
+    font-size: 0.875rem;
+  }
+
+  /* Single-line Subject: ellipsize long placeholder text */
+  .lexical-subject-editor ~ .lexical-editor-placeholder,
+  .lexical-subject-editor + .lexical-editor-placeholder {
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.875rem;
+    max-width: calc(100% - 1.5rem);
   }
 `;
