@@ -62,6 +62,7 @@ export interface BodyTemplateEditorProps {
 
 export interface BodyTemplateEditorHandle {
   insertPlaceholder: (placeholder: string) => void;
+  insertHtml: (html: string) => void;
   focus: () => void;
 }
 
