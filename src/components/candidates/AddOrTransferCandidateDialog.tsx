@@ -64,6 +64,8 @@ export function AddOrTransferCandidateDialog({
   const [mode, setMode] = useState<Mode>('add')
   const [selectedJobId, setSelectedJobId] = useState<string>('')
   const [selectedStageId, setSelectedStageId] = useState<string>('')
+  const [stageOptions, setStageOptions] = useState<HiringPlanStageOption[]>([])
+  const [stagesLoading, setStagesLoading] = useState(false)
   const [ack, setAck] = useState(false)
   const [query, setQuery] = useState('')
   const searchRef = useRef<HTMLInputElement | null>(null)
