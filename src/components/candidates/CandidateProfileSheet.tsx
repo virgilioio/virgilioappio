@@ -2167,6 +2167,7 @@ const stageHasAutomation = useMemo(() => {
           candidateEmail={candidate?.email || ''}
           candidateId={candidateId || undefined}
           jobId={jobId}
+          jobTitle={job?.title}
           onSuccess={handleRejectionSuccess}
         />
       )}
