@@ -31,6 +31,7 @@ import {
   FORMAT_TEXT_COMMAND,
   ParagraphNode,
 } from 'lexical';
+import { $generateNodesFromDOM } from '@lexical/html';
 import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list';
 import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
 
@@ -61,6 +62,7 @@ export interface BodyTemplateEditorProps {
 
 export interface BodyTemplateEditorHandle {
   insertPlaceholder: (placeholder: string) => void;
+  insertHtml: (html: string) => void;
   focus: () => void;
 }
 
@@ -257,6 +259,22 @@ export const BodyTemplateEditor = forwardRef<BodyTemplateEditorHandle, BodyTempl
             const spaceNode = $createTextNode(' ');
             selection.insertNodes([placeholderNode, spaceNode]);
             spaceNode.select(1, 1);
+          }
+        });
+      },
+      insertHtml: (html: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.focus();
+        editor.update(() => {
+          const dom = new DOMParser().parseFromString(html, 'text/html');
+          const nodes = $generateNodesFromDOM(editor, dom);
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            selection.insertNodes(nodes);
+          } else {
+            const root = $getRoot();
+            nodes.forEach((n) => root.append(n));
           }
         });
       },

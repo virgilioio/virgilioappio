@@ -223,10 +223,8 @@ export function EmailComposer({
     const safeUrl = payload.url.replace(/"/g, '&quot;');
     const label = payload.title || payload.url;
     const snippet = `<p><a href="${safeUrl}">${label}</a><br/><span style="color:#8B8F9E;font-size:12px;">${payload.meta || ''}</span></p><p><br/></p>`;
-    const next = (bodyHtml || '') + snippet;
-    setBodyHtml(next);
-    setValue('body_html', next);
-  }, [bodyHtml, setValue]);
+    bodyEditorRef.current?.insertHtml(snippet);
+  }, []);
 
   // Lightweight suggestion trigger: once the body has substantive content, propose a warmer rewrite.
   const rewriteMutation = useAIDraftEmail();

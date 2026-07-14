@@ -1,37 +1,41 @@
 ## Problem
+In `EmailComposer`, `insertBookingLinkIntoBody` builds a snippet string and appends it to the end of `bodyHtml`:
 
-Transferring a candidate to another job errors with **"Candidate already exists in target job"**. Confirmed in the DB: candidate `f90aed39…` has active associations in *both* the source job (`fd6007cb…`) and the target job (`bee1537d…`). The `transfer-candidate` edge function hard-fails in that case (lines 78–82 of `supabase/functions/transfer-candidate/index.ts`), so the transfer aborts and nothing moves.
+```ts
+const next = (bodyHtml || '') + snippet;
+setBodyHtml(next);
+```
 
-Add works fine because it just calls `createAssociationAndMove` and doesn't do the pre-check.
+The Lexical `BodyTemplateEditor` then re-loads that HTML, so the booking card always lands at the bottom regardless of where the cursor is. Subject-line placeholder insertion works correctly because it goes through `bodyEditorRef.current?.insertPlaceholder(...)`, which uses the live Lexical selection.
 
-## Root cause
+## Fix (small, presentation-only)
 
-`transfer-candidate` assumes the candidate is **not yet** in the target job. When they are already there (added directly, previously transferred, or added through Move-to-pipeline), the function throws instead of merging.
+1. **Extend `BodyTemplateEditorHandle`** in `src/components/editors/BodyTemplateEditor.tsx` with a new imperative method:
+   - `insertHtml(html: string): void`
+   
+   Implementation inside `useImperativeHandle`:
+   - `editor.focus()` first so a valid selection exists if the editor was blurred.
+   - `editor.update(() => { ... })`:
+     - Parse the incoming HTML with `$generateNodesFromDOM` from `@lexical/html` (using `new DOMParser().parseFromString(html, 'text/html')`).
+     - Get the current selection via `$getSelection()`. If it's a `RangeSelection`, call `selection.insertNodes(nodes)` — this places the booking card exactly where the cursor is.
+     - Fallback (no/invalid selection): append the parsed nodes as children of `$getRoot()` so behavior degrades to today's "append" instead of crashing.
+   - The existing `OnChangePlugin` will fire and propagate the new HTML up through `onChange`, keeping `bodyHtml` and RHF `body_html` in sync — no manual `setBodyHtml` needed.
 
-## Fix (edge function only — no UI, no schema change)
+2. **Update `insertBookingLinkIntoBody`** in `src/components/candidates/EmailComposer.tsx` (lines 222-229):
+   - Keep the snippet building (same `<p><a>…</a><br/><span>…</span></p><p><br/></p>` markup, same `safeUrl` escaping, same `payload.title || payload.url` label).
+   - Replace the string concat + `setBodyHtml` + `setValue` calls with a single `bodyEditorRef.current?.insertHtml(snippet)`.
+   - Drop the `bodyHtml` dependency from `useCallback` since we no longer read it.
 
-Update `supabase/functions/transfer-candidate/index.ts` to **merge into the existing target association** instead of erroring:
+3. **No other changes.** The `BookingLinkPopover` wiring, the calendar `FooterIcon`, the payload shape, and the bulk-composer branch (lines 978-994, which uses a separate `BodyTemplateEditor` without a ref) all stay as-is. If we want the same UX for bulk later, we can add a ref there in a follow-up — but the user's report is about the standard composer.
 
-1. Query the target association with `.maybeSingle()` as it does today.
-2. If it exists:
-   - **Do not** insert a new association.
-   - Treat that existing row as `newAssociation`.
-   - If the caller passed `targetStageId`, update the existing association's `current_stage_id` to it (respect the stage the user picked in the dialog). Leave `status`, `notes`, `added_by` untouched so we don't overwrite the target's own history.
-3. If it doesn't exist: keep today's insert path unchanged.
-4. Everything downstream (comments, email logs, scorecards, activities, scheduled bookings re-parenting, and finally deleting the **source** association) runs the same way, now pointing at whichever association id we ended up with.
-5. Keep all existing logs; add one info log for the "merged into existing target association" branch so we can see it in function logs.
+## Technical notes
 
-Response shape stays `{ success, newAssociationId, message }` — `newAssociationId` will be the existing target association id in the merge case, which is what the client already uses to navigate.
-
-## Out of scope
-
-- No changes to `AddOrTransferCandidateDialog`, `useCandidateTransfer`, `usePipelineActions`, or any other component.
-- No new backend, no new fields, no schema migration.
-- No change to Add behavior.
-- No new pre-check in the dialog to hide/disable Transfer when the candidate is already in the target — behavior stays "user clicks Transfer, we do the right thing on the server."
+- `@lexical/html`'s `$generateNodesFromDOM(editor, dom)` is already the standard pattern used elsewhere in this codebase's Lexical editors (see `loadHtmlIntoEditor` in `placeholderLexicalUtils`). We reuse it so the booking card renders with the same paragraph/link node structure as user-typed content, and `PlaceholderNode` handling is unaffected because the snippet contains no placeholders.
+- Because `OnChangePlugin` calls back into `onChange` → `setBodyHtml`, we avoid the "external value changed while focused" path in `BodyEditorInner` (it early-returns when `isFocused` is true), so the cursor-position insert isn't clobbered by a reload.
+- The AI "Make warmer" effect keys off `bodyHtml`; since we still update `bodyHtml` via `OnChangePlugin`, that effect keeps working identically.
 
 ## Verification
-
-- Retry the failing transfer (candidate `f90aed39…`, source `fd6007cb…`, target `bee1537d…`): expect success, source association deleted, target association retained with `current_stage_id` set to the picked stage, and comments/emails/scorecards/bookings now pointing at the target.
-- Transfer a candidate that is **not** already in the target: unchanged from today.
-- Function logs show either "New association created" or the new "Merged into existing target association" line, then the usual transfer steps.
+- Type "Hi {{first_name}}, please pick a time: |CURSOR| — talk soon.", click the calendar icon, pick a booking link → the card appears at `|CURSOR|`, not at the end.
+- Insert with cursor at the very start of the body → card appears at the top.
+- Insert into an empty body → card appears as the only content.
+- Existing behaviors unchanged: sending, placeholder chips in subject/body, AI rewrite suggestion, discard, attachments, ⌘↵ send.
