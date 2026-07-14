@@ -97,18 +97,23 @@ export function AddOrTransferCandidateDialog({
     setAck(false)
   }, [mode])
 
-  // Load stages when job changes; default to first stage silently
+  // Load stages when job changes; always reset selection so user picks explicitly
   useEffect(() => {
+    setSelectedStageId('')
     if (!selectedJobId) {
-      setSelectedStageId('')
+      setStageOptions([])
       return
     }
     let cancelled = false
-    loadHiringPlanInstances(selectedJobId).then((loaded: HiringPlanStageOption[]) => {
-      if (cancelled) return
-      if (loaded && loaded.length > 0) setSelectedStageId(loaded[0].jhsId)
-      else setSelectedStageId('')
-    })
+    setStagesLoading(true)
+    loadHiringPlanInstances(selectedJobId)
+      .then((loaded: HiringPlanStageOption[]) => {
+        if (cancelled) return
+        setStageOptions(loaded || [])
+      })
+      .finally(() => {
+        if (!cancelled) setStagesLoading(false)
+      })
     return () => {
       cancelled = true
     }
