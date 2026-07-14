@@ -31,6 +31,7 @@ import {
   FORMAT_TEXT_COMMAND,
   ParagraphNode,
 } from 'lexical';
+import { $generateNodesFromDOM } from '@lexical/html';
 import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list';
 import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
 
