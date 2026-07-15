@@ -287,19 +287,36 @@ export async function mergeCandidate(existingCandidateId: string, candidateData:
   }
 
   const mergedData = smartMerge(existingCandidate, candidateData)
-  
-  // Remove fields that shouldn't be updated or don't exist in candidates table
-  const { 
-    id, 
-    created_at, 
-    created_by, 
-    // Form-only fields that don't exist in candidates table
-    assignedJobId,
-    assignedStageId,
-    job_id,
-    notes,
-    ...updateFields 
-  } = mergedData
+
+  // Only update columns that actually exist on public.candidates.
+  // The incoming form payload may include form-only fields (e.g. current_company,
+  // salary_amount_max, first_name, last_name, assignedJobId, assignedStageId, job_id, notes)
+  // which would otherwise cause Postgres "column does not exist" errors.
+  const allowedColumns = [
+    'candidate_name',
+    'email',
+    'phone',
+    'contact_emails',
+    'contact_phones',
+    'location_country',
+    'location_state',
+    'location_city',
+    'salary_amount',
+    'salary_currency',
+    'salary_period',
+    'profile_summary',
+    'linkedin_url',
+    'resume_url',
+    'skills',
+    'status',
+    'source',
+  ] as const
+
+  const updateFields: Record<string, any> = {}
+  for (const key of allowedColumns) {
+    const value = (mergedData as any)[key]
+    if (value !== undefined) updateFields[key] = value
+  }
 
   const { data: updatedCandidate, error: updateError } = await withAuthRetry(async () =>
     await supabase

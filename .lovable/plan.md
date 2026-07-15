@@ -1,41 +1,45 @@
 ## Problem
-In `EmailComposer`, `insertBookingLinkIntoBody` builds a snippet string and appends it to the end of `bodyHtml`:
 
-```ts
-const next = (bodyHtml || '') + snippet;
-setBodyHtml(next);
-```
+Clicking **Merge** in the Duplicate Candidate Detected modal fails with a Postgres error mentioning a company column (user described as "previous company"). The real column referenced by the error is `current_company` on `public.candidates` — that column does not exist. The `candidates` table only has `company_current`.
 
-The Lexical `BodyTemplateEditor` then re-loads that HTML, so the booking card always lands at the bottom regardless of where the cursor is. Subject-line placeholder insertion works correctly because it goes through `bodyEditorRef.current?.insertPlaceholder(...)`, which uses the live Lexical selection.
+### Root cause
 
-## Fix (small, presentation-only)
+`mergeCandidate` in `src/lib/candidateHelpers.ts` builds its `UPDATE` payload by:
 
-1. **Extend `BodyTemplateEditorHandle`** in `src/components/editors/BodyTemplateEditor.tsx` with a new imperative method:
-   - `insertHtml(html: string): void`
-   
-   Implementation inside `useImperativeHandle`:
-   - `editor.focus()` first so a valid selection exists if the editor was blurred.
-   - `editor.update(() => { ... })`:
-     - Parse the incoming HTML with `$generateNodesFromDOM` from `@lexical/html` (using `new DOMParser().parseFromString(html, 'text/html')`).
-     - Get the current selection via `$getSelection()`. If it's a `RangeSelection`, call `selection.insertNodes(nodes)` — this places the booking card exactly where the cursor is.
-     - Fallback (no/invalid selection): append the parsed nodes as children of `$getRoot()` so behavior degrades to today's "append" instead of crashing.
-   - The existing `OnChangePlugin` will fire and propagate the new HTML up through `onChange`, keeping `bodyHtml` and RHF `body_html` in sync — no manual `setBodyHtml` needed.
+1. `smartMerge(existingCandidate, incoming)` — starts from the DB row (valid columns) but then copies every key from the incoming form payload onto the merged object.
+2. Destructures out just `id`, `created_at`, `created_by`, `assignedJobId`, `assignedStageId`, `job_id`, `notes`, then spreads the rest into `supabase.from('candidates').update(...)`.
 
-2. **Update `insertBookingLinkIntoBody`** in `src/components/candidates/EmailComposer.tsx` (lines 222-229):
-   - Keep the snippet building (same `<p><a>…</a><br/><span>…</span></p><p><br/></p>` markup, same `safeUrl` escaping, same `payload.title || payload.url` label).
-   - Replace the string concat + `setBodyHtml` + `setValue` calls with a single `bodyEditorRef.current?.insertHtml(snippet)`.
-   - Drop the `bodyHtml` dependency from `useCallback` since we no longer read it.
+The form payload from `CandidateFormSheet` includes fields that are **not** columns on `candidates`:
+- `current_company` (form field; the real column is `company_current`)
+- `salary_amount_max`
+- `first_name`, `last_name` (form-only; DB stores `candidate_name`)
 
-3. **No other changes.** The `BookingLinkPopover` wiring, the calendar `FooterIcon`, the payload shape, and the bulk-composer branch (lines 978-994, which uses a separate `BodyTemplateEditor` without a ref) all stay as-is. If we want the same UX for bulk later, we can add a ref there in a follow-up — but the user's report is about the standard composer.
+Postgres rejects the update with `column "current_company" of relation "candidates" does not exist`, which surfaces to the user as a merge error mentioning a company field. Create still works because `createCandidate` cherry-picks known columns; only merge does a raw spread.
 
-## Technical notes
+Note: no error appears for the transfer/add flow — this is scoped strictly to merge.
 
-- `@lexical/html`'s `$generateNodesFromDOM(editor, dom)` is already the standard pattern used elsewhere in this codebase's Lexical editors (see `loadHtmlIntoEditor` in `placeholderLexicalUtils`). We reuse it so the booking card renders with the same paragraph/link node structure as user-typed content, and `PlaceholderNode` handling is unaffected because the snippet contains no placeholders.
-- Because `OnChangePlugin` calls back into `onChange` → `setBodyHtml`, we avoid the "external value changed while focused" path in `BodyEditorInner` (it early-returns when `isFocused` is true), so the cursor-position insert isn't clobbered by a reload.
-- The AI "Make warmer" effect keys off `bodyHtml`; since we still update `bodyHtml` via `OnChangePlugin`, that effect keeps working identically.
+## Fix (single file, presentation-adjacent, no behavior change to the merge dialog itself)
+
+Edit **`src/lib/candidateHelpers.ts` → `mergeCandidate`** so the `UPDATE` payload is built from an explicit allowlist of real `candidates` columns instead of spreading `mergedData` wholesale.
+
+Steps:
+
+1. After `smartMerge`, construct `updateFields` by picking only these keys from `mergedData` (mirrors the columns `createCandidate` already writes, plus the enriched columns we want to preserve on merge):
+   - `candidate_name`, `email`, `phone`
+   - `contact_emails`, `contact_phones`
+   - `location_country`, `location_state`, `location_city`
+   - `salary_amount`, `salary_currency`, `salary_period`
+   - `profile_summary`, `linkedin_url`, `resume_url`
+   - `skills`, `status`, `source`
+2. Drop any keys whose value is `undefined` so smart-merged nulls from the existing row aren't wiped out unnecessarily.
+3. Leave everything else in the file untouched: `smartMerge`, `checkForDuplicateCandidate`, `createCandidate`, `createJobAssociation`, and the merge dialog UI stay exactly as they are. The duplicate-detection trigger, field comparison, and confirm/cancel handlers in `CandidateFormSheet` and `CandidateMergeDialog` are not modified.
+
+### Why the allowlist and not a column rename
+
+The form intentionally captures `current_company` and `salary_amount_max` for other UX (profile display, sourcing preview) but neither has a corresponding column on `public.candidates`. Renaming form fields would be a wider refactor; the merge bug is purely that we were pushing form-only fields into a DB update. Filtering at the merge boundary matches the existing pattern in `useCandidates.updateCandidate` (which already uses an allowlist) and keeps the change minimal.
 
 ## Verification
-- Type "Hi {{first_name}}, please pick a time: |CURSOR| — talk soon.", click the calendar icon, pick a booking link → the card appears at `|CURSOR|`, not at the end.
-- Insert with cursor at the very start of the body → card appears at the top.
-- Insert into an empty body → card appears as the only content.
-- Existing behaviors unchanged: sending, placeholder chips in subject/body, AI rewrite suggestion, discard, attachments, ⌘↵ send.
+
+- Trigger the duplicate flow: add a candidate whose email matches an existing one, click Merge in the modal.
+- Expected: toast "Candidate merged and added to job", association created, no Postgres error in console/network.
+- Regression check: normal add (non-duplicate) still succeeds; cancel from the merge dialog still just closes it.
