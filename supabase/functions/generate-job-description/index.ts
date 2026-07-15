@@ -114,13 +114,12 @@ serve(async (req) => {
     const jobData: JobDataInput = body?.jobData ?? {};
 
     const title = (jobData.title ?? "").toString().trim();
-    const level = (jobData.job_level ?? "").toString().trim();
-    if (!title || !level) {
+    if (!title) {
       return json(
         {
           error: "insufficient_context",
           message:
-            "Add at least a job title and job level so Gio can draft a description.",
+            "Add at least a job title so Gio can draft a description.",
         },
         400
       );
