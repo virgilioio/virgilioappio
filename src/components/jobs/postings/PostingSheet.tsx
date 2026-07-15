@@ -348,7 +348,14 @@ export function PostingSheet({
       const { data, error } = await supabase.functions.invoke('generate-job-description', {
         body: { jobData },
       })
-      if (error) throw error
+      if (error) {
+        let msg = error.message
+        try {
+          const body = await (error as any).context?.json?.()
+          if (body?.message) msg = body.message
+        } catch { /* keep default */ }
+        throw new Error(msg)
+      }
       if (data?.description) {
         setDescription(markdownToHtml(data.description))
         setIsExternalUpdate(true)

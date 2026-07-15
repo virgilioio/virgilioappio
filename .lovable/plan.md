@@ -1,45 +1,49 @@
-## Problem
+## Confirmation: same function, no new function
 
-Clicking **Merge** in the Duplicate Candidate Detected modal fails with a Postgres error mentioning a company column (user described as "previous company"). The real column referenced by the error is `current_company` on `public.candidates` — that column does not exist. The `candidates` table only has `company_current`.
+Yes — all three entry points already call the **same** shared edge function `generate-job-description`:
 
-### Root cause
+- Job Wizard → `JobInfoStep.tsx` (works today)
+- Job Wizard → `JobPostingStep.tsx` (works today)
+- Posting Sheet (create from scratch on an existing job) → `PostingSheet.tsx` (this is where the error appears)
 
-`mergeCandidate` in `src/lib/candidateHelpers.ts` builds its `UPDATE` payload by:
+No new function is created or proposed. The fix stays inside that one shared function plus the client-side error handling.
 
-1. `smartMerge(existingCandidate, incoming)` — starts from the DB row (valid columns) but then copies every key from the incoming form payload onto the merged object.
-2. Destructures out just `id`, `created_at`, `created_by`, `assignedJobId`, `assignedStageId`, `job_id`, `notes`, then spreads the rest into `supabase.from('candidates').update(...)`.
+## Why it fails only from the Posting Sheet
 
-The form payload from `CandidateFormSheet` includes fields that are **not** columns on `candidates`:
-- `current_company` (form field; the real column is `company_current`)
-- `salary_amount_max`
-- `first_name`, `last_name` (form-only; DB stores `candidate_name`)
+The function requires **both** `title` and `job_level` (returns 400 `insufficient_context` otherwise). In the wizard, users have just filled `job_level` in an earlier step, so the payload always has it. In the Posting Sheet, the underlying job frequently has a `title` but no `job_level` yet, so the same function 400s. On the client, `supabase.functions.invoke` throws a `FunctionsHttpError` whose `.message` is the generic "Edge Function returned a non-2xx status code" — the JSON `message` we returned is discarded, so the user sees an opaque error.
 
-Postgres rejects the update with `column "current_company" of relation "candidates" does not exist`, which surfaces to the user as a merge error mentioning a company field. Create still works because `createCandidate` cherry-picks known columns; only merge does a raw spread.
+Secondary: the function still targets `google/gemini-2.5-flash`; project default is `google/gemini-3-flash-preview`.
 
-Note: no error appears for the transfer/add flow — this is scoped strictly to merge.
+## Fix (shared function, keep it single)
 
-## Fix (single file, presentation-adjacent, no behavior change to the merge dialog itself)
+### 1. `supabase/functions/generate-job-description/index.ts`
+- Require only `title` in the pre-flight guard (drop `job_level`). The context block already includes every provided field, so the model uses whatever exists — same behavior as the wizard when the field is populated.
+- Update `model: "google/gemini-2.5-flash"` → `model: "google/gemini-3-flash-preview"`.
+- Leave prompts, sections, CORS, auth, membership check, and 429/402 handling untouched.
 
-Edit **`src/lib/candidateHelpers.ts` → `mergeCandidate`** so the `UPDATE` payload is built from an explicit allowlist of real `candidates` columns instead of spreading `mergedData` wholesale.
+### 2. Better error surfacing in the three existing callers
+`src/components/jobs/postings/PostingSheet.tsx`, `src/components/jobs/wizard/JobPostingStep.tsx`, `src/components/jobs/wizard/JobInfoStep.tsx` — parse the JSON body from `FunctionsHttpError` before toasting so users see the actual reason (rate limited, credits exhausted, etc.) instead of the generic non-2xx string:
 
-Steps:
+```ts
+if (error) {
+  let msg = error.message
+  try {
+    const body = await (error as any).context?.response?.json?.()
+    if (body?.message) msg = body.message
+  } catch {}
+  throw new Error(msg)
+}
+```
 
-1. After `smartMerge`, construct `updateFields` by picking only these keys from `mergedData` (mirrors the columns `createCandidate` already writes, plus the enriched columns we want to preserve on merge):
-   - `candidate_name`, `email`, `phone`
-   - `contact_emails`, `contact_phones`
-   - `location_country`, `location_state`, `location_city`
-   - `salary_amount`, `salary_currency`, `salary_period`
-   - `profile_summary`, `linkedin_url`, `resume_url`
-   - `skills`, `status`, `source`
-2. Drop any keys whose value is `undefined` so smart-merged nulls from the existing row aren't wiped out unnecessarily.
-3. Leave everything else in the file untouched: `smartMerge`, `checkForDuplicateCandidate`, `createCandidate`, `createJobAssociation`, and the merge dialog UI stay exactly as they are. The duplicate-detection trigger, field comparison, and confirm/cancel handlers in `CandidateFormSheet` and `CandidateMergeDialog` are not modified.
-
-### Why the allowlist and not a column rename
-
-The form intentionally captures `current_company` and `salary_amount_max` for other UX (profile display, sourcing preview) but neither has a corresponding column on `public.candidates`. Renaming form fields would be a wider refactor; the merge bug is purely that we were pushing form-only fields into a DB update. Filtering at the merge boundary matches the existing pattern in `useCandidates.updateCandidate` (which already uses an allowlist) and keeps the change minimal.
+### Out of scope
+- No new edge function.
+- No prompt or output-shape changes.
+- No UI layout changes in the wizard or Posting Sheet.
+- No DB/RLS changes.
 
 ## Verification
 
-- Trigger the duplicate flow: add a candidate whose email matches an existing one, click Merge in the modal.
-- Expected: toast "Candidate merged and added to job", association created, no Postgres error in console/network.
-- Regression check: normal add (non-duplicate) still succeeds; cancel from the merge dialog still just closes it.
+- Posting Sheet on a job with only `title`: click **Draft from job** → description generates (same as the wizard experience).
+- **Rewrite with Gio** still shows the replace-confirm prompt, then regenerates.
+- Wizard `JobInfoStep` / `JobPostingStep` "Generate with Gio" continues to work identically.
+- Simulated 429/402 → toast shows the real message from the function.
