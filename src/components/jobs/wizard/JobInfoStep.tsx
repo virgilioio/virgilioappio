@@ -161,9 +161,8 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
 
   const handleGenerateDescription = async () => {
     const title = (jobData.title || '').trim()
-    const level = (jobData.job_level || '').trim()
-    if (!title || !level) {
-      setGenValidationMsg('Add at least a job title and job level so Gio can draft a description.')
+    if (!title) {
+      setGenValidationMsg('Add at least a job title so Gio can draft a description.')
       return
     }
     setGenValidationMsg(null)
