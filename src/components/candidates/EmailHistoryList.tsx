@@ -538,20 +538,22 @@ export function EmailHistoryList({
             : 'No messages yet'}
         </p>
       </div>
-      <div className="shrink-0 flex items-center" style={{ gap: 6 }}>
+      <div className="shrink-0 flex items-center" style={{ gap: 8 }}>
+        {dataUpdatedAt > 0 && (
+          <span className="font-inter" style={{ fontSize: 10.5, color: '#A8ACB8' }}>
+            Synced {formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}
+          </span>
+        )}
         <Button
           variant="secondary"
           size="sm"
-          icon={ListFilter}
-          onClick={() => toast('Filters coming soon.')}
+          icon={RefreshCw}
+          onClick={() => refetch()}
+          disabled={isFetching}
+          aria-label="Refresh emails"
         >
-          Filter
+          <span className={isFetching ? 'opacity-70' : ''}>Refresh</span>
         </Button>
-        {onCompose && (
-          <Button variant="primary" size="sm" icon={Pencil} onClick={onCompose}>
-            Compose
-          </Button>
-        )}
       </div>
     </header>
   )
