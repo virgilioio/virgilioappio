@@ -1,14 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Pencil } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { Button } from '@/components/ui/button'
-import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { EmailHistoryList } from '@/components/candidates/EmailHistoryList'
 import { EmailsSidebar } from '@/components/candidates/profile/tabs/SidebarRouter'
 import { useEmailLogs } from '@/hooks/useEmailLogs'
 import { supabase } from '@/integrations/supabase/client'
 import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistoryCard'
-
 
 interface EmailsTabContentProps {
   candidateId: string
@@ -20,9 +15,8 @@ interface EmailsTabContentProps {
 
 /**
  * Shared "Emails" tab body used by both the in-job Candidate Profile Sheet
- * and the Independent Candidate Profile page. Wraps the existing
- * `EmailHistoryList` inside the standard ProfileCard chrome and exposes a
- * primary Compose action that opens the app's existing email composer.
+ * and the Independent Candidate Profile page. Reskin: the list component now
+ * owns its own card chrome, header, filter/compose actions, and grouping.
  */
 export function EmailsTabContent({
   candidateId,
@@ -31,39 +25,35 @@ export function EmailsTabContent({
   onReply,
   onForward,
 }: EmailsTabContentProps) {
-  const { data: emails } = useEmailLogs(candidateId, jobId)
-  const count = emails?.length ?? 0
+  const [firstName, setFirstName] = useState<string | undefined>(undefined)
 
-  const lastOpenedAt = (emails ?? [])
-    .map((e: any) => e.opened_at)
-    .filter(Boolean)
-    .sort()
-    .slice(-1)[0]
-
-  const subtitle = count
-    ? lastOpenedAt
-      ? `${count} message${count === 1 ? '' : 's'} · last opened ${formatDistanceToNow(new Date(lastOpenedAt), { addSuffix: true })}`
-      : `${count} message${count === 1 ? '' : 's'}`
-    : 'No messages yet'
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!candidateId) return
+      const { data } = await supabase
+        .from('candidates')
+        .select('name')
+        .eq('id', candidateId)
+        .maybeSingle()
+      if (cancelled) return
+      const fn = (data as any)?.name?.split(/\s+/)[0]
+      setFirstName(fn || undefined)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [candidateId])
 
   return (
-    <ProfileCard
-      title="Emails"
-      subtitle={subtitle}
-      bodyPadding="tight"
-      action={
-        <Button variant="primary" size="sm" icon={Pencil} onClick={onCompose}>
-          Compose
-        </Button>
-      }
-    >
-      <EmailHistoryList
-        candidateId={candidateId}
-        jobId={jobId}
-        onReply={onReply}
-        onForward={onForward}
-      />
-    </ProfileCard>
+    <EmailHistoryList
+      candidateId={candidateId}
+      jobId={jobId}
+      candidateFirstName={firstName}
+      onCompose={onCompose}
+      onReply={onReply}
+      onForward={onForward}
+    />
   )
 }
 
@@ -73,8 +63,6 @@ export default EmailsTabContent
 // Sidebar container — derives Engagement/Activity/Connected-inbox
 // props from the same email_logs feed the tab uses.
 // ────────────────────────────────────────────────────────────────
-
-
 
 export function EmailsSidebarContainer({ candidateId, jobId }: { candidateId: string; jobId?: string }) {
   const { data: emails } = useEmailLogs(candidateId, jobId)
@@ -121,4 +109,3 @@ export function EmailsSidebarContainer({ candidateId, jobId }: { candidateId: st
     />
   )
 }
-
