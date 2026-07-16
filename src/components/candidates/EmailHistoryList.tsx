@@ -445,7 +445,7 @@ export function EmailHistoryList({
   onReply,
   onForward,
 }: EmailHistoryListProps) {
-  const { data: emails, isLoading } = useEmailLogs(candidateId, jobId)
+  const { data: emails, isLoading, refetch, isFetching, dataUpdatedAt } = useEmailLogs(candidateId, jobId)
 
   const list = emails ?? []
   const newCount = list.filter(
