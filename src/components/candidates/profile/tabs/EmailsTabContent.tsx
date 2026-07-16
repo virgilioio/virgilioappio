@@ -33,12 +33,11 @@ export function EmailsTabContent({
       if (!candidateId) return
       const { data } = await supabase
         .from('candidates')
-        .select('first_name, name')
+        .select('name')
         .eq('id', candidateId)
         .maybeSingle()
       if (cancelled) return
-      const fn = (data?.first_name as string | undefined) ||
-        (data?.name as string | undefined)?.split(/\s+/)[0]
+      const fn = (data as any)?.name?.split(/\s+/)[0]
       setFirstName(fn || undefined)
     })()
     return () => {
