@@ -547,12 +547,12 @@ export function EmailHistoryList({
         <Button
           variant="secondary"
           size="sm"
-          icon={RefreshCw}
           onClick={() => refetch()}
           disabled={isFetching}
           aria-label="Refresh emails"
         >
-          <span className={isFetching ? 'opacity-70' : ''}>Refresh</span>
+          <RefreshCw size={13} className={cn('mr-1', isFetching && 'animate-spin')} />
+          Refresh
         </Button>
       </div>
     </header>
