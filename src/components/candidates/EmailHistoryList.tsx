@@ -8,13 +8,10 @@ import {
   ChevronDown,
   Clock,
   CornerUpLeft,
-  FileText,
   Forward,
-  ListFilter,
-  Mail,
   MailOpen,
   Paperclip,
-  Pencil,
+  RefreshCw,
   Reply,
   Sparkles,
   TriangleAlert,
@@ -448,7 +445,7 @@ export function EmailHistoryList({
   onReply,
   onForward,
 }: EmailHistoryListProps) {
-  const { data: emails, isLoading } = useEmailLogs(candidateId, jobId)
+  const { data: emails, isLoading, refetch, isFetching, dataUpdatedAt } = useEmailLogs(candidateId, jobId)
 
   const list = emails ?? []
   const newCount = list.filter(
@@ -541,20 +538,22 @@ export function EmailHistoryList({
             : 'No messages yet'}
         </p>
       </div>
-      <div className="shrink-0 flex items-center" style={{ gap: 6 }}>
+      <div className="shrink-0 flex items-center" style={{ gap: 8 }}>
+        {dataUpdatedAt > 0 && (
+          <span className="font-inter" style={{ fontSize: 10.5, color: '#A8ACB8' }}>
+            Synced {formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}
+          </span>
+        )}
         <Button
           variant="secondary"
           size="sm"
-          icon={ListFilter}
-          onClick={() => toast('Filters coming soon.')}
+          onClick={() => refetch()}
+          disabled={isFetching}
+          aria-label="Refresh emails"
         >
-          Filter
+          <RefreshCw size={13} className={cn('mr-1', isFetching && 'animate-spin')} />
+          Refresh
         </Button>
-        {onCompose && (
-          <Button variant="primary" size="sm" icon={Pencil} onClick={onCompose}>
-            Compose
-          </Button>
-        )}
       </div>
     </header>
   )
