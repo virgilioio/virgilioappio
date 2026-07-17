@@ -89,6 +89,7 @@ export function BookingTab() {
   const [copied, setCopied] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingEventType, setEditingEventType] = useState<BookingEventType | null>(null)
+  const [isConfiguring, setIsConfiguring] = useState(false)
 
   const hasCalendar = identities && identities.length > 0
 
