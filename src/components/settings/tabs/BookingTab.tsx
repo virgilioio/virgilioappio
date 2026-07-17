@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Copy,
   Check,
@@ -9,6 +9,12 @@ import {
   Clock,
   Link2,
   Pencil,
+  Settings2,
+  CalendarDays,
+  Timer,
+  Video,
+  Bell,
+  CalendarRange,
 } from 'lucide-react'
 import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Button } from '@/components/ui/button'
@@ -18,7 +24,45 @@ import { useBookingConfig } from '@/hooks/useBookingConfig'
 import { useBookingEventTypes, BookingEventType } from '@/hooks/useBookingEventTypes'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { EventTypeSheet } from '@/components/settings/booking/EventTypeSheet'
+import { GeneralLinkConfigurator } from '@/components/settings/booking/GeneralLinkConfigurator'
 import { toast } from 'sonner'
+
+const DAY_ORDER: (keyof import('@/hooks/useBookingConfig').WeeklySchedule)[] = [
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+]
+const DAY_SHORT: Record<string, string> = {
+  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu',
+  friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
+}
+
+function formatTime12h(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hr = h % 12 === 0 ? 12 : h % 12
+  return `${hr}:${String(m).padStart(2, '0')} ${period}`
+}
+
+function summarizeDays(schedule: import('@/hooks/useBookingConfig').WeeklySchedule): string {
+  const enabled = DAY_ORDER.filter((d) => schedule[d]?.enabled)
+  if (enabled.length === 0) return 'No days set'
+  if (enabled.length === 7) return 'Every day'
+  // Contiguous range check
+  const idx = enabled.map((d) => DAY_ORDER.indexOf(d))
+  const contiguous = idx.every((v, i) => i === 0 || v === idx[i - 1] + 1)
+  if (contiguous) return `${DAY_SHORT[enabled[0]]}–${DAY_SHORT[enabled[enabled.length - 1]]}`
+  return enabled.map((d) => DAY_SHORT[d]).join(', ')
+}
+
+function summarizeHours(schedule: import('@/hooks/useBookingConfig').WeeklySchedule): string | null {
+  const enabled = DAY_ORDER.filter((d) => schedule[d]?.enabled)
+  if (enabled.length === 0) return null
+  const first = schedule[enabled[0]]
+  const uniform = enabled.every(
+    (d) => schedule[d].start === first.start && schedule[d].end === first.end
+  )
+  if (uniform) return `${formatTime12h(first.start)} – ${formatTime12h(first.end)}`
+  return 'Custom hours'
+}
 
 export function BookingTab() {
   const {
