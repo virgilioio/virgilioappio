@@ -1455,6 +1455,7 @@ const stageHasAutomation = useMemo(() => {
                               associationId={associationId}
                               candidateName={candidate?.candidate_name || undefined}
                               candidateEmail={candidate?.email || undefined}
+                              candidatePhone={candidate?.phone || undefined}
                               jobTitle={job?.title}
                               enteredStageAt={enteredStageAt}
                               stageWindowStartAt={stageWindowStartAt}
