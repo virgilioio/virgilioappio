@@ -518,7 +518,21 @@ export function CurrentStageCard({
                 </div>
               </div>
             )}
+
+            {nextBooking && hasUpcoming && (
+              <AttendeeDetailsBlock
+                bookingCandidateName={(nextBooking as any).candidate_name}
+                bookingCandidateEmail={(nextBooking as any).candidate_email}
+                bookingCandidatePhone={(nextBooking as any).candidate_phone}
+                bookingNotes={(nextBooking as any).notes}
+                profileEmail={candidateEmail}
+                profilePhone={candidatePhone}
+                candidateId={candidateId}
+                onEditAttendeeEmail={() => setEditAttendeeOpen(true)}
+              />
+            )}
           </div>
+
 
           {/* INTERVIEWERS */}
           <div className="rounded-xl bg-[#FAFAF7] p-4">
