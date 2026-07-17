@@ -137,7 +137,7 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const { user, organizationId } = useAuth()
   const permissions = usePermissions()
-  const { bookings, isLoading } = useScheduledBookings('upcoming', permissions)
+  const { bookings, isLoading } = useScheduledBookings(undefined, permissions)
   const { jobs } = useJobs()
   const { data: needsScheduling = [] } = useNeedsSchedulingQueue()
 
