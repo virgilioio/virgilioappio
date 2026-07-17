@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   User as UserIcon,
   CalendarClock,
@@ -10,6 +10,9 @@ import {
   LogOut,
   ChevronRight,
   Zap,
+  Link as LinkIcon,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -19,6 +22,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useTenant } from '@/hooks/useTenant'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
+import { useBookingConfig } from '@/hooks/useBookingConfig'
 import { cn } from '@/lib/utils'
 
 type RowProps = {
