@@ -1,49 +1,63 @@
-## Confirmation: same function, no new function
+## Goal
+Gmail-style trimming of quoted history inside an expanded email in the Emails tab. Only the newest reply is visible; the prior thread collapses behind a small "…" toggle. Pure presentation — no backend, no data changes, no changes outside the email-history card body.
 
-Yes — all three entry points already call the **same** shared edge function `generate-job-description`:
+## Where
+`src/components/candidates/EmailHistoryList.tsx` — the expanded body block that renders `email.body_html` / `body_text` (around lines 347–362). One new helper file for the split logic.
 
-- Job Wizard → `JobInfoStep.tsx` (works today)
-- Job Wizard → `JobPostingStep.tsx` (works today)
-- Posting Sheet (create from scratch on an existing job) → `PostingSheet.tsx` (this is where the error appears)
+## Approach
 
-No new function is created or proposed. The fix stays inside that one shared function plus the client-side error handling.
+### 1. New helper: `src/utils/emailQuoteSplit.ts`
+Pure function `splitEmailQuote(html?: string, text?: string) → { main, quoted, hasQuote }`.
 
-## Why it fails only from the Posting Sheet
+Detection rules (run in order, first match wins; conservative — if nothing matches, `hasQuote = false` and we render as today):
 
-The function requires **both** `title` and `job_level` (returns 400 `insufficient_context` otherwise). In the wizard, users have just filled `job_level` in an earlier step, so the payload always has it. In the Posting Sheet, the underlying job frequently has a `title` but no `job_level` yet, so the same function 400s. On the client, `supabase.functions.invoke` throws a `FunctionsHttpError` whose `.message` is the generic "Edge Function returned a non-2xx status code" — the JSON `message` we returned is discarded, so the user sees an opaque error.
+**HTML path** (parse with `DOMParser`):
+- Gmail: first `.gmail_quote`, `.gmail_quote_container`, or `.gmail_attr` node
+- Apple Mail: `blockquote[type="cite"]`
+- Outlook: `#divRtfBody`, `#appendonsend`, `div[id^="OLK_SRC_BODY_SECTION"]`, `hr#stopSpelling`
+- Yahoo/Superhuman: `.yahoo_quoted`, `.ms-outlook-mobile-signature`'s following siblings
+- Generic: first `<blockquote>` that comes after visible text
+- Fallback header line: first element containing text matching `/^On .+ (wrote|escreveu|a écrit|schrieb):/i` or a line starting with `-----+ ?Original Message ?-----+` / `From: .+\nSent: .+`
 
-Secondary: the function still targets `google/gemini-2.5-flash`; project default is `google/gemini-3-flash-preview`.
+Everything from the matched node onward (that node + all following siblings, walking up to the body) is the `quoted` fragment. Everything before is `main`. Both serialized back to HTML strings.
 
-## Fix (shared function, keep it single)
+**Plain-text path**: split on the first line matching the same "On … wrote:" / "-----Original Message-----" / leading `>` block. Preserve original line breaks.
 
-### 1. `supabase/functions/generate-job-description/index.ts`
-- Require only `title` in the pre-flight guard (drop `job_level`). The context block already includes every provided field, so the model uses whatever exists — same behavior as the wizard when the field is populated.
-- Update `model: "google/gemini-2.5-flash"` → `model: "google/gemini-3-flash-preview"`.
-- Leave prompts, sections, CORS, auth, membership check, and 429/402 handling untouched.
+Guardrails:
+- If `main` after trim is empty (e.g. top-poster with no text — rare), treat as `hasQuote = false` so we never hide the whole email.
+- If `quoted` after trim is < 40 chars, also `hasQuote = false` (not worth a toggle).
 
-### 2. Better error surfacing in the three existing callers
-`src/components/jobs/postings/PostingSheet.tsx`, `src/components/jobs/wizard/JobPostingStep.tsx`, `src/components/jobs/wizard/JobInfoStep.tsx` — parse the JSON body from `FunctionsHttpError` before toasting so users see the actual reason (rate limited, credits exhausted, etc.) instead of the generic non-2xx string:
+Small unit sanity: mount the file with a couple of doctests in comments; no test framework change needed.
 
-```ts
-if (error) {
-  let msg = error.message
-  try {
-    const body = await (error as any).context?.response?.json?.()
-    if (body?.message) msg = body.message
-  } catch {}
-  throw new Error(msg)
-}
+### 2. Row rendering (EmailHistoryList.tsx)
+Inside the `open` branch, replace the current body renderer with:
+
+```
+const { main, quoted, hasQuote } = useMemo(
+  () => splitEmailQuote(email.body_html, email.body_text),
+  [email.body_html, email.body_text],
+)
+const [showQuoted, setShowQuoted] = useState(false)
 ```
 
-### Out of scope
-- No new edge function.
-- No prompt or output-shape changes.
-- No UI layout changes in the wizard or Posting Sheet.
-- No DB/RLS changes.
+Render:
+1. `<SafeHtml content={main} …>` (or plain-text `<div>` when no HTML), same wrapper classes/styles as today.
+2. If `hasQuote`, a compact toggle button placed immediately after the main body:
+   - Collapsed state: a 22×22 pill with three dots (`MoreHorizontal` icon from lucide, already available) — background `#F1F0EC`, hover `#E7E6E0`, border `1px solid #E0DDD3`, radius 6. `aria-label="Show trimmed content"`. Matches Gmail affordance.
+   - Expanded state: same pill rotated / filled, `aria-label="Hide trimmed content"`.
+3. When `showQuoted`, render `<SafeHtml content={quoted} …>` below the toggle, wrapped in a muted container: left border `2px solid #E0DDD3`, `padding-left: 10px`, `margin-top: 8px`, text color `#5A6072`, font-size unchanged. For plain-text emails, render `quoted` inside a `<pre className="whitespace-pre-wrap">` with the same muted styling.
+4. Reset `showQuoted` to `false` whenever the row collapses (`open` goes false) so reopening always starts trimmed — done with a `useEffect` on `open`.
 
-## Verification
+No changes to attachments, error banner, action row, or the collapsed preview snippet (the existing `preview` already strips HTML so it stays short).
 
-- Posting Sheet on a job with only `title`: click **Draft from job** → description generates (same as the wizard experience).
-- **Rewrite with Gio** still shows the replace-confirm prompt, then regenerates.
-- Wizard `JobInfoStep` / `JobPostingStep` "Generate with Gio" continues to work identically.
-- Simulated 429/402 → toast shows the real message from the function.
+### 3. Non-goals (explicit)
+- No change to inbound/outbound detection, statuses, rail colors, header, or Refresh button.
+- No change to `EmailHistoryCard.tsx` (legacy, not used by the reskinned list).
+- No change to compose/reply/forward flows or `formatQuotedReply` (reply still quotes the full original — that's separate).
+- Not touching sidebar, insights, or composer.
+
+## Acceptance
+- Long back-and-forth threads show only the newest reply; a "…" chip reveals the rest.
+- Emails without a detectable quote render exactly as they do today (no toggle).
+- Toggle state is per-row and resets when the row is collapsed and reopened.
+- Works for Gmail, Apple Mail, Outlook, and generic "On … wrote:" plain-text replies.
