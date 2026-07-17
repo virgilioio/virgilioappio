@@ -24,6 +24,7 @@ import {
   UserPlus,
   Users,
   Video,
+  Trash2,
   X,
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
@@ -75,7 +76,9 @@ interface ScheduleInterviewSheetProps {
   stageName: string;
   associationId: string;
   oldBookingId?: string | null;
+  onDeleted?: () => void;
 }
+
 
 interface StageInterviewer {
   id: string;
@@ -607,10 +610,13 @@ export function ScheduleInterviewSheet({
   stageName,
   associationId,
   oldBookingId,
+  onDeleted,
 }: ScheduleInterviewSheetProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isReschedule = !!oldBookingId;
+  const [isDeleting, setIsDeleting] = useState(false);
+
 
   const [selectedInterviewer, setSelectedInterviewer] = useState<StageInterviewer | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -1509,6 +1515,37 @@ export function ScheduleInterviewSheet({
             </span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
+            {isReschedule && (
+              <Button
+                variant="ghost"
+                icon={Trash2}
+                loading={isDeleting}
+                onClick={async () => {
+                  if (!oldBookingId) return;
+                  if (!window.confirm('Delete this interview? Panelists will be notified and the event will be removed.')) return;
+                  setIsDeleting(true);
+                  try {
+                    const { error } = await supabase.functions.invoke('cancel-booking', {
+                      body: { booking_id: oldBookingId, reason: 'Interview deleted by recruiter' },
+                    });
+                    if (error) throw error;
+                    toast({ title: 'Interview deleted', description: 'Panelists have been notified.' });
+                    queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });
+                    queryClient.invalidateQueries({ queryKey: ['stage-bookings', jhsId, candidateId] });
+                    onDeleted?.();
+                    handleOpenChange(false);
+                  } catch (e: any) {
+                    toast({ variant: 'destructive', title: 'Delete failed', description: e?.message || 'Please try again.' });
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="text-[#DC2626] hover:bg-[#FEF2F2]"
+              >
+                Delete interview
+              </Button>
+            )}
+
             <Button variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
