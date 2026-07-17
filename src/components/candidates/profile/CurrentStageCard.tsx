@@ -519,7 +519,7 @@ export function CurrentStageCard({
               </div>
             )}
 
-            {nextBooking && (
+            {nextBooking && hasUpcoming && (
               <AttendeeDetailsBlock
                 bookingId={nextBooking.id as string}
                 bookingCandidateName={(nextBooking as any).candidate_name}
@@ -529,6 +529,7 @@ export function CurrentStageCard({
                 profileEmail={candidateEmail}
                 profilePhone={candidatePhone}
                 candidateId={candidateId}
+                variant="upcoming"
               />
             )}
           </div>
