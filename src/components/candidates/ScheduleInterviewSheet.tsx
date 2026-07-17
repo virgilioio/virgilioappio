@@ -24,6 +24,7 @@ import {
   UserPlus,
   Users,
   Video,
+  Trash2,
   X,
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
