@@ -24,6 +24,8 @@ import { toast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import AttendeeDetailsBlock from './primitives/AttendeeDetailsBlock'
+import EditAttendeeEmailDialog from '@/components/candidates/EditAttendeeEmailDialog'
 
 interface CurrentStageCardProps {
   stageName: string
