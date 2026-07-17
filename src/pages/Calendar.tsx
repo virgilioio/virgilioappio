@@ -181,6 +181,7 @@ export default function CalendarPage() {
   // Apply filters
   const events = useMemo(() => {
     return allEvents.filter(e => {
+      if (e.raw.status === 'cancelled') return false
       if (typeFilter !== 'all' && e.type !== typeFilter) return false
       if (jobFilter !== 'all' && e.jobId !== jobFilter) return false
       if (peopleFilter === 'mine' && e.interviewerId !== user?.id) return false
