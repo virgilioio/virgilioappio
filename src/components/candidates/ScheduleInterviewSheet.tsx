@@ -75,7 +75,9 @@ interface ScheduleInterviewSheetProps {
   stageName: string;
   associationId: string;
   oldBookingId?: string | null;
+  onDeleted?: () => void;
 }
+
 
 interface StageInterviewer {
   id: string;
