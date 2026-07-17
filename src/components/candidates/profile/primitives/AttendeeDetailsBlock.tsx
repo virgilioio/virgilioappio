@@ -10,7 +10,6 @@ import {
   MessageSquareText,
   Phone,
   Send,
-  User,
   UserPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -30,11 +29,13 @@ export interface AttendeeDetailsBlockProps {
   profileEmail?: string | null
   profilePhone?: string | null
   candidateId: string
+  /** upcoming = full reconcile incl. resend. past = no resend, no name row, actionable-only. */
+  variant?: 'upcoming' | 'past'
 }
 
-type FieldState = 'match' | 'empty' | 'differ'
+export type FieldState = 'match' | 'empty' | 'differ'
 
-function computeEmailState(booked?: string | null, profile?: string | null): FieldState | null {
+export function computeEmailState(booked?: string | null, profile?: string | null): FieldState | null {
   const b = (booked ?? '').trim()
   if (!b) return null
   const p = (profile ?? '').trim()
@@ -42,7 +43,7 @@ function computeEmailState(booked?: string | null, profile?: string | null): Fie
   return b.toLowerCase() === p.toLowerCase() ? 'match' : 'differ'
 }
 
-function computePhoneState(booked?: string | null, profile?: string | null): FieldState | null {
+export function computePhoneState(booked?: string | null, profile?: string | null): FieldState | null {
   const b = booked ? sanitizeToE164(booked) || booked.trim() : ''
   if (!b) return null
   const p = profile ? sanitizeToE164(profile) || profile.trim() : ''
@@ -50,6 +51,18 @@ function computePhoneState(booked?: string | null, profile?: string | null): Fie
   const bDigits = b.replace(/\D/g, '').slice(-9)
   const pDigits = p.replace(/\D/g, '').slice(-9)
   return bDigits && bDigits === pDigits ? 'match' : 'differ'
+}
+
+/** True if any present field (email/phone) is `empty` or `differ`. */
+export function isBookingActionable(args: {
+  bookingCandidateEmail?: string | null
+  bookingCandidatePhone?: string | null
+  profileEmail?: string | null
+  profilePhone?: string | null
+}): boolean {
+  const e = computeEmailState(args.bookingCandidateEmail, args.profileEmail)
+  const p = computePhoneState(args.bookingCandidatePhone, args.profilePhone)
+  return e === 'empty' || e === 'differ' || p === 'empty' || p === 'differ'
 }
 
 const microLabel = 'font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E]'
@@ -74,13 +87,13 @@ function TagChip({ label, tone }: { label: string; tone: 'booked' | 'profile' })
 
 export function AttendeeDetailsBlock({
   bookingId,
-  bookingCandidateName,
   bookingCandidateEmail,
   bookingCandidatePhone,
   bookingNotes,
   profileEmail,
   profilePhone,
   candidateId,
+  variant = 'upcoming',
 }: AttendeeDetailsBlockProps) {
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState<null | 'email-save' | 'email-use' | 'phone-save' | 'phone-use'>(null)
@@ -99,9 +112,7 @@ export function AttendeeDetailsBlock({
   )
 
   const updateAttendee = useUpdateBookingAttendee({
-    onSuccess: () => {
-      setInviteResent(true)
-    },
+    onSuccess: () => setInviteResent(true),
   })
 
   const patchCandidate = async (patch: Record<string, unknown>): Promise<boolean> => {
@@ -121,9 +132,7 @@ export function AttendeeDetailsBlock({
     try {
       const ok = await patchCandidate({ email: bookingCandidateEmail.trim() })
       if (ok) toast({ title: 'Profile updated', description: 'Email saved to candidate profile.' })
-    } finally {
-      setBusy(null)
-    }
+    } finally { setBusy(null) }
   }
 
   const useBookedEmail = async () => {
@@ -132,9 +141,7 @@ export function AttendeeDetailsBlock({
     try {
       const ok = await patchCandidate({ email: bookingCandidateEmail.trim() })
       if (ok) toast({ title: 'Profile updated', description: 'Email replaced with the booked value.' })
-    } finally {
-      setBusy(null)
-    }
+    } finally { setBusy(null) }
   }
 
   const savePhone = async () => {
@@ -144,9 +151,7 @@ export function AttendeeDetailsBlock({
       const normalized = sanitizeToE164(bookingCandidatePhone) || bookingCandidatePhone
       const ok = await patchCandidate({ phone: normalized })
       if (ok) toast({ title: 'Profile updated', description: 'Phone saved to candidate profile.' })
-    } finally {
-      setBusy(null)
-    }
+    } finally { setBusy(null) }
   }
 
   const useBookedPhone = async () => {
@@ -156,9 +161,7 @@ export function AttendeeDetailsBlock({
       const normalized = sanitizeToE164(bookingCandidatePhone) || bookingCandidatePhone
       const ok = await patchCandidate({ phone: normalized })
       if (ok) toast({ title: 'Profile updated', description: 'Phone replaced with the booked value.' })
-    } finally {
-      setBusy(null)
-    }
+    } finally { setBusy(null) }
   }
 
   const resendInvite = () => {
@@ -166,9 +169,59 @@ export function AttendeeDetailsBlock({
     updateAttendee.mutate({ booking_id: bookingId, new_email: bookingCandidateEmail.trim() })
   }
 
-  const anythingToShow =
-    !!bookingCandidateName || !!bookingCandidateEmail || !!bookingCandidatePhone || !!bookingNotes
-  if (!anythingToShow) return null
+  const actionable =
+    emailState === 'empty' || emailState === 'differ' ||
+    phoneState === 'empty' || phoneState === 'differ'
+
+  const hasNotes = !!(bookingNotes && bookingNotes.trim().length > 0)
+
+  // Nothing at all — render nothing.
+  if (!emailState && !phoneState && !hasNotes) return null
+
+  // Past variant + not actionable → render nothing.
+  if (variant === 'past' && !actionable) return null
+
+  // Upcoming, everything matches → single slim line + optional notes toggle.
+  if (variant === 'upcoming' && !actionable) {
+    return (
+      <div className="mt-3">
+        <div className="flex items-center gap-2 font-inter text-[11.5px] text-[#5A6072]">
+          <Check className="h-3 w-3 text-[#0B7A57]" />
+          <span>Booking details match profile</span>
+          <span className="text-[#B5B9C4]">·</span>
+          <span className="text-[#8B8F9E]">from booking form</span>
+        </div>
+        {hasNotes && (
+          <>
+            <button
+              type="button"
+              onClick={() => setNotesOpen((v) => !v)}
+              className="mt-2 w-full flex items-center gap-2 text-left group"
+            >
+              <MessageSquareText className="h-3.5 w-3.5 text-[#5A6072]" />
+              <span className="font-inter text-[12px] font-medium text-[#1F2230] group-hover:text-[#0d0d09]">
+                Notes from candidate
+              </span>
+              <ChevronDown
+                className={cn(
+                  'h-3.5 w-3.5 text-[#8B8F9E] transition-transform ml-auto',
+                  notesOpen && 'rotate-180',
+                )}
+              />
+            </button>
+            {notesOpen && (
+              <div
+                className="mt-2 font-inter text-[12px] text-[#5A6072] whitespace-pre-wrap break-words"
+                style={{ lineHeight: 1.55 }}
+              >
+                {bookingNotes}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
 
   const displayEmail = bookingCandidateEmail?.trim() || ''
   const displayBookedPhone = bookingCandidatePhone
@@ -177,6 +230,12 @@ export function AttendeeDetailsBlock({
   const displayProfilePhone = profilePhone
     ? formatE164Display(profilePhone) || profilePhone
     : ''
+
+  // Actionable rows only. In past variant, matched rows are skipped entirely.
+  const showEmailRow = emailState === 'empty' || emailState === 'differ' ||
+    (variant === 'upcoming' && emailState === 'match')
+  const showPhoneRow = phoneState === 'empty' || phoneState === 'differ' ||
+    (variant === 'upcoming' && phoneState === 'match')
 
   return (
     <div className="mt-3 rounded-[11px] border border-[#EDECE6] bg-white p-3">
@@ -194,25 +253,11 @@ export function AttendeeDetailsBlock({
         </span>
       </div>
 
-      {/* Name row */}
-      {bookingCandidateName && (
-        <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#F1F0EC]">
-          <div className={cn(tileBaseCls, 'bg-[#F1F0EC]')}>
-            <User className="h-3 w-3 text-[#5A6072]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className={microLabel}>Name</div>
-            <div className={valueTextCls}>{bookingCandidateName}</div>
-          </div>
-        </div>
-      )}
-
       {/* Email row */}
-      {emailState && (
+      {emailState && showEmailRow && (
         <div
           className={cn(
             rowBaseCls,
-            'mt-2',
             emailState === 'match' || dismissedEmail
               ? 'bg-[#F7FBF8] border-[#DCEEE2]'
               : emailState === 'empty'
@@ -301,7 +346,7 @@ export function AttendeeDetailsBlock({
                 <Button size="sm" variant="ghost" onClick={() => setDismissedEmail(true)}>
                   Keep profile value
                 </Button>
-                {bookingId &&
+                {variant === 'upcoming' && bookingId &&
                   (inviteResent ? (
                     <span className="inline-flex items-center gap-1 font-inter text-[11.5px] font-medium text-[#0B7A57] ml-1">
                       <CheckCircle2 className="h-3 w-3" /> Invite updated &amp; resent
@@ -324,7 +369,7 @@ export function AttendeeDetailsBlock({
       )}
 
       {/* Phone row */}
-      {phoneState && (
+      {phoneState && showPhoneRow && (
         <div
           className={cn(
             rowBaseCls,
@@ -424,7 +469,7 @@ export function AttendeeDetailsBlock({
       )}
 
       {/* Notes collapsible */}
-      {bookingNotes && bookingNotes.trim().length > 0 && (
+      {hasNotes && (
         <>
           <div className="mt-3 border-t border-[#F1F0EC]" />
           <button
