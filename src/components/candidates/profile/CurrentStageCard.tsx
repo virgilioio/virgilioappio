@@ -519,8 +519,9 @@ export function CurrentStageCard({
               </div>
             )}
 
-            {nextBooking && hasUpcoming && (
+            {nextBooking && (
               <AttendeeDetailsBlock
+                bookingId={nextBooking.id as string}
                 bookingCandidateName={(nextBooking as any).candidate_name}
                 bookingCandidateEmail={(nextBooking as any).candidate_email}
                 bookingCandidatePhone={(nextBooking as any).candidate_phone}
@@ -528,7 +529,6 @@ export function CurrentStageCard({
                 profileEmail={candidateEmail}
                 profilePhone={candidatePhone}
                 candidateId={candidateId}
-                onEditAttendeeEmail={() => setEditAttendeeOpen(true)}
               />
             )}
           </div>
