@@ -119,6 +119,7 @@ export function CurrentStageCard({
   const isInterviewStage = stageType === 'interview' || stageType === 'screening' || stageType === 'assessment'
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [editAttendeeOpen, setEditAttendeeOpen] = useState(false)
 
   const {
     contextualLink,
