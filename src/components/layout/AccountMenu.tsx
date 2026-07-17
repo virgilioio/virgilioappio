@@ -267,8 +267,54 @@ export function AccountMenu({ children }: AccountMenuProps) {
           </div>
         </div>
 
-        {/* 3. Credits */}
-        <div className="px-3 pb-3">
+        {/* 3. Credits region: booking link + credits */}
+        <div className="px-3 pb-3 flex flex-col gap-2">
+          {/* 3a. Booking link */}
+          {bookingUrl && bookingDisplay && (
+            <div
+              className="flex items-center gap-2.5 rounded-[10px] bg-[#FAFAF7] border border-[#EDECE6]"
+              style={{ padding: '10px 12px' }}
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-center h-[28px] w-[28px] rounded-lg shrink-0 transition-colors',
+                  copied ? 'bg-[#D1FAE5] text-[#0B7A57]' : 'bg-[#F1F0EC] text-[#5A6072]',
+                )}
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <LinkIcon className="h-3.5 w-3.5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-poppins font-semibold text-[12px] leading-tight text-[#0d0d09]">
+                  Booking link
+                </p>
+                <p
+                  className={cn(
+                    'mt-0.5 text-[10.5px] leading-tight truncate',
+                    copied ? 'font-inter text-[#0B7A57] font-medium' : 'text-[#8B8F9E]',
+                  )}
+                  style={copied ? undefined : { fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
+                >
+                  {copied ? 'Copied to clipboard' : bookingDisplay}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyBooking}
+                className={cn(
+                  'inline-flex items-center gap-1 h-[26px] px-2.5 rounded-full font-poppins font-semibold text-[11px] transition-colors shrink-0',
+                  copied
+                    ? 'bg-[#0B7A57] text-white'
+                    : 'bg-[#0d0d09] text-[#FFFCF9] hover:bg-[#1a1a15]',
+                )}
+                style={{ letterSpacing: '-0.005em' }}
+              >
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          )}
+
+          {/* 3b. Credits */}
           <div
             className="flex items-center gap-2.5 rounded-[10px] border border-[#EDE4FF]"
             style={{
@@ -297,6 +343,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
             </button>
           </div>
         </div>
+
 
         <div className="h-px bg-[#F1F0EC]" />
 
