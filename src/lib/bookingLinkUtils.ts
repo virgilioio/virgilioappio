@@ -119,6 +119,7 @@ export function generateContextualBookingLink(params: {
 export async function createShortBookingToken(params: {
   shortCode: string;
   context: BookingContext;
+  renew?: boolean;
 }): Promise<string | null> {
   try {
     const { data, error } = await supabase.functions.invoke('create-booking-token', {
@@ -132,6 +133,7 @@ export async function createShortBookingToken(params: {
         job_title: params.context.jobTitle,
         stage_name: params.context.stageName,
         short_code: params.shortCode,
+        renew: params.renew || false,
       },
     });
 
@@ -146,6 +148,7 @@ export async function createShortBookingToken(params: {
     return null;
   }
 }
+
 
 /**
  * Generate a short contextual booking link
