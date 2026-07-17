@@ -158,6 +158,14 @@ function EmailRow({
   onForward?: (email: EmailHistoryCardEmail) => void
 }) {
   const [open, setOpen] = useState(!!defaultOpen)
+  const [showQuoted, setShowQuoted] = useState(false)
+  useEffect(() => {
+    if (!open) setShowQuoted(false)
+  }, [open])
+  const bodySplit = useMemo(
+    () => splitEmailQuote(email.body_html, email.body_text),
+    [email.body_html, email.body_text],
+  )
   const isInbound = email.direction === 'received'
   const isNew = isInbound && email.is_read === false
   const status = resolveStatus(email)
