@@ -1487,6 +1487,17 @@ const stageHasAutomation = useMemo(() => {
                             </div>
                           ) : null}
 
+                          {candidateId && (
+                            <InterviewHistoryCard
+                              candidateId={candidateId}
+                              jobId={jobId}
+                              stages={planStages}
+                              candidateEmail={candidate?.email}
+                              candidatePhone={candidate?.phone}
+                            />
+                          )}
+
+
                           {currentStage && associationId && stageSupportsScorecard && (
                             <StageScorecardsCard
                               stageInstanceId={currentStage.jhsId}
