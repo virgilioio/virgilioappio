@@ -306,9 +306,41 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
   }, [assignedInterviewer?.displayName, assignedInterviewer?.fullName, contextualLink, context, activeConfig?.short_code, tokenStatus.status, shortToken, params?.jobId, params?.candidateId, params?.associationId, params?.jhsId, queryClient]);
 
 
+  const renewLink = useCallback(async (): Promise<string | null> => {
+    if (!activeConfig?.short_code || !context) return null;
+    try {
+      const fresh = await createShortBookingToken({
+        shortCode: activeConfig.short_code,
+        context,
+        renew: true,
+      });
+      if (fresh) {
+        setShortToken(fresh);
+        tokenContextKeyRef.current = `${context.jobId}-${context.candidateId}-${context.jhsId}-${activeConfig.short_code}`;
+        const url = generateShortBookingLink({ shortCode: activeConfig.short_code, token: fresh });
+        try { await copyToClipboardSilent(url); } catch {}
+        if (params) {
+          queryClient.invalidateQueries({
+            queryKey: latestTokenStatusKey({
+              jobId: params.jobId,
+              candidateId: params.candidateId,
+              associationId: params.associationId,
+              jhsId: params.jhsId,
+            }),
+          });
+        }
+        return url;
+      }
+    } catch (e) {
+      console.error('Failed to renew booking link:', e);
+    }
+    return null;
+  }, [activeConfig?.short_code, context, params?.jobId, params?.candidateId, params?.associationId, params?.jhsId, queryClient]);
+
   return {
     contextualLink,
     copyToClipboard,
+    renewLink,
     hasBookingConfig:
       (!!assignedInterviewer?.bookingConfig?.short_code && assignedInterviewer.bookingConfig.is_active) ||
       (!!config?.short_code && config?.is_active),
@@ -320,3 +352,4 @@ export function useContextualBookingLink(params: UseContextualBookingLinkParams 
     tokenStatus,
   };
 }
+
