@@ -568,6 +568,15 @@ export function CurrentStageCard({
           This stage doesn't require interviews. Use the actions on the right to advance the candidate when ready.
         </div>
       )}
+
+      {nextBooking && (
+        <EditAttendeeEmailDialog
+          open={editAttendeeOpen}
+          onOpenChange={setEditAttendeeOpen}
+          bookingId={nextBooking.id as string}
+          currentEmail={(nextBooking as any).candidate_email || ''}
+        />
+      )}
     </section>
   )
 }
