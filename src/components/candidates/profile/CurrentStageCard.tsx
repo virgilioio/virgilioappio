@@ -110,7 +110,7 @@ function MenuItem({
 
 export function CurrentStageCard({
   stageName, stageType, jhsId, candidateId,
-  jobId, associationId, candidateName, candidateEmail, jobTitle,
+  jobId, associationId, candidateName, candidateEmail, candidatePhone, jobTitle,
   enteredStageAt, stageWindowStartAt, onSchedule, onReschedule, scorecardsSubmittedCount,
 }: CurrentStageCardProps) {
   const { data: bookings } = useStageBookings(jhsId, candidateId, { jobId, stageWindowStartAt: stageWindowStartAt ?? enteredStageAt })
