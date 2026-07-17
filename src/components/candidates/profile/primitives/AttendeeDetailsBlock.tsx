@@ -1,13 +1,28 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, Info, Mail, MessageSquareText, Pencil, Phone, User } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowUp,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Link2,
+  Mail,
+  MessageSquareText,
+  Phone,
+  Send,
+  User,
+  UserPlus,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { sanitizeToE164, formatE164Display } from '@/utils/phoneUtils'
+import { useUpdateBookingAttendee } from '@/hooks/useUpdateBookingAttendee'
 
 export interface AttendeeDetailsBlockProps {
+  bookingId?: string | null
   bookingCandidateName?: string | null
   bookingCandidateEmail?: string | null
   bookingCandidatePhone?: string | null
@@ -15,36 +30,50 @@ export interface AttendeeDetailsBlockProps {
   profileEmail?: string | null
   profilePhone?: string | null
   candidateId: string
-  onEditAttendeeEmail?: () => void
 }
 
-type FieldState = 'match' | 'empty-profile' | 'differs'
+type FieldState = 'match' | 'empty' | 'differ'
 
 function computeEmailState(booked?: string | null, profile?: string | null): FieldState | null {
   const b = (booked ?? '').trim()
   if (!b) return null
   const p = (profile ?? '').trim()
-  if (!p) return 'empty-profile'
-  return b.toLowerCase() === p.toLowerCase() ? 'match' : 'differs'
+  if (!p) return 'empty'
+  return b.toLowerCase() === p.toLowerCase() ? 'match' : 'differ'
 }
 
 function computePhoneState(booked?: string | null, profile?: string | null): FieldState | null {
-  const b = booked ? sanitizeToE164(booked) : ''
+  const b = booked ? sanitizeToE164(booked) || booked.trim() : ''
   if (!b) return null
-  const p = profile ? sanitizeToE164(profile) : ''
-  if (!p) return 'empty-profile'
-  // Compare last 9 digits to be lenient across country-code formatting
+  const p = profile ? sanitizeToE164(profile) || profile.trim() : ''
+  if (!p) return 'empty'
   const bDigits = b.replace(/\D/g, '').slice(-9)
   const pDigits = p.replace(/\D/g, '').slice(-9)
-  return bDigits && bDigits === pDigits ? 'match' : 'differs'
+  return bDigits && bDigits === pDigits ? 'match' : 'differ'
 }
 
-const rowShellCls = 'rounded-xl border p-3 flex items-start gap-3'
-const iconTileCls = 'h-8 w-8 rounded-[9px] flex items-center justify-center shrink-0'
-const labelCls = 'font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E]'
-const valueCls = 'font-inter text-[13px] font-medium text-[#1F2230] break-all'
+const microLabel = 'font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E]'
+const valueTextCls = 'font-inter text-[13px] text-[#1F2230] break-all'
+const rowBaseCls = 'rounded-[10px] border px-3 py-2.5 flex items-start gap-2.5'
+const tileBaseCls = 'h-[26px] w-[26px] rounded-lg flex items-center justify-center shrink-0'
+
+function TagChip({ label, tone }: { label: string; tone: 'booked' | 'profile' }) {
+  const styles =
+    tone === 'booked'
+      ? { bg: '#FBEBC6', color: '#B45309' }
+      : { bg: '#F1F0EC', color: '#5A6072' }
+  return (
+    <span
+      className="inline-flex items-center h-[16px] px-1.5 rounded-[4px] font-inter text-[9.5px] font-semibold uppercase tracking-[0.06em] shrink-0"
+      style={{ backgroundColor: styles.bg, color: styles.color }}
+    >
+      {label}
+    </span>
+  )
+}
 
 export function AttendeeDetailsBlock({
+  bookingId,
   bookingCandidateName,
   bookingCandidateEmail,
   bookingCandidatePhone,
@@ -52,12 +81,12 @@ export function AttendeeDetailsBlock({
   profileEmail,
   profilePhone,
   candidateId,
-  onEditAttendeeEmail,
 }: AttendeeDetailsBlockProps) {
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState<null | 'email-save' | 'email-use' | 'phone-save' | 'phone-use'>(null)
   const [dismissedEmail, setDismissedEmail] = useState(false)
   const [dismissedPhone, setDismissedPhone] = useState(false)
+  const [inviteResent, setInviteResent] = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
 
   const emailState = useMemo(
@@ -68,6 +97,12 @@ export function AttendeeDetailsBlock({
     () => computePhoneState(bookingCandidatePhone, profilePhone),
     [bookingCandidatePhone, profilePhone],
   )
+
+  const updateAttendee = useUpdateBookingAttendee({
+    onSuccess: () => {
+      setInviteResent(true)
+    },
+  })
 
   const patchCandidate = async (patch: Record<string, unknown>): Promise<boolean> => {
     const { error } = await supabase.from('candidates').update(patch).eq('id', candidateId)
@@ -102,11 +137,11 @@ export function AttendeeDetailsBlock({
     }
   }
 
-  const saveOrUsePhone = async (mode: 'save' | 'use') => {
+  const savePhone = async () => {
     if (!bookingCandidatePhone) return
-    setBusy(mode === 'save' ? 'phone-save' : 'phone-use')
+    setBusy('phone-save')
     try {
-      const normalized = sanitizeToE164(bookingCandidatePhone)
+      const normalized = sanitizeToE164(bookingCandidatePhone) || bookingCandidatePhone
       const ok = await patchCandidate({ phone: normalized })
       if (ok) toast({ title: 'Profile updated', description: 'Phone saved to candidate profile.' })
     } finally {
@@ -114,29 +149,60 @@ export function AttendeeDetailsBlock({
     }
   }
 
+  const useBookedPhone = async () => {
+    if (!bookingCandidatePhone) return
+    setBusy('phone-use')
+    try {
+      const normalized = sanitizeToE164(bookingCandidatePhone) || bookingCandidatePhone
+      const ok = await patchCandidate({ phone: normalized })
+      if (ok) toast({ title: 'Profile updated', description: 'Phone replaced with the booked value.' })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const resendInvite = () => {
+    if (!bookingId || !bookingCandidateEmail) return
+    updateAttendee.mutate({ booking_id: bookingId, new_email: bookingCandidateEmail.trim() })
+  }
+
   const anythingToShow =
     !!bookingCandidateName || !!bookingCandidateEmail || !!bookingCandidatePhone || !!bookingNotes
   if (!anythingToShow) return null
 
   const displayEmail = bookingCandidateEmail?.trim() || ''
-  const displayBookedPhone = bookingCandidatePhone ? formatE164Display(bookingCandidatePhone) || bookingCandidatePhone : ''
-  const displayProfilePhone = profilePhone ? formatE164Display(profilePhone) || profilePhone : ''
+  const displayBookedPhone = bookingCandidatePhone
+    ? formatE164Display(bookingCandidatePhone) || bookingCandidatePhone
+    : ''
+  const displayProfilePhone = profilePhone
+    ? formatE164Display(profilePhone) || profilePhone
+    : ''
 
   return (
-    <div className="mt-3 space-y-2">
-      <div className="font-poppins font-semibold text-[10.5px] uppercase tracking-[0.06em] text-[hsl(var(--menu-group-color))]">
-        Attendee details
+    <div className="mt-3 rounded-[11px] border border-[#EDECE6] bg-white p-3">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]">
+          Attendee details
+        </div>
+        <span
+          className="inline-flex items-center gap-1 h-[18px] px-1.5 rounded-full font-inter text-[9.5px] font-semibold"
+          style={{ backgroundColor: '#EDE4FF', color: '#6F3FF5' }}
+        >
+          <Link2 className="h-2.5 w-2.5" />
+          From booking form
+        </span>
       </div>
 
-      {/* Name (display-only) */}
+      {/* Name row */}
       {bookingCandidateName && (
-        <div className={cn(rowShellCls, 'border-[#EDECE6] bg-white')}>
-          <div className={cn(iconTileCls, 'bg-[#FAFAF7]')}>
-            <User className="h-3.5 w-3.5 text-[#5A6072]" />
+        <div className="flex items-center gap-2.5 pb-2.5 border-b border-[#F1F0EC]">
+          <div className={cn(tileBaseCls, 'bg-[#F1F0EC]')}>
+            <User className="h-3 w-3 text-[#5A6072]" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className={labelCls}>Name typed</div>
-            <div className={valueCls}>{bookingCandidateName}</div>
+            <div className={microLabel}>Name</div>
+            <div className={valueTextCls}>{bookingCandidateName}</div>
           </div>
         </div>
       )}
@@ -145,85 +211,115 @@ export function AttendeeDetailsBlock({
       {emailState && (
         <div
           className={cn(
-            rowShellCls,
-            emailState === 'differs' && !dismissedEmail
-              ? 'border-[#F7D77E] bg-[#FFFBEB]'
-              : 'border-[#EDECE6] bg-white',
+            rowBaseCls,
+            'mt-2',
+            emailState === 'match' || dismissedEmail
+              ? 'bg-[#F7FBF8] border-[#DCEEE2]'
+              : emailState === 'empty'
+              ? 'bg-[#FBFAF7] border-[#EDECE6]'
+              : 'bg-[#FFFBF2] border-[#F3E2BE]',
           )}
         >
           <div
             className={cn(
-              iconTileCls,
-              emailState === 'match' && 'bg-[#ECFDF3]',
-              emailState === 'empty-profile' && 'bg-[#FAFAF7]',
-              emailState === 'differs' && 'bg-[#FEF3C7]',
+              tileBaseCls,
+              emailState === 'match' || dismissedEmail
+                ? 'bg-[#E3F5EA]'
+                : emailState === 'empty'
+                ? 'bg-[#F1F0EC]'
+                : 'bg-[#FBEBC6]',
             )}
           >
-            {emailState === 'match' ? (
-              <Check className="h-3.5 w-3.5 text-[#0B7A57]" />
-            ) : emailState === 'differs' && !dismissedEmail ? (
-              <AlertTriangle className="h-3.5 w-3.5 text-[#B45309]" />
-            ) : (
-              <Mail className="h-3.5 w-3.5 text-[#5A6072]" />
-            )}
+            <Mail
+              className={cn(
+                'h-3 w-3',
+                emailState === 'match' || dismissedEmail
+                  ? 'text-[#0B7A57]'
+                  : emailState === 'empty'
+                  ? 'text-[#8B8F9E]'
+                  : 'text-[#B45309]',
+              )}
+            />
           </div>
 
           <div className="min-w-0 flex-1">
-            {emailState === 'match' && (
-              <>
-                <div className={labelCls}>Email · matches profile</div>
-                <div className={valueCls}>{displayEmail}</div>
-              </>
-            )}
-            {emailState === 'empty-profile' && (
-              <>
-                <div className={labelCls}>Email · not on profile yet</div>
-                <div className={valueCls}>{displayEmail}</div>
-                <div className="mt-2">
-                  <Button size="xs" variant="secondary" loading={busy === 'email-save'} onClick={saveEmailToProfile}>
-                    Save to profile
-                  </Button>
+            <div className="flex items-center gap-1.5">
+              <span className={microLabel}>Email</span>
+              {emailState === 'match' || dismissedEmail ? (
+                <span className="inline-flex items-center gap-0.5 font-inter text-[10px] font-medium text-[#0B7A57]">
+                  <Check className="h-2.5 w-2.5" /> Matches profile
+                </span>
+              ) : emailState === 'empty' ? (
+                <span className="font-inter text-[10px] font-medium text-[#A8770F]">
+                  Not on profile yet
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 font-inter text-[10px] font-semibold text-[#B45309]">
+                  <AlertTriangle className="h-2.5 w-2.5" /> Doesn't match profile
+                </span>
+              )}
+            </div>
+
+            {emailState !== 'differ' || dismissedEmail ? (
+              <div className={cn(valueTextCls, 'mt-0.5')}>{displayEmail}</div>
+            ) : (
+              <div className="mt-1.5 space-y-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <TagChip label="Booked" tone="booked" />
+                  <span className="font-inter text-[13px] font-medium text-[#1F2230] break-all">
+                    {displayEmail}
+                  </span>
                 </div>
-              </>
-            )}
-            {emailState === 'differs' && (
-              <>
-                <div className={labelCls}>Email · differs from profile</div>
-                <div className="mt-1 space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E] w-[60px] shrink-0">Booked</span>
-                    <span className={valueCls}>{displayEmail}</span>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E] w-[60px] shrink-0">Profile</span>
-                    <span className="font-inter text-[13px] text-[#5A6072] break-all">{profileEmail}</span>
-                  </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <TagChip label="Profile" tone="profile" />
+                  <span className="font-inter text-[13px] text-[#5A6072] break-all">
+                    {profileEmail}
+                  </span>
                 </div>
-                {!dismissedEmail && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Button size="xs" loading={busy === 'email-use'} onClick={useBookedEmail}>
-                      Use booked value
+              </div>
+            )}
+
+            {emailState === 'empty' && (
+              <div className="mt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={UserPlus}
+                  loading={busy === 'email-save'}
+                  onClick={saveEmailToProfile}
+                >
+                  Save to profile
+                </Button>
+              </div>
+            )}
+
+            {emailState === 'differ' && !dismissedEmail && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Button size="sm" icon={ArrowUp} loading={busy === 'email-use'} onClick={useBookedEmail}>
+                  Use booked value
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setDismissedEmail(true)}>
+                  Keep profile value
+                </Button>
+                {bookingId &&
+                  (inviteResent ? (
+                    <span className="inline-flex items-center gap-1 font-inter text-[11.5px] font-medium text-[#0B7A57] ml-1">
+                      <CheckCircle2 className="h-3 w-3" /> Invite updated &amp; resent
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={Send}
+                      loading={updateAttendee.isPending}
+                      onClick={resendInvite}
+                    >
+                      Update invite &amp; resend
                     </Button>
-                    <Button size="xs" variant="ghost" onClick={() => setDismissedEmail(true)}>
-                      Keep profile value
-                    </Button>
-                  </div>
-                )}
-              </>
+                  ))}
+              </div>
             )}
           </div>
-
-          {onEditAttendeeEmail && (
-            <button
-              type="button"
-              aria-label="Edit attendee email"
-              title="Edit attendee email"
-              onClick={onEditAttendeeEmail}
-              className="h-7 w-7 -mr-1 -mt-1 rounded-md text-[#5A6072] hover:bg-[#F1F0EC] flex items-center justify-center transition-colors shrink-0"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
       )}
 
@@ -231,70 +327,97 @@ export function AttendeeDetailsBlock({
       {phoneState && (
         <div
           className={cn(
-            rowShellCls,
-            phoneState === 'differs' && !dismissedPhone
-              ? 'border-[#F7D77E] bg-[#FFFBEB]'
-              : 'border-[#EDECE6] bg-white',
+            rowBaseCls,
+            'mt-2',
+            phoneState === 'match' || dismissedPhone
+              ? 'bg-[#F7FBF8] border-[#DCEEE2]'
+              : phoneState === 'empty'
+              ? 'bg-[#FBFAF7] border-[#EDECE6]'
+              : 'bg-[#FFFBF2] border-[#F3E2BE]',
           )}
         >
           <div
             className={cn(
-              iconTileCls,
-              phoneState === 'match' && 'bg-[#ECFDF3]',
-              phoneState === 'empty-profile' && 'bg-[#FAFAF7]',
-              phoneState === 'differs' && 'bg-[#FEF3C7]',
+              tileBaseCls,
+              phoneState === 'match' || dismissedPhone
+                ? 'bg-[#E3F5EA]'
+                : phoneState === 'empty'
+                ? 'bg-[#F1F0EC]'
+                : 'bg-[#FBEBC6]',
             )}
           >
-            {phoneState === 'match' ? (
-              <Check className="h-3.5 w-3.5 text-[#0B7A57]" />
-            ) : phoneState === 'differs' && !dismissedPhone ? (
-              <AlertTriangle className="h-3.5 w-3.5 text-[#B45309]" />
-            ) : (
-              <Phone className="h-3.5 w-3.5 text-[#5A6072]" />
-            )}
+            <Phone
+              className={cn(
+                'h-3 w-3',
+                phoneState === 'match' || dismissedPhone
+                  ? 'text-[#0B7A57]'
+                  : phoneState === 'empty'
+                  ? 'text-[#8B8F9E]'
+                  : 'text-[#B45309]',
+              )}
+            />
           </div>
+
           <div className="min-w-0 flex-1">
-            {phoneState === 'match' && (
-              <>
-                <div className={labelCls}>Phone · matches profile</div>
-                <div className={valueCls}>{displayBookedPhone}</div>
-              </>
-            )}
-            {phoneState === 'empty-profile' && (
-              <>
-                <div className={labelCls}>Phone · not on profile yet</div>
-                <div className={valueCls}>{displayBookedPhone}</div>
-                <div className="mt-2">
-                  <Button size="xs" variant="secondary" loading={busy === 'phone-save'} onClick={() => saveOrUsePhone('save')}>
-                    Save to profile
-                  </Button>
+            <div className="flex items-center gap-1.5">
+              <span className={microLabel}>Phone</span>
+              {phoneState === 'match' || dismissedPhone ? (
+                <span className="inline-flex items-center gap-0.5 font-inter text-[10px] font-medium text-[#0B7A57]">
+                  <Check className="h-2.5 w-2.5" /> Matches profile
+                </span>
+              ) : phoneState === 'empty' ? (
+                <span className="font-inter text-[10px] font-medium text-[#A8770F]">
+                  Not on profile yet
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 font-inter text-[10px] font-semibold text-[#B45309]">
+                  <AlertTriangle className="h-2.5 w-2.5" /> Doesn't match profile
+                </span>
+              )}
+            </div>
+
+            {phoneState !== 'differ' || dismissedPhone ? (
+              <div className={cn(valueTextCls, 'mt-0.5')}>{displayBookedPhone}</div>
+            ) : (
+              <div className="mt-1.5 space-y-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <TagChip label="Booked" tone="booked" />
+                  <span className="font-inter text-[13px] font-medium text-[#1F2230] break-all">
+                    {displayBookedPhone}
+                  </span>
                 </div>
-              </>
-            )}
-            {phoneState === 'differs' && (
-              <>
-                <div className={labelCls}>Phone · differs from profile</div>
-                <div className="mt-1 space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E] w-[60px] shrink-0">Booked</span>
-                    <span className={valueCls}>{displayBookedPhone}</span>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-inter text-[10.5px] uppercase tracking-[0.06em] text-[#8B8F9E] w-[60px] shrink-0">Profile</span>
-                    <span className="font-inter text-[13px] text-[#5A6072] break-all">{displayProfilePhone}</span>
-                  </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <TagChip label="Profile" tone="profile" />
+                  <span className="font-inter text-[13px] text-[#5A6072] break-all">
+                    {displayProfilePhone}
+                  </span>
                 </div>
-                {!dismissedPhone && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <Button size="xs" loading={busy === 'phone-use'} onClick={() => saveOrUsePhone('use')}>
-                      Use booked value
-                    </Button>
-                    <Button size="xs" variant="ghost" onClick={() => setDismissedPhone(true)}>
-                      Keep profile value
-                    </Button>
-                  </div>
-                )}
-              </>
+              </div>
+            )}
+
+            {phoneState === 'empty' && (
+              <div className="mt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={UserPlus}
+                  loading={busy === 'phone-save'}
+                  onClick={savePhone}
+                >
+                  Save to profile
+                </Button>
+              </div>
+            )}
+
+            {phoneState === 'differ' && !dismissedPhone && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Button size="sm" icon={ArrowUp} loading={busy === 'phone-use'} onClick={useBookedPhone}>
+                  Use booked value
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setDismissedPhone(true)}>
+                  Keep profile value
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -302,29 +425,33 @@ export function AttendeeDetailsBlock({
 
       {/* Notes collapsible */}
       {bookingNotes && bookingNotes.trim().length > 0 && (
-        <div className="rounded-xl border border-[#EDECE6] bg-white">
+        <>
+          <div className="mt-3 border-t border-[#F1F0EC]" />
           <button
             type="button"
             onClick={() => setNotesOpen((v) => !v)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#FAFAF7] transition-colors rounded-xl"
+            className="mt-2 w-full flex items-center gap-2 text-left group"
           >
-            <div className={cn(iconTileCls, 'bg-[#FAFAF7]')}>
-              <MessageSquareText className="h-3.5 w-3.5 text-[#5A6072]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className={labelCls}>Notes from candidate</div>
-              <div className="font-inter text-[12.5px] text-[#5A6072]">
-                {notesOpen ? 'Hide' : `Show (${bookingNotes.trim().length} chars)`}
-              </div>
-            </div>
-            <Info className="h-3.5 w-3.5 text-[#8B8F9E] shrink-0" />
+            <MessageSquareText className="h-3.5 w-3.5 text-[#5A6072]" />
+            <span className="font-inter text-[12px] font-medium text-[#1F2230] group-hover:text-[#0d0d09]">
+              Notes from candidate
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-3.5 w-3.5 text-[#8B8F9E] transition-transform ml-auto',
+                notesOpen && 'rotate-180',
+              )}
+            />
           </button>
           {notesOpen && (
-            <div className="px-3 pb-3 pt-1 font-inter text-[13px] text-[#1F2230] whitespace-pre-wrap break-words">
+            <div
+              className="mt-2 font-inter text-[12px] text-[#5A6072] whitespace-pre-wrap break-words"
+              style={{ lineHeight: 1.55 }}
+            >
               {bookingNotes}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )
