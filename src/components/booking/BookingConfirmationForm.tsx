@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { Calendar, Clock, Globe, ArrowLeft } from 'lucide-react';
+import { suggestEmailFix } from '@/utils/emailTypoSuggest';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -127,23 +128,36 @@ export function BookingConfirmationForm({
               <FormField
                 control={form.control}
                 name="candidate_email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-semibold text-virgilio-text">
-                      Email *
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="email" 
-                        placeholder="john@example.com" 
-                        {...field}
-                        className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-virgilio-error text-xs" />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const suggestion = suggestEmailFix(field.value);
+                  return (
+                    <FormItem>
+                      <FormLabel className="text-sm font-semibold text-virgilio-text">
+                        Email *
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="john@example.com"
+                          {...field}
+                          className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
+                        />
+                      </FormControl>
+                      {suggestion && (
+                        <button
+                          type="button"
+                          onClick={() => form.setValue('candidate_email', suggestion, { shouldValidate: true })}
+                          className="mt-1 text-xs text-virgilio-muted hover:text-virgilio-text text-left"
+                        >
+                          Did you mean <span className="font-semibold text-virgilio-purple">{suggestion}</span>?
+                        </button>
+                      )}
+                      <FormMessage className="text-virgilio-error text-xs" />
+                    </FormItem>
+                  );
+                }}
               />
+
 
               <FormField
                 control={form.control}

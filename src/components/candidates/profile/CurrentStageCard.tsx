@@ -24,6 +24,8 @@ import { toast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import AttendeeDetailsBlock from './primitives/AttendeeDetailsBlock'
+import EditAttendeeEmailDialog from '@/components/candidates/EditAttendeeEmailDialog'
 
 interface CurrentStageCardProps {
   stageName: string
@@ -34,6 +36,7 @@ interface CurrentStageCardProps {
   associationId: string
   candidateName?: string
   candidateEmail?: string
+  candidatePhone?: string
   jobTitle?: string
   enteredStageAt?: string | null
   stageWindowStartAt?: string | null
@@ -109,13 +112,14 @@ function MenuItem({
 
 export function CurrentStageCard({
   stageName, stageType, jhsId, candidateId,
-  jobId, associationId, candidateName, candidateEmail, jobTitle,
+  jobId, associationId, candidateName, candidateEmail, candidatePhone, jobTitle,
   enteredStageAt, stageWindowStartAt, onSchedule, onReschedule, scorecardsSubmittedCount,
 }: CurrentStageCardProps) {
   const { data: bookings } = useStageBookings(jhsId, candidateId, { jobId, stageWindowStartAt: stageWindowStartAt ?? enteredStageAt })
   const isInterviewStage = stageType === 'interview' || stageType === 'screening' || stageType === 'assessment'
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [editAttendeeOpen, setEditAttendeeOpen] = useState(false)
 
   const {
     contextualLink,
@@ -514,7 +518,21 @@ export function CurrentStageCard({
                 </div>
               </div>
             )}
+
+            {nextBooking && hasUpcoming && (
+              <AttendeeDetailsBlock
+                bookingCandidateName={(nextBooking as any).candidate_name}
+                bookingCandidateEmail={(nextBooking as any).candidate_email}
+                bookingCandidatePhone={(nextBooking as any).candidate_phone}
+                bookingNotes={(nextBooking as any).notes}
+                profileEmail={candidateEmail}
+                profilePhone={candidatePhone}
+                candidateId={candidateId}
+                onEditAttendeeEmail={() => setEditAttendeeOpen(true)}
+              />
+            )}
           </div>
+
 
           {/* INTERVIEWERS */}
           <div className="rounded-xl bg-[#FAFAF7] p-4">
@@ -549,6 +567,15 @@ export function CurrentStageCard({
         <div className="rounded-xl bg-[#FAFAF7] p-4 text-[13px] text-text-secondary font-poppins">
           This stage doesn't require interviews. Use the actions on the right to advance the candidate when ready.
         </div>
+      )}
+
+      {nextBooking && (
+        <EditAttendeeEmailDialog
+          open={editAttendeeOpen}
+          onOpenChange={setEditAttendeeOpen}
+          bookingId={nextBooking.id as string}
+          currentEmail={(nextBooking as any).candidate_email || ''}
+        />
       )}
     </section>
   )
