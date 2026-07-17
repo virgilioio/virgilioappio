@@ -186,6 +186,21 @@ export function AccountMenu({ children }: AccountMenuProps) {
     navigate('/billing')
   }
 
+  const bookingDisplay = bookingUrl
+    ? bookingUrl.replace(/^https?:\/\//, '')
+    : null
+
+  const handleCopyBooking = async () => {
+    if (!bookingUrl) return
+    try {
+      await navigator.clipboard.writeText(bookingUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch {
+      /* no-op */
+    }
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
