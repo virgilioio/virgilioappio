@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { splitEmailQuote } from '@/utils/emailQuoteSplit'
-import { MoreHorizontal } from 'lucide-react'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -12,6 +11,7 @@ import {
   CornerUpLeft,
   Forward,
   MailOpen,
+  MoreHorizontal,
   Paperclip,
   RefreshCw,
   Reply,
