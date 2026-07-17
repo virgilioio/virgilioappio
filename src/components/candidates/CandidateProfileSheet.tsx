@@ -95,6 +95,7 @@ import { ProfileQuickActionsCard } from '@/components/candidates/profile/Profile
 import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileApplicationCard'
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
+import { InterviewHistoryCard } from '@/components/candidates/profile/InterviewHistoryCard'
 import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
 import { ScorecardsTabContent, type SubmittedScorecardRow, type SubmittedVerdict } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
 import { useStagePendingPanelists } from '@/hooks/useStagePendingPanelists'
@@ -1485,6 +1486,17 @@ const stageHasAutomation = useMemo(() => {
                               No hiring stages configured for this job.
                             </div>
                           ) : null}
+
+                          {candidateId && (
+                            <InterviewHistoryCard
+                              candidateId={candidateId}
+                              jobId={jobId}
+                              stages={planStages}
+                              candidateEmail={candidate?.email}
+                              candidatePhone={candidate?.phone}
+                            />
+                          )}
+
 
                           {currentStage && associationId && stageSupportsScorecard && (
                             <StageScorecardsCard
