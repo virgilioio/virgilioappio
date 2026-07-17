@@ -121,7 +121,9 @@ export function AccountMenu({ children }: AccountMenuProps) {
   const { tenant } = useTenant()
   const { data: credits } = useSourcingCredits()
   const { data: billing } = useBillingStatus()
+  const { bookingUrl } = useBookingConfig()
   const navigate = useNavigate()
+  const [copied, setCopied] = useState(false)
 
   const close = () => setOpen(false)
 
