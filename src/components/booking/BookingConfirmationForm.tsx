@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { Calendar, Clock, Globe, ArrowLeft } from 'lucide-react';
+import { suggestEmailFix } from '@/utils/emailTypoSuggest';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
