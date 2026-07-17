@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { splitEmailQuote } from '@/utils/emailQuoteSplit'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -10,6 +11,7 @@ import {
   CornerUpLeft,
   Forward,
   MailOpen,
+  MoreHorizontal,
   Paperclip,
   RefreshCw,
   Reply,
@@ -156,6 +158,14 @@ function EmailRow({
   onForward?: (email: EmailHistoryCardEmail) => void
 }) {
   const [open, setOpen] = useState(!!defaultOpen)
+  const [showQuoted, setShowQuoted] = useState(false)
+  useEffect(() => {
+    if (!open) setShowQuoted(false)
+  }, [open])
+  const bodySplit = useMemo(
+    () => splitEmailQuote(email.body_html, email.body_text),
+    [email.body_html, email.body_text],
+  )
   const isInbound = email.direction === 'received'
   const isNew = isInbound && email.is_read === false
   const status = resolveStatus(email)
@@ -348,18 +358,68 @@ function EmailRow({
             className="font-inter"
             style={{ fontSize: 12.5, color: '#1F2230', lineHeight: 1.65 }}
           >
-            {email.body_html ? (
+            {bodySplit.isHtml ? (
               <SafeHtml
-                content={email.body_html}
+                content={bodySplit.main || email.body_html || ''}
                 className="prose prose-sm max-w-full dark:prose-invert [&_*]:max-w-full [&_*]:break-words [&_pre]:whitespace-pre-wrap [&_img]:max-w-full [&_a]:break-all"
                 style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
               />
+            ) : bodySplit.main ? (
+              <div className="whitespace-pre-wrap break-words">
+                {fixMojibake(bodySplit.main)}
+              </div>
             ) : (
               <div className="whitespace-pre-wrap break-words">
                 {fixMojibake(email.body_text || email.snippet || 'No content')}
               </div>
             )}
+
+            {bodySplit.hasQuote && (
+              <div style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowQuoted((v) => !v)}
+                  aria-label={showQuoted ? 'Hide trimmed content' : 'Show trimmed content'}
+                  aria-expanded={showQuoted}
+                  className="inline-flex items-center justify-center transition-colors"
+                  style={{
+                    height: 22,
+                    padding: '0 8px',
+                    borderRadius: 6,
+                    border: '1px solid #E0DDD3',
+                    background: showQuoted ? '#E7E6E0' : '#F1F0EC',
+                    color: '#5A6072',
+                  }}
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+
+                {showQuoted && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      paddingLeft: 10,
+                      borderLeft: '2px solid #E0DDD3',
+                      color: '#5A6072',
+                    }}
+                  >
+                    {bodySplit.isHtml ? (
+                      <SafeHtml
+                        content={bodySplit.quoted}
+                        className="prose prose-sm max-w-full dark:prose-invert [&_*]:max-w-full [&_*]:break-words [&_pre]:whitespace-pre-wrap [&_img]:max-w-full [&_a]:break-all"
+                        style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+                      />
+                    ) : (
+                      <pre className="whitespace-pre-wrap break-words font-inter" style={{ fontSize: 12.5, lineHeight: 1.65, margin: 0 }}>
+                        {fixMojibake(bodySplit.quoted)}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
 
           {email.error_message && (
             <div
