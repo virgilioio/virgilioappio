@@ -65,14 +65,19 @@ export function useRejectCandidate() {
       try {
         const { data: activeBookings } = await supabase
           .from('scheduled_bookings')
-          .select('id')
+          .select('id, scheduled_end')
           .eq('candidate_id', association.candidate_id)
           .eq('job_id', association.job_id)
           .in('status', ['confirmed', 'rescheduled']);
 
-        if (activeBookings?.length) {
+        const now = Date.now();
+        const futureBookings = (activeBookings ?? []).filter(
+          b => b.scheduled_end && new Date(b.scheduled_end).getTime() > now
+        );
+
+        if (futureBookings.length) {
           await Promise.allSettled(
-            activeBookings.map(booking =>
+            futureBookings.map(booking =>
               supabase.functions.invoke('cancel-booking', {
                 body: { booking_id: booking.id, reason: 'Candidate rejected' },
               })

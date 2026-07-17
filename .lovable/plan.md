@@ -1,26 +1,21 @@
-# Fix past events disappearing on the Calendar page
+## Problem
+When a candidate is rejected, `useRejectCandidate` iterates every active (`confirmed`/`rescheduled`) booking for that candidate+job and calls the `cancel-booking` edge function. That flips their status to `cancelled` — including bookings whose `scheduled_end` is already in the past. The Calendar page filters out cancelled events (`e.raw.status === 'cancelled'`), so interviews that already occurred disappear from the grid once the candidate is rejected.
 
-## Current state
-- `src/pages/Calendar.tsx` loads bookings via `useScheduledBookings('upcoming', permissions)`.
-- The `useScheduledBookings` hook, when called with `status === 'upcoming'`, filters out any booking whose `scheduled_end` is earlier than the current time (`scheduled_end < now()`). It also restricts to statuses `confirmed` and `rescheduled`.
-- This means an interview that already happened this morning, or a prior day of the current week, vanishes from the calendar grid as soon as its end time passes.
-- The calendar itself already filters to the visible week on the client side (`weekEvents`), so the real-time date cutoff from the `upcoming` scope is the only thing removing past events.
+## Fix
+Scope the auto-cancellation to **future** bookings only. Past interviews actually took place and should remain on the calendar and in history untouched.
 
-## Proposed change
-1. **Fetch all tenant bookings for the calendar**  
-   Change `useScheduledBookings('upcoming', permissions)` in `Calendar.tsx` to `useScheduledBookings(undefined, permissions)`. This loads the full booking history instead of only future bookings.
+### Change
+In `src/hooks/useRejectCandidate.ts`, the query that fetches active bookings for cancellation:
 
-2. **Preserve the cancelled-event exclusion**  
-   Add a lightweight client-side filter in the `events` useMemo to drop bookings with `status === 'cancelled'`, so cancelled interviews do not clutter the calendar view. This keeps the existing behavior unchanged for every other status.
+- Also select `scheduled_end` (currently only `id` is selected).
+- Before invoking `cancel-booking`, filter the list to bookings where `scheduled_end > now()`.
 
-3. **Leave the visible-week and type/job/people filters untouched**  
-   The `weekEvents` filter already limits events to the 5-day week, so the calendar will still show only the relevant slice of history. The event rendering, popovers, and "Needs scheduling" rail are not affected.
+That's the only change — no edge function edits, no calendar edits, no schema changes. The auto-cancel-on-rejection behavior stays exactly the same for upcoming interviews (see `mem://features/scheduling/auto-cancellation-lifecycle`), just no longer retroactively wipes past ones.
 
 ## Verification
-- Refresh the Calendar page and confirm that past events still appear on the grid for the current week and when navigating to previous weeks.
-- Confirm that cancelled events do not appear on the calendar.
-- Confirm that future events still display normally and that type/job/people filters still work.
+- Reject a candidate who had a past interview earlier this week → past event still appears on Calendar with its original status (`confirmed`/`completed`/etc.).
+- Reject a candidate with an upcoming interview → that future booking is still auto-cancelled as before.
+- Reject a candidate with a mix of past + future bookings → only the future ones get cancelled.
 
 ## Files touched
-- `src/pages/Calendar.tsx` (one line + one small filter tweak)
-- No backend, edge function, or database changes.
+- `src/hooks/useRejectCandidate.ts` (select `scheduled_end`; filter to future before cancelling).
