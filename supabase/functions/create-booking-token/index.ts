@@ -57,7 +57,8 @@ serve(async (req) => {
       association_id,
       job_title,
       stage_name,
-      short_code
+      short_code,
+      renew,
     } = body;
 
     // Validate required fields
@@ -88,23 +89,40 @@ serve(async (req) => {
     const verifiedCandidateName = candidateData.candidate_name;
     const verifiedCandidateEmail = candidateData.email;
 
-    // Check for existing valid token for this exact context
-    const { data: existingToken } = await supabase
-      .from('booking_link_tokens')
-      .select('token')
-      .eq('job_id', job_id)
-      .eq('candidate_id', candidate_id)
-      .eq('association_id', association_id)
-      .eq('short_code', short_code)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle();
+    // If renewing: expire any existing valid tokens for this exact context
+    // so the previous URL stops resolving immediately.
+    if (renew) {
+      const { error: expireError } = await supabase
+        .from('booking_link_tokens')
+        .update({ expires_at: new Date().toISOString() })
+        .eq('job_id', job_id)
+        .eq('candidate_id', candidate_id)
+        .eq('association_id', association_id)
+        .eq('short_code', short_code)
+        .gt('expires_at', new Date().toISOString());
+      if (expireError) {
+        console.error('Failed to expire previous tokens:', expireError);
+      }
+    } else {
+      // Check for existing valid token for this exact context
+      const { data: existingToken } = await supabase
+        .from('booking_link_tokens')
+        .select('token')
+        .eq('job_id', job_id)
+        .eq('candidate_id', candidate_id)
+        .eq('association_id', association_id)
+        .eq('short_code', short_code)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
 
-    if (existingToken) {
-      return new Response(
-        JSON.stringify({ token: existingToken.token }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (existingToken) {
+        return new Response(
+          JSON.stringify({ token: existingToken.token }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
+
 
     // Generate a new unique token
     let token = generateShortToken();
