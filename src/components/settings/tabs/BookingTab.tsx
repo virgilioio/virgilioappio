@@ -233,6 +233,71 @@ export function BookingTab() {
           </div>
         </SettingsCard>
 
+        {/* === General availability & rules === */}
+        {isConfiguring ? (
+          <GeneralLinkConfigurator
+            config={config}
+            isUpdating={isUpdating}
+            hasCalendar={hasCalendar}
+            onToggleActive={handleToggleActive}
+            onSave={(updates) => updateConfig(updates)}
+            onBack={() => setIsConfiguring(false)}
+          />
+        ) : (
+          <SettingsCard
+            title="General availability & rules"
+            description="The hours and rules behind your general link — also applied to every job, candidate and stage-specific link you generate."
+            bodyClassName="px-0 py-0"
+          >
+            <div className="flex items-center gap-4 px-[18px] py-[14px]">
+              <div className="flex-1 min-w-0 flex flex-wrap items-center gap-y-[9px] gap-x-[20px]">
+                {(() => {
+                  const daysStr = summarizeDays(config.weekly_schedule)
+                  const hoursStr = summarizeHours(config.weekly_schedule)
+                  const facts: { icon: typeof Clock; text: string }[] = []
+                  facts.push({ icon: CalendarDays, text: daysStr })
+                  if (hoursStr) facts.push({ icon: Clock, text: hoursStr })
+                  facts.push({ icon: Timer, text: `${config.duration_minutes} min slots` })
+                  facts.push({
+                    icon: Video,
+                    text: config.meeting_location?.trim() || 'Google Meet',
+                  })
+                  if (config.min_notice_hours > 0) {
+                    facts.push({
+                      icon: Bell,
+                      text: `${config.min_notice_hours}h min notice`,
+                    })
+                  }
+                  facts.push({
+                    icon: CalendarRange,
+                    text: `${config.max_days_ahead}-day window`,
+                  })
+                  return facts.map((f, i) => {
+                    const Icon = f.icon
+                    return (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1.5 font-inter text-[12px] text-[#5A6072]"
+                      >
+                        <Icon className="w-[13px] h-[13px] text-[#8B8F9E]" />
+                        {f.text}
+                      </span>
+                    )
+                  })
+                })()}
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={Settings2}
+                onClick={() => setIsConfiguring(true)}
+              >
+                Configure
+              </Button>
+            </div>
+          </SettingsCard>
+        )}
+
         {/* === Event types card === */}
         <SettingsCard
           title="Event types"
