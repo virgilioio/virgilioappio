@@ -610,10 +610,13 @@ export function ScheduleInterviewSheet({
   stageName,
   associationId,
   oldBookingId,
+  onDeleted,
 }: ScheduleInterviewSheetProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isReschedule = !!oldBookingId;
+  const [isDeleting, setIsDeleting] = useState(false);
+
 
   const [selectedInterviewer, setSelectedInterviewer] = useState<StageInterviewer | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
