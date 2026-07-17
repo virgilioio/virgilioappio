@@ -34,6 +34,7 @@ interface CurrentStageCardProps {
   associationId: string
   candidateName?: string
   candidateEmail?: string
+  candidatePhone?: string
   jobTitle?: string
   enteredStageAt?: string | null
   stageWindowStartAt?: string | null
