@@ -179,6 +179,83 @@ Deno.serve(async (req) => {
       for (const c of data ?? []) candidatesById.set(c.id, c);
     }
 
+    // ── 4b. Work experience for candidates on this job ─────────
+    type WorkRow = {
+      candidate_id: string;
+      company_name: string;
+      job_title: string | null;
+      standardized_title: string | null;
+      company_industry: string | null;
+      company_size_category: string | null;
+      is_current: boolean | null;
+      start_date: string | null;
+      end_date: string | null;
+      duration_months: number | null;
+      location: string | null;
+    };
+    const workByCandidate = new Map<string, WorkRow[]>();
+    for (let i = 0; i < candIds.length; i += 200) {
+      const chunk = candIds.slice(i, i + 200);
+      if (chunk.length === 0) break;
+      const { data, error } = await supabase
+        .from('candidate_work_experience')
+        .select(
+          'candidate_id, company_name, job_title, standardized_title, company_industry, company_size_category, is_current, start_date, end_date, duration_months, location',
+        )
+        .in('candidate_id', chunk);
+      if (error) {
+        console.warn('[job-ask-gio] work_experience chunk error', error);
+        continue;
+      }
+      for (const w of (data ?? []) as WorkRow[]) {
+        const list = workByCandidate.get(w.candidate_id) ?? [];
+        list.push(w);
+        workByCandidate.set(w.candidate_id, list);
+      }
+    }
+    // Sort each candidate's stints: current first, then most recent
+    for (const [cid, list] of workByCandidate) {
+      list.sort((a, b) => {
+        if (a.is_current && !b.is_current) return -1;
+        if (!a.is_current && b.is_current) return 1;
+        const ae = a.end_date ? new Date(a.end_date).getTime() : 0;
+        const be = b.end_date ? new Date(b.end_date).getTime() : 0;
+        if (be !== ae) return be - ae;
+        const as = a.start_date ? new Date(a.start_date).getTime() : 0;
+        const bs = b.start_date ? new Date(b.start_date).getTime() : 0;
+        return bs - as;
+      });
+      workByCandidate.set(cid, list.slice(0, 6));
+    }
+
+    function shortYear(iso?: string | null): string {
+      if (!iso) return '';
+      const y = new Date(iso).getFullYear();
+      return Number.isFinite(y) ? String(y) : '';
+    }
+    function renderWorkLine(candidateId: string): string | null {
+      const list = workByCandidate.get(candidateId);
+      if (!list || !list.length) return null;
+      const shown = list.slice(0, 4);
+      const overflow = Math.max(0, list.length - shown.length);
+      const parts = shown.map((w) => {
+        const role = (w.job_title || w.standardized_title || '').trim();
+        const co = (w.company_name || '').trim();
+        const head = role && co ? `${role} @ ${co}` : (co || role);
+        let when = '';
+        if (w.is_current) when = 'current';
+        else {
+          const sy = shortYear(w.start_date);
+          const ey = shortYear(w.end_date);
+          when = sy && ey ? `${sy}–${ey}` : (ey || sy || '');
+        }
+        return when ? `${head} (${when})` : head;
+      }).filter(Boolean);
+      if (!parts.length) return null;
+      const tail = overflow > 0 ? ` · +${overflow} more` : '';
+      return `    ↳ work: ${parts.join(' · ')}${tail}`;
+    }
+
     // ── 5. Rejection reasons ───────────────────────────────────
     const rrIds = Array.from(
       new Set(appList.map((a) => a.rejection_reason_id).filter(Boolean)),
