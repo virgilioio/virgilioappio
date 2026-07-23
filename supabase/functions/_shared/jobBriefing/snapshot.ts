@@ -34,6 +34,7 @@ export type JobSnapshot = {
     sourced_total: number;
     unknown_source_total: number;
     source_breakdown: Record<SourceKind, number>;
+    source_labels: Record<string, number>;
     last_activity_at: string | null;
     stages: Array<{
       id: string;
@@ -50,6 +51,7 @@ export type JobSnapshot = {
       median_days_in_stage: number | null;
       max_days_in_stage: number | null;
       source_breakdown: Record<SourceKind, number>;
+      source_labels: Record<string, number>;
       candidates: Array<{ id: string; name: string; days_in_stage: number; source_kind: SourceKind; source_label: string }>;
     }>;
     stages_from_offer: Record<string, number>;
@@ -221,10 +223,12 @@ export async function buildJobSnapshot(
   const thirty = new Date(now.getTime() - 30 * 86_400_000);
   let inboundLast30 = 0, inboundTotal = 0, sourcedTotal = 0, unknownSourceTotal = 0;
   const pipelineSourceBreakdown: Record<SourceKind, number> = { inbound: 0, sourced: 0, unknown: 0 };
+  const pipelineSourceLabels: Record<string, number> = {};
   for (const a of list) {
     const c = (a as any).candidates;
     const classified = classifyCandidateSource(c?.source, c?.job_board_source);
     incrementSourceBreakdown(pipelineSourceBreakdown, classified);
+    pipelineSourceLabels[classified.label] = (pipelineSourceLabels[classified.label] ?? 0) + 1;
     if (classified.kind === 'inbound') {
       inboundTotal++;
       if (new Date(a.created_at) >= thirty) inboundLast30++;
@@ -263,6 +267,7 @@ export async function buildJobSnapshot(
     durations: number[];
     cands: Array<{ id: string; name: string; days_in_stage: number; source_kind: SourceKind; source_label: string }>;
     sources: Record<SourceKind, number>;
+    sourceLabels: Record<string, number>;
   }>();
   for (const s of stageDefs) {
     stageBuckets.set(s.id, {
@@ -274,6 +279,7 @@ export async function buildJobSnapshot(
       durations: [],
       cands: [],
       sources: { inbound: 0, sourced: 0, unknown: 0 },
+      sourceLabels: {},
     });
   }
   for (const a of list) {
@@ -287,6 +293,7 @@ export async function buildJobSnapshot(
     const c = (a as any).candidates;
     const classified = classifyCandidateSource(c?.source, c?.job_board_source);
     incrementSourceBreakdown(bucket.sources, classified);
+    bucket.sourceLabels[classified.label] = (bucket.sourceLabels[classified.label] ?? 0) + 1;
     if (TERMINAL_STATUSES.has(a.status)) continue;
     const enteredAt = a.entered_stage_at ? new Date(a.entered_stage_at) : new Date(a.created_at);
     const days = daysBetween(enteredAt, now);
@@ -319,6 +326,7 @@ export async function buildJobSnapshot(
       median_days_in_stage: median(b.durations),
       max_days_in_stage: b.durations.length ? Math.max(...b.durations) : null,
       source_breakdown: b.sources,
+      source_labels: b.sourceLabels,
       candidates: b.cands,
     };
   });
@@ -539,6 +547,7 @@ export async function buildJobSnapshot(
       sourced_total: sourcedTotal,
       unknown_source_total: unknownSourceTotal,
       source_breakdown: pipelineSourceBreakdown,
+      source_labels: pipelineSourceLabels,
       last_activity_at: lastActivityAt,
       stages,
       stages_from_offer: stagesFromOffer,
