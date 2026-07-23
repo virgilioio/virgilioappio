@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info,
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
