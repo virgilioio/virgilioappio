@@ -611,6 +611,8 @@ Deno.serve(async (req) => {
         lines.push(
           `  ${candidateName(c)} · stage=${stage} · reason=${reason} · ${ago}d ago · ${renderCandidateLine(c)}`,
         );
+        const wl = renderWorkLine(a.candidate_id);
+        if (wl) lines.push(wl);
         for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
