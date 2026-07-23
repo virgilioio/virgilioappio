@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info,
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
@@ -80,25 +80,7 @@ function relativeFromIso(iso: string | null | undefined): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function askGio(
-  prompt: string,
-  jobId: string,
-  jobTitle: string,
-  toast: ReturnType<typeof useToast>['toast'],
-) {
-  const detail = { prompt, jobId, jobTitle };
-  const evt = new CustomEvent('gio:ask', { detail });
-  const dispatched = window.dispatchEvent(evt);
-  const mounted = (window as any).__gioChatMounted === true;
-  if (!mounted || !dispatched) {
-    try {
-      navigator.clipboard?.writeText(prompt);
-    } catch {
-      /* ignore */
-    }
-    toast({ title: 'Prompt copied', description: 'Paste it into Gio to continue.' });
-  }
-}
+// (Ask box behavior is inlined in the component below — see the "Ask box" section.)
 
 // Render a paragraph with **bold** segments → <strong> at weight 600.
 function renderParagraph(text: string) {
@@ -389,6 +371,51 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [ask, setAsk] = useState('');
+  const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [pending, setPending] = useState(false);
+  const askInputRef = useRef<HTMLInputElement | null>(null);
+  const askBoxRef = useRef<HTMLDivElement | null>(null);
+
+  const insertPrompt = useCallback((prompt: string) => {
+    setAsk(prompt);
+    // Focus + scroll the input into view so the user can edit and submit.
+    requestAnimationFrame(() => {
+      askInputRef.current?.focus();
+      askBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
+
+  const submitAsk = useCallback(
+    async (text: string) => {
+      const q = text.trim();
+      if (!q || pending) return;
+      const history = chat;
+      setChat((prev) => [...prev, { role: 'user', content: q }]);
+      setAsk('');
+      setPending(true);
+      try {
+        const { data: res, error } = await supabase.functions.invoke('job-ask-gio', {
+          body: { jobId, jobTitle, question: q, history },
+        });
+        if (error) throw error;
+        const answer = (res as { answer?: string })?.answer?.trim();
+        if (!answer) throw new Error('Empty response.');
+        setChat((prev) => [...prev, { role: 'assistant', content: answer }]);
+      } catch (err: any) {
+        setChat((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `_Something went wrong: ${err?.message ?? 'unknown error'}_`,
+          },
+        ]);
+      } finally {
+        setPending(false);
+      }
+    },
+    [chat, jobId, jobTitle, pending],
+  );
+
 
   const load = useCallback(
     async (force = false) => {
@@ -794,7 +821,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
                           <button
                             key={i}
                             type="button"
-                            onClick={() => askGio(a.prompt, jobId, jobTitle, toast)}
+                            onClick={() => insertPrompt(a.prompt)}
                             className="inline-flex items-center bg-white hover:bg-[#FAFAF7] transition-colors"
                             style={{
                               height: 30,
@@ -841,14 +868,11 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
       )}
 
       {/* 6 · Ask box */}
-      <div style={{ marginTop: 34 }}>
+      <div ref={askBoxRef} style={{ marginTop: 34 }}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const text = ask.trim();
-            if (!text) return;
-            askGio(text, jobId, jobTitle, toast);
-            setAsk('');
+            void submitAsk(ask);
           }}
           className="flex items-center bg-white"
           style={{
@@ -871,9 +895,11 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
             <Sparkles size={14} color="#6F3FF5" strokeWidth={2} />
           </span>
           <input
+            ref={askInputRef}
             value={ask}
             onChange={(e) => setAsk(e.target.value)}
             placeholder="Ask anything about this job…"
+            disabled={pending}
             className="flex-1 bg-transparent outline-none border-0"
             style={{
               fontFamily: 'Inter, sans-serif',
@@ -884,26 +910,28 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           <button
             type="submit"
             aria-label="Send"
+            disabled={pending || !ask.trim()}
             className="inline-flex items-center justify-center shrink-0"
             style={{
               width: 34,
               height: 34,
               borderRadius: 9,
-              backgroundColor: '#0d0d09',
+              backgroundColor: pending || !ask.trim() ? '#3A3A34' : '#0d0d09',
               color: '#fffcf9',
               border: 'none',
-              cursor: 'pointer',
+              cursor: pending || !ask.trim() ? 'not-allowed' : 'pointer',
+              opacity: pending || !ask.trim() ? 0.75 : 1,
             }}
           >
             <ArrowUp size={15} color="#fffcf9" strokeWidth={2} />
           </button>
         </form>
-        <div className="flex flex-wrap" style={{ gap: 8, marginTop: 10 }}>
+        <div className="flex flex-wrap items-center" style={{ gap: 8, marginTop: 10 }}>
           {suggestions.map((c) => (
             <button
               key={c.label}
               type="button"
-              onClick={() => askGio(c.prompt, jobId, jobTitle, toast)}
+              onClick={() => insertPrompt(c.prompt)}
               className="bg-white hover:bg-[#FAFAF7] transition-colors"
               style={{
                 border: '1px solid #E7E8EE',
@@ -918,8 +946,77 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
               {c.label}
             </button>
           ))}
+          {chat.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setChat([])}
+              className="ml-auto hover:underline"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 11.5,
+                color: '#8B8F9E',
+              }}
+            >
+              Clear
+            </button>
+          )}
         </div>
+
+        {/* Conversation */}
+        {(chat.length > 0 || pending) && (
+          <div
+            style={{
+              marginTop: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}
+          >
+            {chat.map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '92%',
+                  padding: m.role === 'user' ? '8px 12px' : '10px 14px',
+                  borderRadius: 12,
+                  background: m.role === 'user' ? '#0d0d09' : '#FFFCF9',
+                  color: m.role === 'user' ? '#fffcf9' : '#1F2230',
+                  border: m.role === 'user' ? 'none' : '1px solid #EDE4FF',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 13.5,
+                  lineHeight: 1.55,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+              </div>
+            ))}
+            {pending && (
+              <div
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  background: '#FFFCF9',
+                  border: '1px solid #EDE4FF',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 12.5,
+                  color: '#6F3FF5',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Sparkles size={12} color="#6F3FF5" strokeWidth={2} />
+                Gio is thinking…
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
     </div>
   );
 }

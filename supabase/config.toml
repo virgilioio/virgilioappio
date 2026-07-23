@@ -215,6 +215,9 @@ verify_jwt = true
 [functions.generate-job-briefing]
 verify_jwt = true
 
+[functions.job-ask-gio]
+verify_jwt = true
+
 [functions.chat-token-verify]
 verify_jwt = false
 
