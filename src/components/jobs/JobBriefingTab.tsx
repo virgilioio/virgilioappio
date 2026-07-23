@@ -42,6 +42,7 @@ type Snapshot = {
     hired_count: number;
     inbound_total: number;
     sourced_total: number;
+    unknown_source_total?: number;
     last_activity_at: string | null;
     stages: {
       stage: string;
@@ -49,6 +50,7 @@ type Snapshot = {
       position: number;
       active_count: number;
       median_days_in_stage: number | null;
+      max_days_in_stage?: number | null;
       candidates: any[];
     }[];
     stages_from_offer: Record<string, number>;
@@ -502,14 +504,17 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   // Active candidates split
   const inbound = s.pipeline.inbound_total;
   const sourced = s.pipeline.sourced_total;
+  const unknownSource = s.pipeline.unknown_source_total ?? 0;
   const activeSplit =
     s.pipeline.active_count === 0
       ? { text: 'no candidates yet', tone: 'neutral' as TileTone }
-      : inbound === 0
+      : inbound === 0 && sourced > 0
         ? { text: 'all sourced, none inbound', tone: 'amber' as TileTone }
+        : inbound === 0 && sourced === 0 && unknownSource > 0
+          ? { text: `${unknownSource} uncategorized source${unknownSource === 1 ? '' : 's'}`, tone: 'amber' as TileTone }
         : sourced === 0
-          ? { text: 'all inbound', tone: 'neutral' as TileTone }
-          : { text: `${inbound} inbound · ${sourced} sourced`, tone: 'neutral' as TileTone };
+          ? { text: unknownSource ? `${inbound} inbound · ${unknownSource} unknown` : 'all inbound', tone: 'neutral' as TileTone }
+          : { text: `${inbound} inbound · ${sourced} sourced${unknownSource ? ` · ${unknownSource} unknown` : ''}`, tone: 'neutral' as TileTone };
 
   // Closest qualifier
   const closestQualifier =
