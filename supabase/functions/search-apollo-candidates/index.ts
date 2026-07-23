@@ -187,7 +187,12 @@ function deduplicateKeywords(keywords: string[], titleKeywords: string[]): strin
  * Build Apollo API request URL with query parameters
  * Apollo uses URL query params, not JSON body for api_search
  */
-function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, page: number = 1): string {
+function buildApolloSearchUrl(
+  criteria: SearchCriteria,
+  perPage: number = 100,
+  page: number = 1,
+  singleCompanyName?: string
+): string {
   const params = new URLSearchParams();
   
   // Title keywords → person_titles[] (CURRENT JOB TITLE filter)
@@ -199,13 +204,16 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 100, p
     console.log(`🎯 Apollo title filter (fuzzy matching ON): ${criteria.title_keywords.join(', ')}`);
   }
 
-  // Keywords and company names are mutually exclusive to avoid over-filtering with AND logic
-  // Priority: company_names > keywords (company filter is more specific)
-  if (criteria.company_names && criteria.company_names.length > 0) {
-    // Target company names → q_organization_name (searches by company name)
-    const companyNamesString = criteria.company_names.slice(0, 10).join(' OR ');
-    params.append('q_organization_name', companyNamesString);
-    console.log(`🏢 Apollo target company names: ${companyNamesString}`);
+  // Company names vs keywords are mutually exclusive to avoid AND-logic over-filtering.
+  // Apollo's q_organization_name is a single fuzzy string — NOT a boolean expression.
+  // Joining multiple names with " OR " matches nothing. The runner fans out one call per
+  // company when there are 2+; here we accept a single company name (if any) or fall back
+  // to the criteria's single entry.
+  const effectiveCompany = singleCompanyName
+    ?? (criteria.company_names && criteria.company_names.length === 1 ? criteria.company_names[0] : undefined);
+  if (effectiveCompany) {
+    params.append('q_organization_name', effectiveCompany);
+    console.log(`🏢 Apollo target company name: ${effectiveCompany}`);
   } else if (criteria.keywords && criteria.keywords.length > 0) {
     // TRANSPARENT KEYWORD APPROACH: Do NOT send keywords to Apollo
     // Keywords create restrictive AND conditions that severely limit results
