@@ -33,6 +33,9 @@ export type JobSnapshot = {
     inbound_total: number;
     sourced_total: number;
     unknown_source_total: number;
+    active_inbound_total: number;
+    active_sourced_total: number;
+    active_unknown_source_total: number;
     source_breakdown: Record<SourceKind, number>;
     source_labels: Record<string, number>;
     last_activity_at: string | null;
@@ -222,19 +225,28 @@ export async function buildJobSnapshot(
   // Inbound / sourced (heuristic from candidates.source)
   const thirty = new Date(now.getTime() - 30 * 86_400_000);
   let inboundLast30 = 0, inboundTotal = 0, sourcedTotal = 0, unknownSourceTotal = 0;
+  let activeInboundTotal = 0, activeSourcedTotal = 0, activeUnknownSourceTotal = 0;
   const pipelineSourceBreakdown: Record<SourceKind, number> = { inbound: 0, sourced: 0, unknown: 0 };
   const pipelineSourceLabels: Record<string, number> = {};
   for (const a of list) {
     const c = (a as any).candidates;
     const classified = classifyCandidateSource(c?.source, c?.job_board_source);
+    const isActive = !TERMINAL_STATUSES.has(a.status);
     incrementSourceBreakdown(pipelineSourceBreakdown, classified);
     pipelineSourceLabels[classified.label] = (pipelineSourceLabels[classified.label] ?? 0) + 1;
     if (classified.kind === 'inbound') {
       inboundTotal++;
+      if (isActive) activeInboundTotal++;
       if (new Date(a.created_at) >= thirty) inboundLast30++;
     }
-    if (classified.kind === 'sourced') sourcedTotal++;
-    if (classified.kind === 'unknown') unknownSourceTotal++;
+    if (classified.kind === 'sourced') {
+      sourcedTotal++;
+      if (isActive) activeSourcedTotal++;
+    }
+    if (classified.kind === 'unknown') {
+      unknownSourceTotal++;
+      if (isActive) activeUnknownSourceTotal++;
+    }
   }
 
   // Last activity (max updated_at across associations) + stage_events
@@ -546,6 +558,9 @@ export async function buildJobSnapshot(
       inbound_total: inboundTotal,
       sourced_total: sourcedTotal,
       unknown_source_total: unknownSourceTotal,
+      active_inbound_total: activeInboundTotal,
+      active_sourced_total: activeSourcedTotal,
+      active_unknown_source_total: activeUnknownSourceTotal,
       source_breakdown: pipelineSourceBreakdown,
       source_labels: pipelineSourceLabels,
       last_activity_at: lastActivityAt,

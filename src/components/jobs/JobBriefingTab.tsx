@@ -43,6 +43,9 @@ type Snapshot = {
     inbound_total: number;
     sourced_total: number;
     unknown_source_total?: number;
+    active_inbound_total?: number;
+    active_sourced_total?: number;
+    active_unknown_source_total?: number;
     last_activity_at: string | null;
     stages: {
       stage: string;
@@ -502,9 +505,9 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   );
 
   // Active candidates split
-  const inbound = s.pipeline.inbound_total;
-  const sourced = s.pipeline.sourced_total;
-  const unknownSource = s.pipeline.unknown_source_total ?? 0;
+  const inbound = s.pipeline.active_inbound_total ?? s.pipeline.inbound_total;
+  const sourced = s.pipeline.active_sourced_total ?? s.pipeline.sourced_total;
+  const unknownSource = s.pipeline.active_unknown_source_total ?? s.pipeline.unknown_source_total ?? 0;
   const activeSplit =
     s.pipeline.active_count === 0
       ? { text: 'no candidates yet', tone: 'neutral' as TileTone }
