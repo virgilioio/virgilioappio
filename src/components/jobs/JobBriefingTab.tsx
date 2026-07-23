@@ -867,8 +867,133 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         </div>
       )}
 
-      {/* 6 · Ask box */}
-      <div ref={askBoxRef} style={{ marginTop: 34 }}>
+      {/* 6 · Ask box — transcript above, composer sticky at bottom */}
+      <AskBox
+        askBoxRef={askBoxRef}
+        askInputRef={askInputRef}
+        ask={ask}
+        setAsk={setAsk}
+        chat={chat}
+        setChat={setChat}
+        pending={pending}
+        suggestions={suggestions}
+        insertPrompt={insertPrompt}
+        submitAsk={submitAsk}
+      />
+
+
+    </div>
+  );
+}
+
+// ── Ask box: scrollable transcript above a sticky composer ────────────
+type ChatMsg = { role: 'user' | 'assistant'; content: string };
+interface AskBoxProps {
+  askBoxRef: React.RefObject<HTMLDivElement>;
+  askInputRef: React.RefObject<HTMLInputElement>;
+  ask: string;
+  setAsk: (v: string) => void;
+  chat: ChatMsg[];
+  setChat: React.Dispatch<React.SetStateAction<ChatMsg[]>>;
+  pending: boolean;
+  suggestions: { label: string; prompt: string }[];
+  insertPrompt: (p: string) => void;
+  submitAsk: (t: string) => void | Promise<void>;
+}
+
+function AskBox({
+  askBoxRef,
+  askInputRef,
+  ask,
+  setAsk,
+  chat,
+  setChat,
+  pending,
+  suggestions,
+  insertPrompt,
+  submitAsk,
+}: AskBoxProps) {
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [chat.length, pending]);
+
+  const hasChat = chat.length > 0 || pending;
+
+  return (
+    <div ref={askBoxRef} style={{ marginTop: 34 }}>
+      {/* Conversation panel (above composer) */}
+      {hasChat && (
+        <div
+          ref={transcriptRef}
+          style={{
+            maxHeight: 460,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            paddingBottom: 14,
+          }}
+        >
+          {chat.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '92%',
+                padding: m.role === 'user' ? '8px 12px' : '10px 14px',
+                borderRadius: 12,
+                background: m.role === 'user' ? '#0d0d09' : '#FFFCF9',
+                color: m.role === 'user' ? '#fffcf9' : '#1F2230',
+                border: m.role === 'user' ? 'none' : '1px solid #EDE4FF',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+            </div>
+          ))}
+          {pending && (
+            <div
+              style={{
+                alignSelf: 'flex-start',
+                padding: '8px 12px',
+                borderRadius: 12,
+                background: '#FFFCF9',
+                border: '1px solid #EDE4FF',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12.5,
+                color: '#6F3FF5',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <Sparkles size={12} color="#6F3FF5" strokeWidth={2} />
+              Gio is thinking…
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sticky composer group */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 5,
+          paddingTop: 10,
+          paddingBottom: 6,
+          background:
+            'linear-gradient(to top, #FFFCF9 78%, rgba(255,252,249,0))',
+        }}
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -961,62 +1086,8 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
             </button>
           )}
         </div>
-
-        {/* Conversation */}
-        {(chat.length > 0 || pending) && (
-          <div
-            style={{
-              marginTop: 14,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-            }}
-          >
-            {chat.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '92%',
-                  padding: m.role === 'user' ? '8px 12px' : '10px 14px',
-                  borderRadius: 12,
-                  background: m.role === 'user' ? '#0d0d09' : '#FFFCF9',
-                  color: m.role === 'user' ? '#fffcf9' : '#1F2230',
-                  border: m.role === 'user' ? 'none' : '1px solid #EDE4FF',
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 13.5,
-                  lineHeight: 1.55,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
-              </div>
-            ))}
-            {pending && (
-              <div
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  background: '#FFFCF9',
-                  border: '1px solid #EDE4FF',
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 12.5,
-                  color: '#6F3FF5',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Sparkles size={12} color="#6F3FF5" strokeWidth={2} />
-                Gio is thinking…
-              </div>
-            )}
-          </div>
-        )}
       </div>
-
     </div>
   );
 }
+

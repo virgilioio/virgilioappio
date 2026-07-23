@@ -1,46 +1,105 @@
-# Job Dashboard — Make the "Ask Gio" box actually work
+# Ask Gio on the Job Dashboard — sticky composer + real job context
 
-Scope: only the Ask box + suggestion chips at the bottom of the Job Dashboard tab (`src/components/jobs/JobBriefingTab.tsx`). No other UI or logic changes.
+Two problems to solve, both in the existing Ask box on `src/components/jobs/JobBriefingTab.tsx` and its backend `supabase/functions/job-ask-gio/index.ts`. No agentic tools, no new features — just make the assistant actually know the job.
 
-## Current behavior (verified)
+## 1. Why answers are thin today (verified)
 
-- The `askGio()` helper (line 83) dispatches a `window` `CustomEvent('gio:ask')` and checks `window.__gioChatMounted`. Nothing in the app listens for that event or sets that flag, so both paths always fall through to `navigator.clipboard.writeText(prompt)` + a "Prompt copied — paste it into Gio to continue" toast.
-- Suggestion chips (bottom of tab, ~line 902) and the input's submit handler (~line 850) both funnel into `askGio()`, so both trigger the same copy-toast.
-- No job-scoped Q&A edge function exists yet. `chat-with-gio` is dedicated to the job-creation wizard and isn't reusable here.
+`supabase/functions/job-ask-gio/index.ts` builds a context block from three reads, and two of them are silently returning nothing:
 
-## Target behavior
+- It queries **`candidate_job_associations`** — that table does not exist in this schema; the real one is **`job_candidate_associations`**. Every application read is dropped with an RLS/404, so `Total applications`, `Status breakdown`, and per-stage counts are all `0` / `none`.
+- It joins stages via **`job_stages(name, is_required)`** — the per-job stage list actually lives in **`job_hiring_stages`** (joined to `job_stages.stage_name` + `custom_stage_name`). So stage names come back empty too.
+- Even if those worked, the context is only a static job row + counts. There are no candidate names, no timestamps, no activity, no rejection reasons, no email/interview signals — so a question like "what changed in the last 7 days" or "quick pipeline report including rejected candidates" has literally nothing to answer from.
 
-1. **Clicking a suggestion chip** puts that chip's `prompt` text into the input field, focuses the input, and does NOT auto-send. User can edit before sending.
-2. **Submitting the input** (Enter or send button) actually calls an AI backend, streams the reply inline below the input, and shows Gio's answer with basic markdown rendering. The clipboard/toast fallback is removed.
-3. Same-tab conversation history is kept in local state so a user can ask follow-ups; switching jobs or unmounting the tab resets it.
+So step one is a bug fix; step two is broadening what we send.
 
-## Implementation
+## 2. Backend — richer, correct job context
 
-### 1. Frontend — `src/components/jobs/JobBriefingTab.tsx`
+Rewrite the context builder in `supabase/functions/job-ask-gio/index.ts`. Keep the same request/response contract (`{ jobId, jobTitle?, question, history }` → `{ answer }`), same model, same gateway wiring, same 429/402 handling. Only the SQL and the assembled `contextBlock` change.
 
-- Delete the `askGio()` helper and its `useToast` usage for this flow.
-- Add local state near the Ask box: `messages: {role, content}[]`, `pending: boolean`, plus the existing `ask` string and a `textareaRef` for focus.
-- Suggestion-chip `onClick`: `setAsk(c.prompt); textareaRef.current?.focus()`. No network call.
-- Feature-card action buttons (line 793–815): same behavior — populate the Ask input and scroll it into view. (They currently call `askGio` too; user hasn't asked to change those, but they share the helper so removing it forces one branch. Keeping them consistent with the chips is the safe move.)
-- Form `onSubmit`: append `{role:'user', content:text}` to `messages`, clear the input, set `pending=true`, then call the new edge function via `supabase.functions.invoke('job-ask-gio', { body: { jobId, jobTitle, question: text, history: messages } })`, append the assistant reply on success, show inline error text on failure. Disable the send button while `pending`.
-- Render a conversation panel directly under the input (only when `messages.length > 0`): stacked user/assistant bubbles matching the tab's existing typography (Inter 13.5, cream card background, purple accent for Gio rows), a small typing indicator while `pending`, and a "Clear" ghost link.
+All reads stay on the caller's JWT-scoped client (RLS enforced).
 
-### 2. Backend — new `supabase/functions/job-ask-gio/index.ts`
+Gather, in parallel:
 
-- POST `{ jobId, jobTitle, question, history }`. JWT-verified (uses caller's Supabase JWT to enforce tenant/RLS).
-- Load a compact job context server-side with the caller's client: title, department, location, status, stage counts, top rejection reasons — reuse the same reads the tab already performs (`useJobFeatures`/related). Keep the payload small.
-- Call Lovable AI Gateway (`google/gemini-3.6-flash`) via the shared provider with a system prompt: "You are Gio, a hiring copilot. Answer the recruiter's question about this job using only the provided context. Be concise, cite numbers, never invent candidates." Include the job context block and prior turns.
-- Return `{ answer: string }`. Non-streaming for v1 to keep the change small; the UI shows a shimmer while waiting.
-- Follow existing edge-function conventions: CORS headers, `_shared/ai-gateway.ts`, structured errors for 429/402 surfaced to the client.
+1. **Job row** — same fields as today plus `description` (trimmed to ~800 chars), `hiring_manager_id`, `recruiter_id`, `created_at`, `target_fill_date`.
+2. **Stages** — from `job_hiring_stages` joined to `job_stages`, ordered by `position`:
+   `id, position, custom_stage_name, is_required, job_stages.stage_name, job_stages.stage_type`.
+3. **Applications** — from `job_candidate_associations` for this `job_id`, up to 500 rows:
+   `id, candidate_id, current_stage_id, status, created_at, entered_stage_at, rejected_at, offered_at, hired_at, rejection_reason_id, source`.
+4. **Candidates** for those ids (chunked `.in()` if needed) — `id, first_name, last_name, current_job_title, current_company, location, source, created_at`.
+5. **Rejection reasons** — `rejection_reasons` filtered to the ids referenced, for label lookup.
+6. **Recent activity (last 14 days)** — `activities` filtered to `entity_type='job'` and `entity_id=jobId` **plus** `entity_type='candidate'` with `entity_id in (candidate_ids)` scoped to this job (fallback: filter by `created_at >= now()-14d` and cap at 100), select `activity_type, title, description, created_at`.
+7. **Recent stage moves (last 14 days)** — `stage_events` for these associations if the row is present; skip silently if RLS blocks.
+8. **Emails (last 14 days summary)** — `email_logs` count grouped by direction/status for these candidates, capped simply (aggregate in code).
 
-### 3. Config
+From those, assemble a compact plaintext context block, in this order:
 
-- Register the function in `supabase/config.toml` with `verify_jwt = true`.
-- No new secrets — `LOVABLE_API_KEY` already exists.
+```
+JOB
+  Title · Department · Location (mode) · Status · Level · Employment · Salary · Experience · Skills · Target fill · Created · Days open
 
-## Out of scope
+STAGES (name · required · in_stage)
+  1. Applied — 42
+  2. Screen — 8 (required)
+  ...
 
-- No changes to the global topbar "chat with Gio" experience, `useChatWithGio`, or `chat-with-gio` function.
-- No streaming/SSE (can be added later if the wait feels long).
-- No persistence — conversation is per-tab-mount only.
-- No changes to the feature-card copy or the rest of the Job Dashboard tab.
+PIPELINE
+  Active: N · Rejected: M · Offered: X · Hired: Y
+  Median days-to-reject: … · Median days-in-stage top-3: …
+
+TOP REJECTION REASONS
+  reason label — count
+  ...
+
+RECENT 7d
+  <YYYY-MM-DD> stage move: <Candidate> Applied → Screen
+  <YYYY-MM-DD> rejected: <Candidate> (reason)
+  <YYYY-MM-DD> hired: <Candidate>
+  <YYYY-MM-DD> note/activity: <title>
+  ... (cap 40 lines, newest first)
+
+CANDIDATES (active, up to 60, grouped by stage)
+  Stage — Candidate Name · title @ company · loc · source · <days in stage>d
+  ...
+
+CANDIDATES (rejected, up to 30, most recent first)
+  Candidate Name · stage at rejection · reason · <days ago>d
+
+JOB DESCRIPTION (excerpt)
+  <first ~800 chars>
+```
+
+Rules for the assembly:
+- Names come only from `candidates` rows we actually loaded — never invented.
+- Truncate long strings; hard cap the whole context around ~12k chars so the model stays fast and cheap.
+- Bucket "Recent 7d" and "Recent 14d" separately so the model can answer "last 7 days" precisely.
+- If a section has no rows, omit it entirely (don't emit "none").
+
+System prompt stays terse; add: "You have structured JOB, STAGES, PIPELINE, RECENT, CANDIDATES sections. When the user asks about a time window, filter the RECENT entries by date. When asked for a report, group by stage and include rejected candidates from the CANDIDATES(rejected) block. Cite counts and names from the context only; never invent."
+
+## 3. Frontend — sticky composer, scrollable transcript
+
+In `src/components/jobs/JobBriefingTab.tsx`, restructure the Ask box so the composer stays pinned to the bottom of the tab and the conversation scrolls above it. No wiring or state changes — same `chat`, `ask`, `pending`, `submitAsk`, `insertPrompt`.
+
+- Wrap the Ask box (currently `<div ref={askBoxRef} style={{ marginTop: 34 }}>` starting ~line 871) in a two-part flex container that lives inside the tab's existing scroll region.
+- Layout, top → bottom:
+  1. Conversation panel (the existing `{chat.length > 0 || pending}` block moved above the composer) with `flex: 1; overflow-y: auto; min-height: 0` and an internal ref used to `scrollTop = scrollHeight` after each new message.
+  2. Sticky composer group = the form + suggestion chip row, wrapped in a container with `position: sticky; bottom: 0; background: linear-gradient(to top, #FFFCF9 70%, rgba(255,252,249,0)); padding-top: 10px`.
+- Suggestion chips stay directly under the input (same row today). Keep the "Clear" affordance on the chip row.
+- Empty state (no messages yet) keeps today's look: chips visible, composer at bottom, no transcript panel rendered.
+- Auto-scroll to bottom on: new user message, new assistant reply, `pending` toggling on. Use a small `useEffect` on `[chat.length, pending]`.
+- Keep every existing style token (radius, colors, Poppins/Inter sizes) — this is layout only.
+
+## 4. Out of scope
+
+- No streaming (v1 stays non-streaming; the "thinking" bubble already covers wait).
+- No tool-calling / agent loop.
+- No new tables, no schema change, no new secrets.
+- No changes to `generate-job-briefing`, the feature cards above, or any other tab.
+
+## Technical notes
+
+- Table name fix (`candidate_job_associations` → `job_candidate_associations`) is the single highest-impact change; everything else builds on that.
+- Cap each read (`.limit(500)` for applications, `.limit(100)` for activities) to keep the function well under Edge Function timeouts.
+- Chunk the `candidates` `.in()` query at 200 ids like `useCandidateJobAssociationsMap` already does.
+- Skip a section on RLS/error instead of failing the whole request; log to `console.warn` server-side.
+- Sticky positioning works because `JobBriefingTab`'s wrapper already scrolls; if it doesn't in this branch, add `overflow-y:auto; min-height:0` to the tab root only (no other layout side effects).
