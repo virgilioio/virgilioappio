@@ -170,6 +170,11 @@ function d5_noActivity(s: JobSnapshot, d1Fired: boolean): Finding | null {
   }
   if (d1Fired) return null; // D1 already explains the stall more precisely
   if (s.velocity.transitions_last_7d > 0) return null;
+  const recentScorecards = s.scorecards.recent.filter((sc) => {
+    const createdAt = sc.created_at ? new Date(sc.created_at) : null;
+    return createdAt && Date.now() - createdAt.getTime() <= 7 * 86_400_000;
+  }).length;
+  if (recentScorecards > 0 || s.interviews.upcoming > 0 || s.interviews.recent_completed_14d > 0) return null;
   const title = s.job.title;
   const lastActivity = s.pipeline.last_activity_at ? new Date(s.pipeline.last_activity_at) : null;
   const days = lastActivity

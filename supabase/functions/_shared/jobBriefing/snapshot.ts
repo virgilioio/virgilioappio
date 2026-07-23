@@ -376,15 +376,26 @@ export async function buildJobSnapshot(
   const moveDurations: number[] = [];
   let forwardMovesLast14d = 0;
   const stagePositionById = new Map(stageDefs.map((s) => [s.id, s.position] as const));
+  const historyByAssoc = new Map<string, any[]>();
   for (const h of stageHistory) {
+    if (h.association_id) {
+      const group = historyByAssoc.get(h.association_id) ?? [];
+      group.push(h);
+      historyByAssoc.set(h.association_id, group);
+    }
     if (h.moved_at && new Date(h.moved_at) >= new Date(fourteenAgo)) {
       const fromPos = h.from_stage_id ? stagePositionById.get(h.from_stage_id) : null;
       const toPos = h.to_stage_id ? stagePositionById.get(h.to_stage_id) : null;
       if (fromPos != null && toPos != null && toPos > fromPos) forwardMovesLast14d++;
     }
-    const assoc = list.find((a: any) => a.id === h.association_id);
-    const started = assoc?.created_at ? new Date(assoc.created_at) : null;
-    if (started && h.moved_at) moveDurations.push(daysBetween(started, new Date(h.moved_at)));
+  }
+  for (const [associationId, moves] of historyByAssoc.entries()) {
+    const assoc = list.find((a: any) => a.id === associationId);
+    let previous = assoc?.created_at ? new Date(assoc.created_at) : null;
+    for (const h of moves.sort((a, b) => new Date(a.moved_at).getTime() - new Date(b.moved_at).getTime())) {
+      if (previous && h.moved_at) moveDurations.push(daysBetween(previous, new Date(h.moved_at)));
+      if (h.moved_at) previous = new Date(h.moved_at);
+    }
   }
 
   // Composition --------------------------------------------------------------
