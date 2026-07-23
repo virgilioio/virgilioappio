@@ -821,7 +821,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
                           <button
                             key={i}
                             type="button"
-                            onClick={() => askGio(a.prompt, jobId, jobTitle, toast)}
+                            onClick={() => insertPrompt(a.prompt)}
                             className="inline-flex items-center bg-white hover:bg-[#FAFAF7] transition-colors"
                             style={{
                               height: 30,
