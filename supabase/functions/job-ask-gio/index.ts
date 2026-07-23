@@ -12,10 +12,39 @@ const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-const MAX_CONTEXT_CHARS = 12000;
+const MAX_CONTEXT_CHARS = 16000;
 const CONTEXT_ACTIVE_LIMIT = 60;
 const CONTEXT_REJECTED_LIMIT = 30;
 const CONTEXT_RECENT_LIMIT = 40;
+const SCORECARDS_PER_CANDIDATE = 2;
+
+function formatSalary(amount: number | string | null | undefined, currency?: string | null, period?: string | null): string | null {
+  const n = typeof amount === 'string' ? parseFloat(amount) : amount ?? null;
+  if (!n || Number.isNaN(n)) return null;
+  const cur = (currency || 'USD').toUpperCase();
+  let symbol = cur;
+  try {
+    const parts = new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, currencyDisplay: 'narrowSymbol' }).formatToParts(0);
+    const s = parts.find((p) => p.type === 'currency')?.value;
+    if (s) symbol = s;
+  } catch { /* ignore */ }
+  const p = (period || 'year').toLowerCase();
+  const suffix = p.startsWith('hour') || p === 'hr' ? 'hr'
+    : p.startsWith('month') || p === 'mo' ? 'mo'
+    : p.startsWith('week') || p === 'wk' ? 'wk'
+    : 'yr';
+  const display = n >= 1000
+    ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1).replace(/\.0$/, '')}k`
+    : `${n}`;
+  return `${symbol}${display}/${suffix}`;
+}
+
+function median(arr: number[]): number | null {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+}
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -140,7 +169,7 @@ Deno.serve(async (req) => {
       const { data, error } = await supabase
         .from('candidates')
         .select(
-          'id, candidate_name, current_job_title, company_current, role_current, location_city, location_state, location_country, source, created_at',
+          'id, candidate_name, email, phone, linkedin_url, current_job_title, standardized_title, company_current, role_current, seniority_level, functional_area, specialization, years_experience, years_in_specialization, years_in_leadership, location_city, location_state, location_country, source, job_board_source, salary_amount, salary_currency, salary_period, standardized_skills, skills, profile_summary, bio, coresignal_headline, created_at',
         )
         .in('id', chunk);
       if (error) {
@@ -216,12 +245,54 @@ Deno.serve(async (req) => {
       }
     }
 
-    const median = (arr: number[]) => {
-      if (!arr.length) return null;
-      const s = [...arr].sort((a, b) => a - b);
-      const m = Math.floor(s.length / 2);
-      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+    // ── 7. Scorecards for this job ─────────────────────────────
+    type ScorecardRow = {
+      id: string;
+      candidate_id: string;
+      stage_instance_id: string | null;
+      rating: number | null;
+      general_overview: string | null;
+      is_ai_draft: boolean | null;
+      created_at: string;
+      responses?: Array<{ question_text: string; answer_text: string | null }>;
     };
+    const scorecardsByCandidate = new Map<string, ScorecardRow[]>();
+    {
+      const { data: scRows, error: scErr } = await supabase
+        .from('job_stage_scorecards')
+        .select('id, candidate_id, stage_instance_id, rating, general_overview, is_ai_draft, created_at')
+        .eq('job_id', jobId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (scErr) console.warn('[job-ask-gio] scorecards error', scErr);
+      const scList = (scRows ?? []) as ScorecardRow[];
+      // Load responses in bulk
+      const scIds = scList.map((s) => s.id);
+      const respBySc = new Map<string, Array<{ question_text: string; answer_text: string | null }>>();
+      if (scIds.length) {
+        for (let i = 0; i < scIds.length; i += 200) {
+          const chunk = scIds.slice(i, i + 200);
+          const { data: qr } = await supabase
+            .from('scorecard_question_responses')
+            .select('scorecard_id, answer_text, question:scorecard_interview_questions!scorecard_question_responses_question_id_fkey(question_text)')
+            .in('scorecard_id', chunk);
+          for (const r of (qr ?? []) as any[]) {
+            const qtxt = r.question?.question_text ?? '';
+            if (!r.answer_text) continue;
+            const list = respBySc.get(r.scorecard_id) ?? [];
+            list.push({ question_text: qtxt, answer_text: r.answer_text });
+            respBySc.set(r.scorecard_id, list);
+          }
+        }
+      }
+      for (const s of scList) {
+        s.responses = respBySc.get(s.id) ?? [];
+        const list = scorecardsByCandidate.get(s.candidate_id) ?? [];
+        list.push(s);
+        scorecardsByCandidate.set(s.candidate_id, list);
+      }
+    }
+
 
     // ── Build context sections ────────────────────────────────
     const lines: string[] = [];
@@ -387,26 +458,60 @@ Deno.serve(async (req) => {
       const pb = stageList.findIndex((s) => s.id === b.current_stage_id);
       return (pa === -1 ? 999 : pa) - (pb === -1 ? 999 : pb);
     });
+
+    const renderCandidateLine = (c: any) => {
+      const role = c.current_job_title || c.role_current || '';
+      const company = c.company_current || '';
+      const roleCo = [role, company].filter(Boolean).join(' @ ');
+      const loc = candidateLoc(c);
+      const comp = formatSalary(c.salary_amount, c.salary_currency, c.salary_period);
+      const exp = c.years_experience != null ? `${c.years_experience}y exp` : '';
+      const seniority = c.seniority_level ? `sen=${c.seniority_level}` : '';
+      const skillsArr = (c.standardized_skills ?? c.skills ?? []) as any[];
+      const skills = skillsArr.length ? `skills=${skillsArr.slice(0, 6).map((s: any) => (typeof s === 'string' ? s : s?.name ?? '')).filter(Boolean).join(', ')}` : '';
+      const src = c.source ? `src=${c.source}` : (c.job_board_source ? `src=${c.job_board_source}` : '');
+      const contact: string[] = [];
+      if (c.email) contact.push('email');
+      if (c.phone) contact.push('phone');
+      if (c.linkedin_url) contact.push('linkedin');
+      const contactStr = contact.length ? `has=${contact.join('/')}` : '';
+      return [
+        roleCo,
+        loc,
+        comp ? `comp=${comp}` : '',
+        exp,
+        seniority,
+        src,
+        skills,
+        contactStr,
+      ].filter(Boolean).join(' · ');
+    };
+
+    const renderScorecards = (candidateId: string): string[] => {
+      const list = (scorecardsByCandidate.get(candidateId) ?? []).slice(0, SCORECARDS_PER_CANDIDATE);
+      const out: string[] = [];
+      for (const s of list) {
+        const stage = s.stage_instance_id ? stageLabelById.get(s.stage_instance_id) ?? 'Stage' : 'Stage';
+        const rating = s.rating != null ? `rating=${s.rating}/5` : 'rating=—';
+        const draft = s.is_ai_draft ? ' (AI draft)' : '';
+        const ago = daysBetween(s.created_at);
+        const overview = (s.general_overview ?? '').replace(/\s+/g, ' ').trim().slice(0, 160);
+        const topResp = (s.responses ?? []).find((r) => r.answer_text && r.answer_text.trim().length > 4);
+        const respSnip = topResp ? ` · "${topResp.question_text.slice(0, 40)}": ${topResp.answer_text!.replace(/\s+/g, ' ').trim().slice(0, 120)}` : '';
+        const overviewSnip = overview ? ` · "${overview}"` : '';
+        out.push(`    ↳ scorecard ${stage} · ${rating}${draft} · ${ago ?? 0}d ago${overviewSnip}${respSnip}`);
+      }
+      return out;
+    };
+
     if (activeApps.length) {
       lines.push(`CANDIDATES · active (up to ${CONTEXT_ACTIVE_LIMIT}, grouped by stage)`);
       for (const a of activeApps.slice(0, CONTEXT_ACTIVE_LIMIT)) {
         const c = candidatesById.get(a.candidate_id) ?? {};
         const stage = a.current_stage_id ? stageLabelById.get(a.current_stage_id) ?? 'Stage' : 'Unassigned';
         const days = daysBetween(a.entered_stage_at) ?? daysBetween(a.created_at) ?? 0;
-        const role = c.current_job_title || c.role_current || '';
-        const company = c.company_current || '';
-        const roleCo = [role, company].filter(Boolean).join(' @ ');
-        const loc = candidateLoc(c);
-        const src = c.source ? `src=${c.source}` : '';
-        const parts = [
-          stage,
-          candidateName(c),
-          roleCo,
-          loc,
-          src,
-          `${days}d in stage`,
-        ].filter(Boolean);
-        lines.push('  ' + parts.join(' · '));
+        lines.push(`  ${stage} · ${candidateName(c)} · ${renderCandidateLine(c)} · ${days}d in stage`);
+        for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
     }
@@ -425,11 +530,54 @@ Deno.serve(async (req) => {
           : 'No reason';
         const ago = daysBetween(a.rejected_at) ?? 0;
         lines.push(
-          `  ${candidateName(c)} · stage=${stage} · reason=${reason} · ${ago}d ago`,
+          `  ${candidateName(c)} · stage=${stage} · reason=${reason} · ${ago}d ago · ${renderCandidateLine(c)}`,
         );
+        for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
     }
+
+    // COMPENSATION ASKS (active only)
+    const compRows = activeApps
+      .map((a) => {
+        const c = candidatesById.get(a.candidate_id) ?? {};
+        const amt = typeof c.salary_amount === 'string' ? parseFloat(c.salary_amount) : c.salary_amount;
+        if (!amt || Number.isNaN(amt)) return null;
+        return {
+          name: candidateName(c),
+          amt: amt as number,
+          formatted: formatSalary(amt, c.salary_currency, c.salary_period) ?? String(amt),
+          currency: (c.salary_currency || 'USD').toUpperCase(),
+        };
+      })
+      .filter((x): x is { name: string; amt: number; formatted: string; currency: string } => !!x)
+      .sort((a, b) => b.amt - a.amt);
+    if (compRows.length) {
+      lines.push('COMPENSATION ASKS · active');
+      const amts = compRows.map((r) => r.amt);
+      const min = Math.min(...amts);
+      const max = Math.max(...amts);
+      const med = median(amts) ?? 0;
+      const cur = compRows[0].currency;
+      lines.push(`  Summary (${cur}, n=${compRows.length}): min=${min}, median=${med}, max=${max}`);
+      for (const r of compRows.slice(0, 40)) lines.push(`  ${r.name} — ${r.formatted}`);
+      lines.push('');
+    }
+
+    // LOCATIONS (active only)
+    const locCount = new Map<string, number>();
+    for (const a of activeApps) {
+      const c = candidatesById.get(a.candidate_id) ?? {};
+      const loc = candidateLoc(c) || 'Unknown';
+      locCount.set(loc, (locCount.get(loc) ?? 0) + 1);
+    }
+    if (locCount.size) {
+      lines.push('LOCATIONS · active');
+      const sorted = [...locCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25);
+      for (const [loc, n] of sorted) lines.push(`  ${loc} — ${n}`);
+      lines.push('');
+    }
+
 
     // JOB DESCRIPTION excerpt
     if (job.description) {
@@ -454,10 +602,12 @@ Deno.serve(async (req) => {
         content: [
           'You are Gio, a concise hiring copilot.',
           'Answer the recruiter\u2019s question about THIS job using ONLY the provided context.',
-          'The context is structured into sections: JOB, STAGES, PIPELINE, TOP REJECTION REASONS, RECENT 7d, RECENT 8–14d, CANDIDATES · active, CANDIDATES · rejected, JOB DESCRIPTION.',
+          'The context is structured into sections: JOB, STAGES, PIPELINE, TOP REJECTION REASONS, RECENT 7d, RECENT 8–14d, CANDIDATES · active, CANDIDATES · rejected, COMPENSATION ASKS, LOCATIONS, JOB DESCRIPTION.',
+          'Each candidate line may include: stage, name, role @ company, location, comp=salary expectation, years of experience, seniority, source, top skills, and contact availability (email/phone/linkedin). Sub-lines starting with "↳ scorecard" are interview scorecards with rating (0–5), age, and a short overview/answer snippet.',
+          'Answer questions about salary, location, skills, experience, source, and interview feedback by citing these fields directly.',
           'When the user asks about a time window (e.g. "last 7 days"), filter events from the RECENT sections by date.',
           'When asked for a pipeline report, group active candidates by stage and include rejected candidates from the CANDIDATES · rejected block.',
-          'Cite counts and candidate names from the context only — never invent names, sources, dates or numbers.',
+          'Cite counts, candidate names, salaries, locations, and ratings from the context only — never invent values. If a field is missing for a candidate, say "not on file" rather than guessing.',
           'If the context is insufficient, say so briefly and suggest what data would help.',
           'Be terse. Prefer short paragraphs and light markdown (bold, bullet lists).',
           '',
