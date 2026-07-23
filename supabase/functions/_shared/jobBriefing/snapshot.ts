@@ -3,7 +3,6 @@
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  PRE_INTERVIEW_STAGE_TYPES,
   OFFER_STAGE_TYPES,
   TERMINAL_STATUSES,
 } from './constants.ts';
@@ -190,8 +189,6 @@ export async function buildJobSnapshot(
     position: row.position ?? 0,
     slaDays: row.sla_days ?? null,
   }));
-  const stageById = new Map<string, StageDef>(stageDefs.map((s) => [s.id, s]));
-
   // Offer-anchor index (first stage of type offer, else last stage).
   const offerIdx = (() => {
     const i = stageDefs.findIndex((s) => OFFER_STAGE_TYPES.has(s.type));
@@ -251,7 +248,9 @@ export async function buildJobSnapshot(
     .select('id, occurred_at, reason')
     .eq('job_id', jobId)
     .gte('occurred_at', fourteenAgo);
-  const transitionsLast7d = (recentEvents ?? []).filter((e: any) => e.reason !== 'backfill').length;
+  const transitionsLast7d = (recentEvents ?? []).filter(
+    (e: any) => e.reason !== 'backfill' && e.occurred_at && new Date(e.occurred_at) >= new Date(sevenAgo),
+  ).length;
   const transitionsLast14d = (recentEvents ?? []).filter((e: any) => e.reason !== 'backfill').length;
 
   // Per-stage breakdown (active only)
