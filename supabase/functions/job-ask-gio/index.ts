@@ -245,12 +245,54 @@ Deno.serve(async (req) => {
       }
     }
 
-    const median = (arr: number[]) => {
-      if (!arr.length) return null;
-      const s = [...arr].sort((a, b) => a - b);
-      const m = Math.floor(s.length / 2);
-      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+    // ── 7. Scorecards for this job ─────────────────────────────
+    type ScorecardRow = {
+      id: string;
+      candidate_id: string;
+      stage_instance_id: string | null;
+      rating: number | null;
+      general_overview: string | null;
+      is_ai_draft: boolean | null;
+      created_at: string;
+      responses?: Array<{ question_text: string; answer_text: string | null }>;
     };
+    const scorecardsByCandidate = new Map<string, ScorecardRow[]>();
+    {
+      const { data: scRows, error: scErr } = await supabase
+        .from('job_stage_scorecards')
+        .select('id, candidate_id, stage_instance_id, rating, general_overview, is_ai_draft, created_at')
+        .eq('job_id', jobId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (scErr) console.warn('[job-ask-gio] scorecards error', scErr);
+      const scList = (scRows ?? []) as ScorecardRow[];
+      // Load responses in bulk
+      const scIds = scList.map((s) => s.id);
+      const respBySc = new Map<string, Array<{ question_text: string; answer_text: string | null }>>();
+      if (scIds.length) {
+        for (let i = 0; i < scIds.length; i += 200) {
+          const chunk = scIds.slice(i, i + 200);
+          const { data: qr } = await supabase
+            .from('scorecard_question_responses')
+            .select('scorecard_id, answer_text, question:scorecard_interview_questions!scorecard_question_responses_question_id_fkey(question_text)')
+            .in('scorecard_id', chunk);
+          for (const r of (qr ?? []) as any[]) {
+            const qtxt = r.question?.question_text ?? '';
+            if (!r.answer_text) continue;
+            const list = respBySc.get(r.scorecard_id) ?? [];
+            list.push({ question_text: qtxt, answer_text: r.answer_text });
+            respBySc.set(r.scorecard_id, list);
+          }
+        }
+      }
+      for (const s of scList) {
+        s.responses = respBySc.get(s.id) ?? [];
+        const list = scorecardsByCandidate.get(s.candidate_id) ?? [];
+        list.push(s);
+        scorecardsByCandidate.set(s.candidate_id, list);
+      }
+    }
+
 
     // ── Build context sections ────────────────────────────────
     const lines: string[] = [];
