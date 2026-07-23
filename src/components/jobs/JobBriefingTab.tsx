@@ -80,25 +80,7 @@ function relativeFromIso(iso: string | null | undefined): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function askGio(
-  prompt: string,
-  jobId: string,
-  jobTitle: string,
-  toast: ReturnType<typeof useToast>['toast'],
-) {
-  const detail = { prompt, jobId, jobTitle };
-  const evt = new CustomEvent('gio:ask', { detail });
-  const dispatched = window.dispatchEvent(evt);
-  const mounted = (window as any).__gioChatMounted === true;
-  if (!mounted || !dispatched) {
-    try {
-      navigator.clipboard?.writeText(prompt);
-    } catch {
-      /* ignore */
-    }
-    toast({ title: 'Prompt copied', description: 'Paste it into Gio to continue.' });
-  }
-}
+// (Ask box behavior is inlined in the component below — see the "Ask box" section.)
 
 // Render a paragraph with **bold** segments → <strong> at weight 600.
 function renderParagraph(text: string) {
