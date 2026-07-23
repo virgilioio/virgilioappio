@@ -3,10 +3,10 @@
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  PRE_INTERVIEW_STAGE_TYPES,
   OFFER_STAGE_TYPES,
   TERMINAL_STATUSES,
 } from './constants.ts';
+import { classifyCandidateSource, incrementSourceBreakdown, type SourceKind } from './sourceClassifier.ts';
 
 export type JobSnapshot = {
   job: {
@@ -32,16 +32,41 @@ export type JobSnapshot = {
     inbound_last_30d: number;
     inbound_total: number;
     sourced_total: number;
+    unknown_source_total: number;
+    active_inbound_total: number;
+    active_sourced_total: number;
+    active_unknown_source_total: number;
+    source_breakdown: Record<SourceKind, number>;
+    source_labels: Record<string, number>;
     last_activity_at: string | null;
     stages: Array<{
+      id: string;
+      base_stage_id: string;
       stage: string;
       stage_type: string;
       position: number;
+      sla_days: number | null;
       active_count: number;
+      total_count: number;
+      rejected_count: number;
+      withdrawn_count: number;
+      hired_count: number;
       median_days_in_stage: number | null;
-      candidates: Array<{ id: string; name: string; days_in_stage: number }>;
+      max_days_in_stage: number | null;
+      source_breakdown: Record<SourceKind, number>;
+      source_labels: Record<string, number>;
+      candidates: Array<{ id: string; name: string; days_in_stage: number; source_kind: SourceKind; source_label: string }>;
     }>;
     stages_from_offer: Record<string, number>;
+    stage_conversion: Array<{
+      stage: string;
+      position: number;
+      entered: number;
+      advanced: number;
+      rejected: number;
+      conversion_to_next_pct: number | null;
+      rejection_pct: number | null;
+    }>;
   };
   composition: {
     salary: {
@@ -63,7 +88,32 @@ export type JobSnapshot = {
   };
   velocity: {
     median_days_to_rejection: number | null;
+    median_days_between_stage_moves: number | null;
     transitions_last_7d: number;
+    transitions_last_14d: number;
+    forward_moves_last_14d: number;
+  };
+  scorecards: {
+    total: number;
+    submitted: number;
+    ai_drafts: number;
+    by_rating: Record<string, number>;
+    recent: Array<{
+      candidate_id: string | null;
+      candidate_name: string;
+      stage: string | null;
+      rating: string | null;
+      is_ai_draft: boolean;
+      overview: string | null;
+      created_at: string;
+    }>;
+  };
+  interviews: {
+    total: number;
+    upcoming: number;
+    completed: number;
+    cancelled: number;
+    recent_completed_14d: number;
   };
 };
 
@@ -130,20 +180,20 @@ export async function buildJobSnapshot(
   // Stages (ordered) ---------------------------------------------------------
   const { data: hiringStages, error: hsErr } = await client
     .from('job_hiring_stages')
-    .select('position, custom_stage_name, stage_id, job_stages:stage_id (id, stage_name, stage_type)')
+    .select('id, position, custom_stage_name, stage_id, sla_days, job_stages:stage_id (id, stage_name, stage_type)')
     .eq('job_id', jobId)
     .order('position', { ascending: true });
   if (hsErr) throw hsErr;
 
-  type StageDef = { id: string; name: string; type: string; position: number };
+  type StageDef = { id: string; baseStageId: string; name: string; type: string; position: number; slaDays: number | null };
   const stageDefs: StageDef[] = (hiringStages ?? []).map((row: any) => ({
-    id: row.stage_id,
+    id: row.id,
+    baseStageId: row.stage_id,
     name: row.custom_stage_name || row.job_stages?.stage_name || 'Unnamed',
     type: row.job_stages?.stage_type || 'custom',
     position: row.position ?? 0,
+    slaDays: row.sla_days ?? null,
   }));
-  const stageById = new Map<string, StageDef>(stageDefs.map((s) => [s.id, s]));
-
   // Offer-anchor index (first stage of type offer, else last stage).
   const offerIdx = (() => {
     const i = stageDefs.findIndex((s) => OFFER_STAGE_TYPES.has(s.type));
@@ -155,7 +205,7 @@ export async function buildJobSnapshot(
   // Associations -------------------------------------------------------------
   const { data: assocs, error: aErr } = await client
     .from('job_candidate_associations')
-    .select('id, candidate_id, status, current_stage_id, entered_stage_at, created_at, updated_at, rejected_at, candidates:candidate_id (id, candidate_name, source, salary_amount, salary_currency, salary_period, location_country, location_state, location_city, skills, standardized_skills)')
+    .select('id, candidate_id, status, current_stage_id, entered_stage_at, created_at, updated_at, rejected_at, offered_at, hired_at, candidates:candidate_id (id, candidate_name, source, job_board_source, salary_amount, salary_currency, salary_period, location_country, location_state, location_city, skills, standardized_skills)')
     .eq('job_id', jobId);
   if (aErr) throw aErr;
 
@@ -174,17 +224,29 @@ export async function buildJobSnapshot(
 
   // Inbound / sourced (heuristic from candidates.source)
   const thirty = new Date(now.getTime() - 30 * 86_400_000);
-  let inboundLast30 = 0, inboundTotal = 0, sourcedTotal = 0;
+  let inboundLast30 = 0, inboundTotal = 0, sourcedTotal = 0, unknownSourceTotal = 0;
+  let activeInboundTotal = 0, activeSourcedTotal = 0, activeUnknownSourceTotal = 0;
+  const pipelineSourceBreakdown: Record<SourceKind, number> = { inbound: 0, sourced: 0, unknown: 0 };
+  const pipelineSourceLabels: Record<string, number> = {};
   for (const a of list) {
-    const src = norm((a as any).candidates?.source);
-    const isInbound = /apply|application|career|job.?board|portal|inbound|website/.test(src) ||
-                      src === '' /* unknown defaults to inbound-ish nothing? */ && false;
-    const isSourced = /sourc|outreach|chrome|extension|apollo|coresignal|pdl|manual/.test(src);
-    if (isInbound) {
+    const c = (a as any).candidates;
+    const classified = classifyCandidateSource(c?.source, c?.job_board_source);
+    const isActive = !TERMINAL_STATUSES.has(a.status);
+    incrementSourceBreakdown(pipelineSourceBreakdown, classified);
+    pipelineSourceLabels[classified.label] = (pipelineSourceLabels[classified.label] ?? 0) + 1;
+    if (classified.kind === 'inbound') {
       inboundTotal++;
+      if (isActive) activeInboundTotal++;
       if (new Date(a.created_at) >= thirty) inboundLast30++;
     }
-    if (isSourced) sourcedTotal++;
+    if (classified.kind === 'sourced') {
+      sourcedTotal++;
+      if (isActive) activeSourcedTotal++;
+    }
+    if (classified.kind === 'unknown') {
+      unknownSourceTotal++;
+      if (isActive) activeUnknownSourceTotal++;
+    }
   }
 
   // Last activity (max updated_at across associations) + stage_events
@@ -196,29 +258,65 @@ export async function buildJobSnapshot(
 
   // Stage events (last 7d transitions, plus rejection timing fallback)
   const sevenAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+  const fourteenAgo = new Date(now.getTime() - 14 * 86_400_000).toISOString();
   const { data: recentEvents } = await client
     .from('stage_events')
     .select('id, occurred_at, reason')
     .eq('job_id', jobId)
-    .gte('occurred_at', sevenAgo);
-  const transitionsLast7d = (recentEvents ?? []).filter((e: any) => e.reason !== 'backfill').length;
+    .gte('occurred_at', fourteenAgo);
+  const transitionsLast7d = (recentEvents ?? []).filter(
+    (e: any) => e.reason !== 'backfill' && e.occurred_at && new Date(e.occurred_at) >= new Date(sevenAgo),
+  ).length;
+  const transitionsLast14d = (recentEvents ?? []).filter((e: any) => e.reason !== 'backfill').length;
 
   // Per-stage breakdown (active only)
-  const stageBuckets = new Map<string, { active: number; durations: number[]; cands: Array<{ id: string; name: string; days: number }> }>();
-  for (const s of stageDefs) stageBuckets.set(s.id, { active: 0, durations: [], cands: [] });
+  const stageBuckets = new Map<string, {
+    active: number;
+    total: number;
+    rejected: number;
+    withdrawn: number;
+    hired: number;
+    durations: number[];
+    cands: Array<{ id: string; name: string; days_in_stage: number; source_kind: SourceKind; source_label: string }>;
+    sources: Record<SourceKind, number>;
+    sourceLabels: Record<string, number>;
+  }>();
+  for (const s of stageDefs) {
+    stageBuckets.set(s.id, {
+      active: 0,
+      total: 0,
+      rejected: 0,
+      withdrawn: 0,
+      hired: 0,
+      durations: [],
+      cands: [],
+      sources: { inbound: 0, sourced: 0, unknown: 0 },
+      sourceLabels: {},
+    });
+  }
   for (const a of list) {
-    if (TERMINAL_STATUSES.has(a.status)) continue;
     const sid = a.current_stage_id;
     if (!sid || !stageBuckets.has(sid)) continue;
+    const bucket = stageBuckets.get(sid)!;
+    bucket.total++;
+    if (a.status === 'rejected') bucket.rejected++;
+    if (a.status === 'withdrawn') bucket.withdrawn++;
+    if (a.status === 'hired') bucket.hired++;
+    const c = (a as any).candidates;
+    const classified = classifyCandidateSource(c?.source, c?.job_board_source);
+    incrementSourceBreakdown(bucket.sources, classified);
+    bucket.sourceLabels[classified.label] = (bucket.sourceLabels[classified.label] ?? 0) + 1;
+    if (TERMINAL_STATUSES.has(a.status)) continue;
     const enteredAt = a.entered_stage_at ? new Date(a.entered_stage_at) : new Date(a.created_at);
     const days = daysBetween(enteredAt, now);
-    const bucket = stageBuckets.get(sid)!;
     bucket.active++;
     bucket.durations.push(days);
     bucket.cands.push({
-      id: (a as any).candidates?.id ?? a.candidate_id,
-      name: (a as any).candidates?.candidate_name ?? 'Unknown',
+      id: c?.id ?? a.candidate_id,
+      name: c?.candidate_name ?? 'Unknown',
       days_in_stage: days,
+      source_kind: classified.kind,
+      source_label: classified.label,
     } as any);
   }
 
@@ -226,14 +324,79 @@ export async function buildJobSnapshot(
     const b = stageBuckets.get(s.id)!;
     b.cands.sort((x, y) => y.days_in_stage - x.days_in_stage);
     return {
+      id: s.id,
+      base_stage_id: s.baseStageId,
       stage: s.name,
       stage_type: s.type,
       position: s.position,
+      sla_days: s.slaDays,
       active_count: b.active,
+      total_count: b.total,
+      rejected_count: b.rejected,
+      withdrawn_count: b.withdrawn,
+      hired_count: b.hired,
       median_days_in_stage: median(b.durations),
+      max_days_in_stage: b.durations.length ? Math.max(...b.durations) : null,
+      source_breakdown: b.sources,
+      source_labels: b.sourceLabels,
       candidates: b.cands,
     };
   });
+
+  // Stage conversion and movement velocity -----------------------------------
+  const assocIds = list.map((a: any) => a.id).filter(Boolean);
+  let stageHistory: any[] = [];
+  for (let i = 0; i < assocIds.length; i += 500) {
+    const chunk = assocIds.slice(i, i + 500);
+    if (!chunk.length) continue;
+    const { data, error } = await client
+      .from('job_candidate_stage_history')
+      .select('association_id, from_stage_id, to_stage_id, moved_at')
+      .in('association_id', chunk);
+    if (!error) stageHistory = stageHistory.concat(data ?? []);
+  }
+
+  const stageConversion = stageDefs.map((s) => {
+    const fromMoves = stageHistory.filter((h) => h.from_stage_id === s.id);
+    const advanced = fromMoves.filter((h) => h.to_stage_id && h.to_stage_id !== h.from_stage_id).length;
+    const rejectedFromStage = list.filter((a: any) => a.current_stage_id === s.id && a.status === 'rejected').length;
+    const entered = (stageBuckets.get(s.id)?.total ?? 0) + advanced;
+    const denominator = advanced + rejectedFromStage;
+    return {
+      stage: s.name,
+      position: s.position,
+      entered,
+      advanced,
+      rejected: rejectedFromStage,
+      conversion_to_next_pct: denominator > 0 ? advanced / denominator : null,
+      rejection_pct: denominator > 0 ? rejectedFromStage / denominator : null,
+    };
+  });
+
+  const moveDurations: number[] = [];
+  let forwardMovesLast14d = 0;
+  const stagePositionById = new Map(stageDefs.map((s) => [s.id, s.position] as const));
+  const historyByAssoc = new Map<string, any[]>();
+  for (const h of stageHistory) {
+    if (h.association_id) {
+      const group = historyByAssoc.get(h.association_id) ?? [];
+      group.push(h);
+      historyByAssoc.set(h.association_id, group);
+    }
+    if (h.moved_at && new Date(h.moved_at) >= new Date(fourteenAgo)) {
+      const fromPos = h.from_stage_id ? stagePositionById.get(h.from_stage_id) : null;
+      const toPos = h.to_stage_id ? stagePositionById.get(h.to_stage_id) : null;
+      if (fromPos != null && toPos != null && toPos > fromPos) forwardMovesLast14d++;
+    }
+  }
+  for (const [associationId, moves] of historyByAssoc.entries()) {
+    const assoc = list.find((a: any) => a.id === associationId);
+    let previous = assoc?.created_at ? new Date(assoc.created_at) : null;
+    for (const h of moves.sort((a, b) => new Date(a.moved_at).getTime() - new Date(b.moved_at).getTime())) {
+      if (previous && h.moved_at) moveDurations.push(daysBetween(previous, new Date(h.moved_at)));
+      if (h.moved_at) previous = new Date(h.moved_at);
+    }
+  }
 
   // Composition --------------------------------------------------------------
   // Salary — only candidates whose currency/period match the job's budget basis (when set).
@@ -324,6 +487,61 @@ export async function buildJobSnapshot(
     rejectionDurations.push(daysBetween(startedAt, endedAt));
   }
 
+  // Scorecards ----------------------------------------------------------------
+  let scorecards: JobSnapshot['scorecards'] = {
+    total: 0,
+    submitted: 0,
+    ai_drafts: 0,
+    by_rating: {},
+    recent: [],
+  };
+  const { data: scorecardRows } = await client
+    .from('job_stage_scorecards')
+    .select('candidate_id, stage_instance_id, rating, general_overview, created_at, is_ai_draft')
+    .eq('job_id', jobId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  const candidateNameById = new Map<string, string>();
+  for (const a of list) {
+    const c = (a as any).candidates;
+    if (a.candidate_id) candidateNameById.set(a.candidate_id, c?.candidate_name ?? 'Unknown');
+  }
+  const stageNameById = new Map(stageDefs.map((s) => [s.id, s.name] as const));
+  for (const sc of scorecardRows ?? []) {
+    const rating = sc.rating ? String(sc.rating) : 'unrated';
+    scorecards.total++;
+    if (sc.is_ai_draft) scorecards.ai_drafts++;
+    else scorecards.submitted++;
+    scorecards.by_rating[rating] = (scorecards.by_rating[rating] ?? 0) + 1;
+  }
+  scorecards.recent = (scorecardRows ?? []).slice(0, 8).map((sc: any) => ({
+    candidate_id: sc.candidate_id ?? null,
+    candidate_name: sc.candidate_id ? candidateNameById.get(sc.candidate_id) ?? 'Unknown' : 'Unknown',
+    stage: sc.stage_instance_id ? stageNameById.get(sc.stage_instance_id) ?? null : null,
+    rating: sc.rating ? String(sc.rating) : null,
+    is_ai_draft: !!sc.is_ai_draft,
+    overview: sc.general_overview ? String(sc.general_overview).replace(/\s+/g, ' ').trim().slice(0, 240) : null,
+    created_at: sc.created_at,
+  }));
+
+  // Interviews ----------------------------------------------------------------
+  const { data: bookingRows } = await client
+    .from('scheduled_bookings')
+    .select('scheduled_start, status, cancelled_at')
+    .eq('job_id', jobId);
+  const interviews = { total: 0, upcoming: 0, completed: 0, cancelled: 0, recent_completed_14d: 0 };
+  for (const b of bookingRows ?? []) {
+    interviews.total++;
+    const start = b.scheduled_start ? new Date(b.scheduled_start) : null;
+    const status = norm(b.status);
+    if (status === 'cancelled' || b.cancelled_at) interviews.cancelled++;
+    else if (start && start > now) interviews.upcoming++;
+    else if (start) {
+      interviews.completed++;
+      if (start >= new Date(fourteenAgo)) interviews.recent_completed_14d++;
+    }
+  }
+
   const snapshot: JobSnapshot = {
     job: {
       id: job.id,
@@ -350,15 +568,27 @@ export async function buildJobSnapshot(
       inbound_last_30d: inboundLast30,
       inbound_total: inboundTotal,
       sourced_total: sourcedTotal,
+      unknown_source_total: unknownSourceTotal,
+      active_inbound_total: activeInboundTotal,
+      active_sourced_total: activeSourcedTotal,
+      active_unknown_source_total: activeUnknownSourceTotal,
+      source_breakdown: pipelineSourceBreakdown,
+      source_labels: pipelineSourceLabels,
       last_activity_at: lastActivityAt,
       stages,
       stages_from_offer: stagesFromOffer,
+      stage_conversion: stageConversion,
     },
     composition: { salary, location, skills },
     velocity: {
       median_days_to_rejection: median(rejectionDurations),
+      median_days_between_stage_moves: median(moveDurations),
       transitions_last_7d: transitionsLast7d,
+      transitions_last_14d: transitionsLast14d,
+      forward_moves_last_14d: forwardMovesLast14d,
     },
+    scorecards,
+    interviews,
   };
 
   // Hash excludes the last_activity_at timestamp (changes on read-only ops).

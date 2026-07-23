@@ -106,6 +106,8 @@ const SYSTEM_PROMPT = `You are writing a 60–90 word hiring briefing for a recr
 
 Hard rules:
 - You may ONLY reference facts and numbers present in the input JSON. Never estimate, extrapolate, or add advice beyond the fired detectors.
+- Treat the snapshot as the source of truth for this job's current pipeline. Use stage counts, candidate days-in-stage, source mix, stage conversion, movement velocity, scorecards, and interviews when they are present.
+- Do not call a pipeline thin when active candidates exist in meaningful later-stage volume, recent forward movement exists, or scorecards/interviews show an active process.
 - Rank the fired detectors by what unblocks a hire fastest; lead the paragraph with the top one.
 - Tone: direct, plain language, no hedging, no pleasantries. Write like a sharp recruiting lead, not a report.
 - Output STRICT JSON only, no markdown fences, matching this exact shape:

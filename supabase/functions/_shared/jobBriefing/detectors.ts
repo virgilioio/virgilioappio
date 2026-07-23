@@ -137,6 +137,11 @@ function d4_thinPipeline(s: JobSnapshot): Finding | null {
   );
   const hasOffer = s.pipeline.stages.some((st) => offerStages.has(st.stage) && st.active_count > 0);
   if (hasOffer) return null;
+  const activeBeyondPreInterview = s.pipeline.stages
+    .filter((st) => !PRE_INTERVIEW_STAGE_TYPES.has(st.stage_type) && !OFFER_STAGE_TYPES.has(st.stage_type))
+    .reduce((sum, st) => sum + st.active_count, 0);
+  if (activeBeyondPreInterview > 0 && s.pipeline.active_count >= minActivePreInterview) return null;
+  if (s.velocity.forward_moves_last_14d > 0 && s.pipeline.active_count >= minActivePreInterview) return null;
   const activePre = s.pipeline.stages
     .filter((st) => PRE_INTERVIEW_STAGE_TYPES.has(st.stage_type))
     .reduce((sum, st) => sum + st.active_count, 0);
@@ -145,7 +150,12 @@ function d4_thinPipeline(s: JobSnapshot): Finding | null {
   return {
     id: 'thin_pipeline',
     severity: 'warning',
-    evidence: { active_pre_interview: activePre, active_total: s.pipeline.active_count },
+    evidence: {
+      active_pre_interview: activePre,
+      active_total: s.pipeline.active_count,
+      active_beyond_pre_interview: activeBeyondPreInterview,
+      forward_moves_last_14d: s.velocity.forward_moves_last_14d,
+    },
     actions: [
       { label: 'Source more candidates', prompt: `Help me source more candidates for ${title}` },
       { label: 'Loosen requirements', prompt: `Which must-have requirements for ${title} are filtering out the most candidates?` },
@@ -160,6 +170,11 @@ function d5_noActivity(s: JobSnapshot, d1Fired: boolean): Finding | null {
   }
   if (d1Fired) return null; // D1 already explains the stall more precisely
   if (s.velocity.transitions_last_7d > 0) return null;
+  const recentScorecards = s.scorecards.recent.filter((sc) => {
+    const createdAt = sc.created_at ? new Date(sc.created_at) : null;
+    return createdAt && Date.now() - createdAt.getTime() <= 7 * 86_400_000;
+  }).length;
+  if (recentScorecards > 0 || s.interviews.upcoming > 0 || s.interviews.recent_completed_14d > 0) return null;
   const title = s.job.title;
   const lastActivity = s.pipeline.last_activity_at ? new Date(s.pipeline.last_activity_at) : null;
   const days = lastActivity
