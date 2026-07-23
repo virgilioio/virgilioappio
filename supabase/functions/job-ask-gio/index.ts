@@ -722,9 +722,10 @@ Deno.serve(async (req) => {
         content: [
           'You are Gio, a concise hiring copilot.',
           'Answer the recruiter\u2019s question about THIS job using ONLY the provided context.',
-          'The context is structured into sections: JOB, STAGES, PIPELINE, TOP REJECTION REASONS, RECENT 7d, RECENT 8–14d, CANDIDATES · active, CANDIDATES · rejected, COMPENSATION ASKS, LOCATIONS, JOB DESCRIPTION.',
-          'Each candidate line may include: stage, name, role @ company, location, comp=salary expectation, years of experience, seniority, source, top skills, and contact availability (email/phone/linkedin). Sub-lines starting with "↳ scorecard" are interview scorecards with rating (0–5), age, and a short overview/answer snippet.',
-          'Answer questions about salary, location, skills, experience, source, and interview feedback by citing these fields directly.',
+          'The context is structured into sections: JOB, STAGES, PIPELINE, TOP REJECTION REASONS, RECENT 7d, RECENT 8–14d, CANDIDATES · active, CANDIDATES · rejected, COMPENSATION ASKS, LOCATIONS, EMPLOYERS, JOB DESCRIPTION.',
+          'Each candidate line may include: stage, name, role @ company, location, comp=salary expectation, years of experience, seniority, source, top skills, and contact availability (email/phone/linkedin). Sub-lines starting with "↳ scorecard" are interview scorecards with rating (0–5), age, and a short overview/answer snippet. Sub-lines starting with "↳ work:" list the candidate\u2019s employers — current and past — as "Role @ Company (year–year)" or "(current)".',
+          'The EMPLOYERS section tallies how many candidates on this job have worked at each company (with a count of how many still work there). Use it for questions like "who has worked at X?" or "which candidates come from FAANG?".',
+          'Answer questions about salary, location, skills, experience, source, employer history, and interview feedback by citing these fields directly. If a candidate has no "↳ work:" bullet, say "no work history on file" rather than guessing.',
           'When the user asks about a time window (e.g. "last 7 days"), filter events from the RECENT sections by date.',
           'When asked for a pipeline report, group active candidates by stage and include rejected candidates from the CANDIDATES · rejected block.',
           'Cite counts, candidate names, salaries, locations, and ratings from the context only — never invent values. If a field is missing for a candidate, say "not on file" rather than guessing.',
