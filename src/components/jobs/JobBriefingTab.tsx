@@ -885,3 +885,209 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     </div>
   );
 }
+
+// ── Ask box: scrollable transcript above a sticky composer ────────────
+type ChatMsg = { role: 'user' | 'assistant'; content: string };
+interface AskBoxProps {
+  askBoxRef: React.RefObject<HTMLDivElement>;
+  askInputRef: React.RefObject<HTMLInputElement>;
+  ask: string;
+  setAsk: (v: string) => void;
+  chat: ChatMsg[];
+  setChat: React.Dispatch<React.SetStateAction<ChatMsg[]>>;
+  pending: boolean;
+  suggestions: { label: string; prompt: string }[];
+  insertPrompt: (p: string) => void;
+  submitAsk: (t: string) => void | Promise<void>;
+}
+
+function AskBox({
+  askBoxRef,
+  askInputRef,
+  ask,
+  setAsk,
+  chat,
+  setChat,
+  pending,
+  suggestions,
+  insertPrompt,
+  submitAsk,
+}: AskBoxProps) {
+  const transcriptRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [chat.length, pending]);
+
+  const hasChat = chat.length > 0 || pending;
+
+  return (
+    <div ref={askBoxRef} style={{ marginTop: 34 }}>
+      {/* Conversation panel (above composer) */}
+      {hasChat && (
+        <div
+          ref={transcriptRef}
+          style={{
+            maxHeight: 460,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            paddingBottom: 14,
+          }}
+        >
+          {chat.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '92%',
+                padding: m.role === 'user' ? '8px 12px' : '10px 14px',
+                borderRadius: 12,
+                background: m.role === 'user' ? '#0d0d09' : '#FFFCF9',
+                color: m.role === 'user' ? '#fffcf9' : '#1F2230',
+                border: m.role === 'user' ? 'none' : '1px solid #EDE4FF',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 13.5,
+                lineHeight: 1.55,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+            </div>
+          ))}
+          {pending && (
+            <div
+              style={{
+                alignSelf: 'flex-start',
+                padding: '8px 12px',
+                borderRadius: 12,
+                background: '#FFFCF9',
+                border: '1px solid #EDE4FF',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12.5,
+                color: '#6F3FF5',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <Sparkles size={12} color="#6F3FF5" strokeWidth={2} />
+              Gio is thinking…
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sticky composer group */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 5,
+          paddingTop: 10,
+          paddingBottom: 6,
+          background:
+            'linear-gradient(to top, #FFFCF9 78%, rgba(255,252,249,0))',
+        }}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitAsk(ask);
+          }}
+          className="flex items-center bg-white"
+          style={{
+            border: '1px solid #E0DDD3',
+            borderRadius: 12,
+            boxShadow: '0 1px 3px rgba(13,13,9,0.05)',
+            padding: 6,
+            gap: 8,
+          }}
+        >
+          <span
+            className="inline-flex items-center justify-center shrink-0"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              backgroundColor: '#E9DEFE',
+            }}
+          >
+            <Sparkles size={14} color="#6F3FF5" strokeWidth={2} />
+          </span>
+          <input
+            ref={askInputRef}
+            value={ask}
+            onChange={(e) => setAsk(e.target.value)}
+            placeholder="Ask anything about this job…"
+            disabled={pending}
+            className="flex-1 bg-transparent outline-none border-0"
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 13.5,
+              color: '#1F2230',
+            }}
+          />
+          <button
+            type="submit"
+            aria-label="Send"
+            disabled={pending || !ask.trim()}
+            className="inline-flex items-center justify-center shrink-0"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              backgroundColor: pending || !ask.trim() ? '#3A3A34' : '#0d0d09',
+              color: '#fffcf9',
+              border: 'none',
+              cursor: pending || !ask.trim() ? 'not-allowed' : 'pointer',
+              opacity: pending || !ask.trim() ? 0.75 : 1,
+            }}
+          >
+            <ArrowUp size={15} color="#fffcf9" strokeWidth={2} />
+          </button>
+        </form>
+        <div className="flex flex-wrap items-center" style={{ gap: 8, marginTop: 10 }}>
+          {suggestions.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              onClick={() => insertPrompt(c.prompt)}
+              className="bg-white hover:bg-[#FAFAF7] transition-colors"
+              style={{
+                border: '1px solid #E7E8EE',
+                borderRadius: 999,
+                padding: '5px 11px',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                fontSize: 11.5,
+                color: '#5A6072',
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
+          {chat.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setChat([])}
+              className="ml-auto hover:underline"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 11.5,
+                color: '#8B8F9E',
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
