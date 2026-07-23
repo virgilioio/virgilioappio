@@ -1,41 +1,46 @@
-## What I found
+# Job Dashboard — Make the "Ask Gio" box actually work
 
-Interview-notes ingest flows through `supabase/functions/process-transcript-webhook`. Interviewers/attendees BCC (or forward to) `int_{code}@ingest.gogio.io`; Resend inbound receives the mail and posts to that edge function; the function extracts text (body, PDF, VTT/SRT/TXT), writes `transcript_raw` / `transcript_metadata` / `transcript_received_at` on `scheduled_bookings`, then invokes `generate-scorecard-from-transcript`.
+Scope: only the Ask box + suggestion chips at the bottom of the Job Dashboard tab (`src/components/jobs/JobBriefingTab.tsx`). No other UI or logic changes.
 
-Evidence from the live project:
+## Current behavior (verified)
 
-- **Last successful ingest: 2026-07-13.** Every past interview after that (roughly 10+ bookings between 2026-07-14 and 2026-07-17) has a valid `transcript_ingest_code` but `transcript_received_at IS NULL` and `transcript_raw IS NULL`.
-- **`process-transcript-webhook` has zero invocations** in edge-function logs and in `function_edge_logs` for that URL. Resend is not calling us at all.
-- The edge function code itself is unchanged and healthy: `verify_jwt = false` in `supabase/config.toml`, ingest-code regex still matches `int_{8-char}@ingest.gogio.io`, and the same address format is still stamped on new bookings by `create-booking` (`int_${code}@ingest.gogio.io`).
+- The `askGio()` helper (line 83) dispatches a `window` `CustomEvent('gio:ask')` and checks `window.__gioChatMounted`. Nothing in the app listens for that event or sets that flag, so both paths always fall through to `navigator.clipboard.writeText(prompt)` + a "Prompt copied — paste it into Gio to continue" toast.
+- Suggestion chips (bottom of tab, ~line 902) and the input's submit handler (~line 850) both funnel into `askGio()`, so both trigger the same copy-toast.
+- No job-scoped Q&A edge function exists yet. `chat-with-gio` is dedicated to the job-creation wizard and isn't reusable here.
 
-So the code path from "email arrives" → "we write the transcript" is fine. The break is **upstream of the function** — Resend inbound routing to `ingest.gogio.io` is no longer delivering to our webhook.
+## Target behavior
 
-## Plan
+1. **Clicking a suggestion chip** puts that chip's `prompt` text into the input field, focuses the input, and does NOT auto-send. User can edit before sending.
+2. **Submitting the input** (Enter or send button) actually calls an AI backend, streams the reply inline below the input, and shows Gio's answer with basic markdown rendering. The clipboard/toast fallback is removed.
+3. Same-tab conversation history is kept in local state so a user can ask follow-ups; switching jobs or unmounting the tab resets it.
 
-Confirm the diagnosis, restore inbound delivery, and backfill missed interviews. No code changes yet — first we verify.
+## Implementation
 
-1. **Confirm Resend inbound is the failure point.**
-   - In the Resend dashboard: Inbound → domain `ingest.gogio.io`. Check that the domain is still Verified, that the MX record still points at Resend, and that the inbound route/webhook destination is still `https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/process-transcript-webhook`.
-   - Open Resend's inbound Events/Logs and look for messages received on/after 2026-07-14 addressed to `int_*@ingest.gogio.io`. Two possibilities:
-     - **Nothing received** → MX / domain verification regressed (most likely if this coincides with recent domain work on `app.gogio.io`).
-     - **Received but webhook failing** → destination URL/secret is wrong; Resend will show the failing delivery attempts.
+### 1. Frontend — `src/components/jobs/JobBriefingTab.tsx`
 
-2. **Fix the root cause based on step 1.**
-   - If MX is missing/wrong: re-add the Resend inbound MX record on `ingest.gogio.io` and re-verify.
-   - If the webhook destination is wrong or the signing secret rotated: repoint the inbound route to the current function URL and, if the secret changed, update `RESEND_INBOUND_WEBHOOK_SECRET` via `add_secret`. (The function already tolerates missing Svix headers, so a signature mismatch is the more likely culprit than "no headers".)
+- Delete the `askGio()` helper and its `useToast` usage for this flow.
+- Add local state near the Ask box: `messages: {role, content}[]`, `pending: boolean`, plus the existing `ask` string and a `textareaRef` for focus.
+- Suggestion-chip `onClick`: `setAsk(c.prompt); textareaRef.current?.focus()`. No network call.
+- Feature-card action buttons (line 793–815): same behavior — populate the Ask input and scroll it into view. (They currently call `askGio` too; user hasn't asked to change those, but they share the helper so removing it forces one branch. Keeping them consistent with the chips is the safe move.)
+- Form `onSubmit`: append `{role:'user', content:text}` to `messages`, clear the input, set `pending=true`, then call the new edge function via `supabase.functions.invoke('job-ask-gio', { body: { jobId, jobTitle, question: text, history: messages } })`, append the assistant reply on success, show inline error text on failure. Disable the send button while `pending`.
+- Render a conversation panel directly under the input (only when `messages.length > 0`): stacked user/assistant bubbles matching the tab's existing typography (Inter 13.5, cream card background, purple accent for Gio rows), a small typing indicator while `pending`, and a "Clear" ghost link.
 
-3. **Verify end-to-end.**
-   - Send a test email with a small text body to `int_{code}@ingest.gogio.io` for a known booking, then check `process-transcript-webhook` logs and confirm `scheduled_bookings.transcript_received_at` populates and `generate-scorecard-from-transcript` fires.
+### 2. Backend — new `supabase/functions/job-ask-gio/index.ts`
 
-4. **Backfill the gap (only after step 3 is green).**
-   - Ingest is BCC-based, so the original transcripts should still be in each interviewer's mailbox / Google Meet transcript folder. Options, cheapest first:
-     - Ask interviewers to forward the missed transcripts to the same `int_{code}@ingest.gogio.io` address — the webhook will pick them up automatically.
-     - For bookings where that's impractical, no code change is needed; the `generate-scorecard-from-transcript` path can be triggered manually per booking once the raw transcript is uploaded.
+- POST `{ jobId, jobTitle, question, history }`. JWT-verified (uses caller's Supabase JWT to enforce tenant/RLS).
+- Load a compact job context server-side with the caller's client: title, department, location, status, stage counts, top rejection reasons — reuse the same reads the tab already performs (`useJobFeatures`/related). Keep the payload small.
+- Call Lovable AI Gateway (`google/gemini-3.6-flash`) via the shared provider with a system prompt: "You are Gio, a hiring copilot. Answer the recruiter's question about this job using only the provided context. Be concise, cite numbers, never invent candidates." Include the job context block and prior turns.
+- Return `{ answer: string }`. Non-streaming for v1 to keep the change small; the UI shows a shimmer while waiting.
+- Follow existing edge-function conventions: CORS headers, `_shared/ai-gateway.ts`, structured errors for 429/402 surfaced to the client.
 
-## Notes / technical details
+### 3. Config
 
-- Code paths verified: `process-transcript-webhook/index.ts` (regex, ingest-code lookup on `transcript_ingest_code`, PDF/OCR fallback, Resend-receiving-API fetch, `transcript_raw` write, downstream scorecard trigger) and `create-booking/index.ts` line 586 (address format).
-- No recent regressions found in the function itself; the DB pattern (many bookings with codes, none ingested after 2026-07-13, plus **zero** inbound HTTP hits in `function_edge_logs`) is only consistent with delivery never reaching Supabase.
-- I did not check the Resend dashboard from here — that's step 1 and needs your access.
+- Register the function in `supabase/config.toml` with `verify_jwt = true`.
+- No new secrets — `LOVABLE_API_KEY` already exists.
 
-Want me to proceed with step 1 by asking you to check the Resend inbound settings, or should I first read the Resend dashboard state some other way you'd prefer?
+## Out of scope
+
+- No changes to the global topbar "chat with Gio" experience, `useChatWithGio`, or `chat-with-gio` function.
+- No streaming/SSE (can be added later if the wait feels long).
+- No persistence — conversation is per-tab-mount only.
+- No changes to the feature-card copy or the rest of the Job Dashboard tab.
