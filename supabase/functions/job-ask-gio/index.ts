@@ -12,10 +12,39 @@ const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-const MAX_CONTEXT_CHARS = 12000;
+const MAX_CONTEXT_CHARS = 16000;
 const CONTEXT_ACTIVE_LIMIT = 60;
 const CONTEXT_REJECTED_LIMIT = 30;
 const CONTEXT_RECENT_LIMIT = 40;
+const SCORECARDS_PER_CANDIDATE = 2;
+
+function formatSalary(amount: number | string | null | undefined, currency?: string | null, period?: string | null): string | null {
+  const n = typeof amount === 'string' ? parseFloat(amount) : amount ?? null;
+  if (!n || Number.isNaN(n)) return null;
+  const cur = (currency || 'USD').toUpperCase();
+  let symbol = cur;
+  try {
+    const parts = new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, currencyDisplay: 'narrowSymbol' }).formatToParts(0);
+    const s = parts.find((p) => p.type === 'currency')?.value;
+    if (s) symbol = s;
+  } catch { /* ignore */ }
+  const p = (period || 'year').toLowerCase();
+  const suffix = p.startsWith('hour') || p === 'hr' ? 'hr'
+    : p.startsWith('month') || p === 'mo' ? 'mo'
+    : p.startsWith('week') || p === 'wk' ? 'wk'
+    : 'yr';
+  const display = n >= 1000
+    ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1).replace(/\.0$/, '')}k`
+    : `${n}`;
+  return `${symbol}${display}/${suffix}`;
+}
+
+function median(arr: number[]): number | null {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+}
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
