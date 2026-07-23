@@ -458,26 +458,60 @@ Deno.serve(async (req) => {
       const pb = stageList.findIndex((s) => s.id === b.current_stage_id);
       return (pa === -1 ? 999 : pa) - (pb === -1 ? 999 : pb);
     });
+
+    const renderCandidateLine = (c: any) => {
+      const role = c.current_job_title || c.role_current || '';
+      const company = c.company_current || '';
+      const roleCo = [role, company].filter(Boolean).join(' @ ');
+      const loc = candidateLoc(c);
+      const comp = formatSalary(c.salary_amount, c.salary_currency, c.salary_period);
+      const exp = c.years_experience != null ? `${c.years_experience}y exp` : '';
+      const seniority = c.seniority_level ? `sen=${c.seniority_level}` : '';
+      const skillsArr = (c.standardized_skills ?? c.skills ?? []) as any[];
+      const skills = skillsArr.length ? `skills=${skillsArr.slice(0, 6).map((s: any) => (typeof s === 'string' ? s : s?.name ?? '')).filter(Boolean).join(', ')}` : '';
+      const src = c.source ? `src=${c.source}` : (c.job_board_source ? `src=${c.job_board_source}` : '');
+      const contact: string[] = [];
+      if (c.email) contact.push('email');
+      if (c.phone) contact.push('phone');
+      if (c.linkedin_url) contact.push('linkedin');
+      const contactStr = contact.length ? `has=${contact.join('/')}` : '';
+      return [
+        roleCo,
+        loc,
+        comp ? `comp=${comp}` : '',
+        exp,
+        seniority,
+        src,
+        skills,
+        contactStr,
+      ].filter(Boolean).join(' · ');
+    };
+
+    const renderScorecards = (candidateId: string): string[] => {
+      const list = (scorecardsByCandidate.get(candidateId) ?? []).slice(0, SCORECARDS_PER_CANDIDATE);
+      const out: string[] = [];
+      for (const s of list) {
+        const stage = s.stage_instance_id ? stageLabelById.get(s.stage_instance_id) ?? 'Stage' : 'Stage';
+        const rating = s.rating != null ? `rating=${s.rating}/5` : 'rating=—';
+        const draft = s.is_ai_draft ? ' (AI draft)' : '';
+        const ago = daysBetween(s.created_at);
+        const overview = (s.general_overview ?? '').replace(/\s+/g, ' ').trim().slice(0, 160);
+        const topResp = (s.responses ?? []).find((r) => r.answer_text && r.answer_text.trim().length > 4);
+        const respSnip = topResp ? ` · "${topResp.question_text.slice(0, 40)}": ${topResp.answer_text!.replace(/\s+/g, ' ').trim().slice(0, 120)}` : '';
+        const overviewSnip = overview ? ` · "${overview}"` : '';
+        out.push(`    ↳ scorecard ${stage} · ${rating}${draft} · ${ago ?? 0}d ago${overviewSnip}${respSnip}`);
+      }
+      return out;
+    };
+
     if (activeApps.length) {
       lines.push(`CANDIDATES · active (up to ${CONTEXT_ACTIVE_LIMIT}, grouped by stage)`);
       for (const a of activeApps.slice(0, CONTEXT_ACTIVE_LIMIT)) {
         const c = candidatesById.get(a.candidate_id) ?? {};
         const stage = a.current_stage_id ? stageLabelById.get(a.current_stage_id) ?? 'Stage' : 'Unassigned';
         const days = daysBetween(a.entered_stage_at) ?? daysBetween(a.created_at) ?? 0;
-        const role = c.current_job_title || c.role_current || '';
-        const company = c.company_current || '';
-        const roleCo = [role, company].filter(Boolean).join(' @ ');
-        const loc = candidateLoc(c);
-        const src = c.source ? `src=${c.source}` : '';
-        const parts = [
-          stage,
-          candidateName(c),
-          roleCo,
-          loc,
-          src,
-          `${days}d in stage`,
-        ].filter(Boolean);
-        lines.push('  ' + parts.join(' · '));
+        lines.push(`  ${stage} · ${candidateName(c)} · ${renderCandidateLine(c)} · ${days}d in stage`);
+        for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
     }
@@ -496,11 +530,54 @@ Deno.serve(async (req) => {
           : 'No reason';
         const ago = daysBetween(a.rejected_at) ?? 0;
         lines.push(
-          `  ${candidateName(c)} · stage=${stage} · reason=${reason} · ${ago}d ago`,
+          `  ${candidateName(c)} · stage=${stage} · reason=${reason} · ${ago}d ago · ${renderCandidateLine(c)}`,
         );
+        for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
     }
+
+    // COMPENSATION ASKS (active only)
+    const compRows = activeApps
+      .map((a) => {
+        const c = candidatesById.get(a.candidate_id) ?? {};
+        const amt = typeof c.salary_amount === 'string' ? parseFloat(c.salary_amount) : c.salary_amount;
+        if (!amt || Number.isNaN(amt)) return null;
+        return {
+          name: candidateName(c),
+          amt: amt as number,
+          formatted: formatSalary(amt, c.salary_currency, c.salary_period) ?? String(amt),
+          currency: (c.salary_currency || 'USD').toUpperCase(),
+        };
+      })
+      .filter((x): x is { name: string; amt: number; formatted: string; currency: string } => !!x)
+      .sort((a, b) => b.amt - a.amt);
+    if (compRows.length) {
+      lines.push('COMPENSATION ASKS · active');
+      const amts = compRows.map((r) => r.amt);
+      const min = Math.min(...amts);
+      const max = Math.max(...amts);
+      const med = median(amts) ?? 0;
+      const cur = compRows[0].currency;
+      lines.push(`  Summary (${cur}, n=${compRows.length}): min=${min}, median=${med}, max=${max}`);
+      for (const r of compRows.slice(0, 40)) lines.push(`  ${r.name} — ${r.formatted}`);
+      lines.push('');
+    }
+
+    // LOCATIONS (active only)
+    const locCount = new Map<string, number>();
+    for (const a of activeApps) {
+      const c = candidatesById.get(a.candidate_id) ?? {};
+      const loc = candidateLoc(c) || 'Unknown';
+      locCount.set(loc, (locCount.get(loc) ?? 0) + 1);
+    }
+    if (locCount.size) {
+      lines.push('LOCATIONS · active');
+      const sorted = [...locCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25);
+      for (const [loc, n] of sorted) lines.push(`  ${loc} — ${n}`);
+      lines.push('');
+    }
+
 
     // JOB DESCRIPTION excerpt
     if (job.description) {
