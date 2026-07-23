@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       const { data, error } = await supabase
         .from('candidates')
         .select(
-          'id, candidate_name, current_job_title, company_current, role_current, location_city, location_state, location_country, source, created_at',
+          'id, candidate_name, email, phone, linkedin_url, current_job_title, standardized_title, company_current, role_current, seniority_level, functional_area, specialization, years_experience, years_in_specialization, years_in_leadership, location_city, location_state, location_country, source, job_board_source, salary_amount, salary_currency, salary_period, standardized_skills, skills, profile_summary, bio, coresignal_headline, created_at',
         )
         .in('id', chunk);
       if (error) {
