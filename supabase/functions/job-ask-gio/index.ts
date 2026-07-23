@@ -588,6 +588,8 @@ Deno.serve(async (req) => {
         const stage = a.current_stage_id ? stageLabelById.get(a.current_stage_id) ?? 'Stage' : 'Unassigned';
         const days = daysBetween(a.entered_stage_at) ?? daysBetween(a.created_at) ?? 0;
         lines.push(`  ${stage} · ${candidateName(c)} · ${renderCandidateLine(c)} · ${days}d in stage`);
+        const wl = renderWorkLine(a.candidate_id);
+        if (wl) lines.push(wl);
         for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
