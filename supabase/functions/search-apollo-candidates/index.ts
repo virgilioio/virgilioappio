@@ -471,78 +471,99 @@ serve(async (req) => {
     const MAX_PAGES = Math.ceil(effectiveMaxResults / PER_PAGE);
     const DELAY_BETWEEN_PAGES = 300;  // ms - respect rate limits at higher volume
 
-    // Fetch first page
-    const page1Url = buildApolloSearchUrl(criteria, PER_PAGE, 1);
-    console.log('📡 Apollo API Request URL (page 1):', page1Url);
-
-    const apolloResponse = await fetch(page1Url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'X-Api-Key': APOLLO_API_KEY,
-        'accept': 'application/json'
-      }
-    });
-
-    if (!apolloResponse.ok) {
-      const errorText = await apolloResponse.text();
-      console.error('❌ Apollo API Error:', apolloResponse.status, errorText);
-      throw new Error(`Apollo API error: ${apolloResponse.status} - ${errorText}`);
-    }
-
-    const apolloData = await apolloResponse.json();
-    const totalAvailable = apolloData.total_entries || 0;
-    
-    // Collect all candidates from first page
-    let allApolloPeople: any[] = [...(apolloData.people || [])];
-    
-    console.log(`✅ Apollo page 1 returned ${apolloData.people?.length || 0} candidates (total available: ${totalAvailable})`);
-
-    // Calculate how many more pages to fetch
-    const pagesNeeded = Math.min(MAX_PAGES, Math.ceil(Math.min(totalAvailable, effectiveMaxResults) / PER_PAGE));
-    
-    // Fetch additional pages if available and needed
-    for (let page = 2; page <= pagesNeeded && allApolloPeople.length < effectiveMaxResults; page++) {
-      // Respect rate limits with delay between requests
-      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_PAGES));
-      
-      const pageUrl = buildApolloSearchUrl(criteria, PER_PAGE, page);
-      console.log(`📡 Apollo API Request URL (page ${page}):`, pageUrl);
-      
-      try {
-        const pageResponse = await fetch(pageUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-            'X-Api-Key': APOLLO_API_KEY,
-            'accept': 'application/json'
-          }
-        });
-        
-        if (!pageResponse.ok) {
-          console.warn(`⚠️ Apollo page ${page} failed:`, pageResponse.status);
-          break;  // Stop fetching more pages on error
+    // Helper: run one Apollo search (all pages) — optionally scoped to a single company name.
+    // Returns collected people and the API-reported total_entries for that variant.
+    async function fetchApolloVariant(companyOverride?: string, perVariantCap?: number): Promise<{ people: any[]; totalAvailable: number }> {
+      const cap = perVariantCap ?? effectiveMaxResults;
+      const url1 = buildApolloSearchUrl(criteria, PER_PAGE, 1, companyOverride);
+      console.log('📡 Apollo API Request URL (page 1):', url1);
+      const resp1 = await fetch(url1, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'X-Api-Key': APOLLO_API_KEY!,
+          'accept': 'application/json'
         }
-        
-        const pageData = await pageResponse.json();
-        const pagePeople = pageData.people || [];
-        allApolloPeople.push(...pagePeople);
-        
-        console.log(`✅ Apollo page ${page} returned ${pagePeople.length} candidates (total collected: ${allApolloPeople.length})`);
-        
-        // Stop if we've collected enough
-        if (allApolloPeople.length >= effectiveMaxResults) {
+      });
+      if (!resp1.ok) {
+        const errorText = await resp1.text();
+        console.error('❌ Apollo API Error:', resp1.status, errorText);
+        // For fan-out, don't throw — log and return empty so other variants still return.
+        if (companyOverride) return { people: [], totalAvailable: 0 };
+        throw new Error(`Apollo API error: ${resp1.status} - ${errorText}`);
+      }
+      const data1 = await resp1.json();
+      const totalAvailable = data1.total_entries || 0;
+      const people: any[] = [...(data1.people || [])];
+      console.log(`✅ Apollo page 1 returned ${data1.people?.length || 0} candidates (total available: ${totalAvailable})${companyOverride ? ` [company="${companyOverride}"]` : ''}`);
+
+      const pagesNeeded = Math.min(MAX_PAGES, Math.ceil(Math.min(totalAvailable, cap) / PER_PAGE));
+      for (let page = 2; page <= pagesNeeded && people.length < cap; page++) {
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_PAGES));
+        const pageUrl = buildApolloSearchUrl(criteria, PER_PAGE, page, companyOverride);
+        console.log(`📡 Apollo API Request URL (page ${page}):`, pageUrl);
+        try {
+          const pageResponse = await fetch(pageUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+              'X-Api-Key': APOLLO_API_KEY!,
+              'accept': 'application/json'
+            }
+          });
+          if (!pageResponse.ok) {
+            console.warn(`⚠️ Apollo page ${page} failed:`, pageResponse.status);
+            break;
+          }
+          const pageData = await pageResponse.json();
+          const pagePeople = pageData.people || [];
+          people.push(...pagePeople);
+          console.log(`✅ Apollo page ${page} returned ${pagePeople.length} candidates (total collected: ${people.length})${companyOverride ? ` [company="${companyOverride}"]` : ''}`);
+          if (people.length >= cap) break;
+        } catch (pageError) {
+          console.warn(`⚠️ Error fetching Apollo page ${page}:`, pageError);
           break;
         }
-      } catch (pageError) {
-        console.warn(`⚠️ Error fetching Apollo page ${page}:`, pageError);
-        break;  // Stop on error
       }
+      return { people, totalAvailable };
     }
-    
-    console.log(`📊 Total Apollo candidates fetched: ${allApolloPeople.length} from ${Math.min(pagesNeeded, Math.ceil(allApolloPeople.length / PER_PAGE))} pages`);
+
+    const companyNames = (criteria.company_names || []).slice(0, 10).filter(Boolean);
+    let allApolloPeople: any[] = [];
+    let totalAvailable = 0;
+
+    if (companyNames.length >= 2) {
+      // Fan out: one Apollo search per company (OR across companies via merge/dedupe).
+      // Cap each variant so combined result honors effectiveMaxResults.
+      const perVariantCap = Math.max(100, Math.ceil(effectiveMaxResults / companyNames.length));
+      console.log(`🏢 Fan-out companies: ${companyNames.length} (per-variant cap: ${perVariantCap})`);
+      const variants = await Promise.all(
+        companyNames.map(name => fetchApolloVariant(name, perVariantCap))
+      );
+      const seen = new Set<string>();
+      for (const v of variants) {
+        totalAvailable += v.totalAvailable;
+        for (const p of v.people) {
+          const id = p?.id;
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          allApolloPeople.push(p);
+          if (allApolloPeople.length >= effectiveMaxResults) break;
+        }
+        if (allApolloPeople.length >= effectiveMaxResults) break;
+      }
+      console.log(`📊 Fan-out merged: ${allApolloPeople.length} unique across ${companyNames.length} companies`);
+    } else {
+      // 0 or 1 company → single search (same behavior as before).
+      const single = await fetchApolloVariant(companyNames[0]);
+      allApolloPeople = single.people;
+      totalAvailable = single.totalAvailable;
+    }
+
+    console.log(`📊 Total Apollo candidates fetched: ${allApolloPeople.length}`);
+
 
     // 🔍 DEBUG: Log the raw Apollo response structure to see actual field names
     if (allApolloPeople.length > 0) {
