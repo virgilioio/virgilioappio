@@ -660,6 +660,45 @@ Deno.serve(async (req) => {
     }
 
 
+    // EMPLOYERS · aggregate across all candidates on this job
+    {
+      type Tally = { display: string; total: number; current: number };
+      const employerMap = new Map<string, Tally>();
+      for (const [, list] of workByCandidate) {
+        // De-dupe within a single candidate so multiple stints at same co count once,
+        // but preserve whether ANY stint is current.
+        const perCand = new Map<string, { display: string; current: boolean }>();
+        for (const w of list) {
+          const name = (w.company_name || '').trim();
+          if (!name) continue;
+          const key = name.toLowerCase();
+          const prev = perCand.get(key);
+          perCand.set(key, {
+            display: prev?.display ?? name,
+            current: !!(prev?.current || w.is_current),
+          });
+        }
+        for (const [key, v] of perCand) {
+          const t = employerMap.get(key) ?? { display: v.display, total: 0, current: 0 };
+          t.total += 1;
+          if (v.current) t.current += 1;
+          employerMap.set(key, t);
+        }
+      }
+      const sorted = [...employerMap.values()]
+        .filter((t) => t.total >= 1)
+        .sort((a, b) => b.total - a.total || b.current - a.current)
+        .slice(0, 20);
+      if (sorted.length) {
+        lines.push('EMPLOYERS · candidates from (top 20)');
+        for (const t of sorted) {
+          const cur = t.current > 0 ? ` (${t.current} current)` : '';
+          lines.push(`  ${t.display} — ${t.total}${cur}`);
+        }
+        lines.push('');
+      }
+    }
+
     // JOB DESCRIPTION excerpt
     if (job.description) {
       const excerpt = String(job.description).replace(/\s+/g, ' ').trim().slice(0, 800);
