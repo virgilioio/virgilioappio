@@ -179,6 +179,83 @@ Deno.serve(async (req) => {
       for (const c of data ?? []) candidatesById.set(c.id, c);
     }
 
+    // ── 4b. Work experience for candidates on this job ─────────
+    type WorkRow = {
+      candidate_id: string;
+      company_name: string;
+      job_title: string | null;
+      standardized_title: string | null;
+      company_industry: string | null;
+      company_size_category: string | null;
+      is_current: boolean | null;
+      start_date: string | null;
+      end_date: string | null;
+      duration_months: number | null;
+      location: string | null;
+    };
+    const workByCandidate = new Map<string, WorkRow[]>();
+    for (let i = 0; i < candIds.length; i += 200) {
+      const chunk = candIds.slice(i, i + 200);
+      if (chunk.length === 0) break;
+      const { data, error } = await supabase
+        .from('candidate_work_experience')
+        .select(
+          'candidate_id, company_name, job_title, standardized_title, company_industry, company_size_category, is_current, start_date, end_date, duration_months, location',
+        )
+        .in('candidate_id', chunk);
+      if (error) {
+        console.warn('[job-ask-gio] work_experience chunk error', error);
+        continue;
+      }
+      for (const w of (data ?? []) as WorkRow[]) {
+        const list = workByCandidate.get(w.candidate_id) ?? [];
+        list.push(w);
+        workByCandidate.set(w.candidate_id, list);
+      }
+    }
+    // Sort each candidate's stints: current first, then most recent
+    for (const [cid, list] of workByCandidate) {
+      list.sort((a, b) => {
+        if (a.is_current && !b.is_current) return -1;
+        if (!a.is_current && b.is_current) return 1;
+        const ae = a.end_date ? new Date(a.end_date).getTime() : 0;
+        const be = b.end_date ? new Date(b.end_date).getTime() : 0;
+        if (be !== ae) return be - ae;
+        const as = a.start_date ? new Date(a.start_date).getTime() : 0;
+        const bs = b.start_date ? new Date(b.start_date).getTime() : 0;
+        return bs - as;
+      });
+      workByCandidate.set(cid, list.slice(0, 6));
+    }
+
+    function shortYear(iso?: string | null): string {
+      if (!iso) return '';
+      const y = new Date(iso).getFullYear();
+      return Number.isFinite(y) ? String(y) : '';
+    }
+    function renderWorkLine(candidateId: string): string | null {
+      const list = workByCandidate.get(candidateId);
+      if (!list || !list.length) return null;
+      const shown = list.slice(0, 4);
+      const overflow = Math.max(0, list.length - shown.length);
+      const parts = shown.map((w) => {
+        const role = (w.job_title || w.standardized_title || '').trim();
+        const co = (w.company_name || '').trim();
+        const head = role && co ? `${role} @ ${co}` : (co || role);
+        let when = '';
+        if (w.is_current) when = 'current';
+        else {
+          const sy = shortYear(w.start_date);
+          const ey = shortYear(w.end_date);
+          when = sy && ey ? `${sy}–${ey}` : (ey || sy || '');
+        }
+        return when ? `${head} (${when})` : head;
+      }).filter(Boolean);
+      if (!parts.length) return null;
+      const tail = overflow > 0 ? ` · +${overflow} more` : '';
+      return `    ↳ work: ${parts.join(' · ')}${tail}`;
+    }
+
     // ── 5. Rejection reasons ───────────────────────────────────
     const rrIds = Array.from(
       new Set(appList.map((a) => a.rejection_reason_id).filter(Boolean)),
@@ -511,6 +588,8 @@ Deno.serve(async (req) => {
         const stage = a.current_stage_id ? stageLabelById.get(a.current_stage_id) ?? 'Stage' : 'Unassigned';
         const days = daysBetween(a.entered_stage_at) ?? daysBetween(a.created_at) ?? 0;
         lines.push(`  ${stage} · ${candidateName(c)} · ${renderCandidateLine(c)} · ${days}d in stage`);
+        const wl = renderWorkLine(a.candidate_id);
+        if (wl) lines.push(wl);
         for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
@@ -532,6 +611,8 @@ Deno.serve(async (req) => {
         lines.push(
           `  ${candidateName(c)} · stage=${stage} · reason=${reason} · ${ago}d ago · ${renderCandidateLine(c)}`,
         );
+        const wl = renderWorkLine(a.candidate_id);
+        if (wl) lines.push(wl);
         for (const l of renderScorecards(a.candidate_id)) lines.push(l);
       }
       lines.push('');
@@ -579,6 +660,45 @@ Deno.serve(async (req) => {
     }
 
 
+    // EMPLOYERS · aggregate across all candidates on this job
+    {
+      type Tally = { display: string; total: number; current: number };
+      const employerMap = new Map<string, Tally>();
+      for (const [, list] of workByCandidate) {
+        // De-dupe within a single candidate so multiple stints at same co count once,
+        // but preserve whether ANY stint is current.
+        const perCand = new Map<string, { display: string; current: boolean }>();
+        for (const w of list) {
+          const name = (w.company_name || '').trim();
+          if (!name) continue;
+          const key = name.toLowerCase();
+          const prev = perCand.get(key);
+          perCand.set(key, {
+            display: prev?.display ?? name,
+            current: !!(prev?.current || w.is_current),
+          });
+        }
+        for (const [key, v] of perCand) {
+          const t = employerMap.get(key) ?? { display: v.display, total: 0, current: 0 };
+          t.total += 1;
+          if (v.current) t.current += 1;
+          employerMap.set(key, t);
+        }
+      }
+      const sorted = [...employerMap.values()]
+        .filter((t) => t.total >= 1)
+        .sort((a, b) => b.total - a.total || b.current - a.current)
+        .slice(0, 20);
+      if (sorted.length) {
+        lines.push('EMPLOYERS · candidates from (top 20)');
+        for (const t of sorted) {
+          const cur = t.current > 0 ? ` (${t.current} current)` : '';
+          lines.push(`  ${t.display} — ${t.total}${cur}`);
+        }
+        lines.push('');
+      }
+    }
+
     // JOB DESCRIPTION excerpt
     if (job.description) {
       const excerpt = String(job.description).replace(/\s+/g, ' ').trim().slice(0, 800);
@@ -602,9 +722,10 @@ Deno.serve(async (req) => {
         content: [
           'You are Gio, a concise hiring copilot.',
           'Answer the recruiter\u2019s question about THIS job using ONLY the provided context.',
-          'The context is structured into sections: JOB, STAGES, PIPELINE, TOP REJECTION REASONS, RECENT 7d, RECENT 8–14d, CANDIDATES · active, CANDIDATES · rejected, COMPENSATION ASKS, LOCATIONS, JOB DESCRIPTION.',
-          'Each candidate line may include: stage, name, role @ company, location, comp=salary expectation, years of experience, seniority, source, top skills, and contact availability (email/phone/linkedin). Sub-lines starting with "↳ scorecard" are interview scorecards with rating (0–5), age, and a short overview/answer snippet.',
-          'Answer questions about salary, location, skills, experience, source, and interview feedback by citing these fields directly.',
+          'The context is structured into sections: JOB, STAGES, PIPELINE, TOP REJECTION REASONS, RECENT 7d, RECENT 8–14d, CANDIDATES · active, CANDIDATES · rejected, COMPENSATION ASKS, LOCATIONS, EMPLOYERS, JOB DESCRIPTION.',
+          'Each candidate line may include: stage, name, role @ company, location, comp=salary expectation, years of experience, seniority, source, top skills, and contact availability (email/phone/linkedin). Sub-lines starting with "↳ scorecard" are interview scorecards with rating (0–5), age, and a short overview/answer snippet. Sub-lines starting with "↳ work:" list the candidate\u2019s employers — current and past — as "Role @ Company (year–year)" or "(current)".',
+          'The EMPLOYERS section tallies how many candidates on this job have worked at each company (with a count of how many still work there). Use it for questions like "who has worked at X?" or "which candidates come from FAANG?".',
+          'Answer questions about salary, location, skills, experience, source, employer history, and interview feedback by citing these fields directly. If a candidate has no "↳ work:" bullet, say "no work history on file" rather than guessing.',
           'When the user asks about a time window (e.g. "last 7 days"), filter events from the RECENT sections by date.',
           'When asked for a pipeline report, group active candidates by stage and include rejected candidates from the CANDIDATES · rejected block.',
           'Cite counts, candidate names, salaries, locations, and ratings from the context only — never invent values. If a field is missing for a candidate, say "not on file" rather than guessing.',

@@ -1,60 +1,53 @@
 ## Goal
-Make the **Ask Gio** box on the Job Dashboard actually see the full candidate picture — salary expectations, locations, source detail, scorecard ratings/notes, and the rest of the fields we already store — so it can answer questions like "who wants > $180k?" or "what did interviewers say about X?".
+Give Ask Gio visibility into the **work history** (current + past employers) of every candidate attached to this job, so it can answer questions like "who's worked at Stripe?", "which candidates come from FAANG?", or "what companies has {name} been at?".
 
-## What Gio sees today (confirmed in `supabase/functions/job-ask-gio/index.ts`)
-- Candidate `select` on line ~140 pulls only: `id, candidate_name, current_job_title, company_current, role_current, location_city, location_state, location_country, source, created_at`.
-- No salary fields, no LinkedIn/phone/email, no years of experience, no skills, no work authorization, no notes.
-- **No scorecard data at all** — `job_stage_scorecards` and `scorecard_question_responses` are never queried.
-- Active/rejected candidate lines print stage · name · role@co · loc · src · days — nothing about comp, ratings, or notes.
+## What's missing today
+`supabase/functions/job-ask-gio/index.ts` selects candidate identity/comp/skills/contact fields, but never touches `candidate_work_experience`. As a result Gio has no employer history beyond the single `company_current` string on the candidate row.
 
-## Plan
+## Plan (job-ask-gio only, no schema changes)
 
-1. **Widen the candidate select** in `job-ask-gio` to include the fields we already store and that Gio should reason about:
-   - Comp: `salary_amount`, `salary_currency`, `salary_period`.
-   - Identity/contact: `email`, `phone`, `linkedin_url`.
-   - Profile: `years_experience`, `standardized_skills` (fallback to `skills`), `work_authorization`, `open_to` / `location` preference field if present, `headline`, `summary` (short excerpt), `job_board_source`.
-   - Keep existing location/role/company/source columns.
-   - Verify column names against `candidates` (58 cols) before the query and drop any that don't exist so PostgREST doesn't 400.
+1. **Fetch work experience for every candidate on the job**
+   - After the candidates chunked fetch (~line 180), add a chunked query on `candidate_work_experience` filtered by `candidate_id IN (candIds)`.
+   - Select: `candidate_id, company_name, job_title, standardized_title, company_industry, company_size_category, is_current, start_date, end_date, duration_months, location`.
+   - Chunk in 200s like the candidates fetch. Order desc by `is_current`, then `end_date NULLS FIRST`, then `start_date` desc so the most recent stints come first.
+   - Build `workByCandidate: Map<candidateId, WorkRow[]>`, cap at ~6 entries per candidate to protect the char budget.
+   - Verify field names against `candidate_work_experience` schema before finalising the select; drop any that don't exist.
 
-2. **Add a compact per-candidate profile line** in the CANDIDATES · active and CANDIDATES · rejected sections. New format:
-   ```
-   {stage} · {name} · {role @ company} · {loc} · comp={$185k/yr} · exp={5y} · src={LinkedIn} · skills={a, b, c} · {Nd in stage}
-   ```
-   Use `formatSalaryExpectation`-style formatting inline (same k/yr suffix logic) so numeric comp stays readable. Skip empty parts.
-
-3. **Fetch scorecards for this job** and attach them to candidates:
-   - Query `job_stage_scorecards` filtered by `job_id = jobId`, limit ~200 most recent, selecting `id, candidate_id, stage_id, overall_rating, submitted_at, ai_draft, notes_summary` (whichever text/rating fields exist; check schema for `overall_rating`, `overview`, `strengths`, `concerns`).
-   - Also pull `scorecard_question_responses` for those scorecard ids — question text + rating/answer, short-truncated.
-   - Build a `scorecardsByCandidate: Map<candidateId, Scorecard[]>`.
-   - Under each candidate in the active/rejected list, when they have scorecards, append a bullet:
+2. **Render a compact per-candidate work sub-line**
+   - Under each candidate in `CANDIDATES · active`, `CANDIDATES · rejected`, and (if we render them) hired/offered rows, append at most one bullet:
      ```
-       ↳ scorecard {stage} · rating={4/5} · {submitted 3d ago} · "{short overview or top note, ≤160c}"
+       ↳ work: {Role @ Company} (current) · {Role @ Company} (2022–2024) · {Company} (2019–2022) · +N more
      ```
-   - Cap to the 2 most recent per candidate to protect the char budget.
+   - Use `Mon YYYY` short dates from `start_date`/`end_date`, mark current with `(current)`.
+   - Cap the rendered stints per candidate to 4 with `+N more` overflow.
+   - Skip the whole bullet if the candidate has no rows.
 
-4. **Add a dedicated PIPELINE section for compensation & location**
-   - "COMPENSATION ASKS" block: list active candidates with a non-null `salary_amount`, sorted desc, formatted with currency/period. Include min/median/max summary line.
-   - "LOCATIONS" block: aggregate active-candidate locations (city, country) with counts, so questions about geography have a direct answer.
+3. **Add an EMPLOYERS aggregate section**
+   - Tally normalized company names (case-insensitive, trimmed) across **all candidates on the job** (applicants, active, rejected, hired).
+   - Emit a section like:
+     ```
+     EMPLOYERS · candidates from (top 20)
+       Google — 4 (2 current)
+       Stripe — 3 (1 current)
+       ...
+     ```
+   - Sort desc by total count; include a `(N current)` suffix when any are current employers.
+   - This gives Gio a direct answer to "who's worked at X?" style questions without scanning every candidate line.
 
-5. **Bump context budget carefully**
-   - Raise `MAX_CONTEXT_CHARS` from 12000 → 16000 to absorb scorecards and comp block. Keep the truncate-with-marker safety.
-   - Keep `CONTEXT_ACTIVE_LIMIT` at 60 and `CONTEXT_REJECTED_LIMIT` at 30 — scorecard bullets are the main new cost.
+4. **Update the system prompt**
+   - Extend the section list to include `EMPLOYERS` and describe the `↳ work:` sub-lines.
+   - Add rule: employer history comes ONLY from these lines/sections; if a candidate has no `↳ work:` bullet, say "no work history on file".
+   - Add example prompts Gio should now handle: "Which candidates have worked at Google?", "Who's currently at a FAANG?", "What are {candidate}'s past employers?".
 
-6. **Update the system prompt** in the same file to:
-   - Explicitly enumerate the new fields Gio can cite: salary expectations, locations, scorecards (rating + note), skills, experience, work auth, source.
-   - Keep anti-hallucination rule: only cite values that appear in the context block; if a field is missing for a candidate, say "not on file" rather than inventing.
-   - Add examples for salary/location/scorecard questions in the guidance ("Who's asking > $X?", "Who's in {city}?", "How did interviewers rate {name}?").
-
-7. **Validate against the current job** (`c24a2a31-…-b2b5ff86596d`)
-   - Run the function and confirm the returned context now contains COMPENSATION ASKS lines (candidates in that job do have salary data), scorecard bullets where scorecards exist, and expanded per-candidate lines.
-   - Sanity-check total context length stays under the new cap.
+5. **Budget safety**
+   - Work sub-lines add ~120–200 chars per active candidate; with 60 active + 30 rejected cap that's ~18KB worst case. Keep `MAX_CONTEXT_CHARS = 16000` and rely on the existing truncate marker, BUT reduce per-candidate stint cap to 3 if we observe the section is being cut. Truncation logic is already in place — no new machinery needed.
 
 ## Non-goals
-- No schema changes; only reading columns that already exist on `candidates`, `job_stage_scorecards`, and `scorecard_question_responses`.
-- Not touching **Gio's read** briefing pipeline — that already got its own richer snapshot in the previous turn. This plan targets **Ask Gio** only.
-- No UI changes to `JobBriefingTab.tsx`.
+- No schema changes; only reads from existing `candidate_work_experience`.
+- No UI changes.
+- No changes to Gio's Read / job briefing pipeline — this plan is scoped to Ask Gio.
+- No employer normalization beyond trim + case-fold for the aggregate tally (we're not touching the `useTalentOriginsData` suffix-stripping logic — keep this simple and additive).
 
 ## Technical notes
-- All fields queried are already tenant-scoped via RLS on `candidates` / `job_candidate_associations` / `job_stage_scorecards`; the function already runs with the caller's JWT, so no new grants are needed.
-- Before adding a column to the `candidates` select, confirm it exists in `src/integrations/supabase/types.ts` (the schema source of truth) — column list will be verified in build mode before the query is finalized.
-- Scorecard schema will be re-read in build mode to pick the exact text/rating column names (`overall_rating` vs `rating`, `overview` vs `summary`) before finalizing the select.
+- `candidate_work_experience` is tenant-scoped through its `candidate_id` FK + RLS; the function already runs with the caller's JWT, so no new grants needed.
+- Confirm column names (`duration_months`, `standardized_title`, `company_industry`, `company_size_category`, `location`) exist on the table before finalising the select in build mode.
