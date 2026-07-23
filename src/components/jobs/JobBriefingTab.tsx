@@ -371,6 +371,51 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [ask, setAsk] = useState('');
+  const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [pending, setPending] = useState(false);
+  const askInputRef = useRef<HTMLInputElement | null>(null);
+  const askBoxRef = useRef<HTMLDivElement | null>(null);
+
+  const insertPrompt = useCallback((prompt: string) => {
+    setAsk(prompt);
+    // Focus + scroll the input into view so the user can edit and submit.
+    requestAnimationFrame(() => {
+      askInputRef.current?.focus();
+      askBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
+
+  const submitAsk = useCallback(
+    async (text: string) => {
+      const q = text.trim();
+      if (!q || pending) return;
+      const history = chat;
+      setChat((prev) => [...prev, { role: 'user', content: q }]);
+      setAsk('');
+      setPending(true);
+      try {
+        const { data: res, error } = await supabase.functions.invoke('job-ask-gio', {
+          body: { jobId, jobTitle, question: q, history },
+        });
+        if (error) throw error;
+        const answer = (res as { answer?: string })?.answer?.trim();
+        if (!answer) throw new Error('Empty response.');
+        setChat((prev) => [...prev, { role: 'assistant', content: answer }]);
+      } catch (err: any) {
+        setChat((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: `_Something went wrong: ${err?.message ?? 'unknown error'}_`,
+          },
+        ]);
+      } finally {
+        setPending(false);
+      }
+    },
+    [chat, jobId, jobTitle, pending],
+  );
+
 
   const load = useCallback(
     async (force = false) => {
