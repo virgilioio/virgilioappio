@@ -602,8 +602,8 @@ serve(async (req) => {
 
     // Construct candidate profile URL for scorecard submission
     const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
-    const candidateProfileUrl = (job_id && candidate_id) 
-      ? `${frontendUrl}/jobs/${job_id}?candidate=${candidate_id}`
+    const candidateProfileUrl = (effectiveJobId && candidate_id) 
+      ? `${frontendUrl}/jobs/${effectiveJobId}?candidate=${candidate_id}`
       : null;
 
     // Generate unique transcript ingest code (8 alphanumeric chars)
@@ -853,9 +853,9 @@ serve(async (req) => {
         candidate_confirmed_at: send_invitation ? new Date().toISOString() : null,
         // Internal booking context (using validated association ID)
         candidate_id: candidate_id || null,
-        job_id: job_id || null,
+        job_id: effectiveJobId || null,
         job_candidate_association_id: validatedAssociationId || null,
-        job_hiring_stage_id: job_hiring_stage_id || null,
+        job_hiring_stage_id: effectiveStageId || null,
         booked_by: booked_by_user_id || null,
         // Transcript ingest
         transcript_ingest_code: transcriptIngestCode,
@@ -1213,9 +1213,9 @@ serve(async (req) => {
       };
 
       // Add internal booking context to metadata if present
-      if (job_id) activityMetadata.job_id = job_id;
+      if (effectiveJobId) activityMetadata.job_id = effectiveJobId;
       if (candidate_id) activityMetadata.candidate_id = candidate_id;
-      if (job_hiring_stage_id) activityMetadata.job_hiring_stage_id = job_hiring_stage_id;
+      if (effectiveStageId) activityMetadata.job_hiring_stage_id = effectiveStageId;
 
       const activityTitle = booked_by_user_id
         ? `Interview scheduled for ${candidate_name}`
