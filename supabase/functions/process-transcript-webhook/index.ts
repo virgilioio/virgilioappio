@@ -526,7 +526,21 @@ serve(async (req) => {
       throw updateError;
     }
 
+    if (!hasPipelineContext) {
+      console.warn('[Transcript Webhook] Transcript stored without scorecard generation - no pipeline context, booking:', booking.id);
+      return new Response(JSON.stringify({
+        status: 'stored_without_scorecard',
+        reason: 'no_pipeline_context',
+        booking_id: booking.id,
+        transcript_length: content.length,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('[Transcript Webhook] Transcript stored, triggering scorecard generation...');
+
 
     // Trigger scorecard generation (async call)
     const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-scorecard-from-transcript`, {
