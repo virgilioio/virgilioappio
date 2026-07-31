@@ -413,18 +413,50 @@ serve(async (req) => {
 
     console.log('[Transcript Webhook] Found booking:', booking.id, 'for candidate:', booking.candidate?.candidate_name);
 
-    // Check if this is a simple booking (no pipeline context) - skip AI processing
-    if (!booking.candidate_id || !booking.job_hiring_stage_id) {
-      console.log('[Transcript Webhook] Simple booking detected - skipping AI processing');
-      return new Response(JSON.stringify({ 
-        status: 'skipped', 
-        reason: 'simple_booking_no_pipeline_context',
-        booking_id: booking.id,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Attempt to infer pipeline context when the booking was created without it
+    if (booking.candidate_id && !booking.job_hiring_stage_id) {
+      const { data: activeAssociations } = await supabase
+        .from('job_candidate_associations')
+        .select('id, job_id, current_stage_id')
+        .eq('candidate_id', booking.candidate_id)
+        .eq('status', 'active');
+
+      const associationCount = activeAssociations?.length || 0;
+
+      if (associationCount === 1 && activeAssociations![0].current_stage_id) {
+        const sole = activeAssociations![0];
+        const { error: inferUpdateError } = await supabase
+          .from('scheduled_bookings')
+          .update({
+            job_id: sole.job_id,
+            job_hiring_stage_id: sole.current_stage_id,
+            job_candidate_association_id: sole.id,
+          })
+          .eq('id', booking.id);
+
+        if (inferUpdateError) {
+          console.error('[Transcript Webhook] Failed to persist inferred context:', inferUpdateError);
+        } else {
+          booking.job_id = sole.job_id;
+          booking.job_hiring_stage_id = sole.current_stage_id;
+          booking.job_candidate_association_id = sole.id;
+          console.log('[Transcript Webhook] Inferred pipeline context from sole active association', {
+            candidate_id: booking.candidate_id,
+            job_id: sole.job_id,
+            job_hiring_stage_id: sole.current_stage_id,
+          });
+        }
+      } else {
+        console.log('[Transcript Webhook] No unambiguous pipeline context to infer', {
+          candidate_id: booking.candidate_id,
+          association_count: associationCount,
+        });
+      }
     }
+
+    // If we still have no pipeline context we store the transcript anyway (never lose it)
+    const hasPipelineContext = Boolean(booking.candidate_id && booking.job_hiring_stage_id);
+
 
     // Extract transcript content
     let { content, metadata } = await extractTranscriptContent(emailData, { resendApiKey, openaiApiKey });
