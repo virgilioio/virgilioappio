@@ -198,17 +198,52 @@ serve(async (req) => {
       }
     }
 
+    // ==========================================================
+    // CONTEXT INFERENCE: if we know the candidate but no pipeline
+    // stage was passed, infer job + stage when it is unambiguous
+    // (exactly one active association with a current stage).
+    // ==========================================================
+    let effectiveJobId = job_id;
+    let effectiveStageId = job_hiring_stage_id;
+
+    if (candidate_id && !effectiveStageId) {
+      const { data: activeAssociations } = await supabase
+        .from('job_candidate_associations')
+        .select('id, job_id, current_stage_id')
+        .eq('candidate_id', candidate_id)
+        .eq('status', 'active');
+
+      const associationCount = activeAssociations?.length || 0;
+
+      if (associationCount === 1 && activeAssociations![0].current_stage_id) {
+        const sole = activeAssociations![0];
+        effectiveJobId = sole.job_id;
+        effectiveStageId = sole.current_stage_id;
+        validatedAssociationId = sole.id;
+        console.log('[create-booking] Inferred pipeline context from sole active association', {
+          candidate_id,
+          job_id: effectiveJobId,
+          job_hiring_stage_id: effectiveStageId,
+        });
+      } else {
+        console.log('[create-booking] No unambiguous pipeline context to infer', {
+          candidate_id,
+          association_count: associationCount,
+        });
+      }
+    }
+
     // Fetch stage name and job title if this is an internal booking
     let stageName = 'Interview';
     let jobTitle = '';
     let isJobSpecificBooking = false;
 
-    if (job_hiring_stage_id) {
+    if (effectiveStageId) {
       isJobSpecificBooking = true;
       const { data: stageData } = await supabase
         .from('job_hiring_stages')
         .select('stage:job_stages(stage_name)')
-        .eq('id', job_hiring_stage_id)
+        .eq('id', effectiveStageId)
         .single();
       
       if (stageData?.stage?.stage_name) {
@@ -216,18 +251,19 @@ serve(async (req) => {
       }
     }
 
-    if (job_id) {
+    if (effectiveJobId) {
       isJobSpecificBooking = true;
       const { data: jobData } = await supabase
         .from('jobs')
         .select('title')
-        .eq('id', job_id)
+        .eq('id', effectiveJobId)
         .single();
       
       if (jobData?.title) {
         jobTitle = ` - ${jobData.title}`;
       }
     }
+
 
     // ==========================================================
     // GROUP BOOKING resolution: when booking_config_ids is passed,
@@ -566,8 +602,8 @@ serve(async (req) => {
 
     // Construct candidate profile URL for scorecard submission
     const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
-    const candidateProfileUrl = (job_id && candidate_id) 
-      ? `${frontendUrl}/jobs/${job_id}?candidate=${candidate_id}`
+    const candidateProfileUrl = (effectiveJobId && candidate_id) 
+      ? `${frontendUrl}/jobs/${effectiveJobId}?candidate=${candidate_id}`
       : null;
 
     // Generate unique transcript ingest code (8 alphanumeric chars)
@@ -817,9 +853,9 @@ serve(async (req) => {
         candidate_confirmed_at: send_invitation ? new Date().toISOString() : null,
         // Internal booking context (using validated association ID)
         candidate_id: candidate_id || null,
-        job_id: job_id || null,
+        job_id: effectiveJobId || null,
         job_candidate_association_id: validatedAssociationId || null,
-        job_hiring_stage_id: job_hiring_stage_id || null,
+        job_hiring_stage_id: effectiveStageId || null,
         booked_by: booked_by_user_id || null,
         // Transcript ingest
         transcript_ingest_code: transcriptIngestCode,
@@ -1177,9 +1213,9 @@ serve(async (req) => {
       };
 
       // Add internal booking context to metadata if present
-      if (job_id) activityMetadata.job_id = job_id;
+      if (effectiveJobId) activityMetadata.job_id = effectiveJobId;
       if (candidate_id) activityMetadata.candidate_id = candidate_id;
-      if (job_hiring_stage_id) activityMetadata.job_hiring_stage_id = job_hiring_stage_id;
+      if (effectiveStageId) activityMetadata.job_hiring_stage_id = effectiveStageId;
 
       const activityTitle = booked_by_user_id
         ? `Interview scheduled for ${candidate_name}`
