@@ -14,6 +14,8 @@ import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 import { JobPostingsTab } from '@/components/jobs/JobPostingsTab'
 import { useCareersPageSettings } from '@/hooks/useCareersPageSettings'
 import { buildPostingPath } from '@/lib/postingUrl'
+import { saveCandidateNavOrder } from '@/lib/candidateNavOrder'
+
 import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
 import { PostingSheet } from '@/components/jobs/postings/PostingSheet'
 
