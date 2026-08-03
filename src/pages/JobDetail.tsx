@@ -283,10 +283,17 @@ export default function JobDetail() {
       ...hiredCandidates,
       ...rejectedCandidates
     ];
+
+    // Freeze the board order so the profile route's prev/next arrows follow
+    // the exact pipeline sequence (and stay stable after a rejection).
+    if (id && navigationOrder && navigationOrder.length > 0) {
+      saveCandidateNavOrder(id, navigationOrder)
+    }
     
     // If we have a navigation order snapshot from PipelineOverview, use it!
     // This ensures navigation matches the exact visual order on the board
     if (navigationOrder && navigationOrder.length > 0) {
+
       // Create lookup map by candidate_id
       const candidateMap = new Map<string, any>();
       allPipelineCandidates.forEach(c => {
