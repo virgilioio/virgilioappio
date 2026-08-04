@@ -913,7 +913,7 @@ serve(async (req) => {
       : [`${profile.first_name} ${profile.last_name}`];
     const interviewersDisplay = formatNamesList(allInterviewerNames);
 
-    // Only include candidate in ICS if send_invitation is true
+    // Internal ICS (interviewers + guests). Only include candidate if send_invitation is true.
     const icsAttendees = [
       ...(send_invitation 
         ? [`ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}`]
@@ -927,7 +927,11 @@ serve(async (req) => {
     ].join('\r\n');
     const icsAttendeesLine = icsAttendees ? icsAttendees + '\r\n' : '';
 
-    const icsContent = [
+    // Candidate-scoped ICS: never exposes the internal attendee list
+    const candidateIcsAttendeesLine =
+      `ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}` + '\r\n';
+
+    const buildIcs = (attendeesLine: string) => [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//GoGio//Interview Scheduler//EN',
@@ -946,14 +950,19 @@ serve(async (req) => {
           : (custom_meeting_location || '')
       )}`,
       `ORGANIZER;CN=${escapeICSText(`${profile.first_name} ${profile.last_name}`)}:mailto:${profile.email}`,
-      icsAttendeesLine,
+      attendeesLine,
       'STATUS:CONFIRMED',
       'SEQUENCE:0',
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const icsBase64 = btoa(icsContent);
+    const internalIcsBase64 = btoa(buildIcs(icsAttendeesLine));
+    const candidateIcsBase64 = btoa(buildIcs(candidateIcsAttendeesLine));
+    // Google already delivers the real invite for the candidate's own event —
+    // attaching another ICS would show up as a second, duplicate invitation.
+    const candidateNeedsIcs = !candidateGoogleEventId;
+
 
     // Send confirmation email to candidate (only if send_invitation is true)
     if (send_invitation) {
@@ -991,7 +1000,9 @@ serve(async (req) => {
           <p><strong>Interview Details:</strong></p>
           ${formatEmailList(meetingDetails)}
           ${notes ? `<p style="margin-top: 16px;"><strong>Your notes:</strong><br/>${notes}</p>` : ''}
-          <p style="margin-top: 24px;">A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.</p>
+          <p style="margin-top: 24px;">${candidateNeedsIcs
+            ? `A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.`
+            : `You've also received a separate calendar invitation for this interview — please accept it so it lands on your calendar.`}</p>
         `;
 
         const candidateEmailBody = createEmailTemplate({
@@ -1008,13 +1019,18 @@ serve(async (req) => {
             to: [candidate_email],
             subject: `Your Interview is Confirmed: ${stageName}${jobTitle}`,
             body_html: candidateEmailBody,
-            attachments: [{
-              filename: 'interview.ics',
-              content: icsBase64,
-              content_type: 'text/calendar',
-            }],
+            ...(candidateNeedsIcs
+              ? {
+                  attachments: [{
+                    filename: 'interview.ics',
+                    content: candidateIcsBase64,
+                    content_type: 'text/calendar',
+                  }],
+                }
+              : {}),
           },
         });
+
 
         console.log('[create-booking] Candidate confirmation email sent');
       } catch (emailError) {
@@ -1121,7 +1137,7 @@ serve(async (req) => {
             body_html: interviewerEmailBody,
             attachments: [{
               filename: 'interview.ics',
-              content: icsBase64,
+              content: internalIcsBase64,
               content_type: 'text/calendar',
             }],
           },
@@ -1188,7 +1204,7 @@ serve(async (req) => {
                 body_html: guestEmailBody,
                 attachments: [{
                   filename: 'interview.ics',
-                  content: icsBase64,
+                  content: internalIcsBase64,
                   content_type: 'text/calendar',
                 }],
               },
