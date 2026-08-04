@@ -913,7 +913,7 @@ serve(async (req) => {
       : [`${profile.first_name} ${profile.last_name}`];
     const interviewersDisplay = formatNamesList(allInterviewerNames);
 
-    // Only include candidate in ICS if send_invitation is true
+    // Internal ICS (interviewers + guests). Only include candidate if send_invitation is true.
     const icsAttendees = [
       ...(send_invitation 
         ? [`ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}`]
@@ -927,7 +927,11 @@ serve(async (req) => {
     ].join('\r\n');
     const icsAttendeesLine = icsAttendees ? icsAttendees + '\r\n' : '';
 
-    const icsContent = [
+    // Candidate-scoped ICS: never exposes the internal attendee list
+    const candidateIcsAttendeesLine =
+      `ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}` + '\r\n';
+
+    const buildIcs = (attendeesLine: string) => [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//GoGio//Interview Scheduler//EN',
@@ -946,14 +950,19 @@ serve(async (req) => {
           : (custom_meeting_location || '')
       )}`,
       `ORGANIZER;CN=${escapeICSText(`${profile.first_name} ${profile.last_name}`)}:mailto:${profile.email}`,
-      icsAttendeesLine,
+      attendeesLine,
       'STATUS:CONFIRMED',
       'SEQUENCE:0',
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const icsBase64 = btoa(icsContent);
+    const internalIcsBase64 = btoa(buildIcs(icsAttendeesLine));
+    const candidateIcsBase64 = btoa(buildIcs(candidateIcsAttendeesLine));
+    // Google already delivers the real invite for the candidate's own event —
+    // attaching another ICS would show up as a second, duplicate invitation.
+    const candidateNeedsIcs = !candidateGoogleEventId;
+
 
     // Send confirmation email to candidate (only if send_invitation is true)
     if (send_invitation) {
