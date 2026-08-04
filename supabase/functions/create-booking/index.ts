@@ -1137,7 +1137,7 @@ serve(async (req) => {
             body_html: interviewerEmailBody,
             attachments: [{
               filename: 'interview.ics',
-              content: icsBase64,
+              content: internalIcsBase64,
               content_type: 'text/calendar',
             }],
           },
@@ -1204,7 +1204,7 @@ serve(async (req) => {
                 body_html: guestEmailBody,
                 attachments: [{
                   filename: 'interview.ics',
-                  content: icsBase64,
+                  content: internalIcsBase64,
                   content_type: 'text/calendar',
                 }],
               },
