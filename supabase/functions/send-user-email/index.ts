@@ -907,7 +907,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Build RFC822 email with threading headers and Reply-To
     const rfc822 = buildRFC822Email(processedRequest, threadId, inReplyTo, references, replyToAddresses);
+    // Gmail rejects raw uploads above ~35MB — fail with a readable message.
+    const GMAIL_MAX_RAW_BYTES = 35 * 1024 * 1024;
+    if (rfc822.length > GMAIL_MAX_RAW_BYTES) {
+      return new Response(
+        JSON.stringify({
+          error: 'Message too large to send. Total attachment size must stay under about 25MB.',
+        }),
+        { status: 413, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
     const encodedEmail = base64UrlEncode(rfc822);
+
 
     // Send via Gmail API
     const sendBody: any = { raw: encodedEmail };
