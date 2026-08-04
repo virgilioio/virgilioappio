@@ -1000,7 +1000,9 @@ serve(async (req) => {
           <p><strong>Interview Details:</strong></p>
           ${formatEmailList(meetingDetails)}
           ${notes ? `<p style="margin-top: 16px;"><strong>Your notes:</strong><br/>${notes}</p>` : ''}
-          <p style="margin-top: 24px;">A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.</p>
+          <p style="margin-top: 24px;">${candidateNeedsIcs
+            ? `A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.`
+            : `You've also received a separate calendar invitation for this interview — please accept it so it lands on your calendar.`}</p>
         `;
 
         const candidateEmailBody = createEmailTemplate({
@@ -1017,13 +1019,18 @@ serve(async (req) => {
             to: [candidate_email],
             subject: `Your Interview is Confirmed: ${stageName}${jobTitle}`,
             body_html: candidateEmailBody,
-            attachments: [{
-              filename: 'interview.ics',
-              content: icsBase64,
-              content_type: 'text/calendar',
-            }],
+            ...(candidateNeedsIcs
+              ? {
+                  attachments: [{
+                    filename: 'interview.ics',
+                    content: candidateIcsBase64,
+                    content_type: 'text/calendar',
+                  }],
+                }
+              : {}),
           },
         });
+
 
         console.log('[create-booking] Candidate confirmation email sent');
       } catch (emailError) {
