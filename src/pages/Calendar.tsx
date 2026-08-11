@@ -247,7 +247,20 @@ export default function CalendarPage() {
       <button
         key={e.id}
         type="button"
-        onClick={() => setSelectedEventId(e.id)}
+        onClick={ev => {
+          const btn = ev.currentTarget.getBoundingClientRect()
+          const container = gridBodyRef.current?.getBoundingClientRect()
+          if (container) {
+            setPopoverAnchor({
+              top: btn.top - container.top,
+              left: btn.left - container.left,
+              right: btn.right - container.left,
+            })
+          } else {
+            setPopoverAnchor(null)
+          }
+          setSelectedEventId(e.id)
+        }}
         className="absolute left-[3px] right-[3px] text-left overflow-hidden focus:outline-none focus:ring-2"
         style={{
           top,
