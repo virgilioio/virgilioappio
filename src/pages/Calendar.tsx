@@ -3,7 +3,7 @@
  * Interviews, debriefs, holds, busy blocks across all jobs +
  * a "Needs scheduling" rail. Frontend wires existing endpoints only.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft,
@@ -147,8 +147,22 @@ export default function CalendarPage() {
   const [jobFilter, setJobFilter] = useState<string | 'all'>('all')
   const [peopleFilter, setPeopleFilter] = useState<'mine' | 'all'>('mine')
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [popoverAnchor, setPopoverAnchor] = useState<{ top: number; left: number; right: number } | null>(null)
+  const gridBodyRef = useRef<HTMLDivElement>(null)
   const [openSimpleSheet, setOpenSimpleSheet] = useState(false)
   const [scheduleTarget, setScheduleTarget] = useState<NeedsSchedulingItem | null>(null)
+
+  const closePopover = () => {
+    setSelectedEventId(null)
+    setPopoverAnchor(null)
+  }
+
+  // Reset the popup when the visible week changes
+  useEffect(() => {
+    setSelectedEventId(null)
+    setPopoverAnchor(null)
+  }, [weekAnchor])
+
 
   const weekStart = useMemo(() => startOfWeek(weekAnchor, { weekStartsOn: 1 }), [weekAnchor])
   const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart])
@@ -233,7 +247,20 @@ export default function CalendarPage() {
       <button
         key={e.id}
         type="button"
-        onClick={() => setSelectedEventId(e.id)}
+        onClick={ev => {
+          const btn = ev.currentTarget.getBoundingClientRect()
+          const container = gridBodyRef.current?.getBoundingClientRect()
+          if (container) {
+            setPopoverAnchor({
+              top: btn.top - container.top,
+              left: btn.left - container.left,
+              right: btn.right - container.left,
+            })
+          } else {
+            setPopoverAnchor(null)
+          }
+          setSelectedEventId(e.id)
+        }}
         className="absolute left-[3px] right-[3px] text-left overflow-hidden focus:outline-none focus:ring-2"
         style={{
           top,
@@ -501,6 +528,7 @@ export default function CalendarPage() {
 
                     {/* Grid body */}
                     <div
+                      ref={gridBodyRef}
                       className="relative grid"
                       style={{
                         gridTemplateColumns: `52px repeat(5, 1fr)`,
@@ -569,7 +597,9 @@ export default function CalendarPage() {
                       {selectedEvent && (
                         <EventPopover
                           event={selectedEvent}
-                          onClose={() => setSelectedEventId(null)}
+                          anchor={popoverAnchor}
+                          containerEl={gridBodyRef.current}
+                          onClose={closePopover}
                           onOpenCandidate={() => {
                             if (selectedEvent.candidateId) {
                               navigate(
@@ -635,30 +665,63 @@ export default function CalendarPage() {
 // ─── Event detail popover ────────────────────────────────────
 function EventPopover({
   event,
+  anchor,
+  containerEl,
   onClose,
   onOpenCandidate,
   onJoin,
 }: {
   event: CalEvent
+  anchor: { top: number; left: number; right: number } | null
+  containerEl: HTMLDivElement | null
   onClose: () => void
   onOpenCandidate: () => void
   onJoin: () => void
 }) {
   const meta = TYPE_META[event.type]
+  const cardRef = useRef<HTMLDivElement>(null)
+  const WIDTH = 280
+  const GAP = 8
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useEffect(() => {
+    if (!anchor || !containerEl) {
+      setPos(null)
+      return
+    }
+    const containerW = containerEl.clientWidth
+    const containerH = containerEl.clientHeight
+    const cardH = cardRef.current?.offsetHeight ?? 260
+
+    // Prefer to the right of the event; flip left when it doesn't fit
+    let left = anchor.right + GAP
+    if (left + WIDTH > containerW) left = anchor.left - GAP - WIDTH
+    left = Math.max(GAP, Math.min(left, Math.max(GAP, containerW - WIDTH - GAP)))
+
+    let top = anchor.top
+    if (top + cardH > containerH) top = containerH - cardH - GAP
+    top = Math.max(GAP, top)
+
+    setPos({ top, left })
+  }, [anchor, containerEl, event.id])
+
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
+        ref={cardRef}
         className="absolute z-50 bg-white"
         style={{
-          top: 12,
-          right: 12,
-          width: 280,
+          top: pos?.top ?? anchor?.top ?? 12,
+          left: pos?.left ?? anchor?.right ?? 12,
+          width: WIDTH,
+          visibility: pos ? 'visible' : 'hidden',
           borderRadius: 12,
           border: `1px solid ${C.border}`,
           boxShadow: '0 16px 40px -12px rgba(13,13,9,0.25)',
         }}
       >
+
         <div className="flex items-start justify-between gap-2 px-3.5 pt-3.5">
           <div className="flex min-w-0 items-start gap-2">
             <span
