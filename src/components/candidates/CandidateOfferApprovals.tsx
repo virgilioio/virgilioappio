@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftRosette } from '@/components/ui/EmptyIllustrations'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
