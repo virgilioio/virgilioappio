@@ -147,8 +147,22 @@ export default function CalendarPage() {
   const [jobFilter, setJobFilter] = useState<string | 'all'>('all')
   const [peopleFilter, setPeopleFilter] = useState<'mine' | 'all'>('mine')
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [popoverAnchor, setPopoverAnchor] = useState<{ top: number; left: number; right: number } | null>(null)
+  const gridBodyRef = useRef<HTMLDivElement>(null)
   const [openSimpleSheet, setOpenSimpleSheet] = useState(false)
   const [scheduleTarget, setScheduleTarget] = useState<NeedsSchedulingItem | null>(null)
+
+  const closePopover = () => {
+    setSelectedEventId(null)
+    setPopoverAnchor(null)
+  }
+
+  // Reset the popup when the visible week changes
+  useEffect(() => {
+    setSelectedEventId(null)
+    setPopoverAnchor(null)
+  }, [weekAnchor])
+
 
   const weekStart = useMemo(() => startOfWeek(weekAnchor, { weekStartsOn: 1 }), [weekAnchor])
   const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart])
