@@ -3,7 +3,7 @@
  * Interviews, debriefs, holds, busy blocks across all jobs +
  * a "Needs scheduling" rail. Frontend wires existing endpoints only.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft,
