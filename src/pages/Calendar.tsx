@@ -528,6 +528,7 @@ export default function CalendarPage() {
 
                     {/* Grid body */}
                     <div
+                      ref={gridBodyRef}
                       className="relative grid"
                       style={{
                         gridTemplateColumns: `52px repeat(5, 1fr)`,
