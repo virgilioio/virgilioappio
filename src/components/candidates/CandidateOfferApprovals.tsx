@@ -97,11 +97,12 @@ export function CandidateOfferApprovals({ candidateId, jobId, organizationId, ca
   if (!approvalRequest) {
     if (!chainEnabled || configuredSteps.length === 0) {
       return (
-        <Card>
-          <CardContent className="py-12">
-            <p className="text-body-sm text-text-secondary text-center">No approval chain configured for this job.</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          size="card"
+          illustration={<SoftRosette />}
+          title="No approvals needed"
+          body="This job has no offer approval chain, so the offer doesn't need internal sign-off. You can send it and mark the candidate hired directly."
+        />
       )
     }
     const sorted = [...configuredSteps].sort((a, b) => a.step_order - b.step_order)
