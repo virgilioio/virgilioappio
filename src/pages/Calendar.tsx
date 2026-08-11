@@ -597,7 +597,9 @@ export default function CalendarPage() {
                       {selectedEvent && (
                         <EventPopover
                           event={selectedEvent}
-                          onClose={() => setSelectedEventId(null)}
+                          anchor={popoverAnchor}
+                          containerEl={gridBodyRef.current}
+                          onClose={closePopover}
                           onOpenCandidate={() => {
                             if (selectedEvent.candidateId) {
                               navigate(
