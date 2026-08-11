@@ -665,30 +665,63 @@ export default function CalendarPage() {
 // ─── Event detail popover ────────────────────────────────────
 function EventPopover({
   event,
+  anchor,
+  containerEl,
   onClose,
   onOpenCandidate,
   onJoin,
 }: {
   event: CalEvent
+  anchor: { top: number; left: number; right: number } | null
+  containerEl: HTMLDivElement | null
   onClose: () => void
   onOpenCandidate: () => void
   onJoin: () => void
 }) {
   const meta = TYPE_META[event.type]
+  const cardRef = useRef<HTMLDivElement>(null)
+  const WIDTH = 280
+  const GAP = 8
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useEffect(() => {
+    if (!anchor || !containerEl) {
+      setPos(null)
+      return
+    }
+    const containerW = containerEl.clientWidth
+    const containerH = containerEl.clientHeight
+    const cardH = cardRef.current?.offsetHeight ?? 260
+
+    // Prefer to the right of the event; flip left when it doesn't fit
+    let left = anchor.right + GAP
+    if (left + WIDTH > containerW) left = anchor.left - GAP - WIDTH
+    left = Math.max(GAP, Math.min(left, Math.max(GAP, containerW - WIDTH - GAP)))
+
+    let top = anchor.top
+    if (top + cardH > containerH) top = containerH - cardH - GAP
+    top = Math.max(GAP, top)
+
+    setPos({ top, left })
+  }, [anchor, containerEl, event.id])
+
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
+        ref={cardRef}
         className="absolute z-50 bg-white"
         style={{
-          top: 12,
-          right: 12,
-          width: 280,
+          top: pos?.top ?? anchor?.top ?? 12,
+          left: pos?.left ?? anchor?.right ?? 12,
+          width: WIDTH,
+          visibility: pos ? 'visible' : 'hidden',
           borderRadius: 12,
           border: `1px solid ${C.border}`,
           boxShadow: '0 16px 40px -12px rgba(13,13,9,0.25)',
         }}
       >
+
         <div className="flex items-start justify-between gap-2 px-3.5 pt-3.5">
           <div className="flex min-w-0 items-start gap-2">
             <span
