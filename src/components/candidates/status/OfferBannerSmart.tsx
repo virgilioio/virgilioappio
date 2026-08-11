@@ -6,6 +6,7 @@ import { formatMovedHere } from '../statusBannerUtils';
 import { useOfferLetters } from '@/hooks/useOfferLetters';
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest';
 import { useOfferFormFields } from '@/hooks/useOfferFormFields';
+import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain';
 
 interface OfferBannerSmartProps {
   candidateId: string;
@@ -44,6 +45,20 @@ export function OfferBannerSmart({
   const offerLetter = offerLetters.find((ol) => ol.job_id === jobId);
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined);
   const { approvalRequest } = useOfferApprovalRequest(offerLetter?.id, jobId);
+  const { isEnabled: chainEnabled, steps: configuredSteps } = useOfferApprovalChain(jobId);
+  const noApprovalChain = !chainEnabled || configuredSteps.length === 0;
+
+  const markHiredButton = onMarkHired ? (
+    <Button
+      variant="secondary"
+      size="md"
+      icon={CheckCircle2}
+      onClick={onMarkHired}
+      style={{ backgroundColor: '#fffcf9', color: '#0d0d09', border: 'none' }}
+    >
+      Mark hired
+    </Button>
+  ) : null;
 
   // No offer drafted yet — "Ready to send" state
   if (!offerLetter) {
@@ -56,19 +71,26 @@ export function OfferBannerSmart({
         title="Ready to send an offer"
         sub="The team has aligned. Build the offer once and we'll route approvals automatically."
         actions={
-          <Button
-            variant="secondary"
-            size="md"
-            icon={Plus}
-            onClick={onCreateOffer}
-            style={{
-              backgroundColor: '#fffcf9',
-              color: '#0d0d09',
-              border: 'none',
-            }}
-          >
-            Create offer
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              size="md"
+              icon={Plus}
+              onClick={onCreateOffer}
+              style={
+                noApprovalChain
+                  ? {
+                      backgroundColor: 'rgba(255,252,249,0.12)',
+                      color: '#fffcf9',
+                      border: '1px solid rgba(255,252,249,0.22)',
+                    }
+                  : { backgroundColor: '#fffcf9', color: '#0d0d09', border: 'none' }
+              }
+            >
+              Create offer
+            </Button>
+            {noApprovalChain && markHiredButton}
+          </>
         }
       />
     );
@@ -129,17 +151,7 @@ export function OfferBannerSmart({
                 Send reminder
               </Button>
             )}
-            {onMarkHired && (
-              <Button
-                variant="secondary"
-                size="md"
-                icon={CheckCircle2}
-                onClick={onMarkHired}
-                style={{ backgroundColor: '#fffcf9', color: '#0d0d09', border: 'none' }}
-              >
-                Mark hired
-              </Button>
-            )}
+            {markHiredButton}
           </>
         }
       />
@@ -161,18 +173,21 @@ export function OfferBannerSmart({
           : 'Built from your Offer Form'
       }
       actions={
-        <Button
-          variant="secondary"
-          size="md"
-          onClick={onCreateOffer}
-          style={{
-            backgroundColor: 'rgba(255,252,249,0.12)',
-            color: '#fffcf9',
-            border: '1px solid rgba(255,252,249,0.22)',
-          }}
-        >
-          Open offer
-        </Button>
+        <>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={onCreateOffer}
+            style={{
+              backgroundColor: 'rgba(255,252,249,0.12)',
+              color: '#fffcf9',
+              border: '1px solid rgba(255,252,249,0.22)',
+            }}
+          >
+            Open offer
+          </Button>
+          {noApprovalChain && markHiredButton}
+        </>
       }
     />
   );
