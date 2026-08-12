@@ -4,16 +4,27 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
 import { logActivity } from '@/lib/activityLogger'
+import {
+  ApprovalCondition,
+  ApprovalMode,
+  OfferConditionContext,
+  resolveCondition,
+  deriveRunStatuses,
+  RunStepStatus,
+} from '@/lib/offerApproval'
 
 export interface ApprovalRequestStep {
   id: string
   request_id: string
   approver_user_id: string
   step_order: number
-  status: 'pending' | 'approved' | 'declined' | 'recalled'
+  status: 'pending' | 'approved' | 'declined' | 'recalled' | 'skipped'
   notes: string | null
   decided_at: string | null
   created_at: string
+  condition: ApprovalCondition
+  skip_reason: string | null
+  runStatus: RunStepStatus
   // Enriched fields
   approver_name: string
   approver_email: string | null
@@ -99,11 +110,19 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         }
       }
 
-      const steps: ApprovalRequestStep[] = (stepsData || []).map(step => {
+      const mode: ApprovalMode = (chain?.mode === 'parallel' ? 'parallel' : 'sequential')
+      const withRunStatus = deriveRunStatuses(
+        (stepsData || []).map(s => ({ ...s, status: s.status as string, step_order: s.step_order })),
+        mode
+      )
+
+      const steps: ApprovalRequestStep[] = withRunStatus.map(step => {
         const profile = profilesMap[step.approver_user_id]
         const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
         return {
           ...step,
+          condition: (((step as any).condition || 'always') as ApprovalCondition),
+          skip_reason: ((step as any).skip_reason ?? null) as string | null,
           status: step.status as ApprovalRequestStep['status'],
           approver_name: name || profile?.email || 'Unknown User',
           approver_email: profile?.email || null,
@@ -117,7 +136,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
   })
 
   const requestApprovalMutation = useMutation({
-    mutationFn: async ({ offerId, jId, candidateId }: { offerId: string; jId: string; candidateId: string }) => {
+    mutationFn: async ({ offerId, jId, candidateId, context }: { offerId: string; jId: string; candidateId: string; context?: OfferConditionContext }) => {
       if (!user || !organizationId || !chain || !chain.is_enabled || chain.steps.length === 0) {
         throw new Error('Approval chain not configured or not enabled')
       }
@@ -139,13 +158,26 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
 
       if (reqError) throw reqError
 
-      // Create steps from the chain
-      const stepInserts = chain.steps.map(s => ({
-        request_id: request.id,
-        approver_user_id: s.approver_user_id,
-        step_order: s.step_order,
-        status: 'pending',
-      }))
+      // Snapshot the chain, resolving each condition against this offer ONCE.
+      const stepInserts = chain.steps.map(s => {
+        const { applies, skipReason } = resolveCondition(s.condition, context || {})
+        return {
+          request_id: request.id,
+          approver_user_id: s.approver_user_id,
+          step_order: s.step_order,
+          condition: s.condition || 'always',
+          status: applies ? 'pending' : 'skipped',
+          skip_reason: applies ? null : skipReason,
+        }
+      })
+
+      const firstActive = stepInserts.find(s => s.status === 'pending')
+      if (firstActive) {
+        await supabase
+          .from('offer_approval_requests')
+          .update({ current_step_order: firstActive.step_order })
+          .eq('id', request.id)
+      }
 
       const { error: stepsError } = await supabase
         .from('offer_approval_request_steps')
@@ -205,9 +237,12 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
       const currentStep = approvalRequest.steps.find(s => s.id === stepId)
       if (!currentStep) throw new Error('Step not found')
 
-      const isLastStep = currentStep.step_order >= Math.max(...approvalRequest.steps.map(s => s.step_order))
+      const remaining = approvalRequest.steps
+        .filter(s => s.id !== stepId && s.status === 'pending')
+        .sort((a, b) => a.step_order - b.step_order)
+      const nextStep = remaining[0]
 
-      if (isLastStep) {
+      if (!nextStep) {
         // All approved → finalize
         const { error: reqError } = await supabase
           .from('offer_approval_requests')
@@ -224,7 +259,7 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
         // Advance to next step
         const { error: reqError } = await supabase
           .from('offer_approval_requests')
-          .update({ current_step_order: currentStep.step_order + 1 })
+          .update({ current_step_order: nextStep.step_order })
           .eq('id', approvalRequest.id)
         if (reqError) throw reqError
       }
@@ -375,9 +410,11 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
   })
 
   // Determine if the current user is the active approver
-  const activeStep = approvalRequest?.status === 'pending'
-    ? approvalRequest.steps.find(s => s.step_order === approvalRequest.current_step_order && s.status === 'pending')
-    : null
+  const awaitingSteps = approvalRequest?.status === 'pending'
+    ? approvalRequest.steps.filter(s => s.runStatus === 'awaiting')
+    : []
+  const activeStep =
+    awaitingSteps.find(s => s.approver_user_id === user?.id) || awaitingSteps[0] || null
 
   const isCurrentUserActiveApprover = activeStep?.approver_user_id === user?.id
   const isCurrentUserRequester = approvalRequest?.requested_by === user?.id
@@ -392,10 +429,12 @@ export function useOfferApprovalRequest(offerLetterId?: string, jobId?: string) 
     chainHasSteps: (chain?.steps?.length ?? 0) > 0,
     isActiveRequest,
     activeStep,
+    awaitingSteps,
+    mode: (chain?.mode === 'parallel' ? 'parallel' : 'sequential') as ApprovalMode,
     isCurrentUserActiveApprover,
     isCurrentUserRequester,
-    requestApproval: (offerId: string, jId: string, candidateId: string) =>
-      requestApprovalMutation.mutateAsync({ offerId, jId, candidateId }),
+    requestApproval: (offerId: string, jId: string, candidateId: string, context?: OfferConditionContext) =>
+      requestApprovalMutation.mutateAsync({ offerId, jId, candidateId, context }),
     approveStep: (stepId: string, notes?: string) =>
       approveStepMutation.mutateAsync({ stepId, notes }),
     declineStep: (stepId: string, notes?: string) =>
