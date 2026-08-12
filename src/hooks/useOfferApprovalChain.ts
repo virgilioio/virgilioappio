@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { ApprovalCondition, ApprovalMode, ApprovalRules, normalizeRules } from '@/lib/offerApproval'
 
 export interface ApprovalChainStep {
   id: string
   chain_id: string
   approver_user_id: string
   step_order: number
+  condition: ApprovalCondition
   created_at: string
   approver_name: string
   approver_email: string | null
@@ -19,6 +21,8 @@ export interface ApprovalChain {
   job_id: string
   organization_id: string
   is_enabled: boolean
+  mode: ApprovalMode
+  rules: ApprovalRules
   created_by: string | null
   created_at: string
   updated_at: string
@@ -54,9 +58,15 @@ export function useOfferApprovalChain(jobId: string) {
         .eq('chain_id', chainData.id)
         .order('step_order', { ascending: true })
 
+      const chainBase = {
+        ...(chainData as any),
+        mode: ((chainData as any).mode === 'parallel' ? 'parallel' : 'sequential') as ApprovalMode,
+        rules: normalizeRules((chainData as any).rules),
+      }
+
       if (stepsError) {
         console.error('Error fetching chain steps:', stepsError)
-        return { ...chainData, steps: [] }
+        return { ...chainBase, steps: [] }
       }
 
       // Fetch profiles for approvers
@@ -91,13 +101,14 @@ export function useOfferApprovalChain(jobId: string) {
         const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
         return {
           ...step,
+          condition: (((step as any).condition || 'always') as ApprovalCondition),
           approver_name: name || profile?.email || 'Unknown User',
           approver_email: profile?.email || null,
           approver_role: rolesMap[step.approver_user_id] || null,
         }
       })
 
-      return { ...chainData, steps }
+      return { ...chainBase, steps }
     },
     enabled: !!jobId,
   })
@@ -136,7 +147,7 @@ export function useOfferApprovalChain(jobId: string) {
   })
 
   const addApproverMutation = useMutation({
-    mutationFn: async (approverUserId: string) => {
+    mutationFn: async ({ approverUserId, condition = 'always' as ApprovalCondition }: { approverUserId: string; condition?: ApprovalCondition }) => {
       if (!chain) throw new Error('Chain not found')
 
       const nextOrder = (chain.steps.length > 0
@@ -149,6 +160,7 @@ export function useOfferApprovalChain(jobId: string) {
           chain_id: chain.id,
           approver_user_id: approverUserId,
           step_order: nextOrder,
+          condition,
         })
       if (error) throw error
     },
@@ -236,13 +248,64 @@ export function useOfferApprovalChain(jobId: string) {
     },
   })
 
+  const updateChainMutation = useMutation({
+    mutationFn: async (patch: { mode?: ApprovalMode; rules?: ApprovalRules }) => {
+      if (!organizationId || !user) throw new Error('Missing context')
+      if (chain) {
+        const { error } = await supabase
+          .from('offer_approval_chains')
+          .update({ ...patch, updated_at: new Date().toISOString() } as any)
+          .eq('id', chain.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('offer_approval_chains')
+          .insert({
+            job_id: jobId,
+            organization_id: organizationId,
+            is_enabled: true,
+            created_by: user.id,
+            ...patch,
+          } as any)
+        if (error) throw error
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (error) => {
+      console.error('Update chain error:', error)
+      toast({ title: 'Error', description: 'Failed to update the approval chain', variant: 'destructive' })
+    },
+  })
+
+  const setStepConditionMutation = useMutation({
+    mutationFn: async ({ stepId, condition }: { stepId: string; condition: ApprovalCondition }) => {
+      const { error } = await supabase
+        .from('offer_approval_chain_steps')
+        .update({ condition } as any)
+        .eq('id', stepId)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (error) => {
+      console.error('Set condition error:', error)
+      toast({ title: 'Error', description: 'Failed to update the condition', variant: 'destructive' })
+    },
+  })
+
   return {
     chain,
     isLoading,
     isEnabled: chain?.is_enabled ?? false,
     steps: chain?.steps ?? [],
     toggleChain: (enabled: boolean) => toggleChainMutation.mutate(enabled),
-    addApprover: (userId: string) => addApproverMutation.mutate(userId),
+    mode: (chain?.mode ?? 'sequential') as ApprovalMode,
+    rules: normalizeRules(chain?.rules),
+    addApprover: (userId: string, condition: ApprovalCondition = 'always') =>
+      addApproverMutation.mutate({ approverUserId: userId, condition }),
+    setMode: (mode: ApprovalMode) => updateChainMutation.mutate({ mode }),
+    setRules: (rules: ApprovalRules) => updateChainMutation.mutate({ rules }),
+    setStepCondition: (stepId: string, condition: ApprovalCondition) =>
+      setStepConditionMutation.mutate({ stepId, condition }),
     removeApprover: (stepId: string) => removeApproverMutation.mutate(stepId),
     reorderSteps: (orderedIds: string[]) => reorderStepsMutation.mutate(orderedIds),
     isToggling: toggleChainMutation.isPending,
