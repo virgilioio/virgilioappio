@@ -249,7 +249,7 @@ export function CandidateOfferApprovals({
           index: i + 1,
           runStatus: s.runStatus,
           name: s.approver_name,
-          title: s.approver_role_label || null,
+          title: s.approver_role || null,
           decidedAt: s.decided_at,
           notes: s.notes,
           skipReason: s.skip_reason,
