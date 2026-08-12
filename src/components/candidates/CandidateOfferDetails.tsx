@@ -241,7 +241,26 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
               <Button
                 variant="purple"
                 icon={Send}
-                onClick={() => requestApproval(offerLetter.id, jobId, candidateId)}
+                onClick={() => {
+                  // Resolve approver conditions against THIS offer (snapshot).
+                  const fv: Record<string, any> = offerLetter.field_values || {}
+                  const salaryField = fields.find(f => f.field_type === 'salary')
+                  const rawSalary = salaryField ? fv[salaryField.field_name] : undefined
+                  let parsed: any = rawSalary
+                  if (typeof rawSalary === 'string') {
+                    try { parsed = JSON.parse(rawSalary) } catch { parsed = rawSalary }
+                  }
+                  const amount = Number(parsed?.amount ?? parsed)
+                  const hasEquity = Object.entries(fv).some(([k, v]) =>
+                    /equity|option|rsu/i.test(k) && !!v && v !== '0' && v !== 0
+                  )
+                  requestApproval(offerLetter.id, jobId, candidateId, {
+                    baseSalary: Number.isFinite(amount) ? amount : null,
+                    postedMax: (job as any)?.salary_max ?? null,
+                    hasEquity,
+                    jobLevel: (job as any)?.job_level ?? null,
+                  })
+                }}
                 loading={isRequesting}
               >
                 Request Approval

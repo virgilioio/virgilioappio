@@ -1,12 +1,10 @@
-import { Hourglass, Plus, Bell, CheckCircle2 } from 'lucide-react';
+import { Hourglass, Plus, Bell, CheckCircle2, Lock } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { StatusBanner } from './StatusBanner';
 import { formatMovedHere } from '../statusBannerUtils';
-import { useOfferLetters } from '@/hooks/useOfferLetters';
-import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest';
 import { useOfferFormFields } from '@/hooks/useOfferFormFields';
-import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain';
+import { useOfferApprovalSummary } from '@/hooks/useOfferApprovalSummary';
 
 interface OfferBannerSmartProps {
   candidateId: string;
@@ -41,20 +39,32 @@ export function OfferBannerSmart({
   onSendReminder,
   onMarkHired,
 }: OfferBannerSmartProps) {
-  const { offerLetters } = useOfferLetters(candidateId);
-  const offerLetter = offerLetters.find((ol) => ol.job_id === jobId);
+  const summary = useOfferApprovalSummary(candidateId, jobId);
+  const offerLetter = summary.offerLetter;
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined);
-  const { approvalRequest } = useOfferApprovalRequest(offerLetter?.id, jobId);
-  const { isEnabled: chainEnabled, steps: configuredSteps } = useOfferApprovalChain(jobId);
-  const noApprovalChain = !chainEnabled || configuredSteps.length === 0;
+  const noApprovalChain = !summary.chainConfigured;
+  const canMarkHired = summary.canMarkHired;
+  const gated = summary.gated;
 
   const markHiredButton = onMarkHired ? (
     <Button
       variant="secondary"
       size="md"
-      icon={CheckCircle2}
-      onClick={onMarkHired}
-      style={{ backgroundColor: '#fffcf9', color: '#0d0d09', border: 'none' }}
+      icon={canMarkHired ? CheckCircle2 : Lock}
+      onClick={canMarkHired ? onMarkHired : undefined}
+      disabled={!canMarkHired}
+      style={
+        canMarkHired
+          ? { backgroundColor: '#fffcf9', color: '#0d0d09', border: 'none' }
+          : {
+              backgroundColor: '#fffcf9',
+              color: '#0d0d09',
+              border: 'none',
+              opacity: 0.45,
+              cursor: 'not-allowed',
+              boxShadow: 'none',
+            }
+      }
     >
       Mark hired
     </Button>
@@ -110,21 +120,22 @@ export function OfferBannerSmart({
   }
 
   // Approval progress
-  const steps = approvalRequest?.steps || [];
-  const approvedCount = steps.filter((s) => s.status === 'approved').length;
-  const totalSteps = steps.length;
+  const approvedCount = summary.approved;
+  const totalSteps = summary.total;
   const allApproved = totalSteps > 0 && approvedCount === totalSteps;
 
   if (isSent) {
     const metaParts: string[] = [];
     if (sentDays != null) metaParts.push(sentDays === 0 ? 'Sent today' : `Sent ${sentDays}d ago`);
-    if (allApproved) metaParts.push('all approvals in');
-    else if (totalSteps > 0) metaParts.push(`${approvedCount}/${totalSteps} approvals`);
+    if (noApprovalChain) metaParts.push('no approval needed');
+    else if (allApproved) metaParts.push('all approvals in');
+    else metaParts.push(`${approvedCount}/${totalSteps} approvals`);
 
     const subParts: string[] = [];
     if (compFragments.length) subParts.push(compFragments.join(' · '));
     subParts.push('built from your Offer Form');
-    if (totalSteps > 0) subParts.push(`approved ${approvedCount} of ${totalSteps}`);
+    if (noApprovalChain) subParts.push('this job has no approval chain');
+    else subParts.push(`approved ${approvedCount} of ${totalSteps}`);
 
     return (
       <StatusBanner
@@ -160,17 +171,32 @@ export function OfferBannerSmart({
 
   // Draft / pending approval
   const isPending = offerLetter.status === 'pending_approval';
+  const compSub = compFragments.length
+    ? `${compFragments.join(' · ')} · built from your Offer Form`
+    : 'Built from your Offer Form';
   return (
     <StatusBanner
       tone="offer"
       icon={Hourglass}
-      eyebrow="Offer"
-      meta={isPending ? `In approval · ${approvedCount}/${totalSteps}` : 'Draft'}
-      title={isPending ? 'Awaiting internal approvals' : 'Offer drafted — review and submit'}
+      eyebrow={gated ? 'Offer · pending approval' : 'Offer'}
+      meta={
+        gated
+          ? `Requested ${summary.approvalRequest?.created_at ? formatMovedHere(summary.approvalRequest.created_at) : 'recently'} · ${approvedCount} of ${totalSteps} approvals in`
+          : isPending
+            ? `In approval · ${approvedCount}/${totalSteps}`
+            : 'Draft'
+      }
+      title={
+        gated
+          ? `Offer is drafted — waiting on ${summary.waitingOnName || 'an approver'}`
+          : isPending
+            ? 'Awaiting internal approvals'
+            : 'Offer drafted — review and submit'
+      }
       sub={
-        compFragments.length
-          ? `${compFragments.join(' · ')} · built from your Offer Form`
-          : 'Built from your Offer Form'
+        gated
+          ? `${compSub} · it can't go out until this job's approval chain clears`
+          : compSub
       }
       actions={
         <>
@@ -186,7 +212,7 @@ export function OfferBannerSmart({
           >
             Open offer
           </Button>
-          {noApprovalChain && markHiredButton}
+          {markHiredButton}
         </>
       }
     />

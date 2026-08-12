@@ -17,7 +17,10 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus,
+  ListChecks,
+
+} from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -72,6 +75,7 @@ import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBooki
 import { RejectionDialog } from './RejectionDialog'
 import { StatusBanner } from './status/StatusBanner'
 import { OfferBannerSmart } from './status/OfferBannerSmart'
+import { useOfferApprovalSummary } from '@/hooks/useOfferApprovalSummary'
 import { HiredBannerSmart } from './status/HiredBannerSmart'
 import { RejectionDetailsTab } from './status/RejectionDetailsTab'
 import { OnboardingTab } from './status/OnboardingTab'
@@ -209,6 +213,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     offeredAt: string | null;
     offeredByName: string | null;
   } | null>(null)
+  // Single source of truth for the offer approval run + canMarkHired
+  const offerApproval = useOfferApprovalSummary(candidateId, jobId)
   const [hiredDetails, setHiredDetails] = useState<{
     hiredAt: string | null;
     hiredByName: string | null;
@@ -1858,15 +1864,21 @@ const stageHasAutomation = useMemo(() => {
                             className="h-8 px-3 rounded-[8px] font-inter font-semibold data-[state=active]:bg-white data-[state=active]:text-[#0d0d09] data-[state=active]:shadow-[0_1px_2px_rgba(13,13,9,0.08)] text-[#5A6072]"
                             style={{ fontSize: 12 }}
                           >
-                            <CheckCircle2 className="h-3 w-3 mr-1.5" />
-                            Offer approvals
+                            {offerApproval.chainConfigured ? (
+                              <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                            ) : (
+                              <ListChecks className="h-3 w-3 mr-1.5" />
+                            )}
+                            {offerApproval.chainConfigured
+                              ? `Offer approvals · ${offerApproval.approved} of ${offerApproval.total}`
+                              : 'Offer approvals · not required'}
                           </TabsTrigger>
                         </TabsList>
                         <TabsContent value="offer-details" className="mt-4">
                           <CandidateOfferDetails candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidate={candidate} job={job} associationStatus={associationStatus} onEdit={(offer) => { setEditingOffer(offer); setOfferFormOpen(true) }} />
                         </TabsContent>
                         <TabsContent value="offer-approvals" className="mt-4">
-                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} />
+                          <CandidateOfferApprovals candidateId={candidateId} jobId={jobId} organizationId={organizationId} candidateFirstName={candidate?.candidate_name?.split(' ')[0]} jobTitle={(job as any)?.title || undefined} />
                         </TabsContent>
                       </Tabs>
                     )}
@@ -1923,6 +1935,17 @@ const stageHasAutomation = useMemo(() => {
                                 isOfferStatus
                                 isRejected={false}
                                 isHired={false}
+                                onMarkHired={() => handleSetStatus('hired')}
+                                canMarkHired={offerApproval.canMarkHired}
+                                markHiredHelper={
+                                  offerApproval.gated
+                                    ? `Hiring unlocks once ${offerApproval.waitingOnName || 'the approver'} approves.`
+                                    : offerApproval.chainConfigured
+                                      ? 'Amending re-runs the approval chain.'
+                                      : `No approval chain on this job — amendments go straight to ${candidate?.first_name || 'the candidate'}.`
+                                }
+                                canOverride={offerApproval.gated && offerApproval.rules.adminOverride}
+                                onOverrideRelease={() => handleSetStatus('hired')}
                               />
                               <OfferTimelineCard
                                 candidateId={candidateId}
