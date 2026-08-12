@@ -4581,6 +4581,7 @@ export type Database = {
         Row: {
           approver_user_id: string
           chain_id: string
+          condition: string
           created_at: string
           id: string
           step_order: number
@@ -4588,6 +4589,7 @@ export type Database = {
         Insert: {
           approver_user_id: string
           chain_id: string
+          condition?: string
           created_at?: string
           id?: string
           step_order: number
@@ -4595,6 +4597,7 @@ export type Database = {
         Update: {
           approver_user_id?: string
           chain_id?: string
+          condition?: string
           created_at?: string
           id?: string
           step_order?: number
@@ -4616,7 +4619,9 @@ export type Database = {
           id: string
           is_enabled: boolean
           job_id: string
+          mode: string
           organization_id: string
+          rules: Json
           updated_at: string
         }
         Insert: {
@@ -4625,7 +4630,9 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           job_id: string
+          mode?: string
           organization_id: string
+          rules?: Json
           updated_at?: string
         }
         Update: {
@@ -4634,7 +4641,9 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           job_id?: string
+          mode?: string
           organization_id?: string
+          rules?: Json
           updated_at?: string
         }
         Relationships: [
@@ -4657,31 +4666,37 @@ export type Database = {
       offer_approval_request_steps: {
         Row: {
           approver_user_id: string
+          condition: string
           created_at: string
           decided_at: string | null
           id: string
           notes: string | null
           request_id: string
+          skip_reason: string | null
           status: string
           step_order: number
         }
         Insert: {
           approver_user_id: string
+          condition?: string
           created_at?: string
           decided_at?: string | null
           id?: string
           notes?: string | null
           request_id: string
+          skip_reason?: string | null
           status?: string
           step_order: number
         }
         Update: {
           approver_user_id?: string
+          condition?: string
           created_at?: string
           decided_at?: string | null
           id?: string
           notes?: string | null
           request_id?: string
+          skip_reason?: string | null
           status?: string
           step_order?: number
         }
