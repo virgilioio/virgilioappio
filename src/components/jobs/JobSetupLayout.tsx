@@ -43,6 +43,7 @@ import { useToast } from '@/hooks/use-toast'
 import { SectionCard, ToggleRow } from './wizard/_parts'
 import { HiringPlanTab } from './HiringPlanTab'
 import { usePermissions } from '@/hooks/usePermissions'
+import { OfferApprovalChainConfig } from './OfferApprovalChainConfig'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { useJobs } from '@/hooks/useJobs'
@@ -77,12 +78,14 @@ type SectionId =
   | 'auto-rejection'
   | 'ai-screen'
   | 'hiring-team'
+  | 'offer-approval'
   | 'notifications'
   | 'danger'
 
 const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hiring-plan', label: 'Hiring plan', icon: GitBranch },
   { id: 'hiring-team', label: 'Hiring team', icon: Users },
+  { id: 'offer-approval', label: 'Offer approval', icon: ListChecks },
 ]
 
 const NAV_QUICK = [
@@ -571,6 +574,11 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
               </section>
             </div>
 
+
+            {/* Offer approval */}
+            <div data-section="offer-approval" className="pt-2">
+              <OfferApprovalChainConfig jobId={jobId} jobTitle={jobTitle} />
+            </div>
 
             {/* Notifications */}
             <div data-section="notifications">
