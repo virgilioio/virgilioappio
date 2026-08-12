@@ -23,6 +23,7 @@ import {
   Star,
   Crown,
   User as UserIcon,
+  ListChecks,
 } from 'lucide-react'
 
 import { formatDistanceToNowStrict } from 'date-fns'
