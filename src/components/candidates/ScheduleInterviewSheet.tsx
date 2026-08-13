@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Briefcase,
   CheckCircle2,
+  Layers,
   Mail,
   MapPin,
   Paperclip,
@@ -29,7 +30,15 @@ import {
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
-import { DraggableFreeRow } from './DraggableFreeRow';
+import {
+  AvailabilityStrip,
+  computeFreeWindows,
+  findOverlaps,
+  minutesToLabel,
+  DAY_END_HOUR,
+  DAY_START_HOUR,
+  type StripPanelist,
+} from './AvailabilityStrip';
 import { useCustomerMembers, type Member } from '@/hooks/useCustomerMembers';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
@@ -816,6 +825,73 @@ export function ScheduleInterviewSheet({
     );
   }, [selectedDate, availabilityData]);
 
+  /* ---------- WHEN section: strip geometry + overlap awareness ---------- */
+  const stripPanelists: StripPanelist[] = useMemo(
+    () =>
+      displayedPanelists.map((p) => ({
+        id: p.id,
+        name: fullName(p),
+        avatarUrl: p.profiles?.avatar_url,
+        initials: initials(p),
+        busy: (availabilityData?.busy_events || []) as {
+          start: string;
+          end: string;
+          title?: string;
+        }[],
+      })),
+    [displayedPanelists, availabilityData],
+  );
+
+  const panelFreeWindows = useMemo(
+    () => computeFreeWindows(stripPanelists, selectedDate),
+    [stripPanelists, selectedDate],
+  );
+
+  const selectedStartMin = useMemo(() => {
+    if (!selectedSlot || !selectedDate) return null;
+    const d = parseISO(selectedSlot.start);
+    if (!isSameDay(d, selectedDate)) return null;
+    return d.getHours() * 60 + d.getMinutes();
+  }, [selectedSlot, selectedDate]);
+
+  const setSelectionFrom = (startMin: number, duration = selectedDuration) => {
+    if (!selectedDate) return;
+    const clamped = Math.min(
+      Math.max(startMin, DAY_START_HOUR * 60),
+      DAY_END_HOUR * 60 - duration,
+    );
+    const start = new Date(selectedDate);
+    start.setHours(Math.floor(clamped / 60), clamped % 60, 0, 0);
+    const end = new Date(start.getTime() + duration * 60 * 1000);
+    setSelectedSlot({ start: start.toISOString(), end: end.toISOString() });
+  };
+
+  const handleDurationChange = (d: number) => {
+    setSelectedDuration(d);
+    if (selectedStartMin !== null) setSelectionFrom(selectedStartMin, d);
+  };
+
+  const overlaps = useMemo(() => {
+    if (selectedStartMin === null) return [];
+    return findOverlaps(
+      stripPanelists,
+      selectedDate,
+      selectedStartMin,
+      selectedStartMin + selectedDuration,
+    );
+  }, [stripPanelists, selectedDate, selectedStartMin, selectedDuration]);
+
+  const overlapNote = overlaps.length
+    ? `Overlaps ${overlaps.map((o) => `${o.name}'s ${o.title}`).join(' and ')}`
+    : null;
+
+  const jumpToFreeSlot = () => {
+    const fit = panelFreeWindows.find((w) => w.endMin - w.startMin >= selectedDuration);
+    if (fit) setSelectionFrom(fit.startMin);
+  };
+
+
+
   useEffect(() => {
     if (selectedDate && selectedDate.getMonth() !== currentMonth.getMonth()) {
       setCurrentMonth(startOfMonth(selectedDate));
@@ -950,7 +1026,10 @@ export function ScheduleInterviewSheet({
         new Date(selectedSlot.start).getTime() + selectedDuration * 60 * 1000,
       ).toISOString(),
       duration_minutes: selectedDuration,
-      notes: inviteMessage || formData.notes || null,
+      notes:
+        [inviteMessage || formData.notes || '', overlapNote || '']
+          .filter(Boolean)
+          .join('\n\n') || null,
       job_id: jobId,
       candidate_id: candidateId,
       job_candidate_association_id: associationId,
@@ -1150,101 +1229,96 @@ export function ScheduleInterviewSheet({
                     </div>
                   </div>
 
-                  <div className="bg-[#FAFAF7] rounded-xl p-4 space-y-3">
-                    <div className="relative h-4 ml-[140px]">
-                      {[9, 11, 13, 15, 17].map((h) => {
-                        const left = ((h - 9) / 8) * 100;
-                        return (
-                          <span
-                            key={h}
-                            className="absolute -translate-x-1/2 text-[10px] font-inter text-virgilio-muted"
-                            style={{ left: `${left}%` }}
-                          >
-                            {h > 12 ? `${h - 12}pm` : h === 12 ? '12pm' : `${h}am`}
-                          </span>
-                        );
-                      })}
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-form-label text-virgilio-muted">Pick a time</Label>
+                    <AvailabilityStrip
+                      date={selectedDate}
+                      panelists={stripPanelists}
+                      durationMinutes={selectedDuration}
+                      selectedStartMin={selectedStartMin}
+                      onSelectStartMin={(m) => setSelectionFrom(m)}
+                      onDurationChange={handleDurationChange}
+                      isLoading={isLoadingAvailability}
+                    />
+                    <p className="text-body-xs text-virgilio-muted">
+                      {panelFreeWindows.length} window
+                      {panelFreeWindows.length === 1 ? '' : 's'} where the whole panel is free — but
+                      you can book any time, including over a hold.
+                    </p>
 
-                    {displayedPanelists.map((p) => {
-                      const bars = busyBarsForPanelist(
-                        availabilityData?.busy_events || [],
-                        selectedDate,
-                      );
-                      return (
-                        <div key={p.id} className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 w-[140px] min-w-[140px]">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={p.profiles?.avatar_url || undefined} />
-                              <AvatarFallback className="text-[10px]">
-                                {initials(p)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-[12px] font-inter text-virgilio-text truncate">
-                              {p.profiles?.first_name || 'Unknown'}
+                    {/* Overlap notice — informational only, never gates submit */}
+                    <div
+                      className="flex items-center gap-2 rounded-[9px] border"
+                      style={{
+                        padding: '9px 12px',
+                        background: overlaps.length ? '#FFFBEB' : '#F6F2FF',
+                        borderColor: overlaps.length ? '#FDE68A' : '#EDE4FF',
+                      }}
+                    >
+                      {overlaps.length ? (
+                        <Layers className="h-3.5 w-3.5 shrink-0" style={{ color: '#B45309' }} />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: '#6F3FF5' }} />
+                      )}
+                      <p
+                        className="text-[11.5px] font-inter min-w-0 flex-1"
+                        style={{ color: overlaps.length ? '#92400E' : '#5B2FD1' }}
+                      >
+                        {selectedSlot && selectedDate && selectedStartMin !== null ? (
+                          <>
+                            <span className="font-semibold">
+                              {minutesToLabel(selectedDate, selectedStartMin)} –{' '}
+                              {minutesToLabel(selectedDate, selectedStartMin + selectedDuration)}
                             </span>
-                          </div>
-                          <div
-                            className="relative h-6 flex-1 rounded-md bg-white border border-virgilio-border/60 overflow-hidden"
-                            style={{
-                              backgroundImage:
-                                'repeating-linear-gradient(to right, transparent 0, transparent calc(12.5% - 1px), hsl(var(--border) / 0.5) calc(12.5% - 1px), hsl(var(--border) / 0.5) 12.5%)',
-                            }}
-                          >
-                            {bars.map((b) => (
-                              <div
-                                key={b.key}
-                                className="absolute top-0 bottom-0 bg-virgilio-muted/30 rounded-sm"
-                                style={{ left: `${b.left}%`, width: `${b.width}%` }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    <div className="flex items-center gap-3 pt-2 border-t border-virgilio-border/60">
-                      <div className="flex items-center gap-2 w-[140px] min-w-[140px]">
-                        <span className="text-[10.5px] font-inter font-semibold uppercase tracking-[0.08em] text-virgilio-purple">
-                          FREE
-                        </span>
-                      </div>
-                      <DraggableFreeRow
-                        slots={timeSlotsForSelectedDate}
-                        selectedSlot={selectedSlot}
-                        onSelect={setSelectedSlot}
-                        durationMinutes={selectedDuration}
-                        isLoading={isLoadingAvailability}
-                      />
-
+                            {overlaps.length ? (
+                              <>
+                                {' '}
+                                · overlaps{' '}
+                                {overlaps.map((o) => `${o.name}'s ${o.title}`).join(' and ')}. You
+                                can still book it — Gio flags the overlap in the invite.
+                              </>
+                            ) : (
+                              <> · everyone on the panel is free.</>
+                            )}
+                          </>
+                        ) : (
+                          'Click anywhere on the strip to place the interview.'
+                        )}
+                      </p>
+                      {overlaps.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={jumpToFreeSlot}
+                          className="shrink-0 bg-white rounded-[7px] px-2 text-[11px] font-inter font-medium"
+                          style={{ height: 24, border: '1px solid #FDE68A', color: '#92400E' }}
+                        >
+                          Use a free slot
+                        </button>
+                      )}
                     </div>
                   </div>
 
 
-                  <p className="text-body-xs text-virgilio-muted">
-                    Found {timeSlotsForSelectedDate.length} slot
-                    {timeSlotsForSelectedDate.length === 1 ? '' : 's'} that work for everyone.
-                  </p>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-virgilio-border/70">
                     <div className="space-y-1.5">
                       <Label className="text-form-label text-virgilio-muted">Duration</Label>
-                      <div className="inline-flex items-center bg-[#FAFAF7] border border-virgilio-border rounded-lg p-0.5">
-                        {[30, 45, 60, 90].map((d) => {
+                      <div
+                        className="flex items-center rounded-lg bg-[#F1F0EC]"
+                        style={{ gap: 2, padding: 2 }}
+                      >
+                        {[15, 30, 45, 60, 90].map((d) => {
                           const active = selectedDuration === d;
                           return (
                             <button
                               key={d}
                               type="button"
-                              onClick={() => {
-                                setSelectedDuration(d);
-                                setSelectedSlot(null);
-                              }}
+                              onClick={() => handleDurationChange(d)}
+                              style={{ flex: 1, minWidth: 0 }}
                               className={cn(
-                                'h-7 px-3 rounded-md text-[12px] font-poppins font-medium transition-colors',
+                                'h-7 rounded-md text-[12px] font-poppins transition-colors',
                                 active
-                                  ? 'bg-white text-virgilio-text shadow-sm'
-                                  : 'text-virgilio-muted hover:text-virgilio-text',
+                                  ? 'bg-white font-semibold text-[#1F2230] shadow-[0_1px_2px_rgba(13,13,9,0.06)]'
+                                  : 'bg-transparent font-medium text-[#5A6072] hover:text-[#1F2230]',
                               )}
                             >
                               {d}m
