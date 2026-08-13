@@ -1225,81 +1225,75 @@ export function ScheduleInterviewSheet({
                     </div>
                   </div>
 
-                  <div className="bg-[#FAFAF7] rounded-xl p-4 space-y-3">
-                    <div className="relative h-4 ml-[140px]">
-                      {[9, 11, 13, 15, 17].map((h) => {
-                        const left = ((h - 9) / 8) * 100;
-                        return (
-                          <span
-                            key={h}
-                            className="absolute -translate-x-1/2 text-[10px] font-inter text-virgilio-muted"
-                            style={{ left: `${left}%` }}
-                          >
-                            {h > 12 ? `${h - 12}pm` : h === 12 ? '12pm' : `${h}am`}
-                          </span>
-                        );
-                      })}
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-form-label text-virgilio-muted">Pick a time</Label>
+                    <AvailabilityStrip
+                      date={selectedDate}
+                      panelists={stripPanelists}
+                      durationMinutes={selectedDuration}
+                      selectedStartMin={selectedStartMin}
+                      onSelectStartMin={(m) => setSelectionFrom(m)}
+                      onDurationChange={handleDurationChange}
+                      isLoading={isLoadingAvailability}
+                    />
+                    <p className="text-body-xs text-virgilio-muted">
+                      {panelFreeWindows.length} window
+                      {panelFreeWindows.length === 1 ? '' : 's'} where the whole panel is free — but
+                      you can book any time, including over a hold.
+                    </p>
 
-                    {displayedPanelists.map((p) => {
-                      const bars = busyBarsForPanelist(
-                        availabilityData?.busy_events || [],
-                        selectedDate,
-                      );
-                      return (
-                        <div key={p.id} className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 w-[140px] min-w-[140px]">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={p.profiles?.avatar_url || undefined} />
-                              <AvatarFallback className="text-[10px]">
-                                {initials(p)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-[12px] font-inter text-virgilio-text truncate">
-                              {p.profiles?.first_name || 'Unknown'}
+                    {/* Overlap notice — informational only, never gates submit */}
+                    <div
+                      className="flex items-center gap-2 rounded-[9px] border"
+                      style={{
+                        padding: '9px 12px',
+                        background: overlaps.length ? '#FFFBEB' : '#F6F2FF',
+                        borderColor: overlaps.length ? '#FDE68A' : '#EDE4FF',
+                      }}
+                    >
+                      {overlaps.length ? (
+                        <Layers className="h-3.5 w-3.5 shrink-0" style={{ color: '#B45309' }} />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: '#6F3FF5' }} />
+                      )}
+                      <p
+                        className="text-[11.5px] font-inter min-w-0 flex-1"
+                        style={{ color: overlaps.length ? '#92400E' : '#5B2FD1' }}
+                      >
+                        {selectedSlot && selectedDate && selectedStartMin !== null ? (
+                          <>
+                            <span className="font-semibold">
+                              {minutesToLabel(selectedDate, selectedStartMin)} –{' '}
+                              {minutesToLabel(selectedDate, selectedStartMin + selectedDuration)}
                             </span>
-                          </div>
-                          <div
-                            className="relative h-6 flex-1 rounded-md bg-white border border-virgilio-border/60 overflow-hidden"
-                            style={{
-                              backgroundImage:
-                                'repeating-linear-gradient(to right, transparent 0, transparent calc(12.5% - 1px), hsl(var(--border) / 0.5) calc(12.5% - 1px), hsl(var(--border) / 0.5) 12.5%)',
-                            }}
-                          >
-                            {bars.map((b) => (
-                              <div
-                                key={b.key}
-                                className="absolute top-0 bottom-0 bg-virgilio-muted/30 rounded-sm"
-                                style={{ left: `${b.left}%`, width: `${b.width}%` }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    <div className="flex items-center gap-3 pt-2 border-t border-virgilio-border/60">
-                      <div className="flex items-center gap-2 w-[140px] min-w-[140px]">
-                        <span className="text-[10.5px] font-inter font-semibold uppercase tracking-[0.08em] text-virgilio-purple">
-                          FREE
-                        </span>
-                      </div>
-                      <DraggableFreeRow
-                        slots={timeSlotsForSelectedDate}
-                        selectedSlot={selectedSlot}
-                        onSelect={setSelectedSlot}
-                        durationMinutes={selectedDuration}
-                        isLoading={isLoadingAvailability}
-                      />
-
+                            {overlaps.length ? (
+                              <>
+                                {' '}
+                                · overlaps{' '}
+                                {overlaps.map((o) => `${o.name}'s ${o.title}`).join(' and ')}. You
+                                can still book it — Gio flags the overlap in the invite.
+                              </>
+                            ) : (
+                              <> · everyone on the panel is free.</>
+                            )}
+                          </>
+                        ) : (
+                          'Click anywhere on the strip to place the interview.'
+                        )}
+                      </p>
+                      {overlaps.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={jumpToFreeSlot}
+                          className="shrink-0 bg-white rounded-[7px] px-2 text-[11px] font-inter font-medium"
+                          style={{ height: 24, border: '1px solid #FDE68A', color: '#92400E' }}
+                        >
+                          Use a free slot
+                        </button>
+                      )}
                     </div>
                   </div>
 
-
-                  <p className="text-body-xs text-virgilio-muted">
-                    Found {timeSlotsForSelectedDate.length} slot
-                    {timeSlotsForSelectedDate.length === 1 ? '' : 's'} that work for everyone.
-                  </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-virgilio-border/70">
                     <div className="space-y-1.5">
