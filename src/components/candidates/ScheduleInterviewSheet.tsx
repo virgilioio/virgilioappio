@@ -29,7 +29,15 @@ import {
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
-import { DraggableFreeRow } from './DraggableFreeRow';
+import {
+  AvailabilityStrip,
+  computeFreeWindows,
+  findOverlaps,
+  minutesToLabel,
+  DAY_END_HOUR,
+  DAY_START_HOUR,
+  type StripPanelist,
+} from './AvailabilityStrip';
 import { useCustomerMembers, type Member } from '@/hooks/useCustomerMembers';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio';
