@@ -144,6 +144,47 @@ function Gridlines() {
   );
 }
 
+/** Lane row — declared at module scope so lanes never remount mid-gesture. */
+function Row({
+  label,
+  children,
+  className,
+  trackRef,
+  trackClassName,
+  trackStyle,
+  onTrackPointerDown,
+}: {
+  label: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+  trackRef?: React.Ref<HTMLDivElement>;
+  trackClassName?: string;
+  trackStyle?: React.CSSProperties;
+  onTrackPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <div
+      className={cn('grid items-center', className)}
+      style={{ gridTemplateColumns: '64px minmax(0, 1fr)' }}
+    >
+      <div className="min-w-0 pr-1">{label}</div>
+      <div
+        ref={trackRef}
+        onPointerDown={onTrackPointerDown}
+        className={cn(
+          'relative my-1 mx-1.5 rounded-[3px] cursor-pointer overflow-hidden',
+          trackClassName,
+        )}
+        style={trackStyle}
+      >
+        <Gridlines />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
 interface Props {
   date: Date | null;
   panelists: StripPanelist[];
