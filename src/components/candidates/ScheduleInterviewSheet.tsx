@@ -824,6 +824,73 @@ export function ScheduleInterviewSheet({
     );
   }, [selectedDate, availabilityData]);
 
+  /* ---------- WHEN section: strip geometry + overlap awareness ---------- */
+  const stripPanelists: StripPanelist[] = useMemo(
+    () =>
+      displayedPanelists.map((p) => ({
+        id: p.id,
+        name: fullName(p),
+        avatarUrl: p.profiles?.avatar_url,
+        initials: initials(p),
+        busy: (availabilityData?.busy_events || []) as {
+          start: string;
+          end: string;
+          title?: string;
+        }[],
+      })),
+    [displayedPanelists, availabilityData],
+  );
+
+  const panelFreeWindows = useMemo(
+    () => computeFreeWindows(stripPanelists, selectedDate),
+    [stripPanelists, selectedDate],
+  );
+
+  const selectedStartMin = useMemo(() => {
+    if (!selectedSlot || !selectedDate) return null;
+    const d = parseISO(selectedSlot.start);
+    if (!isSameDay(d, selectedDate)) return null;
+    return d.getHours() * 60 + d.getMinutes();
+  }, [selectedSlot, selectedDate]);
+
+  const setSelectionFrom = (startMin: number, duration = selectedDuration) => {
+    if (!selectedDate) return;
+    const clamped = Math.min(
+      Math.max(startMin, DAY_START_HOUR * 60),
+      DAY_END_HOUR * 60 - duration,
+    );
+    const start = new Date(selectedDate);
+    start.setHours(Math.floor(clamped / 60), clamped % 60, 0, 0);
+    const end = new Date(start.getTime() + duration * 60 * 1000);
+    setSelectedSlot({ start: start.toISOString(), end: end.toISOString() });
+  };
+
+  const handleDurationChange = (d: number) => {
+    setSelectedDuration(d);
+    if (selectedStartMin !== null) setSelectionFrom(selectedStartMin, d);
+  };
+
+  const overlaps = useMemo(() => {
+    if (selectedStartMin === null) return [];
+    return findOverlaps(
+      stripPanelists,
+      selectedDate,
+      selectedStartMin,
+      selectedStartMin + selectedDuration,
+    );
+  }, [stripPanelists, selectedDate, selectedStartMin, selectedDuration]);
+
+  const overlapNote = overlaps.length
+    ? `Overlaps ${overlaps.map((o) => `${o.name}'s ${o.title}`).join(' and ')}`
+    : null;
+
+  const jumpToFreeSlot = () => {
+    const fit = panelFreeWindows.find((w) => w.endMin - w.startMin >= selectedDuration);
+    if (fit) setSelectionFrom(fit.startMin);
+  };
+
+
+
   useEffect(() => {
     if (selectedDate && selectedDate.getMonth() !== currentMonth.getMonth()) {
       setCurrentMonth(startOfMonth(selectedDate));
