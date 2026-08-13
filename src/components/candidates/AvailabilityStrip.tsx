@@ -338,6 +338,7 @@ export function AvailabilityStrip({
           <Row
             label={<span className="text-[10px] font-inter text-[#8B8F9E]">—</span>}
             trackClassName="h-6 bg-[#FAFAF7] border border-[#E7E8EE]"
+            onTrackPointerDown={handleTrackPointerDown}
           />
         ) : (
           panelists.map((p) => (
@@ -355,6 +356,7 @@ export function AvailabilityStrip({
                 </div>
               }
               trackClassName="h-6 bg-white border border-[#E7E8EE]"
+              onTrackPointerDown={handleTrackPointerDown}
             >
               {isLoading ? (
                 <Skeleton className="absolute inset-0" />
@@ -387,6 +389,7 @@ export function AvailabilityStrip({
           }
           trackRef={bookTrackRef}
           trackClassName="h-7 bg-[#FAF8FF] border border-[#EDE4FF]"
+          onTrackPointerDown={handleTrackPointerDown}
         >
           {isLoading ? (
             <Skeleton className="absolute inset-0" />
