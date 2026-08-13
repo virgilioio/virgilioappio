@@ -228,30 +228,61 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<'all' | QueueType>('all')
 
   // Persist dismissed ("done") queue items per-user with a 7-day expiry.
+  // The user id arrives asynchronously, so hydration happens in an effect once
+  // the storage key is known — reading it during the first render would always
+  // return an empty set and lose every previous dismissal.
   const dismissKey = user?.id ? `dashboard.queue.dismissed.${user.id}` : null
-  const [doneIds, setDoneIds] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined' || !dismissKey) return new Set()
-    try {
-      const raw = window.localStorage.getItem(dismissKey)
-      if (!raw) return new Set()
-      const parsed = JSON.parse(raw) as { id: string; dismissedAt: number }[]
-      const cutoff = Date.now() - 7 * 86_400_000
-      return new Set(parsed.filter(p => p.dismissedAt >= cutoff).map(p => p.id))
-    } catch {
-      return new Set()
-    }
-  })
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
+  const doneAtRef = useRef<Map<string, number>>(new Map())
+  const hydratedKeyRef = useRef<string | null>(null)
 
   const persistDone = (next: Set<string>) => {
     if (typeof window === 'undefined' || !dismissKey) return
     try {
       const now = Date.now()
-      const payload = Array.from(next).map(id => ({ id, dismissedAt: now }))
+      // Keep the original dismissal timestamp so the 7-day expiry is honoured.
+      next.forEach(id => {
+        if (!doneAtRef.current.has(id)) doneAtRef.current.set(id, now)
+      })
+      Array.from(doneAtRef.current.keys()).forEach(id => {
+        if (!next.has(id)) doneAtRef.current.delete(id)
+      })
+      const payload = Array.from(next).map(id => ({
+        id,
+        dismissedAt: doneAtRef.current.get(id) ?? now,
+      }))
       window.localStorage.setItem(dismissKey, JSON.stringify(payload))
     } catch {
       /* ignore quota errors */
     }
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !dismissKey) return
+    if (hydratedKeyRef.current === dismissKey) return
+    hydratedKeyRef.current = dismissKey
+    let stored: { id: string; dismissedAt: number }[] = []
+    try {
+      const raw = window.localStorage.getItem(dismissKey)
+      stored = raw ? (JSON.parse(raw) as { id: string; dismissedAt: number }[]) : []
+    } catch {
+      stored = []
+    }
+    const cutoff = Date.now() - 7 * 86_400_000
+    const fresh = stored.filter(p => p.dismissedAt >= cutoff)
+    setDoneIds(prev => {
+      const next = new Set(prev)
+      fresh.forEach(p => {
+        next.add(p.id)
+        doneAtRef.current.set(p.id, p.dismissedAt)
+      })
+      // Rewrite storage so anything dismissed before hydration is kept and
+      // expired entries are pruned.
+      persistDone(next)
+      return next
+    })
+  }, [dismissKey])
+
 
   // Hide dismissed rows entirely so counts + list stay consistent after reload.
   const queue = useMemo(() => rawQueue.filter(q => !doneIds.has(q.id)), [rawQueue, doneIds])
