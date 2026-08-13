@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Briefcase,
   CheckCircle2,
+  Layers,
   Mail,
   MapPin,
   Paperclip,
@@ -1025,7 +1026,10 @@ export function ScheduleInterviewSheet({
         new Date(selectedSlot.start).getTime() + selectedDuration * 60 * 1000,
       ).toISOString(),
       duration_minutes: selectedDuration,
-      notes: inviteMessage || formData.notes || null,
+      notes:
+        [inviteMessage || formData.notes || '', overlapNote || '']
+          .filter(Boolean)
+          .join('\n\n') || null,
       job_id: jobId,
       candidate_id: candidateId,
       job_candidate_association_id: associationId,
