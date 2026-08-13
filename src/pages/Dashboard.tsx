@@ -2,7 +2,7 @@
  * Dashboard — "The Queue".
  * One prioritized work feed (left) + today rail (right). Strict spec.
  */
-import { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
   Inbox,
