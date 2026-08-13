@@ -1304,22 +1304,23 @@ export function ScheduleInterviewSheet({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-virgilio-border/70">
                     <div className="space-y-1.5">
                       <Label className="text-form-label text-virgilio-muted">Duration</Label>
-                      <div className="inline-flex items-center bg-[#FAFAF7] border border-virgilio-border rounded-lg p-0.5">
-                        {[30, 45, 60, 90].map((d) => {
+                      <div
+                        className="flex items-center rounded-lg bg-[#F1F0EC]"
+                        style={{ gap: 2, padding: 2 }}
+                      >
+                        {[15, 30, 45, 60, 90].map((d) => {
                           const active = selectedDuration === d;
                           return (
                             <button
                               key={d}
                               type="button"
-                              onClick={() => {
-                                setSelectedDuration(d);
-                                setSelectedSlot(null);
-                              }}
+                              onClick={() => handleDurationChange(d)}
+                              style={{ flex: 1, minWidth: 0 }}
                               className={cn(
-                                'h-7 px-3 rounded-md text-[12px] font-poppins font-medium transition-colors',
+                                'h-7 rounded-md text-[12px] font-poppins transition-colors',
                                 active
-                                  ? 'bg-white text-virgilio-text shadow-sm'
-                                  : 'text-virgilio-muted hover:text-virgilio-text',
+                                  ? 'bg-white font-semibold text-[#1F2230] shadow-[0_1px_2px_rgba(13,13,9,0.06)]'
+                                  : 'bg-transparent font-medium text-[#5A6072] hover:text-[#1F2230]',
                               )}
                             >
                               {d}m
