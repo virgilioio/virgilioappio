@@ -38,6 +38,8 @@ import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
 import { useMyScorecards } from '@/hooks/useScorecards'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
 import { useAssociationScorecardSummary } from '@/hooks/useAssociationScorecardSummary'
+import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
+
 import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
 import { StageBookingsList } from '@/components/candidates/StageBookingsList'
 import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
@@ -276,6 +278,13 @@ const { scorecards: activeStageScorecards } = useAllStageScorecards(
   associationId,
   scorecardsRefreshNonce,
 )
+// All scorecards across every stage of this application, so scorecards from
+// earlier stages stay visible after the candidate advances.
+const { scorecards: allScorecards } = useAssociationScorecards(
+  associationId,
+  scorecardsRefreshNonce,
+)
+
 const { pending: pendingPanelists } = useStagePendingPanelists(
   activeStageInstanceId,
   associationId,
@@ -345,19 +354,29 @@ const ratingToVerdict = (r?: string | null): SubmittedVerdict | null => {
 }
 
 const submittedScorecardRows: SubmittedScorecardRow[] = useMemo(() => {
-  return activeStageScorecards
+  const stageNameById = new Map(planStages.map(p => [p.jhsId, p.stage.stage_name]))
+  const positionById = new Map(planStages.map(p => [p.jhsId, p.position]))
+  return allScorecards
     .filter(s => !s.is_ai_draft && !!s.rating)
+    .slice()
+    .sort((a, b) => {
+      const pa = positionById.get(a.stage_instance_id) ?? 0
+      const pb = positionById.get(b.stage_instance_id) ?? 0
+      if (pa !== pb) return pb - pa
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
     .map(s => ({
       id: s.id,
       name: s.author_name || s.author_email || 'Reviewer',
-      meta: activeStageOption?.stage.stage_name ?? null,
+      meta: stageNameById.get(s.stage_instance_id) ?? null,
       verdict: ratingToVerdict(s.rating),
       feedback: s.general_overview,
       isMine: s.created_by === user?.id,
       scores: (s as any).criterion_scores ?? [],
       submittedAt: s.updated_at,
     }))
-}, [activeStageScorecards, activeStageOption, user?.id])
+}, [allScorecards, planStages, user?.id])
+
 
 // Dismiss AI draft scorecard
 const handleDismissAiDraft = async (scorecardId: string) => {
