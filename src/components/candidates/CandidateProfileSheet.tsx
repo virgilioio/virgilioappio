@@ -38,6 +38,8 @@ import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
 import { useMyScorecards } from '@/hooks/useScorecards'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
 import { useAssociationScorecardSummary } from '@/hooks/useAssociationScorecardSummary'
+import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
+
 import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
 import { StageBookingsList } from '@/components/candidates/StageBookingsList'
 import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
