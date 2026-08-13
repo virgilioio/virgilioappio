@@ -420,7 +420,7 @@ export function AvailabilityStrip({
                 <div
                   className="absolute -top-0.5 -bottom-0.5 rounded-[4px] bg-[#6F3FF5] border-2 border-[#0d0d09] flex items-center justify-center z-10 cursor-grab active:cursor-grabbing"
                   style={{ left: `${selLeft}%`, width: `${selWidth}%` }}
-                  onPointerDown={(e) => beginPointerGesture(e, 'move', bookTrackRef.current)}
+                  onPointerDown={(e) => beginPointerGesture(e, 'move')}
                 >
                   {durationMinutes >= 30 && (
                     <span className="text-[10px] font-poppins font-semibold text-white truncate px-1">
@@ -429,7 +429,7 @@ export function AvailabilityStrip({
                   )}
                   <span
                     className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize"
-                    onPointerDown={(e) => beginPointerGesture(e, 'resize', bookTrackRef.current)}
+                    onPointerDown={(e) => beginPointerGesture(e, 'resize')}
                   />
                 </div>
               )}
