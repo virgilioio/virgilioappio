@@ -1368,7 +1368,16 @@ const stageHasAutomation = useMemo(() => {
                           await handleMoveToOffer()
                         }
                       }}
-                      onSchedule={() => setSimpleScheduleOpen(true)}
+                      onSchedule={() => {
+                        if (currentStage && associationId) {
+                          setOldBookingId(null)
+                          setScheduleStageId(currentStage.jhsId)
+                          setScheduleStageName(currentStage.stage.stage_name)
+                          setScheduleOpen(true)
+                        } else {
+                          setSimpleScheduleOpen(true)
+                        }
+                      }}
                       onEmail={() => {
                         resetEmailComposer()
                         setEmailComposerOpen(true)

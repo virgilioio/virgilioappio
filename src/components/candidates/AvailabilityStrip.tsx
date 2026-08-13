@@ -144,6 +144,47 @@ function Gridlines() {
   );
 }
 
+/** Lane row — declared at module scope so lanes never remount mid-gesture. */
+function Row({
+  label,
+  children,
+  className,
+  trackRef,
+  trackClassName,
+  trackStyle,
+  onTrackPointerDown,
+}: {
+  label: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+  trackRef?: React.Ref<HTMLDivElement>;
+  trackClassName?: string;
+  trackStyle?: React.CSSProperties;
+  onTrackPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <div
+      className={cn('grid items-center', className)}
+      style={{ gridTemplateColumns: '64px minmax(0, 1fr)' }}
+    >
+      <div className="min-w-0 pr-1">{label}</div>
+      <div
+        ref={trackRef}
+        onPointerDown={onTrackPointerDown}
+        className={cn(
+          'relative my-1 mx-1.5 rounded-[3px] cursor-pointer overflow-hidden',
+          trackClassName,
+        )}
+        style={trackStyle}
+      >
+        <Gridlines />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
 interface Props {
   date: Date | null;
   panelists: StripPanelist[];
@@ -166,11 +207,20 @@ export function AvailabilityStrip({
 }: Props) {
   const freeWindows = useMemo(() => computeFreeWindows(panelists, date), [panelists, date]);
   const [drag, setDrag] = useState<null | 'move' | 'resize'>(null);
+  const bookTrackRef = useRef<HTMLDivElement>(null);
+
+  // Live values for gesture handlers so no stale render values leak in.
+  const startRef = useRef(selectedStartMin);
+  startRef.current = selectedStartMin;
+  const durationRef = useRef(durationMinutes);
+  durationRef.current = durationMinutes;
 
   const maxStart = DAY_END_HOUR * 60 - durationMinutes;
 
-  const xToMinutes = useCallback((clientX: number, el: HTMLElement) => {
+  const xToMinutes = useCallback((clientX: number, el: HTMLElement | null) => {
+    if (!el) return null;
     const rect = el.getBoundingClientRect();
+    if (rect.width <= 0) return null;
     const pct = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
     const raw = DAY_START_HOUR * 60 + pct * DAY_HOURS * 60;
     return Math.round(raw / SNAP_MIN) * SNAP_MIN;
@@ -178,31 +228,38 @@ export function AvailabilityStrip({
 
   const handleTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (drag) return;
-    const start = Math.min(Math.max(xToMinutes(e.clientX, e.currentTarget), DAY_START_HOUR * 60), maxStart);
-    onSelectStartMin(start);
+    const m = xToMinutes(e.clientX, e.currentTarget);
+    if (m === null) return;
+    onSelectStartMin(Math.min(Math.max(m, DAY_START_HOUR * 60), maxStart));
   };
 
   /** Drag / resize of the selection block, tracked on the window. */
-  const beginPointerGesture = (
-    e: React.PointerEvent,
-    mode: 'move' | 'resize',
-    track: HTMLElement | null,
-  ) => {
+  const beginPointerGesture = (e: React.PointerEvent, mode: 'move' | 'resize') => {
     e.preventDefault();
     e.stopPropagation();
-    if (!track || selectedStartMin === null) return;
+    const startAtDown = startRef.current;
+    const downMin = xToMinutes(e.clientX, bookTrackRef.current);
+    if (startAtDown === null || downMin === null) return;
     setDrag(mode);
-    const grabOffset =
-      mode === 'move' ? xToMinutes(e.clientX, track) - selectedStartMin : 0;
+    const grabOffset = mode === 'move' ? downMin - startAtDown : 0;
 
     const onMove = (ev: PointerEvent) => {
-      const m = xToMinutes(ev.clientX, track);
+      // Resolve the track fresh on every move — the node may have been replaced.
+      const m = xToMinutes(ev.clientX, bookTrackRef.current);
+      if (m === null) return;
       if (mode === 'move') {
         onSelectStartMin(
-          Math.min(Math.max(m - grabOffset, DAY_START_HOUR * 60), DAY_END_HOUR * 60 - durationMinutes),
+          Math.min(
+            Math.max(m - grabOffset, DAY_START_HOUR * 60),
+            DAY_END_HOUR * 60 - durationRef.current,
+          ),
         );
       } else {
-        const next = Math.min(Math.max(m - selectedStartMin, SNAP_MIN), DAY_END_HOUR * 60 - selectedStartMin);
+        const anchor = startRef.current ?? startAtDown;
+        const next = Math.min(
+          Math.max(m - anchor, SNAP_MIN),
+          DAY_END_HOUR * 60 - anchor,
+        );
         onDurationChange(next);
       }
     };
@@ -216,8 +273,6 @@ export function AvailabilityStrip({
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
   };
-
-  const bookTrackRef = useRef<HTMLDivElement>(null);
 
   const selEnd = selectedStartMin !== null ? selectedStartMin + durationMinutes : null;
   const selLeft = selectedStartMin !== null ? pctOfMinutes(selectedStartMin) : 0;
@@ -247,40 +302,6 @@ export function AvailabilityStrip({
       })
       .filter(Boolean) as { key: string; left: number; width: number; tooltip: string }[];
 
-  const Row = ({
-    label,
-    children,
-    className,
-    trackRef,
-    trackClassName,
-    trackStyle,
-  }: {
-    label: React.ReactNode;
-    children?: React.ReactNode;
-    className?: string;
-    trackRef?: React.Ref<HTMLDivElement>;
-    trackClassName?: string;
-    trackStyle?: React.CSSProperties;
-  }) => (
-    <div
-      className={cn('grid items-center', className)}
-      style={{ gridTemplateColumns: '64px minmax(0, 1fr)' }}
-    >
-      <div className="min-w-0 pr-1">{label}</div>
-      <div
-        ref={trackRef}
-        onPointerDown={handleTrackPointerDown}
-        className={cn(
-          'relative my-1 mx-1.5 rounded-[3px] cursor-pointer overflow-hidden',
-          trackClassName,
-        )}
-        style={trackStyle}
-      >
-        <Gridlines />
-        {children}
-      </div>
-    </div>
-  );
 
   return (
     <div className="rounded-xl border border-[#E7E8EE] bg-white overflow-hidden">
@@ -317,6 +338,7 @@ export function AvailabilityStrip({
           <Row
             label={<span className="text-[10px] font-inter text-[#8B8F9E]">—</span>}
             trackClassName="h-6 bg-[#FAFAF7] border border-[#E7E8EE]"
+            onTrackPointerDown={handleTrackPointerDown}
           />
         ) : (
           panelists.map((p) => (
@@ -334,6 +356,7 @@ export function AvailabilityStrip({
                 </div>
               }
               trackClassName="h-6 bg-white border border-[#E7E8EE]"
+              onTrackPointerDown={handleTrackPointerDown}
             >
               {isLoading ? (
                 <Skeleton className="absolute inset-0" />
@@ -366,6 +389,7 @@ export function AvailabilityStrip({
           }
           trackRef={bookTrackRef}
           trackClassName="h-7 bg-[#FAF8FF] border border-[#EDE4FF]"
+          onTrackPointerDown={handleTrackPointerDown}
         >
           {isLoading ? (
             <Skeleton className="absolute inset-0" />
@@ -399,7 +423,7 @@ export function AvailabilityStrip({
                 <div
                   className="absolute -top-0.5 -bottom-0.5 rounded-[4px] bg-[#6F3FF5] border-2 border-[#0d0d09] flex items-center justify-center z-10 cursor-grab active:cursor-grabbing"
                   style={{ left: `${selLeft}%`, width: `${selWidth}%` }}
-                  onPointerDown={(e) => beginPointerGesture(e, 'move', bookTrackRef.current)}
+                  onPointerDown={(e) => beginPointerGesture(e, 'move')}
                 >
                   {durationMinutes >= 30 && (
                     <span className="text-[10px] font-poppins font-semibold text-white truncate px-1">
@@ -408,7 +432,7 @@ export function AvailabilityStrip({
                   )}
                   <span
                     className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize"
-                    onPointerDown={(e) => beginPointerGesture(e, 'resize', bookTrackRef.current)}
+                    onPointerDown={(e) => beginPointerGesture(e, 'resize')}
                   />
                 </div>
               )}
