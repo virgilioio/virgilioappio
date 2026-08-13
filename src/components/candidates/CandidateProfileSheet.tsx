@@ -276,6 +276,13 @@ const { scorecards: activeStageScorecards } = useAllStageScorecards(
   associationId,
   scorecardsRefreshNonce,
 )
+// All scorecards across every stage of this application, so scorecards from
+// earlier stages stay visible after the candidate advances.
+const { scorecards: allScorecards } = useAssociationScorecards(
+  associationId,
+  scorecardsRefreshNonce,
+)
+
 const { pending: pendingPanelists } = useStagePendingPanelists(
   activeStageInstanceId,
   associationId,
