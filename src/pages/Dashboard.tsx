@@ -171,6 +171,7 @@ function buildQueue(
         : `/candidates/${a.candidateId}?tab=emails`
       out.push({
         id: `e-${a.id}`,
+        dismissKey: `reply:${a.messageId ?? a.emailId ?? a.id}`,
         type: 'reply',
         label: 'Reply needed',
         candidateName: a.candidateName,
