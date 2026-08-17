@@ -19,6 +19,8 @@ interface SeatUpgradeConfirmDialogProps {
   onCancel: () => void
   memberName: string
   currentPaidSeats?: number
+  /** Render above other custom modals (e.g. the hiring-team dialog at z-[70]). */
+  elevated?: boolean
 }
 
 export function SeatUpgradeConfirmDialog({
@@ -27,6 +29,7 @@ export function SeatUpgradeConfirmDialog({
   onCancel,
   memberName,
   currentPaidSeats,
+  elevated = false,
 }: SeatUpgradeConfirmDialogProps) {
   const { data: pricing } = useStripePricing()
   const monthlyCost = pricing?.seatMonthly?.amount
@@ -35,7 +38,10 @@ export function SeatUpgradeConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !o && onCancel()}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        className={elevated ? 'z-[90]' : undefined}
+        overlayClassName={elevated ? 'z-[80]' : undefined}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-primary" />

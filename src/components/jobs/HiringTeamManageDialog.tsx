@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -174,6 +175,7 @@ export function HiringTeamManageDialog({
   const canManage = permissions.canManageJobAssignments
 
   return (
+    <>
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
@@ -292,7 +294,12 @@ export function HiringTeamManageDialog({
 
                   <div className="flex items-end" style={{ gap: 8 }}>
                     {/* Search field with dropdown */}
-                    <div className="relative flex-1 min-w-0">
+                    <Popover
+                      open={searchOpen && !selectedMember}
+                      onOpenChange={setSearchOpen}
+                    >
+                      <PopoverAnchor asChild>
+                        <div className="relative flex-1 min-w-0">
                       <Search
                         style={{
                           position: 'absolute',
@@ -375,24 +382,16 @@ export function HiringTeamManageDialog({
                           }}
                         />
                       )}
+                        </div>
+                      </PopoverAnchor>
 
-                      {searchOpen && !selectedMember && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: 42,
-                            left: 0,
-                            right: 0,
-                            background: '#ffffff',
-                            border: '1px solid #EDECE6',
-                            borderRadius: 10,
-                            padding: 4,
-                            maxHeight: 240,
-                            overflowY: 'auto',
-                            boxShadow: '0 12px 32px -8px rgba(0,0,0,0.18)',
-                            zIndex: 5,
-                          }}
-                        >
+                      <PopoverContent
+                        align="start"
+                        sideOffset={6}
+                        className="z-[120] p-1"
+                        style={{ width: 'var(--radix-popover-trigger-width)', maxHeight: 240, overflowY: 'auto' }}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                      >
                           {filteredResults.length === 0 ? (
                             <div
                               className="font-inter"
@@ -442,9 +441,8 @@ export function HiringTeamManageDialog({
                               </button>
                             ))
                           )}
-                        </div>
-                      )}
-                    </div>
+                      </PopoverContent>
+                    </Popover>
 
                     {/* Role select */}
                     <div style={{ width: 160 }}>
@@ -634,19 +632,21 @@ export function HiringTeamManageDialog({
           </footer>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
-
-      <SeatUpgradeConfirmDialog
-        open={!!seatConfirm}
-        memberName={seatConfirm?.memberName || ''}
-        currentPaidSeats={paidSeatCount}
-        onConfirm={async () => {
-          const action = seatConfirm?.action
-          setSeatConfirm(null)
-          if (action) await action()
-        }}
-        onCancel={() => setSeatConfirm(null)}
-      />
     </DialogPrimitive.Root>
+
+    <SeatUpgradeConfirmDialog
+      open={!!seatConfirm}
+      elevated
+      memberName={seatConfirm?.memberName || ''}
+      currentPaidSeats={paidSeatCount}
+      onConfirm={async () => {
+        const action = seatConfirm?.action
+        setSeatConfirm(null)
+        if (action) await action()
+      }}
+      onCancel={() => setSeatConfirm(null)}
+    />
+    </>
   )
 }
 
