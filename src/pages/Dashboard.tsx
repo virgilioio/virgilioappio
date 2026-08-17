@@ -134,6 +134,7 @@ function buildQueue(
       const urgency: Urgency = d >= 1 ? 'overdue' : 'today'
       out.push({
         id: `s-${a.id}`,
+        dismissKey: `scorecard:${a.associationId ?? a.candidateId}:${a.stageInstanceId ?? ''}:${a.interviewerId ?? ''}`,
         type: 'scorecard',
         label: 'Scorecard due',
         candidateName: a.candidateName,
