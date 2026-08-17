@@ -63,6 +63,11 @@ type Urgency = 'overdue' | 'today' | 'normal'
 
 interface QueueItem {
   id: string
+  /**
+   * Stable, semantic dismissal key (independent of volatile row ids) used to
+   * persist "done" state server-side.
+   */
+  dismissKey: string
   type: QueueType
   label: string
   candidateName: string
