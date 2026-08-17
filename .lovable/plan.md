@@ -1,46 +1,38 @@
-# Fix: "Add member" dialog opens but the screen is frozen
+# Fix: assigning a hiring team member freezes the screen
 
-## What you're seeing
+## What's happening
 
-Clicking **Add member** in Settings → Members opens the invite dialog, but nothing responds — no typing in the email field, no clicks on role cards or the Send button. That is the signature of a second modal layer sitting invisibly on top of (or beneath) the invite dialog and capturing all pointer and keyboard events.
+The default role in the "Manage hiring team" modal is **Recruiter**, and Recruiter is a paid seat. So when you pick a free collaborator and click **Assign**, the code opens the "This will add a paid seat" confirmation instead of assigning immediately.
 
-## Diagnosis status
+That confirmation never becomes visible: the hiring-team modal paints its own overlay and card at layers 60/70, while the seat-confirmation dialog is a standard alert dialog at layer 50. It renders *underneath* the hiring-team overlay — but it still traps focus and swallows clicks. Result: the screen dims and nothing is clickable, exactly as you describe.
 
-Not yet confirmed. I could not reproduce it in a live session (this workspace uses an external Supabase project, so I can't sign in to the preview from here), and I will not guess at the cause. What I did confirm by reading the code:
+Two smaller issues in the same modal:
 
-- The invite dialog is built on raw Radix dialog primitives with hand-written overlay `z-60` / content `z-70`, instead of the shared `components/ui/dialog` wrapper.
-- Settings → Members mounts the invite component twice: once for "invite" and a second, conditionally mounted copy for "edit member". A conditionally mounted Radix modal that unmounts while still open is a known cause of stuck `pointer-events: none` on `<body>`.
-- `SeatLimitUpgradeDialog` is rendered as a sibling inside the same component and uses the shared dialog's identical `z-60/z-70` layers, so when it opens it can land in the same stacking band as the invite dialog.
+- The "Add a person" results list is rendered inline inside the modal card, so it gets clipped by the card's bounds instead of floating above it.
+- The confirmation copy talks about billing but gives no way out visually, so there is no escape hatch once it's stuck.
 
-Any one of these can produce the freeze; which one it is has to be observed, not assumed.
+## The fix
 
-## Step 1 — Confirm the blocking layer
-
-Reproduce in the running app while inspecting the live DOM at the moment the dialog is open, and record:
-
-- computed `pointer-events` on `<body>` and on the invite dialog's content node
-- every element with `role="dialog"`, `data-state="open"`, `aria-hidden`, or `inert` and their z-index / stacking order
-- which element is actually hit at the center of the email input (`document.elementFromPoint`)
-
-That output names the culprit exactly. If preview sign-in is needed, I'll ask you to sign in once so the session is available.
-
-## Step 2 — Fix, based on what step 1 shows
-
-Whichever of these the evidence points to:
-
-- **Stuck body pointer-events / stale modal:** stop conditionally mounting the second invite instance in the Members tab — keep one always-mounted instance driven by `open`, so Radix runs its own cleanup.
-- **Stacking collision:** move the invite dialog onto the shared `Dialog`/`DialogContent` primitives (keeping the current brand styling as classes/inline styles) so overlay and content layering match the rest of the app, and give the nested seat-limit dialog a layer above it.
-- **A stray invisible overlay from another source:** remove or scope that overlay.
+1. **Layer the seat confirmation above the hiring-team modal.** Give the seat-upgrade confirmation an explicit layer above 70 (overlay and content), so it appears on top of the hiring-team card. It stays the same dialog with the same copy, seat math, Confirm, and Cancel behavior — only stacking changes.
+2. **Move it out of the hiring-team dialog subtree** so it portals to the body as a true sibling, rather than nesting inside a dialog root that is also managing an overlay.
+3. **Float the person-search results.** Render the search dropdown in a popover-style floating panel anchored to the input (standard menu chrome: radius 12, pad 4, 30px items, hover `#F1F0EC`) so it can overflow the modal instead of being cut off.
 
 ## Guardrails
 
-- Purely presentational/structural. No change to the invite mutation, role model, seat pre-check, seat-limit error handling, personal message, or members-list refresh.
-- The dialog keeps its current look: centered 600px brand card, email chips, role cards, message field, seat-aware footer.
-- Same behavior on the standalone Team Members page, which renders the same component.
+- No change to the assignment mutation, the per-job role model (Recruiter / Hiring Manager / Interviewer), seat-upgrade detection, paid-seat counting, or permissions.
+- The paid-seat confirmation still gates Recruiter assignments — it becomes visible, not skipped.
+- The seat-confirmation component is shared with the Members tab; the layering change is additive and won't regress its use there.
+
+## Technical notes
+
+- `src/components/jobs/HiringTeamManageDialog.tsx`: `<SeatUpgradeConfirmDialog>` currently sits inside `DialogPrimitive.Root` after the `Portal`; hoist it out of that dialog's tree, keeping the same `seatConfirm` state and callbacks.
+- `src/components/billing/SeatUpgradeConfirmDialog.tsx`: pass through explicit z-index classes on `AlertDialogContent` (and its overlay) so nested usage lands above `z-[70]`.
+- Search dropdown: replace the inline results block with a `Popover`/anchored panel using `src/lib/menu-classes.ts` chrome, keeping the existing filter, 25-item cap, and selection handler.
 
 ## Verification
 
-- Open Add member → type emails, add and remove chips, switch role cards, type a message, send an invite.
-- Close via X, Escape, and overlay click; confirm the Members page stays fully interactive after each.
-- Open Edit member from a row menu, close it, confirm the page is still interactive.
-- Trigger the seat-limit path and confirm the upgrade dialog appears above the invite dialog and is dismissible.
+- Open Job → Setup → Hiring team → Add member, pick a free collaborator, leave role Recruiter, click Assign: the paid-seat dialog appears on top and is readable; Cancel returns to a fully interactive modal; Confirm assigns the person and clears the picker.
+- Assign someone as Hiring Manager or Interviewer: assigns immediately, no confirmation.
+- Assign an existing Admin/Recruiter as Recruiter: no confirmation (already a paid seat).
+- Type in "Add a person": the results list floats over the modal edges and isn't clipped; Escape closes the list, not the modal.
+- Change an existing assignee's role to Recruiter from the list: same confirmation appears on top and works.
