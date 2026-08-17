@@ -442,7 +442,7 @@ export function HiringTeamManageDialog({
                             ))
                           )}
                       </PopoverContent>
-                    </div>
+                    </Popover>
 
                     {/* Role select */}
                     <div style={{ width: 160 }}>
