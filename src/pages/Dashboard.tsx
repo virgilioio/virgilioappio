@@ -307,19 +307,19 @@ export default function Dashboard() {
 
   // ─── Toggle done ────────────────────────────────────────────
   const toggleDone = (item: QueueItem) => {
-    setDoneIds(prev => {
-      const next = new Set(prev)
-      const wasDone = next.has(item.id)
-      if (wasDone) next.delete(item.id)
-      else next.add(item.id)
-      persistDone(next)
-      return next
-    })
+    const wasDone = doneIds.has(item.dismissKey) || doneIds.has(item.id)
+    if (wasDone) {
+      // Clear both the semantic key and any legacy row-id key.
+      if (doneIds.has(item.dismissKey)) toggleDismissed(item.dismissKey)
+      if (doneIds.has(item.id)) toggleDismissed(item.id)
+    } else {
+      toggleDismissed(item.dismissKey)
+    }
     // Mark email as read for reply rows (only when marking done, not undoing).
     // The mutation updates all email_logs rows sharing the same
     // rfc822_message_id, so Gmail-sync + inbound-webhook duplicates can't
     // resurface the row on the next refetch.
-    if (item.type === 'reply' && item.emailId && !doneIds.has(item.id)) {
+    if (item.type === 'reply' && item.emailId && !wasDone) {
       markEmailAsRead.mutate(item.emailId)
     }
   }
