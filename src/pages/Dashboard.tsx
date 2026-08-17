@@ -30,6 +30,7 @@ import { useScheduledBookings, ScheduledBooking } from '@/hooks/useScheduledBook
 import { useJobs } from '@/hooks/useJobs'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { useNewApplicationsQueue } from '@/hooks/useNewApplicationsQueue'
+import { useQueueDismissals } from '@/hooks/useQueueDismissals'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { useQueryClient } from '@tanstack/react-query'
@@ -63,6 +64,11 @@ type Urgency = 'overdue' | 'today' | 'normal'
 
 interface QueueItem {
   id: string
+  /**
+   * Stable, semantic dismissal key (independent of volatile row ids) used to
+   * persist "done" state server-side.
+   */
+  dismissKey: string
   type: QueueType
   label: string
   candidateName: string
@@ -129,6 +135,7 @@ function buildQueue(
       const urgency: Urgency = d >= 1 ? 'overdue' : 'today'
       out.push({
         id: `s-${a.id}`,
+        dismissKey: `scorecard:${a.associationId ?? a.candidateId}:${a.stageInstanceId ?? ''}:${a.interviewerId ?? ''}`,
         type: 'scorecard',
         label: 'Scorecard due',
         candidateName: a.candidateName,
@@ -144,6 +151,7 @@ function buildQueue(
       const urgency: Urgency = d >= 14 ? 'overdue' : d >= 1 ? 'today' : 'normal'
       out.push({
         id: `d-${a.id}`,
+        dismissKey: `decision:${a.associationId ?? a.candidateId}:${a.stageInstanceId ?? ''}`,
         type: 'decision',
         label: 'Stage decision',
         candidateName: a.candidateName,
@@ -164,6 +172,7 @@ function buildQueue(
         : `/candidates/${a.candidateId}?tab=emails`
       out.push({
         id: `e-${a.id}`,
+        dismissKey: `reply:${a.messageId ?? a.emailId ?? a.id}`,
         type: 'reply',
         label: 'Reply needed',
         candidateName: a.candidateName,
@@ -191,6 +200,7 @@ function buildQueue(
       : 1.7
     out.push({
       id: `a-${app.associationId}`,
+      dismissKey: `application:${app.associationId}`,
       type: 'application',
       label: 'New application',
       candidateName: app.candidateName,
@@ -227,65 +237,18 @@ export default function Dashboard() {
   const rawQueue = useMemo(() => buildQueue(pending, newApps), [pending, newApps])
   const [filter, setFilter] = useState<'all' | QueueType>('all')
 
-  // Persist dismissed ("done") queue items per-user with a 7-day expiry.
-  // The user id arrives asynchronously, so hydration happens in an effect once
-  // the storage key is known — reading it during the first render would always
-  // return an empty set and lose every previous dismissal.
-  const dismissKey = user?.id ? `dashboard.queue.dismissed.${user.id}` : null
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set())
-  const doneAtRef = useRef<Map<string, number>>(new Map())
-  const hydratedKeyRef = useRef<string | null>(null)
-
-  const persistDone = (next: Set<string>) => {
-    if (typeof window === 'undefined' || !dismissKey) return
-    try {
-      const now = Date.now()
-      // Keep the original dismissal timestamp so the 7-day expiry is honoured.
-      next.forEach(id => {
-        if (!doneAtRef.current.has(id)) doneAtRef.current.set(id, now)
-      })
-      Array.from(doneAtRef.current.keys()).forEach(id => {
-        if (!next.has(id)) doneAtRef.current.delete(id)
-      })
-      const payload = Array.from(next).map(id => ({
-        id,
-        dismissedAt: doneAtRef.current.get(id) ?? now,
-      }))
-      window.localStorage.setItem(dismissKey, JSON.stringify(payload))
-    } catch {
-      /* ignore quota errors */
-    }
-  }
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !dismissKey) return
-    if (hydratedKeyRef.current === dismissKey) return
-    hydratedKeyRef.current = dismissKey
-    let stored: { id: string; dismissedAt: number }[] = []
-    try {
-      const raw = window.localStorage.getItem(dismissKey)
-      stored = raw ? (JSON.parse(raw) as { id: string; dismissedAt: number }[]) : []
-    } catch {
-      stored = []
-    }
-    const cutoff = Date.now() - 7 * 86_400_000
-    const fresh = stored.filter(p => p.dismissedAt >= cutoff)
-    setDoneIds(prev => {
-      const next = new Set(prev)
-      fresh.forEach(p => {
-        next.add(p.id)
-        doneAtRef.current.set(p.id, p.dismissedAt)
-      })
-      // Rewrite storage so anything dismissed before hydration is kept and
-      // expired entries are pruned.
-      persistDone(next)
-      return next
-    })
-  }, [dismissKey])
-
+  // Dismissed ("done") queue items are persisted server-side per user, keyed by
+  // a stable semantic key, so they survive reloads, other browsers and devices,
+  // and can't resurface when the underlying row id changes.
+  const { dismissed: doneIds, toggle: toggleDismissed } = useQueueDismissals()
 
   // Hide dismissed rows entirely so counts + list stay consistent after reload.
-  const queue = useMemo(() => rawQueue.filter(q => !doneIds.has(q.id)), [rawQueue, doneIds])
+  // `q.id` is also checked so legacy localStorage keys migrated from the old
+  // implementation keep hiding their rows.
+  const queue = useMemo(
+    () => rawQueue.filter(q => !doneIds.has(q.dismissKey) && !doneIds.has(q.id)),
+    [rawQueue, doneIds],
+  )
 
   const counts = useMemo(() => {
     const c = { all: queue.length, scorecard: 0, decision: 0, reply: 0, application: 0 }
@@ -345,19 +308,19 @@ export default function Dashboard() {
 
   // ─── Toggle done ────────────────────────────────────────────
   const toggleDone = (item: QueueItem) => {
-    setDoneIds(prev => {
-      const next = new Set(prev)
-      const wasDone = next.has(item.id)
-      if (wasDone) next.delete(item.id)
-      else next.add(item.id)
-      persistDone(next)
-      return next
-    })
+    const wasDone = doneIds.has(item.dismissKey) || doneIds.has(item.id)
+    if (wasDone) {
+      // Clear both the semantic key and any legacy row-id key.
+      if (doneIds.has(item.dismissKey)) toggleDismissed(item.dismissKey)
+      if (doneIds.has(item.id)) toggleDismissed(item.id)
+    } else {
+      toggleDismissed(item.dismissKey)
+    }
     // Mark email as read for reply rows (only when marking done, not undoing).
     // The mutation updates all email_logs rows sharing the same
     // rfc822_message_id, so Gmail-sync + inbound-webhook duplicates can't
     // resurface the row on the next refetch.
-    if (item.type === 'reply' && item.emailId && !doneIds.has(item.id)) {
+    if (item.type === 'reply' && item.emailId && !wasDone) {
       markEmailAsRead.mutate(item.emailId)
     }
   }
@@ -564,7 +527,7 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
               <QueueRow
                 key={item.id}
                 item={item}
-                isDone={doneIds.has(item.id)}
+                isDone={doneIds.has(item.dismissKey) || doneIds.has(item.id)}
                 isLast={idx === visible.length - 1}
                 onToggleDone={() => onToggleDone(item)}
                 onClick={() => onRowClick(item.href)}

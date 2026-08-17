@@ -20,6 +20,8 @@ export interface PendingActivity {
   emailId?: string;
   emailSubject?: string;
   emailSnippet?: string;
+  /** RFC822 message id — stable across Gmail-sync / webhook duplicate rows. */
+  messageId?: string;
   interviewerId?: string;
   interviewerName?: string;
   isOwnTask?: boolean;
@@ -395,6 +397,7 @@ async function fetchUnreadEmails(userId: string, isAdmin: boolean, assignedJobId
       type: 'email' as const,
       id: email.id,
       emailId: email.id,
+      messageId: (email as any).rfc822_message_id || undefined,
       candidateId: email.candidate_id!,
       candidateName: (email.candidates as any)?.candidate_name || 'Unknown',
       jobId,
