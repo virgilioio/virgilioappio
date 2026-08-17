@@ -199,6 +199,7 @@ function buildQueue(
       : 1.7
     out.push({
       id: `a-${app.associationId}`,
+      dismissKey: `application:${app.associationId}`,
       type: 'application',
       label: 'New application',
       candidateName: app.candidateName,
