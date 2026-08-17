@@ -2731,6 +2731,30 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_queue_dismissals: {
+        Row: {
+          dismissed_at: string
+          id: string
+          item_key: string
+          tenant_id: string | null
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          id?: string
+          item_key: string
+          tenant_id?: string | null
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          id?: string
+          item_key?: string
+          tenant_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       deal_invoices: {
         Row: {
           created_at: string
