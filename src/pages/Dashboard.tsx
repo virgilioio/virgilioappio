@@ -527,7 +527,7 @@ function QueueCard({ counts, filter, onFilter, items, loading, doneIds, onToggle
               <QueueRow
                 key={item.id}
                 item={item}
-                isDone={doneIds.has(item.id)}
+                isDone={doneIds.has(item.dismissKey) || doneIds.has(item.id)}
                 isLast={idx === visible.length - 1}
                 onToggleDone={() => onToggleDone(item)}
                 onClick={() => onRowClick(item.href)}
