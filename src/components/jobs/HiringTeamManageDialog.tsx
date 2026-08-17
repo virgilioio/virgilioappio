@@ -382,6 +382,8 @@ export function HiringTeamManageDialog({
                           }}
                         />
                       )}
+                        </div>
+                      </PopoverAnchor>
 
                       <PopoverContent
                         align="start"
