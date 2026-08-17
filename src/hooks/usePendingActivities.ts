@@ -20,6 +20,8 @@ export interface PendingActivity {
   emailId?: string;
   emailSubject?: string;
   emailSnippet?: string;
+  /** RFC822 message id — stable across Gmail-sync / webhook duplicate rows. */
+  messageId?: string;
   interviewerId?: string;
   interviewerName?: string;
   isOwnTask?: boolean;
