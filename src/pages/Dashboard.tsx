@@ -150,6 +150,7 @@ function buildQueue(
       const urgency: Urgency = d >= 14 ? 'overdue' : d >= 1 ? 'today' : 'normal'
       out.push({
         id: `d-${a.id}`,
+        dismissKey: `decision:${a.associationId ?? a.candidateId}:${a.stageInstanceId ?? ''}`,
         type: 'decision',
         label: 'Stage decision',
         candidateName: a.candidateName,
