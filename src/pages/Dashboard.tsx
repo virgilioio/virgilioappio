@@ -30,6 +30,7 @@ import { useScheduledBookings, ScheduledBooking } from '@/hooks/useScheduledBook
 import { useJobs } from '@/hooks/useJobs'
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics'
 import { useNewApplicationsQueue } from '@/hooks/useNewApplicationsQueue'
+import { useQueueDismissals } from '@/hooks/useQueueDismissals'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { useQueryClient } from '@tanstack/react-query'
