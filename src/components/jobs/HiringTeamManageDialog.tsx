@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useJobAssignments, type JobAssignmentRole } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -174,6 +175,7 @@ export function HiringTeamManageDialog({
   const canManage = permissions.canManageJobAssignments
 
   return (
+    <>
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
@@ -634,19 +636,21 @@ export function HiringTeamManageDialog({
           </footer>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
-
-      <SeatUpgradeConfirmDialog
-        open={!!seatConfirm}
-        memberName={seatConfirm?.memberName || ''}
-        currentPaidSeats={paidSeatCount}
-        onConfirm={async () => {
-          const action = seatConfirm?.action
-          setSeatConfirm(null)
-          if (action) await action()
-        }}
-        onCancel={() => setSeatConfirm(null)}
-      />
     </DialogPrimitive.Root>
+
+    <SeatUpgradeConfirmDialog
+      open={!!seatConfirm}
+      elevated
+      memberName={seatConfirm?.memberName || ''}
+      currentPaidSeats={paidSeatCount}
+      onConfirm={async () => {
+        const action = seatConfirm?.action
+        setSeatConfirm(null)
+        if (action) await action()
+      }}
+      onCancel={() => setSeatConfirm(null)}
+    />
+    </>
   )
 }
 
