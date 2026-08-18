@@ -1998,11 +1998,13 @@ const stageHasAutomation = useMemo(() => {
                           return (
                             <ProfileApplicationCard
                               appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                              createdByName={createdByName}
                               source={candidate?.job_board_source || candidate?.source || null}
                               compensation={formatSalaryExpectation(candidate as any)}
                               openTo={(candidate as any)?.location || null}
                               workAuth={(candidate as any)?.work_authorization || null}
                             />
+
                           )
                         }
 
