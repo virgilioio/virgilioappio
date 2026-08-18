@@ -40,6 +40,8 @@ import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistory
 import { getReplySubject, getForwardSubject, formatQuotedReply, formatForwardedMessage } from '@/utils/emailFormatUtils'
 
 import { useIndependentCandidates, type IndependentCandidate } from '@/hooks/useIndependentCandidates'
+import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
+
 import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations'
 
 // ───────────────────────────── helpers ─────────────────────────────
@@ -87,6 +89,8 @@ export default function IndependentCandidateProfile() {
 
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useIndependentCandidates()
   const candidate = useMemo(() => candidates.find(c => c.id === candidateId) || null, [candidates, candidateId])
+  const { name: createdByName } = useUserDisplayName((candidate as any)?.created_by || null)
+
 
   const idx = useMemo(() => candidates.findIndex(c => c.id === candidateId), [candidates, candidateId])
   const hasPrev = idx > 0
@@ -675,7 +679,7 @@ export default function IndependentCandidateProfile() {
                     <ProfileCard title="Record details" subtitle="How this profile got here and who owns it">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                         <ContactPair icon={Calendar} label="Added" value={addedDate} />
-                        <ContactPair icon={UserIcon} label="Added by" value={(candidate as any).added_by_name || null} />
+                        <ContactPair icon={UserIcon} label="Added by" value={createdByName} />
                         <ContactPair icon={Info} label="Source" value={candidate.source || null} />
                         {(candidate as any).data_consent_expires_at && (
                           <ContactPair

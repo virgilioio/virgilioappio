@@ -92,6 +92,8 @@ import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery } from '@tanstack/react-query'
+import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
+
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 
 import { ProfileHeroCard } from '@/components/candidates/profile/ProfileHeroCard'
@@ -186,6 +188,9 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [candidate, setCandidate] = useState<any | null>(null)
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
+  const createdByUserId = (candidate as any)?.created_by || (jobCandidate as any)?.added_by || null
+  const { name: createdByName } = useUserDisplayName(createdByUserId)
+
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
@@ -1998,11 +2003,13 @@ const stageHasAutomation = useMemo(() => {
                           return (
                             <ProfileApplicationCard
                               appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
+                              createdByName={createdByName}
                               source={candidate?.job_board_source || candidate?.source || null}
                               compensation={formatSalaryExpectation(candidate as any)}
                               openTo={(candidate as any)?.location || null}
                               workAuth={(candidate as any)?.work_authorization || null}
                             />
+
                           )
                         }
 
