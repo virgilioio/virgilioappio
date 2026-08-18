@@ -1,4 +1,4 @@
-import { Calendar, Globe, DollarSign, MapPin, BadgeCheck } from 'lucide-react'
+import { Calendar, Globe, DollarSign, MapPin, BadgeCheck, User } from 'lucide-react'
 import { ReactNode } from 'react'
 
 interface Row {
@@ -13,6 +13,7 @@ interface ProfileApplicationCardProps {
   compensation?: string | null
   openTo?: string | null
   workAuth?: string | null
+  createdByName?: string | null
 }
 
 function fmtDate(iso?: string | null) {
@@ -21,14 +22,16 @@ function fmtDate(iso?: string | null) {
   catch { return null }
 }
 
-export function ProfileApplicationCard({ appliedAt, source, compensation, openTo, workAuth }: ProfileApplicationCardProps) {
+export function ProfileApplicationCard({ appliedAt, source, compensation, openTo, workAuth, createdByName }: ProfileApplicationCardProps) {
   const rows: Row[] = [
     { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Applied', value: fmtDate(appliedAt) || '—' },
+    { icon: <User className="h-3.5 w-3.5" />, label: 'Created by', value: createdByName || '—' },
     { icon: <Globe className="h-3.5 w-3.5" />, label: 'Source', value: source || '—' },
     { icon: <DollarSign className="h-3.5 w-3.5" />, label: 'Comp ask', value: compensation || '—' },
     { icon: <MapPin className="h-3.5 w-3.5" />, label: 'Open to', value: openTo || '—' },
     { icon: <BadgeCheck className="h-3.5 w-3.5" />, label: 'Work auth', value: workAuth || '—' },
   ]
+
   return (
     <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5">
       <h3 className="font-poppins font-semibold text-[10.5px] uppercase tracking-[0.06em] text-text-tertiary mb-3">
