@@ -41,6 +41,7 @@ export interface Candidate {
   auto_generated_skills: any[] | null
   created_at: string
   updated_at: string
+  created_by: string | null
   association_id: string | null
   association_notes: string | null
   association_status: string | null
@@ -110,6 +111,7 @@ async function fetchJobCandidates(jobId: string): Promise<Candidate[]> {
           auto_generated_skills,
           created_at,
           updated_at,
+          created_by,
           source
         )
       `)
@@ -144,6 +146,7 @@ async function fetchJobCandidates(jobId: string): Promise<Candidate[]> {
       auto_generated_skills: candidate.auto_generated_skills,
       created_at: candidate.created_at,
       updated_at: candidate.updated_at,
+      created_by: candidate.created_by ?? null,
       association_id: assoc.id,
       association_notes: assoc.notes,
       association_status: assoc.status,
