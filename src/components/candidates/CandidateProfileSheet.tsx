@@ -186,6 +186,9 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [candidate, setCandidate] = useState<any | null>(null)
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
+  const createdByUserId = (candidate as any)?.created_by || (jobCandidate as any)?.added_by || null
+  const { name: createdByName } = useUserDisplayName(createdByUserId)
+
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
