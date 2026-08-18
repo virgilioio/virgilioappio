@@ -40,6 +40,8 @@ import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistory
 import { getReplySubject, getForwardSubject, formatQuotedReply, formatForwardedMessage } from '@/utils/emailFormatUtils'
 
 import { useIndependentCandidates, type IndependentCandidate } from '@/hooks/useIndependentCandidates'
+import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
+
 import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations'
 
 // ───────────────────────────── helpers ─────────────────────────────
