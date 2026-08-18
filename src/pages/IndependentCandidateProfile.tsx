@@ -87,6 +87,8 @@ export default function IndependentCandidateProfile() {
 
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useIndependentCandidates()
   const candidate = useMemo(() => candidates.find(c => c.id === candidateId) || null, [candidates, candidateId])
+  const { name: createdByName } = useUserDisplayName((candidate as any)?.created_by || null)
+
 
   const idx = useMemo(() => candidates.findIndex(c => c.id === candidateId), [candidates, candidateId])
   const hasPrev = idx > 0
