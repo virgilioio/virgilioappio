@@ -679,7 +679,7 @@ export default function IndependentCandidateProfile() {
                     <ProfileCard title="Record details" subtitle="How this profile got here and who owns it">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                         <ContactPair icon={Calendar} label="Added" value={addedDate} />
-                        <ContactPair icon={UserIcon} label="Added by" value={(candidate as any).added_by_name || null} />
+                        <ContactPair icon={UserIcon} label="Added by" value={createdByName} />
                         <ContactPair icon={Info} label="Source" value={candidate.source || null} />
                         {(candidate as any).data_consent_expires_at && (
                           <ContactPair
