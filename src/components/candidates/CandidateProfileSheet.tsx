@@ -1579,17 +1579,20 @@ const stageHasAutomation = useMemo(() => {
                           )}
 
 
-                          {currentStage && associationId && stageSupportsScorecard && (
+                          {currentStage && associationId &&
+                            (stageSupportsScorecard ||
+                              scorecardStageGroups.some(g => g.scorecards.length > 0 || g.pending.length > 0)) && (
                             <StageScorecardsCard
-                              stageInstanceId={currentStage.jhsId}
-                              associationId={associationId}
+                              groups={scorecardStageGroups}
                               currentUserId={user?.id}
-                              onOpenFullSheet={(scorecardId) => {
-                                setScoreStageInstId(currentStage.jhsId)
-                                setScoreStageName(currentStage.stage.stage_name)
+                              loading={appRequirements.loading}
+                              onOpenFullSheet={(scorecardId, stageInstanceId) => {
+                                const st = planStages.find(p => p.jhsId === stageInstanceId) ?? currentStage
+                                setScoreStageInstId(st.jhsId)
+                                setScoreStageName(st.stage.stage_name)
                                 setViewingScorecardId(scorecardId)
                                 setScoreOpen(true)
-                                onScorecardChange?.(scorecardId, currentStage.jhsId)
+                                onScorecardChange?.(scorecardId, st.jhsId)
                               }}
                               onSubmitScorecard={() => {
                                 setScoreStageInstId(currentStage.jhsId)
@@ -1597,19 +1600,8 @@ const stageHasAutomation = useMemo(() => {
                                 setScoreOpen(true)
                               }}
                               onDismissAiDraft={handleDismissAiDraft}
-                              refreshNonce={scorecardsRefreshNonce}
-                              requirement={
-                                currentStage.jhsId === activeStageInstanceId && scorecardRequirement.requireScorecard
-                                  ? {
-                                      active: true,
-                                      totalExpected: scorecardRequirement.totalExpected,
-                                      pendingRequired: scorecardRequirement.pending,
-                                      onRequest: (uid) => handleRequestScorecard(uid),
-                                      onRequestAll: () => handleRequestScorecard(),
-                                      onCompleteMine: handleCompleteMyScorecard,
-                                    }
-                                  : undefined
-                              }
+                              onRequest={(stageInstanceId, uid) => handleRequestScorecard(uid, stageInstanceId)}
+                              onCompleteMine={handleCompleteMyScorecard}
                             />
                           )}
 
