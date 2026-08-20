@@ -382,6 +382,42 @@ const submittedScorecardRows: SubmittedScorecardRow[] = useMemo(() => {
     }))
 }, [allScorecards, planStages, user?.id])
 
+// Application-wide requirement data: keeps pending/required scorecards from
+// earlier stages visible after the candidate advances.
+const currentStagePosition = activeStageOption?.position ?? null
+const appRequirements = useApplicationScorecardRequirements(
+  associationId,
+  jobId,
+  currentStagePosition,
+  scorecardsRefreshNonce,
+)
+
+// Stage groups for the Job overview Scorecards card: current stage first, then
+// earlier stages descending by position.
+const scorecardStageGroups: ScorecardStageGroup[] = useMemo(() => {
+  const reached = planStages
+    .filter(p => currentStagePosition == null || p.position <= currentStagePosition)
+    .slice()
+    .sort((a, b) => b.position - a.position)
+  const byStage: Record<string, typeof allScorecards> = {}
+  for (const s of allScorecards) {
+    if (!s.stage_instance_id) continue
+    ;(byStage[s.stage_instance_id] ||= []).push(s)
+  }
+  return reached.map(p => {
+    const req = appRequirements.byStage[p.jhsId]
+    return {
+      stageInstanceId: p.jhsId,
+      stageName: p.stage.stage_name,
+      isCurrent: p.jhsId === activeStageInstanceId,
+      scorecards: byStage[p.jhsId] || [],
+      pending: req?.pending ?? [],
+      required: !!req?.requireScorecard,
+      totalExpected: req?.totalExpected ?? 0,
+    }
+  })
+}, [planStages, currentStagePosition, allScorecards, appRequirements.byStage, activeStageInstanceId])
+
 
 // Dismiss AI draft scorecard
 const handleDismissAiDraft = async (scorecardId: string) => {
