@@ -104,7 +104,8 @@ import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileA
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
 import { InterviewHistoryCard } from '@/components/candidates/profile/InterviewHistoryCard'
-import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
+import { StageScorecardsCard, type ScorecardStageGroup } from '@/components/candidates/profile/StageScorecardsCard'
+import { useApplicationScorecardRequirements } from '@/hooks/useApplicationScorecardRequirements'
 import { ScorecardsTabContent, type SubmittedScorecardRow, type SubmittedVerdict } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
 import { useStagePendingPanelists } from '@/hooks/useStagePendingPanelists'
 import { useStageScorecardRequirement } from '@/hooks/useStageScorecardRequirement'
@@ -303,11 +304,12 @@ const scorecardRequirement = useStageScorecardRequirement(
   scorecardsRefreshNonce,
 )
 
-const handleRequestScorecard = async (interviewerUserId?: string) => {
-  if (!activeStageInstanceId || !associationId) return
+const handleRequestScorecard = async (interviewerUserId?: string, stageInstanceId?: string) => {
+  const stageId = stageInstanceId || activeStageInstanceId
+  if (!stageId || !associationId) return
   const result = await requestScorecard({
     associationId,
-    jobHiringStageId: activeStageInstanceId,
+    jobHiringStageId: stageId,
     interviewerUserIds: interviewerUserId ? [interviewerUserId] : undefined,
   })
   if (!result.ok) {
@@ -323,14 +325,18 @@ const handleRequestScorecard = async (interviewerUserId?: string) => {
     description: `Sent ${result.sent ?? 0} email${(result.sent ?? 0) === 1 ? '' : 's'}.`,
   })
   scorecardRequirement.refresh()
+  appRequirements.refresh()
   bumpScorecardsRefresh()
 }
 
 // Open the current-stage scorecard editor for the current user (the "Complete scorecard" path).
-const handleCompleteMyScorecard = () => {
-  if (!activeStageOption) return
-  setScoreStageInstId(activeStageOption.jhsId)
-  setScoreStageName(activeStageOption.stage.stage_name)
+const handleCompleteMyScorecard = (stageInstanceId?: string) => {
+  const target = stageInstanceId
+    ? planStages.find(p => p.jhsId === stageInstanceId) ?? activeStageOption
+    : activeStageOption
+  if (!target) return
+  setScoreStageInstId(target.jhsId)
+  setScoreStageName(target.stage.stage_name)
   setActiveTab('scorecards')
   setScoreOpen(true)
 }
@@ -381,6 +387,42 @@ const submittedScorecardRows: SubmittedScorecardRow[] = useMemo(() => {
       submittedAt: s.updated_at,
     }))
 }, [allScorecards, planStages, user?.id])
+
+// Application-wide requirement data: keeps pending/required scorecards from
+// earlier stages visible after the candidate advances.
+const currentStagePosition = activeStageOption?.position ?? null
+const appRequirements = useApplicationScorecardRequirements(
+  associationId,
+  jobId,
+  currentStagePosition,
+  scorecardsRefreshNonce,
+)
+
+// Stage groups for the Job overview Scorecards card: current stage first, then
+// earlier stages descending by position.
+const scorecardStageGroups: ScorecardStageGroup[] = useMemo(() => {
+  const reached = planStages
+    .filter(p => currentStagePosition == null || p.position <= currentStagePosition)
+    .slice()
+    .sort((a, b) => b.position - a.position)
+  const byStage: Record<string, typeof allScorecards> = {}
+  for (const s of allScorecards) {
+    if (!s.stage_instance_id) continue
+    ;(byStage[s.stage_instance_id] ||= []).push(s)
+  }
+  return reached.map(p => {
+    const req = appRequirements.byStage[p.jhsId]
+    return {
+      stageInstanceId: p.jhsId,
+      stageName: p.stage.stage_name,
+      isCurrent: p.jhsId === activeStageInstanceId,
+      scorecards: byStage[p.jhsId] || [],
+      pending: req?.pending ?? [],
+      required: !!req?.requireScorecard,
+      totalExpected: req?.totalExpected ?? 0,
+    }
+  })
+}, [planStages, currentStagePosition, allScorecards, appRequirements.byStage, activeStageInstanceId])
 
 
 // Dismiss AI draft scorecard
@@ -1537,17 +1579,20 @@ const stageHasAutomation = useMemo(() => {
                           )}
 
 
-                          {currentStage && associationId && stageSupportsScorecard && (
+                          {currentStage && associationId &&
+                            (stageSupportsScorecard ||
+                              scorecardStageGroups.some(g => g.scorecards.length > 0 || g.pending.length > 0)) && (
                             <StageScorecardsCard
-                              stageInstanceId={currentStage.jhsId}
-                              associationId={associationId}
+                              groups={scorecardStageGroups}
                               currentUserId={user?.id}
-                              onOpenFullSheet={(scorecardId) => {
-                                setScoreStageInstId(currentStage.jhsId)
-                                setScoreStageName(currentStage.stage.stage_name)
+                              loading={appRequirements.loading}
+                              onOpenFullSheet={(scorecardId, stageInstanceId) => {
+                                const st = planStages.find(p => p.jhsId === stageInstanceId) ?? currentStage
+                                setScoreStageInstId(st.jhsId)
+                                setScoreStageName(st.stage.stage_name)
                                 setViewingScorecardId(scorecardId)
                                 setScoreOpen(true)
-                                onScorecardChange?.(scorecardId, currentStage.jhsId)
+                                onScorecardChange?.(scorecardId, st.jhsId)
                               }}
                               onSubmitScorecard={() => {
                                 setScoreStageInstId(currentStage.jhsId)
@@ -1555,19 +1600,8 @@ const stageHasAutomation = useMemo(() => {
                                 setScoreOpen(true)
                               }}
                               onDismissAiDraft={handleDismissAiDraft}
-                              refreshNonce={scorecardsRefreshNonce}
-                              requirement={
-                                currentStage.jhsId === activeStageInstanceId && scorecardRequirement.requireScorecard
-                                  ? {
-                                      active: true,
-                                      totalExpected: scorecardRequirement.totalExpected,
-                                      pendingRequired: scorecardRequirement.pending,
-                                      onRequest: (uid) => handleRequestScorecard(uid),
-                                      onRequestAll: () => handleRequestScorecard(),
-                                      onCompleteMine: handleCompleteMyScorecard,
-                                    }
-                                  : undefined
-                              }
+                              onRequest={(stageInstanceId, uid) => handleRequestScorecard(uid, stageInstanceId)}
+                              onCompleteMine={handleCompleteMyScorecard}
                             />
                           )}
 
