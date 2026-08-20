@@ -576,6 +576,7 @@ serve(async (req) => {
 
     // Check if slot is still available across ALL involved configs (group-aware).
     // Strict overlap (existing_start < new_end AND existing_end > new_start). Back-to-back is OK.
+    // For internal scheduling (recruiter books manually) this is advisory only — overbooking is allowed.
     const conflictConfigIds = isGroupBooking ? booking_config_ids : [booking_config_id];
     const { data: conflictingBookings } = await supabase
       .from('scheduled_bookings')
@@ -584,16 +585,24 @@ serve(async (req) => {
       .eq('status', 'confirmed')
       .lt('scheduled_start', scheduled_end)
       .gt('scheduled_end', scheduled_start)
-      .limit(1);
+      .limit(5);
 
     if (conflictingBookings && conflictingBookings.length > 0) {
-      return new Response(JSON.stringify({
-        error: 'This time slot is no longer available. Please select another time.',
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      if (isInternalScheduling) {
+        console.warn(
+          '[create-booking] Internal scheduling over existing booking(s) — allowed. Overlapping ids:',
+          conflictingBookings.map((b: any) => b.id).join(', '),
+        );
+      } else {
+        return new Response(JSON.stringify({
+          error: 'This time slot is no longer available. Please select another time.',
+        }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
+
 
     // Create Google Calendar events (two separate events approach)
     let googleEventId = null;
