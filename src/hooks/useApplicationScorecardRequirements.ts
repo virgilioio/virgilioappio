@@ -101,11 +101,14 @@ export function useApplicationScorecardRequirements(
       if (stagesWithoutBookings.length) {
         const { data: assignments } = await supabase
           .from('stage_interviewer_assignments')
-          .select('member_id, job_hiring_stage_id')
+          .select('member_id, job_hiring_stage_id, assignment_type')
           .in('job_hiring_stage_id', stagesWithoutBookings)
 
+        const requiredAssignments = ((assignments || []) as any[]).filter(
+          (a) => a.assignment_type === 'required',
+        )
         const memberIds = Array.from(
-          new Set(((assignments || []) as any[]).map((a) => a.member_id).filter(Boolean)),
+          new Set(requiredAssignments.map((a) => a.member_id).filter(Boolean)),
         )
         const userByMember = new Map<string, string>()
         if (memberIds.length) {
@@ -117,7 +120,7 @@ export function useApplicationScorecardRequirements(
             if (m.user_id) userByMember.set(m.id, m.user_id)
           }
         }
-        for (const a of ((assignments || []) as any[])) {
+        for (const a of requiredAssignments) {
           const uid = userByMember.get(a.member_id)
           if (uid && a.job_hiring_stage_id) expectedByStage[a.job_hiring_stage_id]?.add(uid)
         }
