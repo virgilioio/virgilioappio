@@ -104,7 +104,8 @@ import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileA
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
 import { InterviewHistoryCard } from '@/components/candidates/profile/InterviewHistoryCard'
-import { StageScorecardsCard } from '@/components/candidates/profile/StageScorecardsCard'
+import { StageScorecardsCard, type ScorecardStageGroup } from '@/components/candidates/profile/StageScorecardsCard'
+import { useApplicationScorecardRequirements } from '@/hooks/useApplicationScorecardRequirements'
 import { ScorecardsTabContent, type SubmittedScorecardRow, type SubmittedVerdict } from '@/components/candidates/profile/tabs/ScorecardsTabContent'
 import { useStagePendingPanelists } from '@/hooks/useStagePendingPanelists'
 import { useStageScorecardRequirement } from '@/hooks/useStageScorecardRequirement'
@@ -303,11 +304,12 @@ const scorecardRequirement = useStageScorecardRequirement(
   scorecardsRefreshNonce,
 )
 
-const handleRequestScorecard = async (interviewerUserId?: string) => {
-  if (!activeStageInstanceId || !associationId) return
+const handleRequestScorecard = async (interviewerUserId?: string, stageInstanceId?: string) => {
+  const stageId = stageInstanceId || activeStageInstanceId
+  if (!stageId || !associationId) return
   const result = await requestScorecard({
     associationId,
-    jobHiringStageId: activeStageInstanceId,
+    jobHiringStageId: stageId,
     interviewerUserIds: interviewerUserId ? [interviewerUserId] : undefined,
   })
   if (!result.ok) {
@@ -323,14 +325,18 @@ const handleRequestScorecard = async (interviewerUserId?: string) => {
     description: `Sent ${result.sent ?? 0} email${(result.sent ?? 0) === 1 ? '' : 's'}.`,
   })
   scorecardRequirement.refresh()
+  appRequirements.refresh()
   bumpScorecardsRefresh()
 }
 
 // Open the current-stage scorecard editor for the current user (the "Complete scorecard" path).
-const handleCompleteMyScorecard = () => {
-  if (!activeStageOption) return
-  setScoreStageInstId(activeStageOption.jhsId)
-  setScoreStageName(activeStageOption.stage.stage_name)
+const handleCompleteMyScorecard = (stageInstanceId?: string) => {
+  const target = stageInstanceId
+    ? planStages.find(p => p.jhsId === stageInstanceId) ?? activeStageOption
+    : activeStageOption
+  if (!target) return
+  setScoreStageInstId(target.jhsId)
+  setScoreStageName(target.stage.stage_name)
   setActiveTab('scorecards')
   setScoreOpen(true)
 }
