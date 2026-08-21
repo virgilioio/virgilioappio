@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   Check,
+  ChevronRight,
   Copy,
   Eye,
   ListChecks,
@@ -37,7 +38,16 @@ import { RequirementsSection } from './sections/RequirementsSection'
 import { QuestionsSection } from './sections/QuestionsSection'
 import { EmailsSection } from './sections/EmailsSection'
 import { TemplateSettingsSection } from './sections/TemplateSettingsSection'
+import { ScopeBadge } from './TemplateListTable'
+import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
 import type { ClientOrg } from './useClientOrganizations'
+
+/** e.g. 12 Aug 2026 */
+function formatEditedDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 const HAIRLINE = '#E7E8EE'
 const MUTED = '#8B8F9E'
@@ -75,6 +85,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(template), [draft, template])
   const compliance = isComplianceReady(draft)
   const askedCount = draft.questions.filter((q) => q.ask_candidate_too).length
+  const { name: editorName } = useUserDisplayName(template.updated_by)
 
   const summaries: Record<SectionId, string> = {
     referees: `${draft.referee_fields.length} fields · ${draft.referee_fields.filter((f) => f.required).length} required`,
@@ -108,6 +119,21 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
   return (
     <div className="space-y-4">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1 font-inter" style={{ fontSize: 11.5, color: MUTED }}>
+        <span>Reference checks</span>
+        <ChevronRight className="w-[12px] h-[12px]" strokeWidth={2} />
+        <button
+          type="button"
+          onClick={onBack}
+          className="hover:text-[#1F2230] transition-colors"
+        >
+          Templates
+        </button>
+        <ChevronRight className="w-[12px] h-[12px]" strokeWidth={2} />
+        <span className="text-[#1F2230] truncate">{draft.name || 'Untitled template'}</span>
+      </div>
+
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={onBack}>
@@ -142,6 +168,19 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
           </Button>
         </div>
       </div>
+
+      {/* Meta line */}
+      <div className="flex flex-wrap items-center gap-2 font-inter" style={{ fontSize: 11.5, color: MUTED }}>
+        <ScopeBadge scope={draft.scope} />
+        <span>·</span>
+        <span>Used on {template.times_used} checks</span>
+        <span>·</span>
+        <span>
+          Last edited {formatEditedDate(template.updated_at)}
+          {editorName ? ` by ${editorName}` : ''}
+        </span>
+      </div>
+
 
       <div className="grid gap-5" style={{ gridTemplateColumns: '272px minmax(0,1fr)' }}>
         {/* Rail */}

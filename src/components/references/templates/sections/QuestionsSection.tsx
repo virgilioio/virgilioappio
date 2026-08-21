@@ -38,6 +38,24 @@ const HAIRLINE = '#E7E8EE'
 const MUTED = '#8B8F9E'
 const LILAC = '#D7C5FB'
 
+const EXPLAINERS: { title: string; body: string; icon: typeof Star }[] = [
+  {
+    title: 'Employment verification',
+    icon: BadgeCheck,
+    body: "Title and dates as the referee remembers them. Captured for the record — never auto-compared, because there's no structured work history to compare it against.",
+  },
+  {
+    title: 'Would you rehire?',
+    icon: ThumbsUp,
+    body: 'Its own field type — the single most predictive question in a reference.',
+  },
+  {
+    title: 'Ask candidate',
+    icon: Star,
+    body: 'Rating questions only — the one type with a shared 1–5 scale on both sides. The candidate answers the same question about themselves and Gio reports the gap.',
+  },
+]
+
 const TYPE_ICON: Record<ReferenceAnswerType, typeof Star> = {
   rating_1_5: Star,
   single_select: CircleDot,
@@ -126,14 +144,24 @@ function QuestionRow({
           {QUESTION_TYPE_LABEL[q.type]}
         </span>
 
-        {q.ask_candidate_too && (
-          <span
-            className="inline-flex items-center rounded-full font-inter font-medium whitespace-nowrap"
-            style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 11, padding: '3px 8px' }}
-          >
-            Ask candidate
-          </span>
-        )}
+        <span className="flex items-center gap-1.5">
+          {q.ask_candidate_too && (
+            <span
+              className="inline-flex items-center rounded-full font-inter font-medium whitespace-nowrap"
+              style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 11, padding: '3px 8px' }}
+            >
+              Ask candidate
+            </span>
+          )}
+          {q.internal && (
+            <span
+              className="inline-flex items-center rounded-full font-inter font-medium whitespace-nowrap"
+              style={{ background: '#F1F0EC', color: '#5A6072', fontSize: 11, padding: '3px 8px' }}
+            >
+              Internal only
+            </span>
+          )}
+        </span>
 
         <TooltipProvider>
           <Tooltip>
@@ -150,9 +178,14 @@ function QuestionRow({
                 Ask candidate
               </label>
             </TooltipTrigger>
-            {!askAllowed && <TooltipContent>{ASK_CANDIDATE_DISABLED_TOOLTIP}</TooltipContent>}
+            <TooltipContent>
+              {askAllowed
+                ? 'The candidate answers this about themselves too'
+                : ASK_CANDIDATE_DISABLED_TOOLTIP}
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
 
         <label
           className={cn(
@@ -280,11 +313,11 @@ export function QuestionsSection({
             className="font-poppins font-semibold text-[#0d0d09]"
             style={{ fontSize: 18, letterSpacing: '-0.04em' }}
           >
-            Questions
+            Questions for referees
           </h3>
           <p className="mt-1 font-inter text-[12.5px] text-[#5A6072]">
-            {questions.length} question{questions.length === 1 ? '' : 's'} · the candidate also answers{' '}
-            {askedCount} of them about themselves.
+            Reference checks have their own type set — {askedCount} of these are also asked of the
+            candidate.
           </p>
         </div>
         <AddQuestionPicker onAdd={(type) => onChange([...questions, newQuestion(type)])} />
@@ -305,14 +338,32 @@ export function QuestionsSection({
         </SortableContext>
       </DndContext>
 
-      <p
-        className="font-inter leading-relaxed"
-        style={{ fontSize: 11.5, color: MUTED, borderTop: `1px solid ${HAIRLINE}`, paddingTop: 10 }}
+      {/* Guidance — not controls */}
+      <div
+        className="grid gap-2 pt-3"
+        style={{ borderTop: `1px solid ${HAIRLINE}`, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
       >
-        <span style={{ color: '#5B21B6' }}>Ask candidate</span> is available on 1–5 rating questions
-        only — the same scale on both sides is what makes the two answers comparable. Recommendation
-        score runs on a 10-point scale and is excluded.
-      </p>
+        {EXPLAINERS.map((card) => {
+          const Icon = card.icon
+          return (
+            <div
+              key={card.title}
+              className="rounded-xl px-3 py-2.5"
+              style={{ background: '#F6F5F1', border: `1px solid ${HAIRLINE}` }}
+            >
+              <div className="flex items-center gap-1.5">
+                <Icon className="w-[13px] h-[13px] shrink-0" strokeWidth={2} style={{ color: '#5A6072' }} />
+                <p className="font-poppins font-medium text-[#0d0d09]" style={{ fontSize: 12.5 }}>
+                  {card.title}
+                </p>
+              </div>
+              <p className="mt-1 font-inter leading-relaxed" style={{ fontSize: 11.5, color: MUTED }}>
+                {card.body}
+              </p>
+            </div>
+          )
+        })}
+      </div>
       <div className="h-[1px]" style={{ background: LILAC, opacity: 0 }} />
     </div>
   )
