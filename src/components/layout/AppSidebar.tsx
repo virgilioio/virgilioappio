@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
+import { ReferencesGlyph as SharedReferencesGlyph } from '@/components/icons/ReferencesGlyph'
+
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'settings' | 'my-profile' | null
 
