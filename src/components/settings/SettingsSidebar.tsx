@@ -86,6 +86,8 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
         { id: 'pipeline-stages', label: 'Pipeline stages', icon: GitBranch, show: true },
         { id: 'application-form', label: 'Application form', icon: ListChecks, show: true },
         { id: 'templates', label: 'Templates', icon: FileText, show: true },
+        { id: 'reference-templates', label: 'Reference templates', icon: ShieldCheck, show: true },
+
         { id: 'automations', label: 'Automations', icon: Workflow, show: true },
         { id: 'careers-page', label: 'Careers page', icon: Globe, show: true },
         { id: 'job-boards', label: 'Job boards', icon: Megaphone, show: true },
