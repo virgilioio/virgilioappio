@@ -71,6 +71,8 @@ const SaaSCustomerDetail = lazy(() =>
   import('./pages/settings/saas-customers/SaaSCustomerDetail').then(m => ({ default: m.SaaSCustomerDetail }))
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
+const References = lazy(() => import('./pages/References'))
+const ReferenceTemplates = lazy(() => import('./pages/ReferenceTemplates'))
 
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
 const SharedList = lazy(() => import('./pages/SharedList'))
