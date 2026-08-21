@@ -69,8 +69,9 @@ export function RefStatus({
       title={note || segments.join(' · ')}
     >
       <ReferencesGlyph
-        className={cn('shrink-0', state === 'none' && '[&_.accent]:fill-current')}
+        className={cn('shrink-0', s.glyphCls, state === 'none' && '[&_.accent]:fill-current')}
       />
+
 
       {segments.length > 0 && <span className="truncate">{segments.join(' · ')}</span>}
       {flagged && <Flag className="shrink-0" style={{ width: s.glyph, height: s.glyph }} />}
