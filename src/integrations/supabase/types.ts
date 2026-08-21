@@ -5639,6 +5639,319 @@ export type Database = {
         }
         Relationships: []
       }
+      reference_activity: {
+        Row: {
+          actor: string | null
+          created_at: string
+          id: string
+          label: string | null
+          request_id: string
+          type: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          request_id: string
+          type: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          request_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reference_activity_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "reference_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reference_referees: {
+        Row: {
+          answers: Json
+          company: string | null
+          created_at: string
+          email: string | null
+          hold_note: string | null
+          id: string
+          invited_at: string | null
+          link_expires_at: string | null
+          name: string
+          on_hold: boolean
+          opened_at: string | null
+          period: string | null
+          phone: string | null
+          relationship: string | null
+          request_id: string
+          source: Database["public"]["Enums"]["referee_source"]
+          status: Database["public"]["Enums"]["referee_status"]
+          submitted_at: string | null
+          title: string | null
+          token_hash: string | null
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          hold_note?: string | null
+          id?: string
+          invited_at?: string | null
+          link_expires_at?: string | null
+          name: string
+          on_hold?: boolean
+          opened_at?: string | null
+          period?: string | null
+          phone?: string | null
+          relationship?: string | null
+          request_id: string
+          source?: Database["public"]["Enums"]["referee_source"]
+          status?: Database["public"]["Enums"]["referee_status"]
+          submitted_at?: string | null
+          title?: string | null
+          token_hash?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          hold_note?: string | null
+          id?: string
+          invited_at?: string | null
+          link_expires_at?: string | null
+          name?: string
+          on_hold?: boolean
+          opened_at?: string | null
+          period?: string | null
+          phone?: string | null
+          relationship?: string | null
+          request_id?: string
+          source?: Database["public"]["Enums"]["referee_source"]
+          status?: Database["public"]["Enums"]["referee_status"]
+          submitted_at?: string | null
+          title?: string | null
+          token_hash?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reference_referees_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "reference_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reference_requests: {
+        Row: {
+          candidate_id: string
+          candidate_link_expires_at: string | null
+          candidate_token_hash: string | null
+          client_id: string | null
+          consent_recorded_at: string | null
+          created_at: string
+          flagged: boolean
+          flags: Json
+          id: string
+          job_id: string | null
+          min_referees_override: number | null
+          requested_by: string | null
+          retention_expires_at: string | null
+          self_assessment: Json
+          stage: string | null
+          state: Database["public"]["Enums"]["reference_request_state"]
+          template_id: string | null
+          template_snapshot: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          candidate_link_expires_at?: string | null
+          candidate_token_hash?: string | null
+          client_id?: string | null
+          consent_recorded_at?: string | null
+          created_at?: string
+          flagged?: boolean
+          flags?: Json
+          id?: string
+          job_id?: string | null
+          min_referees_override?: number | null
+          requested_by?: string | null
+          retention_expires_at?: string | null
+          self_assessment?: Json
+          stage?: string | null
+          state?: Database["public"]["Enums"]["reference_request_state"]
+          template_id?: string | null
+          template_snapshot?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          candidate_link_expires_at?: string | null
+          candidate_token_hash?: string | null
+          client_id?: string | null
+          consent_recorded_at?: string | null
+          created_at?: string
+          flagged?: boolean
+          flags?: Json
+          id?: string
+          job_id?: string | null
+          min_referees_override?: number | null
+          requested_by?: string | null
+          retention_expires_at?: string | null
+          self_assessment?: Json
+          stage?: string | null
+          state?: Database["public"]["Enums"]["reference_request_state"]
+          template_id?: string | null
+          template_snapshot?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reference_requests_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reference_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reference_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reference_requests_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "reference_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reference_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reference_templates: {
+        Row: {
+          candidate_email: Json | null
+          candidate_link_days: number
+          client_id: string | null
+          consent_text: string | null
+          created_at: string
+          id: string
+          is_live: boolean
+          max_referees: number
+          min_referees: number
+          name: string
+          privacy_notice_id: string | null
+          questions: Json
+          referee_email: Json | null
+          referee_fields: Json
+          referee_link_days: number
+          relationship_rules: Json
+          reminders: Json | null
+          retention_months: number
+          scope: Database["public"]["Enums"]["reference_template_scope"]
+          tenant_id: string
+          times_used: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          candidate_email?: Json | null
+          candidate_link_days?: number
+          client_id?: string | null
+          consent_text?: string | null
+          created_at?: string
+          id?: string
+          is_live?: boolean
+          max_referees?: number
+          min_referees?: number
+          name: string
+          privacy_notice_id?: string | null
+          questions?: Json
+          referee_email?: Json | null
+          referee_fields?: Json
+          referee_link_days?: number
+          relationship_rules?: Json
+          reminders?: Json | null
+          retention_months?: number
+          scope?: Database["public"]["Enums"]["reference_template_scope"]
+          tenant_id: string
+          times_used?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          candidate_email?: Json | null
+          candidate_link_days?: number
+          client_id?: string | null
+          consent_text?: string | null
+          created_at?: string
+          id?: string
+          is_live?: boolean
+          max_referees?: number
+          min_referees?: number
+          name?: string
+          privacy_notice_id?: string | null
+          questions?: Json
+          referee_email?: Json | null
+          referee_fields?: Json
+          referee_link_days?: number
+          relationship_rules?: Json
+          reminders?: Json | null
+          retention_months?: number
+          scope?: Database["public"]["Enums"]["reference_template_scope"]
+          tenant_id?: string
+          times_used?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reference_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reference_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rejection_email_templates: {
         Row: {
           body: string
@@ -8671,6 +8984,38 @@ export type Database = {
         | "daily"
         | "hourly"
       queue_status: "pending" | "sent" | "failed" | "cancelled"
+      referee_source: "candidate" | "recruiter_logged"
+      referee_status:
+        | "pending"
+        | "invited"
+        | "opened"
+        | "in_progress"
+        | "submitted"
+        | "declined"
+        | "bounced"
+        | "on_hold"
+        | "logged"
+      reference_answer_type:
+        | "short_text"
+        | "long_text"
+        | "single_select"
+        | "multi_select"
+        | "yes_no"
+        | "rating_1_5"
+        | "section_header"
+        | "employment_verification"
+        | "would_rehire"
+        | "recommendation_score"
+      reference_request_state:
+        | "draft"
+        | "candidate"
+        | "referees"
+        | "partial"
+        | "complete"
+        | "attention"
+        | "expired"
+        | "cancelled"
+      reference_template_scope: "default" | "client" | "personalised"
       rejection_category: "recruiter_rejected" | "candidate_declined"
       score_rating:
         | "definitely_no"
@@ -8986,6 +9331,41 @@ export const Constants = {
         "hourly",
       ],
       queue_status: ["pending", "sent", "failed", "cancelled"],
+      referee_source: ["candidate", "recruiter_logged"],
+      referee_status: [
+        "pending",
+        "invited",
+        "opened",
+        "in_progress",
+        "submitted",
+        "declined",
+        "bounced",
+        "on_hold",
+        "logged",
+      ],
+      reference_answer_type: [
+        "short_text",
+        "long_text",
+        "single_select",
+        "multi_select",
+        "yes_no",
+        "rating_1_5",
+        "section_header",
+        "employment_verification",
+        "would_rehire",
+        "recommendation_score",
+      ],
+      reference_request_state: [
+        "draft",
+        "candidate",
+        "referees",
+        "partial",
+        "complete",
+        "attention",
+        "expired",
+        "cancelled",
+      ],
+      reference_template_scope: ["default", "client", "personalised"],
       rejection_category: ["recruiter_rejected", "candidate_declined"],
       score_rating: [
         "definitely_no",
