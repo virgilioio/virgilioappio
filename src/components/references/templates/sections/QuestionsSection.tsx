@@ -295,11 +295,11 @@ export function QuestionsSection({
             className="font-poppins font-semibold text-[#0d0d09]"
             style={{ fontSize: 18, letterSpacing: '-0.04em' }}
           >
-            Questions
+            Questions for referees
           </h3>
           <p className="mt-1 font-inter text-[12.5px] text-[#5A6072]">
-            {questions.length} question{questions.length === 1 ? '' : 's'} · the candidate also answers{' '}
-            {askedCount} of them about themselves.
+            Reference checks have their own type set — {askedCount} of these are also asked of the
+            candidate.
           </p>
         </div>
         <AddQuestionPicker onAdd={(type) => onChange([...questions, newQuestion(type)])} />
@@ -320,14 +320,32 @@ export function QuestionsSection({
         </SortableContext>
       </DndContext>
 
-      <p
-        className="font-inter leading-relaxed"
-        style={{ fontSize: 11.5, color: MUTED, borderTop: `1px solid ${HAIRLINE}`, paddingTop: 10 }}
+      {/* Guidance — not controls */}
+      <div
+        className="grid gap-2 pt-3"
+        style={{ borderTop: `1px solid ${HAIRLINE}`, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
       >
-        <span style={{ color: '#5B21B6' }}>Ask candidate</span> is available on 1–5 rating questions
-        only — the same scale on both sides is what makes the two answers comparable. Recommendation
-        score runs on a 10-point scale and is excluded.
-      </p>
+        {EXPLAINERS.map((card) => {
+          const Icon = card.icon
+          return (
+            <div
+              key={card.title}
+              className="rounded-xl px-3 py-2.5"
+              style={{ background: '#F6F5F1', border: `1px solid ${HAIRLINE}` }}
+            >
+              <div className="flex items-center gap-1.5">
+                <Icon className="w-[13px] h-[13px] shrink-0" strokeWidth={2} style={{ color: '#5A6072' }} />
+                <p className="font-poppins font-medium text-[#0d0d09]" style={{ fontSize: 12.5 }}>
+                  {card.title}
+                </p>
+              </div>
+              <p className="mt-1 font-inter leading-relaxed" style={{ fontSize: 11.5, color: MUTED }}>
+                {card.body}
+              </p>
+            </div>
+          )
+        })}
+      </div>
       <div className="h-[1px]" style={{ background: LILAC, opacity: 0 }} />
     </div>
   )
