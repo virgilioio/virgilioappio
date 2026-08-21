@@ -29,7 +29,11 @@ export interface RefStatusProps {
   state: RefRequestState
   /** flagged is a MODIFIER, not a state — a request can be partial AND flagged. */
   flagged?: boolean
-  /** Pre-formatted counts string from formatCounts(). Never a percentage. */
+  /**
+   * Pre-formatted counts string from formatCounts() — or formatCountsCompact()
+   * for the compact pipeline form (size="xs" with showLabel={false}).
+   * Never a percentage.
+   */
   counts?: string
   size?: keyof typeof SIZE
   showLabel?: boolean
@@ -50,11 +54,18 @@ export function RefStatus({
   const t = TONE[tone]
   const s = SIZE[size]
 
-  const segments = [
-    showLabel ? REF_STATE_LABEL[state] : null,
-    state !== 'none' && counts ? counts : null,
-    flagged ? 'flagged' : null,
-  ].filter(Boolean) as string[]
+  /** Compact pipeline form: glyph + short count only (e.g. "2/3", "Chase", "None"). */
+  const compact = size === 'xs' && !showLabel
+
+  const segments = (
+    compact
+      ? [counts || null, flagged ? 'flagged' : null]
+      : [
+          showLabel ? REF_STATE_LABEL[state] : null,
+          state !== 'none' && counts ? counts : null,
+          flagged ? 'flagged' : null,
+        ]
+  ).filter(Boolean) as string[]
 
   return (
     <span
