@@ -126,14 +126,24 @@ function QuestionRow({
           {QUESTION_TYPE_LABEL[q.type]}
         </span>
 
-        {q.ask_candidate_too && (
-          <span
-            className="inline-flex items-center rounded-full font-inter font-medium whitespace-nowrap"
-            style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 11, padding: '3px 8px' }}
-          >
-            Ask candidate
-          </span>
-        )}
+        <span className="flex items-center gap-1.5">
+          {q.ask_candidate_too && (
+            <span
+              className="inline-flex items-center rounded-full font-inter font-medium whitespace-nowrap"
+              style={{ background: '#EDE4FF', color: '#5B21B6', fontSize: 11, padding: '3px 8px' }}
+            >
+              Ask candidate
+            </span>
+          )}
+          {q.internal && (
+            <span
+              className="inline-flex items-center rounded-full font-inter font-medium whitespace-nowrap"
+              style={{ background: '#F1F0EC', color: '#5A6072', fontSize: 11, padding: '3px 8px' }}
+            >
+              Internal only
+            </span>
+          )}
+        </span>
 
         <TooltipProvider>
           <Tooltip>
@@ -150,9 +160,14 @@ function QuestionRow({
                 Ask candidate
               </label>
             </TooltipTrigger>
-            {!askAllowed && <TooltipContent>{ASK_CANDIDATE_DISABLED_TOOLTIP}</TooltipContent>}
+            <TooltipContent>
+              {askAllowed
+                ? 'The candidate answers this about themselves too'
+                : ASK_CANDIDATE_DISABLED_TOOLTIP}
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
 
         <label
           className={cn(
