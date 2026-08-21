@@ -53,6 +53,7 @@ export function useReferenceTemplates() {
     mutationFn: async (overrides?: Partial<ReferenceTemplate>) => {
       if (!tenantId) throw new Error('No tenant')
       const draft = { ...newTemplateDraft(tenantId), ...overrides }
+      if (draft.privacy_notice_id === '') draft.privacy_notice_id = null
       const { data, error } = await supabase
         .from(TABLE)
         .insert({ ...(draft as any), updated_by: user?.id ?? null })
@@ -69,6 +70,7 @@ export function useReferenceTemplates() {
   const updateTemplate = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<ReferenceTemplate> }) => {
       const { tenant_id, created_at, updated_at, times_used, ...rest } = patch as any
+      if (rest.privacy_notice_id === '') rest.privacy_notice_id = null
       const { data, error } = await supabase
         .from(TABLE)
         .update({ ...rest, updated_by: user?.id ?? null, updated_at: new Date().toISOString() })
