@@ -263,9 +263,9 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
             )}
           </Card>
 
-          {/* Compliance ready */}
+          {/* Compliance */}
           <Card
-            className="p-3 space-y-2"
+            className="p-3 space-y-1.5"
             style={{
               background: compliance.ready ? '#F0FDF4' : '#FFFBEB',
               borderColor: compliance.ready ? '#BBF7D0' : '#FDE68A',
@@ -284,23 +284,14 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
                 {compliance.ready ? 'Compliance ready' : 'Compliance incomplete'}
               </p>
             </div>
-            {[
-              { ok: compliance.consentOk, label: 'Consent text' },
-              { ok: compliance.privacyOk, label: 'Privacy notice' },
-              { ok: compliance.retentionOk, label: 'Retention period' },
-            ].map((row) => (
-              <div key={row.label} className="flex items-center gap-1.5 font-inter" style={{ fontSize: 11.5 }}>
-                {row.ok ? (
-                  <Check className="w-[13px] h-[13px]" style={{ color: '#065F46' }} strokeWidth={2.5} />
-                ) : (
-                  <X className="w-[13px] h-[13px]" style={{ color: '#9A3412' }} strokeWidth={2.5} />
-                )}
-                <span style={{ color: row.ok ? '#065F46' : '#9A3412' }}>
-                  {row.label} {row.ok ? 'set' : 'missing'}
-                </span>
-              </div>
-            ))}
+            <p
+              className="font-inter leading-relaxed"
+              style={{ fontSize: 11.5, color: compliance.ready ? '#065F46' : '#92400E' }}
+            >
+              {complianceSentence}
+            </p>
           </Card>
+
         </div>
 
         {/* Section body */}
