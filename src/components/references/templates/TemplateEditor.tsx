@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ArrowLeft,
-  Check,
   ChevronRight,
   Copy,
   Eye,
@@ -15,7 +13,6 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -24,7 +21,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ReferencesGlyph } from '@/components/icons/ReferencesGlyph'
 import { cn } from '@/lib/utils'
 import {
   defaultCandidateEmail,
@@ -87,13 +83,37 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
   const askedCount = draft.questions.filter((q) => q.ask_candidate_too).length
   const { name: editorName } = useUserDisplayName(template.updated_by)
 
+  const rangeLabel =
+    draft.min_referees === draft.max_referees
+      ? `${draft.min_referees}`
+      : `${draft.min_referees}–${draft.max_referees}`
+  const enforcedRules = draft.relationship_rules
+    .filter((r) => r.enforced)
+    .map((r) => `${r.count} ${r.relationship.toLowerCase()}`)
+    .join(' · ')
+
+  const complianceSentence = compliance.ready
+    ? `Consent text set · privacy notice attached · ${draft.retention_months}-month retention.`
+    : (() => {
+        const missing: string[] = []
+        if (!compliance.consentOk) missing.push('Consent text missing')
+        if (!compliance.privacyOk) missing.push('privacy notice not attached')
+        if (!compliance.retentionOk) missing.push('retention period not set')
+        const s = missing.join(' · ')
+        return `${s.charAt(0).toUpperCase()}${s.slice(1)}.`
+      })()
+
   const summaries: Record<SectionId, string> = {
-    referees: `${draft.referee_fields.length} fields · ${draft.referee_fields.filter((f) => f.required).length} required`,
-    requirements: `${draft.min_referees}–${draft.max_referees} referees · ${draft.relationship_rules.length} rule${draft.relationship_rules.length === 1 ? '' : 's'}`,
-    questions: `${draft.questions.length} questions · ${askedCount} also asked of the candidate`,
-    emails: `Candidate + referee emails${draft.candidate_email?.subject ? '' : ' · subject missing'}`,
-    settings: `${draft.candidate_link_days}d / ${draft.referee_link_days}d links · ${draft.reminders?.enabled ? 'reminders on' : 'reminders off'}`,
+    referees: `${draft.referee_fields.length} fields`,
+    requirements: enforcedRules ? `${rangeLabel} · ${enforcedRules}` : rangeLabel,
+    questions:
+      askedCount > 0
+        ? `${draft.questions.length} · ${askedCount} asked of candidate`
+        : `${draft.questions.length} questions`,
+    emails: '2 templates',
+    settings: 'Consent · retention',
   }
+
 
   const handleSave = async () => {
     await onSave({
@@ -135,28 +155,34 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
       </div>
 
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={onBack}>
-          Templates
-        </Button>
-        <div
-          className="shrink-0 grid place-items-center rounded-[10px] bg-[#0d0d09]"
-          style={{ width: 34, height: 34 }}
-        >
-          <ReferencesGlyph className="w-[18px] h-[18px] fill-[#fffcf9] [&_.accent]:fill-[#D7C5FB]" />
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <input
+            value={draft.name}
+            onChange={(e) => patch({ name: e.target.value })}
+            aria-label="Template name"
+            placeholder="Untitled template"
+            className="w-full max-w-[520px] bg-transparent font-poppins font-semibold text-[#0d0d09] rounded-lg px-1.5 -ml-1.5 py-0.5 border border-transparent outline-none transition-colors hover:bg-[rgba(13,13,9,0.04)] focus:bg-[rgba(13,13,9,0.04)] focus:border-[#E7E8EE]"
+            style={{ fontSize: 26, letterSpacing: '-0.04em' }}
+          />
+
+          {/* Meta line */}
+          <div
+            className="mt-1 flex flex-wrap items-center gap-2 font-inter"
+            style={{ fontSize: 11.5, color: MUTED }}
+          >
+            <ScopeBadge scope={draft.scope} />
+            <span>·</span>
+            <span>Used on {template.times_used} checks</span>
+            <span>·</span>
+            <span>
+              Last edited {formatEditedDate(template.updated_at)}
+              {editorName ? ` by ${editorName}` : ''}
+            </span>
+          </div>
         </div>
-        <Input
-          value={draft.name}
-          onChange={(e) => patch({ name: e.target.value })}
-          className="h-[36px] w-[280px] font-poppins font-semibold text-[15px]"
-        />
 
-        <label className="flex items-center gap-2 font-inter" style={{ fontSize: 12, color: '#5A6072' }}>
-          <Switch checked={draft.is_live} onCheckedChange={(v) => patch({ is_live: v })} />
-          Live
-        </label>
-
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           <Button variant="secondary" size="sm" icon={Copy} onClick={onDuplicate}>
             Duplicate
           </Button>
@@ -169,17 +195,6 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
         </div>
       </div>
 
-      {/* Meta line */}
-      <div className="flex flex-wrap items-center gap-2 font-inter" style={{ fontSize: 11.5, color: MUTED }}>
-        <ScopeBadge scope={draft.scope} />
-        <span>·</span>
-        <span>Used on {template.times_used} checks</span>
-        <span>·</span>
-        <span>
-          Last edited {formatEditedDate(template.updated_at)}
-          {editorName ? ` by ${editorName}` : ''}
-        </span>
-      </div>
 
 
       <div className="grid gap-5" style={{ gridTemplateColumns: '272px minmax(0,1fr)' }}>
@@ -226,8 +241,8 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
             </div>
           </Card>
 
-          {/* Scope */}
-          <Card className="p-3 space-y-2.5">
+          {/* Scope + live */}
+          <Card className="relative z-20 p-3 space-y-2.5">
             <p
               className="font-inter font-semibold uppercase"
               style={{ fontSize: 10, letterSpacing: '0.06em', color: MUTED }}
@@ -241,7 +256,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
               <SelectTrigger className="h-[32px] font-inter text-[12.5px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[80]">
                 <SelectItem value="default">Default</SelectItem>
                 <SelectItem value="client">Client</SelectItem>
                 <SelectItem value="personalised">Personalised</SelectItem>
@@ -252,7 +267,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
                 <SelectTrigger className="h-[32px] font-inter text-[12.5px]">
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[80]">
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
@@ -261,11 +276,31 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
                 </SelectContent>
               </Select>
             )}
+
+            <div
+              className="flex items-start justify-between gap-3 pt-2.5"
+              style={{ borderTop: `1px solid ${HAIRLINE}` }}
+            >
+              <div className="min-w-0">
+                <p className="font-poppins font-medium text-[#1F2230]" style={{ fontSize: 12.5 }}>
+                  Live
+                </p>
+                <p className="font-inter" style={{ fontSize: 11, color: MUTED }}>
+                  Only live templates can be used on a new request.
+                </p>
+              </div>
+              <Switch
+                checked={draft.is_live}
+                onCheckedChange={(v) => patch({ is_live: v })}
+                aria-label="Live"
+              />
+            </div>
           </Card>
 
-          {/* Compliance ready */}
+
+          {/* Compliance */}
           <Card
-            className="p-3 space-y-2"
+            className="p-3 space-y-1.5"
             style={{
               background: compliance.ready ? '#F0FDF4' : '#FFFBEB',
               borderColor: compliance.ready ? '#BBF7D0' : '#FDE68A',
@@ -284,23 +319,14 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
                 {compliance.ready ? 'Compliance ready' : 'Compliance incomplete'}
               </p>
             </div>
-            {[
-              { ok: compliance.consentOk, label: 'Consent text' },
-              { ok: compliance.privacyOk, label: 'Privacy notice' },
-              { ok: compliance.retentionOk, label: 'Retention period' },
-            ].map((row) => (
-              <div key={row.label} className="flex items-center gap-1.5 font-inter" style={{ fontSize: 11.5 }}>
-                {row.ok ? (
-                  <Check className="w-[13px] h-[13px]" style={{ color: '#065F46' }} strokeWidth={2.5} />
-                ) : (
-                  <X className="w-[13px] h-[13px]" style={{ color: '#9A3412' }} strokeWidth={2.5} />
-                )}
-                <span style={{ color: row.ok ? '#065F46' : '#9A3412' }}>
-                  {row.label} {row.ok ? 'set' : 'missing'}
-                </span>
-              </div>
-            ))}
+            <p
+              className="font-inter leading-relaxed"
+              style={{ fontSize: 11.5, color: compliance.ready ? '#065F46' : '#92400E' }}
+            >
+              {complianceSentence}
+            </p>
           </Card>
+
         </div>
 
         {/* Section body */}
