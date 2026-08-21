@@ -87,13 +87,37 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
   const askedCount = draft.questions.filter((q) => q.ask_candidate_too).length
   const { name: editorName } = useUserDisplayName(template.updated_by)
 
+  const rangeLabel =
+    draft.min_referees === draft.max_referees
+      ? `${draft.min_referees}`
+      : `${draft.min_referees}–${draft.max_referees}`
+  const enforcedRules = draft.relationship_rules
+    .filter((r) => r.enforced)
+    .map((r) => `${r.count} ${r.relationship.toLowerCase()}`)
+    .join(' · ')
+
+  const complianceSentence = compliance.ready
+    ? `Consent text set · privacy notice attached · ${draft.retention_months}-month retention.`
+    : (() => {
+        const missing: string[] = []
+        if (!compliance.consentOk) missing.push('Consent text missing')
+        if (!compliance.privacyOk) missing.push('privacy notice not attached')
+        if (!compliance.retentionOk) missing.push('retention period not set')
+        const s = missing.join(' · ')
+        return `${s.charAt(0).toUpperCase()}${s.slice(1)}.`
+      })()
+
   const summaries: Record<SectionId, string> = {
-    referees: `${draft.referee_fields.length} fields · ${draft.referee_fields.filter((f) => f.required).length} required`,
-    requirements: `${draft.min_referees}–${draft.max_referees} referees · ${draft.relationship_rules.length} rule${draft.relationship_rules.length === 1 ? '' : 's'}`,
-    questions: `${draft.questions.length} questions · ${askedCount} also asked of the candidate`,
-    emails: `Candidate + referee emails${draft.candidate_email?.subject ? '' : ' · subject missing'}`,
-    settings: `${draft.candidate_link_days}d / ${draft.referee_link_days}d links · ${draft.reminders?.enabled ? 'reminders on' : 'reminders off'}`,
+    referees: `${draft.referee_fields.length} fields`,
+    requirements: enforcedRules ? `${rangeLabel} · ${enforcedRules}` : rangeLabel,
+    questions:
+      askedCount > 0
+        ? `${draft.questions.length} · ${askedCount} asked of candidate`
+        : `${draft.questions.length} questions`,
+    emails: '2 templates',
+    settings: 'Consent · retention',
   }
+
 
   const handleSave = async () => {
     await onSave({
