@@ -37,6 +37,7 @@ export interface PermissionsState {
   
   // Navigation permissions
   canViewCandidatesNavigation: boolean
+  canViewReferences: boolean
   
   // Job assignment permissions
   canViewJobAssignments: boolean
