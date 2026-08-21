@@ -226,8 +226,8 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
             </div>
           </Card>
 
-          {/* Scope */}
-          <Card className="p-3 space-y-2.5">
+          {/* Scope + live */}
+          <Card className="relative z-20 p-3 space-y-2.5">
             <p
               className="font-inter font-semibold uppercase"
               style={{ fontSize: 10, letterSpacing: '0.06em', color: MUTED }}
@@ -241,7 +241,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
               <SelectTrigger className="h-[32px] font-inter text-[12.5px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[80]">
                 <SelectItem value="default">Default</SelectItem>
                 <SelectItem value="client">Client</SelectItem>
                 <SelectItem value="personalised">Personalised</SelectItem>
@@ -252,7 +252,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
                 <SelectTrigger className="h-[32px] font-inter text-[12.5px]">
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[80]">
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
@@ -261,7 +261,27 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
                 </SelectContent>
               </Select>
             )}
+
+            <div
+              className="flex items-start justify-between gap-3 pt-2.5"
+              style={{ borderTop: `1px solid ${HAIRLINE}` }}
+            >
+              <div className="min-w-0">
+                <p className="font-poppins font-medium text-[#1F2230]" style={{ fontSize: 12.5 }}>
+                  Live
+                </p>
+                <p className="font-inter" style={{ fontSize: 11, color: MUTED }}>
+                  Only live templates can be used on a new request.
+                </p>
+              </div>
+              <Switch
+                checked={draft.is_live}
+                onCheckedChange={(v) => patch({ is_live: v })}
+                aria-label="Live"
+              />
+            </div>
           </Card>
+
 
           {/* Compliance */}
           <Card
