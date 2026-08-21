@@ -85,6 +85,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(template), [draft, template])
   const compliance = isComplianceReady(draft)
   const askedCount = draft.questions.filter((q) => q.ask_candidate_too).length
+  const { name: editorName } = useUserDisplayName(template.updated_by)
 
   const summaries: Record<SectionId, string> = {
     referees: `${draft.referee_fields.length} fields · ${draft.referee_fields.filter((f) => f.required).length} required`,
