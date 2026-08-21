@@ -8,11 +8,12 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
 
-export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'analytics' | 'settings' | 'my-profile' | null
+export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'settings' | 'my-profile' | null
 
 const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar']
 const CRM_PREFIXES = ['/crm']
 const CHAT_PREFIXES = ['/chat']
+const REFERENCES_PREFIXES = ['/references']
 const ANALYTICS_PREFIXES = ['/analytics', '/talent-intelligence', '/insights']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
