@@ -185,6 +185,8 @@ function AppContent() {
             <Route path="/organizations" element={<Navigate to="/crm/companies" replace />} />
             <Route path="/chat" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
             <Route path="/chat/:threadId" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
+            <Route path="/references" element={<References />} />
+            <Route path="/references/templates" element={<ReferenceTemplates />} />
 
           </Route>
         </Route>
