@@ -29,7 +29,7 @@ const SCOPE_META: Record<
   personalised: { label: 'Personalised', icon: UserRoundCog, bg: '#EDE4FF', fg: '#5B21B6' },
 }
 
-function ScopeBadge({ scope }: { scope: ReferenceTemplateScope }) {
+export function ScopeBadge({ scope }: { scope: ReferenceTemplateScope }) {
   const meta = SCOPE_META[scope] ?? SCOPE_META.default
   const Icon = meta.icon
   return (
