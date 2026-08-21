@@ -53,6 +53,7 @@ export function useReferenceTemplates() {
     mutationFn: async (overrides?: Partial<ReferenceTemplate>) => {
       if (!tenantId) throw new Error('No tenant')
       const draft = { ...newTemplateDraft(tenantId), ...overrides }
+      if (draft.privacy_notice_id === '') draft.privacy_notice_id = null
       const { data, error } = await supabase
         .from(TABLE)
         .insert({ ...(draft as any), updated_by: user?.id ?? null })
