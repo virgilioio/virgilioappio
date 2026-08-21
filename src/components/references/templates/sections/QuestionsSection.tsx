@@ -38,6 +38,24 @@ const HAIRLINE = '#E7E8EE'
 const MUTED = '#8B8F9E'
 const LILAC = '#D7C5FB'
 
+const EXPLAINERS: { title: string; body: string; icon: typeof Star }[] = [
+  {
+    title: 'Employment verification',
+    icon: BadgeCheck,
+    body: "Title and dates as the referee remembers them. Captured for the record — never auto-compared, because there's no structured work history to compare it against.",
+  },
+  {
+    title: 'Would you rehire?',
+    icon: ThumbsUp,
+    body: 'Its own field type — the single most predictive question in a reference.',
+  },
+  {
+    title: 'Ask candidate',
+    icon: Star,
+    body: 'Rating questions only — the one type with a shared 1–5 scale on both sides. The candidate answers the same question about themselves and Gio reports the gap.',
+  },
+]
+
 const TYPE_ICON: Record<ReferenceAnswerType, typeof Star> = {
   rating_1_5: Star,
   single_select: CircleDot,
