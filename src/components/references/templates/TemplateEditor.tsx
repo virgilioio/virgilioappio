@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   Check,
+  ChevronRight,
   Copy,
   Eye,
   ListChecks,
@@ -37,7 +38,16 @@ import { RequirementsSection } from './sections/RequirementsSection'
 import { QuestionsSection } from './sections/QuestionsSection'
 import { EmailsSection } from './sections/EmailsSection'
 import { TemplateSettingsSection } from './sections/TemplateSettingsSection'
+import { ScopeBadge } from './TemplateListTable'
+import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
 import type { ClientOrg } from './useClientOrganizations'
+
+/** e.g. 12 Aug 2026 */
+function formatEditedDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 const HAIRLINE = '#E7E8EE'
 const MUTED = '#8B8F9E'
