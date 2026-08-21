@@ -91,13 +91,35 @@ export function TemplateListTable({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2
-          className="font-poppins font-semibold text-[#0d0d09]"
-          style={{ fontSize: 18, letterSpacing: '-0.04em' }}
-        >
-          Templates
-        </h2>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2
+              className="font-poppins font-semibold text-[#0d0d09]"
+              style={{ fontSize: 18, letterSpacing: '-0.04em' }}
+            >
+              Templates
+            </h2>
+            <span
+              className="inline-flex items-center justify-center rounded-full font-poppins font-medium tabular-nums"
+              style={{
+                background: '#F1F0EC',
+                color: '#5A6072',
+                fontSize: 11.5,
+                minWidth: 22,
+                height: 22,
+                padding: '0 7px',
+              }}
+            >
+              {templates.length}
+            </span>
+          </div>
+          <p className="mt-0.5 font-inter" style={{ fontSize: 12, color: MUTED }}>
+            Owned by this workspace — never shared
+            <span style={{ padding: '0 5px' }}>·</span>
+            Also reachable from Settings → Recruiting
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" icon={Library} onClick={onQuestionLibrary}>
             Question library
@@ -201,9 +223,8 @@ export function TemplateListTable({
         className="font-inter leading-relaxed"
         style={{ fontSize: 11.5, color: MUTED, borderTop: `1px solid ${HAIRLINE}`, paddingTop: 10 }}
       >
-        Templates are scoped to this workspace and are never shared across workspaces. When a
-        candidate's job belongs to a client that has its own template, that client template is
-        offered first.
+        Templates are scoped to this workspace. A client template is offered first when the
+        candidate's job belongs to that client.
       </p>
     </div>
   )
