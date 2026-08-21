@@ -19,10 +19,11 @@ const TONE: Record<RefTone, { bg: string; fg: string }> = {
 }
 
 const SIZE = {
-  xs: { h: 'h-[18px]', px: 'px-1.5', gap: 'gap-1', text: '10.5px', glyph: 9 },
-  sm: { h: 'h-[22px]', px: 'px-2', gap: 'gap-1.5', text: '11.5px', glyph: 11 },
-  md: { h: 'h-[26px]', px: 'px-2.5', gap: 'gap-1.5', text: '12.5px', glyph: 13 },
+  xs: { h: 'h-[18px]', px: 'px-1.5', gap: 'gap-1', text: '10.5px', glyph: 9, glyphCls: 'h-[9px] w-[9px]' },
+  sm: { h: 'h-[22px]', px: 'px-2', gap: 'gap-1.5', text: '11.5px', glyph: 11, glyphCls: 'h-[11px] w-[11px]' },
+  md: { h: 'h-[26px]', px: 'px-2.5', gap: 'gap-1.5', text: '12.5px', glyph: 13, glyphCls: 'h-[13px] w-[13px]' },
 } as const
+
 
 export interface RefStatusProps {
   state: RefRequestState
