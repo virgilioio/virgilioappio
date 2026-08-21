@@ -110,7 +110,11 @@ export function TemplateListTable({
 
       <Card className="overflow-hidden p-0">
         {isLoading ? (
-          <TableSkeleton rows={4} columns={7} />
+          <Table>
+            <TableBody>
+              <TableSkeleton rows={4} columns={7} />
+            </TableBody>
+          </Table>
         ) : templates.length === 0 ? (
           <div className="p-6">
             <EmptyState
