@@ -73,19 +73,8 @@ const ChatGlyph: IconRenderer = ({ className }) => (
   </svg>
 )
 
-const ReferencesGlyph: IconRenderer = ({ className }) => {
-  const uid = 'rg' + React.useId().replace(/:/g, '')
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
-      <mask id={uid} maskUnits="userSpaceOnUse">
-        <rect width="48" height="48" fill="#fff" />
-        <circle cx="16.5" cy="24" r="13.5" fill="#000" />
-      </mask>
-      <circle cx="31.5" cy="24" r="11.5" fill="currentColor" mask={`url(#${uid})`} />
-      <circle className="accent" cx="16.5" cy="24" r="11.5" fill="currentColor" />
-    </svg>
-  )
-}
+const ReferencesGlyph: IconRenderer = ({ className }) => <SharedReferencesGlyph className={className} />
+
 
 const AnalyticsGlyph: IconRenderer = ({ className }) => (
   <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
