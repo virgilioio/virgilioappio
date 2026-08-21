@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  ArrowLeft,
-  Check,
   ChevronRight,
   Copy,
   Eye,
@@ -15,7 +13,6 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -24,7 +21,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ReferencesGlyph } from '@/components/icons/ReferencesGlyph'
 import { cn } from '@/lib/utils'
 import {
   defaultCandidateEmail,
