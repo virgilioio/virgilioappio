@@ -135,28 +135,34 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
       </div>
 
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={onBack}>
-          Templates
-        </Button>
-        <div
-          className="shrink-0 grid place-items-center rounded-[10px] bg-[#0d0d09]"
-          style={{ width: 34, height: 34 }}
-        >
-          <ReferencesGlyph className="w-[18px] h-[18px] fill-[#fffcf9] [&_.accent]:fill-[#D7C5FB]" />
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <input
+            value={draft.name}
+            onChange={(e) => patch({ name: e.target.value })}
+            aria-label="Template name"
+            placeholder="Untitled template"
+            className="w-full max-w-[520px] bg-transparent font-poppins font-semibold text-[#0d0d09] rounded-lg px-1.5 -ml-1.5 py-0.5 border border-transparent outline-none transition-colors hover:bg-[rgba(13,13,9,0.04)] focus:bg-[rgba(13,13,9,0.04)] focus:border-[#E7E8EE]"
+            style={{ fontSize: 26, letterSpacing: '-0.04em' }}
+          />
+
+          {/* Meta line */}
+          <div
+            className="mt-1 flex flex-wrap items-center gap-2 font-inter"
+            style={{ fontSize: 11.5, color: MUTED }}
+          >
+            <ScopeBadge scope={draft.scope} />
+            <span>·</span>
+            <span>Used on {template.times_used} checks</span>
+            <span>·</span>
+            <span>
+              Last edited {formatEditedDate(template.updated_at)}
+              {editorName ? ` by ${editorName}` : ''}
+            </span>
+          </div>
         </div>
-        <Input
-          value={draft.name}
-          onChange={(e) => patch({ name: e.target.value })}
-          className="h-[36px] w-[280px] font-poppins font-semibold text-[15px]"
-        />
 
-        <label className="flex items-center gap-2 font-inter" style={{ fontSize: 12, color: '#5A6072' }}>
-          <Switch checked={draft.is_live} onCheckedChange={(v) => patch({ is_live: v })} />
-          Live
-        </label>
-
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-1">
           <Button variant="secondary" size="sm" icon={Copy} onClick={onDuplicate}>
             Duplicate
           </Button>
@@ -169,17 +175,6 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
         </div>
       </div>
 
-      {/* Meta line */}
-      <div className="flex flex-wrap items-center gap-2 font-inter" style={{ fontSize: 11.5, color: MUTED }}>
-        <ScopeBadge scope={draft.scope} />
-        <span>·</span>
-        <span>Used on {template.times_used} checks</span>
-        <span>·</span>
-        <span>
-          Last edited {formatEditedDate(template.updated_at)}
-          {editorName ? ` by ${editorName}` : ''}
-        </span>
-      </div>
 
 
       <div className="grid gap-5" style={{ gridTemplateColumns: '272px minmax(0,1fr)' }}>
