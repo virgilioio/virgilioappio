@@ -71,6 +71,8 @@ const SaaSCustomerDetail = lazy(() =>
   import('./pages/settings/saas-customers/SaaSCustomerDetail').then(m => ({ default: m.SaaSCustomerDetail }))
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
+const References = lazy(() => import('./pages/References'))
+const ReferenceTemplates = lazy(() => import('./pages/ReferenceTemplates'))
 
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
 const SharedList = lazy(() => import('./pages/SharedList'))
@@ -183,6 +185,8 @@ function AppContent() {
             <Route path="/organizations" element={<Navigate to="/crm/companies" replace />} />
             <Route path="/chat" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
             <Route path="/chat/:threadId" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
+            <Route path="/references" element={<References />} />
+            <Route path="/references/templates" element={<ReferenceTemplates />} />
 
           </Route>
         </Route>

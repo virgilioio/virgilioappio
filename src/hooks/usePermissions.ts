@@ -37,6 +37,7 @@ export interface PermissionsState {
   
   // Navigation permissions
   canViewCandidatesNavigation: boolean
+  canViewReferences: boolean
   
   // Job assignment permissions
   canViewJobAssignments: boolean
@@ -107,6 +108,7 @@ export function usePermissions(): PermissionsState {
     canManageCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     
     canViewCandidatesNavigation: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
+    canViewReferences: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     
     canViewJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     canManageJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin,

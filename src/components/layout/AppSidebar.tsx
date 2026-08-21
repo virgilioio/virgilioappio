@@ -1,3 +1,4 @@
+import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Settings as SettingsIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -7,16 +8,18 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
 
-export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'analytics' | 'settings' | 'my-profile' | null
+export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'settings' | 'my-profile' | null
 
 const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar']
 const CRM_PREFIXES = ['/crm']
 const CHAT_PREFIXES = ['/chat']
+const REFERENCES_PREFIXES = ['/references']
 const ANALYTICS_PREFIXES = ['/analytics', '/talent-intelligence', '/insights']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
   if (ANALYTICS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'analytics'
+  if (REFERENCES_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'references'
   if (CHAT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'chat'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
@@ -70,6 +73,20 @@ const ChatGlyph: IconRenderer = ({ className }) => (
   </svg>
 )
 
+const ReferencesGlyph: IconRenderer = ({ className }) => {
+  const uid = 'rg' + React.useId().replace(/:/g, '')
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+      <mask id={uid} maskUnits="userSpaceOnUse">
+        <rect width="48" height="48" fill="#fff" />
+        <circle cx="16.5" cy="24" r="13.5" fill="#000" />
+      </mask>
+      <circle cx="31.5" cy="24" r="11.5" fill="currentColor" mask={`url(#${uid})`} />
+      <circle className="accent" cx="16.5" cy="24" r="11.5" fill="currentColor" />
+    </svg>
+  )
+}
+
 const AnalyticsGlyph: IconRenderer = ({ className }) => (
   <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
     <rect x="9" y="25" width="9" height="14" rx="4.5" fill="currentColor" />
@@ -84,6 +101,7 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'
   { id: 'ats', label: 'ATS', Icon: AtsGlyph, href: '/jobs', show: (p) => p.canViewJobs },
   { id: 'crm', label: 'CRM', Icon: CrmGlyph, href: '/crm', show: (p) => p.canViewOrganizations },
   { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: () => false }, // gated via useCanUseChat below
+  { id: 'references', label: 'Reference checks', Icon: ReferencesGlyph, href: '/references', show: (p) => p.canViewReferences },
   { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/analytics', show: (p) => !p.isSalesUser },
 ]
 
