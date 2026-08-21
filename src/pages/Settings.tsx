@@ -92,10 +92,17 @@ export default function Settings() {
   }, [rawTab, setSearchParams])
 
   const handleTabChange = (tab: string) => {
+    // Reference templates live in the Reference checks module — deep-link out.
+    if (tab === 'reference-templates') {
+      navigate('/references/templates')
+      setMobileOpen(false)
+      return
+    }
     setCurrentTab(tab)
     setSearchParams({ tab })
     setMobileOpen(false)
   }
+
 
   const renderContent = () => {
     switch (currentTab) {

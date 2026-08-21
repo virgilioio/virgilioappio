@@ -2,8 +2,9 @@ import {
   Zap, User, Mail, Clock, Bell,
   Building2, Users, Folder, Plug, CreditCard,
   GitBranch, ListChecks, FileText, Workflow, Globe, Megaphone,
-  Handshake, Building, Gauge, Package,
+  Handshake, Building, Gauge, Package, ShieldCheck,
 } from 'lucide-react'
+
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -86,6 +87,8 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
         { id: 'pipeline-stages', label: 'Pipeline stages', icon: GitBranch, show: true },
         { id: 'application-form', label: 'Application form', icon: ListChecks, show: true },
         { id: 'templates', label: 'Templates', icon: FileText, show: true },
+        { id: 'reference-templates', label: 'Reference templates', icon: ShieldCheck, show: true },
+
         { id: 'automations', label: 'Automations', icon: Workflow, show: true },
         { id: 'careers-page', label: 'Careers page', icon: Globe, show: true },
         { id: 'job-boards', label: 'Job boards', icon: Megaphone, show: true },
