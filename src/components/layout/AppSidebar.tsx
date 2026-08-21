@@ -19,6 +19,7 @@ const ANALYTICS_PREFIXES = ['/analytics', '/talent-intelligence', '/insights']
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
   if (ANALYTICS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'analytics'
+  if (REFERENCES_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'references'
   if (CHAT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'chat'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
   if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
