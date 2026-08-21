@@ -69,8 +69,8 @@ export function RefStatus({
     >
       <ReferencesGlyph
         className={cn('shrink-0', state === 'none' && '[&_.accent]:fill-current')}
-        // 'none' renders the glyph with NO lilac — accent stays currentColor.
       />
+
       {segments.length > 0 && <span className="truncate">{segments.join(' · ')}</span>}
       {flagged && <Flag className="shrink-0" style={{ width: s.glyph, height: s.glyph }} />}
     </span>
