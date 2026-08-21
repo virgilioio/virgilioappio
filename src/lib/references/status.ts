@@ -90,10 +90,10 @@ export function deriveState(referees: RefereeLike[], requiredCount: number): Ref
 }
 
 export const REF_STATE_LABEL: Record<RefRequestState, string> = {
-  none: 'No reference check',
+  none: 'No references',
   draft: 'Draft',
-  candidate: 'Waiting on candidate',
-  referees: 'Waiting on referees',
+  candidate: 'Awaiting candidate',
+  referees: 'Awaiting referees',
   partial: 'Partially complete',
   complete: 'Complete',
   attention: 'Needs attention',
@@ -123,6 +123,21 @@ export function formatCounts(referees: RefereeLike[], requiredCount: number): st
   if (c.declined > 0) parts.push(`${c.declined} declined`)
   if (c.onHold > 0) parts.push(`${c.onHold} on hold`)
   return parts.join(' · ')
+}
+
+/**
+ * Compact form for dense surfaces (pipeline rows): 'None', 'Chase', or '2/3'.
+ * Never a percentage. Reuses countReferees() — no second counting path.
+ */
+export function formatCountsCompact(
+  referees: RefereeLike[],
+  requiredCount: number,
+  state: RefRequestState,
+): string {
+  if (state === 'none') return 'None'
+  if (state === 'attention') return 'Chase'
+  const c = countReferees(referees, requiredCount)
+  return `${c.submitted}/${c.required}`
 }
 
 /* ------------------------------------------------------------------ */
