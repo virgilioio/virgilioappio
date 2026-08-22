@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { FileText, X } from 'lucide-react'
 
-import { PageHeader } from '@/components/layout/PageHeader'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -111,7 +110,7 @@ export default function ReferencesPage() {
   return (
     <Section className="min-h-[calc(100dvh-4rem)]">
       <AppContainer>
-        <PageHeader title="Reference checks">
+        <div className="pt-1 pb-4">
           <Tabs
             value={activeTab}
             onValueChange={(value) => {
@@ -124,7 +123,8 @@ export default function ReferencesPage() {
               <TabsTrigger value="templates">Templates</TabsTrigger>
             </TabsList>
           </Tabs>
-        </PageHeader>
+        </div>
+
 
         {activeTab === 'requests' ? (
           <Card className="p-6">

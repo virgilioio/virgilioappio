@@ -7,8 +7,12 @@ import type {
 } from '@/components/editors/SubjectTemplateEditor'
 import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplateEditor'
 import { FormField } from '@/components/ui/form-field'
+import { PlaceholderPill } from '@/components/references/PlaceholderPill'
+import { SectionHead } from '../rowKit'
 import {
   CANDIDATE_PLACEHOLDERS,
+  PREVIEW_CTA,
+  PREVIEW_RECIPIENTS,
   REFEREE_PLACEHOLDERS,
   renderPlaceholders,
   type RefEmail,
@@ -25,23 +29,9 @@ function PlaceholderPills({
   onInsert: (key: string) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap" style={{ gap: 5 }}>
       {keys.map((k) => (
-        <button
-          key={k}
-          type="button"
-          onClick={() => onInsert(k)}
-          className="font-mono rounded-md transition-colors"
-          style={{
-            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-            fontSize: 10.5,
-            padding: '3px 7px',
-            background: '#EDE4FF',
-            color: '#5B21B6',
-          }}
-        >
-          {`{{${k}}}`}
-        </button>
+        <PlaceholderPill key={k} name={k} onClick={() => onInsert(k)} title={`Insert {{${k}}}`} />
       ))}
     </div>
   )
@@ -51,10 +41,12 @@ function EmailPane({
   value,
   onChange,
   placeholders,
+  audience,
 }: {
   value: RefEmail
   onChange: (patch: Partial<RefEmail>) => void
   placeholders: readonly string[]
+  audience: 'candidate' | 'referee'
 }) {
   const subjectRef = useRef<SubjectTemplateEditorHandle>(null)
   const bodyRef = useRef<BodyTemplateEditorHandle>(null)
@@ -110,17 +102,45 @@ function EmailPane({
         >
           Preview · sample values
         </p>
-        <div className="rounded-lg bg-[#fffcf9] p-3" style={{ border: `1px solid ${HAIRLINE}` }}>
-          <p
-            className="font-poppins font-semibold text-[#0d0d09] mb-2"
-            style={{ fontSize: 13, letterSpacing: '-0.01em' }}
-          >
-            {renderPlaceholders(value.subject) || 'No subject'}
-          </p>
+        <div className="rounded-lg bg-[#fffcf9]" style={{ border: `1px solid ${HAIRLINE}` }}>
           <div
-            className="font-inter text-[12.5px] text-[#1F2230] leading-relaxed whitespace-pre-wrap [&_p]:mb-2"
-            dangerouslySetInnerHTML={{ __html: renderPlaceholders(value.body) }}
-          />
+            className="flex items-center justify-between gap-2 px-3 py-2"
+            style={{ borderBottom: `1px solid ${HAIRLINE}` }}
+          >
+            <span className="font-inter truncate" style={{ fontSize: 11, color: MUTED }}>
+              To {PREVIEW_RECIPIENTS[audience]}
+            </span>
+            <span className="font-inter" style={{ fontSize: 11, color: MUTED }}>
+              Gio
+            </span>
+          </div>
+          <div className="p-3">
+            <p
+              className="font-poppins font-semibold text-[#0d0d09] mb-2"
+              style={{ fontSize: 13, letterSpacing: '-0.01em' }}
+            >
+              {renderPlaceholders(value.subject) || 'No subject'}
+            </p>
+            <div
+              className="font-inter text-[12.5px] text-[#1F2230] leading-relaxed whitespace-pre-wrap [&_p]:mb-2"
+              dangerouslySetInnerHTML={{ __html: renderPlaceholders(value.body) }}
+            />
+            <span
+              className="inline-flex items-center justify-center font-poppins font-medium"
+              style={{
+                marginTop: 12,
+                height: 34,
+                padding: '0 14px',
+                borderRadius: 8,
+                background: '#0d0d09',
+                color: '#fffcf9',
+                fontSize: 12.5,
+                letterSpacing: '-0.005em',
+              }}
+            >
+              {PREVIEW_CTA[audience]}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -140,17 +160,10 @@ export function EmailsSection({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3
-          className="font-poppins font-semibold text-[#0d0d09]"
-          style={{ fontSize: 18, letterSpacing: '-0.04em' }}
-        >
-          Emails
-        </h3>
-        <p className="mt-1 font-inter text-[12.5px] text-[#5A6072]">
-          The two messages this template sends — one to the candidate, one to each referee.
-        </p>
-      </div>
+      <SectionHead
+        title="Emails"
+        subtitle="The two messages this template sends — one to the candidate, one to each referee."
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'candidate' | 'referee')}>
         <TabsList>
@@ -162,12 +175,14 @@ export function EmailsSection({
       {tab === 'candidate' ? (
         <EmailPane
           value={candidateEmail}
+          audience="candidate"
           placeholders={CANDIDATE_PLACEHOLDERS}
           onChange={(patch) => onChange({ candidate_email: { ...candidateEmail, ...patch } })}
         />
       ) : (
         <EmailPane
           value={refereeEmail}
+          audience="referee"
           placeholders={REFEREE_PLACEHOLDERS}
           onChange={(patch) => onChange({ referee_email: { ...refereeEmail, ...patch } })}
         />

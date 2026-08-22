@@ -1,6 +1,6 @@
 import { Flag } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ReferencesGlyph } from '@/components/icons/ReferencesGlyph'
+import { RefGlyph } from '@/components/references/RefGlyph'
 import {
   REF_STATE_LABEL,
   REF_STATE_TONE,
@@ -18,12 +18,24 @@ const TONE: Record<RefTone, { bg: string; fg: string }> = {
   neutral: { bg: '#F1F0EC', fg: '#5A6072' },
 }
 
-const SIZE = {
-  xs: { h: 'h-[18px]', px: 'px-1.5', gap: 'gap-1', text: '10.5px', glyph: 9, glyphCls: 'h-[9px] w-[9px]' },
-  sm: { h: 'h-[22px]', px: 'px-2', gap: 'gap-1.5', text: '11.5px', glyph: 11, glyphCls: 'h-[11px] w-[11px]' },
-  md: { h: 'h-[26px]', px: 'px-2.5', gap: 'gap-1.5', text: '12.5px', glyph: 13, glyphCls: 'h-[13px] w-[13px]' },
-} as const
+/** Dot colour per state — the glyph accent inside the pill. */
+const STATE_DOT: Record<RefRequestState, string> = {
+  none: '#B5B9C4',
+  draft: '#B5B9C4',
+  candidate: '#F59E0B',
+  referees: '#0EA5E9',
+  partial: '#0EA5E9',
+  complete: '#12B886',
+  attention: '#FA5252',
+  expired: '#B5B9C4',
+  cancelled: '#B5B9C4',
+}
 
+const SIZE = {
+  xs: { h: 20, text: 10.5, px: 7, glyph: 11, flag: 9.5 },
+  sm: { h: 22, text: 11, px: 9, glyph: 13, flag: 11 },
+  md: { h: 26, text: 12, px: 9, glyph: 13, flag: 11 },
+} as const
 
 export interface RefStatusProps {
   state: RefRequestState
@@ -31,8 +43,7 @@ export interface RefStatusProps {
   flagged?: boolean
   /**
    * Pre-formatted counts string from formatCounts() — or formatCountsCompact()
-   * for the compact pipeline form (size="xs" with showLabel={false}).
-   * Never a percentage.
+   * for the compact pipeline form. Never a percentage.
    */
   counts?: string
   size?: keyof typeof SIZE
@@ -54,38 +65,43 @@ export function RefStatus({
   const t = TONE[tone]
   const s = SIZE[size]
 
-  /** Compact pipeline form: glyph + short count only (e.g. "2/3", "Chase", "None"). */
-  const compact = size === 'xs' && !showLabel
-
-  const segments = (
-    compact
-      ? [counts || null, flagged ? 'flagged' : null]
-      : [
-          showLabel ? REF_STATE_LABEL[state] : null,
-          state !== 'none' && counts ? counts : null,
-          flagged ? 'flagged' : null,
-        ]
-  ).filter(Boolean) as string[]
+  const accent = state === 'none' ? t.fg : flagged ? '#F97316' : STATE_DOT[state]
 
   return (
     <span
-      className={cn(
-        'inline-flex items-center rounded-md font-inter font-medium whitespace-nowrap',
-        s.h,
-        s.px,
-        s.gap,
-        className
-      )}
-      style={{ backgroundColor: t.bg, color: t.fg, fontSize: s.text, letterSpacing: '0.01em' }}
-      title={note || segments.join(' · ')}
+      className={cn('inline-flex items-center font-inter whitespace-nowrap', className)}
+      style={{
+        gap: 6,
+        height: s.h,
+        padding: `0 ${s.px}px`,
+        borderRadius: 999,
+        fontSize: s.text,
+        fontWeight: 500,
+        backgroundColor: t.bg,
+        color: t.fg,
+      }}
+      title={note || [showLabel ? REF_STATE_LABEL[state] : null, counts].filter(Boolean).join(' · ')}
     >
-      <ReferencesGlyph
-        className={cn('shrink-0', s.glyphCls, state === 'none' && '[&_.accent]:fill-current')}
-      />
+      <span className="inline-flex shrink-0">
+        <RefGlyph size={s.glyph} color={t.fg} accent={accent} />
+      </span>
 
+      {showLabel && <span className="truncate">{REF_STATE_LABEL[state]}</span>}
 
-      {segments.length > 0 && <span className="truncate">{segments.join(' · ')}</span>}
-      {flagged && <Flag className="shrink-0" style={{ width: s.glyph, height: s.glyph }} />}
+      {counts && (
+        <span className="tabular-nums" style={{ opacity: 0.75 }}>
+          {counts}
+        </span>
+      )}
+
+      {flagged && (
+        <span className="inline-flex items-center" style={{ gap: 3, opacity: 0.9 }}>
+          <Flag size={s.flag} strokeWidth={2.2} />
+          flagged
+        </span>
+      )}
+
+      {note && <span style={{ opacity: 0.75 }}>· {note}</span>}
     </span>
   )
 }

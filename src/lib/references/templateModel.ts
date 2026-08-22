@@ -32,8 +32,10 @@ export interface RefQuestion {
   internal: boolean
   /** Candidate answers the same question about themselves (rating_1_5 only). */
   ask_candidate_too: boolean
+  helper?: string
   options?: string[]
 }
+
 
 export interface RelationshipRule {
   id: string
@@ -110,14 +112,15 @@ export function defaultRefereeFields(): RefereeField[] {
     {
       id: uid(),
       key: 'relationship',
-      label: 'Relationship',
+      label: 'Relationship to candidate',
       type: 'select',
       required: true,
       options: [...RELATIONSHIP_OPTIONS],
     },
-    { id: uid(), key: 'period', label: 'Period worked together', type: 'text', required: true },
+    { id: uid(), key: 'period', label: 'Period you worked together', type: 'text', required: true },
   ]
 }
+
 
 export const WOULD_REHIRE_OPTIONS = [
   'Yes without hesitation',
@@ -137,7 +140,7 @@ export const QUESTION_TYPES: QuestionTypeMeta[] = [
   { type: 'rating_1_5', label: 'Rating', family: 'standard', hint: '1–5 scale' },
   { type: 'single_select', label: 'Select', family: 'standard', hint: 'One option' },
   { type: 'multi_select', label: 'Multi-select', family: 'standard', hint: 'Several options' },
-  { type: 'yes_no', label: 'Yes/no', family: 'standard' },
+  { type: 'yes_no', label: 'Yes / no', family: 'standard' },
   { type: 'short_text', label: 'Short text', family: 'standard' },
   { type: 'long_text', label: 'Long text', family: 'standard' },
   { type: 'section_header', label: 'Section header', family: 'standard', hint: 'Not a question' },
@@ -196,13 +199,35 @@ export function newQuestion(type: ReferenceAnswerType): RefQuestion {
 
 export function defaultQuestions(): RefQuestion[] {
   return [
-    { ...newQuestion('employment_verification'), label: 'Confirm role and dates' },
-    { ...newQuestion('rating_1_5'), label: 'Quality of work', ask_candidate_too: true },
-    { ...newQuestion('rating_1_5'), label: 'Working with others', ask_candidate_too: true },
+    {
+      ...newQuestion('employment_verification'),
+      label: 'Employment verification',
+      helper: 'Dates and title — captured for the record, not auto-compared',
+    },
+    { ...newQuestion('long_text'), label: 'In what capacity did you work with the candidate?' },
+    {
+      ...newQuestion('rating_1_5'),
+      label: 'How would you rate their technical ability?',
+      ask_candidate_too: true,
+    },
+    { ...newQuestion('rating_1_5'), label: 'How would you rate their reliability?' },
+    { ...newQuestion('rating_1_5'), label: 'Handles conflict well', ask_candidate_too: true },
     { ...newQuestion('would_rehire'), label: 'Would you rehire this person?' },
-    { ...newQuestion('long_text'), label: 'Anything else we should know?', required: false },
+    { ...newQuestion('recommendation_score'), label: 'Recommendation score' },
+    {
+      ...newQuestion('long_text'),
+      label: 'Anything a future employer should know?',
+      required: false,
+    },
+    {
+      ...newQuestion('long_text'),
+      label: 'Internal note on this referee',
+      required: false,
+      internal: true,
+    },
   ]
 }
+
 
 export const CANDIDATE_PLACEHOLDERS = [
   'candidate_first_name',
@@ -227,17 +252,28 @@ export const REFEREE_PLACEHOLDERS = [
 ] as const
 
 export const PLACEHOLDER_SAMPLES: Record<string, string> = {
-  candidate_first_name: 'Maya',
-  candidate_name: 'Maya Patel',
-  referee_first_name: 'Daniel',
-  job_title: 'Senior Product Designer',
-  client_name: 'Northwind',
-  referee_count: '2',
-  estimated_minutes: '7',
+  candidate_first_name: 'Priya',
+  candidate_name: 'Priya Raman',
+  referee_first_name: 'Dami',
+  job_title: 'Senior Financial Controller',
+  client_name: 'Meridian Foods',
+  referee_count: '3',
+  estimated_minutes: '8',
   secure_link: 'https://app.gogio.io/r/8f3a…',
   recruiter_name: 'Allan Bravo',
   expiry_date: '4 September 2026',
 }
+
+/** Preview recipients shown in the Emails section. */
+export const PREVIEW_RECIPIENTS = {
+  candidate: 'priya.raman@gmail.com',
+  referee: 'd.okonjo@meridianfoods.com',
+} as const
+
+export const PREVIEW_CTA = {
+  candidate: 'Add your references',
+  referee: 'Answer the reference',
+} as const
 
 export function renderPlaceholders(text: string): string {
   return (text || '').replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, key) => PLACEHOLDER_SAMPLES[key] ?? m)
@@ -245,25 +281,26 @@ export function renderPlaceholders(text: string): string {
 
 export function defaultCandidateEmail(): RefEmail {
   return {
-    subject: 'Reference details for your {{job_title}} application',
+    subject: '{{candidate_first_name}}, we need your references for {{job_title}}',
     body:
       'Hi {{candidate_first_name}},\n\n' +
-      'We are at the reference stage for {{job_title}} at {{client_name}}. Please add {{referee_count}} referees using the secure link below — it only takes a few minutes.\n\n' +
+      "We're at the final stage for the {{job_title}} role at {{client_name}}. To move forward we need {{referee_count}} references.\n\n" +
+      "Please add their details using the secure link below. You'll be asked to confirm you have their permission first, and you can flag anyone we shouldn't contact yet.\n\n" +
       '{{secure_link}}\n\n' +
-      'The link expires on {{expiry_date}}.\n\n' +
       'Thanks,\n{{recruiter_name}}',
   }
 }
 
 export function defaultRefereeEmail(): RefEmail {
   return {
-    subject: 'Reference request for {{candidate_name}}',
+    subject: '{{candidate_name}} listed you as a reference',
     body:
       'Hi {{referee_first_name}},\n\n' +
-      '{{candidate_name}} has listed you as a referee for a {{job_title}} role at {{client_name}}. The form takes about {{estimated_minutes}} minutes.\n\n' +
+      '{{candidate_name}} has listed you as a reference for a {{job_title}} role with {{client_name}}.\n\n' +
+      'It takes about {{estimated_minutes}} minutes. Your answers are shared with the hiring team and never with the candidate.\n\n' +
       '{{secure_link}}\n\n' +
-      'The link expires on {{expiry_date}}.\n\n' +
-      'Thank you,\n{{recruiter_name}}',
+      "If you'd rather not take part, you can decline on that page.\n\n" +
+      '{{recruiter_name}}',
   }
 }
 
@@ -278,10 +315,11 @@ export function defaultReminders(): RefReminders {
 }
 
 export const DEFAULT_CONSENT_TEXT =
-  'I confirm the referees I have provided have agreed to be contacted, and I consent to Gio collecting reference information about me for this application.'
+  "I confirm that I have asked each person listed above for their permission to be contacted as a reference, and that the details I've provided are accurate."
+
 
 export const PRIVACY_NOTICES = [
-  { id: 'gdpr_standard', label: 'Standard privacy notice (GDPR)' },
+  { id: 'gdpr_standard', label: 'Gio standard notice (EU/UK)' },
   { id: 'uk_gdpr', label: 'UK GDPR privacy notice' },
   { id: 'us_standard', label: 'US standard privacy notice' },
 ] as const
