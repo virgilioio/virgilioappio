@@ -252,17 +252,28 @@ export const REFEREE_PLACEHOLDERS = [
 ] as const
 
 export const PLACEHOLDER_SAMPLES: Record<string, string> = {
-  candidate_first_name: 'Maya',
-  candidate_name: 'Maya Patel',
-  referee_first_name: 'Daniel',
-  job_title: 'Senior Product Designer',
-  client_name: 'Northwind',
-  referee_count: '2',
-  estimated_minutes: '7',
+  candidate_first_name: 'Priya',
+  candidate_name: 'Priya Raman',
+  referee_first_name: 'Dami',
+  job_title: 'Senior Financial Controller',
+  client_name: 'Meridian Foods',
+  referee_count: '3',
+  estimated_minutes: '8',
   secure_link: 'https://app.gogio.io/r/8f3a…',
   recruiter_name: 'Allan Bravo',
   expiry_date: '4 September 2026',
 }
+
+/** Preview recipients shown in the Emails section. */
+export const PREVIEW_RECIPIENTS = {
+  candidate: 'priya.raman@gmail.com',
+  referee: 'd.okonjo@meridianfoods.com',
+} as const
+
+export const PREVIEW_CTA = {
+  candidate: 'Add your references',
+  referee: 'Answer the reference',
+} as const
 
 export function renderPlaceholders(text: string): string {
   return (text || '').replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, key) => PLACEHOLDER_SAMPLES[key] ?? m)
@@ -270,25 +281,26 @@ export function renderPlaceholders(text: string): string {
 
 export function defaultCandidateEmail(): RefEmail {
   return {
-    subject: 'Reference details for your {{job_title}} application',
+    subject: '{{candidate_first_name}}, we need your references for {{job_title}}',
     body:
       'Hi {{candidate_first_name}},\n\n' +
-      'We are at the reference stage for {{job_title}} at {{client_name}}. Please add {{referee_count}} referees using the secure link below — it only takes a few minutes.\n\n' +
+      "We're at the final stage for the {{job_title}} role at {{client_name}}. To move forward we need {{referee_count}} references.\n\n" +
+      "Please add their details using the secure link below. You'll be asked to confirm you have their permission first, and you can flag anyone we shouldn't contact yet.\n\n" +
       '{{secure_link}}\n\n' +
-      'The link expires on {{expiry_date}}.\n\n' +
       'Thanks,\n{{recruiter_name}}',
   }
 }
 
 export function defaultRefereeEmail(): RefEmail {
   return {
-    subject: 'Reference request for {{candidate_name}}',
+    subject: '{{candidate_name}} listed you as a reference',
     body:
       'Hi {{referee_first_name}},\n\n' +
-      '{{candidate_name}} has listed you as a referee for a {{job_title}} role at {{client_name}}. The form takes about {{estimated_minutes}} minutes.\n\n' +
+      '{{candidate_name}} has listed you as a reference for a {{job_title}} role with {{client_name}}.\n\n' +
+      'It takes about {{estimated_minutes}} minutes. Your answers are shared with the hiring team and never with the candidate.\n\n' +
       '{{secure_link}}\n\n' +
-      'The link expires on {{expiry_date}}.\n\n' +
-      'Thank you,\n{{recruiter_name}}',
+      "If you'd rather not take part, you can decline on that page.\n\n" +
+      '{{recruiter_name}}',
   }
 }
 
@@ -303,7 +315,8 @@ export function defaultReminders(): RefReminders {
 }
 
 export const DEFAULT_CONSENT_TEXT =
-  'I confirm the referees I have provided have agreed to be contacted, and I consent to Gio collecting reference information about me for this application.'
+  "I confirm that I have asked each person listed above for their permission to be contacted as a reference, and that the details I've provided are accurate."
+
 
 export const PRIVACY_NOTICES = [
   { id: 'gdpr_standard', label: 'Standard privacy notice (GDPR)' },
