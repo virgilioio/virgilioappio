@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { FileText, X } from 'lucide-react'
 
-import { PageHeader } from '@/components/layout/PageHeader'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
