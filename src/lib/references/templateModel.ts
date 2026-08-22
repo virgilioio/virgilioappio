@@ -140,7 +140,7 @@ export const QUESTION_TYPES: QuestionTypeMeta[] = [
   { type: 'rating_1_5', label: 'Rating', family: 'standard', hint: '1–5 scale' },
   { type: 'single_select', label: 'Select', family: 'standard', hint: 'One option' },
   { type: 'multi_select', label: 'Multi-select', family: 'standard', hint: 'Several options' },
-  { type: 'yes_no', label: 'Yes/no', family: 'standard' },
+  { type: 'yes_no', label: 'Yes / no', family: 'standard' },
   { type: 'short_text', label: 'Short text', family: 'standard' },
   { type: 'long_text', label: 'Long text', family: 'standard' },
   { type: 'section_header', label: 'Section header', family: 'standard', hint: 'Not a question' },
@@ -319,7 +319,7 @@ export const DEFAULT_CONSENT_TEXT =
 
 
 export const PRIVACY_NOTICES = [
-  { id: 'gdpr_standard', label: 'Standard privacy notice (GDPR)' },
+  { id: 'gdpr_standard', label: 'Gio standard notice (EU/UK)' },
   { id: 'uk_gdpr', label: 'UK GDPR privacy notice' },
   { id: 'us_standard', label: 'US standard privacy notice' },
 ] as const
