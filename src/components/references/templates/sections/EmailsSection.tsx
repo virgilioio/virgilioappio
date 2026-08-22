@@ -147,7 +147,7 @@ function EmailPane({
   )
 }
 
-function EmailsSection({
+export function EmailsSection({
   candidateEmail,
   refereeEmail,
   onChange,
