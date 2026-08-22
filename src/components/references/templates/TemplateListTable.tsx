@@ -1,79 +1,32 @@
-import { Building2, ChevronRight, Layers, Library, Plus, UserRoundCog } from 'lucide-react'
+import { BookOpen, ChevronRight, Info, Layers, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { TableSkeleton } from '@/components/ui/table-states'
-import { ReferencesGlyph } from '@/components/icons/ReferencesGlyph'
-import { cn } from '@/lib/utils'
-import type { ReferenceTemplate, ReferenceTemplateScope } from '@/lib/references/templateModel'
+import { Table, TableBody } from '@/components/ui/table'
+import { RefGlyph } from '@/components/references/RefGlyph'
+import { ScopeChip } from '@/components/references/ScopeChip'
+import type { ReferenceTemplate } from '@/lib/references/templateModel'
 import type { ClientOrg } from './useClientOrganizations'
 
-const HAIRLINE = '#E7E8EE'
+const GRID = 'minmax(0,2.2fr) 120px minmax(0,1.4fr) 90px 110px 100px 40px'
 const MUTED = '#8B8F9E'
 
-const SCOPE_META: Record<
-  ReferenceTemplateScope,
-  { label: string; icon: typeof Building2; bg: string; fg: string }
-> = {
-  client: { label: 'Client', icon: Building2, bg: '#DBEAFE', fg: '#1E40AF' },
-  default: { label: 'Default', icon: Layers, bg: '#F1F0EC', fg: '#5A6072' },
-  personalised: { label: 'Personalised', icon: UserRoundCog, bg: '#EDE4FF', fg: '#5B21B6' },
+/** e.g. 12 Aug 2026 */
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export function ScopeBadge({ scope }: { scope: ReferenceTemplateScope }) {
-  const meta = SCOPE_META[scope] ?? SCOPE_META.default
-  const Icon = meta.icon
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full font-inter font-medium"
-      style={{ background: meta.bg, color: meta.fg, fontSize: 11.5, padding: '3px 9px' }}
-    >
-      <Icon className="w-[12px] h-[12px]" strokeWidth={2} />
-      {meta.label}
-    </span>
-  )
-}
-
-function GlyphTile({ live }: { live: boolean }) {
-  return (
-    <div
-      className={cn(
-        'shrink-0 grid place-items-center rounded-[10px]',
-        live ? 'bg-[#0d0d09]' : 'bg-[#F1F0EC]',
-      )}
-      style={{ width: 34, height: 34 }}
-      title={live ? undefined : 'Draft — not live'}
-    >
-      <ReferencesGlyph
-        className={cn(
-          'w-[18px] h-[18px]',
-          live ? 'fill-[#fffcf9] [&_.accent]:fill-[#D7C5FB]' : 'fill-[#C9C7BF] [&_.accent]:fill-[#fffcf9]',
-        )}
-      />
-    </div>
-  )
-}
-
-function relativeDate(iso: string): string {
-  const d = new Date(iso).getTime()
-  const days = Math.floor((Date.now() - d) / 86_400_000)
-  if (days <= 0) return 'Today'
-  return `${days}d`
-}
+const HEAD = ['Template', 'Scope', 'Referee rules', 'Questions', 'Times used', 'Updated', '']
 
 interface Props {
   templates: ReferenceTemplate[]
   clients: ClientOrg[]
   isLoading: boolean
+  selectedId?: string | null
   onOpen: (template: ReferenceTemplate) => void
   onNew: () => void
   onQuestionLibrary: () => void
@@ -83,6 +36,7 @@ export function TemplateListTable({
   templates,
   clients,
   isLoading,
+  selectedId,
   onOpen,
   onNew,
   onQuestionLibrary,
@@ -90,18 +44,19 @@ export function TemplateListTable({
   const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
+    <div>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3" style={{ marginBottom: 14 }}>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2
+            <h1
               className="font-poppins font-semibold text-[#0d0d09]"
-              style={{ fontSize: 18, letterSpacing: '-0.04em' }}
+              style={{ fontSize: 22, letterSpacing: '-0.04em' }}
             >
               Templates
-            </h2>
+            </h1>
             <span
-              className="inline-flex items-center justify-center rounded-full font-poppins font-medium tabular-nums"
+              className="inline-flex items-center justify-center font-poppins font-medium tabular-nums"
               style={{
                 background: '#F1F0EC',
                 color: '#5A6072',
@@ -109,19 +64,23 @@ export function TemplateListTable({
                 minWidth: 22,
                 height: 22,
                 padding: '0 7px',
+                borderRadius: 999,
               }}
             >
               {templates.length}
             </span>
           </div>
-          <p className="mt-0.5 font-inter" style={{ fontSize: 12, color: MUTED }}>
-            Owned by this workspace — never shared
-            <span style={{ padding: '0 5px' }}>·</span>
-            Also reachable from Settings → Recruiting
+          <p
+            className="font-inter"
+            style={{ fontSize: 11.5, color: MUTED, marginTop: 3 }}
+          >
+            <span>Owned by this tenant — never shared</span>
+            <span style={{ padding: '0 6px' }}>·</span>
+            <span>Also reachable from Settings → Recruiting</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon={Library} onClick={onQuestionLibrary}>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="secondary" size="sm" icon={BookOpen} onClick={onQuestionLibrary}>
             Question library
           </Button>
           <Button size="sm" icon={Plus} onClick={onNew}>
@@ -130,7 +89,7 @@ export function TemplateListTable({
         </div>
       </div>
 
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden p-0" style={{ boxShadow: '0 1px 2px rgba(13,13,9,0.03)' }}>
         {isLoading ? (
           <Table>
             <TableBody>
@@ -148,84 +107,148 @@ export function TemplateListTable({
             />
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Template</TableHead>
-                <TableHead>Scope</TableHead>
-                <TableHead>Referee rules</TableHead>
-                <TableHead>Questions</TableHead>
-                <TableHead>Times used</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="w-[40px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {templates.map((t) => {
-                const asked = t.questions.filter((q) => q.ask_candidate_too).length
-                return (
-                  <TableRow key={t.id} className="cursor-pointer" onClick={() => onOpen(t)}>
-                    <TableCell>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <GlyphTile live={t.is_live} />
-                        <div className="min-w-0">
-                          <div
-                            className="font-poppins font-medium text-[#0d0d09] truncate"
-                            style={{ fontSize: 13.5, letterSpacing: '-0.01em' }}
-                          >
-                            {t.name}
-                          </div>
-                          <div className="font-inter truncate" style={{ fontSize: 11.5, color: MUTED }}>
-                            {t.scope === 'client'
-                              ? clientName(t.client_id) || 'Client template'
-                              : t.is_live
-                                ? 'Live'
-                                : 'Draft'}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <ScopeBadge scope={t.scope} />
-                    </TableCell>
-                    <TableCell className="font-inter text-[12.5px] text-[#5A6072]">
-                      {t.min_referees}–{t.max_referees} referees
-                      {t.relationship_rules.length > 0 && (
-                        <span style={{ color: MUTED }}> · {t.relationship_rules.length} rule{t.relationship_rules.length > 1 ? 's' : ''}</span>
+          <div>
+            {/* Header row */}
+            <div
+              className="grid items-center"
+              style={{
+                gridTemplateColumns: GRID,
+                gap: 12,
+                padding: '10px 18px',
+                background: '#FAFAF7',
+                borderBottom: '1px solid #E7E8EE',
+              }}
+            >
+              {HEAD.map((h, i) => (
+                <span
+                  key={i}
+                  className="font-inter uppercase"
+                  style={{ fontSize: 10.5, fontWeight: 600, color: MUTED, letterSpacing: '0.06em' }}
+                >
+                  {h}
+                </span>
+              ))}
+            </div>
+
+            {templates.map((t, i) => {
+              const selected = selectedId === t.id
+              const client = t.scope === 'client' ? clientName(t.client_id) : null
+              return (
+                <div
+                  key={t.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onOpen(t)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') onOpen(t)
+                  }}
+                  className="grid items-center"
+                  style={{
+                    gridTemplateColumns: GRID,
+                    gap: 12,
+                    padding: '13px 18px',
+                    cursor: 'pointer',
+                    background: selected ? '#FAF8FF' : '#fff',
+                    borderBottom: i === templates.length - 1 ? 'none' : '1px solid #F1F0EC',
+                  }}
+                >
+                  {/* Template */}
+                  <div className="flex items-center min-w-0" style={{ gap: 10 }}>
+                    <span
+                      className="grid place-items-center shrink-0"
+                      style={{ width: 30, height: 30, borderRadius: 9, background: '#0d0d09' }}
+                      title={t.is_live ? undefined : 'Draft — not live'}
+                    >
+                      <RefGlyph
+                        size={17}
+                        color="#fffcf9"
+                        accent={t.is_live ? '#D7C5FB' : 'rgba(255,252,249,0.72)'}
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span
+                        className="block font-poppins truncate"
+                        style={{
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          color: '#1F2230',
+                          letterSpacing: '-0.01em',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {t.name || 'Untitled template'}
+                      </span>
+                      {client && (
+                        <span
+                          className="block font-inter truncate"
+                          style={{ fontSize: 11, color: MUTED, marginTop: 1 }}
+                        >
+                          {client}
+                        </span>
                       )}
-                    </TableCell>
-                    <TableCell className="font-inter text-[12.5px] text-[#5A6072]">
-                      {t.questions.length}
-                      {asked > 0 && <span style={{ color: MUTED }}> · {asked} asked of candidate</span>}
-                    </TableCell>
-                    <TableCell className="font-inter text-[12.5px]">
-                      {t.times_used === 0 ? (
-                        <span style={{ color: MUTED }}>Never</span>
-                      ) : (
-                        <span className="font-poppins tabular-nums text-[#0d0d09]">{t.times_used}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-inter text-[12.5px] text-[#5A6072]">
-                      {relativeDate(t.updated_at)}
-                    </TableCell>
-                    <TableCell>
-                      <ChevronRight className="w-[15px] h-[15px]" style={{ color: MUTED }} />
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                    </span>
+                  </div>
+
+                  {/* Scope */}
+                  <span>
+                    <ScopeChip scope={t.scope} />
+                  </span>
+
+                  {/* Referee rules */}
+                  <span
+                    className="font-inter"
+                    style={{ fontSize: 11.5, color: '#5A6072', lineHeight: 1.4 }}
+                  >
+                    {t.min_referees}–{t.max_referees} referees
+                    {t.relationship_rules.length > 0 &&
+                      t.relationship_rules
+                        .map((r) => `, ${r.count} ${r.relationship.toLowerCase()}`)
+                        .join('')}
+                  </span>
+
+                  {/* Questions */}
+                  <span
+                    className="font-inter tabular-nums"
+                    style={{ fontSize: 12, color: '#1F2230' }}
+                  >
+                    {t.questions.length}
+                  </span>
+
+                  {/* Times used */}
+                  <span className="font-inter tabular-nums" style={{ fontSize: 12 }}>
+                    {t.times_used === 0 ? (
+                      <span style={{ color: '#B5B9C4' }}>Never</span>
+                    ) : (
+                      <span style={{ color: '#1F2230' }}>{t.times_used}</span>
+                    )}
+                  </span>
+
+                  {/* Updated */}
+                  <span className="font-inter" style={{ fontSize: 11.5, color: MUTED }}>
+                    {formatDate(t.updated_at)}
+                  </span>
+
+                  {/* Chevron */}
+                  <span className="flex justify-end">
+                    <ChevronRight size={15} style={{ color: '#B5B9C4' }} />
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         )}
       </Card>
 
-      <p
-        className="font-inter leading-relaxed"
-        style={{ fontSize: 11.5, color: MUTED, borderTop: `1px solid ${HAIRLINE}`, paddingTop: 10 }}
+      <div
+        className="flex items-center font-inter"
+        style={{ marginTop: 12, gap: 8, fontSize: 11.5, color: MUTED }}
       >
-        Templates are scoped to this workspace. A client template is offered first when the
-        candidate's job belongs to that client.
-      </p>
+        <Info size={13} className="shrink-0" />
+        <span>
+          Templates are scoped to this tenant. A client template is offered first when the
+          candidate's job belongs to that client.
+        </span>
+      </div>
     </div>
   )
 }
