@@ -32,8 +32,10 @@ export interface RefQuestion {
   internal: boolean
   /** Candidate answers the same question about themselves (rating_1_5 only). */
   ask_candidate_too: boolean
+  helper?: string
   options?: string[]
 }
+
 
 export interface RelationshipRule {
   id: string
