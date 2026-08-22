@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
+import { RefToggle } from '@/components/references/RefToggle'
+import { ScopeChip } from '@/components/references/ScopeChip'
 import { cn } from '@/lib/utils'
 import {
   defaultCandidateEmail,
@@ -34,7 +35,6 @@ import { RequirementsSection } from './sections/RequirementsSection'
 import { QuestionsSection } from './sections/QuestionsSection'
 import { EmailsSection } from './sections/EmailsSection'
 import { TemplateSettingsSection } from './sections/TemplateSettingsSection'
-import { ScopeBadge } from './TemplateListTable'
 import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
 import type { ClientOrg } from './useClientOrganizations'
 
@@ -171,7 +171,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
             className="mt-1 flex flex-wrap items-center gap-2 font-inter"
             style={{ fontSize: 11.5, color: MUTED }}
           >
-            <ScopeBadge scope={draft.scope} />
+            <ScopeChip scope={draft.scope} />
             <span>·</span>
             <span>Used on {template.times_used} checks</span>
             <span>·</span>
@@ -197,7 +197,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
 
 
-      <div className="grid gap-5" style={{ gridTemplateColumns: '272px minmax(0,1fr)' }}>
+      <div className="grid gap-5" style={{ gridTemplateColumns: '232px minmax(0,1fr)' }}>
         {/* Rail */}
         <div className="space-y-3">
           <Card className="p-1.5">
@@ -289,10 +289,10 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
                   Only live templates can be used on a new request.
                 </p>
               </div>
-              <Switch
+              <RefToggle
                 checked={draft.is_live}
-                onCheckedChange={(v) => patch({ is_live: v })}
-                aria-label="Live"
+                onChange={(v) => patch({ is_live: v })}
+                ariaLabel="Live"
               />
             </div>
           </Card>
