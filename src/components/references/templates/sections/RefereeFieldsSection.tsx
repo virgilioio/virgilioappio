@@ -1,119 +1,80 @@
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { AtSign, CalendarDays, List, Phone, Text, Type, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { TypeChip } from '@/components/references/TypeChip'
+import { RowShell, SectionHead, TrailingToggle } from '../rowKit'
 import { makeId, type RefereeField, type RefereeFieldType } from '@/lib/references/templateModel'
 
-const HAIRLINE = '#E7E8EE'
-const MUTED = '#8B8F9E'
-
-/** Referee fields reuse the existing field_type enum values — no new field types. */
-const FIELD_TYPES: { value: RefereeFieldType; label: string }[] = [
-  { value: 'text', label: 'Text' },
-  { value: 'email', label: 'Email' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'select', label: 'Select' },
-  { value: 'date', label: 'Date' },
-  { value: 'textarea', label: 'Long text' },
-]
+const FIELD_TYPE_META: Record<RefereeFieldType, { label: string; icon: typeof Type }> = {
+  text: { label: 'Short text', icon: Type },
+  email: { label: 'Email', icon: AtSign },
+  phone: { label: 'Phone', icon: Phone },
+  select: { label: 'Select', icon: List },
+  date: { label: 'Date', icon: CalendarDays },
+  textarea: { label: 'Long text', icon: Text },
+}
 
 function FieldRow({
   field,
+  last,
   onChange,
   onDelete,
 }: {
   field: RefereeField
+  last: boolean
   onChange: (patch: Partial<RefereeField>) => void
   onDelete: () => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: field.id,
-  })
+  const meta = FIELD_TYPE_META[field.type] ?? FIELD_TYPE_META.text
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        translate: CSS.Translate.toString(transform) ?? undefined,
-        transition,
-        borderColor: HAIRLINE,
-        opacity: isDragging ? 0.6 : 1,
-      }}
-      className="grid items-center gap-2.5 bg-white border rounded-xl px-2.5 py-2"
-      // grip · label · type · required · delete
-      {...{ ['data-field-row']: field.key }}
-    >
-      <div
-        className="grid items-center gap-2.5"
-        style={{ gridTemplateColumns: '20px minmax(0,1fr) 132px auto 28px' }}
-      >
-        <button
-          type="button"
-          className="grid place-items-center text-[#B5B9C4] hover:text-[#5A6072] cursor-grab active:cursor-grabbing"
-          aria-label="Reorder field"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="w-[15px] h-[15px]" />
-        </button>
-
-        <div className="min-w-0">
-          <Input
-            value={field.label}
-            onChange={(e) => onChange({ label: e.target.value })}
-            className="h-[34px] font-inter text-[13px]"
-            placeholder="Field label"
-          />
-          {field.helper && (
-            <p className="mt-1 font-inter" style={{ fontSize: 11, color: MUTED }}>
-              {field.helper}
-            </p>
-          )}
-        </div>
-
-        <Select value={field.type} onValueChange={(v) => onChange({ type: v as RefereeFieldType })}>
-          <SelectTrigger className="h-[32px] font-inter text-[12.5px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {FIELD_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <label className="flex items-center gap-2 font-inter" style={{ fontSize: 12, color: '#5A6072' }}>
-          <Switch
-            checked={field.required}
-            onCheckedChange={(v) => onChange({ required: v })}
-            className="h-[18px] w-[32px] [&>span]:h-[14px] [&>span]:w-[14px] [&>span]:data-[state=checked]:translate-x-[14px]"
-          />
-          Required
-        </label>
-
-        <Button
-          variant="ghost"
-          size="xs"
-          icon={Trash2}
-          iconOnly
-          aria-label="Delete field"
-          onClick={onDelete}
+    <RowShell id={field.id} last={last} onDelete={onDelete} deleteLabel="Delete field">
+      <div className="min-w-0" style={{ flex: 1 }}>
+        <Input
+          value={field.label}
+          onChange={(e) => onChange({ label: e.target.value })}
+          placeholder="Field label"
+          className="h-[30px] border-0 bg-transparent px-0 font-inter shadow-none focus-visible:ring-0"
+          style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}
         />
+        {field.helper && (
+          <p className="font-inter" style={{ fontSize: 11, color: '#8B8F9E', marginTop: 2 }}>
+            {field.helper}
+          </p>
+        )}
+        {field.options && field.options.length > 0 && (
+          <div className="flex flex-wrap" style={{ gap: 4, marginTop: 5 }}>
+            {field.options.map((o) => (
+              <span
+                key={o}
+                className="font-inter"
+                style={{
+                  fontSize: 10.5,
+                  padding: '1px 7px',
+                  borderRadius: 999,
+                  background: '#F1F0EC',
+                  color: '#5A6072',
+                }}
+              >
+                {o}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+
+      <TypeChip label={meta.label} icon={meta.icon} />
+
+      <TrailingToggle
+        label="Required"
+        width={84}
+        checked={field.required}
+        onChange={(v) => onChange({ required: v })}
+      />
+    </RowShell>
   )
 }
 
@@ -134,26 +95,41 @@ export function RefereeFieldsSection({
   }
 
   return (
-    <div className="space-y-3">
-      <div>
-        <h3
-          className="font-poppins font-semibold text-[#0d0d09]"
-          style={{ fontSize: 18, letterSpacing: '-0.04em' }}
-        >
-          Referee fields
-        </h3>
-        <p className="mt-1 font-inter text-[12.5px] text-[#5A6072]">
-          What the candidate must supply for each referee. Drag to reorder.
-        </p>
-      </div>
+    <div>
+      <SectionHead
+        title="Referee fields"
+        subtitle="What the candidate must provide for each referee they submit."
+        action={
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Plus}
+            onClick={() =>
+              onChange([
+                ...fields,
+                {
+                  id: makeId(),
+                  key: `field_${fields.length + 1}`,
+                  label: '',
+                  type: 'text',
+                  required: false,
+                },
+              ])
+            }
+          >
+            Add field
+          </Button>
+        }
+      />
 
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
-            {fields.map((field) => (
+          <div>
+            {fields.map((field, i) => (
               <FieldRow
                 key={field.id}
                 field={field}
+                last={i === fields.length - 1}
                 onChange={(patch) =>
                   onChange(fields.map((f) => (f.id === field.id ? { ...f, ...patch } : f)))
                 }
@@ -163,20 +139,6 @@ export function RefereeFieldsSection({
           </div>
         </SortableContext>
       </DndContext>
-
-      <Button
-        variant="secondary"
-        size="sm"
-        icon={Plus}
-        onClick={() =>
-          onChange([
-            ...fields,
-            { id: makeId(), key: `field_${fields.length + 1}`, label: '', type: 'text', required: false },
-          ])
-        }
-      >
-        Add field
-      </Button>
     </div>
   )
 }
