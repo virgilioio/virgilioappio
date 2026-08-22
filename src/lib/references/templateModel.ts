@@ -110,14 +110,15 @@ export function defaultRefereeFields(): RefereeField[] {
     {
       id: uid(),
       key: 'relationship',
-      label: 'Relationship',
+      label: 'Relationship to candidate',
       type: 'select',
       required: true,
       options: [...RELATIONSHIP_OPTIONS],
     },
-    { id: uid(), key: 'period', label: 'Period worked together', type: 'text', required: true },
+    { id: uid(), key: 'period', label: 'Period you worked together', type: 'text', required: true },
   ]
 }
+
 
 export const WOULD_REHIRE_OPTIONS = [
   'Yes without hesitation',
@@ -196,13 +197,35 @@ export function newQuestion(type: ReferenceAnswerType): RefQuestion {
 
 export function defaultQuestions(): RefQuestion[] {
   return [
-    { ...newQuestion('employment_verification'), label: 'Confirm role and dates' },
-    { ...newQuestion('rating_1_5'), label: 'Quality of work', ask_candidate_too: true },
-    { ...newQuestion('rating_1_5'), label: 'Working with others', ask_candidate_too: true },
+    {
+      ...newQuestion('employment_verification'),
+      label: 'Employment verification',
+      helper: 'Dates and title — captured for the record, not auto-compared',
+    },
+    { ...newQuestion('long_text'), label: 'In what capacity did you work with the candidate?' },
+    {
+      ...newQuestion('rating_1_5'),
+      label: 'How would you rate their technical ability?',
+      ask_candidate_too: true,
+    },
+    { ...newQuestion('rating_1_5'), label: 'How would you rate their reliability?' },
+    { ...newQuestion('rating_1_5'), label: 'Handles conflict well', ask_candidate_too: true },
     { ...newQuestion('would_rehire'), label: 'Would you rehire this person?' },
-    { ...newQuestion('long_text'), label: 'Anything else we should know?', required: false },
+    { ...newQuestion('recommendation_score'), label: 'Recommendation score' },
+    {
+      ...newQuestion('long_text'),
+      label: 'Anything a future employer should know?',
+      required: false,
+    },
+    {
+      ...newQuestion('long_text'),
+      label: 'Internal note on this referee',
+      required: false,
+      internal: true,
+    },
   ]
 }
+
 
 export const CANDIDATE_PLACEHOLDERS = [
   'candidate_first_name',
