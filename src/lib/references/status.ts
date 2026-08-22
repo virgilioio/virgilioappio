@@ -118,12 +118,15 @@ export const REF_STATE_TONE: Record<RefRequestState, RefTone> = {
 /** Never a percentage. e.g. "2 of 3 submitted · 1 bounced · 1 on hold" */
 export function formatCounts(referees: RefereeLike[], requiredCount: number): string {
   const c = countReferees(referees, requiredCount)
-  const parts = [`${c.submitted} of ${c.total} submitted`]
+  /** Total excludes declined and bounced — they can no longer submit. */
+  const total = Math.max(0, c.total - c.bounced - c.declined)
+  const parts = [`${c.submitted} of ${total} submitted`]
   if (c.bounced > 0) parts.push(`${c.bounced} bounced`)
   if (c.declined > 0) parts.push(`${c.declined} declined`)
   if (c.onHold > 0) parts.push(`${c.onHold} on hold`)
   return parts.join(' · ')
 }
+
 
 /**
  * Compact form for dense surfaces (pipeline rows): 'None', 'Chase', or '2/3'.
