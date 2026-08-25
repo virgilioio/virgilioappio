@@ -6,7 +6,13 @@ export function useGoogleConnected() {
   const { identities: mail, isLoading: lm } = useMailIdentities()
   const { identities: cal, isLoading: lc } = useCalendarIdentities()
   if (lm || lc) return false
-  return (mail && mail.length > 0) || (cal && cal.length > 0)
+  const mailHealthy = (mail ?? []).some((identity) =>
+    identity.is_active !== false && identity.sync_status === 'active'
+  )
+  const calendarHealthy = (cal ?? []).some((identity) =>
+    identity.is_active !== false && identity.sync_status === 'healthy'
+  )
+  return mailHealthy || calendarHealthy
 }
 
 export function useChromeConnected() {
