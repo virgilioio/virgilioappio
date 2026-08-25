@@ -161,8 +161,8 @@ export function EmailCalendarTab() {
   if (hasMail) googleCapabilities.push('Mail · two-way')
   if (hasCalendar) googleCapabilities.push('Calendar · two-way')
 
-  const handleDisconnectGoogle = async () => {
-    await disconnectGoogleWorkspace.mutateAsync()
+  const handleDisconnectGoogle = () => {
+    disconnectGoogleWorkspace.mutate()
   }
 
   return (
