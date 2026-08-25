@@ -42,6 +42,12 @@ verify_jwt = false
 [functions.create-booking]
 verify_jwt = false
 
+[functions.disconnect-google-workspace]
+verify_jwt = true
+
+[functions.repair-booking-calendar-events]
+verify_jwt = true
+
 [functions.download-attachment]
 verify_jwt = true
 

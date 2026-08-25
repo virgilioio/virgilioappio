@@ -15,6 +15,7 @@ export interface MailIdentity {
   display_name: string;
   is_active: boolean;
   sync_status: string;
+  sync_error: string | null;
   last_sync_at: string;
   created_at: string;
   token_expires_at: string;
@@ -131,6 +132,7 @@ export function useMailIdentities() {
     onSuccess: () => {
       toast.success('Email account disconnected');
       queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to disconnect: ${error.message}`);

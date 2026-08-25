@@ -97,6 +97,101 @@ function validateRequestedSlot(p: ValidationParams): { ok: true } | { ok: false;
   return { ok: true };
 }
 
+async function getFreshCalendarAccessToken(supabase: any, userId: string) {
+  const { data: calendarIdentity, error: identityError } = await supabase
+    .from('calendar_identities')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (identityError || !calendarIdentity) {
+    return {
+      accessToken: null,
+      calendarIdentity: null,
+      errorCode: 'calendar_identity_missing',
+      errorMessage: 'Google Calendar is not connected.',
+    };
+  }
+
+  const expiresAt = new Date(calendarIdentity.token_expires_at);
+  if (calendarIdentity.access_token && !Number.isNaN(expiresAt.getTime()) && expiresAt > new Date()) {
+    return { accessToken: calendarIdentity.access_token, calendarIdentity };
+  }
+
+  const { data: decryptedToken, error: decryptError } = await supabase.rpc('decrypt_refresh_token', {
+    encrypted_token: calendarIdentity.encrypted_refresh_token,
+  });
+
+  if (decryptError || !decryptedToken) {
+    const errorMessage = 'Failed to refresh Google Calendar token';
+    await supabase
+      .from('calendar_identities')
+      .update({ sync_status: 'expired', sync_error_message: errorMessage })
+      .eq('id', calendarIdentity.id);
+    return {
+      accessToken: null,
+      calendarIdentity,
+      errorCode: 'calendar_token_decrypt_failed',
+      errorMessage,
+    };
+  }
+
+  const tokenRefreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
+      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
+      refresh_token: decryptedToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  if (!tokenRefreshResponse.ok) {
+    const body = await tokenRefreshResponse.text();
+    const errorMessage = body.includes('invalid_grant')
+      ? 'Google access was revoked or expired. Please reconnect Google Workspace.'
+      : `Token refresh failed: ${tokenRefreshResponse.status}`;
+    console.error('[create-booking] Token refresh failed:', body);
+    await supabase
+      .from('calendar_identities')
+      .update({ sync_status: 'expired', sync_error_message: errorMessage })
+      .eq('id', calendarIdentity.id);
+    return {
+      accessToken: null,
+      calendarIdentity,
+      errorCode: 'calendar_token_refresh_failed',
+      errorMessage,
+    };
+  }
+
+  const refreshData = await tokenRefreshResponse.json();
+  const accessToken = refreshData.access_token as string;
+  const tokenExpiresAt = new Date(Date.now() + Number(refreshData.expires_in ?? 3600) * 1000).toISOString();
+  await supabase
+    .from('calendar_identities')
+    .update({
+      access_token: accessToken,
+      token_expires_at: tokenExpiresAt,
+      sync_status: 'healthy',
+      sync_error_message: null,
+      last_sync_at: new Date().toISOString(),
+    })
+    .eq('id', calendarIdentity.id);
+
+  return {
+    accessToken,
+    calendarIdentity: {
+      ...calendarIdentity,
+      access_token: accessToken,
+      token_expires_at: tokenExpiresAt,
+      sync_status: 'healthy',
+      sync_error_message: null,
+    },
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -426,89 +521,31 @@ serve(async (req) => {
       }
     }
 
-    // Fetch and refresh calendar token if needed
-    let accessToken: string | null = null;
-    let calendarIdentity: any = null;
-    
-    const { data: calIdentity } = await supabase
-      .from('calendar_identities')
-      .select('*')
-      .eq('user_id', config.user_id)
-      .eq('is_active', true)
-      .single();
+    // Fetch and refresh calendar token if needed. Public booking links must not
+    // create ATS-only phantom bookings when Google access is revoked.
+    let calendarSyncError: { code: string; message: string } | null = null;
+    const tokenResult = await getFreshCalendarAccessToken(supabase, config.user_id);
+    let accessToken: string | null = tokenResult.accessToken;
+    let calendarIdentity: any = tokenResult.calendarIdentity;
 
-    if (calIdentity) {
-      calendarIdentity = calIdentity;
-      
-      // Check if access token is expired and refresh if needed
-      const now = new Date();
-      const expiresAt = new Date(calendarIdentity.token_expires_at);
-      accessToken = calendarIdentity.access_token;
+    if (!accessToken || !calendarIdentity) {
+      calendarSyncError = {
+        code: tokenResult.errorCode || 'calendar_unavailable',
+        message: tokenResult.errorMessage || 'Google Calendar is not connected. Please reconnect Google Workspace.',
+      };
 
-      if (expiresAt <= now) {
-        console.log('[create-booking] Access token expired, refreshing...');
-
-        // Decrypt refresh token
-        const { data: decryptedToken, error: decryptError } = await supabase.rpc('decrypt_refresh_token', {
-          encrypted_token: calendarIdentity.encrypted_refresh_token,
+      if (!isInternalScheduling) {
+        return new Response(JSON.stringify({
+          error: 'This booking calendar is temporarily unavailable. Please contact the recruiter.',
+          code: calendarSyncError.code,
+          details: calendarSyncError.message,
+        }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
-
-        if (decryptError || !decryptedToken) {
-          console.error('[create-booking] Failed to decrypt refresh token:', decryptError);
-          
-          await supabase
-            .from('calendar_identities')
-            .update({ sync_status: 'expired', sync_error_message: 'Failed to refresh token' })
-            .eq('id', calendarIdentity.id);
-
-          // Continue without calendar integration
-          accessToken = null;
-          console.warn('[create-booking] Proceeding without calendar integration');
-        } else {
-          // Refresh the access token via Google OAuth
-          const clientId = Deno.env.get('GOOGLE_CLIENT_ID')!;
-          const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
-
-          const tokenRefreshResponse = await fetch('https://oauth2.googleapis.com/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              client_id: clientId,
-              client_secret: clientSecret,
-              refresh_token: decryptedToken,
-              grant_type: 'refresh_token',
-            }),
-          });
-
-          if (!tokenRefreshResponse.ok) {
-            console.error('[create-booking] Token refresh failed:', await tokenRefreshResponse.text());
-            
-            await supabase
-              .from('calendar_identities')
-              .update({ sync_status: 'expired', sync_error_message: 'Token refresh failed' })
-              .eq('id', calendarIdentity.id);
-
-            accessToken = null;
-            console.warn('[create-booking] Proceeding without calendar integration');
-          } else {
-            const refreshData = await tokenRefreshResponse.json();
-            accessToken = refreshData.access_token;
-
-            // Update calendar identity with new access token
-            await supabase
-              .from('calendar_identities')
-              .update({
-                access_token: accessToken,
-                token_expires_at: new Date(Date.now() + refreshData.expires_in * 1000).toISOString(),
-                sync_status: 'healthy',
-                sync_error_message: null,
-              })
-              .eq('id', calendarIdentity.id);
-
-            console.log('[create-booking] Token refreshed successfully');
-          }
-        }
       }
+
+      console.warn('[create-booking] Proceeding without calendar integration for internal scheduling:', calendarSyncError);
     }
 
     // If rescheduling, cancel the old booking first
@@ -694,6 +731,10 @@ serve(async (req) => {
         if (!interviewerEventResponse.ok) {
           const errorText = await interviewerEventResponse.text();
           console.error('[create-booking] Interviewer calendar event creation failed:', interviewerEventResponse.status, errorText);
+          calendarSyncError = {
+            code: 'calendar_event_creation_failed',
+            message: `Calendar event creation failed: ${interviewerEventResponse.status}`,
+          };
           
           await supabase
             .from('calendar_identities')
@@ -808,6 +849,10 @@ serve(async (req) => {
               if (!candidateEventResponse.ok) {
                 const errorText = await candidateEventResponse.text();
                 console.error('[create-booking] Candidate calendar event creation failed:', candidateEventResponse.status, errorText);
+                calendarSyncError = {
+                  code: 'candidate_calendar_event_creation_failed',
+                  message: `Candidate calendar event creation failed: ${candidateEventResponse.status}`,
+                };
               } else {
                 const candidateEventData = await candidateEventResponse.json();
                 candidateGoogleEventId = candidateEventData.id;
@@ -815,6 +860,10 @@ serve(async (req) => {
               }
             } catch (error) {
               console.error('[create-booking] Error creating candidate calendar event:', error);
+              calendarSyncError = {
+                code: 'candidate_calendar_event_creation_error',
+                message: error instanceof Error ? error.message : 'Candidate calendar event creation failed',
+              };
             }
           } else {
             console.log('[create-booking] Skipping candidate calendar event (send_invitation=false or no Meet link)');
@@ -822,9 +871,24 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error('[create-booking] Google Calendar integration error:', error);
+        calendarSyncError = {
+          code: 'calendar_integration_error',
+          message: error instanceof Error ? error.message : 'Google Calendar integration failed',
+        };
       }
     } else {
       console.log('[create-booking] No calendar integration available, proceeding without calendar event');
+    }
+
+    if (!isInternalScheduling && !googleEventId) {
+      return new Response(JSON.stringify({
+        error: 'This booking calendar is temporarily unavailable. Please contact the recruiter.',
+        code: calendarSyncError?.code || 'calendar_event_missing',
+        details: calendarSyncError?.message || 'Google Calendar event could not be created.',
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Generate unique ICS UID
@@ -871,6 +935,12 @@ serve(async (req) => {
         transcript_ingest_email: transcriptIngestEmail,
         // Guest emails
         guest_emails: guest_emails && guest_emails.length > 0 ? guest_emails : [],
+        sync_errors: calendarSyncError ? [{
+          at: new Date().toISOString(),
+          source: 'create-booking',
+          code: calendarSyncError.code,
+          message: calendarSyncError.message,
+        }] : [],
       })
       .select()
       .single();

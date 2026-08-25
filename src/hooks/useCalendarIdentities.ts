@@ -51,6 +51,7 @@ export function useCalendarIdentities() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
+      queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
       toast.success('Calendar disconnected successfully');
     },
     onError: (error: Error) => {
@@ -228,7 +229,7 @@ export function useCalendarIdentities() {
     isLoading,
     error,
     connectGoogleCalendar,
-    disconnectCalendar: disconnectMutation.mutate,
+    disconnectCalendar: disconnectMutation.mutateAsync,
     isDisconnecting: disconnectMutation.isPending,
     testConnection: testConnectionMutation.mutate,
     isTesting: testConnectionMutation.isPending,
