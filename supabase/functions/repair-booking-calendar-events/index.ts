@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
-import { getFreshCalendarAccessToken } from "../_shared/googleCalendarAuth.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -23,6 +22,58 @@ function isUuid(value: unknown): value is string {
 
 function safeName(profile: any) {
   return [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || profile?.email || 'there';
+}
+
+async function getFreshCalendarAccessToken(supabase: any, userId: string) {
+  const { data: calendarIdentity, error: identityError } = await supabase
+    .from('calendar_identities')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (identityError || !calendarIdentity) {
+    return { accessToken: null, calendarIdentity: null, errorCode: 'calendar_identity_missing', errorMessage: 'Google Calendar is not connected.' };
+  }
+
+  const expiresAt = new Date(calendarIdentity.token_expires_at);
+  if (calendarIdentity.access_token && !Number.isNaN(expiresAt.getTime()) && expiresAt > new Date()) {
+    return { accessToken: calendarIdentity.access_token, calendarIdentity };
+  }
+
+  const { data: decryptedToken } = await supabase.rpc('decrypt_refresh_token', {
+    encrypted_token: calendarIdentity.encrypted_refresh_token,
+  });
+  if (!decryptedToken) {
+    const errorMessage = 'Failed to refresh Google Calendar token';
+    await supabase.from('calendar_identities').update({ sync_status: 'expired', sync_error_message: errorMessage }).eq('id', calendarIdentity.id);
+    return { accessToken: null, calendarIdentity, errorCode: 'calendar_token_decrypt_failed', errorMessage };
+  }
+
+  const tokenRefreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
+      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
+      refresh_token: decryptedToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  if (!tokenRefreshResponse.ok) {
+    const body = await tokenRefreshResponse.text();
+    const errorMessage = body.includes('invalid_grant') ? 'Google access was revoked or expired. Please reconnect Google Workspace.' : `Token refresh failed: ${tokenRefreshResponse.status}`;
+    console.error('[repair-booking-calendar-events] Token refresh failed:', body);
+    await supabase.from('calendar_identities').update({ sync_status: 'expired', sync_error_message: errorMessage }).eq('id', calendarIdentity.id);
+    return { accessToken: null, calendarIdentity, errorCode: 'calendar_token_refresh_failed', errorMessage };
+  }
+
+  const refreshData = await tokenRefreshResponse.json();
+  const accessToken = refreshData.access_token as string;
+  const tokenExpiresAt = new Date(Date.now() + Number(refreshData.expires_in ?? 3600) * 1000).toISOString();
+  await supabase.from('calendar_identities').update({ access_token: accessToken, token_expires_at: tokenExpiresAt, sync_status: 'healthy', sync_error_message: null, last_sync_at: new Date().toISOString() }).eq('id', calendarIdentity.id);
+  return { accessToken, calendarIdentity: { ...calendarIdentity, access_token: accessToken, token_expires_at: tokenExpiresAt, sync_status: 'healthy', sync_error_message: null } };
 }
 
 async function getStageAndJob(supabase: any, booking: any) {
