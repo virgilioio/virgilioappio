@@ -36,6 +36,10 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
     .rpc('decrypt_refresh_token', { encrypted_token: identity.refresh_token_encrypted });
 
   if (decryptError || !decryptedToken) {
+    await supabase
+      .from('user_mail_identities')
+      .update({ sync_status: 'expired', sync_error: 'Failed to refresh Google token' })
+      .eq('id', identity.id);
     throw new Error('Failed to decrypt refresh token');
   }
 
@@ -53,6 +57,15 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
   if (!tokenResponse.ok) {
     const error = await tokenResponse.text();
     console.error('Token refresh failed:', error);
+    await supabase
+      .from('user_mail_identities')
+      .update({
+        sync_status: 'expired',
+        sync_error: error.includes('invalid_grant')
+          ? 'Google access was revoked or expired. Please reconnect Google Workspace.'
+          : `Token refresh failed: ${tokenResponse.status}`,
+      })
+      .eq('id', identity.id);
     throw new Error('Failed to refresh access token');
   }
 
@@ -65,6 +78,7 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
       access_token: tokens.access_token,
       token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
       sync_status: 'active',
+      sync_error: null,
     })
     .eq('id', identity.id);
 

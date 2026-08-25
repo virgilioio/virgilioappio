@@ -1,9 +1,11 @@
-import { Lock } from 'lucide-react'
+import { AlertTriangle, Lock } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
+import { supabase } from '@/integrations/supabase/client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +21,26 @@ import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { toast } from 'sonner'
 
+type WorkspaceState = 'disconnected' | 'connected' | 'reconnect'
+
+function hasTokenFailure(identity: { sync_status?: string | null; sync_error?: string | null; sync_error_message?: string | null; is_active?: boolean }) {
+  const status = (identity.sync_status || '').toLowerCase()
+  const message = `${identity.sync_error || ''} ${identity.sync_error_message || ''}`.toLowerCase()
+  return (
+    identity.is_active === false ||
+    status === 'expired' ||
+    status === 'error' ||
+    message.includes('token') ||
+    message.includes('revoked') ||
+    message.includes('refresh') ||
+    message.includes('invalid_grant')
+  )
+}
+
+function getIdentityErrorMessage(identity: { sync_error?: string | null; sync_error_message?: string | null } | undefined) {
+  return identity?.sync_error_message || identity?.sync_error || null
+}
+
 interface ProviderRowProps {
   logo: React.ReactNode
   name: string
@@ -30,6 +52,8 @@ interface ProviderRowProps {
   /** Capability chips shown when connected */
   capabilities?: string[]
   action: React.ReactNode
+  state: WorkspaceState
+  statusMessage?: string | null
 }
 
 function ProviderRow({
@@ -40,7 +64,15 @@ function ProviderRow({
   connected,
   capabilities,
   action,
+  state,
+  statusMessage,
 }: ProviderRowProps) {
+  const badge = state === 'connected'
+    ? <Badge tone="green" size="xs" dot>Connected</Badge>
+    : state === 'reconnect'
+      ? <Badge tone="yellow" size="xs" icon={AlertTriangle}>Reconnect required</Badge>
+      : null
+
   return (
     <div className="flex items-start gap-3 rounded-lg border border-[#E7E8EE] bg-white p-4">
       <div className="shrink-0 mt-0.5">{logo}</div>
@@ -49,11 +81,7 @@ function ProviderRow({
           <h4 className="font-poppins font-semibold text-[13px] text-[#0d0d09]">
             {name}
           </h4>
-          {connected && (
-            <Badge tone="green" size="xs" dot>
-              Connected
-            </Badge>
-          )}
+          {badge}
         </div>
         {connected ? (
           email && (
@@ -73,6 +101,12 @@ function ProviderRow({
             ))}
           </div>
         )}
+        {statusMessage && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-md bg-pastel-yellow px-2.5 py-2 font-inter text-[11.5px] text-pastel-yellow-foreground">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{statusMessage}</span>
+          </div>
+        )}
       </div>
       <div className="shrink-0 self-center">{action}</div>
     </div>
@@ -80,47 +114,55 @@ function ProviderRow({
 }
 
 export function EmailCalendarTab() {
+  const queryClient = useQueryClient()
   const {
     identities: mailIdentities,
     isLoading: isLoadingMail,
     connectGmail,
-    disconnectIdentity: disconnectMail,
   } = useMailIdentities()
 
   const {
     identities: calendarIdentities,
     isLoading: isLoadingCalendar,
-    disconnectCalendar,
-    isDisconnecting,
   } = useCalendarIdentities()
+
+  const disconnectGoogleWorkspace = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('disconnect-google-workspace', {
+        body: {},
+      })
+      if (error) throw error
+      return data as { success: boolean }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mail-identities'] })
+      queryClient.invalidateQueries({ queryKey: ['calendar-identities'] })
+      toast.success('Google Workspace disconnected')
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to disconnect Google Workspace: ${error.message}`)
+    },
+  })
 
   const isLoading = isLoadingMail || isLoadingCalendar
   const hasMail = (mailIdentities?.length ?? 0) > 0
   const hasCalendar = (calendarIdentities?.length ?? 0) > 0
+  const needsReconnect = [...(mailIdentities ?? []), ...(calendarIdentities ?? [])].some(hasTokenFailure)
+  const workspaceState: WorkspaceState = hasMail || hasCalendar ? (needsReconnect ? 'reconnect' : 'connected') : 'disconnected'
   const googleConnected = hasMail || hasCalendar
   const googleEmail =
     mailIdentities?.[0]?.email_address || calendarIdentities?.[0]?.email_address
+  const statusMessage = needsReconnect
+    ? getIdentityErrorMessage([...(mailIdentities ?? []), ...(calendarIdentities ?? [])].find(hasTokenFailure)) ||
+      'Google access was revoked or expired. Reconnect Google Workspace to send mail, create calendar invites, and keep booking links active.'
+    : null
 
   const googleCapabilities: string[] = []
   if (hasMail) googleCapabilities.push('Mail · two-way')
   if (hasCalendar) googleCapabilities.push('Calendar · two-way')
 
   const handleDisconnectGoogle = async () => {
-    try {
-      if (mailIdentities) {
-        for (const id of mailIdentities) {
-          await disconnectMail.mutateAsync(id.id)
-        }
-      }
-      if (calendarIdentities) {
-        for (const id of calendarIdentities) {
-          await disconnectCalendar(id.id)
-        }
-      }
-      toast.success('Google Workspace disconnected')
-    } catch {
-      toast.error('Failed to disconnect')
-    }
+    await disconnectGoogleWorkspace.mutateAsync()
   }
 
   return (
@@ -140,34 +182,47 @@ export function EmailCalendarTab() {
               email={googleEmail}
               connected={googleConnected}
               capabilities={googleCapabilities}
+              state={workspaceState}
+              statusMessage={statusMessage}
               action={
                 googleConnected ? (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="secondary" size="sm">
-                        Disconnect
+                  <div className="flex items-center gap-2">
+                    {needsReconnect && (
+                      <Button
+                        size="sm"
+                        onClick={() => connectGmail.mutate()}
+                        disabled={connectGmail.isPending || disconnectGoogleWorkspace.isPending}
+                      >
+                        {connectGmail.isPending ? 'Connecting…' : 'Reconnect Google'}
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Disconnect Google Workspace</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          You won't be able to send candidate emails from your address or
-                          schedule interviews against your real calendar until you reconnect.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDisconnectGoogle}
-                          disabled={isDisconnecting || disconnectMail.isPending}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
+                    )}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="secondary" size="sm" disabled={disconnectGoogleWorkspace.isPending}>
                           Disconnect
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Disconnect Google Workspace</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            You won't be able to send candidate emails from your address or
+                            schedule interviews against your real calendar until you reconnect.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDisconnectGoogle}
+                            disabled={disconnectGoogleWorkspace.isPending}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Disconnect
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 ) : (
                   <Button
                     size="sm"

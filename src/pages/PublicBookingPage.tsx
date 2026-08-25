@@ -357,7 +357,14 @@ export default function PublicBookingPage() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        let serverMessage = error.message;
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) serverMessage = body.error;
+        } catch (_) { /* keep generic */ }
+        throw new Error(serverMessage);
+      }
       return data;
     },
     onSuccess: (data, variables) => {
