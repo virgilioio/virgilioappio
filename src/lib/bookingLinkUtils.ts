@@ -56,12 +56,33 @@ export interface ResolvedTokenResult {
 }
 
 /**
+ * UTF-8 safe base64 helpers — raw btoa/atob only handle Latin1, so candidate
+ * names with characters like "ć" used to throw InvalidCharacterError.
+ */
+function utf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function base64ToUtf8(base64: string): string {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+/**
  * Encode booking context to a URL-safe base64 string (legacy method)
  */
 export function encodeBookingContext(context: BookingContext): string {
   try {
     const json = JSON.stringify(context);
-    return btoa(json)
+    return utf8ToBase64(json)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
@@ -80,7 +101,7 @@ export function decodeBookingContext(encoded: string): BookingContext | null {
     while (base64.length % 4) {
       base64 += '=';
     }
-    const json = atob(base64);
+    const json = base64ToUtf8(base64);
     const context = JSON.parse(json) as BookingContext;
     
     if (!context.jobId || !context.candidateId || !context.jhsId || !context.associationId) {
@@ -94,6 +115,7 @@ export function decodeBookingContext(encoded: string): BookingContext | null {
     return null;
   }
 }
+
 
 /**
  * Generate a contextual booking link with job+candidate+stage context (legacy base64)

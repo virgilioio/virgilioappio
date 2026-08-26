@@ -1,3 +1,15 @@
+
+// UTF-8 safe base64 — raw btoa() throws on characters above U+00FF
+// (e.g. candidate names like "Abović"), which broke ICS generation.
+function utf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
 export interface ICSEventData {
   uid: string; // e.g., "booking-abc123@gogio.io"
   summary: string; // e.g., "Interview with John Doe"
@@ -51,5 +63,5 @@ export function generateICS(event: ICSEventData): string {
   ].join('\r\n');
 
   // Return base64-encoded content for email attachment
-  return btoa(icsContent);
+  return utf8ToBase64(icsContent);
 }

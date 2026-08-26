@@ -1,3 +1,15 @@
+
+// UTF-8 safe base64 — raw btoa() throws on characters above U+00FF
+// (e.g. candidate names like "Abović"), which broke ICS generation.
+function utf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -1036,8 +1048,8 @@ serve(async (req) => {
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const internalIcsBase64 = btoa(buildIcs(icsAttendeesLine));
-    const candidateIcsBase64 = btoa(buildIcs(candidateIcsAttendeesLine));
+    const internalIcsBase64 = utf8ToBase64(buildIcs(icsAttendeesLine));
+    const candidateIcsBase64 = utf8ToBase64(buildIcs(candidateIcsAttendeesLine));
     // Google already delivers the real invite for the candidate's own event —
     // attaching another ICS would show up as a second, duplicate invitation.
     const candidateNeedsIcs = !candidateGoogleEventId;
