@@ -1,3 +1,15 @@
+
+// UTF-8 safe base64 — raw btoa() throws on characters above U+00FF
+// (e.g. candidate names like "Abović"), which broke ICS generation.
+function utf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
 // Version: 1.1.0 - Interview cancellation with shared CORS utilities
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -216,7 +228,7 @@ serve(async (req) => {
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const icsBase64 = btoa(icsContent);
+    const icsBase64 = utf8ToBase64(icsContent);
 
     // Send cancellation email to candidate
     // Import email template
