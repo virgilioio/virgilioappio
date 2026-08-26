@@ -238,8 +238,15 @@ function encodeBookingContext(context: {
 }): string {
   try {
     const json = JSON.stringify(context);
-    // Use base64url encoding (URL-safe)
-    return btoa(json)
+    // Use base64url encoding (URL-safe) over UTF-8 bytes — btoa alone throws
+    // on non-Latin1 characters (e.g. accented candidate names).
+    const bytes = new TextEncoder().encode(json);
+    let binary = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(binary)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');

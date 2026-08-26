@@ -103,7 +103,7 @@ export function useStageScorecardRequirement(
       // Candidate first name
       const { data: assoc } = await supabase
         .from('job_candidate_associations')
-        .select('candidate_id, candidates!inner(first_name, candidate_name)')
+        .select('candidate_id, candidates!inner(candidate_name)')
         .eq('id', associationId)
         .maybeSingle()
       const cand = (assoc as any)?.candidates
