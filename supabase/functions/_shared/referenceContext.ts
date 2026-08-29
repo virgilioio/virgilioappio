@@ -15,6 +15,7 @@ import {
   issueReferenceToken,
   logReferenceActivity,
 } from "./referenceTokens.ts";
+import { renderCandidateReferenceEmail } from "./candidateReferenceEmail.ts";
 
 export interface RequestContext {
   request: Record<string, any>;
@@ -26,6 +27,7 @@ export interface RequestContext {
   jobTitle: string;
   clientName: string;
   recruiterName: string;
+  recruiterTitle: string | null;
   recruiterEmail: string | null;
   refereeCount: number;
 }
@@ -78,16 +80,18 @@ export async function loadRequestContext(
   }
 
   let recruiterName = tenant?.name ?? "";
+  let recruiterTitle: string | null = null;
   let recruiterEmail: string | null = null;
   if (request.requested_by) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("first_name, last_name, email")
+      .select("first_name, last_name, email, title")
       .eq("id", request.requested_by)
       .maybeSingle();
     const full = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
     if (full) recruiterName = full;
     recruiterEmail = profile?.email ?? null;
+    recruiterTitle = profile?.title ?? null;
   }
 
   const candidateName = candidate?.candidate_name ?? "";
@@ -103,6 +107,7 @@ export async function loadRequestContext(
     jobTitle,
     clientName: clientName || agencyName,
     recruiterName,
+    recruiterTitle,
     recruiterEmail,
     refereeCount: request.min_referees_override ?? snapshot.min_referees ?? 2,
   };
@@ -171,22 +176,31 @@ export async function sendCandidateEmail(
     link = issued.url;
   }
 
-  const rendered = renderReferenceEmail({
-    template: tpl,
+  // Email 04 — a fully engineered transactional template. Only the subject (and
+  // the copy tokens inside it) come from the snapshot; the layout is fixed.
+  const daysRemaining = Math.max(
+    0,
+    Math.round((Date.parse(expiresAt!) - Date.now()) / 86_400_000),
+  );
+  const rendered = renderCandidateReferenceEmail({
     brand: ctx.brand,
-    ctaLabel: "Add your references",
+    subjectTemplate: tpl.subject,
+    bodyTemplate: tpl.body,
     secureLink: link,
-    footnote: `This link is unique to you and expires on ${formatExpiry(expiresAt!)}.`,
-    vars: {
-      candidate_name: ctx.candidateName,
-      candidate_first_name: ctx.candidateFirstName,
-      job_title: ctx.jobTitle,
-      client_name: ctx.clientName,
-      company_name: ctx.clientName,
-      referee_count: String(ctx.refereeCount),
-      recruiter_name: ctx.recruiterName,
-      expiry_date: formatExpiry(expiresAt!),
-    },
+    candidateFirstName: ctx.candidateFirstName,
+    jobTitle: ctx.jobTitle,
+    clientName: ctx.request.client_id ? ctx.clientName : null,
+    refereeCount: ctx.refereeCount,
+    recruiterName: ctx.recruiterName,
+    recruiterTitle: ctx.recruiterTitle,
+    agencyName: ctx.brand.name,
+    expiryIso: expiresAt!,
+    expiryDays: days,
+    relationshipRules: Array.isArray(ctx.snapshot.relationship_rules)
+      ? ctx.snapshot.relationship_rules
+      : [],
+    isReminder: !!opts.isReminder,
+    daysRemaining,
   });
 
   await sendReferenceEmail({
