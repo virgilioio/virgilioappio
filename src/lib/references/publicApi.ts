@@ -18,7 +18,13 @@ export interface PublicRefereeField {
   required: boolean
   helper?: string
   options?: string[]
+  precision?: 'month_year' | 'full_date'
+  scale?: 5 | 10
+  min?: string
+  max?: string
+  maxlen?: string
 }
+
 
 export interface PublicQuestion {
   id: string
