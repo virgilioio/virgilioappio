@@ -1,10 +1,15 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { format, addMonths, subMonths, startOfMonth, endOfMonth } from "date-fns"
+import { format, addMonths, subMonths } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+
+const headerSelectClass =
+  "h-7 rounded-lg bg-transparent px-1.5 font-poppins text-[13px] font-semibold text-virgilio-text " +
+  "hover:bg-[hsl(var(--menu-hover))] focus-visible:outline-none focus-visible:ring-2 " +
+  "focus-visible:ring-virgilio-purple/30 cursor-pointer appearance-none"
 
 interface MonthPickerProps {
   selected?: Date
