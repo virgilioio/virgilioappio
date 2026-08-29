@@ -71,17 +71,29 @@ export function PageHeader({
             >
               {breadcrumb.map((crumb, i) => {
                 const last = i === breadcrumb.length - 1;
+                const label = typeof crumb === "string" ? crumb : crumb.label;
+                const to = !last && typeof crumb === "object" ? crumb.to : null;
                 return (
                   <span key={i} className="flex items-center" style={{ gap: 6 }}>
                     {i > 0 && (
                       <ChevronRight size={11} strokeWidth={2} style={{ color: "#D1D5DB" }} />
                     )}
-                    <span
-                      className="truncate"
-                      style={last ? { color: "#1F2230", fontWeight: 500 } : undefined}
-                    >
-                      {crumb}
-                    </span>
+                    {to ? (
+                      <Link
+                        to={to}
+                        className="truncate transition-colors hover:text-[#1F2230] hover:underline underline-offset-2"
+                        style={{ color: "inherit" }}
+                      >
+                        {label}
+                      </Link>
+                    ) : (
+                      <span
+                        className="truncate"
+                        style={last ? { color: "#1F2230", fontWeight: 500 } : undefined}
+                      >
+                        {label}
+                      </span>
+                    )}
                   </span>
                 );
               })}
