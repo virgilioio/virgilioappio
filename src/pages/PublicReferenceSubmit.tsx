@@ -128,27 +128,30 @@ function RefereeFieldControl({
   }
 
   if (type === 'date') {
-    return <PublicInput type={dateType} value={value} onChange={(e) => onChange(e.target.value)} />
+    return fullDate ? (
+      <PublicDateField value={value} onChange={onChange} />
+    ) : (
+      <PublicMonthField value={value} onChange={onChange} />
+    )
   }
 
   if (type === 'date_range') {
     const [from = '', to = ''] = value.split(RANGE_SEP)
+    const RangePicker = fullDate ? PublicDateField : PublicMonthField
     return (
       <div className="flex items-center" style={{ gap: 8 }}>
-        <PublicInput
-          type={dateType}
+        <RangePicker
           value={from}
-          aria-label="From"
-          onChange={(e) => onChange(`${e.target.value}${RANGE_SEP}${to}`)}
+          placeholder="From"
+          onChange={(v) => onChange(`${v}${RANGE_SEP}${to}`)}
         />
-        <span className="font-inter" style={{ fontSize: 12, color: '#8B8F9E' }}>
+        <span className="font-inter shrink-0" style={{ fontSize: 12, color: '#8B8F9E' }}>
           to
         </span>
-        <PublicInput
-          type={dateType}
+        <RangePicker
           value={to}
-          aria-label="To"
-          onChange={(e) => onChange(`${from}${RANGE_SEP}${e.target.value}`)}
+          placeholder="To"
+          onChange={(v) => onChange(`${from}${RANGE_SEP}${v}`)}
         />
       </div>
     )
