@@ -475,6 +475,11 @@ export default function PublicReferenceSubmit() {
                         </option>
                       ))}
                     </PublicSelect>
+                  ) : f.type === 'phone' ? (
+                    <PublicPhoneField
+                      value={r.values[f.key] ?? ''}
+                      onChange={(v) => patch(r.key, { values: { ...r.values, [f.key]: v } })}
+                    />
                   ) : (
                     <PublicInput
                       type={f.type === 'email' ? 'email' : f.type === 'phone' ? 'tel' : 'text'}
