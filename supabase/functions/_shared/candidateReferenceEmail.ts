@@ -117,7 +117,9 @@ function masthead(brand: AgencyBrand): string {
 function requirementRow(icon: string, title: string, body: string, first: boolean): string {
   return `<tr><td style="padding-top:${first ? 0 : 12}px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="26" bgcolor="${HAIRLINE_SOFT}" align="center" style="width:26px;height:26px;background:${HAIRLINE_SOFT};border-radius:7px;vertical-align:top;font-family:${INTER};font-size:13px;color:${MUTED};line-height:26px;">${icon}</td>
+      <td width="26" align="center" style="width:26px;vertical-align:top;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="26" height="26" bgcolor="${HAIRLINE_SOFT}" align="center" style="width:26px;height:26px;background:${HAIRLINE_SOFT};border-radius:7px;font-family:${INTER};font-size:13px;color:${MUTED};line-height:26px;text-align:center;">${icon}</td></tr></table>
+      </td>
       <td style="padding-left:11px;">
         <div style="font-family:${POPPINS};font-size:13px;font-weight:600;letter-spacing:-0.01em;color:${TEXT};">${esc(title)}</div>
         <div style="font-family:${INTER};font-size:12px;line-height:1.45;color:${TERTIARY};padding-top:2px;">${esc(body)}</div>
@@ -239,6 +241,7 @@ export function renderCandidateReferenceEmail(
   .pad{padding-left:22px !important;padding-right:22px !important;}
   .h1{font-size:25px !important;}
   .cta{display:block !important;width:100% !important;}
+  .cta a{display:block !important;width:auto !important;}
   .stack{display:block !important;width:100% !important;}
   .brand{font-size:21px !important;}
   .kind{display:none !important;}
@@ -292,7 +295,7 @@ ${masthead(brand)}
 
   ${reminderNudge}
 
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta" style="width:auto;">
     <tr>
       <td bgcolor="${INK}" style="border-radius:12px;background:${INK};" align="center">
         <a href="${esc(secureLink)}" style="display:inline-block;height:48px;line-height:48px;padding:0 26px;font-family:${POPPINS};font-size:15px;font-weight:600;color:${CARD};text-decoration:none;border-radius:12px;">Add your references&nbsp;&nbsp;&rarr;</a>
