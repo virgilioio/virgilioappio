@@ -183,12 +183,12 @@ export function useReferenceRequestPeople(userIds: (string | null | undefined)[]
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
-        .in('id', ids)
+        .select('user_id, first_name, last_name, email')
+        .in('user_id', ids)
       if (error) throw error
       const map: Record<string, string> = {}
-      for (const p of data || []) {
-        map[p.id] =
+      for (const p of (data || []) as any[]) {
+        map[p.user_id] =
           [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || (p.email ?? '')
       }
       return map
