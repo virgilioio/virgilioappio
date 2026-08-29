@@ -3,7 +3,7 @@
  * questionnaire and the candidate's self-assessment render identically, which
  * is what makes the two sides comparable later.
  */
-import { PublicField, PublicInput, PublicSelect, PublicTextarea } from './PublicField'
+import { PublicField, PublicInput, PublicMonthField, PublicSelect, PublicTextarea } from './PublicField'
 import type { PublicQuestion } from '@/lib/references/publicApi'
 
 const RATINGS = [1, 2, 3, 4, 5]
@@ -161,19 +161,19 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
           />
         </PublicField>
         <PublicField label="Start (month / year)">
-          <PublicInput
+          <PublicMonthField
             value={v.start ?? ''}
-            onChange={(e) => set({ start: e.target.value })}
+            onChange={(val) => set({ start: val })}
             onBlur={onBlur}
-            placeholder=""
+            placeholder="Start month"
           />
         </PublicField>
         <PublicField label="End (month / year)">
-          <PublicInput
+          <PublicMonthField
             value={v.end ?? ''}
-            onChange={(e) => set({ end: e.target.value })}
+            onChange={(val) => set({ end: val })}
             onBlur={onBlur}
-            placeholder=""
+            placeholder="End month"
           />
         </PublicField>
       </div>

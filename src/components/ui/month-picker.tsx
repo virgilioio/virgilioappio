@@ -50,7 +50,7 @@ export function MonthPicker({ selected, onSelect, placeholder = "Select month", 
           {selected ? format(selected, "MMM yyyy") : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start">
+      <PopoverContent className="w-auto p-3 pointer-events-auto" align="start">
         {/* Quick presets — match DatePickerVirgilio */}
         <div className="flex gap-1 mb-3">
           {presets.map((preset) => (

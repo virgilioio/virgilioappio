@@ -1,6 +1,78 @@
 /** Label + control primitive for the public reference pages. */
 import { useEffect, useState, type ReactNode } from 'react'
 import { COUNTRY_CODES, parsePhoneValue } from '@/components/ui/phone-input'
+import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { MonthPicker } from '@/components/ui/month-picker'
+import { format } from 'date-fns'
+
+/** Trigger styling shared by the public date/month pickers. */
+const dateTriggerClass =
+  'w-full h-[38px] rounded-[9px] border-[#E3E0D6] bg-white px-[11px] font-inter text-[13px] text-[#1F2230] shadow-none hover:bg-white hover:border-[#D7C5FB]'
+
+function parseDateString(value: string | undefined, day: 'first' | 'exact'): Date | undefined {
+  if (!value) return undefined
+  const m = day === 'exact' ? /^(\d{4})-(\d{2})-(\d{2})$/ : /^(\d{4})-(\d{2})/
+  const match = value.match(m)
+  if (!match) return undefined
+  const d = new Date(Number(match[1]), Number(match[2]) - 1, day === 'exact' ? Number(match[3]) : 1)
+  return isNaN(d.getTime()) ? undefined : d
+}
+
+/**
+ * Canonical DatePickerVirgilio in the public pages' chrome.
+ * Value is a `yyyy-MM-dd` string, or '' when empty.
+ */
+export function PublicDateField({
+  value,
+  onChange,
+  onBlur,
+  placeholder = 'Pick a date',
+}: {
+  value?: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+  placeholder?: string
+}) {
+  return (
+    <DatePickerVirgilio
+      value={parseDateString(value, 'exact')}
+      onChange={(d) => {
+        onChange(format(d, 'yyyy-MM-dd'))
+        onBlur?.()
+      }}
+      placeholder={placeholder}
+      className={dateTriggerClass}
+    />
+  )
+}
+
+/**
+ * Canonical MonthPicker in the public pages' chrome.
+ * Value is a `yyyy-MM` string, or '' when empty.
+ */
+export function PublicMonthField({
+  value,
+  onChange,
+  onBlur,
+  placeholder = 'Pick a month',
+}: {
+  value?: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+  placeholder?: string
+}) {
+  return (
+    <MonthPicker
+      selected={parseDateString(value, 'first')}
+      onSelect={(d) => {
+        onChange(d ? format(d, 'yyyy-MM') : '')
+        onBlur?.()
+      }}
+      placeholder={placeholder}
+      className={dateTriggerClass}
+    />
+  )
+}
 
 const controlStyle: React.CSSProperties = {
   height: 38,
