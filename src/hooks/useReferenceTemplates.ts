@@ -18,7 +18,10 @@ function hydrate(row: any): ReferenceTemplate {
   return {
     ...row,
     relationship_rules: Array.isArray(row.relationship_rules) ? row.relationship_rules : [],
-    referee_fields: Array.isArray(row.referee_fields) ? row.referee_fields : [],
+    referee_fields: Array.isArray(row.referee_fields)
+      ? row.referee_fields.map(normalizeRefereeField)
+      : [],
+
     questions: Array.isArray(row.questions) ? row.questions : [],
     collect_at_stages: Array.isArray(row.collect_at_stages) ? row.collect_at_stages : [],
     candidate_email: row.candidate_email ?? defaultCandidateEmail(),
