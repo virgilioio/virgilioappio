@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, ArrowLeftRight, FileText, ThumbsDown, CheckCircle2, Lock } from 'lucide-react'
+import { ArrowRight, ClipboardCheck, ArrowLeftRight, FileText, ThumbsDown, CheckCircle2, Lock, Users } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -17,6 +17,7 @@ interface ProfileQuickActionsCardProps {
   nextStageLabel?: string | null
   onAdvance?: () => void
   onSubmitScorecard?: () => void
+  onRequestReferences?: () => void
   onAddTransfer?: () => void
   onCreateOffer?: () => void
   onReject?: () => void
@@ -31,7 +32,7 @@ interface ProfileQuickActionsCardProps {
 }
 
 export function ProfileQuickActionsCard({
-  nextStageLabel, onAdvance, onSubmitScorecard, onAddTransfer, onCreateOffer, onReject,
+  nextStageLabel, onAdvance, onSubmitScorecard, onRequestReferences, onAddTransfer, onCreateOffer, onReject,
   isOfferStatus, isRejected, isHired,
   onMarkHired, canMarkHired, markHiredHelper, canOverride, onOverrideRelease,
 }: ProfileQuickActionsCardProps) {
@@ -55,6 +56,9 @@ export function ProfileQuickActionsCard({
             Submit scorecard
           </Button>
         )}
+        <Button variant="secondary" size="md" icon={Users} onClick={onRequestReferences} className="w-full justify-center">
+          Request references
+        </Button>
         <Button variant="secondary" size="md" icon={ArrowLeftRight} onClick={onAddTransfer} className="w-full justify-center">
           Add/Transfer to job
         </Button>

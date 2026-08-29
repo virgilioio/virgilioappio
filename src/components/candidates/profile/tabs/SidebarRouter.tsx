@@ -94,6 +94,7 @@ export interface JobOverviewSidebarProps {
   nextStageLabel: string | null
   onAdvance: () => void
   onSubmitScorecard: () => void
+  onRequestReferences?: () => void
   onAddTransfer: () => void
   onCreateOffer: () => void
   onReject: () => void
@@ -109,6 +110,7 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
         nextStageLabel={p.nextStageLabel}
         onAdvance={p.onAdvance}
         onSubmitScorecard={p.onSubmitScorecard}
+        onRequestReferences={p.onRequestReferences}
         onAddTransfer={p.onAddTransfer}
         onCreateOffer={p.onCreateOffer}
         onReject={p.onReject}
