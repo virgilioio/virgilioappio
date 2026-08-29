@@ -114,7 +114,25 @@ export function TrailingToggle({
   )
 }
 
+/** White card chrome each editor section supplies for itself. */
+export function SectionCard({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid #E7E8EE',
+        borderRadius: 12,
+        boxShadow: '0 1px 2px rgba(13,13,9,0.03)',
+        padding: 16,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 /** Section title + subtitle + optional action. */
+
 export function SectionHead({
   title,
   subtitle,
