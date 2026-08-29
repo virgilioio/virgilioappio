@@ -1,9 +1,23 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, isToday, isBefore, startOfDay } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const WEEK_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const YEAR_RANGE = 60
+
+const headerSelectClass =
+  "h-7 rounded-lg bg-transparent px-1.5 font-poppins text-[13px] font-semibold text-virgilio-text " +
+  "hover:bg-[hsl(var(--menu-hover))] focus-visible:outline-none focus-visible:ring-2 " +
+  "focus-visible:ring-virgilio-purple/30 cursor-pointer appearance-none"
+
+function yearOptions() {
+  const now = new Date().getFullYear()
+  return Array.from({ length: YEAR_RANGE + 2 }, (_, i) => now + 1 - i)
+}
 
 interface DatePickerVirgilioProps {
   value?: Date
@@ -13,8 +27,6 @@ interface DatePickerVirgilioProps {
   className?: string
   minDate?: Date
 }
-
-const WEEK_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 export function DatePickerVirgilio({
   value,
@@ -87,9 +99,28 @@ export function DatePickerVirgilio({
 
           {/* Month Navigation */}
           <div className="flex items-center justify-between">
-            <h3 className="text-h4 text-virgilio-text">
-              {format(currentMonth, 'MMMM yyyy')}
-            </h3>
+            <div className="flex items-center gap-0.5">
+              <select
+                aria-label="Month"
+                value={currentMonth.getMonth()}
+                onChange={(e) => setCurrentMonth(new Date(currentMonth.getFullYear(), Number(e.target.value), 1))}
+                className={headerSelectClass}
+              >
+                {MONTHS.map((m, i) => (
+                  <option key={m} value={i}>{format(new Date(2000, i, 1), 'MMMM')}</option>
+                ))}
+              </select>
+              <select
+                aria-label="Year"
+                value={currentMonth.getFullYear()}
+                onChange={(e) => setCurrentMonth(new Date(Number(e.target.value), currentMonth.getMonth(), 1))}
+                className={headerSelectClass}
+              >
+                {yearOptions().map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-1">
               <Button
                 type="button"
