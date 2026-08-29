@@ -85,6 +85,10 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
   const askedCount = draft.questions.filter((q) => q.ask_candidate_too).length
   const { name: editorName } = useUserDisplayName(template.updated_by)
 
+  /** Rail meta and the section subtitle derive from the same live state. */
+  const fieldsMeta = `${draft.referee_fields.length} fields · ${draft.referee_fields.filter((f) => f.required).length} required`
+
+
   const rangeLabel =
     draft.min_referees === draft.max_referees
       ? `${draft.min_referees}`
