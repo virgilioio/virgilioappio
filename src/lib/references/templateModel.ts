@@ -10,18 +10,47 @@ import type { Database } from '@/integrations/supabase/types'
 export type ReferenceAnswerType = Database['public']['Enums']['reference_answer_type']
 export type ReferenceTemplateScope = Database['public']['Enums']['reference_template_scope']
 
-/** Referee fields reuse the existing `field_type` enum values (no new field types). */
-export type RefereeFieldType = 'text' | 'email' | 'phone' | 'select' | 'date' | 'textarea'
+/**
+ * Referee fields carry their OWN type set — deliberately separate from the
+ * question types in Section 3 and from the scorecard `field_type` enum. These
+ * describe contact + relationship data the candidate supplies about a referee.
+ */
+export type ReferenceFieldType =
+  | 'short_text'
+  | 'long_text'
+  | 'email'
+  | 'phone'
+  | 'link'
+  | 'select'
+  | 'multi_select'
+  | 'yes_no'
+  | 'date'
+  | 'date_range'
+  | 'number'
+  | 'rating'
+
+/** @deprecated legacy alias — stored rows are normalised on hydrate. */
+export type RefereeFieldType = ReferenceFieldType
+
+export type ReferenceFieldPrecision = 'month_year' | 'full_date'
 
 export interface RefereeField {
   id: string
   key: string
   label: string
-  type: RefereeFieldType
+  type: ReferenceFieldType
   required: boolean
   helper?: string
   options?: string[]
+  /** Cannot be deleted or dragged — there is no way to reach a referee without it. */
+  locked?: boolean
+  precision?: ReferenceFieldPrecision
+  scale?: 5 | 10
+  min?: string
+  max?: string
+  maxlen?: string
 }
+
 
 export interface RefQuestion {
   id: string
@@ -98,21 +127,22 @@ export const DEFAULT_COLLECT_AT_STAGES = ['Final interview', 'Offer']
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
-/** Seed set for a brand-new template. */
+/** Seed set for a brand-new template. Rows 1–2 are locked — see §7. */
 export function defaultRefereeFields(): RefereeField[] {
   return [
-    { id: uid(), key: 'name', label: 'Full name', type: 'text', required: true },
+    { id: uid(), key: 'name', label: 'Full name', type: 'short_text', required: true, locked: true },
     {
       id: uid(),
       key: 'email',
       label: 'Work email',
       type: 'email',
       required: true,
+      locked: true,
       helper: 'Company address preferred',
     },
     { id: uid(), key: 'phone', label: 'Phone', type: 'phone', required: false },
-    { id: uid(), key: 'company', label: 'Company', type: 'text', required: true },
-    { id: uid(), key: 'title', label: 'Job title', type: 'text', required: true },
+    { id: uid(), key: 'company', label: 'Company', type: 'short_text', required: true },
+    { id: uid(), key: 'title', label: 'Job title', type: 'short_text', required: true },
     {
       id: uid(),
       key: 'relationship',
@@ -121,9 +151,113 @@ export function defaultRefereeFields(): RefereeField[] {
       required: true,
       options: [...RELATIONSHIP_OPTIONS],
     },
-    { id: uid(), key: 'period', label: 'Period you worked together', type: 'text', required: true },
+    {
+      id: uid(),
+      key: 'period',
+      label: 'Period you worked together',
+      type: 'date_range',
+      required: true,
+      precision: 'month_year',
+    },
   ]
 }
+
+export type ReferenceFieldGroup = 'text' | 'choice' | 'datenum'
+export type ReferenceFieldConfig = 'options' | 'precision' | 'range' | 'scale' | 'maxlen'
+
+export interface ReferenceFieldTypeMeta {
+  type: ReferenceFieldType
+  label: string
+  group: ReferenceFieldGroup
+  /** Tooltip hint carried on the picker chip's `title`. */
+  hint: string
+}
+
+export const REFERENCE_FIELD_GROUPS: { id: ReferenceFieldGroup; heading: string }[] = [
+  { id: 'text', heading: 'Text & contact' },
+  { id: 'choice', heading: 'Choice' },
+  { id: 'datenum', heading: 'Date & number' },
+]
+
+export const REFERENCE_FIELD_TYPES: ReferenceFieldTypeMeta[] = [
+  { type: 'short_text', label: 'Short text', group: 'text', hint: 'One line' },
+  { type: 'long_text', label: 'Long text', group: 'text', hint: 'Paragraph' },
+  { type: 'email', label: 'Email', group: 'text', hint: 'Validated address' },
+  { type: 'phone', label: 'Phone', group: 'text', hint: 'With country code' },
+  { type: 'link', label: 'Link', group: 'text', hint: 'LinkedIn, company page' },
+  { type: 'select', label: 'Select', group: 'choice', hint: 'Pick one' },
+  { type: 'multi_select', label: 'Multi-select', group: 'choice', hint: 'Pick several' },
+  { type: 'yes_no', label: 'Yes / no', group: 'choice', hint: 'Two options' },
+  { type: 'date', label: 'Date', group: 'datenum', hint: 'Single date' },
+  { type: 'date_range', label: 'Date range', group: 'datenum', hint: 'From and to' },
+  { type: 'number', label: 'Number', group: 'datenum', hint: 'Numeric only' },
+  { type: 'rating', label: 'Rating', group: 'datenum', hint: 'Rarely used here' },
+]
+
+export const REFERENCE_FIELD_LABEL: Record<ReferenceFieldType, string> =
+  REFERENCE_FIELD_TYPES.reduce(
+    (acc, t) => ({ ...acc, [t.type]: t.label }),
+    {} as Record<ReferenceFieldType, string>,
+  )
+
+/** Which config controls the inline editor shows per type. */
+export const FIELD_CONFIG: Record<ReferenceFieldType, ReferenceFieldConfig[]> = {
+  select: ['options'],
+  multi_select: ['options'],
+  date: ['precision'],
+  date_range: ['precision'],
+  number: ['range'],
+  rating: ['scale'],
+  short_text: ['maxlen'],
+  yes_no: [],
+  long_text: [],
+  email: [],
+  phone: [],
+  link: [],
+}
+
+export function newRefereeField(type: ReferenceFieldType): RefereeField {
+  const base: RefereeField = {
+    id: uid(),
+    key: `field_${uid()}`,
+    label: '',
+    type,
+    required: false,
+  }
+  if (type === 'select' || type === 'multi_select') base.options = ['', '']
+  if (type === 'date' || type === 'date_range') base.precision = 'month_year'
+  if (type === 'rating') base.scale = 5
+  return base
+}
+
+const LEGACY_TYPE_MAP: Record<string, ReferenceFieldType> = {
+  text: 'short_text',
+  textarea: 'long_text',
+  url: 'link',
+  single_select: 'select',
+}
+
+export function normalizeRefereeFieldType(type: string): ReferenceFieldType {
+  if (LEGACY_TYPE_MAP[type]) return LEGACY_TYPE_MAP[type]
+  return (REFERENCE_FIELD_LABEL as Record<string, string>)[type]
+    ? (type as ReferenceFieldType)
+    : 'short_text'
+}
+
+const LOCKED_KEYS = ['name', 'email']
+
+/** Rows persisted before the new type set still hydrate into the typed model. */
+export function normalizeRefereeField(raw: any): RefereeField {
+  const type = normalizeRefereeFieldType(String(raw?.type ?? 'short_text'))
+  return {
+    ...raw,
+    type,
+    locked: raw?.locked ?? LOCKED_KEYS.includes(raw?.key),
+    precision:
+      type === 'date' || type === 'date_range' ? (raw?.precision ?? 'month_year') : raw?.precision,
+  }
+}
+
 
 
 export const WOULD_REHIRE_OPTIONS = [

@@ -7,7 +7,14 @@ import { useParams } from 'react-router-dom'
 import { Check, Loader2, Plus, Send, Trash2 } from 'lucide-react'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
-import { PublicField, PublicInput, PublicPhoneField, PublicSelect } from '@/components/public/PublicField'
+import {
+  PublicField,
+  PublicInput,
+  PublicPhoneField,
+  PublicSelect,
+  PublicTextarea,
+} from '@/components/public/PublicField'
+
 import { QuestionInstrument } from '@/components/public/QuestionInstrument'
 import { TerminalCard } from '@/components/public/TerminalCard'
 import {
@@ -37,6 +44,153 @@ const newReferee = (): RefereeDraft => ({
 function fieldLabel(f: PublicRefereeField) {
   return f.key === 'relationship' ? 'Relationship to you' : f.label
 }
+
+const RANGE_SEP = ' to '
+
+/** Renders one referee field per the template's own type set. */
+function RefereeFieldControl({
+  field: f,
+  value,
+  onChange,
+}: {
+  field: PublicRefereeField
+  value: string
+  onChange: (v: string) => void
+}) {
+  const type = f.type === 'text' ? 'short_text' : f.type === 'textarea' ? 'long_text' : f.type
+  const dateType = f.precision === 'full_date' ? 'date' : 'month'
+
+  if (type === 'select') {
+    return (
+      <PublicSelect value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Select…</option>
+        {(f.options ?? []).map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </PublicSelect>
+    )
+  }
+
+  if (type === 'yes_no') {
+    return (
+      <PublicSelect value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Select…</option>
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </PublicSelect>
+    )
+  }
+
+  if (type === 'multi_select') {
+    const selected = value ? value.split(', ').filter(Boolean) : []
+    return (
+      <div className="flex flex-wrap" style={{ gap: 6 }}>
+        {(f.options ?? []).map((o) => {
+          const on = selected.includes(o)
+          return (
+            <button
+              key={o}
+              type="button"
+              aria-pressed={on}
+              onClick={() =>
+                onChange(
+                  (on ? selected.filter((s) => s !== o) : [...selected, o]).join(', '),
+                )
+              }
+              className="font-inter"
+              style={{
+                height: 32,
+                padding: '0 11px',
+                borderRadius: 8,
+                fontSize: 12.5,
+                cursor: 'pointer',
+                border: `1px solid ${on ? '#D7C5FB' : '#E3E0D6'}`,
+                background: on ? '#EDE4FF' : '#fff',
+                color: on ? '#5B21B6' : '#1F2230',
+              }}
+            >
+              {o}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (type === 'phone') {
+    return <PublicPhoneField value={value} onChange={onChange} />
+  }
+
+  if (type === 'long_text') {
+    return <PublicTextarea value={value} onChange={(e) => onChange(e.target.value)} />
+  }
+
+  if (type === 'date') {
+    return <PublicInput type={dateType} value={value} onChange={(e) => onChange(e.target.value)} />
+  }
+
+  if (type === 'date_range') {
+    const [from = '', to = ''] = value.split(RANGE_SEP)
+    return (
+      <div className="flex items-center" style={{ gap: 8 }}>
+        <PublicInput
+          type={dateType}
+          value={from}
+          aria-label="From"
+          onChange={(e) => onChange(`${e.target.value}${RANGE_SEP}${to}`)}
+        />
+        <span className="font-inter" style={{ fontSize: 12, color: '#8B8F9E' }}>
+          to
+        </span>
+        <PublicInput
+          type={dateType}
+          value={to}
+          aria-label="To"
+          onChange={(e) => onChange(`${from}${RANGE_SEP}${e.target.value}`)}
+        />
+      </div>
+    )
+  }
+
+  if (type === 'number') {
+    return (
+      <PublicInput
+        type="number"
+        min={f.min}
+        max={f.max}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    )
+  }
+
+  if (type === 'rating') {
+    const scale = f.scale === 10 ? 10 : 5
+    return (
+      <PublicSelect value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Select…</option>
+        {Array.from({ length: scale }, (_, i) => String(i + 1)).map((n) => (
+          <option key={n} value={n}>
+            {n}
+          </option>
+        ))}
+      </PublicSelect>
+    )
+  }
+
+  return (
+    <PublicInput
+      type={type === 'email' ? 'email' : type === 'link' ? 'url' : 'text'}
+      maxLength={type === 'short_text' && f.maxlen ? Number(f.maxlen) || undefined : undefined}
+      placeholder={type === 'link' ? 'https://…' : undefined}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  )
+}
+
 
 function formatDate(iso?: string | null) {
   if (!iso) return ''
@@ -461,36 +615,14 @@ export default function PublicReferenceSubmit() {
                   required={f.required}
                   helper={f.helper}
                 >
-                  {f.type === 'select' ? (
-                    <PublicSelect
-                      value={r.values[f.key] ?? ''}
-                      onChange={(e) =>
-                        patch(r.key, { values: { ...r.values, [f.key]: e.target.value } })
-                      }
-                    >
-                      <option value="">Select…</option>
-                      {(f.options ?? []).map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </PublicSelect>
-                  ) : f.type === 'phone' ? (
-                    <PublicPhoneField
-                      value={r.values[f.key] ?? ''}
-                      onChange={(v) => patch(r.key, { values: { ...r.values, [f.key]: v } })}
-                    />
-                  ) : (
-                    <PublicInput
-                      type={f.type === 'email' ? 'email' : f.type === 'phone' ? 'tel' : 'text'}
-                      value={r.values[f.key] ?? ''}
-                      onChange={(e) =>
-                        patch(r.key, { values: { ...r.values, [f.key]: e.target.value } })
-                      }
-                    />
-                  )}
+                  <RefereeFieldControl
+                    field={f}
+                    value={r.values[f.key] ?? ''}
+                    onChange={(v) => patch(r.key, { values: { ...r.values, [f.key]: v } })}
+                  />
                 </PublicField>
               ))}
+
             </div>
 
             <div
