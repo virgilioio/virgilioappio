@@ -5879,6 +5879,7 @@ export type Database = {
           candidate_email: Json | null
           candidate_link_days: number
           client_id: string | null
+          collect_at_stages: Json
           consent_text: string | null
           created_at: string
           id: string
@@ -5904,6 +5905,7 @@ export type Database = {
           candidate_email?: Json | null
           candidate_link_days?: number
           client_id?: string | null
+          collect_at_stages?: Json
           consent_text?: string | null
           created_at?: string
           id?: string
@@ -5929,6 +5931,7 @@ export type Database = {
           candidate_email?: Json | null
           candidate_link_days?: number
           client_id?: string | null
+          collect_at_stages?: Json
           consent_text?: string | null
           created_at?: string
           id?: string
