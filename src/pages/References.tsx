@@ -44,14 +44,17 @@ export default function ReferencesPage() {
         }
       />
 
-      <Card className="p-6">
-        <EmptyState
-          variant="page"
-          title="No reference checks yet"
-          description="Reference check requests will appear here once they are created."
-          icon={FileText}
-        />
-      </Card>
+      <EmptyState
+        illustration={<SoftPaper />}
+        title="No reference checks yet"
+        body="Request references from a candidate's profile — checks live with the candidate and follow them across jobs."
+        secondary={
+          <EmptyAction variant="secondary" onClick={() => navigate('/references/templates')}>
+            Manage templates
+          </EmptyAction>
+        }
+      />
+
     </ReferencesShell>
   )
 }
