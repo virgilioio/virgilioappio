@@ -461,36 +461,14 @@ export default function PublicReferenceSubmit() {
                   required={f.required}
                   helper={f.helper}
                 >
-                  {f.type === 'select' ? (
-                    <PublicSelect
-                      value={r.values[f.key] ?? ''}
-                      onChange={(e) =>
-                        patch(r.key, { values: { ...r.values, [f.key]: e.target.value } })
-                      }
-                    >
-                      <option value="">Select…</option>
-                      {(f.options ?? []).map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </PublicSelect>
-                  ) : f.type === 'phone' ? (
-                    <PublicPhoneField
-                      value={r.values[f.key] ?? ''}
-                      onChange={(v) => patch(r.key, { values: { ...r.values, [f.key]: v } })}
-                    />
-                  ) : (
-                    <PublicInput
-                      type={f.type === 'email' ? 'email' : f.type === 'phone' ? 'tel' : 'text'}
-                      value={r.values[f.key] ?? ''}
-                      onChange={(e) =>
-                        patch(r.key, { values: { ...r.values, [f.key]: e.target.value } })
-                      }
-                    />
-                  )}
+                  <RefereeFieldControl
+                    field={f}
+                    value={r.values[f.key] ?? ''}
+                    onChange={(v) => patch(r.key, { values: { ...r.values, [f.key]: v } })}
+                  />
                 </PublicField>
               ))}
+
             </div>
 
             <div
