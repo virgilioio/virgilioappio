@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { X } from 'lucide-react'
-import { Sheet, SheetContent, SheetPortal, SheetOverlay } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetPortal, SheetOverlay, SheetTitle } from '@/components/ui/sheet'
 
 interface FormSheetProps {
   open: boolean
@@ -34,10 +34,11 @@ export function FormSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetPortal>
         <SheetOverlay style={{ background: 'rgba(13,13,9,0.18)' }} />
-        <SheetContent
+      </SheetPortal>
+      <SheetContent
           side="right"
-          hideClose
-          className="p-0 gap-0 border-0 sm:max-w-none flex flex-col"
+          showOverlay={false}
+          className="p-0 gap-0 border-0 sm:max-w-none flex flex-col [&>button:last-child]:hidden"
           style={{
             width,
             maxWidth: '100vw',
@@ -56,6 +57,7 @@ export function FormSheet({
             style={{ padding: '16px 24px 14px', borderBottom: '1px solid #F1F0EC' }}
           >
             <div className="min-w-0 flex-1">
+              <SheetTitle className="sr-only">{title}</SheetTitle>
               {eyebrow && (
                 <div
                   className="font-inter uppercase truncate"
@@ -137,7 +139,6 @@ export function FormSheet({
             </footer>
           )}
         </SheetContent>
-      </SheetPortal>
     </Sheet>
   )
 }
