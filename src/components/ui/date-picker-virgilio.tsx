@@ -19,6 +19,15 @@ function yearOptions() {
   return Array.from({ length: YEAR_RANGE + 2 }, (_, i) => now + 1 - i)
 }
 
+interface DatePickerVirgilioProps {
+  value?: Date
+  onChange: (date: Date) => void
+  placeholder?: string
+  disabled?: (date: Date) => boolean
+  className?: string
+  minDate?: Date
+}
+
 export function DatePickerVirgilio({
   value,
   onChange,
