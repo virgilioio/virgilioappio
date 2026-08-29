@@ -58,7 +58,7 @@ function RefereeFieldControl({
   onChange: (v: string) => void
 }) {
   const type = f.type === 'text' ? 'short_text' : f.type === 'textarea' ? 'long_text' : f.type
-  const dateType = f.precision === 'full_date' ? 'date' : 'month'
+  const fullDate = f.precision === 'full_date'
 
   if (type === 'select') {
     return (
