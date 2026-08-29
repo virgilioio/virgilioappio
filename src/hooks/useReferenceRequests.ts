@@ -71,12 +71,26 @@ export function useCreateReferenceRequest() {
         .single()
       if (error) throw error
 
-      await supabase.from('reference_activity').insert({
-        request_id: data.id,
-        type: 'candidate_email_sent',
-        label: 'Candidate email sent',
-        actor: user?.id ?? null,
-      })
+      // Email 1 — the candidate's "add your references" link. The edge function
+      // mints the token, resolves copy from the frozen snapshot and logs the
+      // activity row (so we no longer log a send that never happened).
+      const { data: sendResult, error: sendError } = await supabase.functions.invoke(
+        'send-reference-request',
+        { body: { request_id: data.id } },
+      )
+      if (sendError || (sendResult as { error?: string })?.error) {
+        let message = (sendResult as { error?: string })?.error ?? 'Could not send the email'
+        const ctx = (sendError as { context?: Response } | null)?.context
+        if (ctx && typeof ctx.json === 'function') {
+          try {
+            const payload = await ctx.json()
+            if (payload?.error) message = payload.error
+          } catch {
+            /* keep the generic message */
+          }
+        }
+        throw new Error(message)
+      }
 
       return data
     },
@@ -84,7 +98,7 @@ export function useCreateReferenceRequest() {
       queryClient.invalidateQueries({
         queryKey: ['reference-requests', 'candidate', vars.candidateId],
       })
-      toast({ title: 'Reference check requested' })
+      toast({ title: 'Reference check requested', description: 'The candidate has been emailed their secure link.' })
     },
     onError: (e: any) =>
       toast({
