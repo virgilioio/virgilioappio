@@ -181,7 +181,23 @@ export function Header() {
       show: canViewOrganizations,
       section: 'crm',
     },
+    {
+      href: '/references',
+      icon: Inbox,
+      label: 'Requests',
+      show: canViewReferences,
+      section: 'references',
+    },
+    {
+      href: '/references/templates',
+      icon: Settings2,
+      label: 'Templates',
+      show: canViewReferences,
+      section: 'references',
+      matchPrefix: true,
+    },
   ]
+
 
   const activeSection = getActiveSection(location.pathname)
   const visibleNavItems = navigationItems.filter(
