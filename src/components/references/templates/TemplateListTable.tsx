@@ -29,7 +29,6 @@ interface Props {
   selectedId?: string | null
   onOpen: (template: ReferenceTemplate) => void
   onNew: () => void
-  onQuestionLibrary: () => void
 }
 
 export function TemplateListTable({
@@ -39,55 +38,12 @@ export function TemplateListTable({
   selectedId,
   onOpen,
   onNew,
-  onQuestionLibrary,
 }: Props) {
   const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3" style={{ marginBottom: 14 }}>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1
-              className="font-poppins font-semibold text-[#0d0d09]"
-              style={{ fontSize: 22, letterSpacing: '-0.04em' }}
-            >
-              Templates
-            </h1>
-            <span
-              className="inline-flex items-center justify-center font-poppins font-medium tabular-nums"
-              style={{
-                background: '#F1F0EC',
-                color: '#5A6072',
-                fontSize: 11.5,
-                minWidth: 22,
-                height: 22,
-                padding: '0 7px',
-                borderRadius: 999,
-              }}
-            >
-              {templates.length}
-            </span>
-          </div>
-          <p
-            className="font-inter"
-            style={{ fontSize: 11.5, color: MUTED, marginTop: 3 }}
-          >
-            <span>Owned by this tenant — never shared</span>
-            <span style={{ padding: '0 6px' }}>·</span>
-            <span>Also reachable from Settings → Recruiting</span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="secondary" size="sm" icon={BookOpen} onClick={onQuestionLibrary}>
-            Question library
-          </Button>
-          <Button size="sm" icon={Plus} onClick={onNew}>
-            New template
-          </Button>
-        </div>
-      </div>
+
 
       <Card className="overflow-hidden p-0" style={{ boxShadow: '0 1px 2px rgba(13,13,9,0.03)' }}>
         {isLoading ? (
