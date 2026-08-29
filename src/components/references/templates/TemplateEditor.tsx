@@ -199,49 +199,57 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
 
 
-      <div className="grid gap-5" style={{ gridTemplateColumns: '232px minmax(0,1fr)' }}>
+      <div className="grid" style={{ gridTemplateColumns: '232px minmax(0,1fr)', gap: 24, alignItems: 'start' }}>
         {/* Rail */}
         <div className="space-y-3">
-          <Card className="p-1.5">
-            <div className="space-y-0.5">
-              {SECTIONS.map((s) => {
-                const Icon = s.icon
-                const isActive = active === s.id
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setActive(s.id)}
-                    className={cn(
-                      'w-full flex items-start gap-2.5 rounded-lg text-left transition-colors',
-                      isActive ? 'bg-[#0d0d09]' : 'hover:bg-[rgba(13,13,9,0.05)]',
-                    )}
-                    style={{ padding: '8px 10px' }}
-                  >
-                    <Icon
-                      className="w-[15px] h-[15px] mt-[2px] shrink-0"
-                      strokeWidth={2}
-                      style={{ color: isActive ? '#D7C5FB' : '#5A6072' }}
-                    />
-                    <span className="min-w-0">
-                      <span
-                        className={cn('block font-poppins font-medium', isActive ? 'text-[#fffcf9]' : 'text-[#1F2230]')}
-                        style={{ fontSize: 12.5, letterSpacing: '-0.01em' }}
-                      >
-                        {s.label}
-                      </span>
-                      <span
-                        className="block font-inter truncate"
-                        style={{ fontSize: 11, color: isActive ? 'rgba(255,252,249,0.65)' : MUTED }}
-                      >
-                        {summaries[s.id]}
-                      </span>
+          <nav className="flex flex-col" style={{ gap: 2 }}>
+            {SECTIONS.map((s) => {
+              const Icon = s.icon
+              const isActive = active === s.id
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setActive(s.id)}
+                  className={cn(
+                    'w-full flex items-center text-left transition-colors',
+                    isActive ? 'bg-[#0d0d09]' : 'hover:bg-[rgba(13,13,9,0.05)]',
+                  )}
+                  style={{ gap: 9, padding: '9px 11px', borderRadius: 9 }}
+                >
+                  <Icon
+                    size={14}
+                    strokeWidth={2}
+                    className="shrink-0"
+                    style={{ color: isActive ? '#D7C5FB' : '#5A6072' }}
+                  />
+                  <span className="min-w-0">
+                    <span
+                      className="block font-inter"
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? '#fffcf9' : '#1F2230',
+                      }}
+                    >
+                      {s.label}
                     </span>
-                  </button>
-                )
-              })}
-            </div>
-          </Card>
+                    <span
+                      className="block font-inter truncate"
+                      style={{
+                        fontSize: 10.5,
+                        marginTop: 1,
+                        color: isActive ? 'rgba(255,252,249,0.6)' : '#B5B9C4',
+                      }}
+                    >
+                      {summaries[s.id]}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </nav>
+
 
           {/* Scope + live */}
           <Card className="relative z-20 p-3 space-y-2.5">
