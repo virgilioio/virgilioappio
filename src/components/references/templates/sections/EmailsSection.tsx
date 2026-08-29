@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react'
+import { UserRound, Users } from 'lucide-react'
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors'
-import type {
-  SubjectTemplateEditorHandle,
-} from '@/components/editors/SubjectTemplateEditor'
+import type { SubjectTemplateEditorHandle } from '@/components/editors/SubjectTemplateEditor'
 import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplateEditor'
 import { FormField } from '@/components/ui/form-field'
 import { PlaceholderPill } from '@/components/references/PlaceholderPill'
@@ -18,21 +16,133 @@ import {
   type RefEmail,
 } from '@/lib/references/templateModel'
 
-const HAIRLINE = '#E7E8EE'
 const MUTED = '#8B8F9E'
 
-function PlaceholderPills({
-  keys,
-  onInsert,
+type Audience = 'candidate' | 'referee'
+
+const COPY: Record<Audience, { title: string; subtitle: string }> = {
+  candidate: {
+    title: 'Candidate email',
+    subtitle: 'Sent when a recruiter triggers the check.',
+  },
+  referee: {
+    title: 'Referee email',
+    subtitle: 'Sent to each referee the candidate submits.',
+  },
+}
+
+/** Segmented audience switcher — 4px inset track, white active pill. */
+function AudienceSwitcher({
+  value,
+  onChange,
 }: {
-  keys: readonly string[]
-  onInsert: (key: string) => void
+  value: Audience
+  onChange: (v: Audience) => void
 }) {
+  const options: { id: Audience; label: string; icon: typeof UserRound }[] = [
+    { id: 'candidate', label: 'Candidate email', icon: UserRound },
+    { id: 'referee', label: 'Referee email', icon: Users },
+  ]
+
   return (
-    <div className="flex flex-wrap" style={{ gap: 5 }}>
-      {keys.map((k) => (
-        <PlaceholderPill key={k} name={k} onClick={() => onInsert(k)} title={`Insert {{${k}}}`} />
-      ))}
+    <div
+      className="inline-flex"
+      style={{ gap: 4, padding: 4, background: '#F1F0EC', borderRadius: 10, marginBottom: 14 }}
+    >
+      {options.map((o) => {
+        const active = o.id === value
+        const Icon = o.icon
+        return (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            className="inline-flex items-center font-poppins"
+            style={{
+              gap: 7,
+              padding: '7px 13px',
+              borderRadius: 7,
+              border: 'none',
+              fontSize: 12,
+              letterSpacing: '-0.01em',
+              fontWeight: active ? 600 : 500,
+              color: active ? '#1F2230' : '#5A6072',
+              background: active ? '#fff' : 'transparent',
+              boxShadow: active ? '0 1px 2px rgba(13,13,9,0.06)' : 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <Icon size={13} strokeWidth={2} />
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function EmailPreview({ value, audience }: { value: RefEmail; audience: Audience }) {
+  return (
+    <div>
+      <p
+        className="font-inter uppercase"
+        style={{
+          fontSize: 10.5,
+          fontWeight: 600,
+          color: MUTED,
+          letterSpacing: '0.07em',
+          marginBottom: 8,
+        }}
+      >
+        Preview
+      </p>
+      <div
+        style={{
+          background: '#fff',
+          border: '1px solid #E7E8EE',
+          borderRadius: 12,
+          overflow: 'hidden',
+          boxShadow: '0 1px 2px rgba(13,13,9,0.03)',
+        }}
+      >
+        <div
+          style={{ padding: '10px 14px', background: '#FAFAF7', borderBottom: '1px solid #F1F0EC' }}
+        >
+          <p className="font-inter truncate" style={{ fontSize: 11, color: MUTED }}>
+            To: {PREVIEW_RECIPIENTS[audience]}
+          </p>
+          <p
+            className="font-inter"
+            style={{ fontSize: 12, fontWeight: 600, color: '#1F2230', marginTop: 3 }}
+          >
+            {renderPlaceholders(value.subject) || 'No subject'}
+          </p>
+        </div>
+
+        <div style={{ padding: 14 }}>
+          <div
+            className="font-inter [&_p]:mb-2 whitespace-pre-wrap"
+            style={{ fontSize: 12, color: '#1F2230', lineHeight: 1.7 }}
+            dangerouslySetInnerHTML={{ __html: renderPlaceholders(value.body) }}
+          />
+          <span
+            className="inline-flex items-center font-poppins"
+            style={{
+              height: 32,
+              padding: '0 14px',
+              borderRadius: 8,
+              background: '#0d0d09',
+              color: '#fffcf9',
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: '-0.01em',
+              margin: '4px 0',
+            }}
+          >
+            {PREVIEW_CTA[audience]}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -46,7 +156,7 @@ function EmailPane({
   value: RefEmail
   onChange: (patch: Partial<RefEmail>) => void
   placeholders: readonly string[]
-  audience: 'candidate' | 'referee'
+  audience: Audience
 }) {
   const subjectRef = useRef<SubjectTemplateEditorHandle>(null)
   const bodyRef = useRef<BodyTemplateEditorHandle>(null)
@@ -58,9 +168,14 @@ function EmailPane({
   }
 
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,0.85fr)' }}>
-      <div className="space-y-3">
-        <FormField label="Subject">
+    <div
+      className="grid"
+      style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 16, alignItems: 'start' }}
+    >
+      <div>
+        <SectionHead title={COPY[audience].title} subtitle={COPY[audience].subtitle} />
+
+        <FormField label="Subject" required>
           <SubjectTemplateEditor
             ref={subjectRef}
             value={value.subject}
@@ -70,7 +185,13 @@ function EmailPane({
           />
         </FormField>
 
-        <FormField label="Body">
+        <div style={{ height: 12 }} />
+
+        <FormField
+          label="Body"
+          required
+          helpText="Click a placeholder below to insert it at the cursor."
+        >
           <BodyTemplateEditor
             ref={bodyRef}
             value={value.body}
@@ -81,68 +202,19 @@ function EmailPane({
           />
         </FormField>
 
-        <div>
-          <p className="font-inter font-medium text-[#1F2230] mb-1.5" style={{ fontSize: 12 }}>
-            Placeholders
-          </p>
-          <PlaceholderPills keys={placeholders} onInsert={insert} />
-          <p className="mt-1.5 font-inter" style={{ fontSize: 11, color: MUTED }}>
-            Click a placeholder to insert it where your cursor is.
-          </p>
+        <div className="flex flex-wrap" style={{ gap: 5, marginTop: 10 }}>
+          {placeholders.map((k) => (
+            <PlaceholderPill
+              key={k}
+              name={k}
+              onClick={() => insert(k)}
+              title={`Insert {{${k}}}`}
+            />
+          ))}
         </div>
       </div>
 
-      <div
-        className="rounded-xl bg-[#F6F5F1] p-3.5"
-        style={{ border: `1px solid ${HAIRLINE}`, alignSelf: 'start' }}
-      >
-        <p
-          className="font-inter font-semibold uppercase mb-2"
-          style={{ fontSize: 10, letterSpacing: '0.06em', color: MUTED }}
-        >
-          Preview · sample values
-        </p>
-        <div className="rounded-lg bg-[#fffcf9]" style={{ border: `1px solid ${HAIRLINE}` }}>
-          <div
-            className="flex items-center justify-between gap-2 px-3 py-2"
-            style={{ borderBottom: `1px solid ${HAIRLINE}` }}
-          >
-            <span className="font-inter truncate" style={{ fontSize: 11, color: MUTED }}>
-              To {PREVIEW_RECIPIENTS[audience]}
-            </span>
-            <span className="font-inter" style={{ fontSize: 11, color: MUTED }}>
-              Gio
-            </span>
-          </div>
-          <div className="p-3">
-            <p
-              className="font-poppins font-semibold text-[#0d0d09] mb-2"
-              style={{ fontSize: 13, letterSpacing: '-0.01em' }}
-            >
-              {renderPlaceholders(value.subject) || 'No subject'}
-            </p>
-            <div
-              className="font-inter text-[12.5px] text-[#1F2230] leading-relaxed whitespace-pre-wrap [&_p]:mb-2"
-              dangerouslySetInnerHTML={{ __html: renderPlaceholders(value.body) }}
-            />
-            <span
-              className="inline-flex items-center justify-center font-poppins font-medium"
-              style={{
-                marginTop: 12,
-                height: 34,
-                padding: '0 14px',
-                borderRadius: 8,
-                background: '#0d0d09',
-                color: '#fffcf9',
-                fontSize: 12.5,
-                letterSpacing: '-0.005em',
-              }}
-            >
-              {PREVIEW_CTA[audience]}
-            </span>
-          </div>
-        </div>
-      </div>
+      <EmailPreview value={value} audience={audience} />
     </div>
   )
 }
@@ -156,23 +228,13 @@ export function EmailsSection({
   refereeEmail: RefEmail
   onChange: (patch: { candidate_email?: RefEmail; referee_email?: RefEmail }) => void
 }) {
-  const [tab, setTab] = useState<'candidate' | 'referee'>('candidate')
+  const [audience, setAudience] = useState<Audience>('candidate')
 
   return (
-    <div className="space-y-4">
-      <SectionHead
-        title="Emails"
-        subtitle="The two messages this template sends — one to the candidate, one to each referee."
-      />
+    <div>
+      <AudienceSwitcher value={audience} onChange={setAudience} />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'candidate' | 'referee')}>
-        <TabsList>
-          <TabsTrigger value="candidate">Candidate email</TabsTrigger>
-          <TabsTrigger value="referee">Referee email</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {tab === 'candidate' ? (
+      {audience === 'candidate' ? (
         <EmailPane
           value={candidateEmail}
           audience="candidate"
