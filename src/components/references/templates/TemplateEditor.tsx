@@ -141,61 +141,44 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
   return (
     <div className="space-y-4">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1 font-inter" style={{ fontSize: 11.5, color: MUTED }}>
-        <span>Reference checks</span>
-        <ChevronRight className="w-[12px] h-[12px]" strokeWidth={2} />
-        <button
-          type="button"
-          onClick={onBack}
-          className="hover:text-[#1F2230] transition-colors"
-        >
-          Templates
-        </button>
-        <ChevronRight className="w-[12px] h-[12px]" strokeWidth={2} />
-        <span className="text-[#1F2230] truncate">{draft.name || 'Untitled template'}</span>
-      </div>
-
-      {/* Header */}
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
+      <PageHeader
+        title={draft.name || 'Untitled template'}
+        breadcrumb={['Reference checks', 'Templates', draft.name || 'Untitled template']}
+        titleNode={
           <input
             value={draft.name}
             onChange={(e) => patch({ name: e.target.value })}
             aria-label="Template name"
             placeholder="Untitled template"
-            className="w-full max-w-[520px] bg-transparent font-poppins font-semibold text-[#0d0d09] rounded-lg px-1.5 -ml-1.5 py-0.5 border border-transparent outline-none transition-colors hover:bg-[rgba(13,13,9,0.04)] focus:bg-[rgba(13,13,9,0.04)] focus:border-[#E7E8EE]"
-            style={{ fontSize: 26, letterSpacing: '-0.04em' }}
+            className="w-full max-w-[520px] bg-transparent font-poppins text-[#0d0d09] rounded-lg px-1.5 -ml-1.5 py-0.5 border border-transparent outline-none transition-colors hover:bg-[rgba(13,13,9,0.04)] focus:bg-[rgba(13,13,9,0.04)] focus:border-[#E7E8EE]"
+            style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.045em', lineHeight: 1.15 }}
           />
-
-          {/* Meta line */}
-          <div
-            className="mt-1 flex flex-wrap items-center gap-2 font-inter"
-            style={{ fontSize: 11.5, color: MUTED }}
-          >
+        }
+        meta={
+          <>
             <ScopeChip scope={draft.scope} />
-            <span>·</span>
             <span>Used on {template.times_used} checks</span>
-            <span>·</span>
             <span>
               Last edited {formatEditedDate(template.updated_at)}
               {editorName ? ` by ${editorName}` : ''}
             </span>
-          </div>
-        </div>
+          </>
+        }
+        actions={
+          <>
+            <Button variant="secondary" size="md" icon={Copy} onClick={onDuplicate}>
+              Duplicate
+            </Button>
+            <Button variant="secondary" size="md" icon={Eye} onClick={() => setPreviewOpen(true)}>
+              Preview as candidate
+            </Button>
+            <Button variant="primary" size="md" loading={saving} disabled={!dirty} onClick={handleSave}>
+              Save changes
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2 pt-1">
-          <Button variant="secondary" size="sm" icon={Copy} onClick={onDuplicate}>
-            Duplicate
-          </Button>
-          <Button variant="secondary" size="sm" icon={Eye} onClick={() => setPreviewOpen(true)}>
-            Preview as candidate
-          </Button>
-          <Button size="sm" loading={saving} disabled={!dirty} onClick={handleSave}>
-            Save changes
-          </Button>
-        </div>
-      </div>
 
 
 
