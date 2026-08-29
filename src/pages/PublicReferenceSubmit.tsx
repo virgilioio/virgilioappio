@@ -7,7 +7,7 @@ import { useParams } from 'react-router-dom'
 import { Check, Loader2, Plus, Send, Trash2 } from 'lucide-react'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
-import { PublicField, PublicInput, PublicSelect } from '@/components/public/PublicField'
+import { PublicField, PublicInput, PublicPhoneField, PublicSelect } from '@/components/public/PublicField'
 import { QuestionInstrument } from '@/components/public/QuestionInstrument'
 import { TerminalCard } from '@/components/public/TerminalCard'
 import {
