@@ -51,13 +51,14 @@ const MUTED = '#8B8F9E'
 
 type SectionId = 'referees' | 'requirements' | 'questions' | 'emails' | 'settings'
 
-const SECTIONS: { id: SectionId; label: string; icon: typeof Users }[] = [
-  { id: 'referees', label: 'Referee fields', icon: Users },
-  { id: 'requirements', label: 'Requirements', icon: ListChecks },
-  { id: 'questions', label: 'Questions', icon: ListChecks },
+const SECTIONS: { id: SectionId; label: string; icon: typeof List }[] = [
+  { id: 'referees', label: 'Referee fields', icon: List },
+  { id: 'requirements', label: 'Requirements', icon: ShieldCheck },
+  { id: 'questions', label: 'Questions', icon: MessageSquareQuote },
   { id: 'emails', label: 'Emails', icon: Mail },
   { id: 'settings', label: 'Settings', icon: Settings2 },
 ]
+
 
 interface Props {
   template: ReferenceTemplate
