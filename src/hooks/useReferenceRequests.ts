@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTenant } from '@/hooks/useTenant'
 import { useToast } from '@/hooks/use-toast'
+import { rememberReferenceLink } from '@/lib/references/sessionLinks'
 import type { ReferenceTemplate } from '@/lib/references/templateModel'
 
 /** Reference requests belong to the CANDIDATE — job/client/stage are provenance. */
@@ -92,6 +93,8 @@ export function useCreateReferenceRequest() {
         }
         throw new Error(message)
       }
+
+      rememberReferenceLink(data.id, (sendResult as { link?: string } | null)?.link)
 
       return data
     },
