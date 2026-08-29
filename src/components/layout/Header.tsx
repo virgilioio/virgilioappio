@@ -26,6 +26,8 @@ import {
   Handshake,
   ChevronDown,
   Calendar as CalendarIcon,
+  Inbox,
+  Settings2,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -50,6 +52,7 @@ type NavItem = {
   label: string
   show: boolean
   section: Exclude<AppSection, null>
+  matchPrefix?: boolean
   notification?: boolean
   dropdown?: () => ReactNode
 }
@@ -64,6 +67,7 @@ export function Header() {
     isWorkspaceOwner,
     isAdmin,
     isMember,
+    canViewReferences,
   } = usePermissions()
   const navigate = useNavigate()
   const location = useLocation()
@@ -181,7 +185,23 @@ export function Header() {
       show: canViewOrganizations,
       section: 'crm',
     },
+    {
+      href: '/references',
+      icon: Inbox,
+      label: 'Requests',
+      show: canViewReferences,
+      section: 'references',
+    },
+    {
+      href: '/references/templates',
+      icon: Settings2,
+      label: 'Templates',
+      show: canViewReferences,
+      section: 'references',
+      matchPrefix: true,
+    },
   ]
+
 
   const activeSection = getActiveSection(location.pathname)
   const visibleNavItems = navigationItems.filter(
@@ -217,6 +237,7 @@ export function Header() {
             const Icon = item.icon
             const isActive =
               location.pathname === item.href ||
+              (!!item.matchPrefix && location.pathname.startsWith(item.href + '/')) ||
               (item.href === '/dashboard' && location.pathname === '/')
 
             const inner = (

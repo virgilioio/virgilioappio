@@ -73,6 +73,7 @@ const SaaSCustomerDetail = lazy(() =>
 const Analytics = lazy(() => import('./pages/Analytics'))
 const References = lazy(() => import('./pages/References'))
 const ReferenceTemplates = lazy(() => import('./pages/ReferenceTemplates'))
+const ReferenceTemplateEditor = lazy(() => import('./pages/ReferenceTemplateEditor'))
 
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
 const SharedList = lazy(() => import('./pages/SharedList'))
@@ -187,6 +188,7 @@ function AppContent() {
             <Route path="/chat/:threadId" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
             <Route path="/references" element={<References />} />
             <Route path="/references/templates" element={<ReferenceTemplates />} />
+            <Route path="/references/templates/:id" element={<ReferenceTemplateEditor />} />
 
           </Route>
         </Route>
