@@ -255,3 +255,15 @@ verify_jwt = false
 
 [functions.chat-send-whatsapp]
 verify_jwt = true
+
+[functions.send-reference-request]
+verify_jwt = true
+
+[functions.reference-public]
+verify_jwt = false
+
+[functions.reference-reminders]
+verify_jwt = false
+
+[functions.reference-retention-sweeper]
+verify_jwt = false

@@ -58,6 +58,8 @@ const LegacyPostingRedirect = lazy(() => import('./pages/LegacyPostingRedirect')
 const PublicBookingPage = lazy(() => import('./pages/PublicBookingPage'))
 const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
 const CandidateChat = lazy(() => import('./pages/CandidateChat'))
+const PublicReferenceSubmit = lazy(() => import('./pages/PublicReferenceSubmit'))
+const PublicReferenceAnswer = lazy(() => import('./pages/PublicReferenceAnswer'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const OnboardingPreview = lazy(() => import('./pages/dev/OnboardingPreview'))
 const TrialActivation = lazy(() => import('./pages/TrialActivation'))
@@ -135,6 +137,11 @@ function AppContent() {
         <Route path="/chrome-oauth/start" element={<ChromeOAuthStart />} />
         <Route path="/c/chat/:token" element={<CandidateChat />} />
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+        {/* Public reference-check pages — token-resolved, no account.
+            The static /references app routes still win by static-over-dynamic ranking. */}
+        <Route path="/references/:token" element={<PublicReferenceSubmit />} />
+        <Route path="/reference/:token" element={<PublicReferenceAnswer />} />
+
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />

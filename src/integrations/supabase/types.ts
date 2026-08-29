@@ -5679,16 +5679,20 @@ export type Database = {
           answers: Json
           company: string | null
           created_at: string
+          declined_at: string | null
+          draft_answers: Json
           email: string | null
           hold_note: string | null
           id: string
           invited_at: string | null
+          last_saved_at: string | null
           link_expires_at: string | null
           name: string
           on_hold: boolean
           opened_at: string | null
           period: string | null
           phone: string | null
+          pii_purge_at: string | null
           relationship: string | null
           request_id: string
           source: Database["public"]["Enums"]["referee_source"]
@@ -5702,16 +5706,20 @@ export type Database = {
           answers?: Json
           company?: string | null
           created_at?: string
+          declined_at?: string | null
+          draft_answers?: Json
           email?: string | null
           hold_note?: string | null
           id?: string
           invited_at?: string | null
+          last_saved_at?: string | null
           link_expires_at?: string | null
           name: string
           on_hold?: boolean
           opened_at?: string | null
           period?: string | null
           phone?: string | null
+          pii_purge_at?: string | null
           relationship?: string | null
           request_id: string
           source?: Database["public"]["Enums"]["referee_source"]
@@ -5725,16 +5733,20 @@ export type Database = {
           answers?: Json
           company?: string | null
           created_at?: string
+          declined_at?: string | null
+          draft_answers?: Json
           email?: string | null
           hold_note?: string | null
           id?: string
           invited_at?: string | null
+          last_saved_at?: string | null
           link_expires_at?: string | null
           name?: string
           on_hold?: boolean
           opened_at?: string | null
           period?: string | null
           phone?: string | null
+          pii_purge_at?: string | null
           relationship?: string | null
           request_id?: string
           source?: Database["public"]["Enums"]["referee_source"]
@@ -5756,6 +5768,7 @@ export type Database = {
       }
       reference_requests: {
         Row: {
+          cancelled_at: string | null
           candidate_id: string
           candidate_link_expires_at: string | null
           candidate_token_hash: string | null
@@ -5778,6 +5791,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancelled_at?: string | null
           candidate_id: string
           candidate_link_expires_at?: string | null
           candidate_token_hash?: string | null
@@ -5800,6 +5814,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancelled_at?: string | null
           candidate_id?: string
           candidate_link_expires_at?: string | null
           candidate_token_hash?: string | null
