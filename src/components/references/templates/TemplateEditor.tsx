@@ -379,7 +379,8 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
               onChange={patch}
             />
           )}
-        </Card>
+        </div>
+
       </div>
 
       {previewOpen && (
