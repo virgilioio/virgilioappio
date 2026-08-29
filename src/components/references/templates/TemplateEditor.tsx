@@ -309,38 +309,41 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
 
           {/* Compliance */}
-          <Card
-            className="p-3 space-y-1.5"
+          <div
             style={{
-              background: compliance.ready ? '#F0FDF4' : '#FFFBEB',
-              borderColor: compliance.ready ? '#BBF7D0' : '#FDE68A',
+              padding: '11px 12px',
+              background: '#fff',
+              border: '1px solid #E7E8EE',
+              borderRadius: 10,
+              boxShadow: '0 1px 2px rgba(13,13,9,0.03)',
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center" style={{ gap: 7 }}>
               <ShieldCheck
-                className="w-[15px] h-[15px]"
+                size={13}
                 strokeWidth={2}
-                style={{ color: compliance.ready ? '#065F46' : '#92400E' }}
+                style={{ color: compliance.ready ? '#12B886' : '#B45309' }}
               />
               <p
-                className="font-poppins font-medium"
-                style={{ fontSize: 12.5, color: compliance.ready ? '#065F46' : '#92400E' }}
+                className="font-poppins"
+                style={{ fontSize: 11.5, fontWeight: 600, color: '#1F2230', letterSpacing: '-0.01em' }}
               >
                 {compliance.ready ? 'Compliance ready' : 'Compliance incomplete'}
               </p>
             </div>
             <p
-              className="font-inter leading-relaxed"
-              style={{ fontSize: 11.5, color: compliance.ready ? '#065F46' : '#92400E' }}
+              className="font-inter"
+              style={{ fontSize: 10.5, color: '#5A6072', lineHeight: 1.5, marginTop: 5 }}
             >
               {complianceSentence}
             </p>
-          </Card>
+          </div>
 
         </div>
 
         {/* Section body */}
-        <Card className="p-5">
+        <div>
+
           {active === 'referees' && (
             <RefereeFieldsSection
               fields={draft.referee_fields}
