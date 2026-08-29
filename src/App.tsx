@@ -136,7 +136,11 @@ function AppContent() {
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
         <Route path="/chrome-oauth/start" element={<ChromeOAuthStart />} />
         <Route path="/c/chat/:token" element={<CandidateChat />} />
-        <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+        {/* Public reference-check pages — token-resolved, no account.
+            The static /references app routes still win by static-over-dynamic ranking. */}
+        <Route path="/references/:token" element={<PublicReferenceSubmit />} />
+        <Route path="/reference/:token" element={<PublicReferenceAnswer />} />
+
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
