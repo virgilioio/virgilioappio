@@ -3,13 +3,14 @@ import {
   ChevronRight,
   Copy,
   Eye,
-  ListChecks,
+  List,
   Mail,
+  MessageSquareQuote,
   Settings2,
   ShieldCheck,
-  Users,
   X,
 } from 'lucide-react'
+
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -50,13 +51,14 @@ const MUTED = '#8B8F9E'
 
 type SectionId = 'referees' | 'requirements' | 'questions' | 'emails' | 'settings'
 
-const SECTIONS: { id: SectionId; label: string; icon: typeof Users }[] = [
-  { id: 'referees', label: 'Referee fields', icon: Users },
-  { id: 'requirements', label: 'Requirements', icon: ListChecks },
-  { id: 'questions', label: 'Questions', icon: ListChecks },
+const SECTIONS: { id: SectionId; label: string; icon: typeof List }[] = [
+  { id: 'referees', label: 'Referee fields', icon: List },
+  { id: 'requirements', label: 'Requirements', icon: ShieldCheck },
+  { id: 'questions', label: 'Questions', icon: MessageSquareQuote },
   { id: 'emails', label: 'Emails', icon: Mail },
   { id: 'settings', label: 'Settings', icon: Settings2 },
 ]
+
 
 interface Props {
   template: ReferenceTemplate
@@ -69,7 +71,7 @@ interface Props {
 
 export function TemplateEditor({ template, clients, saving, onBack, onSave, onDuplicate }: Props) {
   const [draft, setDraft] = useState<ReferenceTemplate>(template)
-  const [active, setActive] = useState<SectionId>('referees')
+  const [active, setActive] = useState<SectionId>('questions')
   const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
@@ -197,49 +199,57 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
 
 
-      <div className="grid gap-5" style={{ gridTemplateColumns: '232px minmax(0,1fr)' }}>
+      <div className="grid" style={{ gridTemplateColumns: '232px minmax(0,1fr)', gap: 24, alignItems: 'start' }}>
         {/* Rail */}
         <div className="space-y-3">
-          <Card className="p-1.5">
-            <div className="space-y-0.5">
-              {SECTIONS.map((s) => {
-                const Icon = s.icon
-                const isActive = active === s.id
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setActive(s.id)}
-                    className={cn(
-                      'w-full flex items-start gap-2.5 rounded-lg text-left transition-colors',
-                      isActive ? 'bg-[#0d0d09]' : 'hover:bg-[rgba(13,13,9,0.05)]',
-                    )}
-                    style={{ padding: '8px 10px' }}
-                  >
-                    <Icon
-                      className="w-[15px] h-[15px] mt-[2px] shrink-0"
-                      strokeWidth={2}
-                      style={{ color: isActive ? '#D7C5FB' : '#5A6072' }}
-                    />
-                    <span className="min-w-0">
-                      <span
-                        className={cn('block font-poppins font-medium', isActive ? 'text-[#fffcf9]' : 'text-[#1F2230]')}
-                        style={{ fontSize: 12.5, letterSpacing: '-0.01em' }}
-                      >
-                        {s.label}
-                      </span>
-                      <span
-                        className="block font-inter truncate"
-                        style={{ fontSize: 11, color: isActive ? 'rgba(255,252,249,0.65)' : MUTED }}
-                      >
-                        {summaries[s.id]}
-                      </span>
+          <nav className="flex flex-col" style={{ gap: 2 }}>
+            {SECTIONS.map((s) => {
+              const Icon = s.icon
+              const isActive = active === s.id
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setActive(s.id)}
+                  className={cn(
+                    'w-full flex items-center text-left transition-colors',
+                    isActive ? 'bg-[#0d0d09]' : 'hover:bg-[rgba(13,13,9,0.05)]',
+                  )}
+                  style={{ gap: 9, padding: '9px 11px', borderRadius: 9 }}
+                >
+                  <Icon
+                    size={14}
+                    strokeWidth={2}
+                    className="shrink-0"
+                    style={{ color: isActive ? '#D7C5FB' : '#5A6072' }}
+                  />
+                  <span className="min-w-0">
+                    <span
+                      className="block font-inter"
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? '#fffcf9' : '#1F2230',
+                      }}
+                    >
+                      {s.label}
                     </span>
-                  </button>
-                )
-              })}
-            </div>
-          </Card>
+                    <span
+                      className="block font-inter truncate"
+                      style={{
+                        fontSize: 10.5,
+                        marginTop: 1,
+                        color: isActive ? 'rgba(255,252,249,0.6)' : '#B5B9C4',
+                      }}
+                    >
+                      {summaries[s.id]}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </nav>
+
 
           {/* Scope + live */}
           <Card className="relative z-20 p-3 space-y-2.5">
@@ -299,38 +309,41 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
 
           {/* Compliance */}
-          <Card
-            className="p-3 space-y-1.5"
+          <div
             style={{
-              background: compliance.ready ? '#F0FDF4' : '#FFFBEB',
-              borderColor: compliance.ready ? '#BBF7D0' : '#FDE68A',
+              padding: '11px 12px',
+              background: '#fff',
+              border: '1px solid #E7E8EE',
+              borderRadius: 10,
+              boxShadow: '0 1px 2px rgba(13,13,9,0.03)',
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center" style={{ gap: 7 }}>
               <ShieldCheck
-                className="w-[15px] h-[15px]"
+                size={13}
                 strokeWidth={2}
-                style={{ color: compliance.ready ? '#065F46' : '#92400E' }}
+                style={{ color: compliance.ready ? '#12B886' : '#B45309' }}
               />
               <p
-                className="font-poppins font-medium"
-                style={{ fontSize: 12.5, color: compliance.ready ? '#065F46' : '#92400E' }}
+                className="font-poppins"
+                style={{ fontSize: 11.5, fontWeight: 600, color: '#1F2230', letterSpacing: '-0.01em' }}
               >
                 {compliance.ready ? 'Compliance ready' : 'Compliance incomplete'}
               </p>
             </div>
             <p
-              className="font-inter leading-relaxed"
-              style={{ fontSize: 11.5, color: compliance.ready ? '#065F46' : '#92400E' }}
+              className="font-inter"
+              style={{ fontSize: 10.5, color: '#5A6072', lineHeight: 1.5, marginTop: 5 }}
             >
               {complianceSentence}
             </p>
-          </Card>
+          </div>
 
         </div>
 
         {/* Section body */}
-        <Card className="p-5">
+        <div>
+
           {active === 'referees' && (
             <RefereeFieldsSection
               fields={draft.referee_fields}
@@ -366,7 +379,8 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
               onChange={patch}
             />
           )}
-        </Card>
+        </div>
+
       </div>
 
       {previewOpen && (

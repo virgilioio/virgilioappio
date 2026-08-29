@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TypeChip } from '@/components/references/TypeChip'
-import { RowShell, SectionHead, TrailingToggle } from '../rowKit'
+import { RowShell, SectionCard, SectionHead, TrailingToggle } from '../rowKit'
 import {
   ASK_CANDIDATE_DISABLED_TOOLTIP,
   QUESTION_TYPES,
@@ -244,7 +244,8 @@ export function QuestionsSection({
   const askedCount = questions.filter((q) => q.ask_candidate_too).length
 
   return (
-    <div>
+    <div className="space-y-4">
+      <SectionCard>
       <SectionHead
         title="Questions for referees"
         subtitle={`Reference checks have their own type set — ${askedCount} of these are also asked of the candidate.`}
@@ -283,7 +284,9 @@ export function QuestionsSection({
         </SortableContext>
       </DndContext>
 
-      <div className="flex" style={{ gap: 10, marginTop: 16 }}>
+      </SectionCard>
+
+      <div className="flex" style={{ gap: 10 }}>
         {EXPLAINERS.map((card) => {
           const Icon = card.icon
           return (

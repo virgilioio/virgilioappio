@@ -5,7 +5,7 @@ import { AtSign, CalendarDays, List, Phone, Text, Type, Plus } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TypeChip } from '@/components/references/TypeChip'
-import { RowShell, SectionHead, TrailingToggle } from '../rowKit'
+import { RowShell, SectionCard, SectionHead, TrailingToggle } from '../rowKit'
 import { makeId, type RefereeField, type RefereeFieldType } from '@/lib/references/templateModel'
 
 const FIELD_TYPE_META: Record<RefereeFieldType, { label: string; icon: typeof Type }> = {
@@ -95,7 +95,7 @@ export function RefereeFieldsSection({
   }
 
   return (
-    <div>
+    <SectionCard>
       <SectionHead
         title="Referee fields"
         subtitle="What the candidate must provide for each referee they submit."
@@ -139,6 +139,6 @@ export function RefereeFieldsSection({
           </div>
         </SortableContext>
       </DndContext>
-    </div>
+    </SectionCard>
   )
 }
