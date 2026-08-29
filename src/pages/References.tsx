@@ -1,12 +1,13 @@
-import { FileText, Plus, Settings2 } from 'lucide-react'
+import { Plus, Settings2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
+import { SoftPaper } from '@/components/ui/EmptyIllustrations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ReferencesShell, ReferencesNoAccess } from '@/components/references/ReferencesShell'
+
 
 /** /references — the request list. */
 export default function ReferencesPage() {
