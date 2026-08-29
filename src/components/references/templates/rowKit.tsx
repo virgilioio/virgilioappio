@@ -1,25 +1,31 @@
 import type { ReactNode } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2 } from 'lucide-react'
+import { GripVertical, Lock, Trash2 } from 'lucide-react'
 
 import { RefToggle } from '@/components/references/RefToggle'
 
-/** Shared list row for sections 1–3: grip · body · bin. */
+/** Shared list row for sections 1–3: grip · body · bin (or lock, when locked). */
 export function RowShell({
   id,
   last,
+  locked,
   onDelete,
   deleteLabel = 'Delete row',
   children,
 }: {
   id: string
   last?: boolean
+  /** Locked rows can't be dragged or deleted — the bin is replaced by a lock glyph. */
+  locked?: boolean
   onDelete: () => void
   deleteLabel?: string
   children: ReactNode
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: locked,
+  })
 
   return (
     <div
@@ -35,39 +41,60 @@ export function RowShell({
         borderBottom: last ? 'none' : '1px solid #F6F5F1',
       }}
     >
-      <button
-        type="button"
-        aria-label="Reorder"
-        className="grid place-items-center shrink-0"
-        style={{ cursor: 'grab', background: 'none', border: 'none', padding: 0, color: '#D1D0CB' }}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical size={14} />
-      </button>
+      {locked ? (
+        <span
+          className="grid place-items-center shrink-0"
+          style={{ cursor: 'default', color: '#EDECE8' }}
+          aria-hidden
+        >
+          <GripVertical size={14} />
+        </span>
+      ) : (
+        <button
+          type="button"
+          aria-label="Reorder"
+          className="grid place-items-center shrink-0"
+          style={{ cursor: 'grab', background: 'none', border: 'none', padding: 0, color: '#D1D0CB' }}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical size={14} />
+        </button>
+      )}
 
       {children}
 
-      <button
-        type="button"
-        aria-label={deleteLabel}
-        onClick={onDelete}
-        className="grid place-items-center shrink-0"
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 7,
-          border: 'none',
-          background: 'transparent',
-          color: '#B5B9C4',
-          cursor: 'pointer',
-        }}
-      >
-        <Trash2 size={14} />
-      </button>
+      {locked ? (
+        <span
+          className="grid place-items-center shrink-0"
+          title="This field is always asked and can't be removed"
+          style={{ width: 26, height: 26, color: '#D1D0CB' }}
+        >
+          <Lock size={13} />
+        </span>
+      ) : (
+        <button
+          type="button"
+          aria-label={deleteLabel}
+          onClick={onDelete}
+          className="grid place-items-center shrink-0"
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 7,
+            border: 'none',
+            background: 'transparent',
+            color: '#B5B9C4',
+            cursor: 'pointer',
+          }}
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
     </div>
   )
 }
+
 
 /** Trailing label + toggle group. width 84 for Required, 118 for Ask candidate. */
 export function TrailingToggle({

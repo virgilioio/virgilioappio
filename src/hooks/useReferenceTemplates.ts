@@ -8,7 +8,9 @@ import {
   defaultRefereeEmail,
   defaultReminders,
   newTemplateDraft,
+  normalizeRefereeField,
   type ReferenceTemplate,
+
 } from '@/lib/references/templateModel'
 
 const TABLE = 'reference_templates' as const
