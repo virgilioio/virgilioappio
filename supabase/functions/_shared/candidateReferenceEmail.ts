@@ -240,9 +240,9 @@ export function renderCandidateReferenceEmail(
   .card{width:100% !important;border-radius:0 !important;border-left:none !important;border-right:none !important;}
   .pad{padding-left:22px !important;padding-right:22px !important;}
   .h1{font-size:25px !important;}
-  .cta{display:block !important;width:100% !important;}
+  .cta{width:100% !important;}
   .cta td{width:100% !important;}
-  .cta a{display:block !important;width:auto !important;padding:0 !important;}
+  .cta a{display:block !important;padding:0 12px !important;}
   .stack{display:block !important;width:100% !important;}
   .brand{font-size:21px !important;}
   .kind{display:none !important;}
