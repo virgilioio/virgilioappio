@@ -21,8 +21,8 @@ interface PageHeaderProps {
   count?: number;
   /** Meta row under the title — pass separate <span>s, gap 16. */
   meta?: ReactNode;
-  /** Crumb trail above the title (visible title mode). */
-  breadcrumb?: string[];
+  /** Crumb trail above the title (visible title mode). Items with `to` render as links; the last crumb is always plain text (current page). */
+  breadcrumb?: (string | { label: string; to: string })[];
   /** Right-aligned action cluster (visible title mode). */
   actions?: ReactNode;
   /** Replaces the h1 text with a custom node (e.g. an editable title input). */
