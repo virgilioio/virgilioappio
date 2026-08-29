@@ -48,7 +48,12 @@ function esc(input: string): string {
 /** "3 Sep" — the short form the security line and reminders use. */
 export function formatShortDate(iso: string): string {
   const d = new Date(iso);
-  return `${d.getUTCDate()} ${d.toLocaleString("en-GB", { month: "short", timeZone: "UTC" })}`;
+  // en-GB renders "Sept" for September — the design calls for a 3-letter month.
+  const month = d
+    .toLocaleString("en-GB", { month: "short", timeZone: "UTC" })
+    .replace(".", "")
+    .slice(0, 3);
+  return `${d.getUTCDate()} ${month}`;
 }
 
 function initialsOf(name: string): string {
@@ -303,8 +308,10 @@ ${masthead(brand)}
 
 <tr><td class="pad" bgcolor="${FOOTER_BAND}" style="padding:22px 40px 30px;background:${FOOTER_BAND};border-top:1px solid ${HAIRLINE_SOFT};">
   <p style="margin:0;font-family:${INTER};font-size:11.5px;line-height:1.55;color:${TERTIARY};">You're receiving this because you applied for a role through ${esc(agencyName)}. If this wasn't you, you can safely ignore this email — nobody is contacted until you submit.</p>
-  <div style="height:1px;background:${HAIRLINE_SOFT};font-size:0;line-height:0;margin:0;">&nbsp;</div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding-top:14px;"><tr>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:14px 0;">
+    <div style="height:1px;background:${HAIRLINE_SOFT};font-size:0;line-height:0;">&nbsp;</div>
+  </td></tr></table>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
     <td align="left" style="font-family:${INTER};font-size:11px;color:${TERTIARY};">Recruitment software by <span style="font-family:${POPPINS};font-size:12px;font-weight:600;color:${MUTED};">gio</span></td>
     <td align="right" style="white-space:nowrap;font-family:${INTER};font-size:11px;">
       <a href="https://app.gogio.io/privacy" style="color:${PURPLE};text-decoration:none;">Privacy</a>
