@@ -123,7 +123,7 @@ export async function sendCandidateEmail(
   supabase: SupabaseClient,
   ctx: RequestContext,
   opts: { rotate?: boolean; isReminder?: boolean } = {},
-): Promise<{ expiresAt: string }> {
+): Promise<{ expiresAt: string; link: string }> {
   const tpl = candidateTemplate(ctx.snapshot);
   if (!tpl) throw new Error("This template has no candidate email");
   if (!ctx.candidateEmail) throw new Error("This candidate has no email address");
@@ -204,7 +204,7 @@ export async function sendCandidateEmail(
     ctx.request.requested_by ?? null,
   );
 
-  return { expiresAt: expiresAt! };
+  return { expiresAt: expiresAt!, link };
 }
 
 /** Mint a referee link and email it. Held referees must never reach here. */
