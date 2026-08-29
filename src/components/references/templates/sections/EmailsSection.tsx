@@ -6,7 +6,7 @@ import type { SubjectTemplateEditorHandle } from '@/components/editors/SubjectTe
 import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplateEditor'
 import { FormField } from '@/components/ui/form-field'
 import { PlaceholderPill } from '@/components/references/PlaceholderPill'
-import { SectionHead } from '../rowKit'
+import { SectionCard, SectionHead } from '../rowKit'
 import {
   CANDIDATE_PLACEHOLDERS,
   PREVIEW_CTA,
@@ -172,7 +172,7 @@ function EmailPane({
       className="grid"
       style={{ gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 16, alignItems: 'start' }}
     >
-      <div>
+      <SectionCard>
         <SectionHead title={COPY[audience].title} subtitle={COPY[audience].subtitle} />
 
         <FormField label="Subject" required>
@@ -212,7 +212,7 @@ function EmailPane({
             />
           ))}
         </div>
-      </div>
+      </SectionCard>
 
       <EmailPreview value={value} audience={audience} />
     </div>

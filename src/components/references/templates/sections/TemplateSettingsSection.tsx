@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { RefToggle } from '@/components/references/RefToggle'
-import { SectionHead } from '../rowKit'
+import { SectionCard, SectionHead } from '../rowKit'
 import { PRIVACY_NOTICES, defaultReminders, type RefReminders } from '@/lib/references/templateModel'
 
 const MUTED = '#8B8F9E'
@@ -70,7 +70,7 @@ export function TemplateSettingsSection({
   return (
     <div className="space-y-5">
       {/* Block A — Links & reminders */}
-      <div>
+      <SectionCard>
         <SectionHead title="Links & reminders" />
 
         <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -188,10 +188,10 @@ export function TemplateSettingsSection({
             </div>
           )}
         </div>
-      </div>
+      </SectionCard>
 
       {/* Block B — Consent & retention */}
-      <div>
+      <SectionCard>
         <SectionHead
           title="Consent & retention"
           subtitle="Shown to the candidate before any referee is contacted. Required."
@@ -256,7 +256,7 @@ export function TemplateSettingsSection({
             </Select>
           </FormField>
         </div>
-      </div>
+      </SectionCard>
     </div>
   )
 }
