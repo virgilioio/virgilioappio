@@ -66,6 +66,8 @@ export interface ReferenceTemplate {
   is_live: boolean
   min_referees: number
   max_referees: number
+  /** Hiring stages that normally collect references — configuration, not code. */
+  collect_at_stages: string[]
   relationship_rules: RelationshipRule[]
   referee_fields: RefereeField[]
   questions: RefQuestion[]
