@@ -94,15 +94,20 @@ export function RequestReferencesSheet({
 
   const handleSend = async () => {
     if (!selected) return
-    await createRequest.mutateAsync({
-      candidateId,
-      template: selected,
-      minRefereesOverride: count,
-      jobId,
-      clientId,
-      stage: stageName,
-    })
-    onOpenChange(false)
+    try {
+      await createRequest.mutateAsync({
+        candidateId,
+        template: selected,
+        minRefereesOverride: count,
+        jobId,
+        clientId,
+        stage: stageName,
+      })
+      onOpenChange(false)
+    } catch {
+      // The mutation already surfaced the failure — keep the sheet open so the
+      // recruiter can fix the cause (missing email, template copy) and retry.
+    }
   }
 
   const isClientMatch = (t: ReferenceTemplate) =>
