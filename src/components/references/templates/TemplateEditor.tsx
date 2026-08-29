@@ -147,7 +147,11 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
     <div className="space-y-4">
       <PageHeader
         title={draft.name || 'Untitled template'}
-        breadcrumb={['Reference checks', 'Templates', draft.name || 'Untitled template']}
+        breadcrumb={[
+          { label: 'Reference checks', to: '/references' },
+          { label: 'Templates', to: '/references/templates' },
+          draft.name || 'Untitled template',
+        ]}
         titleNode={
           <input
             value={draft.name}
