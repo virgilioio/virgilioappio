@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
-const COUNTRY_CODES = [
+export const COUNTRY_CODES = [
   { code: '+1', country: 'US', flag: '🇺🇸', name: 'United States' },
   { code: '+1', country: 'CA', flag: '🇨🇦', name: 'Canada' },
   { code: '+52', country: 'MX', flag: '🇲🇽', name: 'Mexico' },
@@ -82,7 +82,7 @@ interface PhoneInputProps {
  * Parses a phone value (ideally E.164) into country code and subscriber number.
  * Tries longest match first among known codes.
  */
-function parsePhoneValue(phoneValue: string) {
+export function parsePhoneValue(phoneValue: string) {
   if (!phoneValue) return { countryCode: '+1', number: '' }
 
   // Clean the value first
