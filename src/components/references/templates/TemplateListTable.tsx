@@ -1,6 +1,5 @@
-import { BookOpen, ChevronRight, Info, Layers, Plus } from 'lucide-react'
+import { ChevronRight, Info, Layers } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { TableSkeleton } from '@/components/ui/table-states'
