@@ -1627,6 +1627,9 @@ const stageHasAutomation = useMemo(() => {
 
                           {candidateId && (
                             <CandidateReferenceCheckSection
+                              candidateId={candidateId}
+                              candidateName={candidate?.candidate_name || null}
+                              candidateEmail={candidate?.email || null}
                               jobId={jobId}
                               stageName={currentStage?.stage.stage_name || null}
                               onRequest={() => {

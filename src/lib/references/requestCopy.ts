@@ -3,7 +3,11 @@
  * client, a stage or a requirement — every string is derived from the template
  * and the current context.
  */
-import type { ReferenceTemplate, RelationshipRule } from '@/lib/references/templateModel'
+import {
+  DEFAULT_COLLECT_AT_STAGES,
+  type ReferenceTemplate,
+  type RelationshipRule,
+} from '@/lib/references/templateModel'
 
 const NUMBER_WORD = ['zero', 'one', 'two', 'three', 'four', 'five', 'six']
 
@@ -73,11 +77,22 @@ export function expiryLine(days: number | undefined | null): string {
   })}`
 }
 
-/** Stages that normally collect references. Prompt only — never a gate. */
-export function stageSuggestsReferences(stageName?: string | null): boolean {
+/**
+ * Stages that normally collect references. Prompt only — never a gate.
+ * The list is CONFIGURATION: it comes from the template's `collect_at_stages`.
+ * Falls back to the shipped default when a template has none.
+ */
+export function stageSuggestsReferences(
+  stageName?: string | null,
+  collectAtStages?: string[] | null,
+): boolean {
   if (!stageName) return false
-  const s = stageName.toLowerCase()
-  return s.includes('final') || s.includes('offer') || s.includes('reference')
+  const list = collectAtStages?.length ? collectAtStages : DEFAULT_COLLECT_AT_STAGES
+  const s = stageName.trim().toLowerCase()
+  return list.some((n) => {
+    const c = String(n || '').trim().toLowerCase()
+    return !!c && (s === c || s.includes(c))
+  })
 }
 
 /** Resolve {{placeholders}} in template email copy. */

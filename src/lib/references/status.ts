@@ -195,3 +195,41 @@ export const REFEREE_STATUS_LABEL: Record<RefereeStatus, string> = {
   bounced: 'Bounced',
   on_hold: 'On hold',
 }
+
+/* ------------------------------------------------------------------ */
+/* Profile card state — the ONE derivation the candidate profile card  */
+/* uses. Order is significant; never branch on request.state elsewhere.*/
+/* ------------------------------------------------------------------ */
+
+export type RefCardState =
+  | 'empty'
+  | 'suggested'
+  | 'awaiting_candidate'
+  | 'awaiting_referees'
+  | 'answers'
+
+export interface RefRequestCardLike {
+  state: RefRequestState
+  flagged?: boolean | null
+}
+
+/** A referee has something to reveal: submitted, logged, or answers captured. */
+export function hasAnswers(r: RefereeLike & { answers?: unknown }): boolean {
+  if (r.status === 'submitted' || r.status === 'logged') return true
+  const a = r.answers as Record<string, unknown> | null | undefined
+  return !!a && Object.keys(a).length > 0
+}
+
+export function resolveCardState(
+  request: RefRequestCardLike | null | undefined,
+  stageCollects: boolean,
+  referees: (RefereeLike & { answers?: unknown })[] = [],
+): RefCardState {
+  if (!request) return stageCollects ? 'suggested' : 'empty'
+  if (request.state === 'cancelled') return 'empty'
+  if (request.state === 'expired') return 'awaiting_candidate'
+  if (request.state === 'candidate' || request.state === 'draft') return 'awaiting_candidate'
+  if (request.state === 'referees') return 'awaiting_referees'
+  if (referees.some(hasAnswers)) return 'answers'
+  return 'awaiting_referees'
+}

@@ -49,12 +49,14 @@ Deno.serve(async (req) => {
     if (ctx.request.state === "cancelled") return json(400, { error: "This request was cancelled" });
 
     try {
-      const { expiresAt } = await sendCandidateEmail(supabase, ctx, { rotate: true });
+      const { expiresAt, link } = await sendCandidateEmail(supabase, ctx, { rotate: true });
       await supabase
         .from("reference_requests")
         .update({ state: "candidate", candidate_link_expires_at: expiresAt })
         .eq("id", requestId);
-      return json(200, { success: true, expires_at: expiresAt });
+      // `link` travels back so the profile card can offer "Copy link" for the
+      // link we just sent — the database only ever holds its hash.
+      return json(200, { success: true, expires_at: expiresAt, link });
     } catch (sendErr) {
       const message = sendErr instanceof Error ? sendErr.message : "Email send failed";
       await logReferenceActivity(

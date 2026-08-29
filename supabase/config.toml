@@ -259,6 +259,9 @@ verify_jwt = true
 [functions.send-reference-request]
 verify_jwt = true
 
+[functions.reference-request-actions]
+verify_jwt = true
+
 [functions.reference-public]
 verify_jwt = false
 
