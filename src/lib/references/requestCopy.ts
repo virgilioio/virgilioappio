@@ -3,7 +3,11 @@
  * client, a stage or a requirement — every string is derived from the template
  * and the current context.
  */
-import type { ReferenceTemplate, RelationshipRule } from '@/lib/references/templateModel'
+import {
+  DEFAULT_COLLECT_AT_STAGES,
+  type ReferenceTemplate,
+  type RelationshipRule,
+} from '@/lib/references/templateModel'
 
 const NUMBER_WORD = ['zero', 'one', 'two', 'three', 'four', 'five', 'six']
 
@@ -78,8 +82,6 @@ export function expiryLine(days: number | undefined | null): string {
  * The list is CONFIGURATION: it comes from the template's `collect_at_stages`.
  * Falls back to the shipped default when a template has none.
  */
-export const DEFAULT_COLLECT_AT_STAGES = ['Final interview', 'Offer']
-
 export function stageSuggestsReferences(
   stageName?: string | null,
   collectAtStages?: string[] | null,

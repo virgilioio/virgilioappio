@@ -94,6 +94,8 @@ export const RELATIONSHIP_OPTIONS = [
   'Other',
 ] as const
 
+export const DEFAULT_COLLECT_AT_STAGES = ['Final interview', 'Offer']
+
 const uid = () => Math.random().toString(36).slice(2, 10)
 
 /** Seed set for a brand-new template. */
@@ -335,6 +337,7 @@ export function newTemplateDraft(tenantId: string): Omit<ReferenceTemplate, 'id'
     is_live: false,
     min_referees: 2,
     max_referees: 3,
+    collect_at_stages: [...DEFAULT_COLLECT_AT_STAGES],
     relationship_rules: [
       { id: uid(), count: 1, relationship: 'Direct manager', enforced: true },
     ],
