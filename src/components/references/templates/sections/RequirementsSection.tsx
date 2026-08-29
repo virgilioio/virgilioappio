@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { TypeChip } from '@/components/references/TypeChip'
-import { InfoBlock, RowShell, SectionHead } from '../rowKit'
+import { InfoBlock, RowShell, SectionCard, SectionHead } from '../rowKit'
 import { RELATIONSHIP_OPTIONS, makeId, type RelationshipRule } from '@/lib/references/templateModel'
 
 const COUNTS = [1, 2, 3, 4, 5, 6]
@@ -92,7 +92,8 @@ export function RequirementsSection({
     onChange({ relationship_rules: rules.map((r) => (r.id === id ? { ...r, ...p } : r)) })
 
   return (
-    <div>
+    <div className="space-y-4">
+      <SectionCard>
       <SectionHead
         title="Referee requirements"
         subtitle="Rules the candidate must satisfy before they can submit. Enforced on the candidate's page."
@@ -110,7 +111,9 @@ export function RequirementsSection({
         </FormField>
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      </SectionCard>
+
+      <SectionCard>
         <SectionHead
           title="Required relationships"
           subtitle="At least one referee must match each rule below."
@@ -205,7 +208,7 @@ export function RequirementsSection({
             can override the count per request when triggering a check.
           </span>
         </InfoBlock>
-      </div>
+      </SectionCard>
     </div>
   )
 }
