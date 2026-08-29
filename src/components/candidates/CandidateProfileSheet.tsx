@@ -63,6 +63,9 @@ import { useJobRole } from '@/hooks/useJobRole'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 
 import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
+import { RequestReferencesSheet } from '@/components/references/RequestReferencesSheet'
+import { CandidateReferenceCheckSection } from '@/components/references/CandidateReferenceCheckSection'
+import { useJobClient } from '@/hooks/useJobClient'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
@@ -201,6 +204,9 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [addTransferOpen, setAddTransferOpen] = useState(false)
+  const jobClient = useJobClient(jobId)
+  const [refSheetOpen, setRefSheetOpen] = useState(false)
+  const [refStageName, setRefStageName] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
   const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
@@ -1343,6 +1349,20 @@ const stageHasAutomation = useMemo(() => {
             onClose={() => onOpenChange(false)}
           />
         )}
+        {candidate?.id && (
+          <RequestReferencesSheet
+            open={refSheetOpen}
+            onOpenChange={setRefSheetOpen}
+            candidateId={candidate.id}
+            candidateName={`${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || candidate.candidate_name || 'Candidate'}
+            candidateEmail={candidate.email}
+            jobId={jobId}
+            jobTitle={job?.title || null}
+            clientId={jobClient.clientId}
+            clientName={jobClient.clientName}
+            stageName={refStageName}
+          />
+        )}
           {/* Job Navigation Sidebar removed — single-job profile only */}
 
           {/* Main Profile Content */}
@@ -1602,6 +1622,17 @@ const stageHasAutomation = useMemo(() => {
                               onDismissAiDraft={handleDismissAiDraft}
                               onRequest={(stageInstanceId, uid) => handleRequestScorecard(uid, stageInstanceId)}
                               onCompleteMine={handleCompleteMyScorecard}
+                            />
+                          )}
+
+                          {candidateId && (
+                            <CandidateReferenceCheckSection
+                              jobId={jobId}
+                              stageName={currentStage?.stage.stage_name || null}
+                              onRequest={() => {
+                                setRefStageName(currentStage?.stage.stage_name || null)
+                                setRefSheetOpen(true)
+                              }}
                             />
                           )}
 
@@ -1996,6 +2027,10 @@ const stageHasAutomation = useMemo(() => {
                                 nextStageLabel={nextStageLabel}
                                 onAdvance={handleAdvance}
                                 onSubmitScorecard={handleSubmitScorecard}
+                                onRequestReferences={() => {
+                                  setRefStageName(currentStage?.stage.stage_name || null)
+                                  setRefSheetOpen(true)
+                                }}
                                 onAddTransfer={() => setAddTransferOpen(true)}
                                 onCreateOffer={() => setOfferFormOpen(true)}
                                 onReject={handleReject}
@@ -2140,6 +2175,10 @@ const stageHasAutomation = useMemo(() => {
                                 nextStageLabel={nextStageLabel}
                                 onAdvance={handleAdvance}
                                 onSubmitScorecard={handleSubmitScorecard}
+                                onRequestReferences={() => {
+                                  setRefStageName(currentStage?.stage.stage_name || null)
+                                  setRefSheetOpen(true)
+                                }}
                                 onAddTransfer={() => setAddTransferOpen(true)}
                                 onCreateOffer={() => setOfferFormOpen(true)}
                                 onReject={handleReject}
