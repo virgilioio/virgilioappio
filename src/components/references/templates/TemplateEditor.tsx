@@ -71,7 +71,7 @@ interface Props {
 
 export function TemplateEditor({ template, clients, saving, onBack, onSave, onDuplicate }: Props) {
   const [draft, setDraft] = useState<ReferenceTemplate>(template)
-  const [active, setActive] = useState<SectionId>('referees')
+  const [active, setActive] = useState<SectionId>('questions')
   const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
