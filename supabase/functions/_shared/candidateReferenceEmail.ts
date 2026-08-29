@@ -241,7 +241,8 @@ export function renderCandidateReferenceEmail(
   .pad{padding-left:22px !important;padding-right:22px !important;}
   .h1{font-size:25px !important;}
   .cta{display:block !important;width:100% !important;}
-  .cta a{display:block !important;width:auto !important;}
+  .cta td{width:100% !important;}
+  .cta a{display:block !important;width:auto !important;padding:0 !important;}
   .stack{display:block !important;width:100% !important;}
   .brand{font-size:21px !important;}
   .kind{display:none !important;}
