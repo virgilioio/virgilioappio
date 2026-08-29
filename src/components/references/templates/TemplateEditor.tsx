@@ -106,7 +106,7 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
       })()
 
   const summaries: Record<SectionId, string> = {
-    referees: `${draft.referee_fields.length} fields`,
+    referees: fieldsMeta,
     requirements: enforcedRules ? `${rangeLabel} · ${enforcedRules}` : rangeLabel,
     questions:
       askedCount > 0
