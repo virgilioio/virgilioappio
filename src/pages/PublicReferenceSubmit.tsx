@@ -7,7 +7,7 @@ import { useParams } from 'react-router-dom'
 import { Check, Loader2, Plus, Send, Trash2 } from 'lucide-react'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
-import { PublicField, PublicInput, PublicSelect } from '@/components/public/PublicField'
+import { PublicField, PublicInput, PublicPhoneField, PublicSelect } from '@/components/public/PublicField'
 import { QuestionInstrument } from '@/components/public/QuestionInstrument'
 import { TerminalCard } from '@/components/public/TerminalCard'
 import {
@@ -475,6 +475,11 @@ export default function PublicReferenceSubmit() {
                         </option>
                       ))}
                     </PublicSelect>
+                  ) : f.type === 'phone' ? (
+                    <PublicPhoneField
+                      value={r.values[f.key] ?? ''}
+                      onChange={(v) => patch(r.key, { values: { ...r.values, [f.key]: v } })}
+                    />
                   ) : (
                     <PublicInput
                       type={f.type === 'email' ? 'email' : f.type === 'phone' ? 'tel' : 'text'}
