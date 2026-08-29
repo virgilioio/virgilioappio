@@ -10,18 +10,47 @@ import type { Database } from '@/integrations/supabase/types'
 export type ReferenceAnswerType = Database['public']['Enums']['reference_answer_type']
 export type ReferenceTemplateScope = Database['public']['Enums']['reference_template_scope']
 
-/** Referee fields reuse the existing `field_type` enum values (no new field types). */
-export type RefereeFieldType = 'text' | 'email' | 'phone' | 'select' | 'date' | 'textarea'
+/**
+ * Referee fields carry their OWN type set — deliberately separate from the
+ * question types in Section 3 and from the scorecard `field_type` enum. These
+ * describe contact + relationship data the candidate supplies about a referee.
+ */
+export type ReferenceFieldType =
+  | 'short_text'
+  | 'long_text'
+  | 'email'
+  | 'phone'
+  | 'link'
+  | 'select'
+  | 'multi_select'
+  | 'yes_no'
+  | 'date'
+  | 'date_range'
+  | 'number'
+  | 'rating'
+
+/** @deprecated legacy alias — stored rows are normalised on hydrate. */
+export type RefereeFieldType = ReferenceFieldType
+
+export type ReferenceFieldPrecision = 'month_year' | 'full_date'
 
 export interface RefereeField {
   id: string
   key: string
   label: string
-  type: RefereeFieldType
+  type: ReferenceFieldType
   required: boolean
   helper?: string
   options?: string[]
+  /** Cannot be deleted or dragged — there is no way to reach a referee without it. */
+  locked?: boolean
+  precision?: ReferenceFieldPrecision
+  scale?: 5 | 10
+  min?: string
+  max?: string
+  maxlen?: string
 }
+
 
 export interface RefQuestion {
   id: string
