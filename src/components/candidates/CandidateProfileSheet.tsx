@@ -204,6 +204,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [addTransferOpen, setAddTransferOpen] = useState(false)
+  const jobClient = useJobClient(jobId)
   const [refSheetOpen, setRefSheetOpen] = useState(false)
   const [refStageName, setRefStageName] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
@@ -1624,6 +1625,17 @@ const stageHasAutomation = useMemo(() => {
                             />
                           )}
 
+                          {candidateId && (
+                            <CandidateReferenceCheckSection
+                              jobId={jobId}
+                              stageName={currentStage?.stage.stage_name || null}
+                              onRequest={() => {
+                                setRefStageName(currentStage?.stage.stage_name || null)
+                                setRefSheetOpen(true)
+                              }}
+                            />
+                          )}
+
                           {!isRestrictedViewer && candidateId && (
                             <Card className="bg-surface-primary border-border">
                               <CardHeader>
@@ -2015,6 +2027,10 @@ const stageHasAutomation = useMemo(() => {
                                 nextStageLabel={nextStageLabel}
                                 onAdvance={handleAdvance}
                                 onSubmitScorecard={handleSubmitScorecard}
+                                onRequestReferences={() => {
+                                  setRefStageName(currentStage?.stage.stage_name || null)
+                                  setRefSheetOpen(true)
+                                }}
                                 onAddTransfer={() => setAddTransferOpen(true)}
                                 onCreateOffer={() => setOfferFormOpen(true)}
                                 onReject={handleReject}
@@ -2159,6 +2175,10 @@ const stageHasAutomation = useMemo(() => {
                                 nextStageLabel={nextStageLabel}
                                 onAdvance={handleAdvance}
                                 onSubmitScorecard={handleSubmitScorecard}
+                                onRequestReferences={() => {
+                                  setRefStageName(currentStage?.stage.stage_name || null)
+                                  setRefSheetOpen(true)
+                                }}
                                 onAddTransfer={() => setAddTransferOpen(true)}
                                 onCreateOffer={() => setOfferFormOpen(true)}
                                 onReject={handleReject}
