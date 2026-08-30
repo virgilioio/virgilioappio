@@ -31,6 +31,11 @@ export default function PublicReferenceAnswer() {
   const [missing, setMissing] = useState<string[]>([])
   const answersRef = useRef<Answers>({})
 
+  // Public route: nothing else in the tree clears the cold-load splash when the
+  // visitor happens to have a (possibly stale) Gio session, so report it here.
+  useReportSplashReady(!!data || loadError)
+
+
   useEffect(() => {
     let alive = true
     resolveRefereeToken(token)
