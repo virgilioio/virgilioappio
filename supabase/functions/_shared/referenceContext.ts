@@ -225,14 +225,29 @@ export async function sendCandidateEmail(
 export async function sendRefereeEmail(
   supabase: SupabaseClient,
   ctx: RequestContext,
-  referee: { id: string; name: string; email: string | null },
+  referee: { id: string; name: string; email: string | null; on_hold?: boolean | null },
   opts: { isReminder?: boolean } = {},
 ): Promise<void> {
   const tpl = refereeTemplate(ctx.snapshot);
   if (!tpl) throw new Error("This template has no referee email");
-  if (!referee.email) throw new Error(`Referee ${referee.name} has no email address`);
 
-  const days = Number(ctx.snapshot.referee_link_days) || 14;
+  // Re-read the row so the email always carries the candidate-entered
+  // relationship/period, and so the on_hold gate is enforced here too — a held
+  // referee is usually the current employer and must never be contacted.
+  const { data: row } = await supabase
+    .from("reference_referees")
+    .select("name, email, relationship, period, on_hold")
+    .eq("id", referee.id)
+    .maybeSingle();
+
+  const name = row?.name ?? referee.name;
+  const email = row?.email ?? referee.email;
+  if (row?.on_hold === true || referee.on_hold === true) {
+    throw new Error(`${name} is on hold and must not be contacted`);
+  }
+  if (!email) throw new Error(`Referee ${name} has no email address`);
+
+  const days = Number(ctx.snapshot.referee_link_days) || 21;
   const issued = await issueReferenceToken({
     kind: "referee",
     tenantId: ctx.request.tenant_id,
@@ -241,29 +256,31 @@ export async function sendRefereeEmail(
     expiresInDays: days,
   });
 
-  const rendered = renderReferenceEmail({
-    template: tpl,
+  // Email 05 — fixed transactional layout; only the subject copy comes from the
+  // snapshot, so a template edit can't reword an in-flight request.
+  const rendered = renderRefereeReferenceEmail({
     brand: ctx.brand,
-    ctaLabel: "Answer the reference",
+    subjectTemplate: tpl.subject,
     secureLink: issued.url,
-    footnote: `This link is unique to you and expires on ${formatExpiry(issued.expiresAt)}. Your answers are shared with the hiring team, never with the candidate.`,
-    vars: {
-      referee_first_name: (referee.name || "").split(" ")[0] || referee.name || "there",
-      referee_name: referee.name,
-      candidate_name: ctx.candidateName,
-      candidate_first_name: ctx.candidateFirstName,
-      job_title: ctx.jobTitle,
-      client_name: ctx.clientName,
-      company_name: ctx.clientName,
-      estimated_minutes: String(estimatedMinutes(ctx.snapshot.questions ?? [])),
-      recruiter_name: ctx.recruiterName,
-      expiry_date: formatExpiry(issued.expiresAt),
-    },
+    declineLink: `${issued.url}?decline=1`,
+    refereeName: name,
+    candidateName: ctx.candidateName,
+    candidateFirstName: ctx.candidateFirstName,
+    jobTitle: ctx.jobTitle,
+    clientName: ctx.request.client_id ? ctx.clientName : null,
+    recruiterName: ctx.recruiterName,
+    agencyName: ctx.brand.name,
+    refereeRelationship: row?.relationship ?? null,
+    refereePeriod: row?.period ?? null,
+    estimatedMinutes: estimatedMinutes(ctx.snapshot.questions ?? []),
+    expiryDays: days,
+    retentionMonths: Number(ctx.snapshot.retention_months) || null,
+    isReminder: !!opts.isReminder,
   });
 
   await sendReferenceEmail({
     brandName: ctx.brand.name,
-    to: referee.email,
+    to: email,
     replyTo: ctx.recruiterEmail,
     rendered,
   });
@@ -282,7 +299,8 @@ export async function sendRefereeEmail(
     supabase,
     ctx.request.id,
     opts.isReminder ? "referee_reminder_sent" : "referee_email_sent",
-    `${opts.isReminder ? "Reminder sent to" : "Questionnaire sent to"} ${referee.name}`,
+    `${opts.isReminder ? "Reminder sent to" : "Questionnaire sent to"} ${name}`,
     null,
   );
 }
+
