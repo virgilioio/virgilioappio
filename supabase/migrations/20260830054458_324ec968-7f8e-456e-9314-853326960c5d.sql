@@ -1,0 +1,1 @@
+ALTER TYPE public.referee_status ADD VALUE IF NOT EXISTS 'cancelled';

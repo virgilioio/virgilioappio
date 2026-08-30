@@ -9023,6 +9023,7 @@ export type Database = {
         | "bounced"
         | "on_hold"
         | "logged"
+        | "cancelled"
       reference_answer_type:
         | "short_text"
         | "long_text"
@@ -9373,6 +9374,7 @@ export const Constants = {
         "bounced",
         "on_hold",
         "logged",
+        "cancelled",
       ],
       reference_answer_type: [
         "short_text",
