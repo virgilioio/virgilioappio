@@ -15,6 +15,7 @@ import {
 } from '@/hooks/useReferenceRequests'
 import {
   rememberReferenceLink,
+  useSessionRefereeLinks,
   useSessionReferenceLink,
 } from '@/lib/references/sessionLinks'
 import { refereeRulesLine, stageSuggestsReferences } from '@/lib/references/requestCopy'
@@ -52,6 +53,7 @@ export function CandidateReferenceCheckSection({
   )
   const people = useReferenceRequestPeople([activeRequest?.requested_by])
   const sessionLink = useSessionReferenceLink(activeRequest?.id)
+  const sessionRefereeLinks = useSessionRefereeLinks()
 
   const resend = useResendCandidateLink()
   const cancel = useCancelReferenceRequest()
@@ -97,6 +99,7 @@ export function CandidateReferenceCheckSection({
         candidateEmail={candidateEmail}
         people={people}
         sessionLink={sessionLink}
+        sessionRefereeLinks={sessionRefereeLinks}
         busy={busy}
         onRequest={onRequest}
         onOpenDetail={() => navigate('/references')}
