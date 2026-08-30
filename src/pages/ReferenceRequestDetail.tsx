@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { EyeOff, Phone, Send, Share2, UserRoundPlus } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -97,7 +97,6 @@ function Row({ label, value }: { label: string; value: string }) {
 /** /references/requests/:requestId — Flow E.2. */
 export default function ReferenceRequestDetail() {
   const { requestId } = useParams<{ requestId: string }>()
-  const navigate = useNavigate()
   const { canViewReferences } = usePermissions()
 
   const { request, isLoading } = useReferenceRequestDetail(requestId)
@@ -333,14 +332,6 @@ export default function ReferenceRequestDetail() {
         preselectedRefereeId={phoneReferee}
       />
 
-      <button
-        type="button"
-        onClick={() => navigate('/references')}
-        className="font-inter"
-        style={{ display: 'none' }}
-      >
-        Back
-      </button>
     </ReferencesShell>
   )
 }
