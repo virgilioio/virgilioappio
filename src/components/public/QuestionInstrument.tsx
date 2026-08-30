@@ -3,7 +3,14 @@
  * questionnaire and the candidate's self-assessment render identically, which
  * is what makes the two sides comparable later.
  */
-import { PublicField, PublicInput, PublicMonthField, PublicSelect, PublicTextarea } from './PublicField'
+import {
+  PublicDateField,
+  PublicField,
+  PublicInput,
+  PublicMonthField,
+  PublicSelect,
+  PublicTextarea,
+} from './PublicField'
 import type { PublicQuestion } from '@/lib/references/publicApi'
 
 const RATINGS = [1, 2, 3, 4, 5]
@@ -263,6 +270,53 @@ export function QuestionInstrument({ question, value, onChange, onBlur, showRati
             </button>
           )
         })}
+      </div>
+    )
+  }
+
+  if (q.type === 'number') {
+    return (
+      <PublicInput
+        type="number"
+        inputMode="numeric"
+        value={String(value ?? '')}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+      />
+    )
+  }
+
+  if (q.type === 'date') {
+    // Canonical Gio pickers — month-year precision unless the template says otherwise.
+    return q.precision === 'full_date' ? (
+      <PublicDateField value={String(value ?? '')} onChange={onChange} onBlur={onBlur} />
+    ) : (
+      <PublicMonthField
+        value={String(value ?? '')}
+        onChange={onChange}
+        onBlur={onBlur}
+        placeholder="Month and year"
+      />
+    )
+  }
+
+  if (q.type === 'date_range') {
+    const raw = String(value ?? '')
+    const [from = '', to = ''] = raw.includes(' to ') ? raw.split(' to ') : [raw, '']
+    const set = (next: { from?: string; to?: string }) =>
+      onChange(`${next.from ?? from} to ${next.to ?? to}`)
+    const Field = q.precision === 'full_date' ? PublicDateField : PublicMonthField
+    return (
+      <div
+        className="grid"
+        style={{ gap: 10, gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}
+      >
+        <PublicField label="From">
+          <Field value={from} onChange={(v: string) => set({ from: v })} onBlur={onBlur} />
+        </PublicField>
+        <PublicField label="To">
+          <Field value={to} onChange={(v: string) => set({ to: v })} onBlur={onBlur} />
+        </PublicField>
       </div>
     )
   }
