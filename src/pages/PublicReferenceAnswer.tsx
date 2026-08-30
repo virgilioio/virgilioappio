@@ -3,7 +3,7 @@
  * account. Route: /reference/:token
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { Clock, Loader2, Send, ShieldOff } from 'lucide-react'
@@ -23,6 +23,8 @@ type Answers = Record<string, unknown>
 
 export default function PublicReferenceAnswer() {
   const { token = '' } = useParams()
+  const [searchParams] = useSearchParams()
+  const declineIntent = searchParams.get('decline') === '1'
   const [data, setData] = useState<RefereeResolve | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [answers, setAnswers] = useState<Answers>({})
@@ -105,14 +107,24 @@ export default function PublicReferenceAnswer() {
     }
   }
 
-  const handleDecline = async () => {
+  const handleDecline = useCallback(async () => {
     if (!window.confirm('Decline this reference request? Nothing you typed will be kept.')) return
     try {
       await declineReference(token)
     } finally {
       setTerminal('declined')
     }
-  }
+  }, [token])
+
+  // The email's decline link lands here with ?decline=1 — open the confirm
+  // straight away so declining really is one click.
+  const declinePrompted = useRef(false)
+  useEffect(() => {
+    if (!declineIntent || declinePrompted.current) return
+    if (!data || data.status !== 'open') return
+    declinePrompted.current = true
+    void handleDecline()
+  }, [declineIntent, data, handleDecline])
 
   if (loadError) {
     return (
