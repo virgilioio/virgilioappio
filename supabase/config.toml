@@ -270,3 +270,6 @@ verify_jwt = false
 
 [functions.reference-retention-sweeper]
 verify_jwt = false
+
+[functions.reference-report]
+verify_jwt = false
