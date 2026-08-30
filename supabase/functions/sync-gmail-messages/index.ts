@@ -643,6 +643,11 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         stats.upserted++;
+        if (candidateRelated) {
+          stats.full++;
+        } else {
+          stats.metadataOnly++;
+        }
 
         // Candidate matching (after successful insert/update)
         try {
