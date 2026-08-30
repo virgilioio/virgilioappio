@@ -315,77 +315,71 @@ export function ReferenceCheckCard({
     .sort()
     .pop()
 
-  const footer = (
-    <RefCardFooter>
-      {failedReferees.length > 0 && onRequestReplacement && (
-        <Button variant="primary" size="sm" icon={UserRoundPlus} onClick={onRequestReplacement}>
-          Request a replacement
+  const footer =
+    cardState === 'answers' ? (
+      <RefCardFooter>
+        <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+          Resend to candidate
         </Button>
-      )}
+        <Button variant="ghost" size="sm" icon={Phone} onClick={onLogPhone}>
+          Log a phone reference
+        </Button>
+        <Button variant="secondary" size="sm" icon={Share2} onClick={() => setShareOpen(true)}>
+          Share report
+        </Button>
+        <div style={{ marginLeft: 'auto' }}>
+          <Button variant="danger" size="sm" onClick={() => setConfirmCancel(true)}>
+            Cancel request
+          </Button>
+        </div>
+      </RefCardFooter>
+    ) : (
+      <RefCardFooter>
+        {failedReferees.length > 0 && onRequestReplacement && (
+          <Button variant="primary" size="sm" icon={UserRoundPlus} onClick={onRequestReplacement}>
+            Request a replacement
+          </Button>
+        )}
 
-      {cardState === 'awaiting_candidate' ? (
-        expired ? (
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Send}
-            loading={busy}
-            onClick={onResendCandidate}
-          >
-            Send a fresh link
+        {cardState === 'awaiting_candidate' ? (
+          expired ? (
+            <Button variant="primary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+              Send a fresh link
+            </Button>
+          ) : (
+            <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+              Resend to candidate
+            </Button>
+          )
+        ) : (
+          <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onRemindReferees}>
+            Remind referees
+          </Button>
+        )}
+
+        {sessionLink ? (
+          <Button variant="secondary" size="sm" icon={Link2} onClick={onCopyLink}>
+            Copy link
           </Button>
         ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Send}
-            loading={busy}
-            onClick={onResendCandidate}
-          >
-            Resend to candidate
+          cardState !== 'awaiting_candidate' && (
+            <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+              Resend to candidate
+            </Button>
+          )
+        )}
+
+        <Button variant="ghost" size="sm" icon={Phone} onClick={onLogPhone}>
+          Log a phone reference
+        </Button>
+
+        <div style={{ marginLeft: 'auto' }}>
+          <Button variant="danger" size="sm" onClick={() => setConfirmCancel(true)}>
+            Cancel request
           </Button>
-        )
-      ) : (
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={Send}
-          loading={busy}
-          onClick={onRemindReferees}
-        >
-          Remind referees
-        </Button>
-      )}
-
-      {sessionLink ? (
-        <Button variant="secondary" size="sm" icon={Link2} onClick={onCopyLink}>
-          Copy link
-        </Button>
-      ) : (
-        cardState !== 'awaiting_candidate' && (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Send}
-            loading={busy}
-            onClick={onResendCandidate}
-          >
-            Resend to candidate
-          </Button>
-        )
-      )}
-
-      <Button variant="ghost" size="sm" icon={Phone} onClick={onLogPhone}>
-        Log a phone reference
-      </Button>
-
-      <div style={{ marginLeft: 'auto' }}>
-        <Button variant="danger" size="sm" onClick={onCancel}>
-          Cancel request
-        </Button>
-      </div>
-    </RefCardFooter>
-  )
+        </div>
+      </RefCardFooter>
+    )
 
   return (
     <RefCardShell
