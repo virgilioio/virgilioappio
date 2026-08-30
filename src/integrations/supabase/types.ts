@@ -9033,6 +9033,9 @@ export type Database = {
         | "employment_verification"
         | "would_rehire"
         | "recommendation_score"
+        | "number"
+        | "date"
+        | "date_range"
       reference_request_state:
         | "draft"
         | "candidate"
@@ -9381,6 +9384,9 @@ export const Constants = {
         "employment_verification",
         "would_rehire",
         "recommendation_score",
+        "number",
+        "date",
+        "date_range",
       ],
       reference_request_state: [
         "draft",
