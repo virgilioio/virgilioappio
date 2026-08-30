@@ -43,6 +43,7 @@ export interface ReferenceRequestRow {
   created_at?: string
   updated_at?: string | null
   template_snapshot?: Record<string, any> | null
+  self_assessment?: Record<string, unknown> | null
   flags?: Record<string, any> | null
   gio_summary?: { prose?: string | null; updated_at?: string | null } | null
 }
@@ -176,13 +177,11 @@ export function ReferenceCheckCard({
     setOpenRefereeId((current) => current ?? firstRefereeId)
   }, [firstRefereeId])
 
-  const answerLabels = useMemo<Record<string, string>>(() => {
-    const map: Record<string, string> = {}
-    for (const q of (snapshot?.questions ?? []) as any[]) {
-      if (q?.id) map[q.id] = q.label ?? q.id
-    }
-    return map
-  }, [snapshot])
+  /** Questions from the FROZEN snapshot, in template order. */
+  const snapshotQuestions = useMemo(
+    () => ((snapshot?.questions ?? []) as any[]).filter((q) => q?.id),
+    [snapshot],
+  )
 
   /* ---------------- states 1 & 2 — the ProfileCard shell ---------------- */
 
@@ -512,7 +511,8 @@ export function ReferenceCheckCard({
                 expandable
                 expanded={openRefereeId === r.id}
                 onToggle={() => setOpenRefereeId((cur) => (cur === r.id ? null : r.id))}
-                answerLabels={answerLabels}
+                questions={snapshotQuestions}
+                candidateSelf={request?.self_assessment ?? null}
                 showActions
                 busy={busy}
                 onRelease={onReleaseReferee ? () => onReleaseReferee(r.id) : undefined}
