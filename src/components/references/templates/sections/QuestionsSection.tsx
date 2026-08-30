@@ -3,8 +3,11 @@ import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import {
   BadgeCheck,
+  Calendar,
+  CalendarRange,
   EyeOff,
   Gauge,
+  Hash,
   Heading,
   List,
   ListChecks,
@@ -44,6 +47,9 @@ const TYPE_ICON: Record<ReferenceAnswerType, LucideIcon> = {
   employment_verification: BadgeCheck,
   would_rehire: Repeat,
   recommendation_score: Gauge,
+  number: Hash,
+  date: Calendar,
+  date_range: CalendarRange,
 }
 
 const REFERENCE_TYPES: ReferenceAnswerType[] = [
@@ -128,11 +134,53 @@ function QuestionRow({
         )}
       </div>
 
+      {q.type === 'number' && (
+        <Input
+          value={q.unit ?? ''}
+          onChange={(e) => onChange({ unit: e.target.value })}
+          placeholder="Unit, e.g. direct reports"
+          className="h-[26px] w-[168px] shrink-0 font-inter"
+          style={{ fontSize: 11.5 }}
+        />
+      )}
+
+      {(q.type === 'date' || q.type === 'date_range') && (
+        <select
+          value={q.precision ?? 'month_year'}
+          onChange={(e) =>
+            onChange({ precision: e.target.value as 'month_year' | 'full_date' })
+          }
+          className="font-inter shrink-0"
+          style={{
+            height: 26,
+            borderRadius: 7,
+            border: '1px solid #E0DDD3',
+            background: '#fff',
+            fontSize: 11.5,
+            color: '#5A6072',
+            padding: '0 6px',
+          }}
+        >
+          <option value="month_year">Month &amp; year</option>
+          <option value="full_date">Full date</option>
+        </select>
+      )}
+
       <TypeChip
         label={QUESTION_TYPE_LABEL[q.type]}
         tone={reference ? 'purple' : 'neutral'}
         icon={Icon}
       />
+
+      {q.type === 'yes_no' && (
+        <TrailingToggle
+          label="Yes is a concern"
+          width={132}
+          checked={q.invert === true}
+          onChange={(v) => onChange({ invert: v })}
+          title="Answering yes flags this as a concern rather than reassurance"
+        />
+      )}
 
       <TrailingToggle
         label="Ask candidate"

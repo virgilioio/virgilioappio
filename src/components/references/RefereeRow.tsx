@@ -2,7 +2,10 @@ import { ChevronDown, ExternalLink, Pause, Phone, Send, UserRoundPlus } from 'lu
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AnswerList } from '@/components/references/AnswerRow'
+import { resolveAnswers, type ResolvedQuestionAnswer } from '@/lib/references/answers'
 import { KeyValueRow } from '@/components/references/KeyValueRow'
+import type { RefQuestion } from '@/lib/references/templateModel'
 import { RefereeStatus } from '@/components/references/RefereeStatus'
 import type { RefereeStatus as RefereeStatusValue } from '@/lib/references/status'
 
@@ -24,13 +27,6 @@ export interface RefereeRowData {
   declined_at?: string | null
   source?: string | null
 }
-
-/** Keys rendered by the structured grid — never repeated in the prose list. */
-const STRUCTURED_KEYS = new Set([
-  'recommendation_score',
-  'would_rehire',
-  'employment_verification',
-])
 
 function initials(name: string) {
   return (name || '?')
@@ -54,17 +50,11 @@ function statusTimestamp(r: RefereeRowData) {
   return fmt(r.submitted_at) ?? fmt(r.declined_at) ?? fmt(r.opened_at) ?? fmt(r.invited_at)
 }
 
-function scoreOf(answers: Record<string, unknown> | null): number | null {
-  const raw = answers?.recommendation_score
-  const n = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : NaN
+/** The score comes from the answer whose QUESTION is a recommendation score. */
+function scoreOf(rows: ResolvedQuestionAnswer[]): number | null {
+  const hit = rows.find((r) => r.question.type === 'recommendation_score' && r.answer)
+  const n = Number(hit?.answer?.value)
   return Number.isFinite(n) ? n : null
-}
-
-function rehireOf(answers: Record<string, unknown> | null): string | null {
-  const raw = answers?.would_rehire
-  if (raw === true || raw === 'yes') return 'Yes'
-  if (raw === false || raw === 'no') return 'No'
-  return typeof raw === 'string' && raw ? raw : null
 }
 
 /**
@@ -76,7 +66,8 @@ export function RefereeRow({
   expandable = false,
   expanded = false,
   onToggle,
-  answerLabels = {},
+  questions = [],
+  candidateSelf = null,
   showActions = false,
   onRemind,
   onRelease,
@@ -89,8 +80,10 @@ export function RefereeRow({
   expandable?: boolean
   expanded?: boolean
   onToggle?: () => void
-  /** question id → label, from the frozen snapshot. */
-  answerLabels?: Record<string, string>
+  /** Questions from the request's FROZEN template snapshot, in template order. */
+  questions?: RefQuestion[]
+  /** The candidate's self-assessment answers, keyed by question id. */
+  candidateSelf?: Record<string, unknown> | null
   showActions?: boolean
   onRemind?: () => void
   onRelease?: () => void
@@ -109,15 +102,9 @@ export function RefereeRow({
       ? (referee.answers as Record<string, unknown>)
       : null
 
-  const score = scoreOf(answers)
   const hasAnswers = referee.status === 'submitted' || referee.status === 'logged'
-
-  const proseEntries = hasAnswers && answers
-    ? Object.entries(answers).filter(
-        ([k, v]) =>
-          !STRUCTURED_KEYS.has(k) && v !== null && v !== '' && v !== undefined,
-      )
-    : []
+  const rows = resolveAnswers(questions, answers)
+  const score = scoreOf(rows)
 
   return (
     <div
@@ -227,7 +214,6 @@ export function RefereeRow({
                   .filter(Boolean)
                   .join(' · ')}
               />
-              <KeyValueRow label="Would rehire" value={rehireOf(answers)} />
             </div>
 
             {held && referee.hold_note && (
@@ -257,21 +243,13 @@ export function RefereeRow({
               </div>
             )}
 
-            {hasAnswers && proseEntries.length > 0 && (
-              <div className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
-                {proseEntries.map(([key, value]) => (
-                  <div key={key}>
-                    <p className="font-inter" style={{ fontSize: 10.5, color: '#8B8F9E' }}>
-                      {answerLabels[key] ?? key}
-                    </p>
-                    <p
-                      className="font-inter"
-                      style={{ fontSize: 12, color: '#1F2230', marginTop: 2, lineHeight: 1.6 }}
-                    >
-                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                    </p>
-                  </div>
-                ))}
+            {hasAnswers && questions.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <AnswerList
+                  questions={questions}
+                  answers={answers}
+                  candidateSelf={candidateSelf}
+                />
               </div>
             )}
           </div>

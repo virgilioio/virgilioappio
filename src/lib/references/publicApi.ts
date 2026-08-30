@@ -34,6 +34,9 @@ export interface PublicQuestion {
   helper?: string
   options?: string[]
   ask_candidate_too?: boolean
+  invert?: boolean
+  unit?: string
+  precision?: 'month_year' | 'full_date'
 }
 
 export interface CandidateResolve {

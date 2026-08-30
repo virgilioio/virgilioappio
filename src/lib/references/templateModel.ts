@@ -63,6 +63,12 @@ export interface RefQuestion {
   ask_candidate_too: boolean
   helper?: string
   options?: string[]
+  /** yes_no only — when true, answering "Yes" is the concern (tone flips). */
+  invert?: boolean
+  /** number only — e.g. "direct reports". */
+  unit?: string
+  /** date / date_range only. */
+  precision?: ReferenceFieldPrecision
 }
 
 
@@ -294,6 +300,9 @@ export const QUESTION_TYPES: QuestionTypeMeta[] = [
     family: 'reference',
     hint: 'Fixed options',
   },
+  { type: 'number', label: 'Number', family: 'standard', hint: 'Numeric only' },
+  { type: 'date', label: 'Date', family: 'standard', hint: 'Single date' },
+  { type: 'date_range', label: 'Date range', family: 'standard', hint: 'From and to' },
   {
     type: 'recommendation_score',
     label: 'Recommendation score',
@@ -332,6 +341,7 @@ export function newQuestion(type: ReferenceAnswerType): RefQuestion {
         : type === 'single_select' || type === 'multi_select'
           ? ['Option 1', 'Option 2']
           : undefined,
+    precision: type === 'date' || type === 'date_range' ? 'month_year' : undefined,
   }
 }
 
@@ -342,7 +352,24 @@ export function defaultQuestions(): RefQuestion[] {
       label: 'Employment verification',
       helper: 'Dates and title — captured for the record, not auto-compared',
     },
-    { ...newQuestion('long_text'), label: 'In what capacity did you work with the candidate?' },
+    { ...newQuestion('short_text'), label: 'Your job title at the time' },
+    {
+      ...newQuestion('single_select'),
+      label: 'How did you work together?',
+      options: ['I managed them', 'We were peers', 'They managed me', 'They were my client'],
+    },
+    {
+      ...newQuestion('multi_select'),
+      label: 'Which areas did they own?',
+      required: false,
+      options: ['Reporting', 'Budgeting', 'Audit', 'Team leadership', 'Systems'],
+    },
+    {
+      ...newQuestion('number'),
+      label: 'How many people did they manage?',
+      required: false,
+      unit: 'direct reports',
+    },
     {
       ...newQuestion('rating_1_5'),
       label: 'How would you rate their technical ability?',
@@ -352,6 +379,17 @@ export function defaultQuestions(): RefQuestion[] {
     { ...newQuestion('rating_1_5'), label: 'Handles conflict well', ask_candidate_too: true },
     { ...newQuestion('would_rehire'), label: 'Would you rehire this person?' },
     { ...newQuestion('recommendation_score'), label: 'Recommendation score' },
+    {
+      ...newQuestion('yes_no'),
+      label: 'Any concerns we should know about?',
+      invert: true,
+    },
+    {
+      ...newQuestion('date'),
+      label: 'Last day you worked together',
+      required: false,
+    },
+    { ...newQuestion('long_text'), label: 'In what capacity did you work with the candidate?' },
     {
       ...newQuestion('long_text'),
       label: 'Anything a future employer should know?',
