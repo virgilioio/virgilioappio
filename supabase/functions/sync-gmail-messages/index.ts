@@ -572,6 +572,17 @@ const handler = async (req: Request): Promise<Response> => {
           console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
         }
 
+        // Determine whether this message is candidate-related before deciding
+        // how much of the payload to persist.
+        const candidateRelated = await isCandidateRelated(
+          supabase,
+          identity.tenant_id,
+          fromEmail,
+          toEmails,
+          ccEmails,
+          fullMessage.threadId,
+        );
+
         // Prepare upsert data
         const emailData: Record<string, any> = {
           user_id: userId,
