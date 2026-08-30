@@ -7,7 +7,7 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-export type ReferenceTokenKind = "candidate" | "referee";
+export type ReferenceTokenKind = "candidate" | "referee" | "report";
 
 export interface IssuedReferenceToken {
   token: string;
@@ -90,7 +90,7 @@ export async function issueReferenceToken(input: {
   const expEpoch = Math.floor(expiresAt.getTime() / 1000);
 
   const payload = [
-    input.kind === "candidate" ? "c" : "r",
+    input.kind === "candidate" ? "c" : input.kind === "report" ? "s" : "r",
     input.tenantId,
     input.requestId,
     input.subjectId,
@@ -100,7 +100,12 @@ export async function issueReferenceToken(input: {
   const sig = await hmacHex(secret(), payload);
   const token = `${payload}.${sig}`;
 
-  const path = input.kind === "candidate" ? "references" : "reference";
+  const path =
+    input.kind === "candidate"
+      ? "references"
+      : input.kind === "report"
+        ? "reference-report"
+        : "reference";
   return {
     token,
     tokenHash: await sha256Hex(token),
@@ -120,7 +125,7 @@ export async function verifyReferenceToken(
   const parts = raw.split(".");
   if (parts.length !== 7) return null;
   const [kindCode, tenantId, requestId, subjectId, jti, expStr, sig] = parts;
-  if (kindCode !== "c" && kindCode !== "r") return null;
+  if (kindCode !== "c" && kindCode !== "r" && kindCode !== "s") return null;
   if (!tenantId || !requestId || !subjectId || !jti || !expStr || !sig) return null;
 
   const payload = [kindCode, tenantId, requestId, subjectId, jti, expStr].join(".");
@@ -142,7 +147,7 @@ export async function verifyReferenceToken(
   if (expiresAt.getTime() <= Date.now()) return null;
 
   return {
-    kind: kindCode === "c" ? "candidate" : "referee",
+    kind: kindCode === "c" ? "candidate" : kindCode === "s" ? "report" : "referee",
     tenantId,
     requestId,
     subjectId,

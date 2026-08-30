@@ -1,22 +1,36 @@
-import { useState } from 'react'
-import { ChevronDown, ExternalLink, Phone, Send, UserRoundPlus } from 'lucide-react'
+import { ChevronDown, ExternalLink, Pause, Phone, Send, UserRoundPlus } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { KeyValueRow } from '@/components/references/KeyValueRow'
 import { RefereeStatus } from '@/components/references/RefereeStatus'
 import type { RefereeStatus as RefereeStatusValue } from '@/lib/references/status'
 
 export interface RefereeRowData {
   id: string
   name: string
+  email?: string | null
   relationship?: string | null
   title?: string | null
   company?: string | null
+  period?: string | null
   status: RefereeStatusValue
   on_hold?: boolean | null
   hold_note?: string | null
   answers?: Record<string, unknown> | null
+  submitted_at?: string | null
+  opened_at?: string | null
+  invited_at?: string | null
+  declined_at?: string | null
+  source?: string | null
 }
+
+/** Keys rendered by the structured grid — never repeated in the prose list. */
+const STRUCTURED_KEYS = new Set([
+  'recommendation_score',
+  'would_rehire',
+  'employment_verification',
+])
 
 function initials(name: string) {
   return (name || '?')
@@ -27,15 +41,43 @@ function initials(name: string) {
     .join('')
 }
 
+function fmt(iso?: string | null) {
+  if (!iso) return null
+  const d = new Date(iso)
+  return `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString(
+    undefined,
+    { hour: '2-digit', minute: '2-digit' },
+  )}`
+}
+
+function statusTimestamp(r: RefereeRowData) {
+  return fmt(r.submitted_at) ?? fmt(r.declined_at) ?? fmt(r.opened_at) ?? fmt(r.invited_at)
+}
+
+function scoreOf(answers: Record<string, unknown> | null): number | null {
+  const raw = answers?.recommendation_score
+  const n = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : NaN
+  return Number.isFinite(n) ? n : null
+}
+
+function rehireOf(answers: Record<string, unknown> | null): string | null {
+  const raw = answers?.would_rehire
+  if (raw === true || raw === 'yes') return 'Yes'
+  if (raw === false || raw === 'no') return 'No'
+  return typeof raw === 'string' && raw ? raw : null
+}
+
 /**
- * One referee. Expandable ONLY when there are answers to reveal — in the
- * awaiting-referees state there is nothing behind the chevron, so there is no
- * chevron.
+ * One referee — the single row component for the card and the request detail
+ * page. Expansion is controlled by the parent so only one row is open at a time.
  */
 export function RefereeRow({
   referee,
   expandable = false,
+  expanded = false,
+  onToggle,
   answerLabels = {},
+  showActions = false,
   onRemind,
   onRelease,
   onReplace,
@@ -45,8 +87,11 @@ export function RefereeRow({
 }: {
   referee: RefereeRowData
   expandable?: boolean
+  expanded?: boolean
+  onToggle?: () => void
   /** question id → label, from the frozen snapshot. */
   answerLabels?: Record<string, string>
+  showActions?: boolean
   onRemind?: () => void
   onRelease?: () => void
   onReplace?: () => void
@@ -54,28 +99,39 @@ export function RefereeRow({
   onOpenLink?: () => void
   busy?: boolean
 }) {
-  const [open, setOpen] = useState(false)
   const held = referee.on_hold === true || referee.status === 'on_hold'
   const bounced = referee.status === 'bounced' || referee.status === 'declined'
+  const open = expandable && expanded
 
   const avatarColor = held ? '#F97316' : bounced ? '#FA5252' : '#6F3FF5'
-  const answers = referee.answers && typeof referee.answers === 'object' ? referee.answers : null
-  const answerEntries = answers
-    ? Object.entries(answers).filter(([, v]) => v !== null && v !== '' && v !== undefined)
+  const answers =
+    referee.answers && typeof referee.answers === 'object'
+      ? (referee.answers as Record<string, unknown>)
+      : null
+
+  const score = scoreOf(answers)
+  const hasAnswers = referee.status === 'submitted' || referee.status === 'logged'
+
+  const proseEntries = hasAnswers && answers
+    ? Object.entries(answers).filter(
+        ([k, v]) =>
+          !STRUCTURED_KEYS.has(k) && v !== null && v !== '' && v !== undefined,
+      )
     : []
 
   return (
     <div
       style={{
-        border: `1px solid ${held ? '#FDE6C8' : '#F1F0EC'}`,
+        border: `1px solid ${held ? '#FDE6C8' : open ? '#D7C5FB' : '#F1F0EC'}`,
         borderRadius: 10,
         background: held ? '#FFFBF3' : '#fff',
+        transition: 'border-color 160ms ease',
       }}
     >
       <div
         className="flex items-center"
         style={{ gap: 11, padding: '11px 13px', cursor: expandable ? 'pointer' : 'default' }}
-        onClick={expandable ? () => setOpen((v) => !v) : undefined}
+        onClick={expandable ? onToggle : undefined}
       >
         <span
           className="inline-flex items-center justify-center shrink-0 font-poppins"
@@ -114,15 +170,22 @@ export function RefereeRow({
               {[referee.title, referee.company].filter(Boolean).join(' · ')}
             </p>
           )}
-          {held && referee.hold_note && (
-            <p
-              className="font-inter"
-              style={{ fontSize: 11, color: '#9A3412', marginTop: 4, fontStyle: 'italic' }}
-            >
-              “{referee.hold_note}”
-            </p>
-          )}
         </div>
+
+        {score !== null && (
+          <span
+            className="font-poppins shrink-0 tabular-nums"
+            style={{
+              fontSize: 17,
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              color: score >= 8 ? '#12874F' : '#B45309',
+            }}
+          >
+            {score}
+            <span style={{ fontSize: 11, opacity: 0.6 }}>/10</span>
+          </span>
+        )}
 
         <RefereeStatus status={held ? 'on_hold' : referee.status} />
 
@@ -139,57 +202,109 @@ export function RefereeRow({
         )}
       </div>
 
-      {expandable && open && (
+      {open && (
         <div style={{ padding: '0 13px 13px' }}>
-          {answerEntries.length > 0 ? (
-            <div className="flex flex-col" style={{ gap: 9 }}>
-              {answerEntries.map(([key, value]) => (
-                <div key={key}>
-                  <p className="font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>
-                    {answerLabels[key] ?? key}
-                  </p>
+          <div
+            style={{
+              border: '1px solid #D7C5FB',
+              background: '#FAF8FF',
+              borderRadius: 10,
+              padding: '12px 13px',
+            }}
+          >
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}
+            >
+              <KeyValueRow label="Email" value={referee.email} />
+              <KeyValueRow label="Worked together" value={referee.period} />
+              <KeyValueRow
+                label="Status"
+                value={[
+                  held ? 'On hold' : referee.status.replace(/_/g, ' '),
+                  statusTimestamp(referee),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
+              <KeyValueRow label="Would rehire" value={rehireOf(answers)} />
+            </div>
+
+            {held && referee.hold_note && (
+              <div
+                className="flex"
+                style={{
+                  gap: 8,
+                  marginTop: 12,
+                  padding: '10px 11px',
+                  background: '#FFFBF3',
+                  border: '1px solid #FDE6C8',
+                  borderRadius: 8,
+                }}
+              >
+                <Pause size={13} color="#9A3412" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
                   <p
                     className="font-inter"
-                    style={{ fontSize: 12, color: '#1F2230', marginTop: 2, lineHeight: 1.55 }}
+                    style={{ fontSize: 11.5, color: '#9A3412', lineHeight: 1.55 }}
                   >
-                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    “{referee.hold_note}”
+                  </p>
+                  <p className="font-inter" style={{ fontSize: 10.5, color: '#B45309', marginTop: 3 }}>
+                    Note from the candidate — nobody has been contacted.
                   </p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="font-inter" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
-              No answers recorded yet.
-            </p>
-          )}
+              </div>
+            )}
 
-          <div className="flex items-center" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            {held && onRelease && (
-              <Button variant="primary" size="sm" icon={Send} loading={busy} onClick={onRelease}>
-                Release &amp; send
-              </Button>
-            )}
-            {!held && bounced && onReplace && (
-              <Button variant="primary" size="sm" icon={UserRoundPlus} onClick={onReplace}>
-                Request a replacement
-              </Button>
-            )}
-            {!held && !bounced && onRemind && (
-              <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onRemind}>
-                Resend email
-              </Button>
-            )}
-            {onLogByPhone && (
-              <Button variant="ghost" size="sm" icon={Phone} onClick={onLogByPhone}>
-                Log by phone instead
-              </Button>
-            )}
-            {onOpenLink && (
-              <Button variant="ghost" size="sm" icon={ExternalLink} onClick={onOpenLink}>
-                Open referee link
-              </Button>
+            {hasAnswers && proseEntries.length > 0 && (
+              <div className="flex flex-col" style={{ gap: 10, marginTop: 12 }}>
+                {proseEntries.map(([key, value]) => (
+                  <div key={key}>
+                    <p className="font-inter" style={{ fontSize: 10.5, color: '#8B8F9E' }}>
+                      {answerLabels[key] ?? key}
+                    </p>
+                    <p
+                      className="font-inter"
+                      style={{ fontSize: 12, color: '#1F2230', marginTop: 2, lineHeight: 1.6 }}
+                    >
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
+
+          {showActions && (
+            <div className="flex items-center" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              {held && onRelease ? (
+                <Button variant="primary" size="sm" icon={Send} loading={busy} onClick={onRelease}>
+                  Release &amp; send
+                </Button>
+              ) : bounced && onReplace ? (
+                <Button variant="primary" size="sm" icon={UserRoundPlus} onClick={onReplace}>
+                  Request a replacement
+                </Button>
+              ) : (
+                onRemind && (
+                  <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onRemind}>
+                    Resend email
+                  </Button>
+                )
+              )}
+              {onLogByPhone && (
+                <Button variant="ghost" size="sm" icon={Phone} onClick={onLogByPhone}>
+                  Log by phone instead
+                </Button>
+              )}
+              {onOpenLink && (
+                <Button variant="ghost" size="sm" icon={ExternalLink} onClick={onOpenLink}>
+                  Open referee link
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

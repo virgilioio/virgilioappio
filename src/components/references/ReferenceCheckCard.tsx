@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Info, Link2, Phone, Plus, Send, UserRoundPlus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Info, Link2, Phone, Plus, Send, Share2, UserRoundPlus } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,18 @@ import { RefStatus } from '@/components/references/RefStatus'
 import { RefereeTrack } from '@/components/references/RefereeTrack'
 import { RefCardFooter, RefCardShell, RefDetailRow } from '@/components/references/RefCardShell'
 import { RefereeRow, type RefereeRowData } from '@/components/references/RefereeRow'
+import { GioSummaryBlock, type GioFlagCounts } from '@/components/references/GioSummaryBlock'
+import { ShareReportDialog } from '@/components/references/ShareReportDialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { composeRequirementLine } from '@/lib/references/requestCopy'
 import {
   countReferees,
@@ -29,7 +41,10 @@ export interface ReferenceRequestRow {
   min_referees_override?: number | null
   requested_by?: string | null
   created_at?: string
+  updated_at?: string | null
   template_snapshot?: Record<string, any> | null
+  flags?: Record<string, any> | null
+  gio_summary?: { prose?: string | null; updated_at?: string | null } | null
 }
 
 interface ReferenceCheckCardProps {
@@ -52,6 +67,8 @@ interface ReferenceCheckCardProps {
   people?: Record<string, string>
   /** The candidate link minted in this session, if any — enables Copy link. */
   sessionLink?: string | null
+  /** referee id → link minted in this session, if any. */
+  sessionRefereeLinks?: Record<string, string>
 
   onRequest: () => void
   onOpenDetail?: () => void
@@ -120,6 +137,7 @@ export function ReferenceCheckCard({
   candidateEmail,
   people = {},
   sessionLink,
+  sessionRefereeLinks = {},
   onRequest,
   onOpenDetail,
   onResendCandidate,
@@ -132,6 +150,9 @@ export function ReferenceCheckCard({
   busy = false,
 }: ReferenceCheckCardProps) {
   const [open, setOpen] = useState(true)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [openRefereeId, setOpenRefereeId] = useState<string | null>(null)
 
   const cardState: RefCardState = resolveCardState(request, suggested, referees)
   const snapshot = request?.template_snapshot ?? null
@@ -149,6 +170,11 @@ export function ReferenceCheckCard({
   const invitedNames = referees
     .filter((r) => !(r.on_hold === true || r.status === 'on_hold'))
     .map((r) => r.name)
+
+  const firstRefereeId = referees[0]?.id ?? null
+  useEffect(() => {
+    setOpenRefereeId((current) => current ?? firstRefereeId)
+  }, [firstRefereeId])
 
   const answerLabels = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {}
@@ -289,77 +315,71 @@ export function ReferenceCheckCard({
     .sort()
     .pop()
 
-  const footer = (
-    <RefCardFooter>
-      {failedReferees.length > 0 && onRequestReplacement && (
-        <Button variant="primary" size="sm" icon={UserRoundPlus} onClick={onRequestReplacement}>
-          Request a replacement
+  const footer =
+    cardState === 'answers' ? (
+      <RefCardFooter>
+        <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+          Resend to candidate
         </Button>
-      )}
+        <Button variant="ghost" size="sm" icon={Phone} onClick={onLogPhone}>
+          Log a phone reference
+        </Button>
+        <Button variant="secondary" size="sm" icon={Share2} onClick={() => setShareOpen(true)}>
+          Share report
+        </Button>
+        <div style={{ marginLeft: 'auto' }}>
+          <Button variant="danger" size="sm" onClick={() => setConfirmCancel(true)}>
+            Cancel request
+          </Button>
+        </div>
+      </RefCardFooter>
+    ) : (
+      <RefCardFooter>
+        {failedReferees.length > 0 && onRequestReplacement && (
+          <Button variant="primary" size="sm" icon={UserRoundPlus} onClick={onRequestReplacement}>
+            Request a replacement
+          </Button>
+        )}
 
-      {cardState === 'awaiting_candidate' ? (
-        expired ? (
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Send}
-            loading={busy}
-            onClick={onResendCandidate}
-          >
-            Send a fresh link
+        {cardState === 'awaiting_candidate' ? (
+          expired ? (
+            <Button variant="primary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+              Send a fresh link
+            </Button>
+          ) : (
+            <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+              Resend to candidate
+            </Button>
+          )
+        ) : (
+          <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onRemindReferees}>
+            Remind referees
+          </Button>
+        )}
+
+        {sessionLink ? (
+          <Button variant="secondary" size="sm" icon={Link2} onClick={onCopyLink}>
+            Copy link
           </Button>
         ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Send}
-            loading={busy}
-            onClick={onResendCandidate}
-          >
-            Resend to candidate
+          cardState !== 'awaiting_candidate' && (
+            <Button variant="secondary" size="sm" icon={Send} loading={busy} onClick={onResendCandidate}>
+              Resend to candidate
+            </Button>
+          )
+        )}
+
+        <Button variant="ghost" size="sm" icon={Phone} onClick={onLogPhone}>
+          Log a phone reference
+        </Button>
+
+        <div style={{ marginLeft: 'auto' }}>
+          <Button variant="danger" size="sm" onClick={() => setConfirmCancel(true)}>
+            Cancel request
           </Button>
-        )
-      ) : (
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={Send}
-          loading={busy}
-          onClick={onRemindReferees}
-        >
-          Remind referees
-        </Button>
-      )}
-
-      {sessionLink ? (
-        <Button variant="secondary" size="sm" icon={Link2} onClick={onCopyLink}>
-          Copy link
-        </Button>
-      ) : (
-        cardState !== 'awaiting_candidate' && (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Send}
-            loading={busy}
-            onClick={onResendCandidate}
-          >
-            Resend to candidate
-          </Button>
-        )
-      )}
-
-      <Button variant="ghost" size="sm" icon={Phone} onClick={onLogPhone}>
-        Log a phone reference
-      </Button>
-
-      <div style={{ marginLeft: 'auto' }}>
-        <Button variant="danger" size="sm" onClick={onCancel}>
-          Cancel request
-        </Button>
-      </div>
-    </RefCardFooter>
-  )
+        </div>
+      </RefCardFooter>
+    )
 
   return (
     <RefCardShell
@@ -429,7 +449,7 @@ export function ReferenceCheckCard({
         </>
       )}
 
-      {(cardState === 'awaiting_referees' || cardState === 'answers') && (
+      {cardState === 'awaiting_referees' && (
         <>
           <div style={{ padding: '12px 0' }}>
             <RefDetailRow
@@ -467,23 +487,79 @@ export function ReferenceCheckCard({
 
           <div className="flex flex-col" style={{ gap: 7 }}>
             {referees.map((r) => (
-              <RefereeRow
-                key={r.id}
-                referee={r}
-                expandable={cardState === 'answers'}
-                answerLabels={answerLabels}
-                busy={busy}
-                onRelease={onReleaseReferee ? () => onReleaseReferee(r.id) : undefined}
-                onRemind={onRemindReferees}
-                onReplace={onRequestReplacement}
-                onLogByPhone={onLogPhone}
-              />
+              <RefereeRow key={r.id} referee={r} busy={busy} />
             ))}
           </div>
         </>
       )}
 
+      {cardState === 'answers' && (
+        <div className="flex flex-col" style={{ gap: 12, paddingTop: 12 }}>
+          <GioSummaryBlock
+            prose={request?.gio_summary?.prose ?? null}
+            flagged={request?.flagged === true}
+            flags={(request?.flags ?? null) as GioFlagCounts | null}
+            updatedAt={request?.gio_summary?.updated_at ?? request?.updated_at ?? null}
+            submitted={counts.submitted}
+            required={required}
+          />
+
+          <div className="flex flex-col" style={{ gap: 7 }}>
+            {referees.map((r) => (
+              <RefereeRow
+                key={r.id}
+                referee={r}
+                expandable
+                expanded={openRefereeId === r.id}
+                onToggle={() => setOpenRefereeId((cur) => (cur === r.id ? null : r.id))}
+                answerLabels={answerLabels}
+                showActions
+                busy={busy}
+                onRelease={onReleaseReferee ? () => onReleaseReferee(r.id) : undefined}
+                onRemind={onRemindReferees}
+                onReplace={onRequestReplacement}
+                onLogByPhone={onLogPhone}
+                onOpenLink={
+                  sessionRefereeLinks[r.id]
+                    ? () => window.open(sessionRefereeLinks[r.id], '_blank', 'noopener')
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {footer}
+
+      <ShareReportDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        requestId={request?.id}
+      />
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this reference request?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The candidate and referee links stop working immediately. Anything already submitted
+              stays on the candidate's record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep the request</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmCancel(false)
+                onCancel?.()
+              }}
+            >
+              Cancel request
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </RefCardShell>
   )
 }

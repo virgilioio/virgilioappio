@@ -38,3 +38,24 @@ export function useSessionReferenceLink(requestId?: string | null): string | nul
     () => null,
   )
 }
+
+/* ------------------------------------------------------------------ referees */
+
+const EMPTY: Record<string, string> = {}
+/** Cached snapshot — getSnapshot must be referentially stable between changes. */
+let refereeSnapshot: Record<string, string> = EMPTY
+
+/** Same rule for referee questionnaire links, keyed by referee id. */
+export function rememberRefereeLink(refereeId: string, link?: string | null) {
+  if (!refereeId || !link) return
+  refereeSnapshot = { ...refereeSnapshot, [refereeId]: link }
+  emit()
+}
+
+export function useSessionRefereeLinks(): Record<string, string> {
+  return useSyncExternalStore(
+    subscribe,
+    () => refereeSnapshot,
+    () => EMPTY,
+  )
+}

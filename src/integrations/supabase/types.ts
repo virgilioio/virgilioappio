@@ -5783,6 +5783,9 @@ export type Database = {
           requested_by: string | null
           retention_expires_at: string | null
           self_assessment: Json
+          share_created_by: string | null
+          share_expires_at: string | null
+          share_token_hash: string | null
           stage: string | null
           state: Database["public"]["Enums"]["reference_request_state"]
           template_id: string | null
@@ -5806,6 +5809,9 @@ export type Database = {
           requested_by?: string | null
           retention_expires_at?: string | null
           self_assessment?: Json
+          share_created_by?: string | null
+          share_expires_at?: string | null
+          share_token_hash?: string | null
           stage?: string | null
           state?: Database["public"]["Enums"]["reference_request_state"]
           template_id?: string | null
@@ -5829,6 +5835,9 @@ export type Database = {
           requested_by?: string | null
           retention_expires_at?: string | null
           self_assessment?: Json
+          share_created_by?: string | null
+          share_expires_at?: string | null
+          share_token_hash?: string | null
           stage?: string | null
           state?: Database["public"]["Enums"]["reference_request_state"]
           template_id?: string | null
