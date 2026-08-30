@@ -594,7 +594,7 @@ const handler = async (req: Request): Promise<Response> => {
           cc_addresses: ccEmails.length > 0 ? ccEmails : null,
           subject: subject || '(No Subject)',
           body_text: text,
-          body_html: html,
+          body_html: candidateRelated ? html : null,
           thread_id: fullMessage.threadId,
           provider_message_id: msg.id,
           rfc822_message_id: rfc822MessageId,
@@ -604,14 +604,16 @@ const handler = async (req: Request): Promise<Response> => {
           is_read: !fullMessage.labelIds?.includes('UNREAD'),
           gmail_labels: fullMessage.labelIds || [],
           status: direction === 'sent' ? 'sent' : 'delivered',
-          raw_message_data: { 
-            headers: headers.reduce((acc: Record<string, string>, h) => {
-              acc[h.name] = h.value;
-              return acc;
-            }, {}),
-            labelIds: fullMessage.labelIds,
-            snippet: fullMessage.snippet,
-          },
+          raw_message_data: candidateRelated
+            ? {
+                headers: headers.reduce((acc: Record<string, string>, h) => {
+                  acc[h.name] = h.value;
+                  return acc;
+                }, {}),
+                labelIds: fullMessage.labelIds,
+                snippet: fullMessage.snippet,
+              }
+            : null,
         };
 
         // Add attachments metadata if any found
