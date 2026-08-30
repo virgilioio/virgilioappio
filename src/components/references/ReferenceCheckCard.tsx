@@ -449,7 +449,7 @@ export function ReferenceCheckCard({
         </>
       )}
 
-      {(cardState === 'awaiting_referees' || cardState === 'answers') && (
+      {cardState === 'awaiting_referees' && (
         <>
           <div style={{ padding: '12px 0' }}>
             <RefDetailRow
@@ -487,23 +487,79 @@ export function ReferenceCheckCard({
 
           <div className="flex flex-col" style={{ gap: 7 }}>
             {referees.map((r) => (
-              <RefereeRow
-                key={r.id}
-                referee={r}
-                expandable={cardState === 'answers'}
-                answerLabels={answerLabels}
-                busy={busy}
-                onRelease={onReleaseReferee ? () => onReleaseReferee(r.id) : undefined}
-                onRemind={onRemindReferees}
-                onReplace={onRequestReplacement}
-                onLogByPhone={onLogPhone}
-              />
+              <RefereeRow key={r.id} referee={r} busy={busy} />
             ))}
           </div>
         </>
       )}
 
+      {cardState === 'answers' && (
+        <div className="flex flex-col" style={{ gap: 12, paddingTop: 12 }}>
+          <GioSummaryBlock
+            prose={request?.gio_summary?.prose ?? null}
+            flagged={request?.flagged === true}
+            flags={(request?.flags ?? null) as GioFlagCounts | null}
+            updatedAt={request?.gio_summary?.updated_at ?? request?.updated_at ?? null}
+            submitted={counts.submitted}
+            required={required}
+          />
+
+          <div className="flex flex-col" style={{ gap: 7 }}>
+            {referees.map((r) => (
+              <RefereeRow
+                key={r.id}
+                referee={r}
+                expandable
+                expanded={openRefereeId === r.id}
+                onToggle={() => setOpenRefereeId((cur) => (cur === r.id ? null : r.id))}
+                answerLabels={answerLabels}
+                showActions
+                busy={busy}
+                onRelease={onReleaseReferee ? () => onReleaseReferee(r.id) : undefined}
+                onRemind={onRemindReferees}
+                onReplace={onRequestReplacement}
+                onLogByPhone={onLogPhone}
+                onOpenLink={
+                  sessionRefereeLinks[r.id]
+                    ? () => window.open(sessionRefereeLinks[r.id], '_blank', 'noopener')
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {footer}
+
+      <ShareReportDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        requestId={request?.id}
+      />
+
+      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this reference request?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The candidate and referee links stop working immediately. Anything already submitted
+              stays on the candidate's record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep the request</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmCancel(false)
+                onCancel?.()
+              }}
+            >
+              Cancel request
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </RefCardShell>
   )
 }
