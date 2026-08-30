@@ -53,6 +53,7 @@ interface SyncStats {
   attachments: number;
   full: number;
   metadataOnly: number;
+  attachmentsSkipped: number;
 }
 
 // Normalize email address: extract from "Name <email>" format and lowercase
@@ -316,37 +317,9 @@ async function findCandidateByEmails(
   return null;
 }
 
-// Determine whether a message should be stored with full payloads.
-// A message is candidate-related if:
-//   (a) a candidate_id is already resolved for it by the existing linking logic,
-//   (b) any address in from/to/cc matches an existing candidate email, or
-//   (c) its thread_id already exists on a row in email_logs with candidate_id set.
-async function isCandidateRelated(
-  supabase: any,
-  tenantId: string,
-  fromEmail: string,
-  toEmails: string[],
-  ccEmails: string[],
-  threadId: string
-): Promise<boolean> {
-  const allEmails = [fromEmail, ...toEmails, ...ccEmails].filter(Boolean);
-
-  if (allEmails.length > 0) {
-    const orFilter = allEmails.map(email => `email.ilike.${email}`).join(',');
-    const { data: candidates, error } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .or(orFilter)
-      .limit(1);
-
-    if (error) {
-      console.log('[Gmail Sync] Error checking candidate emails:', error.message);
-    } else if (candidates && candidates.length > 0) {
-      return true;
-    }
-  }
-
+// Check whether the thread already exists in email_logs on a row with
+// candidate_id set (rule c for candidate-relatedness).
+async function threadHasCandidate(supabase: any, threadId: string): Promise<boolean> {
   const { data: threadRows, error: threadError } = await supabase
     .from('email_logs')
     .select('id')
@@ -356,11 +329,10 @@ async function isCandidateRelated(
 
   if (threadError) {
     console.log('[Gmail Sync] Error checking thread candidate link:', threadError.message);
-  } else if (threadRows && threadRows.length > 0) {
-    return true;
+    return false;
   }
 
-  return false;
+  return !!(threadRows && threadRows.length > 0);
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -380,6 +352,7 @@ const handler = async (req: Request): Promise<Response> => {
       attachments: 0,
       full: 0,
       metadataOnly: 0,
+      attachmentsSkipped: 0,
     };
 
   try {
@@ -557,31 +530,45 @@ const handler = async (req: Request): Promise<Response> => {
         // Extract body
         const { text, html } = extractEmailBody(fullMessage);
 
-        // Process attachments
-        let attachmentsMeta: AttachmentMeta[] = [];
+        // Resolve the candidate ONCE, before anything expensive, using the
+        // existing direction-specific rule:
+        //   received → match on the sender; sent → match on recipients.
+        let match: { candidateId: string; organizationId: string | null } | null = null;
         try {
-          attachmentsMeta = await processAttachments(
-            supabase,
-            accessToken,
-            msg.id,
-            identity.id,
-            fullMessage,
-          );
-          stats.attachments += attachmentsMeta.length;
-        } catch (attachErr) {
-          console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
+          if (direction === 'received') {
+            match = await findCandidateByEmails(supabase, [fromEmail], identity.tenant_id);
+          } else {
+            match = await findCandidateByEmails(supabase, [...toEmails, ...ccEmails], identity.tenant_id);
+          }
+          if (match) stats.matched++;
+        } catch (matchError) {
+          console.log(`[Gmail Sync] Candidate matching error for message ${msg.id}:`, matchError);
         }
 
-        // Determine whether this message is candidate-related before deciding
-        // how much of the payload to persist.
-        const candidateRelated = await isCandidateRelated(
-          supabase,
-          identity.tenant_id,
-          fromEmail,
-          toEmails,
-          ccEmails,
-          fullMessage.threadId,
-        );
+        // Candidate-related if we have a direct match, or the thread already
+        // has a candidate-linked row. Only hit email_logs when match is null.
+        const candidateRelated =
+          match !== null || (await threadHasCandidate(supabase, fullMessage.threadId));
+
+        // Process attachments only for candidate-related mail — non-candidate
+        // mail gets no Gmail attachment downloads and no storage writes.
+        let attachmentsMeta: AttachmentMeta[] = [];
+        if (candidateRelated) {
+          try {
+            attachmentsMeta = await processAttachments(
+              supabase,
+              accessToken,
+              msg.id,
+              identity.id,
+              fullMessage,
+            );
+            stats.attachments += attachmentsMeta.length;
+          } catch (attachErr) {
+            console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
+          }
+        } else {
+          stats.attachmentsSkipped++;
+        }
 
         // Prepare upsert data
         const emailData: Record<string, any> = {
@@ -616,6 +603,15 @@ const handler = async (req: Request): Promise<Response> => {
             : null,
         };
 
+        // Link the resolved candidate directly in the upsert (one statement,
+        // no insert-then-update).
+        if (match) {
+          emailData.candidate_id = match.candidateId;
+          if (match.organizationId) {
+            emailData.organization_id = match.organizationId;
+          }
+        }
+
         // Add attachments metadata if any found
         if (attachmentsMeta.length > 0) {
           emailData.attachments = attachmentsMeta;
@@ -647,41 +643,6 @@ const handler = async (req: Request): Promise<Response> => {
           stats.full++;
         } else {
           stats.metadataOnly++;
-        }
-
-        // Candidate matching (after successful insert/update)
-        try {
-          let match: { candidateId: string; organizationId: string | null } | null = null;
-          
-          if (direction === 'received') {
-            match = await findCandidateByEmails(
-              supabase, 
-              [fromEmail], 
-              identity.tenant_id
-            );
-          } else {
-            match = await findCandidateByEmails(
-              supabase, 
-              [...toEmails, ...ccEmails], 
-              identity.tenant_id
-            );
-          }
-
-          if (match) {
-            const updateData: Record<string, any> = { candidate_id: match.candidateId };
-            if (match.organizationId) {
-              updateData.organization_id = match.organizationId;
-            }
-            await supabase
-              .from('email_logs')
-              .update(updateData)
-              .eq('mail_identity_id', identity.id)
-              .eq('provider_message_id', msg.id);
-            
-            stats.matched++;
-          }
-        } catch (matchError) {
-          console.log(`[Gmail Sync] Candidate matching error for message ${msg.id}:`, matchError);
         }
 
       } catch (error) {
@@ -724,7 +685,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('id', mail_identity_id);
 
     console.log('[Gmail Sync] Complete. Stats:', JSON.stringify(stats, null, 2));
-    console.log('[gmail-sync] stored', { full: stats.full, metadataOnly: stats.metadataOnly });
+    console.log('[gmail-sync] stored', { full: stats.full, metadataOnly: stats.metadataOnly, attachmentsSkipped: stats.attachmentsSkipped });
 
     return new Response(
       JSON.stringify({ 
