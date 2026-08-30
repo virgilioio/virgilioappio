@@ -51,6 +51,8 @@ interface SyncStats {
   matched: number;
   errors: number;
   attachments: number;
+  full: number;
+  metadataOnly: number;
 }
 
 // Normalize email address: extract from "Name <email>" format and lowercase
