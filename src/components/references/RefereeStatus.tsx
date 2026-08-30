@@ -16,6 +16,7 @@ const META: Record<
   bounced: { label: 'Bounced', tone: 'red', icon: MailX },
   on_hold: { label: 'On hold', tone: 'orange', icon: Pause },
   logged: { label: 'Logged by recruiter', tone: 'purple', icon: Phone },
+  cancelled: { label: 'No longer needed', tone: 'neutral', icon: X },
 }
 
 export function RefereeStatus({
