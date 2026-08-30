@@ -2,7 +2,9 @@ import { ChevronDown, ExternalLink, Pause, Phone, Send, UserRoundPlus } from 'lu
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AnswerList } from '@/components/references/AnswerRow'
 import { KeyValueRow } from '@/components/references/KeyValueRow'
+import type { RefQuestion } from '@/lib/references/templateModel'
 import { RefereeStatus } from '@/components/references/RefereeStatus'
 import type { RefereeStatus as RefereeStatusValue } from '@/lib/references/status'
 
@@ -76,7 +78,8 @@ export function RefereeRow({
   expandable = false,
   expanded = false,
   onToggle,
-  answerLabels = {},
+  questions = [],
+  candidateSelf = null,
   showActions = false,
   onRemind,
   onRelease,
@@ -89,8 +92,10 @@ export function RefereeRow({
   expandable?: boolean
   expanded?: boolean
   onToggle?: () => void
-  /** question id → label, from the frozen snapshot. */
-  answerLabels?: Record<string, string>
+  /** Questions from the request's FROZEN template snapshot, in template order. */
+  questions?: RefQuestion[]
+  /** The candidate's self-assessment answers, keyed by question id. */
+  candidateSelf?: Record<string, unknown> | null
   showActions?: boolean
   onRemind?: () => void
   onRelease?: () => void
@@ -227,7 +232,6 @@ export function RefereeRow({
                   .filter(Boolean)
                   .join(' · ')}
               />
-              <KeyValueRow label="Would rehire" value={rehireOf(answers)} />
             </div>
 
             {held && referee.hold_note && (
