@@ -41,25 +41,21 @@ export function useSessionReferenceLink(requestId?: string | null): string | nul
 
 /* ------------------------------------------------------------------ referees */
 
-const refereeLinks = new Map<string, string>()
+const EMPTY: Record<string, string> = {}
+/** Cached snapshot — getSnapshot must be referentially stable between changes. */
+let refereeSnapshot: Record<string, string> = EMPTY
 
 /** Same rule for referee questionnaire links, keyed by referee id. */
 export function rememberRefereeLink(refereeId: string, link?: string | null) {
   if (!refereeId || !link) return
-  refereeLinks.set(refereeId, link)
+  refereeSnapshot = { ...refereeSnapshot, [refereeId]: link }
   emit()
 }
 
 export function useSessionRefereeLinks(): Record<string, string> {
   return useSyncExternalStore(
     subscribe,
-    () => {
-      const snapshot: Record<string, string> = {}
-      refereeLinks.forEach((v, k) => {
-        snapshot[k] = v
-      })
-      return snapshot
-    },
-    () => ({}),
+    () => refereeSnapshot,
+    () => EMPTY,
   )
 }
