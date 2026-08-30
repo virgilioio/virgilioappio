@@ -213,6 +213,11 @@ export default function PublicReferenceSubmit() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState<{ emailed: string[]; held: string[] } | null>(null)
 
+  // Public route: nothing else in the tree clears the cold-load splash when the
+  // visitor happens to have a (possibly stale) Gio session, so report it here.
+  useReportSplashReady(!!data || !!loadError)
+
+
   useEffect(() => {
     let alive = true
     resolveCandidateToken(token)
