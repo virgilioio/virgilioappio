@@ -352,6 +352,7 @@ const handler = async (req: Request): Promise<Response> => {
       attachments: 0,
       full: 0,
       metadataOnly: 0,
+      attachmentsSkipped: 0,
     };
 
   try {
