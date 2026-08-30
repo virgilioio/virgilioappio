@@ -603,6 +603,15 @@ const handler = async (req: Request): Promise<Response> => {
             : null,
         };
 
+        // Link the resolved candidate directly in the upsert (one statement,
+        // no insert-then-update).
+        if (match) {
+          emailData.candidate_id = match.candidateId;
+          if (match.organizationId) {
+            emailData.organization_id = match.organizationId;
+          }
+        }
+
         // Add attachments metadata if any found
         if (attachmentsMeta.length > 0) {
           emailData.attachments = attachmentsMeta;
@@ -634,41 +643,6 @@ const handler = async (req: Request): Promise<Response> => {
           stats.full++;
         } else {
           stats.metadataOnly++;
-        }
-
-        // Candidate matching (after successful insert/update)
-        try {
-          let match: { candidateId: string; organizationId: string | null } | null = null;
-          
-          if (direction === 'received') {
-            match = await findCandidateByEmails(
-              supabase, 
-              [fromEmail], 
-              identity.tenant_id
-            );
-          } else {
-            match = await findCandidateByEmails(
-              supabase, 
-              [...toEmails, ...ccEmails], 
-              identity.tenant_id
-            );
-          }
-
-          if (match) {
-            const updateData: Record<string, any> = { candidate_id: match.candidateId };
-            if (match.organizationId) {
-              updateData.organization_id = match.organizationId;
-            }
-            await supabase
-              .from('email_logs')
-              .update(updateData)
-              .eq('mail_identity_id', identity.id)
-              .eq('provider_message_id', msg.id);
-            
-            stats.matched++;
-          }
-        } catch (matchError) {
-          console.log(`[Gmail Sync] Candidate matching error for message ${msg.id}:`, matchError);
         }
 
       } catch (error) {
