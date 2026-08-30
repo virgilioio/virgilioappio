@@ -38,6 +38,8 @@ export interface PermissionsState {
   // Navigation permissions
   canViewCandidatesNavigation: boolean
   canViewReferences: boolean
+  canCancelReferences: boolean
+  canDeleteReferences: boolean
   
   // Job assignment permissions
   canViewJobAssignments: boolean
@@ -109,6 +111,10 @@ export function usePermissions(): PermissionsState {
     
     canViewCandidatesNavigation: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     canViewReferences: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
+    // Cancelling stops outbound contact — any ATS member may do it.
+    canCancelReferences: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
+    // Deleting destroys evidence others may rely on — held tighter.
+    canDeleteReferences: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
     canViewJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isAtsMember,
     canManageJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin,
