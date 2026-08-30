@@ -4,6 +4,8 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+
+import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { Check, Loader2, Plus, Send, Trash2 } from 'lucide-react'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
@@ -212,6 +214,11 @@ export default function PublicReferenceSubmit() {
   const [selfAnswers, setSelfAnswers] = useState<Record<string, unknown>>({})
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState<{ emailed: string[]; held: string[] } | null>(null)
+
+  // Public route: nothing else in the tree clears the cold-load splash when the
+  // visitor happens to have a (possibly stale) Gio session, so report it here.
+  useReportSplashReady(!!data || !!loadError)
+
 
   useEffect(() => {
     let alive = true

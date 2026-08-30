@@ -8,6 +8,8 @@
 import type { ReactNode } from 'react'
 import { Lock, ShieldCheck } from 'lucide-react'
 
+import { useReportSplashReady } from '@/contexts/SplashReadyContext'
+
 import { AgencyBrand } from './AgencyBrand'
 
 interface PublicPageShellProps {
@@ -27,6 +29,10 @@ export function PublicPageShell({
   footnote,
   children,
 }: PublicPageShellProps) {
+  // Safety net: a public page must never be trapped behind the cold-load
+  // splash, which only clears when something reports readiness.
+  useReportSplashReady(true)
+
   return (
     <div style={{ minHeight: '100dvh', background: '#FAF8F3' }}>
       <header
