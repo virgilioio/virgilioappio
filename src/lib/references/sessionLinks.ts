@@ -38,3 +38,28 @@ export function useSessionReferenceLink(requestId?: string | null): string | nul
     () => null,
   )
 }
+
+/* ------------------------------------------------------------------ referees */
+
+const refereeLinks = new Map<string, string>()
+
+/** Same rule for referee questionnaire links, keyed by referee id. */
+export function rememberRefereeLink(refereeId: string, link?: string | null) {
+  if (!refereeId || !link) return
+  refereeLinks.set(refereeId, link)
+  emit()
+}
+
+export function useSessionRefereeLinks(): Record<string, string> {
+  return useSyncExternalStore(
+    subscribe,
+    () => {
+      const snapshot: Record<string, string> = {}
+      refereeLinks.forEach((v, k) => {
+        snapshot[k] = v
+      })
+      return snapshot
+    },
+    () => ({}),
+  )
+}
