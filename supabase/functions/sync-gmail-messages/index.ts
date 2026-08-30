@@ -51,6 +51,8 @@ interface SyncStats {
   matched: number;
   errors: number;
   attachments: number;
+  full: number;
+  metadataOnly: number;
 }
 
 // Normalize email address: extract from "Name <email>" format and lowercase
@@ -314,22 +316,71 @@ async function findCandidateByEmails(
   return null;
 }
 
+// Determine whether a message should be stored with full payloads.
+// A message is candidate-related if:
+//   (a) a candidate_id is already resolved for it by the existing linking logic,
+//   (b) any address in from/to/cc matches an existing candidate email, or
+//   (c) its thread_id already exists on a row in email_logs with candidate_id set.
+async function isCandidateRelated(
+  supabase: any,
+  tenantId: string,
+  fromEmail: string,
+  toEmails: string[],
+  ccEmails: string[],
+  threadId: string
+): Promise<boolean> {
+  const allEmails = [fromEmail, ...toEmails, ...ccEmails].filter(Boolean);
+
+  if (allEmails.length > 0) {
+    const orFilter = allEmails.map(email => `email.ilike.${email}`).join(',');
+    const { data: candidates, error } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .or(orFilter)
+      .limit(1);
+
+    if (error) {
+      console.log('[Gmail Sync] Error checking candidate emails:', error.message);
+    } else if (candidates && candidates.length > 0) {
+      return true;
+    }
+  }
+
+  const { data: threadRows, error: threadError } = await supabase
+    .from('email_logs')
+    .select('id')
+    .eq('thread_id', threadId)
+    .not('candidate_id', 'is', null)
+    .limit(1);
+
+  if (threadError) {
+    console.log('[Gmail Sync] Error checking thread candidate link:', threadError.message);
+  } else if (threadRows && threadRows.length > 0) {
+    return true;
+  }
+
+  return false;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const stats: SyncStats = {
-    total: 0,
-    fetched: 0,
-    sent: 0,
-    received: 0,
-    upserted: 0,
-    skipped: 0,
-    matched: 0,
-    errors: 0,
-    attachments: 0,
-  };
+    const stats: SyncStats = {
+      total: 0,
+      fetched: 0,
+      sent: 0,
+      received: 0,
+      upserted: 0,
+      skipped: 0,
+      matched: 0,
+      errors: 0,
+      attachments: 0,
+      full: 0,
+      metadataOnly: 0,
+    };
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -521,6 +572,17 @@ const handler = async (req: Request): Promise<Response> => {
           console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
         }
 
+        // Determine whether this message is candidate-related before deciding
+        // how much of the payload to persist.
+        const candidateRelated = await isCandidateRelated(
+          supabase,
+          identity.tenant_id,
+          fromEmail,
+          toEmails,
+          ccEmails,
+          fullMessage.threadId,
+        );
+
         // Prepare upsert data
         const emailData: Record<string, any> = {
           user_id: userId,
@@ -532,7 +594,7 @@ const handler = async (req: Request): Promise<Response> => {
           cc_addresses: ccEmails.length > 0 ? ccEmails : null,
           subject: subject || '(No Subject)',
           body_text: text,
-          body_html: html,
+          body_html: candidateRelated ? html : null,
           thread_id: fullMessage.threadId,
           provider_message_id: msg.id,
           rfc822_message_id: rfc822MessageId,
@@ -542,14 +604,16 @@ const handler = async (req: Request): Promise<Response> => {
           is_read: !fullMessage.labelIds?.includes('UNREAD'),
           gmail_labels: fullMessage.labelIds || [],
           status: direction === 'sent' ? 'sent' : 'delivered',
-          raw_message_data: { 
-            headers: headers.reduce((acc: Record<string, string>, h) => {
-              acc[h.name] = h.value;
-              return acc;
-            }, {}),
-            labelIds: fullMessage.labelIds,
-            snippet: fullMessage.snippet,
-          },
+          raw_message_data: candidateRelated
+            ? {
+                headers: headers.reduce((acc: Record<string, string>, h) => {
+                  acc[h.name] = h.value;
+                  return acc;
+                }, {}),
+                labelIds: fullMessage.labelIds,
+                snippet: fullMessage.snippet,
+              }
+            : null,
         };
 
         // Add attachments metadata if any found
@@ -579,6 +643,11 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         stats.upserted++;
+        if (candidateRelated) {
+          stats.full++;
+        } else {
+          stats.metadataOnly++;
+        }
 
         // Candidate matching (after successful insert/update)
         try {
@@ -655,6 +724,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('id', mail_identity_id);
 
     console.log('[Gmail Sync] Complete. Stats:', JSON.stringify(stats, null, 2));
+    console.log('[gmail-sync] stored', { full: stats.full, metadataOnly: stats.metadataOnly });
 
     return new Response(
       JSON.stringify({ 
