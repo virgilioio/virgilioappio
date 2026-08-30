@@ -10,12 +10,27 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { adminClient } from "../_shared/referenceTokens.ts";
 import { loadRequestContext, sendRefereeEmail } from "../_shared/referenceContext.ts";
 
-type Action = "remind_referees" | "resend_referee" | "release_referee";
+type Action =
+  | "remind_referees"
+  | "resend_referee"
+  | "release_referee"
+  | "cancel_request"
+  | "delete_request";
 
-const ACTIONS: Action[] = ["remind_referees", "resend_referee", "release_referee"];
+const ACTIONS: Action[] = [
+  "remind_referees",
+  "resend_referee",
+  "release_referee",
+  "cancel_request",
+  "delete_request",
+];
 
 /** Statuses that still need (or can take) another email. */
 const CONTACTABLE = new Set(["pending", "invited", "opened", "in_progress"]);
+
+/** A referee whose answers must survive a cancel. */
+const KEEP = new Set(["submitted", "logged"]);
+
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
