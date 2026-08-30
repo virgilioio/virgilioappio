@@ -321,17 +321,19 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const stats: SyncStats = {
-    total: 0,
-    fetched: 0,
-    sent: 0,
-    received: 0,
-    upserted: 0,
-    skipped: 0,
-    matched: 0,
-    errors: 0,
-    attachments: 0,
-  };
+    const stats: SyncStats = {
+      total: 0,
+      fetched: 0,
+      sent: 0,
+      received: 0,
+      upserted: 0,
+      skipped: 0,
+      matched: 0,
+      errors: 0,
+      attachments: 0,
+      full: 0,
+      metadataOnly: 0,
+    };
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
