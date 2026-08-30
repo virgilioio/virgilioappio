@@ -724,6 +724,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('id', mail_identity_id);
 
     console.log('[Gmail Sync] Complete. Stats:', JSON.stringify(stats, null, 2));
+    console.log('[gmail-sync] stored', { full: stats.full, metadataOnly: stats.metadataOnly });
 
     return new Response(
       JSON.stringify({ 
