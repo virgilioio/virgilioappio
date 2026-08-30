@@ -100,7 +100,6 @@ export function useTenantReferenceRequests() {
         .from('reference_requests')
         .select('*')
         .eq('tenant_id', tenantId!)
-        .neq('state', 'cancelled')
         .order('created_at', { ascending: false })
       if (error) throw error
 
@@ -164,7 +163,7 @@ export function useTenantReferenceRequests() {
           flagged: r.flagged === true,
           storedState: r.state as RefRequestState,
           state:
-            r.state === 'expired' || r.state === 'draft'
+            r.state === 'expired' || r.state === 'draft' || r.state === 'cancelled'
               ? (r.state as RefRequestState)
               : deriveState(list, required),
           counts: formatCounts(list, required),

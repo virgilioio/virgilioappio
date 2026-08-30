@@ -10,12 +10,27 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { adminClient } from "../_shared/referenceTokens.ts";
 import { loadRequestContext, sendRefereeEmail } from "../_shared/referenceContext.ts";
 
-type Action = "remind_referees" | "resend_referee" | "release_referee";
+type Action =
+  | "remind_referees"
+  | "resend_referee"
+  | "release_referee"
+  | "cancel_request"
+  | "delete_request";
 
-const ACTIONS: Action[] = ["remind_referees", "resend_referee", "release_referee"];
+const ACTIONS: Action[] = [
+  "remind_referees",
+  "resend_referee",
+  "release_referee",
+  "cancel_request",
+  "delete_request",
+];
 
 /** Statuses that still need (or can take) another email. */
 const CONTACTABLE = new Set(["pending", "invited", "opened", "in_progress"]);
+
+/** A referee whose answers must survive a cancel. */
+const KEEP = new Set(["submitted", "logged"]);
+
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -23,6 +38,22 @@ function json(status: number, body: unknown) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+/** Recruiter's display name for the activity row. Never blocks the action. */
+async function displayName(supabase: any, userId: string): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const name = [data?.first_name, data?.last_name].filter(Boolean).join(" ").trim();
+    return name || data?.email || "a recruiter";
+  } catch {
+    return "a recruiter";
+  }
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -46,7 +77,8 @@ Deno.serve(async (req) => {
 
     if (!requestId) return json(400, { error: "request_id is required" });
     if (!action) return json(400, { error: "unknown action" });
-    if (action !== "remind_referees" && !refereeId) {
+    const REFEREE_SCOPED = new Set<Action>(["resend_referee", "release_referee"]);
+    if (REFEREE_SCOPED.has(action) && !refereeId) {
       return json(400, { error: "referee_id is required" });
     }
 
@@ -59,11 +91,109 @@ Deno.serve(async (req) => {
     if (!visible) return json(404, { error: "not_found" });
 
     const supabase = adminClient();
+
+    // ---- Cancel: stop every outbound contact, keep collected answers.
+    if (action === "cancel_request") {
+      const { data: request } = await supabase
+        .from("reference_requests")
+        .select("id, state, cancelled_at, candidate_id")
+        .eq("id", requestId)
+        .maybeSingle();
+      if (!request) return json(404, { error: "not_found" });
+      if (request.state === "cancelled") return json(400, { error: "Already cancelled" });
+
+      const { data: all } = await supabase
+        .from("reference_referees")
+        .select("id, status")
+        .eq("request_id", requestId);
+
+      // Referees who never submitted lose their link and their unsent draft.
+      for (const r of all ?? []) {
+        if (KEEP.has(r.status)) continue;
+        await supabase
+          .from("reference_referees")
+          .update({
+            status: "cancelled",
+            token_hash: null,
+            link_expires_at: null,
+            draft_answers: {},
+          })
+          .eq("id", r.id);
+      }
+
+      // The candidate's page promises nothing they entered was kept.
+      await supabase
+        .from("reference_requests")
+        .update({
+          state: "cancelled",
+          cancelled_at: new Date().toISOString(),
+          flagged: false,
+          candidate_token_hash: null,
+          candidate_link_expires_at: null,
+          self_assessment: null,
+        })
+        .eq("id", requestId);
+
+      const actorName = await displayName(supabase, userData.user.id);
+      await supabase.from("reference_activity").insert({
+        request_id: requestId,
+        type: "request_cancelled",
+        label: `Cancelled by ${actorName}`,
+        actor: userData.user.id,
+      });
+
+      // No email to anyone: a live link now explains itself.
+      return json(200, { success: true, cancelled: true });
+    }
+
+    // ---- Delete: destroy the record and every answer, keep a minimal audit row.
+    if (action === "delete_request") {
+      const { data: request } = await supabase
+        .from("reference_requests")
+        .select("id, candidate_id, tenant_id")
+        .eq("id", requestId)
+        .maybeSingle();
+      if (!request) return json(404, { error: "not_found" });
+
+      const { data: all } = await supabase
+        .from("reference_referees")
+        .select("id, status")
+        .eq("request_id", requestId);
+      const destroyed = (all ?? []).filter((r) => KEEP.has(r.status)).length;
+
+      // Audit first — no answer content, only the fact of the deletion.
+      await supabase.from("audit_logs").insert({
+        user_id: userData.user.id,
+        action: "reference_request_deleted",
+        table_name: "reference_requests",
+        record_id: requestId,
+        new_values: {
+          candidate_id: request.candidate_id,
+          tenant_id: request.tenant_id,
+          destroyed_references: destroyed,
+          deleted_at: new Date().toISOString(),
+        },
+      });
+
+      await supabase.from("reference_activity").delete().eq("request_id", requestId);
+      await supabase.from("reference_referees").delete().eq("request_id", requestId);
+      const { error: delErr } = await supabase
+        .from("reference_requests")
+        .delete()
+        .eq("id", requestId);
+      if (delErr) return json(422, { error: delErr.message });
+
+      // Live links now fall through to the ordinary expired card — nothing
+      // ever reveals that a request was deleted.
+      return json(200, { success: true, deleted: true, destroyed });
+    }
+
     const ctx = await loadRequestContext(supabase, requestId);
     if (!ctx) return json(404, { error: "not_found" });
     if (ctx.request.state === "cancelled") {
       return json(400, { error: "This request was cancelled" });
     }
+
 
     const { data: referees } = await supabase
       .from("reference_referees")
