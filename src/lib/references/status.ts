@@ -153,15 +153,32 @@ export interface RefRequestLike {
   flagged?: boolean | null
 }
 
-export type RefBucket = 'all' | 'needsAttention' | 'waiting' | 'complete'
+export type RefBucket = 'all' | 'needsAttention' | 'waiting' | 'complete' | 'cancelled'
 
+/** Cancelled checks stay findable in their own tab — never inside `all`. */
 export const refPredicates: Record<RefBucket, (r: RefRequestLike) => boolean> = {
-  all: () => true,
-  needsAttention: (r) => r.state === 'attention' || r.state === 'expired' || r.flagged === true,
+  all: (r) => r.state !== 'cancelled',
+  needsAttention: (r) =>
+    r.state !== 'cancelled' && (r.state === 'attention' || r.state === 'expired' || r.flagged === true),
   waiting: (r) =>
     r.state === 'draft' || r.state === 'candidate' || r.state === 'referees' || r.state === 'partial',
   complete: (r) => r.state === 'complete',
+  cancelled: (r) => r.state === 'cancelled',
 }
+
+/** Active = still running, so still cancellable. */
+const ACTIVE_STATES: RefRequestState[] = [
+  'draft',
+  'candidate',
+  'referees',
+  'partial',
+  'attention',
+]
+
+export function isActiveRefState(state: RefRequestState): boolean {
+  return ACTIVE_STATES.includes(state)
+}
+
 
 export function countBucket<T extends RefRequestLike>(rows: T[], bucket: RefBucket): number {
   return rows.filter(refPredicates[bucket]).length
