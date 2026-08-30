@@ -60,6 +60,7 @@ const BookingConfirmed = lazy(() => import('./pages/BookingConfirmed'))
 const CandidateChat = lazy(() => import('./pages/CandidateChat'))
 const PublicReferenceSubmit = lazy(() => import('./pages/PublicReferenceSubmit'))
 const PublicReferenceAnswer = lazy(() => import('./pages/PublicReferenceAnswer'))
+const PublicReferenceReport = lazy(() => import('./pages/PublicReferenceReport'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const OnboardingPreview = lazy(() => import('./pages/dev/OnboardingPreview'))
 const TrialActivation = lazy(() => import('./pages/TrialActivation'))
@@ -141,6 +142,7 @@ function AppContent() {
             The static /references app routes still win by static-over-dynamic ranking. */}
         <Route path="/references/:token" element={<PublicReferenceSubmit />} />
         <Route path="/reference/:token" element={<PublicReferenceAnswer />} />
+        <Route path="/reference-report/:token" element={<PublicReferenceReport />} />
 
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
