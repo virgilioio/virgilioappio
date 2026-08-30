@@ -53,6 +53,7 @@ interface SyncStats {
   attachments: number;
   full: number;
   metadataOnly: number;
+  attachmentsSkipped: number;
 }
 
 // Normalize email address: extract from "Name <email>" format and lowercase
@@ -316,37 +317,9 @@ async function findCandidateByEmails(
   return null;
 }
 
-// Determine whether a message should be stored with full payloads.
-// A message is candidate-related if:
-//   (a) a candidate_id is already resolved for it by the existing linking logic,
-//   (b) any address in from/to/cc matches an existing candidate email, or
-//   (c) its thread_id already exists on a row in email_logs with candidate_id set.
-async function isCandidateRelated(
-  supabase: any,
-  tenantId: string,
-  fromEmail: string,
-  toEmails: string[],
-  ccEmails: string[],
-  threadId: string
-): Promise<boolean> {
-  const allEmails = [fromEmail, ...toEmails, ...ccEmails].filter(Boolean);
-
-  if (allEmails.length > 0) {
-    const orFilter = allEmails.map(email => `email.ilike.${email}`).join(',');
-    const { data: candidates, error } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .or(orFilter)
-      .limit(1);
-
-    if (error) {
-      console.log('[Gmail Sync] Error checking candidate emails:', error.message);
-    } else if (candidates && candidates.length > 0) {
-      return true;
-    }
-  }
-
+// Check whether the thread already exists in email_logs on a row with
+// candidate_id set (rule c for candidate-relatedness).
+async function threadHasCandidate(supabase: any, threadId: string): Promise<boolean> {
   const { data: threadRows, error: threadError } = await supabase
     .from('email_logs')
     .select('id')
@@ -356,11 +329,10 @@ async function isCandidateRelated(
 
   if (threadError) {
     console.log('[Gmail Sync] Error checking thread candidate link:', threadError.message);
-  } else if (threadRows && threadRows.length > 0) {
-    return true;
+    return false;
   }
 
-  return false;
+  return !!(threadRows && threadRows.length > 0);
 }
 
 const handler = async (req: Request): Promise<Response> => {
