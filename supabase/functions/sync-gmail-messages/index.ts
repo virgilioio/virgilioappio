@@ -530,31 +530,45 @@ const handler = async (req: Request): Promise<Response> => {
         // Extract body
         const { text, html } = extractEmailBody(fullMessage);
 
-        // Process attachments
-        let attachmentsMeta: AttachmentMeta[] = [];
+        // Resolve the candidate ONCE, before anything expensive, using the
+        // existing direction-specific rule:
+        //   received → match on the sender; sent → match on recipients.
+        let match: { candidateId: string; organizationId: string | null } | null = null;
         try {
-          attachmentsMeta = await processAttachments(
-            supabase,
-            accessToken,
-            msg.id,
-            identity.id,
-            fullMessage,
-          );
-          stats.attachments += attachmentsMeta.length;
-        } catch (attachErr) {
-          console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
+          if (direction === 'received') {
+            match = await findCandidateByEmails(supabase, [fromEmail], identity.tenant_id);
+          } else {
+            match = await findCandidateByEmails(supabase, [...toEmails, ...ccEmails], identity.tenant_id);
+          }
+          if (match) stats.matched++;
+        } catch (matchError) {
+          console.log(`[Gmail Sync] Candidate matching error for message ${msg.id}:`, matchError);
         }
 
-        // Determine whether this message is candidate-related before deciding
-        // how much of the payload to persist.
-        const candidateRelated = await isCandidateRelated(
-          supabase,
-          identity.tenant_id,
-          fromEmail,
-          toEmails,
-          ccEmails,
-          fullMessage.threadId,
-        );
+        // Candidate-related if we have a direct match, or the thread already
+        // has a candidate-linked row. Only hit email_logs when match is null.
+        const candidateRelated =
+          match !== null || (await threadHasCandidate(supabase, fullMessage.threadId));
+
+        // Process attachments only for candidate-related mail — non-candidate
+        // mail gets no Gmail attachment downloads and no storage writes.
+        let attachmentsMeta: AttachmentMeta[] = [];
+        if (candidateRelated) {
+          try {
+            attachmentsMeta = await processAttachments(
+              supabase,
+              accessToken,
+              msg.id,
+              identity.id,
+              fullMessage,
+            );
+            stats.attachments += attachmentsMeta.length;
+          } catch (attachErr) {
+            console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
+          }
+        } else {
+          stats.attachmentsSkipped++;
+        }
 
         // Prepare upsert data
         const emailData: Record<string, any> = {
