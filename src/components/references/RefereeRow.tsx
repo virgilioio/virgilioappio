@@ -253,10 +253,6 @@ export function RefereeRow({
               </div>
             )}
           </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {showActions && (
             <div className="flex items-center" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
