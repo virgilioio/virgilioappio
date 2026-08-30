@@ -4,6 +4,8 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+
+import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { Check, Loader2, Plus, Send, Trash2 } from 'lucide-react'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
