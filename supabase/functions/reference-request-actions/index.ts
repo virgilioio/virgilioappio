@@ -39,6 +39,22 @@ function json(status: number, body: unknown) {
   });
 }
 
+/** Recruiter's display name for the activity row. Never blocks the action. */
+async function displayName(supabase: any, userId: string): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, email")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const name = [data?.first_name, data?.last_name].filter(Boolean).join(" ").trim();
+    return name || data?.email || "a recruiter";
+  } catch {
+    return "a recruiter";
+  }
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
