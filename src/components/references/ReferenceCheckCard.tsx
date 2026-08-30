@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Info, Link2, Phone, Plus, Send, UserRoundPlus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Info, Link2, Phone, Plus, Send, Share2, UserRoundPlus } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,18 @@ import { RefStatus } from '@/components/references/RefStatus'
 import { RefereeTrack } from '@/components/references/RefereeTrack'
 import { RefCardFooter, RefCardShell, RefDetailRow } from '@/components/references/RefCardShell'
 import { RefereeRow, type RefereeRowData } from '@/components/references/RefereeRow'
+import { GioSummaryBlock, type GioFlagCounts } from '@/components/references/GioSummaryBlock'
+import { ShareReportDialog } from '@/components/references/ShareReportDialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { composeRequirementLine } from '@/lib/references/requestCopy'
 import {
   countReferees,
@@ -29,7 +41,10 @@ export interface ReferenceRequestRow {
   min_referees_override?: number | null
   requested_by?: string | null
   created_at?: string
+  updated_at?: string | null
   template_snapshot?: Record<string, any> | null
+  flags?: Record<string, any> | null
+  gio_summary?: { prose?: string | null; updated_at?: string | null } | null
 }
 
 interface ReferenceCheckCardProps {
@@ -52,6 +67,8 @@ interface ReferenceCheckCardProps {
   people?: Record<string, string>
   /** The candidate link minted in this session, if any — enables Copy link. */
   sessionLink?: string | null
+  /** referee id → link minted in this session, if any. */
+  sessionRefereeLinks?: Record<string, string>
 
   onRequest: () => void
   onOpenDetail?: () => void
@@ -120,6 +137,7 @@ export function ReferenceCheckCard({
   candidateEmail,
   people = {},
   sessionLink,
+  sessionRefereeLinks = {},
   onRequest,
   onOpenDetail,
   onResendCandidate,
@@ -132,6 +150,9 @@ export function ReferenceCheckCard({
   busy = false,
 }: ReferenceCheckCardProps) {
   const [open, setOpen] = useState(true)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [openRefereeId, setOpenRefereeId] = useState<string | null>(null)
 
   const cardState: RefCardState = resolveCardState(request, suggested, referees)
   const snapshot = request?.template_snapshot ?? null
@@ -149,6 +170,11 @@ export function ReferenceCheckCard({
   const invitedNames = referees
     .filter((r) => !(r.on_hold === true || r.status === 'on_hold'))
     .map((r) => r.name)
+
+  const firstRefereeId = referees[0]?.id ?? null
+  useEffect(() => {
+    setOpenRefereeId((current) => current ?? firstRefereeId)
+  }, [firstRefereeId])
 
   const answerLabels = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {}
