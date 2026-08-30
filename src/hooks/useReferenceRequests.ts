@@ -291,46 +291,76 @@ export function useReferenceRefereeAction() {
 
 export interface LogPhoneReferenceInput {
   requestId: string
+  /** When set, the existing referee row is updated instead of inserting a new one. */
+  refereeId?: string | null
   name: string
   relationship?: string | null
   title?: string | null
   company?: string | null
   period?: string | null
+  /** When the recruiter spoke to the referee. Defaults to now. */
+  spokeAt?: string | null
   answers: Record<string, unknown>
 }
 
 /** A reference the recruiter already has in hand — no email, no token. */
 export function useLogPhoneReference() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (input: LogPhoneReferenceInput) => {
-      const now = new Date().toISOString()
-      const { data, error } = await supabase
-        .from('reference_referees')
-        .insert({
-          request_id: input.requestId,
-          name: input.name,
-          relationship: input.relationship ?? null,
-          title: input.title ?? null,
-          company: input.company ?? null,
-          period: input.period ?? null,
-          source: 'recruiter_logged',
-          status: 'logged',
-          answers: input.answers as any,
-          submitted_at: now,
-        })
-        .select('*')
-        .single()
-      if (error) throw error
-      return data
+      const submittedAt = input.spokeAt || new Date().toISOString()
+      const payload = {
+        name: input.name,
+        relationship: input.relationship ?? null,
+        title: input.title ?? null,
+        company: input.company ?? null,
+        period: input.period ?? null,
+        source: 'recruiter_logged' as const,
+        status: 'logged' as const,
+        answers: input.answers as any,
+        submitted_at: submittedAt,
+      }
+
+      let row: any
+      if (input.refereeId) {
+        const { data, error } = await supabase
+          .from('reference_referees')
+          .update({ ...payload, on_hold: false })
+          .eq('id', input.refereeId)
+          .select('*')
+          .single()
+        if (error) throw error
+        row = data
+      } else {
+        const { data, error } = await supabase
+          .from('reference_referees')
+          .insert({ request_id: input.requestId, ...payload })
+          .select('*')
+          .single()
+        if (error) throw error
+        row = data
+      }
+
+      // Append-only activity — the timeline names the recruiter who captured it.
+      await supabase.from('reference_activity').insert({
+        request_id: input.requestId,
+        type: 'referee_logged',
+        label: `${input.name} logged by phone — recruiter-captured`,
+        actor: user?.id ?? null,
+      })
+
+      return row
     },
     onSuccess: (_d, vars) => {
       invalidateRequest(queryClient, vars.requestId)
+      queryClient.invalidateQueries({ queryKey: ['reference-activity', vars.requestId] })
       toast({ title: 'Reference logged', description: 'It now appears with the others.' })
     },
     onError: (e: any) =>
       toast({ title: 'Could not log the reference', description: e.message, variant: 'destructive' }),
   })
 }
+

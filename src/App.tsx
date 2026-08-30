@@ -48,6 +48,8 @@ const AcceptInvite = lazy(() => import('./pages/AcceptInvite'))
 
 const NotFound = lazy(() => import('./pages/NotFound'))
 const CandidateProfile = lazy(() => import('@/pages/CandidateProfile'))
+const ReferenceRequestDetail = lazy(() => import('@/pages/ReferenceRequestDetail'))
+const CandidateReferences = lazy(() => import('@/pages/CandidateReferences'))
 const IndependentCandidateProfile = lazy(() => import('@/pages/IndependentCandidateProfile'))
 
 
@@ -196,6 +198,8 @@ function AppContent() {
             <Route path="/chat" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
             <Route path="/chat/:threadId" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
             <Route path="/references" element={<References />} />
+            <Route path="/references/requests/:requestId" element={<ReferenceRequestDetail />} />
+            <Route path="/candidates/:candidateId/references" element={<CandidateReferences />} />
             <Route path="/references/templates" element={<ReferenceTemplates />} />
             <Route path="/references/templates/:id" element={<ReferenceTemplateEditor />} />
 

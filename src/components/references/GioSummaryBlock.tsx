@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Flag, Sparkles } from 'lucide-react'
 
 export interface GioFlagCounts {
@@ -25,6 +26,9 @@ export function GioSummaryBlock({
   updatedAt,
   submitted,
   required,
+  /** 'detail' renders the request-detail scale (13px prose, 16px pad). */
+  variant = 'card',
+  children,
 }: {
   prose?: string | null
   flagged?: boolean
@@ -32,9 +36,14 @@ export function GioSummaryBlock({
   updatedAt?: string | null
   submitted?: number
   required?: number
+  variant?: 'card' | 'detail'
+  children?: ReactNode
 }) {
   const text = (prose ?? '').trim()
   if (!text) return null
+
+  const detail = variant === 'detail'
+
 
   const tone = flagged
     ? { bg: '#FFFBF3', border: '#FDE6C8', chip: '#FDE6C8', fg: '#9A3412', icon: Flag }
@@ -64,14 +73,19 @@ export function GioSummaryBlock({
       style={{
         background: tone.bg,
         border: `1px solid ${tone.border}`,
-        borderRadius: 10,
-        padding: '12px 14px',
+        borderRadius: detail ? 12 : 10,
+        padding: detail ? 16 : '12px 14px',
       }}
     >
       <div className="flex items-center" style={{ gap: 8 }}>
         <span
           className="inline-flex items-center justify-center shrink-0"
-          style={{ width: 22, height: 22, borderRadius: 6, background: tone.chip }}
+          style={{
+            width: detail ? 24 : 22,
+            height: detail ? 24 : 22,
+            borderRadius: detail ? 7 : 6,
+            background: tone.chip,
+          }}
         >
           <Icon size={12} color={tone.fg} strokeWidth={2.2} />
         </span>
@@ -82,7 +96,10 @@ export function GioSummaryBlock({
           Gio summary
         </span>
         {meta && (
-          <span className="font-inter" style={{ fontSize: 10.5, color: '#8B8F9E' }}>
+          <span
+            className="font-inter"
+            style={{ fontSize: 10.5, color: '#8B8F9E', marginLeft: detail ? 'auto' : undefined }}
+          >
             {meta}
           </span>
         )}
@@ -90,12 +107,17 @@ export function GioSummaryBlock({
 
       <p
         className="font-inter"
-        style={{ fontSize: 12, color: '#3A3F52', lineHeight: 1.6, marginTop: 8 }}
+        style={{
+          fontSize: detail ? 13 : 12,
+          color: detail ? '#1F2230' : '#3A3F52',
+          lineHeight: detail ? 1.7 : 1.6,
+          marginTop: detail ? 10 : 8,
+        }}
       >
         {text}
       </p>
 
-      {badges.length > 0 && (
+      {!detail && badges.length > 0 && (
         <div className="flex items-center" style={{ gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
           {badges.map(({ key, count }) => (
             <span
@@ -115,8 +137,11 @@ export function GioSummaryBlock({
           ))}
         </div>
       )}
+
+      {children}
     </div>
   )
+
 }
 
 export default GioSummaryBlock

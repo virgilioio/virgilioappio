@@ -102,7 +102,13 @@ export function CandidateReferenceCheckSection({
         sessionRefereeLinks={sessionRefereeLinks}
         busy={busy}
         onRequest={onRequest}
-        onOpenDetail={() => navigate('/references')}
+        onOpenDetail={() =>
+          navigate(
+            activeRequest && activeRequest.state !== 'cancelled'
+              ? `/references/requests/${activeRequest.id}`
+              : '/references',
+          )
+        }
         onResendCandidate={handleResend}
         onCopyLink={() => {
           if (sessionLink) copyToClipboard(sessionLink, 'Candidate link copied')
@@ -132,7 +138,20 @@ export function CandidateReferenceCheckSection({
           onOpenChange={setLogOpen}
           requestId={activeRequest.id}
           snapshot={(activeRequest as any).template_snapshot ?? null}
+          candidateName={candidateName}
+          referees={referees as any}
         />
+      )}
+
+      {candidateId && (
+        <button
+          type="button"
+          onClick={() => navigate(`/candidates/${candidateId}/references`)}
+          className="font-inter"
+          style={{ fontSize: 11.5, color: '#5B21B6', textAlign: 'left' }}
+        >
+          All references for this candidate →
+        </button>
       )}
     </>
   )
