@@ -28,6 +28,7 @@ export type RefereeStatus =
   | 'bounced'
   | 'on_hold'
   | 'logged'
+  | 'cancelled'
 
 export interface RefereeLike {
   id?: string
@@ -199,6 +200,7 @@ export const REFEREE_STATUS_TONE: Record<RefereeStatus, RefTone> = {
   declined: 'red',
   bounced: 'red',
   on_hold: 'yellow',
+  cancelled: 'neutral',
 }
 
 export const REFEREE_STATUS_LABEL: Record<RefereeStatus, string> = {
@@ -211,6 +213,7 @@ export const REFEREE_STATUS_LABEL: Record<RefereeStatus, string> = {
   declined: 'Declined',
   bounced: 'Bounced',
   on_hold: 'On hold',
+  cancelled: 'No longer needed',
 }
 
 /* ------------------------------------------------------------------ */

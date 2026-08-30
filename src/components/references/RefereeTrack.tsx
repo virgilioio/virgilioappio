@@ -15,6 +15,7 @@ const SEG_COLOR: Record<RefereeStatus, string> = {
   declined: '#FCA5A5',
   bounced: '#FCA5A5',
   pending: '#E7E8EE',
+  cancelled: '#E7E8EE',
 }
 
 export interface RefereeTrackProps {

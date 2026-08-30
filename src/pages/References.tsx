@@ -17,6 +17,16 @@ import { useAuth } from '@/contexts/AuthContext'
 import { ReferencesShell, ReferencesNoAccess } from '@/components/references/ReferencesShell'
 import { ReferenceRequestsTable } from '@/components/references/ReferenceRequestsTable'
 import { useTenantReferenceRequests, type ReferenceListRow } from '@/hooks/useReferenceList'
+import {
+  useCancelReferenceRequest,
+  useDeleteReferenceRequest,
+  useResendCandidateLink,
+} from '@/hooks/useReferenceRequests'
+import { ShareReportDialog } from '@/components/references/ShareReportDialog'
+import {
+  CancelDeleteReferenceDialog,
+  type RefDestructiveMode,
+} from '@/components/references/CancelDeleteReferenceDialog'
 import { refPredicates, type RefBucket } from '@/lib/references/status'
 
 const TABS: [RefBucket, string][] = [
@@ -24,6 +34,7 @@ const TABS: [RefBucket, string][] = [
   ['needsAttention', 'Needs attention'],
   ['waiting', 'Waiting'],
   ['complete', 'Complete'],
+  ['cancelled', 'Cancelled'],
 ]
 
 const ALL = '__all__'
@@ -84,7 +95,7 @@ function FilterPill({
 /** /references — the request list (Flow E.1). */
 export default function ReferencesPage() {
   const navigate = useNavigate()
-  const { canViewReferences } = usePermissions()
+  const { canViewReferences, canCancelReferences, canDeleteReferences } = usePermissions()
   const { user } = useAuth()
   const { requests, isLoading } = useTenantReferenceRequests()
 
@@ -93,6 +104,15 @@ export default function ReferencesPage() {
   const [client, setClient] = useState(ALL)
   const [recruiter, setRecruiter] = useState(ALL)
   const [search, setSearch] = useState('')
+  const [menuFor, setMenuFor] = useState<string | null>(null)
+  const [shareFor, setShareFor] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<{ mode: RefDestructiveMode; row: ReferenceListRow } | null>(
+    null,
+  )
+
+  const resend = useResendCandidateLink()
+  const cancelRequest = useCancelReferenceRequest()
+  const deleteRequest = useDeleteReferenceRequest()
 
   const jobOptions = useMemo(
     () =>
@@ -149,22 +169,26 @@ export default function ReferencesPage() {
   )
   const rows = pool.filter(refPredicates[tab])
 
-  const jobsCount = new Set(requests.map((r) => r.jobId).filter(Boolean)).size
-  const attentionCount = requests.filter(refPredicates.needsAttention).length
+  const visible = requests.filter(refPredicates.all)
+  const jobsCount = new Set(visible.map((r) => r.jobId).filter(Boolean)).size
+  const attentionCount = visible.filter(refPredicates.needsAttention).length
 
   if (!canViewReferences) return <ReferencesNoAccess />
 
   return (
     <ReferencesShell>
+      <div style={{ position: 'relative' }} onClick={() => setMenuFor(null)}>
       <PageHeader
         title="Reference checks"
         kicker
-        count={requests.length}
+        count={visible.length}
         meta={
           <>
             <span>Across {jobsCount} jobs</span>
-            {attentionCount > 0 && (
+            {attentionCount > 0 ? (
               <span style={{ color: '#B45309' }}>{attentionCount} need attention</span>
+            ) : (
+              <span>Nothing needs attention</span>
             )}
           </>
         }
@@ -288,25 +312,65 @@ export default function ReferencesPage() {
         )
       ) : rows.length === 0 ? (
         <div
-          className="font-inter"
           style={{
+            marginTop: 14,
+            padding: '28px 22px',
+            textAlign: 'center',
             background: '#fff',
             border: '1px solid #E7E8EE',
             borderRadius: 12,
-            padding: '28px 18px',
-            textAlign: 'center',
-            fontSize: 12,
-            color: '#5A6072',
           }}
         >
-          No checks match this view.
+          <p
+            className="font-poppins"
+            style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2230', letterSpacing: '-0.02em' }}
+          >
+            {tab === 'cancelled' ? 'No cancelled checks' : 'Nothing here'}
+          </p>
+          <p className="font-inter" style={{ fontSize: 12, color: '#8B8F9E', marginTop: 4 }}>
+            {tab === 'cancelled'
+              ? 'Cancelled checks stay here until you delete them.'
+              : 'Try a different filter.'}
+          </p>
         </div>
       ) : (
         <ReferenceRequestsTable
           rows={rows}
           onOpen={(row: ReferenceListRow) => navigate(`/references/requests/${row.id}`)}
+          menuFor={menuFor}
+          onMenuChange={setMenuFor}
+          onResend={(row) => resend.mutate(row.id)}
+          onShare={(row) => setShareFor(row.id)}
+          onCancel={(row) => setConfirm({ mode: 'cancel', row })}
+          onDelete={(row) => setConfirm({ mode: 'delete', row })}
+          canCancel={canCancelReferences}
+          canDelete={canDeleteReferences}
         />
       )}
+
+      <ShareReportDialog
+        open={!!shareFor}
+        onOpenChange={(v) => !v && setShareFor(null)}
+        requestId={shareFor}
+      />
+
+      {confirm && (
+        <CancelDeleteReferenceDialog
+          mode={confirm.mode}
+          candidateName={confirm.row.candidateName}
+          candidateRole={confirm.row.candidateRole}
+          clientName={confirm.row.clientName}
+          referees={confirm.row.referees}
+          busy={cancelRequest.isPending || deleteRequest.isPending}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => {
+            const { mode, row } = confirm
+            const mutation = mode === 'cancel' ? cancelRequest : deleteRequest
+            mutation.mutate(row.id, { onSuccess: () => setConfirm(null) })
+          }}
+        />
+      )}
+      </div>
     </ReferencesShell>
   )
 }
