@@ -8736,6 +8736,7 @@ export type Database = {
         }
         Returns: string
       }
+      nightly_storage_cleanup: { Args: never; Returns: undefined }
       normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
