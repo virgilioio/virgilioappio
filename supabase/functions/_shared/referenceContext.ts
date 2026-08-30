@@ -5,8 +5,6 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
   estimatedMinutes,
-  formatExpiry,
-  renderReferenceEmail,
   sendReferenceEmail,
   type AgencyBrand,
   type RefEmailTemplate,
@@ -16,6 +14,7 @@ import {
   logReferenceActivity,
 } from "./referenceTokens.ts";
 import { renderCandidateReferenceEmail } from "./candidateReferenceEmail.ts";
+import { renderRefereeReferenceEmail } from "./refereeReferenceEmail.ts";
 
 export interface RequestContext {
   request: Record<string, any>;
