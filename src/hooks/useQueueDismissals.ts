@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,7 +11,19 @@ import { useAuth } from '@/contexts/AuthContext'
  * They now live in `dashboard_queue_dismissals`, keyed by a stable *semantic*
  * key (see buildQueue in Dashboard.tsx) so a row can't resurface under a new
  * database row id.
+ *
+ * NOTE: the react-query cache is persisted to localStorage as JSON, and a Set
+ * does not survive JSON serialisation (it round-trips as `{}`). Query data is
+ * therefore a plain string[] of item keys; the Set consumers use is derived
+ * with useMemo below.
  */
+
+/** Coerce any legacy/stale persisted value (Set, plain object, etc.) to an array. */
+function toKeyArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string')
+  return []
+}
+
 export function useQueueDismissals() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -19,7 +31,7 @@ export function useQueueDismissals() {
   const queryKey = ['queue-dismissals', userId]
   const migratedRef = useRef<string | null>(null)
 
-  const { data: dismissed = new Set<string>(), isLoading } = useQuery({
+  const { data: dismissedKeys, isLoading } = useQuery({
     queryKey,
     enabled: !!userId,
     staleTime: 60_000,
@@ -29,16 +41,14 @@ export function useQueueDismissals() {
         .select('item_key')
         .eq('user_id', userId!)
       if (error) throw error
-      return new Set<string>((data ?? []).map(r => r.item_key))
+      return (data ?? []).map(r => r.item_key)
     },
   })
 
-  const setLocal = (mutate: (next: Set<string>) => void) => {
-    queryClient.setQueryData<Set<string>>(queryKey, prev => {
-      const next = new Set(prev ?? [])
-      mutate(next)
-      return next
-    })
+  const dismissed = useMemo(() => new Set<string>(toKeyArray(dismissedKeys)), [dismissedKeys])
+
+  const setLocal = (mutate: (prev: string[]) => string[]) => {
+    queryClient.setQueryData<string[]>(queryKey, prev => mutate(toKeyArray(prev)))
   }
 
   const dismiss = useMutation({
@@ -53,10 +63,10 @@ export function useQueueDismissals() {
       if (error) throw error
     },
     onMutate: (itemKey: string) => {
-      setLocal(next => next.add(itemKey))
+      setLocal(prev => (prev.includes(itemKey) ? prev : [...prev, itemKey]))
     },
     onError: (_e, itemKey) => {
-      setLocal(next => next.delete(itemKey))
+      setLocal(prev => prev.filter(k => k !== itemKey))
     },
   })
 
@@ -71,10 +81,10 @@ export function useQueueDismissals() {
       if (error) throw error
     },
     onMutate: (itemKey: string) => {
-      setLocal(next => next.delete(itemKey))
+      setLocal(prev => prev.filter(k => k !== itemKey))
     },
     onError: (_e, itemKey) => {
-      setLocal(next => next.add(itemKey))
+      setLocal(prev => (prev.includes(itemKey) ? prev : [...prev, itemKey]))
     },
   })
 
