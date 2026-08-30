@@ -229,24 +229,61 @@ export function useResendCandidateLink() {
   })
 }
 
+/**
+ * Cancel — revokes every live link and stops all reminders, and never touches
+ * answers that were already submitted. Sends no email to anyone.
+ */
 export function useCancelReferenceRequest() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (requestId: string) => {
-      const { error } = await supabase
-        .from('reference_requests')
-        .update({ state: 'cancelled', cancelled_at: new Date().toISOString() })
-        .eq('id', requestId)
-      if (error) throw error
+      const { data, error } = await supabase.functions.invoke('reference-request-actions', {
+        body: { request_id: requestId, action: 'cancel_request' },
+      })
+      const failure = (data as { error?: string } | null)?.error
+      if (error || failure) throw new Error(failure ?? error?.message ?? 'Could not cancel')
     },
     onSuccess: (_d, requestId) => {
       invalidateRequest(queryClient, requestId)
-      toast({ title: 'Request cancelled', description: 'Nobody will be contacted again.' })
+      toast({
+        title: 'Reference check cancelled',
+        description: 'Links revoked and reminders stopped. Submitted references were kept.',
+      })
     },
     onError: (e: any) =>
       toast({ title: 'Could not cancel', description: e.message, variant: 'destructive' }),
+  })
+}
+
+/** Delete — destroys the request, its referees and every answer. Irreversible. */
+export function useDeleteReferenceRequest() {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { data, error } = await supabase.functions.invoke('reference-request-actions', {
+        body: { request_id: requestId, action: 'delete_request' },
+      })
+      const failure = (data as { error?: string } | null)?.error
+      if (error || failure) throw new Error(failure ?? error?.message ?? 'Could not delete')
+      return (data as { destroyed?: number }) ?? {}
+    },
+    onSuccess: (data, requestId) => {
+      invalidateRequest(queryClient, requestId)
+      queryClient.invalidateQueries({ queryKey: ['reference-activity', requestId] })
+      toast({
+        title: 'Reference check deleted',
+        description:
+          (data?.destroyed ?? 0) > 0
+            ? `${data!.destroyed} submitted reference${data!.destroyed === 1 ? '' : 's'} destroyed.`
+            : 'The record has been removed.',
+      })
+    },
+    onError: (e: any) =>
+      toast({ title: 'Could not delete', description: e.message, variant: 'destructive' }),
   })
 }
 
