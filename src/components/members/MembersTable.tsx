@@ -51,7 +51,7 @@ function getInitials(m: EnrichedMember) {
 }
 
 export function MembersTable({
-  members, isLoading, onEdit, onDeactivate, onResendInvitation,
+  members, isLoading, onEdit, onDeactivate, onReactivate, onResendInvitation,
   onDeleteUser, onManageJobAssignments, onAddNew,
 }: MembersTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
