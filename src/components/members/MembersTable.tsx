@@ -228,10 +228,10 @@ export function MembersTable({
                         </DropdownMenuItem>
                       </>
                     )}
-                    {m.user_status === 'inactive' && (
+                    {m.user_status === 'inactive' && onReactivate && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(m) }} className="gap-2">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReactivate(m) }} className="gap-2">
                           <UserCheck className="h-4 w-4" />Reactivate Member
                         </DropdownMenuItem>
                       </>
