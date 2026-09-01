@@ -1146,10 +1146,14 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(new Date());
       setSelectedSlot(null);
+      setSelectedDuration(30);
       setFormatOption('video');
       setSiteAddress('');
       setGuestEmails([]);
+      setInviteMessage('');
+      prefilledFromRef.current = null;
     }
+
     onOpenChange(newOpen);
   };
 
