@@ -541,6 +541,59 @@ export function useMembers(includeHierarchy: boolean = false) {
     }
   }
 
+  const reactivateMember = async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      log.debug('Reactivating member:', id)
+
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ user_status: 'active' })
+        .eq('id', id)
+
+      if (updateError) {
+        log.error('Error reactivating member:', updateError)
+        throw updateError
+      }
+
+      await getMembers()
+      await syncSeatsAfterChange()
+
+      toast({
+        title: 'Success',
+        description: 'Member reactivated successfully'
+      })
+    } catch (err) {
+      const rawMessage = extractErrorMessage(err)
+      let errorMessage = rawMessage
+      // Seat-limit guard surfaces a structured payload — show its message instead of raw JSON
+      try {
+        const parsed = JSON.parse(rawMessage)
+        if (parsed?.type === 'SEAT_LIMIT_REACHED') {
+          errorMessage = parsed.message || 'No paid seats left. Upgrade your plan to reactivate this member.'
+        }
+      } catch {
+        if (/seat/i.test(rawMessage) && /limit|exceed/i.test(rawMessage)) {
+          errorMessage = 'No paid seats left. Upgrade your plan to reactivate this member.'
+        }
+      }
+      log.error('Member reactivation error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+
+
   const resendInvitation = async (memberId: string, email: string) => {
     setIsLoading(true)
     try {
