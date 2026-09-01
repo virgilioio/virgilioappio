@@ -106,8 +106,9 @@ serve(async (req) => {
     const interviewTitle = `${stageName} - ${jobTitle}`;
 
     // Delete Google Calendar event if exists
-    if (booking.google_event_id) {
+    if (booking.google_event_id || booking.candidate_google_event_id) {
       console.log('[cancel-booking] Deleting Google Calendar event:', booking.google_event_id);
+
 
       const { data: calIdentity } = await supabase
         .from('calendar_identities')
