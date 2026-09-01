@@ -148,6 +148,7 @@ export function MembersTab() {
         isLoading={isLoading}
         onEdit={handleEdit}
         onDeactivate={handleDeactivate}
+        onReactivate={permissions.canCreateMembers ? setMemberToReactivate : undefined}
         onResendInvitation={handleResendInvitation}
         onDeleteUser={handleDeleteUser}
         onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
