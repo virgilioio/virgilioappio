@@ -425,6 +425,29 @@ export function AvailabilityStrip({
                 />
               ))}
 
+              {originStartMin !== null && originDurationMinutes ? (
+                <div
+                  title={
+                    date
+                      ? `Currently scheduled ${minutesToLabel(date, originStartMin)}–${minutesToLabel(
+                          date,
+                          originStartMin + originDurationMinutes,
+                        )}`
+                      : 'Currently scheduled'
+                  }
+                  className="absolute top-0.5 bottom-0.5 rounded-[4px] border border-dashed border-[#6F3FF5] bg-transparent pointer-events-none"
+                  style={{
+                    left: `${pctOfMinutes(clampMin(originStartMin))}%`,
+                    width: `${
+                      pctOfMinutes(clampMin(originStartMin + originDurationMinutes)) -
+                      pctOfMinutes(clampMin(originStartMin))
+                    }%`,
+                  }}
+                />
+              ) : null}
+
+
+
               {selectedStartMin !== null && date && (
                 <div
                   className="absolute -top-0.5 -bottom-0.5 rounded-[4px] bg-[#6F3FF5] border-2 border-[#0d0d09] flex items-center justify-center z-10 cursor-grab active:cursor-grabbing"
