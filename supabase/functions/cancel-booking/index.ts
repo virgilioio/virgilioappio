@@ -162,23 +162,26 @@ serve(async (req) => {
         }
 
         // Delete the event from Google Calendar
-        try {
-          const deleteResponse = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.google_event_id}`,
-            {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${accessToken}` },
-            }
-          );
+        if (booking.google_event_id) {
+          try {
+            const deleteResponse = await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.google_event_id}`,
+              {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${accessToken}` },
+              }
+            );
 
-          if (deleteResponse.ok || deleteResponse.status === 404) {
-            console.log('[cancel-booking] Google Calendar event deleted successfully');
-          } else {
-            console.error('[cancel-booking] Failed to delete Google Calendar event:', deleteResponse.status);
+            if (deleteResponse.ok || deleteResponse.status === 404) {
+              console.log('[cancel-booking] Google Calendar event deleted successfully');
+            } else {
+              console.error('[cancel-booking] Failed to delete Google Calendar event:', deleteResponse.status);
+            }
+          } catch (error) {
+            console.error('[cancel-booking] Error deleting Google Calendar event:', error);
           }
-        } catch (error) {
-          console.error('[cancel-booking] Error deleting Google Calendar event:', error);
         }
+
 
         // Delete the candidate-only event too — otherwise the candidate's invite survives
         if (booking.candidate_google_event_id) {
