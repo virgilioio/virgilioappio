@@ -130,6 +130,8 @@ Deno.serve(async (req) => {
           flagged: false,
           candidate_token_hash: null,
           candidate_link_expires_at: null,
+          share_token_hash: null,
+          share_expires_at: null,
           self_assessment: null,
         })
         .eq("id", requestId);

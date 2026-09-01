@@ -144,6 +144,7 @@ function AppContent() {
             The static /references app routes still win by static-over-dynamic ranking. */}
         <Route path="/references/:token" element={<PublicReferenceSubmit />} />
         <Route path="/reference/:token" element={<PublicReferenceAnswer />} />
+        <Route path="/report/:token" element={<PublicReferenceReport />} />
         <Route path="/reference-report/:token" element={<PublicReferenceReport />} />
 
 
