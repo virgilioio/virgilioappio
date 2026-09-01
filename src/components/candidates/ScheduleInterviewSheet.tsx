@@ -904,6 +904,18 @@ export function ScheduleInterviewSheet({
   }, [selectedDate, availabilityData]);
 
   /* ---------- WHEN section: strip geometry + overlap awareness ---------- */
+  // The booking being rescheduled must not count as a conflict against itself.
+  const busyEvents = useMemo(() => {
+    const all = (availabilityData?.busy_events || []) as {
+      start: string;
+      end: string;
+      title?: string;
+    }[];
+    if (!oldBooking) return all;
+    const originStart = parseISO(oldBooking.scheduled_start).getTime();
+    return all.filter((b) => Math.abs(new Date(b.start).getTime() - originStart) > 60 * 1000);
+  }, [availabilityData, oldBooking]);
+
   const stripPanelists: StripPanelist[] = useMemo(
     () =>
       displayedPanelists.map((p) => ({
@@ -911,14 +923,23 @@ export function ScheduleInterviewSheet({
         name: fullName(p),
         avatarUrl: p.profiles?.avatar_url,
         initials: initials(p),
-        busy: (availabilityData?.busy_events || []) as {
-          start: string;
-          end: string;
-          title?: string;
-        }[],
+        busy: busyEvents,
       })),
-    [displayedPanelists, availabilityData],
+    [displayedPanelists, busyEvents],
   );
+
+  const originStripWindow = useMemo(() => {
+    if (!oldBooking || !selectedDate) return null;
+    const start = parseISO(oldBooking.scheduled_start);
+    if (!isSameDay(start, selectedDate)) return null;
+    const duration =
+      oldBooking.duration_minutes ||
+      (oldBooking.scheduled_end
+        ? Math.round((parseISO(oldBooking.scheduled_end).getTime() - start.getTime()) / 60000)
+        : 30);
+    return { startMin: start.getHours() * 60 + start.getMinutes(), duration };
+  }, [oldBooking, selectedDate]);
+
 
   const panelFreeWindows = useMemo(
     () => computeFreeWindows(stripPanelists, selectedDate),
