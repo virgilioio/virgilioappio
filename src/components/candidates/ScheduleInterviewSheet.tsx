@@ -1337,7 +1337,10 @@ export function ScheduleInterviewSheet({
                       selectedStartMin={selectedStartMin}
                       onSelectStartMin={(m) => setSelectionFrom(m)}
                       onDurationChange={handleDurationChange}
-                      isLoading={isLoadingAvailability}
+                      isLoading={isLoadingAvailability || loadingOldBooking}
+                      originStartMin={originStripWindow?.startMin ?? null}
+                      originDurationMinutes={originStripWindow?.duration ?? null}
+
                     />
                     <p className="text-body-xs text-virgilio-muted">
                       {panelFreeWindows.length} window
