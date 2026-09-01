@@ -19,6 +19,7 @@ interface MembersTableProps {
   isLoading: boolean
   onEdit: (member: EnrichedMember) => void
   onDeactivate: (id: string) => void
+  onReactivate?: (member: EnrichedMember) => void
   onResendInvitation: (memberId: string, email: string) => void
   onDeleteUser: (member: EnrichedMember) => void
   onManageJobAssignments?: (member: EnrichedMember) => void
