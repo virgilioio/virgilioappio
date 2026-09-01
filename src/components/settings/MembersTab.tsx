@@ -10,6 +10,10 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { useRecruiterUserIds } from '@/hooks/useRecruiterUserIds'
 import { Users, UserPlus, Archive, Lock } from 'lucide-react'
 import { MetricStrip, type MetricItem } from '@/components/ui/metric-strip'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
