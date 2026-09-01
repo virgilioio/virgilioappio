@@ -127,7 +127,14 @@ Deno.serve(async (req) => {
         return NOT_FOUND();
       }
 
-      const questions = clientQuestions(ctx.snapshot);
+      const questions = clientQuestions(ctx.snapshot).map((q: any) => ({
+        id: q.id,
+        label: q.label,
+        type: q.type,
+        options: q.options ?? undefined,
+        unit: q.unit ?? undefined,
+        precision: q.precision ?? undefined,
+      }));
       const allowed = new Set(questions.map((q: any) => q.id));
 
       const { data: referees } = await supabase
@@ -137,14 +144,14 @@ Deno.serve(async (req) => {
         )
         .eq("request_id", ctx.request.id);
 
-      const rows = (referees ?? [])
+      const all = referees ?? [];
+      const rows = all
         .filter((r) => !r.on_hold && (r.status === "submitted" || r.status === "logged"))
         .map((r) => {
           const raw = (r.answers ?? {}) as Record<string, unknown>;
           const answers = questions
             .filter((q: any) => allowed.has(q.id))
-            .map((q: any) => ({ id: q.id, label: q.label, type: q.type, value: raw[q.id] ?? null }))
-            .filter((a) => a.value !== null && a.value !== "" && a.value !== undefined);
+            .map((q: any) => ({ id: q.id, label: q.label, type: q.type, value: raw[q.id] ?? null }));
           return {
             id: r.id,
             name: r.name,
@@ -158,17 +165,35 @@ Deno.serve(async (req) => {
           };
         });
 
+      // A count only — never a name, never a reason (hold notes stay internal).
+      const expected = Math.max(ctx.refereeCount, all.length);
+      const outstanding = Math.max(0, expected - rows.length);
+
+      // Internal read receipt: the recruiter learns the client opened it.
+      await logReferenceActivity(
+        supabase,
+        ctx.request.id,
+        "report_viewed",
+        "Client opened the reference report",
+      );
+
       return json(200, {
         brand: { agency_name: ctx.brand.name, logo_url: ctx.brand.logoUrl },
         candidate_name: ctx.candidateName,
         job_title: ctx.jobTitle,
         client_name: ctx.clientName,
+        recruiter_name: ctx.recruiterName,
+        recruiter_email: ctx.recruiterEmail,
+        questions,
         referee_count: rows.length,
-        required_count: ctx.refereeCount,
+        required_count: expected,
+        outstanding,
+        report_date: new Date().toISOString(),
         expires_at: ctx.request.share_expires_at ?? null,
         referees: rows,
       });
     }
+
 
     return NOT_FOUND();
   } catch (e) {

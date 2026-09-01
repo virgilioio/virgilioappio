@@ -104,7 +104,7 @@ export async function issueReferenceToken(input: {
     input.kind === "candidate"
       ? "references"
       : input.kind === "report"
-        ? "reference-report"
+        ? "report"
         : "reference";
   return {
     token,
