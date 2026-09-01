@@ -79,6 +79,17 @@ export function MembersTab() {
     await deactivateMember(id)
   }
 
+  const handleConfirmReactivate = async () => {
+    if (!memberToReactivate) return
+    try {
+      await reactivateMember(memberToReactivate.id)
+    } catch {
+      // toast handled in hook
+    } finally {
+      setMemberToReactivate(null)
+    }
+  }
+
   const handleCreateNew = () => {
     setIsInviteSheetOpen(true)
   }
