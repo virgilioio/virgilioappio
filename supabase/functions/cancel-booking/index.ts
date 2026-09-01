@@ -178,8 +178,33 @@ serve(async (req) => {
         } catch (error) {
           console.error('[cancel-booking] Error deleting Google Calendar event:', error);
         }
+
+        // Delete the candidate-only event too — otherwise the candidate's invite survives
+        if (booking.candidate_google_event_id) {
+          try {
+            const candidateDeleteResponse = await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.candidate_google_event_id}`,
+              {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${accessToken}` },
+              }
+            );
+
+            if (candidateDeleteResponse.ok || candidateDeleteResponse.status === 404) {
+              console.log('[cancel-booking] Candidate calendar event deleted successfully');
+            } else {
+              console.error(
+                '[cancel-booking] Failed to delete candidate calendar event:',
+                candidateDeleteResponse.status
+              );
+            }
+          } catch (error) {
+            console.error('[cancel-booking] Error deleting candidate calendar event:', error);
+          }
+        }
       }
     }
+
 
     // Update booking status to cancelled
     const { error: updateError } = await supabase
