@@ -16,11 +16,12 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export function MembersTab() {
-  const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
+  const { members, isLoading, updateMember, deactivateMember, reactivateMember, createMember, resendInvitation, getMembers } = useMembers()
   const [isInviteSheetOpen, setIsInviteSheetOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [userToDelete, setUserToDelete] = useState(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [memberToReactivate, setMemberToReactivate] = useState<EnrichedMember | null>(null)
 
   const { organizationId } = useAuth()
   const { organizations } = useOrganizations()
