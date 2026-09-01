@@ -110,6 +110,7 @@ export default function Members() {
               isLoading={isLoading}
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
+              onReactivate={setReactivateMemberTarget}
               onResendInvitation={handleResendInvitation}
               onDeleteUser={handleDeleteUser}
               onManageJobAssignments={setJobAssignmentsMember}
