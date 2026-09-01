@@ -15,6 +15,7 @@ export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [deactivateMemberId, setDeactivateMemberId] = useState<string | null>(null)
+  const [reactivateMemberTarget, setReactivateMemberTarget] = useState<Member | null>(null)
   const [userToDelete, setUserToDelete] = useState<any>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [jobAssignmentsMember, setJobAssignmentsMember] = useState<Member | null>(null)
@@ -25,9 +26,21 @@ export default function Members() {
     createMember,
     updateMember,
     deactivateMember,
+    reactivateMember,
     resendInvitation,
     getMembers
   } = useMembers()
+
+  const handleConfirmReactivate = async () => {
+    if (!reactivateMemberTarget) return
+    try {
+      await reactivateMember(reactivateMemberTarget.id)
+    } catch {
+      // toast handled in hook
+    } finally {
+      setReactivateMemberTarget(null)
+    }
+  }
 
   const handleCreateNew = () => {
     setSelectedMember(null)
@@ -97,6 +110,7 @@ export default function Members() {
               isLoading={isLoading}
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
+              onReactivate={setReactivateMemberTarget}
               onResendInvitation={handleResendInvitation}
               onDeleteUser={handleDeleteUser}
               onManageJobAssignments={setJobAssignmentsMember}
@@ -129,6 +143,24 @@ export default function Members() {
                   <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleConfirmDeactivate} className="w-full sm:w-auto">
                     Deactivate
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={!!reactivateMemberTarget} onOpenChange={(open) => { if (!open) setReactivateMemberTarget(null) }}>
+              <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reactivate member</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {reactivateMemberTarget?.user_email || reactivateMemberTarget?.invited_email || 'This member'} will regain access to the workspace.
+                    {' '}If their role is a paid one (Owner, Admin, Sales or Recruiter), they will occupy a billable seat again.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+                  <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmReactivate} className="w-full sm:w-auto">
+                    Reactivate
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

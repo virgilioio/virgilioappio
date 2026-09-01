@@ -19,6 +19,7 @@ interface MembersTableProps {
   isLoading: boolean
   onEdit: (member: EnrichedMember) => void
   onDeactivate: (id: string) => void
+  onReactivate?: (member: EnrichedMember) => void
   onResendInvitation: (memberId: string, email: string) => void
   onDeleteUser: (member: EnrichedMember) => void
   onManageJobAssignments?: (member: EnrichedMember) => void
@@ -50,7 +51,7 @@ function getInitials(m: EnrichedMember) {
 }
 
 export function MembersTable({
-  members, isLoading, onEdit, onDeactivate, onResendInvitation,
+  members, isLoading, onEdit, onDeactivate, onReactivate, onResendInvitation,
   onDeleteUser, onManageJobAssignments, onAddNew,
 }: MembersTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -227,10 +228,10 @@ export function MembersTable({
                         </DropdownMenuItem>
                       </>
                     )}
-                    {m.user_status === 'inactive' && (
+                    {m.user_status === 'inactive' && onReactivate && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(m) }} className="gap-2">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReactivate(m) }} className="gap-2">
                           <UserCheck className="h-4 w-4" />Reactivate Member
                         </DropdownMenuItem>
                       </>
