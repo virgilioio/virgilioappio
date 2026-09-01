@@ -194,6 +194,9 @@ interface Props {
   onSelectStartMin: (min: number) => void;
   onDurationChange: (minutes: number) => void;
   isLoading?: boolean;
+  /** When rescheduling: the currently-scheduled window, shown as the origin marker. */
+  originStartMin?: number | null;
+  originDurationMinutes?: number | null;
 }
 
 export function AvailabilityStrip({
@@ -204,7 +207,10 @@ export function AvailabilityStrip({
   onSelectStartMin,
   onDurationChange,
   isLoading,
+  originStartMin = null,
+  originDurationMinutes = null,
 }: Props) {
+
   const freeWindows = useMemo(() => computeFreeWindows(panelists, date), [panelists, date]);
   const [drag, setDrag] = useState<null | 'move' | 'resize'>(null);
   const bookTrackRef = useRef<HTMLDivElement>(null);
@@ -418,6 +424,29 @@ export function AvailabilityStrip({
                   }}
                 />
               ))}
+
+              {originStartMin !== null && originDurationMinutes ? (
+                <div
+                  title={
+                    date
+                      ? `Currently scheduled ${minutesToLabel(date, originStartMin)}–${minutesToLabel(
+                          date,
+                          originStartMin + originDurationMinutes,
+                        )}`
+                      : 'Currently scheduled'
+                  }
+                  className="absolute top-0.5 bottom-0.5 rounded-[4px] border border-dashed border-[#6F3FF5] bg-transparent pointer-events-none"
+                  style={{
+                    left: `${pctOfMinutes(clampMin(originStartMin))}%`,
+                    width: `${
+                      pctOfMinutes(clampMin(originStartMin + originDurationMinutes)) -
+                      pctOfMinutes(clampMin(originStartMin))
+                    }%`,
+                  }}
+                />
+              ) : null}
+
+
 
               {selectedStartMin !== null && date && (
                 <div

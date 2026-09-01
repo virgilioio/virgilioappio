@@ -800,6 +800,84 @@ export function ScheduleInterviewSheet({
     }
   }, [availableInterviewers, selectedInterviewer, isGroupMode]);
 
+  /* ---------- Reschedule: seed the sheet from the existing booking ---------- */
+  const { data: oldBooking, isLoading: loadingOldBooking } = useQuery({
+    queryKey: ['reschedule-source-booking', oldBookingId],
+    enabled: open && !!oldBookingId,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('scheduled_bookings')
+        .select(
+          'id, interviewer_id, scheduled_start, scheduled_end, duration_minutes, meeting_type, meeting_location, notes, guest_emails',
+        )
+        .eq('id', oldBookingId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        id: string;
+        interviewer_id: string | null;
+        scheduled_start: string;
+        scheduled_end: string | null;
+        duration_minutes: number | null;
+        meeting_type: string | null;
+        meeting_location: string | null;
+        notes: string | null;
+        guest_emails: string[] | null;
+      } | null;
+    },
+  });
+
+  const prefilledFromRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      prefilledFromRef.current = null;
+      return;
+    }
+    if (!oldBooking || prefilledFromRef.current === oldBooking.id) return;
+    // Wait until interviewers are loaded so the panelist can be matched.
+    if (!isGroupMode && availableInterviewers.length === 0) return;
+    prefilledFromRef.current = oldBooking.id;
+
+    const start = parseISO(oldBooking.scheduled_start);
+    const duration =
+      oldBooking.duration_minutes ||
+      (oldBooking.scheduled_end
+        ? Math.round(
+            (parseISO(oldBooking.scheduled_end).getTime() - start.getTime()) / 60000,
+          )
+        : 30);
+
+    if (!isGroupMode && oldBooking.interviewer_id) {
+      const match = availableInterviewers.find(
+        (i) => i.member_user_id === oldBooking.interviewer_id,
+      );
+      if (match) setSelectedInterviewer(match);
+    }
+
+    setSelectedDuration(duration);
+    setSelectedDate(start);
+    setCurrentMonth(startOfMonth(start));
+    setSelectedSlot({
+      start: start.toISOString(),
+      end: new Date(start.getTime() + duration * 60 * 1000).toISOString(),
+    });
+
+    const loc = oldBooking.meeting_location || '';
+    if (oldBooking.meeting_type === 'google_meet') {
+      setFormatOption('video');
+    } else if (/phone/i.test(loc)) {
+      setFormatOption('phone');
+    } else if (loc) {
+      setFormatOption('onsite');
+      setSiteAddress(loc);
+    }
+
+    if (oldBooking.guest_emails?.length) setGuestEmails(oldBooking.guest_emails);
+    if (oldBooking.notes) setInviteMessage(oldBooking.notes);
+  }, [open, oldBooking, isGroupMode, availableInterviewers]);
+
+
   const displayedPanelists: StageInterviewer[] = useMemo(() => {
     if (isGroupMode) return groupInterviewers;
     return selectedInterviewer ? [selectedInterviewer] : [];
@@ -826,6 +904,18 @@ export function ScheduleInterviewSheet({
   }, [selectedDate, availabilityData]);
 
   /* ---------- WHEN section: strip geometry + overlap awareness ---------- */
+  // The booking being rescheduled must not count as a conflict against itself.
+  const busyEvents = useMemo(() => {
+    const all = (availabilityData?.busy_events || []) as {
+      start: string;
+      end: string;
+      title?: string;
+    }[];
+    if (!oldBooking) return all;
+    const originStart = parseISO(oldBooking.scheduled_start).getTime();
+    return all.filter((b) => Math.abs(new Date(b.start).getTime() - originStart) > 60 * 1000);
+  }, [availabilityData, oldBooking]);
+
   const stripPanelists: StripPanelist[] = useMemo(
     () =>
       displayedPanelists.map((p) => ({
@@ -833,14 +923,23 @@ export function ScheduleInterviewSheet({
         name: fullName(p),
         avatarUrl: p.profiles?.avatar_url,
         initials: initials(p),
-        busy: (availabilityData?.busy_events || []) as {
-          start: string;
-          end: string;
-          title?: string;
-        }[],
+        busy: busyEvents,
       })),
-    [displayedPanelists, availabilityData],
+    [displayedPanelists, busyEvents],
   );
+
+  const originStripWindow = useMemo(() => {
+    if (!oldBooking || !selectedDate) return null;
+    const start = parseISO(oldBooking.scheduled_start);
+    if (!isSameDay(start, selectedDate)) return null;
+    const duration =
+      oldBooking.duration_minutes ||
+      (oldBooking.scheduled_end
+        ? Math.round((parseISO(oldBooking.scheduled_end).getTime() - start.getTime()) / 60000)
+        : 30);
+    return { startMin: start.getHours() * 60 + start.getMinutes(), duration };
+  }, [oldBooking, selectedDate]);
+
 
   const panelFreeWindows = useMemo(
     () => computeFreeWindows(stripPanelists, selectedDate),
@@ -1047,10 +1146,14 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(new Date());
       setSelectedSlot(null);
+      setSelectedDuration(30);
       setFormatOption('video');
       setSiteAddress('');
       setGuestEmails([]);
+      setInviteMessage('');
+      prefilledFromRef.current = null;
     }
+
     onOpenChange(newOpen);
   };
 
@@ -1238,7 +1341,10 @@ export function ScheduleInterviewSheet({
                       selectedStartMin={selectedStartMin}
                       onSelectStartMin={(m) => setSelectionFrom(m)}
                       onDurationChange={handleDurationChange}
-                      isLoading={isLoadingAvailability}
+                      isLoading={isLoadingAvailability || loadingOldBooking}
+                      originStartMin={originStripWindow?.startMin ?? null}
+                      originDurationMinutes={originStripWindow?.duration ?? null}
+
                     />
                     <p className="text-body-xs text-virgilio-muted">
                       {panelFreeWindows.length} window

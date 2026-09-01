@@ -106,8 +106,9 @@ serve(async (req) => {
     const interviewTitle = `${stageName} - ${jobTitle}`;
 
     // Delete Google Calendar event if exists
-    if (booking.google_event_id) {
+    if (booking.google_event_id || booking.candidate_google_event_id) {
       console.log('[cancel-booking] Deleting Google Calendar event:', booking.google_event_id);
+
 
       const { data: calIdentity } = await supabase
         .from('calendar_identities')
@@ -161,25 +162,53 @@ serve(async (req) => {
         }
 
         // Delete the event from Google Calendar
-        try {
-          const deleteResponse = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.google_event_id}`,
-            {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${accessToken}` },
-            }
-          );
+        if (booking.google_event_id) {
+          try {
+            const deleteResponse = await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.google_event_id}`,
+              {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${accessToken}` },
+              }
+            );
 
-          if (deleteResponse.ok || deleteResponse.status === 404) {
-            console.log('[cancel-booking] Google Calendar event deleted successfully');
-          } else {
-            console.error('[cancel-booking] Failed to delete Google Calendar event:', deleteResponse.status);
+            if (deleteResponse.ok || deleteResponse.status === 404) {
+              console.log('[cancel-booking] Google Calendar event deleted successfully');
+            } else {
+              console.error('[cancel-booking] Failed to delete Google Calendar event:', deleteResponse.status);
+            }
+          } catch (error) {
+            console.error('[cancel-booking] Error deleting Google Calendar event:', error);
           }
-        } catch (error) {
-          console.error('[cancel-booking] Error deleting Google Calendar event:', error);
+        }
+
+
+        // Delete the candidate-only event too — otherwise the candidate's invite survives
+        if (booking.candidate_google_event_id) {
+          try {
+            const candidateDeleteResponse = await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.candidate_google_event_id}`,
+              {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${accessToken}` },
+              }
+            );
+
+            if (candidateDeleteResponse.ok || candidateDeleteResponse.status === 404) {
+              console.log('[cancel-booking] Candidate calendar event deleted successfully');
+            } else {
+              console.error(
+                '[cancel-booking] Failed to delete candidate calendar event:',
+                candidateDeleteResponse.status
+              );
+            }
+          } catch (error) {
+            console.error('[cancel-booking] Error deleting candidate calendar event:', error);
+          }
         }
       }
     }
+
 
     // Update booking status to cancelled
     const { error: updateError } = await supabase
