@@ -629,6 +629,7 @@ export function useMembers(includeHierarchy: boolean = false) {
     createMember,
     updateMember,
     deactivateMember,
+    reactivateMember,
     resendInvitation,
     getInviteUrl
   }
