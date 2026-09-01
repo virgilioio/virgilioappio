@@ -177,6 +177,24 @@ export function MembersTab() {
         />
       )}
 
+      <AlertDialog open={!!memberToReactivate} onOpenChange={(open) => { if (!open) setMemberToReactivate(null) }}>
+        <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reactivate member</AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberToReactivate?.user_email || memberToReactivate?.invited_email || 'This member'} will regain access to the workspace.
+              {' '}If their role is a paid one (Owner, Admin, Sales or Recruiter), they will occupy a billable seat again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReactivate} className="w-full sm:w-auto">
+              Reactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <UserDeletionDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
