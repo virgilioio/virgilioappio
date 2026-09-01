@@ -15,6 +15,7 @@ export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [deactivateMemberId, setDeactivateMemberId] = useState<string | null>(null)
+  const [reactivateMemberTarget, setReactivateMemberTarget] = useState<Member | null>(null)
   const [userToDelete, setUserToDelete] = useState<any>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [jobAssignmentsMember, setJobAssignmentsMember] = useState<Member | null>(null)
@@ -25,9 +26,21 @@ export default function Members() {
     createMember,
     updateMember,
     deactivateMember,
+    reactivateMember,
     resendInvitation,
     getMembers
   } = useMembers()
+
+  const handleConfirmReactivate = async () => {
+    if (!reactivateMemberTarget) return
+    try {
+      await reactivateMember(reactivateMemberTarget.id)
+    } catch {
+      // toast handled in hook
+    } finally {
+      setReactivateMemberTarget(null)
+    }
+  }
 
   const handleCreateNew = () => {
     setSelectedMember(null)
