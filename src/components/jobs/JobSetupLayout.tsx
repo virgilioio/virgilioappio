@@ -229,7 +229,13 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
       if (alreadyOnJob) {
         await updateAssignmentRole(alreadyOnJob.id, role)
       } else {
-        await assignUserToJob({ job_id: jobId, user_id: newUserId, role })
+        await assignUserToJob({
+          job_id: jobId,
+          user_id: newUserId,
+          role,
+          organization_id: job?.organization_id,
+        })
+
       }
       await getAssignments(jobId)
     } catch {
