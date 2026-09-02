@@ -109,8 +109,10 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   const { toast } = useToast()
   const { archiveJob, updateJob } = useJobs()
 
-  const { assignments, updateAssignmentRole, removeUserFromJob } = useJobAssignments(jobId)
+  const { assignments, updateAssignmentRole, removeUserFromJob, assignUserToJob, getAssignments } =
+    useJobAssignments(jobId)
   const { members } = useMembers(true)
+
 
   const memberOptions = useMemo(
     () =>
