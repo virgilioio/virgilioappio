@@ -215,12 +215,56 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     if (!newUserId) return
     const existing = assignments.find((a) => a.role === role)
     if (existing && existing.user_id === newUserId) return
-    // Optimistic: not implementing add/swap here since hook signature varies.
+
+    try {
+      // Demote the current holder rather than removing their access.
+      if (existing) {
+        await updateAssignmentRole(existing.id, 'interviewer')
+      }
+      const alreadyOnJob = assignments.find((a) => a.user_id === newUserId)
+      if (alreadyOnJob) {
+        await updateAssignmentRole(alreadyOnJob.id, role)
+      } else {
+        await assignUserToJob({ job_id: jobId, user_id: newUserId, role })
+      }
+      await getAssignments(jobId)
+    } catch {
+      /* toast in hook */
+    }
+  }
+
+  // ---- Optional owners (persisted on the job row) ----
+  const [reportsToId, setReportsToId] = useState<string>(job?.reports_to_user_id || '')
+  const [coordinatorId, setCoordinatorId] = useState<string>(job?.coordinator_user_id || '')
+
+  useEffect(() => {
+    setReportsToId(job?.reports_to_user_id || '')
+    setCoordinatorId(job?.coordinator_user_id || '')
+  }, [job?.reports_to_user_id, job?.coordinator_user_id])
+
+  const saveOptionalOwner = async (
+    column: 'reports_to_user_id' | 'coordinator_user_id',
+    value: string | null
+  ) => {
+    if (column === 'reports_to_user_id') setReportsToId(value || '')
+    else setCoordinatorId(value || '')
+    const { error } = await supabase
+      .from('jobs')
+      .update({ [column]: value })
+      .eq('id', jobId)
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+      // revert
+      if (column === 'reports_to_user_id') setReportsToId(job?.reports_to_user_id || '')
+      else setCoordinatorId(job?.coordinator_user_id || '')
+      return
+    }
     toast({
-      title: 'Coming soon',
-      description: `${role === 'recruiter' ? 'Primary recruiter' : 'Hiring manager'} swap will be wired in the next pass.`,
+      title: 'Saved',
+      description: column === 'reports_to_user_id' ? 'Reports to updated.' : 'Coordinator updated.',
     })
   }
+
 
   const handleRoleChange = async (
     assignmentId: string,
