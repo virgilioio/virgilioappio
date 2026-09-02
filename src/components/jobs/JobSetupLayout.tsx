@@ -554,17 +554,28 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                     />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-                      <OptionalOwnerField
+                      <CompactOwnerPicker
                         label="Reports to"
                         icon={UserRound}
                         placeholder="Select person"
+                        clearLabel="No one in particular"
+                        value={reportsToId}
+                        members={members}
+                        disabled={isReadOnly}
+                        onChange={(v) => saveOptionalOwner('reports_to_user_id', v)}
                       />
-                      <OptionalOwnerField
+                      <CompactOwnerPicker
                         label="Coordinator"
                         icon={CalendarIcon}
                         placeholder="Same as recruiter"
+                        clearLabel="Same as recruiter"
+                        value={coordinatorId}
+                        members={members}
+                        disabled={isReadOnly}
+                        onChange={(v) => saveOptionalOwner('coordinator_user_id', v)}
                       />
                     </div>
+
                     <p
                       className="font-inter"
                       style={{ fontSize: 12, color: '#8B8F9E', marginTop: -6 }}
