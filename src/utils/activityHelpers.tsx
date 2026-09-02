@@ -8,6 +8,8 @@ import {
   StickyNote,
   Paperclip,
   Calendar,
+  CalendarX,
+  CalendarClock,
   Search,
   RefreshCw,
   Archive,
