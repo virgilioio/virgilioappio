@@ -59,6 +59,8 @@ import {
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { supabase } from '@/integrations/supabase/client'
+
 
 interface JobSetupLayoutProps {
   jobId: string
@@ -109,8 +111,10 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   const { toast } = useToast()
   const { archiveJob, updateJob } = useJobs()
 
-  const { assignments, updateAssignmentRole, removeUserFromJob } = useJobAssignments(jobId)
+  const { assignments, updateAssignmentRole, removeUserFromJob, assignUserToJob, getAssignments } =
+    useJobAssignments(jobId)
   const { members } = useMembers(true)
+
 
   const memberOptions = useMemo(
     () =>
@@ -215,12 +219,62 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     if (!newUserId) return
     const existing = assignments.find((a) => a.role === role)
     if (existing && existing.user_id === newUserId) return
-    // Optimistic: not implementing add/swap here since hook signature varies.
+
+    try {
+      // Demote the current holder rather than removing their access.
+      if (existing) {
+        await updateAssignmentRole(existing.id, 'interviewer')
+      }
+      const alreadyOnJob = assignments.find((a) => a.user_id === newUserId)
+      if (alreadyOnJob) {
+        await updateAssignmentRole(alreadyOnJob.id, role)
+      } else {
+        await assignUserToJob({
+          job_id: jobId,
+          user_id: newUserId,
+          role,
+          organization_id: job?.organization_id,
+        })
+
+      }
+      await getAssignments(jobId)
+    } catch {
+      /* toast in hook */
+    }
+  }
+
+  // ---- Optional owners (persisted on the job row) ----
+  const [reportsToId, setReportsToId] = useState<string>(job?.reports_to_user_id || '')
+  const [coordinatorId, setCoordinatorId] = useState<string>(job?.coordinator_user_id || '')
+
+  useEffect(() => {
+    setReportsToId(job?.reports_to_user_id || '')
+    setCoordinatorId(job?.coordinator_user_id || '')
+  }, [job?.reports_to_user_id, job?.coordinator_user_id])
+
+  const saveOptionalOwner = async (
+    column: 'reports_to_user_id' | 'coordinator_user_id',
+    value: string | null
+  ) => {
+    if (column === 'reports_to_user_id') setReportsToId(value || '')
+    else setCoordinatorId(value || '')
+    const { error } = await supabase
+      .from('jobs')
+      .update({ [column]: value })
+      .eq('id', jobId)
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+      // revert
+      if (column === 'reports_to_user_id') setReportsToId(job?.reports_to_user_id || '')
+      else setCoordinatorId(job?.coordinator_user_id || '')
+      return
+    }
     toast({
-      title: 'Coming soon',
-      description: `${role === 'recruiter' ? 'Primary recruiter' : 'Hiring manager'} swap will be wired in the next pass.`,
+      title: 'Saved',
+      description: column === 'reports_to_user_id' ? 'Reports to updated.' : 'Coordinator updated.',
     })
   }
+
 
   const handleRoleChange = async (
     assignmentId: string,
@@ -506,17 +560,28 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                     />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-                      <OptionalOwnerField
+                      <CompactOwnerPicker
                         label="Reports to"
                         icon={UserRound}
                         placeholder="Select person"
+                        clearLabel="No one in particular"
+                        value={reportsToId}
+                        members={members}
+                        disabled={isReadOnly}
+                        onChange={(v) => saveOptionalOwner('reports_to_user_id', v)}
                       />
-                      <OptionalOwnerField
+                      <CompactOwnerPicker
                         label="Coordinator"
                         icon={CalendarIcon}
                         placeholder="Same as recruiter"
+                        clearLabel="Same as recruiter"
+                        value={coordinatorId}
+                        members={members}
+                        disabled={isReadOnly}
+                        onChange={(v) => saveOptionalOwner('coordinator_user_id', v)}
                       />
                     </div>
+
                     <p
                       className="font-inter"
                       style={{ fontSize: 12, color: '#8B8F9E', marginTop: -6 }}
@@ -1002,15 +1067,33 @@ function OwnerPickerRow({
   )
 }
 
-function OptionalOwnerField({
+function CompactOwnerPicker({
   label,
   icon: Icon,
   placeholder,
+  clearLabel,
+  value,
+  members,
+  disabled,
+  onChange,
 }: {
   label: string
   icon: any
   placeholder: string
+  clearLabel: string
+  value: string
+  members: any[]
+  disabled?: boolean
+  onChange: (v: string | null) => void
 }) {
+  const [open, setOpen] = useState(false)
+  const selected = members.find((m) => m.user_id === value)
+  const selectedName = selected
+    ? `${selected.user_first_name || ''} ${selected.user_last_name || ''}`.trim() ||
+      selected.user_email ||
+      'Member'
+    : ''
+
   return (
     <div>
       <div
@@ -1031,32 +1114,124 @@ function OptionalOwnerField({
           (optional)
         </span>
       </div>
-      <button
-        type="button"
-        className="w-full flex items-center text-left transition-colors"
-        style={{
-          gap: 10,
-          padding: '10px 12px',
-          borderRadius: 10,
-          border: '1px solid #E7E8EE',
-          background: '#ffffff',
-          height: 44,
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#D7C5FB')}
-        onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#E7E8EE')}
-      >
-        <Icon size={15} style={{ color: '#8B8F9E', flexShrink: 0 }} />
-        <span
-          className="font-inter flex-1 truncate"
-          style={{ fontSize: 13, color: '#1F2230' }}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className={cn(
+              'w-full flex items-center text-left transition-colors',
+              disabled && 'opacity-60 cursor-not-allowed'
+            )}
+            style={{
+              gap: 10,
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '1px solid #E7E8EE',
+              background: '#ffffff',
+              height: 44,
+            }}
+            onMouseEnter={(e) => {
+              if (!disabled) e.currentTarget.style.borderColor = '#D7C5FB'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E7E8EE'
+            }}
+          >
+            {selected ? (
+              <Avatar className="h-6 w-6 shrink-0">
+                {selected.user_avatar_url ? (
+                  <AvatarImage src={selected.user_avatar_url} alt="" />
+                ) : null}
+                <AvatarFallback className="text-[9px] bg-virgilio-purple text-white">
+                  {getInitials(
+                    selected.user_first_name,
+                    selected.user_last_name,
+                    selected.user_email
+                  )}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <Icon size={15} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+            )}
+            <span
+              className="font-inter flex-1 truncate"
+              style={{ fontSize: 13, color: selected ? '#1F2230' : '#8B8F9E' }}
+            >
+              {selected ? selectedName : placeholder}
+            </span>
+            <ChevronDown size={14} style={{ color: '#8B8F9E', flexShrink: 0 }} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0"
+          align="start"
+          style={{ width: 'var(--radix-popover-trigger-width)', minWidth: 260, maxWidth: 420 }}
         >
-          {placeholder}
-        </span>
-        <ChevronDown size={14} style={{ color: '#8B8F9E', flexShrink: 0 }} />
-      </button>
+          <Command>
+            <CommandInput placeholder="Search members…" />
+            <CommandList>
+              <CommandEmpty>No members found.</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value={clearLabel}
+                  onSelect={() => {
+                    onChange(null)
+                    setOpen(false)
+                  }}
+                  className="gap-2.5"
+                >
+                  <div
+                    className="shrink-0 rounded-full inline-flex items-center justify-center"
+                    style={{ height: 28, width: 28, background: '#F1F0EC', color: '#8B8F9E' }}
+                  >
+                    <Icon size={13} />
+                  </div>
+                  <span className="text-[12.5px] flex-1">{clearLabel}</span>
+                  {!value && <Check size={14} className="text-virgilio-purple" />}
+                </CommandItem>
+                {members.map((m) => {
+                  const n =
+                    `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() ||
+                    m.user_email ||
+                    'Member'
+                  return (
+                    <CommandItem
+                      key={m.user_id}
+                      value={`${n} ${m.user_email || ''}`}
+                      onSelect={() => {
+                        onChange(m.user_id)
+                        setOpen(false)
+                      }}
+                      className="gap-2.5"
+                    >
+                      <Avatar className="h-7 w-7 shrink-0">
+                        {m.user_avatar_url ? <AvatarImage src={m.user_avatar_url} alt="" /> : null}
+                        <AvatarFallback className="text-[10px] bg-virgilio-purple text-white">
+                          {getInitials(m.user_first_name, m.user_last_name, m.user_email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] font-medium truncate">{n}</div>
+                        {m.user_email && (
+                          <div className="text-[11px] text-text-tertiary truncate">
+                            {m.user_email}
+                          </div>
+                        )}
+                      </div>
+                      {m.user_id === value && <Check size={14} className="text-virgilio-purple" />}
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
+
 
 
 function ToggleSwitch({
