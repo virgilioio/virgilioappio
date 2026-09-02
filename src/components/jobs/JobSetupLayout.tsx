@@ -59,6 +59,8 @@ import {
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { supabase } from '@/integrations/supabase/client'
+
 
 interface JobSetupLayoutProps {
   jobId: string
