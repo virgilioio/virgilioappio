@@ -92,9 +92,7 @@ export function ActivityFeedItem({ activity, isLast }: ActivityFeedItemProps) {
               <>
                 <p className="text-sm">
                   <span className="font-medium text-text-primary">{authorName}</span>
-                  <span className="text-text-secondary ml-1">
-                    {isReceived ? 'moved the candidate' : 'moved the candidate'}
-                  </span>
+                  <span className="text-text-secondary ml-1">moved the candidate</span>
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
                   {activity.metadata?.from_stage && (
