@@ -4250,6 +4250,7 @@ export type Database = {
           budget_period: string
           budget_salary_max: number | null
           budget_salary_min: number | null
+          coordinator_user_id: string | null
           created_at: string | null
           created_by: string | null
           currency: string | null
@@ -4275,6 +4276,7 @@ export type Database = {
           normalization_metadata: Json | null
           organization_id: string
           priority_keywords: Json | null
+          reports_to_user_id: string | null
           salary_max: number | null
           salary_min: number | null
           show_salary_public: boolean
@@ -4296,6 +4298,7 @@ export type Database = {
           budget_period?: string
           budget_salary_max?: number | null
           budget_salary_min?: number | null
+          coordinator_user_id?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -4321,6 +4324,7 @@ export type Database = {
           normalization_metadata?: Json | null
           organization_id: string
           priority_keywords?: Json | null
+          reports_to_user_id?: string | null
           salary_max?: number | null
           salary_min?: number | null
           show_salary_public?: boolean
@@ -4342,6 +4346,7 @@ export type Database = {
           budget_period?: string
           budget_salary_max?: number | null
           budget_salary_min?: number | null
+          coordinator_user_id?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -4367,6 +4372,7 @@ export type Database = {
           normalization_metadata?: Json | null
           organization_id?: string
           priority_keywords?: Json | null
+          reports_to_user_id?: string | null
           salary_max?: number | null
           salary_min?: number | null
           show_salary_public?: boolean
