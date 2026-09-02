@@ -35,6 +35,8 @@ export function getActivityIcon(activityType: string): React.ReactNode {
     'candidate_note_added': StickyNote,
     'candidate_attachment_uploaded': Paperclip,
     'interview_scheduled': Calendar,
+    'interview_cancelled': CalendarX,
+    'interview_rescheduled': CalendarClock,
     'sourcing_project_created': Search,
     'sourcing_project_updated': RefreshCw,
     'sourcing_project_archived': Archive,
