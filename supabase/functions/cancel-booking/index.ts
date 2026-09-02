@@ -400,16 +400,17 @@ serve(async (req) => {
       }
     }
     if (booking.candidate_id && booking.job_id) {
-      await supabase.from('activities').insert({
+      const { error: activityError } = await supabase.from('activities').insert({
         user_id: user.id,
         organization_id: booking.organization_id,
         activity_type: 'interview_cancelled',
-        title: 'Interview Cancelled',
+        title: 'Interview cancelled',
         description: `Cancelled ${stageName} interview${reason ? ': ' + reason : ''}`,
         entity_type: 'candidate',
         entity_id: booking.candidate_id,
         metadata: {
           job_id: booking.job_id,
+          candidate_id: booking.candidate_id,
           booking_id: booking.id,
           interviewer_id: booking.interviewer_id,
           scheduled_start: booking.scheduled_start,
@@ -417,6 +418,9 @@ serve(async (req) => {
           reason: reason || null,
         },
       });
+      if (activityError) {
+        console.error('[cancel-booking] Failed to log cancellation activity:', activityError);
+      }
     }
 
     console.log('[cancel-booking] Cancellation complete');
