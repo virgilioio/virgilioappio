@@ -252,17 +252,21 @@ serve(async (req) => {
           p_user_id: booking.interviewer_id || booking.candidate_id,
           p_organization_id: booking.organization_id,
           p_activity_type: 'interview_cancelled',
-          p_title: `Interview cancelled by candidate ${booking.candidate_name}`,
+          p_title: `Interview cancelled by ${booking.candidate_name}`,
           p_description: `Candidate cancelled ${stageName} interview${reason ? ': ' + reason : ''}`,
           p_metadata: {
             booking_id: booking.id,
             job_id: booking.job_id,
             candidate_id: booking.candidate_id,
             cancelled_by: 'candidate',
+            scheduled_start: booking.scheduled_start,
+            reason: reason || null,
           },
+          p_entity_type: 'candidate',
+          p_entity_id: booking.candidate_id,
         });
       } catch (actError) {
-        console.error('[cancel-booking-public] Activity log error:', actError);
+        console.error('[cancel-booking-public] Activity log error (cancellation not recorded):', actError);
       }
     }
 
