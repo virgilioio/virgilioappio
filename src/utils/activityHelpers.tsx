@@ -67,6 +67,8 @@ export function getActivityColor(activityType: string): string {
     'candidate_note_added': 'hsl(var(--primary))',
     'candidate_attachment_uploaded': 'hsl(var(--success))',
     'interview_scheduled': 'hsl(var(--primary))',
+    'interview_cancelled': 'hsl(var(--warning))',
+    'interview_rescheduled': 'hsl(var(--warning))',
     'sourcing_project_created': 'hsl(var(--success))',
     'sourcing_project_updated': 'hsl(var(--info))',
     'sourcing_project_archived': 'hsl(var(--muted))',
