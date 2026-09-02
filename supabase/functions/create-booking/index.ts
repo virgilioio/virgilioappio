@@ -561,6 +561,7 @@ serve(async (req) => {
     }
 
     // If rescheduling, cancel the old booking first
+    let rescheduledFromStart: string | null = null;
     if (reschedule_booking_id) {
       console.log('[create-booking] Rescheduling: cancelling old booking', reschedule_booking_id);
 
@@ -584,10 +585,12 @@ serve(async (req) => {
       // Fetch old booking
       const { data: oldBooking } = await supabase
         .from('scheduled_bookings')
-        .select('id, google_event_id, candidate_google_event_id, interviewer_id, status')
+        .select('id, google_event_id, candidate_google_event_id, interviewer_id, status, scheduled_start')
         .eq('id', reschedule_booking_id)
         .eq('status', 'confirmed')
         .maybeSingle();
+
+      rescheduledFromStart = oldBooking?.scheduled_start ?? null;
 
       if (oldBooking) {
         // Delete old Google Calendar events if they exist
@@ -1312,6 +1315,7 @@ serve(async (req) => {
 
     // Log activity
     try {
+      const isReschedule = !!reschedule_booking_id;
       const activityMetadata: Record<string, any> = {
         booking_id: bookingId,
         candidate_email,
@@ -1324,21 +1328,41 @@ serve(async (req) => {
       if (candidate_id) activityMetadata.candidate_id = candidate_id;
       if (effectiveStageId) activityMetadata.job_hiring_stage_id = effectiveStageId;
 
-      const activityTitle = booked_by_user_id
-        ? `Interview scheduled for ${candidate_name}`
-        : `Interview scheduled with ${candidate_name}`;
+      if (isReschedule) {
+        activityMetadata.previous_booking_id = reschedule_booking_id;
+        activityMetadata.previous_scheduled_start = rescheduledFromStart;
+        activityMetadata.rescheduled_by = booked_by_user_id || 'candidate';
+      }
+
+      const fmt = (iso: string | null) =>
+        iso ? new Date(iso).toLocaleString() : 'the previous time';
+
+      const activityTitle = isReschedule
+        ? booked_by_user_id
+          ? `Interview rescheduled for ${candidate_name}`
+          : `Interview rescheduled by ${candidate_name}`
+        : booked_by_user_id
+          ? `Interview scheduled for ${candidate_name}`
+          : `Interview scheduled with ${candidate_name}`;
+
+      const activityDescription = isReschedule
+        ? `Interview moved from ${fmt(rescheduledFromStart)} to ${fmt(scheduled_start)}`
+        : `Candidate ${candidate_name} booked an interview for ${new Date(scheduled_start).toLocaleString()}`;
 
       await supabase.rpc('log_activity', {
         p_user_id: booked_by_user_id || config.user_id,
         p_organization_id: config.organization_id,
-        p_activity_type: 'interview_scheduled',
+        p_activity_type: isReschedule ? 'interview_rescheduled' : 'interview_scheduled',
         p_title: activityTitle,
-        p_description: `Candidate ${candidate_name} booked an interview for ${new Date(scheduled_start).toLocaleString()}`,
+        p_description: activityDescription,
         p_metadata: activityMetadata,
+        p_entity_type: candidate_id ? 'candidate' : null,
+        p_entity_id: candidate_id || null,
       });
     } catch (activityError) {
       console.error('[create-booking] Failed to log activity:', activityError);
     }
+
 
     return new Response(JSON.stringify({
       success: true,
