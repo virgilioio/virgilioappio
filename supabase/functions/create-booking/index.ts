@@ -561,6 +561,7 @@ serve(async (req) => {
     }
 
     // If rescheduling, cancel the old booking first
+    let rescheduledFromStart: string | null = null;
     if (reschedule_booking_id) {
       console.log('[create-booking] Rescheduling: cancelling old booking', reschedule_booking_id);
 
@@ -584,10 +585,12 @@ serve(async (req) => {
       // Fetch old booking
       const { data: oldBooking } = await supabase
         .from('scheduled_bookings')
-        .select('id, google_event_id, candidate_google_event_id, interviewer_id, status')
+        .select('id, google_event_id, candidate_google_event_id, interviewer_id, status, scheduled_start')
         .eq('id', reschedule_booking_id)
         .eq('status', 'confirmed')
         .maybeSingle();
+
+      rescheduledFromStart = oldBooking?.scheduled_start ?? null;
 
       if (oldBooking) {
         // Delete old Google Calendar events if they exist
