@@ -23,7 +23,7 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
   // Cmd+K (and legacy Cmd+/) shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === '/')) {
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault()
         setExpanded(true)
         // Defer focus until input renders
