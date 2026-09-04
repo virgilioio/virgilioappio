@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
+import {
+  detectTimeZone,
+  formatInTimeZone,
+  formatZoneFullDate,
+  formatZoneTime,
+  isValidTimeZone,
+  zoneAbbr,
+  zoneCityLabel,
+} from '@/lib/timezoneFormat';
 import { Calendar, Clock, MapPin, Download, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,6 +73,9 @@ export function ExistingBookingView({
   const [cancellationReason, setCancellationReason] = useState('');
 
   const startTime = new Date(booking.scheduled_start);
+  const displayTz = isValidTimeZone(booking.candidate_timezone)
+    ? booking.candidate_timezone
+    : detectTimeZone();
   const endTime = new Date(booking.scheduled_end);
   const interviewerName = booking.interviewer_profile
     ? `${booking.interviewer_profile.first_name} ${booking.interviewer_profile.last_name}`
@@ -182,11 +193,11 @@ END:VCALENDAR`;
               <Calendar className="w-5 h-5 text-virgilio-muted mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-virgilio-text">
-                  {format(startTime, 'EEEE, MMMM d, yyyy')}
+                  {formatZoneFullDate(startTime, displayTz)}
                 </p>
                 <p className="text-sm text-virgilio-muted">
-                  {format(startTime, 'h:mm a')} – {format(endTime, 'h:mm a')}{' '}
-                  ({booking.candidate_timezone?.replace(/_/g, ' ')})
+                  {formatZoneTime(startTime, displayTz)} – {formatZoneTime(endTime, displayTz)}{' '}
+                  ({zoneCityLabel(displayTz)}{zoneAbbr(displayTz, startTime) ? ` · ${zoneAbbr(displayTz, startTime)}` : ''})
                 </p>
               </div>
             </div>
@@ -251,7 +262,10 @@ END:VCALENDAR`;
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     This will cancel your interview on{' '}
-                    <strong>{format(startTime, 'MMMM d')} at {format(startTime, 'h:mm a')}</strong>.
+                    <strong>
+                      {formatInTimeZone(startTime, displayTz, { month: 'long', day: 'numeric' })} at{' '}
+                      {formatZoneTime(startTime, displayTz)}
+                    </strong>.
                     The interviewer will be notified. You can rebook using the same link afterwards.
                   </AlertDialogDescription>
                 </AlertDialogHeader>

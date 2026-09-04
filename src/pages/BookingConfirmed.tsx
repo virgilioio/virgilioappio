@@ -1,6 +1,13 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { format } from 'date-fns';
+import {
+  detectTimeZone,
+  formatInTimeZone,
+  formatZoneTime,
+  formatZoneTimeShort,
+  isValidTimeZone,
+  zoneAbbr,
+} from '@/lib/timezoneFormat';
 import { Check, Clock, Video, Download, RefreshCw } from 'lucide-react';
 import { PublicBookingHeader } from '@/components/booking/PublicBookingHeader';
 import { PublicBookingFooter } from '@/components/booking/PublicBookingFooter';
@@ -71,9 +78,10 @@ export default function BookingConfirmed() {
   const firstName = state?.booking.candidate_name?.split(' ')[0] || 'there';
   const startTime = state ? new Date(state.booking.scheduled_start) : null;
   const endTime = state ? new Date(state.booking.scheduled_end) : null;
-  const tzAbbr = startTime
-    ? new Intl.DateTimeFormat('en-US', { timeZoneName: 'short', timeZone: state?.booking.candidate_timezone }).formatToParts(startTime).find(p => p.type === 'timeZoneName')?.value
-    : '';
+  const displayTz = isValidTimeZone(state?.booking.candidate_timezone)
+    ? (state!.booking.candidate_timezone as string)
+    : detectTimeZone();
+  const tzAbbr = startTime ? zoneAbbr(displayTz, startTime) : '';
 
   const downloadICS = () => {
     if (!state || !startTime || !endTime) return;
@@ -148,13 +156,13 @@ END:VCALENDAR`;
           <div className="bg-[#0d0d09] text-white p-5 md:p-6 flex items-start gap-5">
             <div className="leading-tight text-center flex-shrink-0">
               <div className="text-[10.5px] font-poppins font-semibold tracking-[0.08em] text-white/60 uppercase">
-                {format(startTime, 'EEE')}
+                {formatInTimeZone(startTime, displayTz, { weekday: 'short' })}
               </div>
               <div className="font-poppins font-bold text-[34px] leading-none mt-1">
-                {format(startTime, 'd')}
+                {formatInTimeZone(startTime, displayTz, { day: 'numeric' })}
               </div>
               <div className="text-[11.5px] text-white/60 mt-1">
-                {format(startTime, 'MMM')}
+                {formatInTimeZone(startTime, displayTz, { month: 'short' })}
               </div>
             </div>
             <div className="flex-1 min-w-0">
@@ -164,7 +172,7 @@ END:VCALENDAR`;
               <div className="flex items-center gap-3 mt-2 text-[12.5px] text-white/70 flex-wrap">
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {format(startTime, 'h:mm')} – {format(endTime, 'h:mm a')} {tzAbbr}
+                  {formatZoneTimeShort(startTime, displayTz)} – {formatZoneTime(endTime, displayTz)} {tzAbbr}
                 </span>
                 <span className="opacity-50">•</span>
                 <span className="inline-flex items-center gap-1.5">
