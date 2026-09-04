@@ -271,9 +271,8 @@ export default function PublicBookingPage() {
   const timeSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate || !availabilityData?.available_slots) return [];
     
-    const selectedKey = zoneDayKey(selectedDate, 'UTC') === zoneDayKey(selectedDate, 'UTC')
-      ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-      : '';
+    const selectedKey = localDayKey(selectedDate);
+
 
     return availabilityData.available_slots.filter(
       slot => zoneDayKey(slot.start, candidateTimezone) === selectedKey,
