@@ -1,5 +1,5 @@
-import { format, parseISO } from 'date-fns';
 import { ArrowRight } from 'lucide-react';
+import { formatZoneDayHeading, formatZoneTime, zoneAbbr } from '@/lib/timezoneFormat';
 
 interface TimeSlot {
   start: string;
@@ -14,6 +14,7 @@ interface TimeSlotsListProps {
   isLoading?: boolean;
   onConfirm?: () => void;
   showHeader?: boolean;
+  candidateTimezone: string;
 }
 
 export function TimeSlotsList({
@@ -24,6 +25,7 @@ export function TimeSlotsList({
   isLoading,
   onConfirm,
   showHeader = true,
+  candidateTimezone,
 }: TimeSlotsListProps) {
   if (!selectedDate) {
     return (
@@ -48,10 +50,11 @@ export function TimeSlotsList({
       {showHeader && (
         <div className="flex items-center justify-between">
           <h4 className="font-poppins font-bold text-virgilio-text text-[15px] tracking-[-0.02em]">
-            {format(selectedDate, 'EEEE, MMMM d')}
+            {formatZoneDayHeading(selectedDate, candidateTimezone)}
           </h4>
           <span className="text-[11.5px] text-virgilio-muted">
             {timeSlots.length} {timeSlots.length === 1 ? 'time' : 'times'}
+            {zoneAbbr(candidateTimezone) ? ` · ${zoneAbbr(candidateTimezone)}` : ''}
           </span>
         </div>
       )}
@@ -75,7 +78,7 @@ export function TimeSlotsList({
                     onClick={() => onSlotSelect(slot)}
                     className="flex-1 h-11 rounded-lg bg-[#0d0d09] text-white font-poppins font-semibold text-[13px]"
                   >
-                    {format(parseISO(slot.start), 'h:mm a')}
+                    {formatZoneTime(slot.start, candidateTimezone)}
                   </button>
                   <button
                     type="button"
@@ -101,7 +104,7 @@ export function TimeSlotsList({
                 `}
                 aria-pressed={!!isSelected}
               >
-                {format(parseISO(slot.start), 'h:mm a')}
+                {formatZoneTime(slot.start, candidateTimezone)}
               </button>
             );
           })}

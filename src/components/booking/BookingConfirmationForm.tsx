@@ -7,7 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
-import { format } from 'date-fns';
+import {
+  formatZoneFullDate,
+  formatZoneTime,
+  zoneAbbr,
+  zoneCityLabel,
+} from '@/lib/timezoneFormat';
 import { Calendar, Clock, Globe, ArrowLeft } from 'lucide-react';
 import { suggestEmailFix } from '@/utils/emailTypoSuggest';
 
@@ -80,18 +85,19 @@ export function BookingConfirmationForm({
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="w-4 h-4 text-virgilio-purple" />
             <span className="font-semibold text-virgilio-text">
-              {format(new Date(selectedSlot.start), 'EEEE, MMMM d, yyyy')}
+              {formatZoneFullDate(selectedSlot.start, candidateTimezone)}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="w-4 h-4 text-virgilio-purple" />
             <span className="text-virgilio-text">
-              {format(new Date(selectedSlot.start), 'h:mm a')} - {format(new Date(selectedSlot.end), 'h:mm a')}
+              {formatZoneTime(selectedSlot.start, candidateTimezone)} - {formatZoneTime(selectedSlot.end, candidateTimezone)}
+              {zoneAbbr(candidateTimezone) ? ` ${zoneAbbr(candidateTimezone)}` : ''}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Globe className="w-4 h-4 text-virgilio-purple" />
-            <span className="text-virgilio-muted">{candidateTimezone.replace(/_/g, ' ')}</span>
+            <span className="text-virgilio-muted">{zoneCityLabel(candidateTimezone)}</span>
           </div>
         </CardContent>
       </Card>
