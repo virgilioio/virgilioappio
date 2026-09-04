@@ -81,7 +81,7 @@ export function CandidateSearchBar({
           ) : (
             <div className="flex items-center gap-0.5 text-[10px] text-text-tertiary">
               <kbd className="px-1.5 py-0.5 bg-[#F1F0EC] rounded font-mono">⌘</kbd>
-              <kbd className="px-1 py-0.5 bg-[#F1F0EC] rounded font-mono">K</kbd>
+              <kbd className="px-1 py-0.5 bg-[#F1F0EC] rounded font-mono">/</kbd>
             </div>
           )}
           {trailing && <div className="pl-1 ml-1 border-l border-virgilio-border/70 flex items-center">{trailing}</div>}

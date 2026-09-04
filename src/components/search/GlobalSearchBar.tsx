@@ -20,10 +20,10 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [expanded, setExpanded] = useState(!collapsible)
 
-  // Cmd+K (and legacy Cmd+/) shortcut
+  // Cmd+/ shortcut (Cmd+K is reserved for creating a candidate)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === '/')) {
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
         e.preventDefault()
         setExpanded(true)
         // Defer focus until input renders
@@ -127,7 +127,7 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
                 {!collapsible && (
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-virgilio-muted pointer-events-none">
                     <kbd className="px-1.5 py-0.5 bg-virgilio-border/50 rounded font-mono">⌘</kbd>
-                    <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">K</kbd>
+                    <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">/</kbd>
                   </div>
                 )}
               </div>
