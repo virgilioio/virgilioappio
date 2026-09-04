@@ -20,7 +20,7 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [expanded, setExpanded] = useState(!collapsible)
 
-  // Cmd+K (and legacy Cmd+/) shortcut
+  // Cmd+/ shortcut (Cmd+K is reserved for creating a candidate)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '/') {
