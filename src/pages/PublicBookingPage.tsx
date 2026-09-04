@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SoftFlag, SoftCalendar } from '@/components/ui/EmptyIllustrations';
-import { AlertCircle, Globe, ShieldX, ArrowLeft, Clock, Users } from 'lucide-react';
+import { AlertCircle, ShieldX, ArrowLeft, Clock, Users } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { TimezonePicker } from '@/components/booking/TimezonePicker';
 import {
@@ -26,6 +26,7 @@ import {
   zoneCityLabel,
   zoneDayKey,
   dayKeyToLocalDate,
+  localDayKey,
 } from '@/lib/timezoneFormat';
 import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -297,7 +298,7 @@ export default function PublicBookingPage() {
 
   // Handler for quick schedule selection
   const handleQuickSelect = (slot: { start: string; end: string }) => {
-    const slotDate = parseISO(slot.start);
+    const slotDate = dayKeyToLocalDate(zoneDayKey(slot.start, candidateTimezone));
     if (!isSameMonth(slotDate, currentMonth)) {
       setCurrentMonth(startOfMonth(slotDate));
     }

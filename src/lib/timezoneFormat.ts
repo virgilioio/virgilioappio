@@ -123,6 +123,14 @@ export function zoneDayKey(date: Date | string, timeZone: string): string {
   }
 }
 
+/** Local (device) calendar day key for a Date used as a calendar cell. */
+export function localDayKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /** Build a Date at local midday for a "yyyy-MM-dd" day key (safe for calendar cells). */
 export function dayKeyToLocalDate(key: string): Date {
   const [y, m, d] = key.split('-').map(Number);
