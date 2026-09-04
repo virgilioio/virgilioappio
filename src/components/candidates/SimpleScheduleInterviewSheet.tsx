@@ -587,6 +587,8 @@ export function SimpleScheduleInterviewSheet({
                           selectedSlot={selectedSlot}
                           onSlotSelect={setSelectedSlot}
                           isLoading={isLoadingAvailability}
+                          candidateTimezone={candidateTimezone}
+
                         />
                       </CardContent>
                     </Card>
