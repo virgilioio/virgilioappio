@@ -12,13 +12,21 @@ import { JobStageSummaryCard } from '@/components/booking/JobStageSummaryCard';
 import { PublicBookingHeader } from '@/components/booking/PublicBookingHeader';
 import { PublicBookingFooter } from '@/components/booking/PublicBookingFooter';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SoftFlag, SoftCalendar } from '@/components/ui/EmptyIllustrations';
 import { AlertCircle, Globe, ShieldX, ArrowLeft, Clock, Users } from 'lucide-react';
-import { startOfMonth, endOfMonth, isSameDay, isSameMonth, parseISO } from 'date-fns';
+import { startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
+import { TimezonePicker } from '@/components/booking/TimezonePicker';
+import {
+  detectTimeZone,
+  formatZoneDayHeading,
+  zoneAbbr,
+  zoneCityLabel,
+  zoneDayKey,
+  dayKeyToLocalDate,
+} from '@/lib/timezoneFormat';
 import { useBookingAvailability, EventTypeOverrides } from '@/hooks/useBookingAvailability';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -29,21 +37,6 @@ import {
   resolveBookingToken,
 } from '@/lib/bookingLinkUtils';
 import { useReportSplashReady } from '@/contexts/SplashReadyContext';
-
-// Common timezones for the selector
-const COMMON_TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time (US & Canada)' },
-  { value: 'America/Chicago', label: 'Central Time (US & Canada)' },
-  { value: 'America/Denver', label: 'Mountain Time (US & Canada)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (US & Canada)' },
-  { value: 'Europe/London', label: 'London' },
-  { value: 'Europe/Paris', label: 'Paris' },
-  { value: 'Europe/Berlin', label: 'Berlin' },
-  { value: 'Asia/Tokyo', label: 'Tokyo' },
-  { value: 'Asia/Shanghai', label: 'Shanghai' },
-  { value: 'Asia/Singapore', label: 'Singapore' },
-  { value: 'Australia/Sydney', label: 'Sydney' },
-];
 
 function formatNamesList(names: string[]): string {
   if (names.length === 0) return '';
@@ -58,9 +51,8 @@ export default function PublicBookingPage() {
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [mobileStep, setMobileStep] = useState<'date' | 'time' | 'confirm'>('date');
-  const [candidateTimezone, setCandidateTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
+  const detectedTimezone = useMemo(() => detectTimeZone(), []);
+  const [candidateTimezone, setCandidateTimezone] = useState(detectedTimezone);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
@@ -246,14 +238,13 @@ export default function PublicBookingPage() {
   const availableDates = useMemo(() => {
     if (!availabilityData?.available_slots) return [];
     
-    const uniqueDates = new Set<string>();
+    const uniqueDayKeys = new Set<string>();
     availabilityData.available_slots.forEach(slot => {
-      const date = parseISO(slot.start);
-      uniqueDates.add(date.toDateString());
+      uniqueDayKeys.add(zoneDayKey(slot.start, candidateTimezone));
     });
-    
-    return Array.from(uniqueDates).map(dateStr => new Date(dateStr));
-  }, [availabilityData]);
+
+    return Array.from(uniqueDayKeys).sort().map(dayKeyToLocalDate);
+  }, [availabilityData, candidateTimezone]);
 
   // Auto-select first available date (no auto-advance — user navigates manually)
   useEffect(() => {
@@ -280,11 +271,14 @@ export default function PublicBookingPage() {
   const timeSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate || !availabilityData?.available_slots) return [];
     
-    return availabilityData.available_slots.filter(slot => {
-      const slotDate = parseISO(slot.start);
-      return isSameDay(slotDate, selectedDate);
-    });
-  }, [selectedDate, availabilityData]);
+    const selectedKey = zoneDayKey(selectedDate, 'UTC') === zoneDayKey(selectedDate, 'UTC')
+      ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+      : '';
+
+    return availabilityData.available_slots.filter(
+      slot => zoneDayKey(slot.start, candidateTimezone) === selectedKey,
+    );
+  }, [selectedDate, availabilityData, candidateTimezone]);
 
   // Mobile date selection — auto-advance to time step
   const handleDateSelect = useCallback((date: Date) => {
@@ -548,7 +542,7 @@ export default function PublicBookingPage() {
             interviewerRole={config?.description || null}
             interviewerAvatarUrl={config?.profiles?.avatar_url || null}
             workspaceName={workspaceName}
-            timezoneLabel={candidateTimezone}
+            timezoneLabel={`${zoneCityLabel(candidateTimezone)}${zoneAbbr(candidateTimezone) ? ` (${zoneAbbr(candidateTimezone)})` : ''}`}
           />
         </main>
         <PublicBookingFooter />
@@ -666,6 +660,7 @@ export default function PublicBookingPage() {
                         selectedSlot={selectedSlot}
                         onSlotSelect={handleSlotSelect}
                         isLoading={isLoadingAvailability}
+                        candidateTimezone={candidateTimezone}
                       />
                     </div>
                   )}
@@ -778,7 +773,7 @@ export default function PublicBookingPage() {
                         {selectedDate ? (
                           <div className="flex items-baseline justify-between">
                             <h4 className="font-poppins font-bold text-virgilio-text text-[16px] tracking-[-0.02em]">
-                              {selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                              {formatZoneDayHeading(selectedDate, candidateTimezone)}
                             </h4>
                             <span className="text-[11.5px] text-virgilio-muted">
                               {timeSlotsForSelectedDate.length} {timeSlotsForSelectedDate.length === 1 ? 'time' : 'times'}
@@ -791,17 +786,17 @@ export default function PublicBookingPage() {
                         )}
 
                         {/* Timezone select */}
-                        <Select value={candidateTimezone} onValueChange={setCandidateTimezone}>
-                          <SelectTrigger className="h-9 rounded-lg border-virgilio-border bg-white text-[12.5px]">
-                            <Globe className="h-3.5 w-3.5 text-virgilio-muted mr-1.5" />
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COMMON_TIMEZONES.map((tz) => (
-                              <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="space-y-1.5">
+                          <TimezonePicker
+                            value={candidateTimezone}
+                            onChange={setCandidateTimezone}
+                            detected={detectedTimezone}
+                          />
+                          <p className="text-[11px] text-virgilio-muted">
+                            Times shown in {zoneCityLabel(candidateTimezone)}
+                            {zoneAbbr(candidateTimezone) ? ` (${zoneAbbr(candidateTimezone)})` : ''}
+                          </p>
+                        </div>
 
                         {isGroupBooking && groupInterviewerNames.length > 0 && (
                           <div className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-virgilio-purple/10 text-virgilio-purple text-[12px] font-medium">
@@ -817,6 +812,7 @@ export default function PublicBookingPage() {
                           onSlotSelect={setSelectedSlot}
                           isLoading={isLoadingAvailability}
                           showHeader={false}
+                          candidateTimezone={candidateTimezone}
                         />
                       </div>
                     )}
