@@ -73,6 +73,9 @@ export function ExistingBookingView({
   const [cancellationReason, setCancellationReason] = useState('');
 
   const startTime = new Date(booking.scheduled_start);
+  const displayTz = isValidTimeZone(booking.candidate_timezone)
+    ? booking.candidate_timezone
+    : detectTimeZone();
   const endTime = new Date(booking.scheduled_end);
   const interviewerName = booking.interviewer_profile
     ? `${booking.interviewer_profile.first_name} ${booking.interviewer_profile.last_name}`

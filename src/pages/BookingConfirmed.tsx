@@ -1,6 +1,13 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { format } from 'date-fns';
+import {
+  detectTimeZone,
+  formatInTimeZone,
+  formatZoneTime,
+  formatZoneTimeShort,
+  isValidTimeZone,
+  zoneAbbr,
+} from '@/lib/timezoneFormat';
 import { Check, Clock, Video, Download, RefreshCw } from 'lucide-react';
 import { PublicBookingHeader } from '@/components/booking/PublicBookingHeader';
 import { PublicBookingFooter } from '@/components/booking/PublicBookingFooter';
