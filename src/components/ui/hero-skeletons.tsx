@@ -90,34 +90,37 @@ export function HeroCardSkeleton({ variant = 'job', className }: HeroCardSkeleto
 }
 
 /**
- * Skeleton for `<PipelineSectionTabs>` (Job page) — 6 colored section cells.
+ * Skeleton for `<PipelineSectionTabs>` (Job page) — the same 52px six-column
+ * segmented control, so nothing shifts when the counts arrive.
  */
 export function PipelineSectionTabsSkeleton({ className }: { className?: string }) {
   return (
-    <section
-      className={cn(
-        'bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 animate-in fade-in duration-300',
-        className,
-      )}
+    <div
+      className={cn('grid animate-in fade-in duration-300', className)}
+      style={{
+        gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+        gap: 6,
+        padding: 4,
+        borderRadius: 12,
+        background: '#FAFAF7',
+        border: '1px solid #E7E8EE',
+      }}
       aria-hidden
     >
-      <div className="flex gap-2">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex-1 min-w-[140px] rounded-xl border border-dashed border-virgilio-border px-3 py-2.5"
-          >
-            <div className="flex items-center gap-1.5">
-              <Skeleton className="h-3.5 w-3.5 rounded-full" />
-              <Skeleton className="h-3.5 w-20 rounded-md" />
-            </div>
-            <Skeleton className="mt-1.5 h-3 w-16 rounded-md" />
-          </div>
-        ))}
-      </div>
-    </section>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center justify-center gap-1.5"
+          style={{ height: 44, borderRadius: 9 }}
+        >
+          <Skeleton className="h-3 w-16 rounded-md" />
+          <Skeleton className="h-4 w-5 rounded-full" />
+        </div>
+      ))}
+    </div>
   )
 }
+
 
 /**
  * Skeleton for `<ProfileStageStrip>` (Candidate profile) — horizontal stage chips.

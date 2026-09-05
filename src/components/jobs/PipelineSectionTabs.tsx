@@ -1,64 +1,28 @@
-import { Sparkles, Circle } from 'lucide-react'
+import * as React from 'react'
+import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CREAM, HAIRLINE, INK, MUTED, PASTELS, SAND, SURFACE_HOVER, TERTIARY } from '@/lib/pastels'
 
 export type PipelineSection = 'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'
 
 interface SectionDef {
   value: PipelineSection
   label: string
-  /** Active background tone */
-  active: string
-  /** Count chip background when inactive */
-  chipInactive: string
-  /** Count chip background when active */
-  chipActive: string
-  icon?: React.ComponentType<{ className?: string }>
+  tone: keyof typeof PASTELS
 }
 
+/**
+ * Six sections, always six equal columns. This row is a segmented control —
+ * a state switch, not navigation, which is why it is filled and boxed while
+ * row 1 above it is a bare underline.
+ */
 const SECTIONS: SectionDef[] = [
-  {
-    value: 'suggested',
-    label: 'Suggested',
-    active: 'bg-pastel-purple/40 text-text-primary',
-    chipInactive: 'bg-muted text-text-secondary',
-    chipActive: 'bg-virgilio-purple text-white',
-    icon: Sparkles,
-  },
-  {
-    value: 'application',
-    label: 'Application review',
-    active: 'bg-pastel-purple text-text-primary',
-    chipInactive: 'bg-muted text-text-secondary',
-    chipActive: 'bg-citron-noir text-cream',
-  },
-  {
-    value: 'recruiting',
-    label: 'Recruiting process',
-    active: 'bg-pastel-yellow text-text-primary',
-    chipInactive: 'bg-muted text-text-secondary',
-    chipActive: 'bg-citron-noir text-cream',
-  },
-  {
-    value: 'offers',
-    label: 'Job offers',
-    active: 'bg-pastel-blue text-text-primary',
-    chipInactive: 'bg-muted text-text-secondary',
-    chipActive: 'bg-citron-noir text-cream',
-  },
-  {
-    value: 'hired',
-    label: 'Hired',
-    active: 'bg-success/20 text-text-primary',
-    chipInactive: 'bg-muted text-text-secondary',
-    chipActive: 'bg-success text-success-foreground',
-  },
-  {
-    value: 'rejected',
-    label: 'Rejected',
-    active: 'bg-destructive/15 text-text-primary',
-    chipInactive: 'bg-muted text-text-secondary',
-    chipActive: 'bg-destructive text-destructive-foreground',
-  },
+  { value: 'suggested', label: 'Suggested', tone: 'lilac' },
+  { value: 'application', label: 'Application review', tone: 'purple' },
+  { value: 'recruiting', label: 'Recruiting process', tone: 'yellow' },
+  { value: 'offers', label: 'Job offers', tone: 'blue' },
+  { value: 'hired', label: 'Hired', tone: 'green' },
+  { value: 'rejected', label: 'Rejected', tone: 'neutral' },
 ]
 
 export interface PipelineSectionTabsProps {
@@ -69,67 +33,114 @@ export interface PipelineSectionTabsProps {
 }
 
 export function PipelineSectionTabs({ value, onChange, counts, className }: PipelineSectionTabsProps) {
-  return (
-    <section
-      className={cn(
-        'bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6',
-        className
-      )}
-    >
-      <div
-        role="tablist"
-        aria-label="Pipeline section"
-        className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1"
-      >
-        {SECTIONS.map((s) => {
-          const Icon = s.icon
-          const isActive = value === s.value
-          const count = counts[s.value]
-          const countLabel =
-            typeof count === 'number' ? `${count} candidate${count === 1 ? '' : 's'}` : '—'
+  const refs = React.useRef<(HTMLButtonElement | null)[]>([])
 
-          return (
-            <button
-              key={s.value}
-              role="tab"
-              aria-selected={isActive}
-              type="button"
-              onClick={() => onChange(s.value)}
-              className={cn(
-                'flex-1 min-w-[140px] rounded-xl px-3 py-2.5 transition-colors text-left',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30',
-                isActive
-                  ? cn(s.active, 'font-semibold')
-                  : 'border border-dashed border-virgilio-border text-text-tertiary bg-transparent hover:bg-[#FAFAF7] hover:text-text-primary'
-              )}
+  // Roving focus: only the selected tab is tabbable, arrows move and select.
+  const onKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let next: number | null = null
+    if (e.key === 'ArrowRight') next = (index + 1) % SECTIONS.length
+    if (e.key === 'ArrowLeft') next = (index - 1 + SECTIONS.length) % SECTIONS.length
+    if (e.key === 'Home') next = 0
+    if (e.key === 'End') next = SECTIONS.length - 1
+    if (next === null) return
+    e.preventDefault()
+    onChange(SECTIONS[next].value)
+    refs.current[next]?.focus()
+  }
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Pipeline section"
+      className={cn('grid', className)}
+      style={{
+        gridTemplateColumns: `repeat(${SECTIONS.length}, minmax(0, 1fr))`,
+        gap: 6,
+        padding: 4,
+        borderRadius: 12,
+        background: SURFACE_HOVER,
+        border: `1px solid ${HAIRLINE}`,
+      }}
+    >
+      {SECTIONS.map((s, i) => {
+        const isActive = value === s.value
+        const count = counts[s.value]
+        const pastel = PASTELS[s.tone]
+
+        return (
+          <button
+            key={s.value}
+            ref={(el) => {
+              refs.current[i] = el
+            }}
+            role="tab"
+            type="button"
+            aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
+            onClick={() => onChange(s.value)}
+            onKeyDown={(e) => onKeyDown(e, i)}
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30"
+            style={{
+              height: 44,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '0 10px',
+              borderRadius: 9,
+              border: '1px solid',
+              borderColor: isActive ? 'transparent' : 'transparent',
+              background: isActive ? pastel.bg : 'transparent',
+              color: isActive ? pastel.fg : MUTED,
+              fontFamily: "'Poppins', system-ui, sans-serif",
+              fontSize: 12.5,
+              fontWeight: isActive ? 600 : 500,
+              letterSpacing: '-0.01em',
+              cursor: 'pointer',
+              transition: 'background 120ms ease, color 120ms ease',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) e.currentTarget.style.background = '#fff'
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) e.currentTarget.style.background = 'transparent'
+            }}
+          >
+            {s.value === 'suggested' && <Sparkles size={12} strokeWidth={2} style={{ flexShrink: 0 }} />}
+            <span
+              style={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                minWidth: 0,
+              }}
             >
-              <div className="flex items-center gap-1.5">
-                {isActive ? (
-                  <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-text-primary/10">
-                    <span className="h-1.5 w-1.5 rounded-full bg-text-primary" />
-                  </span>
-                ) : Icon ? (
-                  <Icon className="h-3.5 w-3.5 opacity-70" />
-                ) : (
-                  <Circle className="h-3.5 w-3.5 opacity-50" />
-                )}
-                <span className="font-poppins font-medium text-[12.5px] tracking-[-0.005em] truncate">
-                  {s.label}
-                </span>
-              </div>
-              <div
-                className={cn(
-                  'mt-1 font-poppins text-[11px] tracking-[-0.005em] truncate',
-                  isActive ? 'text-text-primary/70' : 'text-text-tertiary/80'
-                )}
-              >
-                {countLabel}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </section>
+              {s.label}
+            </span>
+            <span
+              style={{
+                flexShrink: 0,
+                minWidth: 18,
+                height: 16,
+                lineHeight: '16px',
+                padding: '0 5px',
+                borderRadius: 999,
+                textAlign: 'center',
+                fontFamily: "'Poppins', system-ui, sans-serif",
+                fontSize: 10.5,
+                fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
+                background: isActive ? INK : SAND,
+                color: isActive ? CREAM : TERTIARY,
+              }}
+            >
+              {typeof count === 'number' ? count : '—'}
+            </span>
+          </button>
+        )
+      })}
+    </div>
   )
 }
 

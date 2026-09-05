@@ -22,7 +22,9 @@ import { PostingSheet } from '@/components/jobs/postings/PostingSheet'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 
 import { JobHero } from '@/components/jobs/JobHero'
+import { cn } from '@/lib/utils'
 import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/PipelineSectionTabs'
+import { JobSuggestedTab } from '@/components/jobs/suggested/JobSuggestedTab'
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
@@ -968,7 +970,7 @@ export default function JobDetail() {
           className="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
         >
           {(() => {
-            const triggerCls = "relative h-10 px-0 rounded-none bg-transparent shadow-none font-poppins font-medium text-[14px] tracking-[-0.005em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
+            const triggerCls = "relative h-auto px-0 py-2 rounded-none bg-transparent shadow-none font-poppins font-medium text-[13px] tracking-[-0.01em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
             const triggers = (
               <>
                 <TabsTrigger value="overview" className={triggerCls}>Overview</TabsTrigger>
@@ -1098,7 +1100,7 @@ export default function JobDetail() {
           >
             <div className="flex h-full min-h-0 flex-col">
               {!isRestrictedViewer && (
-                <div className="mb-4 shrink-0">
+                <div className="mb-3 shrink-0">
                   <PipelineSectionTabs
                     value={pipelineSectionTab as PipelineSection}
                     onChange={(v) => setPipelineSectionTab(v as any)}
@@ -1114,7 +1116,8 @@ export default function JobDetail() {
                 </div>
               )}
               <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div className="hidden sm:block shrink-0 mb-3">
+                {/* Suggested brings its own toolbar — the generic one would duplicate it. */}
+                <div className={cn('hidden shrink-0 mb-3', pipelineSectionTab !== 'suggested' && 'sm:block')}>
                   <TableToolbar
                     left={
                       <>
@@ -1268,43 +1271,17 @@ export default function JobDetail() {
                         </div>
                       ) : pipelineSectionTab === 'suggested' ? (
                         <div className="w-full p-layout-md">
-                          <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-primary" />
-                              <span className="text-sm font-medium text-text-primary">
-                                AI-Matched Candidates
-                              </span>
-                              {matchingCandidates && matchingCandidates.length > 0 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {matchingCandidates.length} matches
-                                </Badge>
-                              )}
-                            </div>
-                            {isLoadingMatches ? (
-                              <div className="flex items-center justify-center py-12">
-                                <SuggestedCandidatesLoader />
-                              </div>
-                            ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                              <CandidateTable
-                                candidates={matchingCandidates as any}
-                                isLoading={false}
-                                onEdit={() => {}}
-                                onDelete={() => {}}
-                                markCandidateAsViewed={() => {}}
-                                isCandidateNewForUser={() => false}
-                                onRowClick={openSuggestedProfile}
-                                hideActions={true}
-                                showFitScore={true}
-                                hideSkills={true}
-                              />
-                            ) : (
-                              <GioEmptyState
-                                title="No matching candidates found"
-                                description="Try adjusting the job requirements or add more skills"
-                              />
-                            )}
-                          </div>
+                          <JobSuggestedTab
+                            jobId={id!}
+                            jobSkills={(job as any)?.skills || null}
+                            jobLocation={job?.location || null}
+                            onOpenCandidate={(c: any) =>
+                              openSuggestedProfile(c?.candidate_id || c?.id)
+                            }
+                            onEditRequirements={() => setActiveTab('job-setup')}
+                          />
                         </div>
+
                       ) : pipelineSectionTab === 'application' ? (
                         <div className="w-full p-layout-md">
                           <CandidateTable
