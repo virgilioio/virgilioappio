@@ -717,6 +717,107 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     }
   }, [panelOpen])
 
+  // ── Board / List shared truth ──────────────────────────────────────────────
+  // Switching layout clears the selection — what's picked doesn't survive it.
+  useEffect(() => {
+    setSelectedIds(new Set())
+    emitSelectedCandidateIds(new Set())
+    setSelectionMode(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView])
+
+  // Esc clears the selection in both views.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedIds(new Set())
+        emitSelectedCandidateIds(new Set())
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [emitSelectedCandidateIds])
+
+  const stageColorByJhsId = useMemo(() => {
+    const m = new Map<string, string>()
+    stageOptions.forEach((opt, i) => m.set(opt.jhsId, stageColor(opt.stage.stage_type, i)))
+    return m
+  }, [stageOptions])
+
+  const ownerIds = useMemo(
+    () => Array.from(new Set(allAssociations.map((a) => a.added_by).filter(Boolean))) as string[],
+    [allAssociations],
+  )
+
+  const { data: ownerProfiles } = useQuery({
+    queryKey: ['pipeline-owner-profiles', jobId, ownerIds.slice().sort().join(',')],
+    queryFn: async () => {
+      if (ownerIds.length === 0) return []
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, avatar_url')
+        .in('user_id', ownerIds)
+      return data || []
+    },
+    enabled: ownerIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const ownerById = useMemo(() => {
+    const m = new Map<string, { name: string; avatar: string | null }>()
+    for (const p of ownerProfiles || []) {
+      const name = [p.first_name, p.last_name].filter(Boolean).join(' ').trim()
+      m.set(p.user_id, { name: name || '—', avatar: (p as any).avatar_url ?? null })
+    }
+    return m
+  }, [ownerProfiles])
+
+  const listGroups: PipelineListGroup[] = useMemo(
+    () =>
+      stageOptions.map((opt) => ({
+        jhsId: opt.jhsId,
+        name: opt.stage.stage_name,
+        color: stageColorByJhsId.get(opt.jhsId) || '#6F3FF5',
+        rows: (sortedByStage[opt.jhsId] || []).map((a) => {
+          const owner = a.added_by ? ownerById.get(a.added_by) : undefined
+          return {
+            id: a.id,
+            candidateId: a.candidate_id,
+            name: a.candidate_name || 'Unnamed candidate',
+            role: a.current_role ?? null,
+            company: a.current_company ?? null,
+            score: a.ai_fit_score ?? null,
+            days: daysInStage(a.entered_stage_at, a.created_at),
+            nextStep: nextStepText(opt.stage.stage_type),
+            due: null,
+            ownerName: owner?.name ?? null,
+            ownerAvatarUrl: owner?.avatar ?? null,
+            isFavorite: a.is_favorite,
+          }
+        }),
+      })),
+    [stageOptions, sortedByStage, stageColorByJhsId, ownerById],
+  )
+
+  const listStages = useMemo(
+    () => stageOptions.map((o) => ({ jhsId: o.jhsId, name: o.stage.stage_name })),
+    [stageOptions],
+  )
+
+  const openCandidate = useCallback(
+    (candidateId: string) => {
+      if (onCandidateClick) {
+        const currentOrder = navigationSnapshotRef.current.length > 0
+          ? navigationSnapshotRef.current
+          : orderedCandidateIds
+        onCandidateClick(candidateId, currentOrder)
+      } else {
+        handleOpenCandidateSheet(candidateId)
+      }
+    },
+    [onCandidateClick, orderedCandidateIds, handleOpenCandidateSheet],
+  )
+
   return (
     <div className="space-y-4">
       {showHeader && (
