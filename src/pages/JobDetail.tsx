@@ -1099,7 +1099,7 @@ export default function JobDetail() {
           >
             <div className="flex h-full min-h-0 flex-col">
               {!isRestrictedViewer && (
-                <div className="mb-4 shrink-0">
+                <div className="mb-3 shrink-0">
                   <PipelineSectionTabs
                     value={pipelineSectionTab as PipelineSection}
                     onChange={(v) => setPipelineSectionTab(v as any)}
@@ -1115,7 +1115,8 @@ export default function JobDetail() {
                 </div>
               )}
               <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-                <div className="hidden sm:block shrink-0 mb-3">
+                {/* Suggested brings its own toolbar — the generic one would duplicate it. */}
+                <div className={cn('hidden shrink-0 mb-3', pipelineSectionTab !== 'suggested' && 'sm:block')}>
                   <TableToolbar
                     left={
                       <>
