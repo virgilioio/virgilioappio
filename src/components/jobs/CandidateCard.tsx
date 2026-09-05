@@ -1,22 +1,13 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
-import { Card } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Calendar, Clock, FileText, CheckCircle, Send, Phone, Heart, Sparkles } from 'lucide-react'
+import { Clock, Heart, Sparkles, Check } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
-import { Checkbox } from '@/components/ui/checkbox'
 import { supabase } from '@/lib/supabaseClient'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
-import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
-import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
-import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
-import { renderTemplate, buildPlaceholderData, stripHtmlToPlainText } from '@/utils/templateUtils'
-import { useAuth } from '@/contexts/AuthContext'
+import { scoreColor, isStale, PIPELINE_RED, PIPELINE_TERTIARY } from './pipelineVisuals'
 
 interface CandidateCardProps {
   candidateId?: string
@@ -28,6 +19,8 @@ interface CandidateCardProps {
   currentStageJhsId?: string | null
   timeInStageLabel?: string
   timeBadgeVariant?: BadgeProps['variant']
+  /** Whole days in the current stage — red + 600 past 7. */
+  daysInStage?: number
   onMove: (toStageId: string) => void | Promise<void>
   onClick?: () => void
   showCheckbox?: boolean
@@ -43,15 +36,9 @@ interface CandidateCardProps {
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
-  const { candidateId, associationId, candidateName, linkedinUrl, phone, timeInStageLabel, timeBadgeVariant, onClick, currentStageJhsId, jobId, whatsappTemplateSentAt: initialSentAt } = props
-  const { isEnabled: whatsAppEnabled, messageTemplate: whatsAppTemplate } = useWhatsAppEnabled()
-  const { user } = useAuth()
+  const { candidateId, candidateName, onClick, daysInStage = 0 } = props
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
-  const [localSentAt, setLocalSentAt] = useState<string | null>(initialSentAt ?? null)
-
-  // Keep local state in sync with prop changes (e.g. after pipeline reload)
-  const effectiveSentAt = localSentAt ?? initialSentAt ?? null
 
   const { data: nextInterview } = useQuery({
     queryKey: ['next-interview', candidateId],
@@ -71,7 +58,7 @@ export default function CandidateCard(props: CandidateCardProps) {
     enabled: !!candidateId,
   })
 
-  // Lightweight candidate meta (current role / company / AI fit) for visual subtitle.
+  // Lightweight candidate meta (current role / company / AI fit) for the card body.
   const { data: candidateMeta } = useQuery({
     queryKey: ['candidate-meta', candidateId],
     queryFn: async () => {
@@ -87,373 +74,150 @@ export default function CandidateCard(props: CandidateCardProps) {
     staleTime: 5 * 60 * 1000,
   })
 
-  // Query for candidate status (scorecards, bookings, and booking link sent)
-  const { data: candidateStatus } = useQuery({
-    queryKey: ['candidate-status', candidateId, associationId, currentStageJhsId],
-    queryFn: async () => {
-      if (!candidateId || !associationId || !currentStageJhsId) return null
-      
-      // Fetch scorecards for this association + stage (only human-submitted) with authors
-      const { data: scorecards } = await supabase
-        .from('job_stage_scorecards')
-        .select('id, created_by')
-        .eq('association_id', associationId)
-        .eq('stage_instance_id', currentStageJhsId)
-        .eq('is_ai_draft', false)
-      
-      // Fetch all bookings for this candidate in this stage
-      const { data: bookings } = await supabase
-        .from('scheduled_bookings')
-        .select('id, scheduled_start, status, candidate_confirmation_status, interviewer_id')
-        .eq('candidate_id', candidateId)
-        .eq('job_hiring_stage_id', currentStageJhsId)
-        .in('status', ['pending', 'confirmed', 'rescheduled', 'completed', 'no_show'])
-        .order('scheduled_start', { ascending: true })
-
-      // Fetch attendees for these bookings to derive expected interviewer set
-      const bookingIds = (bookings || []).map(b => b.id)
-      let attendees: { booking_id: string; user_id: string }[] = []
-      if (bookingIds.length > 0) {
-        const { data } = await supabase
-          .from('scheduled_booking_attendees')
-          .select('booking_id, user_id')
-          .in('booking_id', bookingIds)
-        attendees = (data || []) as any
-      }
-
-      // Build expected interviewer set across all bookings for this stage
-      const expected = new Set<string>()
-      for (const b of bookings || []) {
-        if (b.interviewer_id) expected.add(b.interviewer_id)
-      }
-      for (const a of attendees) {
-        if (a.user_id) expected.add(a.user_id)
-      }
-
-      const authors = new Set((scorecards || []).map(s => s.created_by).filter(Boolean) as string[])
-      const hasAnyScorecard = (scorecards?.length ?? 0) > 0
-      const allSubmitted = expected.size > 0 && [...expected].every(uid => authors.has(uid))
-      
-      // Fetch booking_link_sent_at from the association
-      const { data: association } = await supabase
-        .from('job_candidate_associations')
-        .select('booking_link_sent_at')
-        .eq('id', associationId)
-        .single()
-      
-      const now = new Date()
-      
-      const completedInterview = bookings?.find(b => 
-        b.status === 'completed' || 
-        b.status === 'no_show' ||
-        (b.status === 'confirmed' && new Date(b.scheduled_start) < now)
-      )
-      
-      const upcomingInterview = bookings?.find(b => 
-        (b.status === 'confirmed' || b.status === 'rescheduled') && 
-        new Date(b.scheduled_start) >= now
-      )
-      
-      const pendingBookingLink = bookings?.find(b => 
-        b.status === 'pending' || 
-        (b.candidate_confirmation_status === 'pending' && b.status !== 'cancelled')
-      )
-      
-      const bookingLinkSentAt = association?.booking_link_sent_at
-      
-      return {
-        hasAnyScorecard,
-        allSubmitted,
-        expectedCount: expected.size,
-        submittedCount: [...expected].filter(uid => authors.has(uid)).length,
-        completedInterview,
-        upcomingInterview,
-        pendingBookingLink,
-        bookingLinkSentAt,
-      }
-    },
-    enabled: !!candidateId && !!associationId && !!currentStageJhsId,
-  })
-
-  // WhatsApp first-click template handler
-  const handleWhatsAppClick = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!phone) return
-
-    // If no template, no association, or already sent — open plain URL
-    if (!whatsAppTemplate || !associationId || effectiveSentAt) {
-      const url = buildWhatsAppUrl(phone)
-      if (url) window.open(url, '_blank')
-      return
-    }
-
-    // Resolve placeholders
-    const senderProfile = user?.id
-      ? await supabase
-          .from('profiles')
-          .select('first_name, last_name, email, title, phone, linkedin_url')
-          .eq('user_id', user.id)
-          .maybeSingle()
-          .then((r) => r.data)
-      : null
-
-    // Fetch candidate details for placeholders
-    const candidateData = candidateId
-      ? await supabase
-          .from('candidates')
-          .select('candidate_name, email, phone, location_city, location_state, location_country')
-          .eq('id', candidateId)
-          .maybeSingle()
-          .then((r) => r.data)
-      : null
-
-    // Fetch job details
-    const jobData = jobId
-      ? await supabase
-          .from('jobs')
-          .select('title, department, location, organization:organizations(name)')
-          .eq('id', jobId)
-          .maybeSingle()
-          .then((r) => r.data)
-      : null
-
-    const orgName = (jobData as any)?.organization?.name ?? ''
-
-    const placeholderData = buildPlaceholderData({
-      candidate: candidateData
-        ? {
-            candidate_name: candidateData.candidate_name,
-            email: candidateData.email,
-            phone: candidateData.phone,
-            location_city: candidateData.location_city,
-            location_state: candidateData.location_state,
-            location_country: candidateData.location_country,
-          }
-        : undefined,
-      job: jobData ? { title: jobData.title, department: jobData.department, location: jobData.location } : undefined,
-      sender: senderProfile
-        ? {
-            first_name: senderProfile.first_name ?? undefined,
-            last_name: senderProfile.last_name ?? undefined,
-            email: senderProfile.email ?? user?.email ?? undefined,
-            title: senderProfile.title ?? undefined,
-            phone: senderProfile.phone ?? undefined,
-            linkedin_url: senderProfile.linkedin_url ?? undefined,
-          }
-        : undefined,
-      organizationName: orgName,
-    })
-
-    const resolvedText = stripHtmlToPlainText(renderTemplate(whatsAppTemplate, placeholderData))
-    const url = buildWhatsAppUrl(phone, resolvedText)
-    if (url) window.open(url, '_blank')
-
-    // Mark as sent
-    await supabase
-      .from('job_candidate_associations' as any)
-      .update({ whatsapp_template_sent_at: new Date().toISOString() })
-      .eq('id', associationId)
-    setLocalSentAt(new Date().toISOString())
-  }
-
-  // Get status badge based on priority
-  const getStatusBadge = () => {
-    if (!candidateStatus) return null
-    const {
-      hasAnyScorecard,
-      allSubmitted,
-      expectedCount,
-      submittedCount,
-      completedInterview,
-      upcomingInterview,
-      pendingBookingLink,
-      bookingLinkSentAt,
-    } = candidateStatus
-
-    // All expected interviewers submitted -> Needs Decision
-    if (allSubmitted) {
-      return { label: 'Needs Decision', variant: 'purple' as const, Icon: CheckCircle }
-    }
-
-    // Some submitted but not all (multi-interviewer) -> Pending Scorecard with progress
-    if (hasAnyScorecard && expectedCount > 1) {
-      return {
-        label: `Pending Scorecard (${submittedCount}/${expectedCount})`,
-        variant: 'warning' as const,
-        Icon: FileText,
-      }
-    }
-
-    if (completedInterview) {
-      const label = expectedCount > 1
-        ? `Pending Scorecard (${submittedCount}/${expectedCount})`
-        : 'Pending Scorecard'
-      return { label, variant: 'warning' as const, Icon: FileText }
-    }
-
-    if (upcomingInterview) {
-      const timeUntil = formatDistanceToNowStrict(new Date(upcomingInterview.scheduled_start), { addSuffix: false })
-      return { label: `In ${timeUntil}`, variant: 'info' as const, Icon: Calendar }
-    }
-
-    if (pendingBookingLink || bookingLinkSentAt) {
-      return { label: 'Booking Link Sent', variant: 'secondary' as const, Icon: Send }
-    }
-
-    return { label: 'Pending Schedule', variant: 'pastel-yellow' as const, Icon: Clock }
-  }
-
-  const statusBadge = getStatusBadge()
-
-  const initials = (candidateName || '?')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(s => s[0]?.toUpperCase())
-    .join('') || '?'
-
   const role = candidateMeta?.current_role || null
   const company = candidateMeta?.current_company || null
-  const aiFitScore = typeof candidateMeta?.ai_fit_score === 'number' ? candidateMeta.ai_fit_score : null
+  const score = typeof candidateMeta?.ai_fit_score === 'number' ? candidateMeta.ai_fit_score : null
+
+  // Due pill — only when there is an interview landing today or tomorrow.
+  let duePill: string | null = null
+  if (nextInterview?.scheduled_start) {
+    const d = differenceInCalendarDays(parseISO(nextInterview.scheduled_start), new Date())
+    if (d <= 0) duePill = 'Due today'
+    else if (d === 1) duePill = 'Due tmrw'
+  }
+
+  const checkboxVisible = !!props.showCheckbox && (!!props.checked || !!props.checkboxAlwaysVisible)
+  const stale = isStale(daysInStage)
 
   return (
     <>
-      <Card
-        className={cn(
-          'group/card relative bg-white border rounded-xl shadow-none hover:shadow-[var(--shadow-xs)] transition-shadow p-3 cursor-pointer',
-          props.selected ? 'border-virgilio-purple shadow-[0_0_0_1px_#6F3FF5]' : 'border-virgilio-border',
-        )}
+      <div
+        className={cn('group/card relative cursor-grab bg-white', props.selected && 'is-selected')}
+        style={{
+          border: `1px solid ${props.selected ? '#6F3FF5' : '#E7E8EE'}`,
+          borderRadius: 10,
+          padding: 12,
+          marginBottom: 8,
+          boxShadow: props.selected ? '0 0 0 1px #6F3FF5' : '0 1px 2px rgba(13,13,9,0.03)',
+        }}
         onClick={onClick}
         role="button"
         aria-label="Open candidate profile"
       >
         {props.showCheckbox && (
-          <div
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={!!props.checked}
+            aria-label="Select candidate"
             className={cn(
-              'absolute top-2.5 left-2.5 z-10 transition-opacity duration-100',
-              props.checked || props.checkboxAlwaysVisible
-                ? 'opacity-100'
-                : 'opacity-0 group-hover/card:opacity-100 focus-within:opacity-100',
+              'absolute inline-flex items-center justify-center transition-opacity duration-100',
+              checkboxVisible ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100',
             )}
-            onClick={(e) => { e.stopPropagation(); props.onCheckboxClick?.(e) }}
+            style={{
+              top: 10,
+              left: 10,
+              zIndex: 2,
+              width: 16,
+              height: 16,
+              borderRadius: 4,
+              border: props.checked ? 'none' : '1.5px solid #C2C6D2',
+              background: props.checked ? '#0d0d09' : '#fff',
+              boxShadow: props.checked ? 'none' : '0 1px 2px rgba(13,13,9,0.06)',
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              props.onCheckboxClick?.(e)
+              props.onCheckedChange?.(!props.checked)
+            }}
           >
-            <Checkbox
-              className="h-4 w-4 rounded-[4px] border-[1.5px] border-[#C2C6D2] bg-white shadow-[0_1px_2px_rgba(13,13,9,0.06)] data-[state=checked]:bg-[#0d0d09] data-[state=checked]:border-[#0d0d09] data-[state=checked]:text-[#fffcf9]"
-              checked={!!props.checked}
-              onCheckedChange={(v) => props.onCheckedChange?.(!!v)}
-              aria-label="Select candidate"
-            />
-          </div>
+            {props.checked && <Check size={10} strokeWidth={3} color="#fffcf9" />}
+          </button>
         )}
 
-        {!props.showCheckbox && props.isFavorite && (
-          <Heart className="absolute top-2.5 right-2.5 h-3.5 w-3.5 fill-red-500 text-red-500" />
-        )}
-
-        <div className="flex items-start gap-2.5">
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className="bg-virgilio-purple text-white text-[11px] font-semibold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+        <div
+          className="flex items-start gap-[10px] transition-[padding-left] duration-100"
+          style={{ paddingLeft: checkboxVisible ? 22 : 0 }}
+        >
           <div className="min-w-0 flex-1">
-            <div className="font-poppins text-[14px] font-semibold tracking-[-0.01em] text-text-primary leading-[1.15] truncate">
-              {candidateName}
+            <div className="flex items-center gap-[6px]">
+              <span
+                className="flex-1 truncate"
+                style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}
+                title={candidateName}
+              >
+                {candidateName}
+              </span>
+              {props.isFavorite && <Heart size={12} color={PIPELINE_RED} fill={PIPELINE_RED} />}
             </div>
             {role && (
-              <div className="text-[12px] text-text-secondary leading-tight truncate mt-0.5">
+              <div
+                className="truncate"
+                style={{ fontFamily: 'Inter, sans-serif', fontSize: 10.5, color: PIPELINE_TERTIARY, marginTop: 1 }}
+              >
                 {role}
               </div>
             )}
             {company && (
-              <div className="text-[12px] text-text-tertiary leading-tight truncate">
+              <div
+                className="truncate"
+                style={{ fontFamily: 'Inter, sans-serif', fontSize: 10.5, color: PIPELINE_TERTIARY, marginTop: 1 }}
+              >
                 @ {company}
               </div>
             )}
           </div>
         </div>
 
-        {(linkedinUrl || phone) && (
-          <div className="mt-2 flex items-center gap-3 text-[11px]">
-            {linkedinUrl && (
-              <a
-                href={linkedinUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[#0A66C2] hover:underline"
-                title="Open LinkedIn"
-                onClick={(e) => e.stopPropagation()}
+        <div
+          className="flex items-center justify-between"
+          style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #F1F0EC' }}
+        >
+          <span
+            className="inline-flex items-center"
+            style={{
+              gap: 4,
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 10.5,
+              fontWeight: 600,
+              color: scoreColor(score),
+            }}
+          >
+            <Sparkles size={10} strokeWidth={2.25} />
+            {score ?? '—'}
+          </span>
+          <span className="inline-flex items-center" style={{ gap: 8 }}>
+            <span
+              className="inline-flex items-center"
+              style={{
+                gap: 4,
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 10.5,
+                fontWeight: stale ? 600 : 500,
+                color: stale ? PIPELINE_RED : PIPELINE_TERTIARY,
+              }}
+            >
+              <Clock size={10} strokeWidth={2} />
+              {daysInStage}d
+            </span>
+            {duePill && (
+              <Badge
+                tone="pink"
+                size="xs"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (nextInterview?.id) {
+                    setSelectedBookingId(nextInterview.id)
+                    setBookingDialogOpen(true)
+                  }
+                }}
               >
-                <LinkedInFilled className="w-3 h-3" />
-              </a>
+                {duePill}
+              </Badge>
             )}
-            {phone && (whatsAppEnabled && buildWhatsAppUrl(phone) ? (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-[#25D366] hover:text-[#128C7E] bg-transparent border-none p-0 cursor-pointer"
-                title="Open WhatsApp"
-                onClick={handleWhatsAppClick}
-              >
-                <WhatsAppIcon size={12} />
-              </button>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-text-tertiary">
-                <Phone className="w-3 h-3" />
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Bottom row: AI fit (left) + time chip / status (right) */}
-        <div className="mt-3 pt-2 flex items-center justify-between gap-2">
-          <div className="inline-flex items-center gap-1 font-poppins text-[12px] tabular-nums text-text-secondary">
-            <Sparkles className="h-3 w-3 text-virgilio-purple" />
-            <span className="font-semibold text-text-primary">{aiFitScore ?? '—'}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {nextInterview ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-md bg-pastel-pink/60 px-1.5 py-0.5 text-[11px] font-medium text-text-primary hover:brightness-95"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedBookingId(nextInterview.id)
-                        setBookingDialogOpen(true)
-                      }}
-                    >
-                      <Calendar className="h-3 w-3" />
-                      {format(parseISO(nextInterview.scheduled_start), 'MMM d')}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Interview: {format(parseISO(nextInterview.scheduled_start), 'PPpp')}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : timeInStageLabel ? (
-              <span className="inline-flex items-center gap-1 text-[11px] tabular-nums text-text-tertiary">
-                <Clock className="h-3 w-3" />
-                {timeInStageLabel}
-              </span>
-            ) : null}
-            {statusBadge && !nextInterview && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span aria-label={statusBadge.label}>
-                      <statusBadge.Icon className="h-3 w-3 text-text-tertiary" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{statusBadge.label}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
+          </span>
         </div>
-      </Card>
+      </div>
 
       <BookingDetailsDialog
         bookingId={selectedBookingId}
