@@ -1153,157 +1153,97 @@ export default function JobDetail() {
                 </div>
               )}
               <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-                {/* Suggested brings its own toolbar — the generic one would duplicate it. */}
-                <div className={cn('hidden shrink-0 mb-2', pipelineSectionTab !== 'suggested' && 'sm:block')}>
-                  <PipelineToolbar
+                {pipelineSectionTab === 'recruiting' ? (
+                  <>
+                    <div className="hidden shrink-0 mb-2 sm:block">
+                      <PipelineToolbar
+                        filters={pipelineFilters}
+                        onFiltersChange={setPipelineFilters}
+                        search={pipelineSearch}
+                        onSearchChange={setPipelineSearch}
+                        view={pipelineView}
+                        onViewChange={setPipelineView}
+                        showViewToggle
+                      />
+                    </div>
+                    <div className="relative p-0 flex-1 min-h-0">
+                      <div className="h-full min-h-0" style={{ padding: '12px 28px 24px' }}>
+                        <PipelineOverview
+                          jobId={id!}
+                          showHeader={false}
+                          externalScroll
+                          viewMode={pipelineView}
+                          onViewModeChange={setPipelineView}
+                          selectionMode={selectionMode}
+                          onSelectionModeChange={setSelectionMode}
+                          onSelectedIdsChange={setSelectedCandidateIds}
+                          refreshToken={pipelineRefresh}
+                          onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                          onCandidateClick={openPipelineProfile}
+                          searchTerm={pipelineSearch}
+                          filters={pipelineFilters}
+                          onAddCandidateClick={() => setShowAddCandidate(true)}
+                        />
+                      </div>
+                      <SelectionBar
+                        count={selectedCandidateIds.length}
+                        onClear={() => {
+                          setSelectedCandidateIds([])
+                          setSelectionMode(false)
+                        }}
+                        actions={[
+                          {
+                            id: 'email',
+                            label: 'Email',
+                            icon: Mail,
+                            slot: 'secondary',
+                            onClick: () => setShowBulkEmailDialog(true),
+                          },
+                          {
+                            id: 'reject',
+                            label: 'Reject',
+                            slot: 'overflow',
+                            destructive: true,
+                            onClick: () => setShowBulkRejectionDialog(true),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </>
+                ) : pipelineSectionTab === 'suggested' ? (
+                  <div className="relative p-0 flex-1 min-h-0">
+                    <ScrollArea className="h-full w-full scrollbar-black">
+                      <div className="w-full p-layout-md">
+                        <JobSuggestedTab
+                          jobId={id!}
+                          jobSkills={(job as any)?.skills || null}
+                          jobLocation={job?.location || null}
+                          onOpenCandidate={(c: any) =>
+                            openSuggestedProfile(c?.candidate_id || c?.id)
+                          }
+                          onEditRequirements={() => setActiveTab('job-setup')}
+                        />
+                      </div>
+                    </ScrollArea>
+                  </div>
+                ) : (
+                  <PipelineFlatSection
+                    jobId={id!}
+                    section={pipelineSectionTab as 'application' | 'offers' | 'hired' | 'rejected'}
+                    candidates={applyPipelineNarrowing(sectionCandidateList)}
+                    associations={associations}
+                    stageMap={stageMap}
+                    isLoading={statusListsLoading}
                     filters={pipelineFilters}
                     onFiltersChange={setPipelineFilters}
                     search={pipelineSearch}
                     onSearchChange={setPipelineSearch}
-                    view={pipelineView}
-                    onViewChange={setPipelineView}
-                    showViewToggle={pipelineSectionTab === 'recruiting'}
+                    selectedIds={selectedCandidateIds}
+                    onSelectedIdsChange={setSelectedCandidateIds}
+                    handlers={sectionHandlers}
                   />
-                </div>
-                <div className="relative p-0 flex-1 min-h-0">
-                  {pipelineSectionTab === 'recruiting' ? (
-                    <div className="h-full min-h-0" style={{ padding: '12px 28px 24px' }}>
-                      <PipelineOverview
-                        jobId={id!}
-                        showHeader={false}
-                        externalScroll
-                        viewMode={pipelineView}
-                        onViewModeChange={setPipelineView}
-                        selectionMode={selectionMode}
-                        onSelectionModeChange={setSelectionMode}
-                        onSelectedIdsChange={setSelectedCandidateIds}
-                        refreshToken={pipelineRefresh}
-                        onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                        onCandidateClick={openPipelineProfile}
-                        searchTerm={pipelineSearch}
-                        filters={pipelineFilters}
-                        onAddCandidateClick={() => setShowAddCandidate(true)}
-                      />
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-full w-full scrollbar-black">
-                      {pipelineSectionTab === 'suggested' ? (
-                        <div className="w-full p-layout-md">
-                          <JobSuggestedTab
-                            jobId={id!}
-                            jobSkills={(job as any)?.skills || null}
-                            jobLocation={job?.location || null}
-                            onOpenCandidate={(c: any) =>
-                              openSuggestedProfile(c?.candidate_id || c?.id)
-                            }
-                            onEditRequirements={() => setActiveTab('job-setup')}
-                          />
-                        </div>
+                )}
 
-                      ) : pipelineSectionTab === 'application' ? (
-                        <div className="w-full p-layout-md">
-                          <CandidateTable
-                            candidates={applyPipelineNarrowing(applicationReviewCandidates)}
-                            isLoading={statusListsLoading}
-                            onEdit={handleEditCandidate}
-                            onDelete={handleDeleteCandidate}
-                            markCandidateAsViewed={markCandidateAsViewed}
-                            isCandidateNewForUser={isCandidateNewForUser}
-                            onRowClick={(candidateId) => openProfileInPlace(candidateId, 'application', applicationReviewCandidates)}
-                            selectionMode={selectionMode}
-                            onSelectionModeChange={setSelectionMode}
-                            selectedIds={selectedCandidateIds}
-                            onSelectedIdsChange={setSelectedCandidateIds}
-                            hideSkills={true}
-                            showFitScore={true}
-                          />
-                        </div>
-                      ) : pipelineSectionTab === 'offers' ? (
-                        <div className="w-full p-layout-md">
-                          <CandidateTable
-                            candidates={applyPipelineNarrowing(offersCandidates)}
-                            isLoading={statusListsLoading}
-                            onEdit={handleEditCandidate}
-                            onDelete={handleDeleteCandidate}
-                            markCandidateAsViewed={() => {}}
-                            isCandidateNewForUser={() => false}
-                            onRowClick={openOffersProfile}
-                            selectionMode={selectionMode}
-                            onSelectionModeChange={setSelectionMode}
-                            selectedIds={selectedCandidateIds}
-                            onSelectedIdsChange={setSelectedCandidateIds}
-                            hideSkills={true}
-                          />
-                        </div>
-                      ) : pipelineSectionTab === 'hired' ? (
-                        <div className="w-full p-layout-md">
-                          <CandidateTable
-                            candidates={applyPipelineNarrowing(hiredCandidates)}
-                            isLoading={statusListsLoading}
-                            onEdit={handleEditCandidate}
-                            onDelete={handleDeleteCandidate}
-                            markCandidateAsViewed={() => {}}
-                            isCandidateNewForUser={() => false}
-                            onRowClick={openHiredProfile}
-                            selectionMode={selectionMode}
-                            onSelectionModeChange={setSelectionMode}
-                            selectedIds={selectedCandidateIds}
-                            onSelectedIdsChange={setSelectedCandidateIds}
-                            hideSkills={true}
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full p-layout-md">
-                          <CandidateTable
-                            candidates={applyPipelineNarrowing(rejectedCandidates)}
-                            isLoading={statusListsLoading}
-                            onEdit={handleEditCandidate}
-                            onDelete={handleDeleteCandidate}
-                            markCandidateAsViewed={() => {}}
-                            isCandidateNewForUser={() => false}
-                            onRowClick={openRejectedProfile}
-                            selectionMode={selectionMode}
-                            onSelectionModeChange={setSelectionMode}
-                            selectedIds={selectedCandidateIds}
-                            onSelectedIdsChange={setSelectedCandidateIds}
-                            hideSkills={true}
-                          />
-                        </div>
-                      )}
-                    </ScrollArea>
-                  )}
-
-                  {/* Floating bulk bar — zero layout, never shifts the table. */}
-                  {(
-                    <SelectionBar
-                      count={selectedCandidateIds.length}
-                      onClear={() => {
-                        setSelectedCandidateIds([])
-                        setSelectionMode(false)
-                      }}
-                      actions={[
-                        {
-                          id: 'email',
-                          label: 'Email',
-                          icon: Mail,
-                          slot: 'secondary',
-                          onClick: () => setShowBulkEmailDialog(true),
-                        },
-                        ...(pipelineSectionTab === 'rejected' || pipelineSectionTab === 'hired'
-                          ? []
-                          : [
-                              {
-                                id: 'reject',
-                                label: 'Reject',
-                                slot: 'overflow' as const,
-                                destructive: true,
-                                onClick: () => setShowBulkRejectionDialog(true),
-                              },
-                            ]),
-                      ]}
-                    />
-                  )}
-                </div>
               </div>
             </div>
           </TabsContent>
