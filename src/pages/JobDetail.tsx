@@ -983,7 +983,67 @@ export default function JobDetail() {
     </div>
   )
 
+  // ── Flat sections (Application review · Job offers · Hired · Rejected) ────
+  const sectionCandidateList =
+    pipelineSectionTab === 'application'
+      ? applicationReviewCandidates
+      : pipelineSectionTab === 'offers'
+        ? offersCandidates
+        : pipelineSectionTab === 'hired'
+          ? hiredCandidates
+          : rejectedCandidates
+
+  const sectionProfileContext = pipelineSectionTab === 'application' ? 'application' : 'pipeline'
+
+  const screeningStageId = useMemo(() => {
+    const entries = Object.entries(stageMap)
+    const screening = entries.find(([, v]) => v.type === 'screening')
+    if (screening) return screening[0]
+    const other = entries.find(
+      ([, v]) => v.type !== 'application_review' && v.type !== 'offer' && v.type !== 'onboarding',
+    )
+    return other ? other[0] : null
+  }, [stageMap])
+
+  const advanceToScreening = async (candidateId: string) => {
+    const assoc = associations.find((a) => a.candidate_id === candidateId)
+    if (!assoc || !screeningStageId) return
+    await moveAssociationToStage(assoc.id, screeningStageId)
+    setPipelineRefresh((v) => v + 1)
+  }
+
+  const sectionHandlers = useMemo(
+    () => ({
+      onOpenRow: (row: any) =>
+        openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList),
+      onAdvance: (row: any) => advanceToScreening(row.id),
+      onReject: (row: any) => {
+        setSelectedCandidateIds([row.id])
+        setShowBulkRejectionDialog(true)
+      },
+      onMoveToJob: (row: any) =>
+        openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList),
+      onBulkEmail: () => setShowBulkEmailDialog(true),
+      onBulkReject: () => setShowBulkRejectionDialog(true),
+      onStartReview: () => {
+        const first = sectionCandidateList[0]
+        if (first) openProfileInPlace(first.id, 'application', sectionCandidateList)
+      },
+      onSharePosting: () => {
+        if (activePosting) openActivePosting()
+        else setShowCreatePostingSheet(true)
+      },
+      onDraftOffer: () => {
+        const first = offersCandidates[0] || recruitingProcessCandidates[0]
+        if (first) openProfileInPlace(first.id, 'pipeline', offersCandidates)
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sectionCandidateList, sectionProfileContext, screeningStageId, associations, activePosting],
+  )
+
   return (
+
     <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col bg-background overflow-hidden pb-[calc(env(safe-area-inset-bottom,0px)+72px)] sm:pb-0">
       <div className="layout-container pt-1 pb-2 sm:pt-2 sm:pb-3 flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile Header */}
