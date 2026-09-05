@@ -17,6 +17,8 @@ import {
   PIPELINE_TERTIARY,
   PIPELINE_PURPLE,
 } from './pipelineVisuals'
+import PipelineStatusBadge from './PipelineStatusBadge'
+import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
 
 export type PipelineListRow = {
   id: string
@@ -26,12 +28,13 @@ export type PipelineListRow = {
   company?: string | null
   score?: number | null
   days: number
-  nextStep: string
-  due?: string | null
+  /** The single engine-assigned status — rendered as-is. */
+  status?: CandidateStatusInfo | null
   ownerName?: string | null
   ownerAvatarUrl?: string | null
   isFavorite?: boolean
 }
+
 
 export type PipelineListGroup = {
   jhsId: string
