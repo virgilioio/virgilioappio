@@ -8,6 +8,7 @@ import {
   Send,
   StickyNote,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { matchColor } from './suggestedGrid'
 import type { SuggestedStatus } from '@/hooks/useSuggestedCandidateStatus'
 
@@ -148,7 +149,7 @@ export function SugLocationCell({ location, fits }: { location: string | null; f
 
 const STATUS_META: Record<
   SuggestedStatus['kind'],
-  { Icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; color: string; label: string }
+  { Icon: LucideIcon; color: string; label: string }
 > = {
   free: { Icon: CircleDashed, color: '#8B8F9E', label: 'Not in pipeline' },
   pipeline: { Icon: GitBranch, color: '#6F3FF5', label: 'In another pipeline' },

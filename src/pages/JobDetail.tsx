@@ -22,6 +22,7 @@ import { PostingSheet } from '@/components/jobs/postings/PostingSheet'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 
 import { JobHero } from '@/components/jobs/JobHero'
+import { cn } from '@/lib/utils'
 import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/PipelineSectionTabs'
 import { JobSuggestedTab } from '@/components/jobs/suggested/JobSuggestedTab'
 
