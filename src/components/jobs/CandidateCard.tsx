@@ -198,9 +198,15 @@ export default function CandidateCard(props: CandidateCardProps) {
           </div>
         </div>
 
+        {props.status ? (
+          <div style={{ marginTop: 9, display: 'flex', minWidth: 0 }}>
+            <PipelineStatusBadge status={props.status} />
+          </div>
+        ) : null}
+
         <div
           className="flex items-center justify-between"
-          style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #F1F0EC' }}
+          style={{ marginTop: 9, paddingTop: 8, borderTop: '1px solid #F1F0EC' }}
         >
           <span
             className="inline-flex items-center"
@@ -233,30 +239,10 @@ export default function CandidateCard(props: CandidateCardProps) {
               <Clock size={10} strokeWidth={2} />
               {daysInStage}d
             </span>
-            {duePill && (
-              <Badge
-                tone="pink"
-                size="xs"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (nextInterview?.id) {
-                    setSelectedBookingId(nextInterview.id)
-                    setBookingDialogOpen(true)
-                  }
-                }}
-              >
-                {duePill}
-              </Badge>
-            )}
           </span>
         </div>
       </div>
-
-      <BookingDetailsDialog
-        bookingId={selectedBookingId}
-        open={bookingDialogOpen}
-        onOpenChange={setBookingDialogOpen}
-      />
     </>
   )
 }
+
