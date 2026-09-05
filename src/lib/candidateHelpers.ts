@@ -209,6 +209,9 @@ export async function createCandidate(candidateData: CandidateData) {
         linkedin_url: candidateData.linkedin_url,
         resume_url: candidateData.resume_url,
         skills: candidateData.skills,
+        current_job_title: candidateData.current_job_title ?? candidateData.current_role ?? null,
+        company_current: candidateData.company_current ?? candidateData.current_company ?? null,
+
         status: candidateData.status || 'active',
         source: candidateData.source || 'direct',
         created_by: candidateData.created_by,
