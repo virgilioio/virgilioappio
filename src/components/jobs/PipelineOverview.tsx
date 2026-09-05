@@ -1031,6 +1031,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           jobId={jobId}
                           whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
                           isFavorite={assoc.is_favorite}
+                          aiFitScore={assoc.ai_fit_score}
                         />
                       </DraggableCandidateCard>
                     )
@@ -1093,6 +1094,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         daysInStage={daysInStage(assoc.entered_stage_at, assoc.created_at)}
                         onMove={(toId) => handleMove(assoc.id, toId)}
                         isFavorite={assoc.is_favorite}
+                          aiFitScore={assoc.ai_fit_score}
                       />
                     </div>
                     {dragCount > 1 && (
