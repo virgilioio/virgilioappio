@@ -121,13 +121,26 @@ export function JobSuggestedTab({
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([s]) => s)
   }, [visible])
 
+  /** Every city, state/province and country present in the suggestion pool. */
   const locationOptions = React.useMemo(() => {
-    const counts = new Map<string, number>()
+    const counts = new Map<string, { label: string; kind: string; count: number }>()
+    const add = (raw: any, kind: string) => {
+      const label = String(raw || '').trim()
+      if (!label) return
+      const key = `${kind}:${label.toLowerCase()}`
+      const existing = counts.get(key)
+      if (existing) existing.count += 1
+      else counts.set(key, { label, kind, count: 1 })
+    }
     visible.forEach((c: any) => {
-      const key = String(c.location || c.location_city || '').trim()
-      if (key) counts.set(key, (counts.get(key) || 0) + 1)
+      add(c.location_city, 'City')
+      add(c.location_state, 'State / Province')
+      add(c.location_country, 'Country')
+      if (!c.location_city && !c.location_state && !c.location_country) add(c.location, 'Location')
     })
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([s]) => s)
+    return [...counts.values()].sort(
+      (a, b) => b.count - a.count || a.label.localeCompare(b.label),
+    )
   }, [visible])
 
   const state: SuggestedState = isLoading
