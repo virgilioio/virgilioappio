@@ -1,5 +1,6 @@
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
@@ -30,6 +31,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { usePipelineCandidateStatuses } from '@/hooks/usePipelineCandidateStatuses'
 import { cn } from '@/lib/utils'
+import { matchesPipelineFilters, type PipelineFilter } from './pipelineFilters'
 
 
 interface PipelineOverviewProps {
@@ -49,6 +51,8 @@ interface PipelineOverviewProps {
   onCandidateClick?: (candidateId: string, navigationOrder: string[]) => void
   /** External search term to filter candidates by name/role/company */
   searchTerm?: string
+  /** Active pipeline filters — the single source of truth from the toolbar */
+  filters?: PipelineFilter[]
   /** Called when user clicks the bottom dashed "+ Add candidate" inside any column */
   onAddCandidateClick?: () => void
 }
@@ -123,7 +127,7 @@ function ColumnShell({
   )
 }
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, onAddCandidateClick }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
@@ -216,6 +220,44 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   }, [emitSelectedCandidateIds])
 
   const isSelected = useCallback((id: string) => selectedIds.has(id), [selectedIds])
+
+  const columnHasSelection = useCallback((stageJhsId: string) => (
+    (byStage[stageJhsId] || []).some((a) => selectedIds.has(a.id))
+  ), [byStage, selectedIds])
+
+  /** Ticking a card starts selection — no mode button needed. */
+  const lastPicked = useRef<{ stageJhsId: string; id: string } | null>(null)
+  const modifierRef = useRef<{ shift: boolean; meta: boolean }>({ shift: false, meta: false })
+
+  const handleCheckboxModifiers = useCallback((e: React.MouseEvent, id: string, stageJhsId: string) => {
+    modifierRef.current = { shift: e.shiftKey, meta: e.metaKey || e.ctrlKey }
+  }, [])
+
+  const handleCardSelect = useCallback((id: string, stageJhsId: string, checked: boolean) => {
+    if (!selectionMode) setSelectionMode(true)
+    const { shift } = modifierRef.current
+    const last = lastPicked.current
+    if (shift && checked && last && last.stageJhsId === stageJhsId) {
+      const column = (byStage[stageJhsId] || []).map((a) => a.id)
+      const from = column.indexOf(last.id)
+      const to = column.indexOf(id)
+      if (from !== -1 && to !== -1) {
+        const range = column.slice(Math.min(from, to), Math.max(from, to) + 1)
+        setSelectedIds((prev) => {
+          const next = new Set(prev)
+          range.forEach((r) => next.add(r))
+          emitSelectedCandidateIds(next)
+          return next
+        })
+        lastPicked.current = { stageJhsId, id }
+        modifierRef.current = { shift: false, meta: false }
+        return
+      }
+    }
+    lastPicked.current = checked ? { stageJhsId, id } : null
+    modifierRef.current = { shift: false, meta: false }
+    toggleSelect(id, checked)
+  }, [byStage, emitSelectedCandidateIds, selectionMode, setSelectionMode, toggleSelect])
 
   const selectAllInStage = useCallback((stageJhsId: string) => {
     const ids = (byStage[stageJhsId] || []).map((a) => a.id)
@@ -523,16 +565,39 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return hay.includes(externalTerm)
   }, [externalTerm])
 
+  const activeFilters = pipelineFilters ?? []
+  const filterByToolbar = useCallback((assoc: PipelineAssociation) => (
+    matchesPipelineFilters({
+      is_favorite: assoc.is_favorite,
+      created_at: assoc.created_at,
+      entered_stage_at: assoc.entered_stage_at,
+      ai_fit_score: assoc.ai_fit_score ?? null,
+    }, activeFilters)
+  ), [activeFilters])
+
   // Sorted candidates by stage (for board view rendering)
   const sortedByStage = useMemo(() => {
     const result: Record<string, PipelineAssociation[]> = {}
     for (const opt of stageOptions) {
-      const arr = (byStage[opt.jhsId] || []).filter(filterByFavorite).filter(filterBySearchTerm).slice().sort(sortByStatusPriority)
+      const arr = (byStage[opt.jhsId] || []).filter(filterByFavorite).filter(filterBySearchTerm).filter(filterByToolbar).slice().sort(sortByStatusPriority)
       result[opt.jhsId] = arr
     }
     return result
-  }, [byStage, stageOptions, sortByStatusPriority, filterByFavorite, filterBySearchTerm])
+  }, [byStage, stageOptions, sortByStatusPriority, filterByFavorite, filterBySearchTerm, filterByToolbar])
 
+
+  const allVisibleIds = useMemo(
+    () => stageOptions.flatMap((o) => (sortedByStage[o.jhsId] || []).map((a) => a.id)),
+    [stageOptions, sortedByStage],
+  )
+
+  const selectAllInPipeline = useCallback(() => {
+    setSelectedIds(() => {
+      const next = new Set(allVisibleIds)
+      emitSelectedCandidateIds(next)
+      return next
+    })
+  }, [allVisibleIds, emitSelectedCandidateIds])
 
   // Flat list of candidates for list view
   const flatCandidates = useMemo(() => {
@@ -788,13 +853,35 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 />
                               </div>
                             )}
-                            <button
-                              type="button"
-                              aria-label="Stage actions"
-                              className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors opacity-0 group-hover:opacity-100"
-                            >
-                              <span className="text-base leading-none">···</span>
-                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label="Stage actions"
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <span className="text-base leading-none">···</span>
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" sideOffset={8} className="w-[240px]">
+                                <DropdownMenuItem
+                                  onSelect={() => { setSelectionMode(true); selectAllInStage(opt.jhsId) }}
+                                >
+                                  Select all in {opt.stage.stage_name}
+                                  <span className="ml-auto text-[11px] text-text-tertiary tabular-nums">
+                                    {(sortedByStage[opt.jhsId] || []).length}
+                                  </span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => { setSelectionMode(true); selectAllInPipeline() }}
+                                >
+                                  Select all in pipeline
+                                  <span className="ml-auto text-[11px] text-text-tertiary tabular-nums">
+                                    {allVisibleIds.length}
+                                  </span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       }
@@ -830,9 +917,12 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                     handleOpenCandidateSheet(assoc.candidate_id);
                                   }
                                 }}
-                                showCheckbox={selectionMode}
+                                showCheckbox
+                                checkboxAlwaysVisible={selectionMode && columnHasSelection(opt.jhsId)}
+                                selected={isSelected(assoc.id)}
                                 checked={isSelected(assoc.id)}
-                                onCheckedChange={(v) => toggleSelect(assoc.id, !!v)}
+                                onCheckedChange={(v) => handleCardSelect(assoc.id, opt.jhsId, !!v)}
+                                onCheckboxClick={(e) => handleCheckboxModifiers(e, assoc.id, opt.jhsId)}
                                 jobId={jobId}
                                 whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
                                 isFavorite={assoc.is_favorite}
