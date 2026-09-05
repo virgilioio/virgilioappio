@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
+import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
+
 
 export interface PipelineAssociation {
   id: string
