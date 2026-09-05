@@ -891,167 +891,121 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           ))}
         </div>
       ) : currentView === 'board' ? (
-        <>
-          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-            <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto snap-x snap-mandatory sm:snap-none'} pb-2`}>
+        <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <div style={{ display: 'flex', gap: 12, height: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+            {stageOptions.length === 0 && (
+              <Card className="min-w-[280px]">
+                <CardContent className="py-8 text-center text-text-secondary text-sm">
+                  No hiring plan defined yet.
+                </CardContent>
+              </Card>
+            )}
 
-              {stageOptions.length === 0 && (
-                <Card className="min-w-[280px]">
-                  <CardContent className="py-8 text-center text-text-secondary text-sm">
-                    No hiring plan defined yet.
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Render columns with candidate cards */}
-              {stageOptions.map((opt) => (
-                <div key={opt.jhsId} className="group w-[calc(100vw-3rem)] sm:w-72 flex-shrink-0 h-full flex flex-col snap-center sm:snap-align-none">
-                  <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
-                    <ColumnShell
-                      id={opt.jhsId}
-                      stageType={opt.stage.stage_type}
-                      isEmpty={!sortedByStage[opt.jhsId] || sortedByStage[opt.jhsId].length === 0}
-                      header={
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`h-2 w-2 rounded-full flex-shrink-0 ${getStageDotColor(opt.stage.stage_type)}`} aria-hidden />
-                            <span className="font-poppins text-[14px] font-semibold text-text-primary truncate" title={opt.stage.stage_name}>
-                              {opt.stage.stage_name}
-                            </span>
-                            <span className="text-[12px] font-medium text-text-tertiary tabular-nums">
-                              {(sortedByStage[opt.jhsId] || []).length}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {stageHasAutomation.get(opt.jhsId) && (
-                              <Zap className="h-3.5 w-3.5 text-virgilio-purple fill-virgilio-purple flex-shrink-0" />
-                            )}
-                            {selectionMode && (
-                              <div className="flex items-center gap-1.5 pr-1" onClick={(e) => e.stopPropagation()}>
-                                <Checkbox
-                                  checked={(sortedByStage[opt.jhsId] || []).length > 0 && (sortedByStage[opt.jhsId] || []).every(a => isSelected(a.id))}
-                                  onCheckedChange={() => selectAllInStage(opt.jhsId)}
-                                  aria-label="Select all in stage"
-                                />
-                              </div>
-                            )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  aria-label="Stage actions"
-                                  className="h-6 w-6 inline-flex items-center justify-center rounded-md text-text-tertiary hover:bg-[#F1F0EC] hover:text-text-primary transition-colors opacity-0 group-hover:opacity-100"
-                                >
-                                  <span className="text-base leading-none">···</span>
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" sideOffset={8} className="w-[240px]">
-                                <DropdownMenuItem
-                                  onSelect={() => { setSelectionMode(true); selectAllInStage(opt.jhsId) }}
-                                >
-                                  Select all in {opt.stage.stage_name}
-                                  <span className="ml-auto text-[11px] text-text-tertiary tabular-nums">
-                                    {(sortedByStage[opt.jhsId] || []).length}
-                                  </span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onSelect={() => { setSelectionMode(true); selectAllInPipeline() }}
-                                >
-                                  Select all in pipeline
-                                  <span className="ml-auto text-[11px] text-text-tertiary tabular-nums">
-                                    {allVisibleIds.length}
-                                  </span>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-                      }
+            {stageOptions.map((opt) => {
+              const rows = sortedByStage[opt.jhsId] || []
+              const color = stageColorByJhsId.get(opt.jhsId) || '#6F3FF5'
+              return (
+                <ColumnShell
+                  key={opt.jhsId}
+                  id={opt.jhsId}
+                  header={
+                    <div
+                      className="flex items-center justify-between shrink-0"
+                      style={{
+                        padding: '10px 12px',
+                        background: '#fff',
+                        borderBottom: '1px solid #E7E8EE',
+                        borderRadius: '12px 12px 0 0',
+                      }}
                     >
-                      <div className="space-y-2">
-                        {(sortedByStage[opt.jhsId] || []).map(assoc => {
-                          const t = getTimeInfo(assoc)
-                          const isPartOfBulkDrag = activeId !== null && 
-                            activeId !== assoc.id && 
-                            selectedIds.has(assoc.id) && 
-                            selectedIds.has(activeId) && 
-                            selectedIds.size > 1
-                          return (
-                            <DraggableCandidateCard id={assoc.id} key={assoc.id} isPartOfBulkDrag={isPartOfBulkDrag}>
-                              <CandidateCard
-                                candidateId={assoc.candidate_id}
-                                associationId={assoc.id}
-                                candidateName={assoc.candidate_name}
-                                linkedinUrl={assoc.linkedin_url}
-                                phone={assoc.phone}
-                                stageOptions={stageOptions}
-                                currentStageJhsId={opt.jhsId}
-                                timeInStageLabel={t.label}
-                                timeBadgeVariant={t.variant}
-                                onMove={(toId) => handleMove(assoc.id, toId)}
-                                onClick={() => { 
-                                  if (onCandidateClick) {
-                                    const currentOrder = navigationSnapshotRef.current.length > 0 
-                                      ? navigationSnapshotRef.current 
-                                      : orderedCandidateIds
-                                    onCandidateClick(assoc.candidate_id, currentOrder);
-                                  } else {
-                                    handleOpenCandidateSheet(assoc.candidate_id);
-                                  }
-                                }}
-                                showCheckbox
-                                checkboxAlwaysVisible={selectionMode && columnHasSelection(opt.jhsId)}
-                                selected={isSelected(assoc.id)}
-                                checked={isSelected(assoc.id)}
-                                onCheckedChange={(v) => handleCardSelect(assoc.id, opt.jhsId, !!v)}
-                                onCheckboxClick={(e) => handleCheckboxModifiers(e, assoc.id, opt.jhsId)}
-                                jobId={jobId}
-                                whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
-                                isFavorite={assoc.is_favorite}
-                              />
-                            </DraggableCandidateCard>
-                          )
-                        })}
+                      <div className="flex items-center" style={{ gap: 6, minWidth: 0 }}>
+                        <span
+                          aria-hidden
+                          className="shrink-0"
+                          style={{ width: 8, height: 8, borderRadius: 999, background: color }}
+                        />
+                        <span
+                          className="truncate"
+                          title={opt.stage.stage_name}
+                          style={{
+                            fontFamily: 'Poppins, sans-serif',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            letterSpacing: '-0.005em',
+                            color: '#1F2230',
+                          }}
+                        >
+                          {opt.stage.stage_name}
+                        </span>
+                        <span
+                          className="shrink-0 tabular-nums"
+                          style={{ fontFamily: 'Inter, sans-serif', fontSize: 10.5, color: '#8B8F9E' }}
+                        >
+                          {rows.length}
+                        </span>
+                        {stageHasAutomation.get(opt.jhsId) && (
+                          <Zap className="h-3 w-3 shrink-0 text-virgilio-purple fill-virgilio-purple" />
+                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => onAddCandidateClick?.()}
-                        className="mt-1 w-full rounded-xl border border-dashed border-virgilio-border/60 bg-white/40 px-3 py-2.5 text-[13px] text-text-tertiary hover:text-text-primary hover:border-virgilio-border hover:bg-white transition-colors inline-flex items-center justify-center gap-1.5"
+                      <DropdownMenu
+                        open={openStageMenu === opt.jhsId}
+                        onOpenChange={(o) => setOpenStageMenu(o ? opt.jhsId : null)}
                       >
-                        <span className="text-base leading-none">+</span> Add candidate
-                      </button>
-                    </ColumnShell>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-              {activeId && assocMap.get(activeId) ? (
-                (() => {
-                  const { assoc, stageJhsId } = assocMap.get(activeId)!
-                  const t = getTimeInfo(assoc)
-                  const dragCount = (selectedIds.has(activeId) && selectedIds.size > 1) 
-                    ? selectedIds.size 
-                    : 1
-                  
-                  return (
-                    <div className="relative w-72 pointer-events-none">
-                      {/* Stacked cards effect when dragging multiple */}
-                      {dragCount > 1 && (
-                        <>
-                          <div className="absolute -top-2 left-2 right-2 h-full rounded-lg bg-card border border-border shadow-md opacity-50" />
-                          <div className="absolute -top-1 left-1 right-1 h-full rounded-lg bg-card border border-border shadow-md opacity-70" />
-                        </>
-                      )}
-                      
-                      {/* Main dragged card */}
-                      <div 
-                        className="relative"
-                        style={{ 
-                          transform: 'rotate(-1.5deg) scale(1.03)', 
-                          boxShadow: '0 12px 24px rgba(0,0,0,0.15)' 
-                        }}
-                      >
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="Stage actions"
+                            className="inline-flex items-center justify-center shrink-0"
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 6,
+                              color: '#8B8F9E',
+                              background: openStageMenu === opt.jhsId ? '#F1F0EC' : 'transparent',
+                            }}
+                          >
+                            <MoreHorizontal size={13} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={8} className="min-w-[208px]">
+                          <DropdownMenuItem
+                            onSelect={() => { setSelectionMode(true); selectAllInStage(opt.jhsId) }}
+                          >
+                            <CheckSquare size={13} />
+                            Select all in {opt.stage.stage_name}
+                            <span className="ml-auto text-[11.5px] text-[#8B8F9E] tabular-nums">
+                              {rows.length}
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => { setSelectionMode(true); selectAllInPipeline() }}
+                          >
+                            <CheckSquare size={13} />
+                            Select all in pipeline
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={() => onAddCandidateClick?.()}>
+                            Add candidate to stage
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => onOpenStageSettings?.(opt.jhsId)}>
+                            Rename stage
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => onOpenStageSettings?.(opt.jhsId)}>
+                            Stage settings
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  }
+                >
+                  {rows.map((assoc) => {
+                    const isPartOfBulkDrag = activeId !== null &&
+                      activeId !== assoc.id &&
+                      selectedIds.has(assoc.id) &&
+                      selectedIds.has(activeId) &&
+                      selectedIds.size > 1
+                    return (
+                      <DraggableCandidateCard id={assoc.id} key={assoc.id} isPartOfBulkDrag={isPartOfBulkDrag}>
                         <CandidateCard
                           candidateId={assoc.candidate_id}
                           associationId={assoc.id}
@@ -1059,193 +1013,109 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           linkedinUrl={assoc.linkedin_url}
                           phone={assoc.phone}
                           stageOptions={stageOptions}
-                          currentStageJhsId={stageJhsId}
-                          timeInStageLabel={t.label}
-                          timeBadgeVariant={t.variant}
+                          currentStageJhsId={opt.jhsId}
+                          daysInStage={daysInStage(assoc.entered_stage_at, assoc.created_at)}
                           onMove={(toId) => handleMove(assoc.id, toId)}
-                          onClick={() => { 
-                            if (onCandidateClick) {
-                              const currentOrder = navigationSnapshotRef.current.length > 0 
-                                ? navigationSnapshotRef.current 
-                                : orderedCandidateIds
-                              onCandidateClick(assoc.candidate_id, currentOrder);
-                            } else {
-                              handleOpenCandidateSheet(assoc.candidate_id);
-                            }
-                          }}
+                          onClick={() => openCandidate(assoc.candidate_id)}
+                          showCheckbox
+                          checkboxAlwaysVisible={columnHasSelection(opt.jhsId)}
+                          selected={isSelected(assoc.id)}
+                          checked={isSelected(assoc.id)}
+                          onCheckedChange={(v) => handleCardSelect(assoc.id, opt.jhsId, !!v)}
+                          onCheckboxClick={(e) => handleCheckboxModifiers(e, assoc.id, opt.jhsId)}
+                          jobId={jobId}
+                          whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
+                          isFavorite={assoc.is_favorite}
                         />
-                      </div>
-                      
-                      {/* Count badge */}
-                      {dragCount > 1 && (
-                        <Badge 
-                          className="absolute -top-3 -right-3 bg-primary text-primary-foreground shadow-lg z-10 min-w-[24px] justify-center"
-                        >
-                          {dragCount}
-                        </Badge>
-                      )}
+                      </DraggableCandidateCard>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => onAddCandidateClick?.()}
+                    className="inline-flex items-center justify-center"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      marginTop: 4,
+                      background: 'transparent',
+                      border: '1px dashed #D1D0CB',
+                      borderRadius: 8,
+                      color: '#5A6072',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 11.5,
+                      fontWeight: 500,
+                      gap: 6,
+                    }}
+                  >
+                    <Plus size={12} /> Add candidate
+                  </button>
+                </ColumnShell>
+              )
+            })}
+          </div>
+          <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+            {activeId && assocMap.get(activeId) ? (
+              (() => {
+                const { assoc, stageJhsId } = assocMap.get(activeId)!
+                const dragCount = (selectedIds.has(activeId) && selectedIds.size > 1)
+                  ? selectedIds.size
+                  : 1
+
+                return (
+                  <div className="relative w-[280px] pointer-events-none">
+                    {dragCount > 1 && (
+                      <>
+                        <div className="absolute -top-2 left-2 right-2 h-full rounded-[10px] bg-white border border-[#E7E8EE] shadow-md opacity-50" />
+                        <div className="absolute -top-1 left-1 right-1 h-full rounded-[10px] bg-white border border-[#E7E8EE] shadow-md opacity-70" />
+                      </>
+                    )}
+                    <div
+                      className="relative"
+                      style={{
+                        transform: 'rotate(-1.5deg) scale(1.03)',
+                        boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
+                      }}
+                    >
+                      <CandidateCard
+                        candidateId={assoc.candidate_id}
+                        associationId={assoc.id}
+                        candidateName={assoc.candidate_name}
+                        linkedinUrl={assoc.linkedin_url}
+                        phone={assoc.phone}
+                        stageOptions={stageOptions}
+                        currentStageJhsId={stageJhsId}
+                        daysInStage={daysInStage(assoc.entered_stage_at, assoc.created_at)}
+                        onMove={(toId) => handleMove(assoc.id, toId)}
+                        isFavorite={assoc.is_favorite}
+                      />
                     </div>
-                  )
-                })()
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </>
+                    {dragCount > 1 && (
+                      <Badge
+                        className="absolute -top-3 -right-3 bg-primary text-primary-foreground shadow-lg z-10 min-w-[24px] justify-center"
+                      >
+                        {dragCount}
+                      </Badge>
+                    )}
+                  </div>
+                )
+              })()
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       ) : (
-        <div>
-          <Card className="w-full">
-            <CardHeader className="pb-2">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle className="text-base">Candidates</CardTitle>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="w-56">
-                    <Input
-                      placeholder="Search candidates"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                  <Select value={stageFilter} onValueChange={setStageFilter}>
-                    <SelectTrigger className="w-44">
-                      <SelectValue placeholder="Stage" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All stages</SelectItem>
-                      {distinctStages.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs text-text-tertiary ml-1">
-                    {filteredRows.length} result{filteredRows.length === 1 ? '' : 's'}
-                  </div>
-                  <div className="hidden sm:flex items-center gap-2 ml-4">
-                    <span className="text-xs text-text-tertiary">Sort:</span>
-                    <SortableHeader sortKey="name" currentSort={sortConfig} onSort={requestSort} className="text-xs">Name</SortableHeader>
-                    <SortableHeader sortKey="timeSortValue" currentSort={sortConfig} onSort={requestSort} className="text-xs">Time</SortableHeader>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingCandidates ? (
-                <div className="space-y-3 py-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 h-10">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <Skeleton className="h-4 w-40" />
-                      <Skeleton className="h-4 w-20 ml-auto" />
-                      <Skeleton className="h-5 w-10 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : sortedData.length === 0 ? (
-                <GioEmptyState title="No candidates in pipeline" description="Candidates will appear here as they progress through stages" />
-              ) : (
-                <div className="space-y-3">
-                  <Accordion type="multiple" defaultValue={defaultOpenGroups} className="w-full">
-                    {groupedByStage.map((group) => (
-                      <AccordionItem key={group.stageName} value={group.stageName} className="border-none">
-                        <div className={`${getHeaderBgClass(group.stageType)} rounded-md`}> 
-                          <AccordionTrigger className="w-full rounded-t-md px-3 py-2 hover:no-underline">
-                            <div className="flex w-full items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-text-primary">{group.stageName}</span>
-                                {selectionMode && (
-                                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                    <Checkbox
-                                      checked={group.rows.length > 0 && group.rows.every(r => isSelected(r.id))}
-                                      onCheckedChange={() => toggleMultiple(group.rows.map(r => r.id))}
-                                      aria-label="Select all in group"
-                                    />
-                                    <span className="text-xs text-text-secondary">All</span>
-                                  </div>
-                                )}
-                              </div>
-                              <Badge variant="outline">{group.rows.length}</Badge>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent className="px-3 pb-3">
-                            <div className="w-full">
-                              <Table density="compact" className="w-full">
-                                <TableBody>
-                                  {group.rows.map((row) => (
-                                    <TableRow key={row.id} interactive className="hover:bg-transparent" onClick={() => { 
-                                      if (onCandidateClick) {
-                                        const currentOrder = navigationSnapshotRef.current.length > 0 
-                                          ? navigationSnapshotRef.current 
-                                          : orderedCandidateIds
-                                        onCandidateClick(row.candidateId, currentOrder);
-                                      } else {
-                                        handleOpenCandidateSheet(row.candidateId);
-                                      }
-                                    }}>
-                                      {selectionMode && (
-                                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
-                                          <Checkbox
-                                            checked={isSelected(row.id)}
-                                            onCheckedChange={(v) => toggleSelect(row.id, !!v)}
-                                            aria-label="Select candidate"
-                                          />
-                                        </TableCell>
-                                      )}
-                                      <TableCell className="w-full">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                          <Avatar className="h-8 w-8">
-                                            <AvatarFallback>{row.name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()}</AvatarFallback>
-                                          </Avatar>
-                                          <div className="min-w-0">
-                                            <div className="truncate font-medium text-text-primary" title={row.name}>{row.name}</div>
-                                            {row.linkedinUrl && (
-                                              <TooltipProvider>
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <a href={row.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
-                                                      <ExternalLink className="inline-block h-3.5 w-3.5 mr-1" />
-                                                      LinkedIn
-                                                    </a>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent>Open LinkedIn profile</TooltipContent>
-                                                </Tooltip>
-                                              </TooltipProvider>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="w-32">
-                                        <Badge variant={row.timeVariant}>{row.timeLabel}</Badge>
-                                      </TableCell>
-                                      <TableCell className="w-28 text-right">
-                                        <Button size="sm" variant="outline" onClick={(e) => { 
-                                          e.stopPropagation();
-                                          if (onCandidateClick) {
-                                            const currentOrder = navigationSnapshotRef.current.length > 0 
-                                              ? navigationSnapshotRef.current 
-                                              : orderedCandidateIds
-                                            onCandidateClick(row.candidateId, currentOrder);
-                                          } else {
-                                            setSelectedCandidateId(row.candidateId);
-                                            setPanelOpen(true);
-                                          }
-                                        }}>
-                                          View
-                                        </Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </AccordionContent>
-                        </div>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <PipelineListView
+          groups={listGroups}
+          stages={listStages}
+          selectedIds={selectedIds}
+          onToggleRow={(assocId, stageJhsId, e) => {
+            handleCheckboxModifiers(e, assocId, stageJhsId)
+            handleCardSelect(assocId, stageJhsId, !selectedIds.has(assocId))
+          }}
+          onToggleStage={(stageJhsId) => { setSelectionMode(true); selectAllInStage(stageJhsId) }}
+          onRowClick={(candidateId) => openCandidate(candidateId)}
+          onMove={(assocId, toStageJhsId) => { handleMove(assocId, toStageJhsId) }}
+        />
       )}
       {!onCandidateClick && (
         <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} onStageChanged={() => { silentRefresh(); onStageChanged?.(); }} />
