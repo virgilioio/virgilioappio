@@ -65,17 +65,34 @@ export default function CandidateCard(props: CandidateCardProps) {
       if (!candidateId) return null
       const { data } = await supabase
         .from('candidates')
-        .select('current_job_title, company_current, ai_fit_score')
+        .select('current_job_title, role_current, company_current, ai_fit_score')
         .eq('id', candidateId)
         .maybeSingle()
-      return data as any
+      const meta = (data || {}) as any
+      // Fall back to the latest parsed work-experience row when the profile
+      // fields are empty — the parser fills one or the other.
+      if (!meta.current_job_title && !meta.role_current) {
+        const { data: exp } = await supabase
+          .from('candidate_work_experience')
+          .select('job_title, company_name, is_current, end_date, start_date')
+          .eq('candidate_id', candidateId)
+          .order('is_current', { ascending: false })
+          .order('start_date', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle()
+        if (exp) {
+          meta.exp_title = exp.job_title ?? null
+          meta.exp_company = exp.company_name ?? null
+        }
+      }
+      return meta
     },
     enabled: !!candidateId,
     staleTime: 5 * 60 * 1000,
   })
 
-  const role = candidateMeta?.current_job_title || null
-  const company = candidateMeta?.company_current || null
+  const role = candidateMeta?.current_job_title || candidateMeta?.role_current || candidateMeta?.exp_title || null
+  const company = candidateMeta?.company_current || candidateMeta?.exp_company || null
   const score = typeof candidateMeta?.ai_fit_score === 'number' ? candidateMeta.ai_fit_score : null
 
   // Due pill — only when there is an interview landing today or tomorrow.
