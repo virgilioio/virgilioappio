@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 /**
  * Shared visual truth for the pipeline Board and List views.
  * One stage colour, one score colour, one staleness rule — used by both.
