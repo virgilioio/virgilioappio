@@ -1,14 +1,13 @@
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
-import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Clock, Heart, Sparkles, Check } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
-import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
 import { scoreColor, scoreTint, isStale, PIPELINE_RED, PIPELINE_TERTIARY } from './pipelineVisuals'
 import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
+import PipelineStatusBadge from './PipelineStatusBadge'
+import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
+
 
 
 interface CandidateCardProps {
