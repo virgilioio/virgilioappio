@@ -17,6 +17,8 @@ import {
   PIPELINE_TERTIARY,
   PIPELINE_PURPLE,
 } from './pipelineVisuals'
+import PipelineStatusBadge from './PipelineStatusBadge'
+import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
 
 export type PipelineListRow = {
   id: string
@@ -26,12 +28,13 @@ export type PipelineListRow = {
   company?: string | null
   score?: number | null
   days: number
-  nextStep: string
-  due?: string | null
+  /** The single engine-assigned status — rendered as-is. */
+  status?: CandidateStatusInfo | null
   ownerName?: string | null
   ownerAvatarUrl?: string | null
   isFavorite?: boolean
 }
+
 
 export type PipelineListGroup = {
   jhsId: string
@@ -130,7 +133,7 @@ export function PipelineListView({
         <div style={HEADER_LABEL}>Candidate</div>
         <div style={{ ...HEADER_LABEL, textAlign: 'right' }}>Match</div>
         <div style={HEADER_LABEL}>Time in stage</div>
-        <div style={HEADER_LABEL}>Next step</div>
+        <div style={HEADER_LABEL}>Status</div>
         <div style={HEADER_LABEL}>Owner</div>
         <div />
       </div>
@@ -359,20 +362,11 @@ export function PipelineListView({
                         <span style={{ color: PIPELINE_TERTIARY }}>in stage</span>
                       </div>
 
-                      {/* 5 · next step */}
-                      <div className="flex items-center" style={{ gap: 6, minWidth: 0 }}>
-                        {row.due && (
-                          <Badge tone="pink" size="xs">
-                            {row.due}
-                          </Badge>
-                        )}
-                        <span
-                          className="truncate"
-                          style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: PIPELINE_MUTED }}
-                        >
-                          {row.nextStep}
-                        </span>
+                      {/* 5 · status */}
+                      <div className="flex items-center" style={{ minWidth: 0 }}>
+                        <PipelineStatusBadge status={row.status} />
                       </div>
+
 
                       {/* 6 · owner */}
                       <div className="flex items-center" style={{ gap: 6, minWidth: 0 }}>

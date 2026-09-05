@@ -1,14 +1,13 @@
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
-import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Clock, Heart, Sparkles, Check } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
-import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
 import { scoreColor, scoreTint, isStale, PIPELINE_RED, PIPELINE_TERTIARY } from './pipelineVisuals'
 import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
+import PipelineStatusBadge from './PipelineStatusBadge'
+import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
+
 
 
 interface CandidateCardProps {
@@ -20,7 +19,6 @@ interface CandidateCardProps {
   stageOptions: { jhsId: string; stage: JobStage }[]
   currentStageJhsId?: string | null
   timeInStageLabel?: string
-  timeBadgeVariant?: BadgeProps['variant']
   /** Whole days in the current stage — red + 600 past 7. */
   daysInStage?: number
   onMove: (toStageId: string) => void | Promise<void>
@@ -37,30 +35,13 @@ interface CandidateCardProps {
   isFavorite?: boolean
   /** AI fit score for THIS job (lives on the association, not the candidate). */
   aiFitScore?: number | null
+  /** The single engine-assigned status — rendered as-is, never recomputed. */
+  status?: CandidateStatusInfo | null
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
   const { candidateId, candidateName, onClick, daysInStage = 0 } = props
-  const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
-  const { data: nextInterview } = useQuery({
-    queryKey: ['next-interview', candidateId],
-    queryFn: async () => {
-      if (!candidateId) return null
-      const { data } = await supabase
-        .from('scheduled_bookings')
-        .select('id, scheduled_start, status')
-        .eq('candidate_id', candidateId)
-        .gte('scheduled_start', new Date().toISOString())
-        .in('status', ['confirmed', 'rescheduled'])
-        .order('scheduled_start', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-      return data
-    },
-    enabled: !!candidateId,
-  })
 
   // Lightweight candidate meta (current role / company) for the card body.
   const { data: candidateMeta } = useQuery({
@@ -100,13 +81,8 @@ export default function CandidateCard(props: CandidateCardProps) {
 
   const score = typeof props.aiFitScore === 'number' ? props.aiFitScore : null
 
-  // Due pill — only when there is an interview landing today or tomorrow.
-  let duePill: string | null = null
-  if (nextInterview?.scheduled_start) {
-    const d = differenceInCalendarDays(parseISO(nextInterview.scheduled_start), new Date())
-    if (d <= 0) duePill = 'Due today'
-    else if (d === 1) duePill = 'Due tmrw'
-  }
+
+
 
   const checkboxVisible = !!props.showCheckbox && (!!props.checked || !!props.checkboxAlwaysVisible)
   const stale = isStale(daysInStage)
@@ -198,9 +174,15 @@ export default function CandidateCard(props: CandidateCardProps) {
           </div>
         </div>
 
+        {props.status ? (
+          <div style={{ marginTop: 9, display: 'flex', minWidth: 0 }}>
+            <PipelineStatusBadge status={props.status} />
+          </div>
+        ) : null}
+
         <div
           className="flex items-center justify-between"
-          style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #F1F0EC' }}
+          style={{ marginTop: 9, paddingTop: 8, borderTop: '1px solid #F1F0EC' }}
         >
           <span
             className="inline-flex items-center"
@@ -233,30 +215,10 @@ export default function CandidateCard(props: CandidateCardProps) {
               <Clock size={10} strokeWidth={2} />
               {daysInStage}d
             </span>
-            {duePill && (
-              <Badge
-                tone="pink"
-                size="xs"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (nextInterview?.id) {
-                    setSelectedBookingId(nextInterview.id)
-                    setBookingDialogOpen(true)
-                  }
-                }}
-              >
-                {duePill}
-              </Badge>
-            )}
           </span>
         </div>
       </div>
-
-      <BookingDetailsDialog
-        bookingId={selectedBookingId}
-        open={bookingDialogOpen}
-        onOpenChange={setBookingDialogOpen}
-      />
     </>
   )
 }
+

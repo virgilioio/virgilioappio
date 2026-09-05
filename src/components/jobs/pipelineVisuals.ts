@@ -63,20 +63,6 @@ export function daysInStage(enteredAt?: string | null, createdAt?: string | null
 }
 
 /** What's owed at this stage — the reason the list view exists. */
-const NEXT_STEP_BY_TYPE: Record<string, string> = {
-  application: 'Screen call to schedule',
-  application_review: 'Screen call to schedule',
-  screening: 'Screen call to schedule',
-  assessment: 'Awaiting submission',
-  interview: 'Panel to book',
-  offer: 'Decision with hiring manager',
-  reference_check: 'References in progress',
-}
-
-export function nextStepText(stageType: string | null | undefined): string {
-  return (stageType && NEXT_STEP_BY_TYPE[stageType]) || '—'
-}
-
 /** One grid constant — header row, stage headers and data rows all import it. */
 export const LIST_GRID: CSSProperties = {
   display: 'grid',
