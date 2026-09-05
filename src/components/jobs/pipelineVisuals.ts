@@ -44,6 +44,14 @@ export function scoreColor(score: number | null | undefined): string {
   return PIPELINE_MUTED
 }
 
+/** Soft background behind the score so the colour reads as a state, not text. */
+export function scoreTint(score: number | null | undefined): string {
+  if (typeof score !== 'number') return 'transparent'
+  if (score >= 85) return 'rgba(18, 184, 134, 0.10)'
+  if (score >= 70) return 'rgba(245, 158, 11, 0.12)'
+  return 'rgba(90, 96, 114, 0.08)'
+}
+
 export const isStale = (days: number) => days > 7
 
 /** Whole days since the candidate entered the stage. */
