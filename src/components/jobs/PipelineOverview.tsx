@@ -1,5 +1,6 @@
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
@@ -584,6 +585,19 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return result
   }, [byStage, stageOptions, sortByStatusPriority, filterByFavorite, filterBySearchTerm, filterByToolbar])
 
+
+  const allVisibleIds = useMemo(
+    () => stageOptions.flatMap((o) => (sortedByStage[o.jhsId] || []).map((a) => a.id)),
+    [stageOptions, sortedByStage],
+  )
+
+  const selectAllInPipeline = useCallback(() => {
+    setSelectedIds(() => {
+      const next = new Set(allVisibleIds)
+      emitSelectedCandidateIds(next)
+      return next
+    })
+  }, [allVisibleIds, emitSelectedCandidateIds])
 
   // Flat list of candidates for list view
   const flatCandidates = useMemo(() => {

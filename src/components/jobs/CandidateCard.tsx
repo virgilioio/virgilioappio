@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { format, parseISO, formatDistanceToNowStrict } from 'date-fns'
 import { Card } from '@/components/ui/card'
@@ -30,8 +31,12 @@ interface CandidateCardProps {
   onMove: (toStageId: string) => void | Promise<void>
   onClick?: () => void
   showCheckbox?: boolean
+  /** Keeps the checkbox visible even without hover (column has a selection) */
+  checkboxAlwaysVisible?: boolean
+  selected?: boolean
   checked?: boolean
   onCheckedChange?: (checked: boolean) => void
+  onCheckboxClick?: (e: React.MouseEvent) => void
   jobId?: string
   whatsappTemplateSentAt?: string | null
   isFavorite?: boolean
@@ -314,14 +319,30 @@ export default function CandidateCard(props: CandidateCardProps) {
   return (
     <>
       <Card
-        className="relative bg-white border border-virgilio-border rounded-xl shadow-none hover:shadow-[var(--shadow-xs)] transition-shadow p-3 cursor-pointer"
+        className={cn(
+          'group/card relative bg-white border rounded-xl shadow-none hover:shadow-[var(--shadow-xs)] transition-shadow p-3 cursor-pointer',
+          props.selected ? 'border-virgilio-purple shadow-[0_0_0_1px_#6F3FF5]' : 'border-virgilio-border',
+        )}
         onClick={onClick}
         role="button"
         aria-label="Open candidate profile"
       >
         {props.showCheckbox && (
-          <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
-            <Checkbox checked={!!props.checked} onCheckedChange={(v) => props.onCheckedChange?.(!!v)} aria-label="Select candidate" />
+          <div
+            className={cn(
+              'absolute top-2.5 left-2.5 z-10 transition-opacity duration-100',
+              props.checked || props.checkboxAlwaysVisible
+                ? 'opacity-100'
+                : 'opacity-0 group-hover/card:opacity-100 focus-within:opacity-100',
+            )}
+            onClick={(e) => { e.stopPropagation(); props.onCheckboxClick?.(e) }}
+          >
+            <Checkbox
+              className="h-4 w-4 rounded-[4px] border-[1.5px] border-[#C2C6D2] bg-white shadow-[0_1px_2px_rgba(13,13,9,0.06)] data-[state=checked]:bg-[#0d0d09] data-[state=checked]:border-[#0d0d09] data-[state=checked]:text-[#fffcf9]"
+              checked={!!props.checked}
+              onCheckedChange={(v) => props.onCheckedChange?.(!!v)}
+              aria-label="Select candidate"
+            />
           </div>
         )}
 
