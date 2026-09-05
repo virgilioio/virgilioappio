@@ -359,20 +359,11 @@ export function PipelineListView({
                         <span style={{ color: PIPELINE_TERTIARY }}>in stage</span>
                       </div>
 
-                      {/* 5 · next step */}
-                      <div className="flex items-center" style={{ gap: 6, minWidth: 0 }}>
-                        {row.due && (
-                          <Badge tone="pink" size="xs">
-                            {row.due}
-                          </Badge>
-                        )}
-                        <span
-                          className="truncate"
-                          style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: PIPELINE_MUTED }}
-                        >
-                          {row.nextStep}
-                        </span>
+                      {/* 5 · status */}
+                      <div className="flex items-center" style={{ minWidth: 0 }}>
+                        <PipelineStatusBadge status={row.status} />
                       </div>
+
 
                       {/* 6 · owner */}
                       <div className="flex items-center" style={{ gap: 6, minWidth: 0 }}>
