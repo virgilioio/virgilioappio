@@ -1268,43 +1268,15 @@ export default function JobDetail() {
                         </div>
                       ) : pipelineSectionTab === 'suggested' ? (
                         <div className="w-full p-layout-md">
-                          <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-primary" />
-                              <span className="text-sm font-medium text-text-primary">
-                                AI-Matched Candidates
-                              </span>
-                              {matchingCandidates && matchingCandidates.length > 0 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {matchingCandidates.length} matches
-                                </Badge>
-                              )}
-                            </div>
-                            {isLoadingMatches ? (
-                              <div className="flex items-center justify-center py-12">
-                                <SuggestedCandidatesLoader />
-                              </div>
-                            ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                              <CandidateTable
-                                candidates={matchingCandidates as any}
-                                isLoading={false}
-                                onEdit={() => {}}
-                                onDelete={() => {}}
-                                markCandidateAsViewed={() => {}}
-                                isCandidateNewForUser={() => false}
-                                onRowClick={openSuggestedProfile}
-                                hideActions={true}
-                                showFitScore={true}
-                                hideSkills={true}
-                              />
-                            ) : (
-                              <GioEmptyState
-                                title="No matching candidates found"
-                                description="Try adjusting the job requirements or add more skills"
-                              />
-                            )}
-                          </div>
+                          <JobSuggestedTab
+                            jobId={id!}
+                            jobSkills={(job as any)?.skills || null}
+                            jobLocation={job?.location || null}
+                            onOpenCandidate={openSuggestedProfile}
+                            onEditRequirements={() => setActiveTab('job-setup')}
+                          />
                         </div>
+
                       ) : pipelineSectionTab === 'application' ? (
                         <div className="w-full p-layout-md">
                           <CandidateTable
