@@ -7,7 +7,7 @@ import { Clock, Heart, Sparkles, Check } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
-import { scoreColor, isStale, PIPELINE_RED, PIPELINE_TERTIARY } from './pipelineVisuals'
+import { scoreColor, scoreTint, isStale, PIPELINE_RED, PIPELINE_TERTIARY } from './pipelineVisuals'
 
 interface CandidateCardProps {
   candidateId?: string
@@ -33,6 +33,8 @@ interface CandidateCardProps {
   jobId?: string
   whatsappTemplateSentAt?: string | null
   isFavorite?: boolean
+  /** AI fit score for THIS job (lives on the association, not the candidate). */
+  aiFitScore?: number | null
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
@@ -65,7 +67,7 @@ export default function CandidateCard(props: CandidateCardProps) {
       if (!candidateId) return null
       const { data } = await supabase
         .from('candidates')
-        .select('current_job_title, role_current, company_current, ai_fit_score')
+        .select('current_job_title, role_current, company_current')
         .eq('id', candidateId)
         .maybeSingle()
       const meta = (data || {}) as any
@@ -93,7 +95,7 @@ export default function CandidateCard(props: CandidateCardProps) {
 
   const role = candidateMeta?.current_job_title || candidateMeta?.role_current || candidateMeta?.exp_title || null
   const company = candidateMeta?.company_current || candidateMeta?.exp_company || null
-  const score = typeof candidateMeta?.ai_fit_score === 'number' ? candidateMeta.ai_fit_score : null
+  const score = typeof props.aiFitScore === 'number' ? props.aiFitScore : null
 
   // Due pill — only when there is an interview landing today or tomorrow.
   let duePill: string | null = null
@@ -194,14 +196,18 @@ export default function CandidateCard(props: CandidateCardProps) {
             className="inline-flex items-center"
             style={{
               gap: 4,
+              padding: score === null ? 0 : '2px 6px',
+              borderRadius: 999,
+              background: score === null ? 'transparent' : scoreTint(score),
               fontFamily: 'Inter, sans-serif',
               fontSize: 10.5,
               fontWeight: 600,
               color: scoreColor(score),
             }}
+            title={score === null ? 'No AI fit score yet' : `AI fit score ${score}`}
           >
             <Sparkles size={10} strokeWidth={2.25} />
-            {score ?? '—'}
+            {score === null ? '—' : score}
           </span>
           <span className="inline-flex items-center" style={{ gap: 8 }}>
             <span
