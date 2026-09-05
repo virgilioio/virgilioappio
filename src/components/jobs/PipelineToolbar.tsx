@@ -236,7 +236,11 @@ export function PipelineToolbar({
             </button>
           </div>
         )}
+
+        {/* Section primary action — end of the right cluster. */}
+        {primary}
       </div>
+
     </div>
   )
 }
