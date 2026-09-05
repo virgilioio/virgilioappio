@@ -132,6 +132,9 @@ export function useBulkCandidateUpload() {
           email: parsed.email, phone: parsed.phone ? sanitizeToE164(parsed.phone) : undefined,
           linkedin_url: parsed.linkedinUrl, location_city: locationParts[0],
           location_state: locationParts[1], location_country: locationParts[2] || locationParts[1],
+          current_job_title: parsed.currentRole || undefined,
+          company_current: parsed.currentCompany || undefined,
+
           enrichment_status: opts.autoGenerateSkills ? 'pending' : undefined,
           source: opts.source || undefined,
         }
