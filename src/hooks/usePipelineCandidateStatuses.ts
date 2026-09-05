@@ -2,10 +2,65 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 
+export type CandidateStatusKind =
+  | 'decision'
+  | 'scorecard'
+  | 'scheduled'
+  | 'scheduled_overdue'
+  | 'needs_scheduling'
+  | 'link_sent'
+
 export interface CandidateStatusInfo {
-  priority: number // 1 = Needs Decision, 2 = Pending Scorecard, 3 = In [time], 4 = Pending Schedule, 5 = Booking Link Sent
+  priority: number // 1 decision · 2 scorecard · 3 scheduled(+overdue) · 4 needs scheduling · 5 link sent
   sortTime: number // Timestamp for secondary sorting
+  /** The single state this candidate is in — the badge renders this and nothing else. */
+  kind: CandidateStatusKind
+  /** Scheduled kinds only — "Today" / "Tomorrow" / "Yesterday" / "Thu 11 Sep". */
+  day?: string
+  /** Scheduled kinds only — "16:30". */
+  time?: string
+  /** Fallback label when no day/time could be derived. */
+  when?: string
+  /** Right-hand hint: "3 of 3 in", "1 of 2", "in 3h", "5d", "2d ago". */
+  detail?: string
 }
+
+const DAY_MS = 86400000
+
+function startOfDay(ms: number): number {
+  const d = new Date(ms)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+/** "Today" / "Tomorrow" / "Yesterday" / "Thu 11 Sep" */
+function dayLabel(ms: number, now: number): string {
+  const diff = Math.round((startOfDay(ms) - startOfDay(now)) / DAY_MS)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Tomorrow'
+  if (diff === -1) return 'Yesterday'
+  return new Date(ms).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+function timeLabel(ms: number): string {
+  return new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
+/** "in 3h" / "in 6 days" / "ended 21h ago" / "ended 2 days ago" — always relative. */
+function relativeDetail(ms: number, now: number, pastPrefix = ''): string {
+  const delta = ms - now
+  const abs = Math.abs(delta)
+  const hours = Math.round(abs / 3600000)
+  const unit = hours < 24 ? `${Math.max(1, hours)}h` : `${Math.round(abs / DAY_MS)} days`
+  return delta >= 0 ? `in ${unit}` : `${pastPrefix}${unit} ago`
+}
+
+/** "5d" — whole days since a timestamp. */
+function daysSince(ms: number, now: number): string {
+  const hours = Math.floor((now - ms) / 3600000)
+  return hours < 24 ? `${Math.max(0, hours)}h` : `${Math.floor(hours / 24)}d`
+}
+
 
 /**
  * Batch-fetches status data for all candidates in a job pipeline.
