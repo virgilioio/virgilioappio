@@ -71,7 +71,20 @@ export default function CandidateCard(props: CandidateCardProps) {
       const meta = (data || {}) as any
       // Fall back to the latest parsed work-experience row when the profile
       // fields are empty — the parser fills one or the other.
-      if (!meta.current_job_title && !meta.role_current) || !meta.company_current) {}
+      if (!meta.current_job_title && !meta.role_current) {
+        const { data: exp } = await supabase
+          .from('candidate_work_experience')
+          .select('job_title, company_name, is_current, end_date, start_date')
+          .eq('candidate_id', candidateId)
+          .order('is_current', { ascending: false })
+          .order('start_date', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle()
+        if (exp) {
+          meta.exp_title = exp.job_title ?? null
+          meta.exp_company = exp.company_name ?? null
+        }
+      }
       return meta
     },
     enabled: !!candidateId,
