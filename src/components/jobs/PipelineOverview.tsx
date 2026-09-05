@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
@@ -14,7 +14,7 @@ import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet
 import { Button } from '@/components/ui/button'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { MobileFilterDrawer } from '@/components/ui/mobile-filter-drawer'
-import { LayoutGrid, List, Zap } from 'lucide-react'
+import { LayoutGrid, List, Zap, MoreHorizontal, Plus, CheckSquare } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortableHeader } from '@/components/ui/sortable-header'
 import { useSortableTable } from '@/hooks/useSortableTable'
@@ -32,6 +32,8 @@ import { supabase } from '@/integrations/supabase/client'
 import { usePipelineCandidateStatuses } from '@/hooks/usePipelineCandidateStatuses'
 import { cn } from '@/lib/utils'
 import { matchesPipelineFilters, type PipelineFilter } from './pipelineFilters'
+import { stageColor, daysInStage, nextStepText } from './pipelineVisuals'
+import { PipelineListView, type PipelineListGroup } from './PipelineListView'
 
 
 interface PipelineOverviewProps {
@@ -55,6 +57,8 @@ interface PipelineOverviewProps {
   filters?: PipelineFilter[]
   /** Called when user clicks the bottom dashed "+ Add candidate" inside any column */
   onAddCandidateClick?: () => void
+  /** Opens stage configuration for a stage instance (rename / settings) */
+  onOpenStageSettings?: (stageJhsId: string) => void
 }
 
 
@@ -108,7 +112,7 @@ function ColumnShell({
 }
 
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick, onOpenStageSettings }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
@@ -160,6 +164,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const sensors = useSensors(mouseSensor, touchSensor)
 
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [openStageMenu, setOpenStageMenu] = useState<string | null>(null)
   const [internalViewMode, setInternalViewMode] = useState<'board' | 'list'>('board')
   const [favoriteFilter, setFavoriteFilter] = useState<string[]>([])
   const currentView = controlledView ?? internalViewMode
@@ -819,7 +824,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   )
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       {showHeader && (
         <div className="flex items-start justify-between">
           <div>
