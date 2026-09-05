@@ -23,6 +23,7 @@ import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 
 import { JobHero } from '@/components/jobs/JobHero'
 import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/PipelineSectionTabs'
+import { JobSuggestedTab } from '@/components/jobs/suggested/JobSuggestedTab'
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
@@ -1272,7 +1273,9 @@ export default function JobDetail() {
                             jobId={id!}
                             jobSkills={(job as any)?.skills || null}
                             jobLocation={job?.location || null}
-                            onOpenCandidate={openSuggestedProfile}
+                            onOpenCandidate={(c: any) =>
+                              openSuggestedProfile(c?.candidate_id || c?.id)
+                            }
                             onEditRequirements={() => setActiveTab('job-setup')}
                           />
                         </div>
