@@ -47,6 +47,9 @@ export function useJobSuggestedCandidates({
   const [candidates, setCandidates] = useState<SuggestedCandidate[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Size of the pool Gio compared against, and when it last ran.
+  const [searchedCount, setSearchedCount] = useState(0)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
 
   const skillsHash = useMemo(() => {
     if (!jobSkills || !Array.isArray(jobSkills)) return ''
