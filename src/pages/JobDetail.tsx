@@ -1166,67 +1166,28 @@ export default function JobDetail() {
                   />
                 </div>
                 <div className="relative p-0 flex-1 min-h-0">
-                  {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
-                    <>
-                      <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
-                        <PipelineOverview
-                          jobId={id!}
-                          showHeader={false}
-                          viewMode={pipelineView}
-                          onViewModeChange={setPipelineView}
-                          selectionMode={selectionMode}
-                          onSelectionModeChange={setSelectionMode}
-                          onSelectedIdsChange={setSelectedCandidateIds}
-                          refreshToken={pipelineRefresh}
-                          onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                          onCandidateClick={openPipelineProfile}
-                          searchTerm={pipelineSearch}
-                          filters={pipelineFilters}
-                          onAddCandidateClick={() => setShowAddCandidate(true)}
-                        />
-                      </div>
-                      <ScrollArea className="h-full w-full scrollbar-black hidden sm:block">
-                        <div className="w-fit p-layout-md">
-                          <PipelineOverview
-                            jobId={id!}
-                            showHeader={false}
-                            externalScroll
-                            viewMode={pipelineView}
-                            onViewModeChange={setPipelineView}
-                            selectionMode={selectionMode}
-                            onSelectionModeChange={setSelectionMode}
-                            onSelectedIdsChange={setSelectedCandidateIds}
-                            refreshToken={pipelineRefresh}
-                            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                            onCandidateClick={openPipelineProfile}
-                          searchTerm={pipelineSearch}
-                          filters={pipelineFilters}
-                          onAddCandidateClick={() => setShowAddCandidate(true)}
-                          />
-                        </div>
-                      </ScrollArea>
-                    </>
+                  {pipelineSectionTab === 'recruiting' ? (
+                    <div className="h-full min-h-0" style={{ padding: '12px 28px 24px' }}>
+                      <PipelineOverview
+                        jobId={id!}
+                        showHeader={false}
+                        externalScroll
+                        viewMode={pipelineView}
+                        onViewModeChange={setPipelineView}
+                        selectionMode={selectionMode}
+                        onSelectionModeChange={setSelectionMode}
+                        onSelectedIdsChange={setSelectedCandidateIds}
+                        refreshToken={pipelineRefresh}
+                        onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                        onCandidateClick={openPipelineProfile}
+                        searchTerm={pipelineSearch}
+                        filters={pipelineFilters}
+                        onAddCandidateClick={() => setShowAddCandidate(true)}
+                      />
+                    </div>
                   ) : (
                     <ScrollArea className="h-full w-full scrollbar-black">
-                      {pipelineSectionTab === 'recruiting' ? (
-                        <div className="w-full p-layout-md">
-                          <PipelineOverview
-                            jobId={id!}
-                            showHeader={false}
-                            externalScroll
-                            viewMode={pipelineView}
-                            onViewModeChange={setPipelineView}
-                            selectionMode={selectionMode}
-                            onSelectionModeChange={setSelectionMode}
-                            onSelectedIdsChange={setSelectedCandidateIds}
-                            refreshToken={pipelineRefresh}
-                            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                            onCandidateClick={openPipelineProfile}
-                          searchTerm={pipelineSearch}
-                          filters={pipelineFilters}
-                          onAddCandidateClick={() => setShowAddCandidate(true)}
-                          />
-                        </div>
+                      {pipelineSectionTab === 'recruiting' ? null
                       ) : pipelineSectionTab === 'suggested' ? (
                         <div className="w-full p-layout-md">
                           <JobSuggestedTab
