@@ -91,6 +91,7 @@ export function usePipelineActions() {
 
     const result: PipelineAssociation[] = associations.map(a => {
       const c = byId.get(a.candidate_id)
+      const headline = resolveCandidateHeadline(c as any, expById.get(a.candidate_id) ?? null)
       return {
         id: a.id,
         job_id: a.job_id,
@@ -107,10 +108,11 @@ export function usePipelineActions() {
         ai_fit_score: (a as any).ai_fit_score ?? null,
         is_favorite: (a as any).is_favorite ?? false,
         added_by: (a as any).added_by ?? null,
-        current_role: (c as any)?.current_job_title ?? (c as any)?.role_current ?? null,
-        current_company: (c as any)?.company_current ?? null,
+        current_role: headline.role,
+        current_company: headline.company,
       }
     })
+
 
     return result
   }, [])
