@@ -76,6 +76,10 @@ export function useJobSuggestedCandidates({
 
       console.log(`✅ Found ${data.candidates?.length || 0} AI-suggested candidates`)
       setCandidates(data.candidates || [])
+      setSearchedCount(
+        typeof data.searched_count === 'number' ? data.searched_count : data.total_count || 0
+      )
+      setLastUpdatedAt(new Date())
     } catch (err: any) {
       console.error('Error fetching suggested candidates:', err)
       setError(err.message || 'Failed to fetch suggested candidates')
@@ -102,9 +106,12 @@ export function useJobSuggestedCandidates({
     candidates,
     isLoading,
     error,
+    searchedCount,
+    lastUpdatedAt,
     refetch: fetchSuggested
   }
 }
+
 
 // Count-only version for tab badge
 export function useJobSuggestedCandidatesCount({
