@@ -225,6 +225,11 @@ export function useIndependentCandidates() {
       if (candidateData.skills !== undefined) updateData.skills = candidateData.skills
       if (candidateData.status !== undefined) updateData.status = candidateData.status
       if (candidateData.source !== undefined) updateData.source = candidateData.source
+      const nextTitle = candidateData.current_job_title ?? candidateData.current_role
+      if (nextTitle !== undefined) updateData.current_job_title = nextTitle || null
+      const nextCompany = candidateData.company_current ?? candidateData.current_company
+      if (nextCompany !== undefined) updateData.company_current = nextCompany || null
+
 
       const { data: updatedCandidate, error: updateError } = await withAuthRetry(async () =>
         await supabase
