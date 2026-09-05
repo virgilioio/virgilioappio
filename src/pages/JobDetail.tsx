@@ -47,6 +47,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles, Mail, ClipboardCheck, Search, Filter, CheckSquare } from 'lucide-react'
 import { TableToolbar, TableSearch, TableSegmented } from '@/components/ui/table-toolbar'
+import { PipelineToolbar } from '@/components/jobs/PipelineToolbar'
+import { matchesPipelineFilters, matchesPipelineSearch, type PipelineFilter } from '@/components/jobs/pipelineFilters'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -128,6 +130,36 @@ export default function JobDetail() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
   const [pipelineSearch, setPipelineSearch] = useState('')
+  const [pipelineFilters, setPipelineFilters] = useState<PipelineFilter[]>([])
+
+  // Changing filters or the query drops any selection — the set is no longer what you saw.
+  useEffect(() => {
+    setSelectedCandidateIds([])
+    setSelectionMode(false)
+  }, [pipelineFilters, pipelineSearch])
+
+  /** Filters + query applied to the non-board section lists (same source of truth). */
+  const applyPipelineNarrowing = useCallback((rows: any[]) => {
+    return (rows || []).filter((r) =>
+      matchesPipelineFilters(
+        {
+          is_favorite: r?.is_favorite,
+          created_at: r?.created_at,
+          entered_stage_at: r?.entered_stage_at,
+          ai_fit_score: typeof r?.ai_fit_score === 'number' ? r.ai_fit_score : r?.fit_score,
+        },
+        pipelineFilters,
+      ) &&
+      matchesPipelineSearch(
+        {
+          candidate_name: r?.candidate_name,
+          candidate_role: r?.current_job_title ?? r?.current_role,
+          candidate_company: r?.company_current ?? r?.current_company,
+        },
+        pipelineSearch,
+      ),
+    )
+  }, [pipelineFilters, pipelineSearch])
   
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
   const [showBulkRejectionDialog, setShowBulkRejectionDialog] = useState(false)
@@ -1122,73 +1154,15 @@ export default function JobDetail() {
               )}
               <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
                 {/* Suggested brings its own toolbar — the generic one would duplicate it. */}
-                <div className={cn('hidden shrink-0 mb-3', pipelineSectionTab !== 'suggested' && 'sm:block')}>
-                  <TableToolbar
-                    left={
-                      <>
-                        <TableSearch
-                          value={pipelineSearch}
-                          onChange={setPipelineSearch}
-                          placeholder="Search in pipeline…"
-                          className="w-[280px]"
-                        />
-                        <Button variant="secondary" size="sm" icon={Filter}>
-                          Filters
-                        </Button>
-                      </>
-                    }
-                    right={
-                      <>
-                        {pipelineSectionTab === 'recruiting' && (
-                          <TableSegmented
-                            value={pipelineView}
-                            onChange={(v) => setPipelineView(v as 'board' | 'list')}
-                            options={[
-                              { value: 'board', label: 'Board', icon: LayoutGrid },
-                              { value: 'list', label: 'List', icon: List },
-                            ]}
-                          />
-                        )}
-                        {pipelineSectionTab === 'application' && applicationCount > 0 && (
-                          <Button
-                            variant="purple"
-                            size="sm"
-                            icon={ClipboardCheck}
-                            onClick={() => navigate(`/jobs/${id}/review`)}
-                          >
-                            Review applications
-                          </Button>
-                        )}
-                        {!selectionMode && pipelineSectionTab === 'recruiting' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={CheckSquare}
-                            onClick={() => setSelectionMode(true)}
-                          >
-                            Select
-                          </Button>
-                        )}
-                        {selectionMode && selectedCandidateIds.length === 0 && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setSelectionMode(false)}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          icon={UserPlus}
-                          onClick={() => setShowAddCandidate(true)}
-                          className="text-white [&_svg]:text-white"
-                        >
-                          Add candidate
-                        </Button>
-                      </>
-                    }
+                <div className={cn('hidden shrink-0 mb-2', pipelineSectionTab !== 'suggested' && 'sm:block')}>
+                  <PipelineToolbar
+                    filters={pipelineFilters}
+                    onFiltersChange={setPipelineFilters}
+                    search={pipelineSearch}
+                    onSearchChange={setPipelineSearch}
+                    view={pipelineView}
+                    onViewChange={setPipelineView}
+                    showViewToggle={pipelineSectionTab === 'recruiting'}
                   />
                 </div>
                 <div className="relative p-0 flex-1 min-h-0">
@@ -1207,6 +1181,7 @@ export default function JobDetail() {
                           onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                           onCandidateClick={openPipelineProfile}
                           searchTerm={pipelineSearch}
+                          filters={pipelineFilters}
                           onAddCandidateClick={() => setShowAddCandidate(true)}
                         />
                       </div>
@@ -1225,6 +1200,7 @@ export default function JobDetail() {
                             onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                             onCandidateClick={openPipelineProfile}
                           searchTerm={pipelineSearch}
+                          filters={pipelineFilters}
                           onAddCandidateClick={() => setShowAddCandidate(true)}
                           />
                         </div>
@@ -1247,6 +1223,7 @@ export default function JobDetail() {
                             onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                             onCandidateClick={openPipelineProfile}
                           searchTerm={pipelineSearch}
+                          filters={pipelineFilters}
                           onAddCandidateClick={() => setShowAddCandidate(true)}
                           />
                         </div>
@@ -1266,7 +1243,7 @@ export default function JobDetail() {
                       ) : pipelineSectionTab === 'application' ? (
                         <div className="w-full p-layout-md">
                           <CandidateTable
-                            candidates={applicationReviewCandidates}
+                            candidates={applyPipelineNarrowing(applicationReviewCandidates)}
                             isLoading={statusListsLoading}
                             onEdit={handleEditCandidate}
                             onDelete={handleDeleteCandidate}
@@ -1284,7 +1261,7 @@ export default function JobDetail() {
                       ) : pipelineSectionTab === 'offers' ? (
                         <div className="w-full p-layout-md">
                           <CandidateTable
-                            candidates={offersCandidates}
+                            candidates={applyPipelineNarrowing(offersCandidates)}
                             isLoading={statusListsLoading}
                             onEdit={handleEditCandidate}
                             onDelete={handleDeleteCandidate}
@@ -1301,7 +1278,7 @@ export default function JobDetail() {
                       ) : pipelineSectionTab === 'hired' ? (
                         <div className="w-full p-layout-md">
                           <CandidateTable
-                            candidates={hiredCandidates}
+                            candidates={applyPipelineNarrowing(hiredCandidates)}
                             isLoading={statusListsLoading}
                             onEdit={handleEditCandidate}
                             onDelete={handleDeleteCandidate}
@@ -1318,7 +1295,7 @@ export default function JobDetail() {
                       ) : (
                         <div className="w-full p-layout-md">
                           <CandidateTable
-                            candidates={rejectedCandidates}
+                            candidates={applyPipelineNarrowing(rejectedCandidates)}
                             isLoading={statusListsLoading}
                             onEdit={handleEditCandidate}
                             onDelete={handleDeleteCandidate}

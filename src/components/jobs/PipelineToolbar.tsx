@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SugFilterChip } from '@/components/jobs/suggested/SuggestedAtoms'
+import { SugFilterChip } from '@/components/jobs/suggested/SuggestedToolbar'
 import {
   PIPELINE_FILTER_MENU,
   upsertPipelineFilter,
