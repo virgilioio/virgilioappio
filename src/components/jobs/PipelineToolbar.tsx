@@ -27,6 +27,7 @@ export function PipelineToolbar({
   view,
   onViewChange,
   showViewToggle = false,
+  primary,
 }: {
   filters: PipelineFilter[]
   onFiltersChange: (next: PipelineFilter[]) => void
@@ -35,7 +36,10 @@ export function PipelineToolbar({
   view?: 'board' | 'list'
   onViewChange?: (v: 'board' | 'list') => void
   showViewToggle?: boolean
+  /** Optional section primary action, rendered at the end of the right cluster. */
+  primary?: React.ReactNode
 }) {
+
   const [open, setOpen] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
   const expanded = open || search.length > 0
