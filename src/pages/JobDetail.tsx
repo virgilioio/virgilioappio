@@ -48,6 +48,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles, Mail, ClipboardCheck, Search, Filter, CheckSquare } from 'lucide-react'
 import { TableToolbar, TableSearch, TableSegmented } from '@/components/ui/table-toolbar'
 import { PipelineToolbar } from '@/components/jobs/PipelineToolbar'
+import { PipelineFlatSection } from '@/components/jobs/sections/PipelineFlatSection'
 import { matchesPipelineFilters, matchesPipelineSearch, type PipelineFilter } from '@/components/jobs/pipelineFilters'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -407,7 +408,7 @@ export default function JobDetail() {
   }, [isRestrictedViewer, pipelineSectionTab])
 
   // Assocations and status-based lists
-  const { fetchAssociationsForJob, updateAssociationStatus } = usePipelineActions()
+  const { fetchAssociationsForJob, updateAssociationStatus, moveAssociationToStage } = usePipelineActions()
   const [associations, setAssociations] = useState<PipelineAssociation[]>([])
   const [stageMap, setStageMap] = useState<Record<string, { type: string; name: string }>>({})
   const [offersCandidates, setOffersCandidates] = useState<any[]>([])
