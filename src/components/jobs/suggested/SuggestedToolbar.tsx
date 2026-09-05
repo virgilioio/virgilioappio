@@ -2,6 +2,15 @@ import * as React from 'react'
 import { Plus, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -82,7 +91,103 @@ export interface SuggestedToolbarProps {
   onAddFilter: (filter: SuggestedFilter) => void
   onRefresh: () => void
   skillOptions?: string[]
-  locationOptions?: string[]
+  /** City / state / province / country values present in the pool. */
+  locationOptions?: SuggestedLocationOption[]
+}
+
+export interface SuggestedLocationOption {
+  label: string
+  kind: string
+  count: number
+}
+
+/** Searchable country / city / state picker for the Location filter. */
+function LocationSearchPicker({
+  options,
+  onPick,
+}: {
+  options: SuggestedLocationOption[]
+  onPick: (value: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [query, setQuery] = React.useState('')
+
+  const groups = React.useMemo(() => {
+    const order = ['Country', 'State / Province', 'City', 'Location']
+    const map = new Map<string, SuggestedLocationOption[]>()
+    options.forEach((o) => {
+      const list = map.get(o.kind) || []
+      list.push(o)
+      map.set(o.kind, list)
+    })
+    return order.filter((k) => map.has(k)).map((k) => [k, map.get(k)!] as const)
+  }, [options])
+
+  const commit = (value: string) => {
+    const v = value.trim()
+    if (!v) return
+    onPick(v)
+    setQuery('')
+    setOpen(false)
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span>
+          <SugFilterChip label="Location" variant="add" />
+        </span>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-[260px] p-0">
+        <Command shouldFilter>
+          <CommandInput
+            placeholder="Search country, city, state…"
+            value={query}
+            onValueChange={setQuery}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && query.trim() && !options.length) commit(query)
+            }}
+          />
+          <CommandList className="max-h-[280px]">
+            <CommandEmpty>
+              {query.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => commit(query)}
+                  style={{
+                    background: 'none',
+                    border: 0,
+                    cursor: 'pointer',
+                    fontFamily: inter,
+                    fontSize: 12,
+                    color: '#6F3FF5',
+                  }}
+                >
+                  Filter by “{query.trim()}”
+                </button>
+              ) : (
+                'No locations found.'
+              )}
+            </CommandEmpty>
+            {groups.map(([kind, list]) => (
+              <CommandGroup key={kind} heading={kind}>
+                {list.map((o) => (
+                  <CommandItem
+                    key={`${kind}:${o.label}`}
+                    value={`${o.label} ${kind}`}
+                    onSelect={() => commit(o.label)}
+                  >
+                    <span className="truncate">{o.label}</span>
+                    <span style={{ marginLeft: 'auto', color: '#8B8F9E', fontSize: 11 }}>{o.count}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 /**
@@ -190,6 +295,11 @@ export function SuggestedToolbar({
           />
         ))}
 
+        <LocationSearchPicker
+          options={locationOptions}
+          onPick={(value) => onAddFilter(makeLocationFilter(value))}
+        />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <span>
@@ -218,18 +328,6 @@ export function SuggestedToolbar({
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            {locationOptions.length > 0 && (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Location</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="max-h-[280px] overflow-y-auto">
-                  {locationOptions.map((l) => (
-                    <DropdownMenuItem key={l} onSelect={() => onAddFilter(makeLocationFilter(l))}>
-                      {l}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            )}
             {skillOptions.length > 0 && (
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>Skill</DropdownMenuSubTrigger>

@@ -159,8 +159,16 @@ export function SuggestedTable({
 
       {candidates.map((c, i) => {
         const id = suggestedCandidateId(c)
-        const name = c.full_name || c.name || 'Unnamed candidate'
-        const role = [c.current_role || c.role_current, c.current_company || c.company]
+        const name =
+          c.candidate_name ||
+          c.full_name ||
+          c.name ||
+          [c.first_name, c.last_name].filter(Boolean).join(' ') ||
+          'Unnamed candidate'
+        const role = [
+          c.current_role || c.role_current || c.current_job_title,
+          c.current_company || c.company_current || c.company,
+        ]
           .filter(Boolean)
           .join(' · ')
         const isSelected = selected.has(id)
@@ -251,7 +259,11 @@ export function SuggestedTable({
             <SugMatchCell score={suggestedScore(c)} />
 
             <SugLocationCell
-              location={c.location || c.location_city || null}
+              location={
+                c.location ||
+                [c.location_city, c.location_state, c.location_country].filter(Boolean).join(', ') ||
+                null
+              }
               fits={locationFits(c, jobLocation)}
             />
 

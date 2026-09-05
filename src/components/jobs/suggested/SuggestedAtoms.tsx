@@ -19,12 +19,15 @@ const poppins = "'Poppins', system-ui, sans-serif"
 export function SugReasonChip({
   children,
   muted = false,
+  title,
 }: {
   children: React.ReactNode
   muted?: boolean
+  title?: string
 }) {
   return (
     <span
+      title={title}
       style={{
         padding: '2.5px 7px',
         borderRadius: 6,
@@ -34,6 +37,10 @@ export function SugReasonChip({
         fontSize: 11,
         color: muted ? '#8B8F9E' : '#4B2BB0',
         whiteSpace: 'nowrap',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: 'inline-block',
       }}
     >
       {children}
@@ -45,10 +52,12 @@ export function SugReasons({ reasons, note }: { reasons: string[]; note?: string
   const shown = reasons.slice(0, 3)
   const overflow = reasons.length - shown.length
   return (
-    <div style={{ minWidth: 0 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, minWidth: 0, maxWidth: '100%' }}>
         {shown.map((r) => (
-          <SugReasonChip key={r}>{r}</SugReasonChip>
+          <SugReasonChip key={r} title={r}>
+            {r}
+          </SugReasonChip>
         ))}
         {overflow > 0 && <SugReasonChip muted>+{overflow}</SugReasonChip>}
       </div>
