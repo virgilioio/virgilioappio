@@ -99,13 +99,8 @@ export default function CandidateCard(props: CandidateCardProps) {
 
   const score = typeof props.aiFitScore === 'number' ? props.aiFitScore : null
 
-  // Due pill — only when there is an interview landing today or tomorrow.
-  let duePill: string | null = null
-  if (nextInterview?.scheduled_start) {
-    const d = differenceInCalendarDays(parseISO(nextInterview.scheduled_start), new Date())
-    if (d <= 0) duePill = 'Due today'
-    else if (d === 1) duePill = 'Due tmrw'
-  }
+
+
 
   const checkboxVisible = !!props.showCheckbox && (!!props.checked || !!props.checkboxAlwaysVisible)
   const stale = isStale(daysInStage)
