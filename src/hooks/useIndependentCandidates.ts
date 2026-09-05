@@ -74,8 +74,14 @@ export interface CreateIndependentCandidateData {
   skills?: string[] | null
   status?: string
   source?: string
+  current_job_title?: string | null
+  company_current?: string | null
+  /** Aliases used by the candidate form / resume parser. */
+  current_role?: string | null
+  current_company?: string | null
   organization_id?: string | null
 }
+
 
 export interface DuplicateResult {
   isDuplicate: true
@@ -219,6 +225,11 @@ export function useIndependentCandidates() {
       if (candidateData.skills !== undefined) updateData.skills = candidateData.skills
       if (candidateData.status !== undefined) updateData.status = candidateData.status
       if (candidateData.source !== undefined) updateData.source = candidateData.source
+      const nextTitle = candidateData.current_job_title ?? candidateData.current_role
+      if (nextTitle !== undefined) updateData.current_job_title = nextTitle || null
+      const nextCompany = candidateData.company_current ?? candidateData.current_company
+      if (nextCompany !== undefined) updateData.company_current = nextCompany || null
+
 
       const { data: updatedCandidate, error: updateError } = await withAuthRetry(async () =>
         await supabase

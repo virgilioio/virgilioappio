@@ -200,9 +200,10 @@ export function useResumeParsing() {
       // Update only missing candidate fields
       const { data: existing, error: fetchErr } = await supabase
         .from('candidates')
-        .select('id, candidate_name, contact_emails, contact_phones, profile_summary, linkedin_url, location_city, location_state, location_country')
+        .select('id, candidate_name, contact_emails, contact_phones, profile_summary, linkedin_url, location_city, location_state, location_country, current_job_title, company_current')
         .eq('id', candidateId)
         .maybeSingle();
+
 
       if (fetchErr) {
         console.warn('Unable to fetch candidate to update (continuing without update):', fetchErr);
@@ -231,6 +232,15 @@ export function useResumeParsing() {
         if (parsed.linkedinUrl && !existing.linkedin_url) {
           update.linkedin_url = parsed.linkedinUrl;
         }
+        // Latest job title / employer — the parser reads these off the resume,
+        // so persist them whenever the record is still empty.
+        if (parsed.currentRole && !(existing as any).current_job_title) {
+          update.current_job_title = parsed.currentRole;
+        }
+        if (parsed.currentCompany && !(existing as any).company_current) {
+          update.company_current = parsed.currentCompany;
+        }
+
         if (parsed.location && (!existing.location_city || !existing.location_state || !existing.location_country)) {
           const locationParts = parseLocationString(parsed.location);
           console.log('[Resume Parsing] Location string:', parsed.location);
