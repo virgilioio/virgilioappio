@@ -19,7 +19,6 @@ interface CandidateCardProps {
   stageOptions: { jhsId: string; stage: JobStage }[]
   currentStageJhsId?: string | null
   timeInStageLabel?: string
-  timeBadgeVariant?: BadgeProps['variant']
   /** Whole days in the current stage — red + 600 past 7. */
   daysInStage?: number
   onMove: (toStageId: string) => void | Promise<void>
@@ -36,30 +35,13 @@ interface CandidateCardProps {
   isFavorite?: boolean
   /** AI fit score for THIS job (lives on the association, not the candidate). */
   aiFitScore?: number | null
+  /** The single engine-assigned status — rendered as-is, never recomputed. */
+  status?: CandidateStatusInfo | null
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
   const { candidateId, candidateName, onClick, daysInStage = 0 } = props
-  const [bookingDialogOpen, setBookingDialogOpen] = useState(false)
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
 
-  const { data: nextInterview } = useQuery({
-    queryKey: ['next-interview', candidateId],
-    queryFn: async () => {
-      if (!candidateId) return null
-      const { data } = await supabase
-        .from('scheduled_bookings')
-        .select('id, scheduled_start, status')
-        .eq('candidate_id', candidateId)
-        .gte('scheduled_start', new Date().toISOString())
-        .in('status', ['confirmed', 'rescheduled'])
-        .order('scheduled_start', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-      return data
-    },
-    enabled: !!candidateId,
-  })
 
   // Lightweight candidate meta (current role / company) for the card body.
   const { data: candidateMeta } = useQuery({
