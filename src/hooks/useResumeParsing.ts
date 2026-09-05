@@ -200,9 +200,10 @@ export function useResumeParsing() {
       // Update only missing candidate fields
       const { data: existing, error: fetchErr } = await supabase
         .from('candidates')
-        .select('id, candidate_name, contact_emails, contact_phones, profile_summary, linkedin_url, location_city, location_state, location_country')
+        .select('id, candidate_name, contact_emails, contact_phones, profile_summary, linkedin_url, location_city, location_state, location_country, current_job_title, company_current')
         .eq('id', candidateId)
         .maybeSingle();
+
 
       if (fetchErr) {
         console.warn('Unable to fetch candidate to update (continuing without update):', fetchErr);
