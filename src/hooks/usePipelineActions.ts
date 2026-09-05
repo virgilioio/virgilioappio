@@ -55,7 +55,7 @@ export function usePipelineActions() {
     // 2) Load candidate names/links from independent candidates table
     const { data: candidates, error: candError } = await supabase
       .from('candidates')
-      .select('id, candidate_name, linkedin_url, phone, current_job_title, company_current')
+      .select('id, candidate_name, linkedin_url, phone, current_job_title, role_current, company_current')
       .in('id', candidateIds as string[])
 
     if (candError) {
@@ -87,7 +87,7 @@ export function usePipelineActions() {
         ai_fit_score: (a as any).ai_fit_score ?? null,
         is_favorite: (a as any).is_favorite ?? false,
         added_by: (a as any).added_by ?? null,
-        current_role: (c as any)?.current_job_title ?? null,
+        current_role: (c as any)?.current_job_title ?? (c as any)?.role_current ?? null,
         current_company: (c as any)?.company_current ?? null,
       }
     })
