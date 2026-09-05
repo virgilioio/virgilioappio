@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 /**
  * ONE grid template, shared by the header row, every data row and every
  * skeleton row. A second copy would drift and the skeleton would stop lining
@@ -5,7 +7,8 @@
  */
 export const SUGGESTED_GRID = '28px minmax(0,1.65fr) minmax(0,2.1fr) 96px minmax(0,0.85fr) 96px 128px 116px'
 
-export const suggestedRowStyle: React.CSSProperties = {
+export const suggestedRowStyle: CSSProperties = {
+
   display: 'grid',
   gridTemplateColumns: SUGGESTED_GRID,
   alignItems: 'center',
