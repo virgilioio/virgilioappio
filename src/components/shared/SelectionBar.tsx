@@ -198,17 +198,27 @@ export function SelectionBar({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" sideOffset={8}>
-            {overflow.map((a) => (
-              <DropdownMenuItem
-                key={a.id}
-                disabled={busy || a.disabled}
-                onSelect={() => a.onClick?.()}
-                style={a.destructive ? { color: '#FA5252' } : undefined}
-              >
-                {a.icon && <a.icon size={13} strokeWidth={2} />}
-                {a.label}
-              </DropdownMenuItem>
-            ))}
+            {overflow.map((a) => {
+              const item = (
+                <DropdownMenuItem
+                  key={a.id}
+                  disabled={busy || a.disabled}
+                  onSelect={(e) => {
+                    if (a.render) e.preventDefault()
+                    a.onClick?.()
+                  }}
+                  style={a.destructive ? { color: '#FA5252' } : undefined}
+                >
+                  {a.icon && <a.icon size={13} strokeWidth={2} />}
+                  {a.label}
+                </DropdownMenuItem>
+              )
+              return a.render ? (
+                <React.Fragment key={a.id}>{a.render(item)}</React.Fragment>
+              ) : (
+                item
+              )
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       )}
