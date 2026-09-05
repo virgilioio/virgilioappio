@@ -8,6 +8,8 @@ import { JobStage } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
 import { scoreColor, scoreTint, isStale, PIPELINE_RED, PIPELINE_TERTIARY } from './pipelineVisuals'
+import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
+
 
 interface CandidateCardProps {
   candidateId?: string
