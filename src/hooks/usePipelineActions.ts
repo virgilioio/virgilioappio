@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
+import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
+
 
 export interface PipelineAssociation {
   id: string
@@ -55,7 +57,7 @@ export function usePipelineActions() {
     // 2) Load candidate names/links from independent candidates table
     const { data: candidates, error: candError } = await supabase
       .from('candidates')
-      .select('id, candidate_name, linkedin_url, phone, current_job_title, role_current, company_current')
+      .select('id, candidate_name, linkedin_url, phone, current_job_title, role_current, company_current, bio')
       .in('id', candidateIds as string[])
 
     if (candError) {
@@ -69,8 +71,29 @@ export function usePipelineActions() {
     }
 
     const byId = new Map((candidates || []).map(c => [c.id, c]))
+
+    // Work-history fallback for candidates whose profile title/employer is empty.
+    const needsExperience = (candidates || [])
+      .filter(c => !((c as any).current_job_title || (c as any).role_current) || !(c as any).company_current)
+      .map(c => c.id)
+    const expById = new Map<string, { job_title: string | null; company_name: string | null }>()
+    if (needsExperience.length > 0) {
+      const { data: expRows } = await supabase
+        .from('candidate_work_experience')
+        .select('candidate_id, job_title, company_name, is_current, start_date')
+        .in('candidate_id', needsExperience)
+        .order('is_current', { ascending: false })
+        .order('start_date', { ascending: false, nullsFirst: false })
+      for (const row of expRows || []) {
+        if (!expById.has(row.candidate_id)) {
+          expById.set(row.candidate_id, { job_title: row.job_title, company_name: row.company_name })
+        }
+      }
+    }
+
     const result: PipelineAssociation[] = associations.map(a => {
       const c = byId.get(a.candidate_id)
+      const headline = resolveCandidateHeadline(c as any, expById.get(a.candidate_id) ?? null)
       return {
         id: a.id,
         job_id: a.job_id,
@@ -87,10 +110,11 @@ export function usePipelineActions() {
         ai_fit_score: (a as any).ai_fit_score ?? null,
         is_favorite: (a as any).is_favorite ?? false,
         added_by: (a as any).added_by ?? null,
-        current_role: (c as any)?.current_job_title ?? (c as any)?.role_current ?? null,
-        current_company: (c as any)?.company_current ?? null,
+        current_role: headline.role,
+        current_company: headline.company,
       }
     })
+
 
     return result
   }, [])
