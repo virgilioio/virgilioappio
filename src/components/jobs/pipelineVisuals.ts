@@ -70,7 +70,7 @@ export function nextStepText(stageType: string | null | undefined): string {
 }
 
 /** One grid constant — header row, stage headers and data rows all import it. */
-export const LIST_GRID: React.CSSProperties = {
+export const LIST_GRID: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '28px minmax(0,1.9fr) 92px 116px minmax(0,1.3fr) 132px 64px',
   alignItems: 'center',
