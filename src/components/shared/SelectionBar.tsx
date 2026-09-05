@@ -141,10 +141,10 @@ export function SelectionBar({
       aria-label={`${count} selected`}
       className={cn('pointer-events-auto', className)}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         left: '50%',
-        bottom: 22,
-        zIndex: 20,
+        bottom: 28,
+        zIndex: 60,
         display: 'flex',
         alignItems: 'center',
         gap: 10,
