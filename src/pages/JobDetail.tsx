@@ -1314,7 +1314,7 @@ export default function JobDetail() {
                   )}
 
                   {/* Floating bulk bar — zero layout, never shifts the table. */}
-                  {!(pipelineSectionTab === 'recruiting' && pipelineView === 'board') && (
+                  {(
                     <SelectionBar
                       count={selectedCandidateIds.length}
                       onClear={() => {
