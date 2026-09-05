@@ -155,9 +155,16 @@ export default function CandidateCard(props: CandidateCardProps) {
         )}
 
         <div
-          className="flex items-start gap-[10px] transition-[padding-left] duration-100"
-          style={{ paddingLeft: checkboxVisible ? 22 : 0 }}
+          className={cn(
+            'flex items-start gap-[10px] transition-[padding-left] duration-150 ease-out',
+            checkboxVisible
+              ? 'pl-[22px]'
+              : props.showCheckbox
+                ? 'pl-0 group-hover/card:pl-[22px] group-focus-within/card:pl-[22px]'
+                : 'pl-0',
+          )}
         >
+
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-[6px]">
               <span
