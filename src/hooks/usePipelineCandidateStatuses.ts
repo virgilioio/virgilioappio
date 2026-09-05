@@ -225,8 +225,14 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
 
     for (const assoc of associations) {
       const stageId = assoc.current_stage_id
+      const fallbackTime = new Date(assoc.entered_stage_at || assoc.created_at).getTime()
       if (!stageId) {
-        map.set(assoc.id, { priority: 5, sortTime: new Date(assoc.entered_stage_at || assoc.created_at).getTime() })
+        map.set(assoc.id, {
+          priority: 5,
+          sortTime: fallbackTime,
+          kind: 'link_sent',
+          detail: daysSince(fallbackTime, now) + ' ago',
+        })
         continue
       }
 
@@ -238,17 +244,18 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
       const authors = scorecardAuthorsByAssocStage.get(key) || new Set<string>()
       const allSubmitted = !!expected && expected.size > 0 &&
         [...expected].every(uid => authors.has(uid))
+      const expectedCount = expected?.size ?? 0
+      const receivedCount = authors.size
 
       const candidateStageKey = `${assoc.candidate_id}:${stageId}`
       const stageBookings = bookingsByCandidateStage.get(candidateStageKey) || []
 
       const bookingLinkSentAt = bookingLinkSentByAssoc.get(assoc.id)
-      const enteredStageTime = new Date(assoc.entered_stage_at || assoc.created_at).getTime()
+      const enteredStageTime = fallbackTime
 
+      // Closed out by the interviewer / system.
       const completedInterview = stageBookings.find(b =>
-        b.status === 'completed' ||
-        b.status === 'no_show' ||
-        (b.status === 'confirmed' && new Date(b.scheduled_start).getTime() < now)
+        b.status === 'completed' || b.status === 'no_show'
       )
 
       const upcomingInterview = stageBookings.find(b =>
@@ -256,37 +263,86 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
         new Date(b.scheduled_start).getTime() >= now
       )
 
+      // Still marked as booked, but its start time has passed — the window between
+      // "the interview happened" and the engine seeing a scorecard.
+      const overdueInterview = stageBookings.find(b =>
+        (b.status === 'confirmed' || b.status === 'rescheduled') &&
+        new Date(b.scheduled_start).getTime() < now
+      )
+
       const pendingBookingLink = stageBookings.find(b =>
         b.status === 'pending' ||
         (b.candidate_confirmation_status === 'pending' && b.status !== 'cancelled')
       )
 
-      // Priority 1: ALL expected interviewers submitted -> Needs Decision
+      // Priority 1: ALL expected interviewers submitted -> Decision needed
       if (allSubmitted) {
-        map.set(assoc.id, { priority: 1, sortTime: enteredStageTime })
+        map.set(assoc.id, {
+          priority: 1,
+          sortTime: enteredStageTime,
+          kind: 'decision',
+          detail: `${receivedCount} of ${expectedCount} in`,
+        })
         continue
       }
 
-      // Priority 2: Completed interview but not all scorecards in -> Pending Scorecard
-      // (also covers "some submitted, some still pending" in multi-interviewer)
-      if (completedInterview || (hasAnyScorecard && !allSubmitted)) {
+      // Priority 2: Interview done (or partial panel) but not all scorecards in
+      if (completedInterview || hasAnyScorecard) {
         const sortRef = completedInterview ? new Date(completedInterview.scheduled_start).getTime() : enteredStageTime
-        map.set(assoc.id, { priority: 2, sortTime: sortRef })
+        map.set(assoc.id, {
+          priority: 2,
+          sortTime: sortRef,
+          kind: 'scorecard',
+          detail: `${receivedCount} of ${Math.max(expectedCount, receivedCount, 1)}`,
+        })
         continue
       }
 
       if (upcomingInterview) {
-        map.set(assoc.id, { priority: 3, sortTime: new Date(upcomingInterview.scheduled_start).getTime() })
+        const startMs = new Date(upcomingInterview.scheduled_start).getTime()
+        map.set(assoc.id, {
+          priority: 3,
+          sortTime: startMs,
+          kind: 'scheduled',
+          day: dayLabel(startMs, now),
+          time: timeLabel(startMs),
+          detail: relativeDetail(startMs, now),
+        })
+        continue
+      }
+
+      if (overdueInterview) {
+        const startMs = new Date(overdueInterview.scheduled_start).getTime()
+        map.set(assoc.id, {
+          priority: 3,
+          sortTime: startMs,
+          kind: 'scheduled_overdue',
+          day: dayLabel(startMs, now),
+          time: timeLabel(startMs),
+          detail: relativeDetail(startMs, now, 'ended '),
+        })
         continue
       }
 
       if (!bookingLinkSentAt && !pendingBookingLink) {
-        map.set(assoc.id, { priority: 4, sortTime: enteredStageTime })
+        map.set(assoc.id, {
+          priority: 4,
+          sortTime: enteredStageTime,
+          kind: 'needs_scheduling',
+          detail: daysSince(enteredStageTime, now),
+        })
         continue
       }
 
-      map.set(assoc.id, { priority: 5, sortTime: bookingLinkSentAt ? new Date(bookingLinkSentAt).getTime() : enteredStageTime })
+      const sentMs = bookingLinkSentAt ? new Date(bookingLinkSentAt).getTime() : enteredStageTime
+      map.set(assoc.id, {
+        priority: 5,
+        sortTime: sentMs,
+        kind: 'link_sent',
+        detail: `${daysSince(sentMs, now)} ago`,
+      })
     }
+
 
     return map
   }, [associations, scorecards, bookings, associationsData, attendees, bookingPrimary])
