@@ -65,7 +65,7 @@ export default function CandidateCard(props: CandidateCardProps) {
       if (!candidateId) return null
       const { data } = await supabase
         .from('candidates')
-        .select('current_role, current_company, ai_fit_score')
+        .select('current_job_title, company_current, ai_fit_score')
         .eq('id', candidateId)
         .maybeSingle()
       return data as any
@@ -74,8 +74,8 @@ export default function CandidateCard(props: CandidateCardProps) {
     staleTime: 5 * 60 * 1000,
   })
 
-  const role = candidateMeta?.current_role || null
-  const company = candidateMeta?.current_company || null
+  const role = candidateMeta?.current_job_title || null
+  const company = candidateMeta?.company_current || null
   const score = typeof candidateMeta?.ai_fit_score === 'number' ? candidateMeta.ai_fit_score : null
 
   // Due pill — only when there is an interview landing today or tomorrow.
