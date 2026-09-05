@@ -32,7 +32,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { usePipelineCandidateStatuses } from '@/hooks/usePipelineCandidateStatuses'
 import { cn } from '@/lib/utils'
 import { matchesPipelineFilters, type PipelineFilter } from './pipelineFilters'
-import { stageColor, daysInStage, nextStepText } from './pipelineVisuals'
+import { stageColor, daysInStage } from './pipelineVisuals'
 import { PipelineListView, type PipelineListGroup } from './PipelineListView'
 
 
@@ -793,15 +793,14 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
             company: a.current_company ?? null,
             score: a.ai_fit_score ?? null,
             days: daysInStage(a.entered_stage_at, a.created_at),
-            nextStep: nextStepText(opt.stage.stage_type),
-            due: null,
+            status: statusMap.get(a.id) ?? null,
             ownerName: owner?.name ?? null,
             ownerAvatarUrl: owner?.avatar ?? null,
             isFavorite: a.is_favorite,
           }
         }),
       })),
-    [stageOptions, sortedByStage, stageColorByJhsId, ownerById],
+    [stageOptions, sortedByStage, stageColorByJhsId, ownerById, statusMap],
   )
 
   const listStages = useMemo(
@@ -1032,6 +1031,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           whatsappTemplateSentAt={assoc.whatsapp_template_sent_at}
                           isFavorite={assoc.is_favorite}
                           aiFitScore={assoc.ai_fit_score}
+                          status={statusMap.get(assoc.id) ?? null}
                         />
                       </DraggableCandidateCard>
                     )

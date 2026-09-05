@@ -133,7 +133,7 @@ export function PipelineListView({
         <div style={HEADER_LABEL}>Candidate</div>
         <div style={{ ...HEADER_LABEL, textAlign: 'right' }}>Match</div>
         <div style={HEADER_LABEL}>Time in stage</div>
-        <div style={HEADER_LABEL}>Next step</div>
+        <div style={HEADER_LABEL}>Status</div>
         <div style={HEADER_LABEL}>Owner</div>
         <div />
       </div>
