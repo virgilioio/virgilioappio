@@ -204,6 +204,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         candidates: results,
         total_count: results.length,
+        // Size of the pool that was compared, not the number that passed.
+        searched_count: validCached.length,
         breakdown: { localCandidates: results.length, apolloCandidates: 0, averageMatch: avgScore },
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
@@ -254,7 +256,7 @@ serve(async (req) => {
     }
 
     if (preFiltered.length === 0) {
-      return new Response(JSON.stringify({ candidates: [], total_count: 0, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
+      return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates?.length || 0, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
         headers: { ...headers, "Content-Type": "application/json" },
       });
     }
@@ -389,6 +391,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       candidates: filtered,
       total_count: filtered.length,
+      searched_count: preFiltered.length,
       breakdown: {
         localCandidates: filtered.length,
         apolloCandidates: 0,
