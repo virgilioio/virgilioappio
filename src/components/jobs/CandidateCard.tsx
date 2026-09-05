@@ -60,41 +60,42 @@ export default function CandidateCard(props: CandidateCardProps) {
     enabled: !!candidateId,
   })
 
-  // Lightweight candidate meta (current role / company / AI fit) for the card body.
+  // Lightweight candidate meta (current role / company) for the card body.
   const { data: candidateMeta } = useQuery({
     queryKey: ['candidate-meta', candidateId],
     queryFn: async () => {
       if (!candidateId) return null
       const { data } = await supabase
         .from('candidates')
-        .select('current_job_title, role_current, company_current')
+        .select('current_job_title, role_current, company_current, bio')
         .eq('id', candidateId)
         .maybeSingle()
       const meta = (data || {}) as any
-      // Fall back to the latest parsed work-experience row when the profile
-      // fields are empty — the parser fills one or the other.
-      if (!meta.current_job_title && !meta.role_current) {
-        const { data: exp } = await supabase
+      // The parser fills either the profile fields or the work-history rows —
+      // pull the latest experience whenever a title OR employer is missing.
+      let exp: { job_title?: string | null; company_name?: string | null } | null = null
+      const hasTitle = !!(meta.current_job_title || meta.role_current)
+      const hasCompany = !!meta.company_current
+      if (!hasTitle || !hasCompany) {
+        const { data: expRow } = await supabase
           .from('candidate_work_experience')
-          .select('job_title, company_name, is_current, end_date, start_date')
+          .select('job_title, company_name, is_current, start_date')
           .eq('candidate_id', candidateId)
           .order('is_current', { ascending: false })
           .order('start_date', { ascending: false, nullsFirst: false })
           .limit(1)
           .maybeSingle()
-        if (exp) {
-          meta.exp_title = exp.job_title ?? null
-          meta.exp_company = exp.company_name ?? null
-        }
+        exp = expRow ?? null
       }
-      return meta
+      return resolveCandidateHeadline(meta, exp)
     },
     enabled: !!candidateId,
     staleTime: 5 * 60 * 1000,
   })
 
-  const role = candidateMeta?.current_job_title || candidateMeta?.role_current || candidateMeta?.exp_title || null
-  const company = candidateMeta?.company_current || candidateMeta?.exp_company || null
+  const role = candidateMeta?.role ?? null
+  const company = candidateMeta?.company ?? null
+
   const score = typeof props.aiFitScore === 'number' ? props.aiFitScore : null
 
   // Due pill — only when there is an interview landing today or tomorrow.
