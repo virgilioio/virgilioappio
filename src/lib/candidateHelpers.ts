@@ -331,6 +331,15 @@ export async function mergeCandidate(existingCandidateId: string, candidateData:
     const value = (mergedData as any)[key]
     if (value !== undefined) updateFields[key] = value
   }
+  // Map the form-only aliases onto their real columns when the canonical
+  // fields were not supplied.
+  if (updateFields.current_job_title === undefined && (mergedData as any).current_role) {
+    updateFields.current_job_title = (mergedData as any).current_role
+  }
+  if (updateFields.company_current === undefined && (mergedData as any).current_company) {
+    updateFields.company_current = (mergedData as any).current_company
+  }
+
 
   const { data: updatedCandidate, error: updateError } = await withAuthRetry(async () =>
     await supabase
