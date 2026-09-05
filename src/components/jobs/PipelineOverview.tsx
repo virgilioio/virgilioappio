@@ -76,56 +76,37 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-// Tinted shell + dashed dropzone overlay shown when a card is dragged over the column.
-const STAGE_HOVER_CLASSES: Record<string, { bg: string; ring: string; outline: string }> = {
-  application:     { bg: 'bg-info/15',          ring: 'ring-info/40',           outline: 'border-info/50' },
-  application_review: { bg: 'bg-pastel-purple/40', ring: 'ring-virgilio-purple/30', outline: 'border-virgilio-purple/40' },
-  screening:       { bg: 'bg-info/15',          ring: 'ring-info/40',           outline: 'border-info/50' },
-  interview:       { bg: 'bg-pastel-purple/40', ring: 'ring-virgilio-purple/30', outline: 'border-virgilio-purple/40' },
-  assessment:      { bg: 'bg-warning/20',       ring: 'ring-warning/40',        outline: 'border-warning/50' },
-  reference_check: { bg: 'bg-pastel-orange/40', ring: 'ring-pastel-orange/50',  outline: 'border-pastel-orange/60' },
-  offer:           { bg: 'bg-success/20',       ring: 'ring-success/40',        outline: 'border-success/50' },
-  onboarding:      { bg: 'bg-pastel-green/40',  ring: 'ring-pastel-green/50',   outline: 'border-pastel-green/60' },
-  custom:          { bg: 'bg-virgilio-purple/5',ring: 'ring-virgilio-purple/30',outline: 'border-virgilio-purple/40' },
-}
-
+/**
+ * Board column — 280px, never shrinks. The drop-target state swaps the 1px
+ * border for a 1.5px dashed one at the same box size, so nothing resizes.
+ */
 function ColumnShell({
   id,
-  stageType,
-  isEmpty,
   header,
   children,
 }: {
   id: string
-  stageType: string
-  isEmpty: boolean
   header: React.ReactNode
   children: React.ReactNode
 }) {
   const { isOver, setNodeRef } = useDroppable({ id })
-  const tone = STAGE_HOVER_CLASSES[stageType] || STAGE_HOVER_CLASSES.custom
   return (
     <div
       ref={setNodeRef}
-      className={cn(
-        'relative flex flex-col rounded-2xl border border-virgilio-border bg-white transition-colors duration-150 overflow-hidden',
-        isOver && cn(tone.bg, 'ring-1 ring-inset', tone.ring)
-      )}
+      className="group flex flex-col min-h-0"
+      style={{
+        flex: '0 0 280px',
+        background: isOver ? '#FAF8FF' : '#FAFAF7',
+        border: isOver ? '1.5px dashed #D7C5FB' : '1px solid #E7E8EE',
+        borderRadius: 12,
+      }}
     >
-      <div className="px-3 py-2.5 shrink-0">{header}</div>
-      <div className="border-t border-virgilio-border" />
-      <div className="relative p-2 flex-1">
-        {isOver && (
-          <div className={cn('pointer-events-none absolute inset-1.5 rounded-xl border border-dashed', tone.outline)} />
-        )}
-        {isEmpty && !isOver && (
-          <div className="pointer-events-none absolute inset-1.5 rounded-xl border border-dashed border-virgilio-border/60" />
-        )}
-        <div className="relative z-10 flex flex-col gap-2 min-h-[140px]">{children}</div>
-      </div>
+      {header}
+      <div style={{ padding: 8, flex: 1, overflow: 'auto', minHeight: 0 }}>{children}</div>
     </div>
   )
 }
+
 
 export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
