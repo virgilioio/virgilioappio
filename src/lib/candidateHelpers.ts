@@ -32,9 +32,17 @@ export interface CandidateData {
   skills?: string[] | null
   status?: string
   source?: string
+  /** Latest job title — canonical column. */
+  current_job_title?: string | null
+  /** Latest employer — canonical column. */
+  company_current?: string | null
+  /** Form-only aliases (candidate form + resume parser) mapped on write. */
+  current_role?: string | null
+  current_company?: string | null
   organization_id: string
   created_by: string
 }
+
 
 export interface ExistingCandidate {
   id: string
