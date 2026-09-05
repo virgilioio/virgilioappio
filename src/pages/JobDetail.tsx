@@ -24,6 +24,7 @@ import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { JobHero } from '@/components/jobs/JobHero'
 import { cn } from '@/lib/utils'
 import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/PipelineSectionTabs'
+import { SelectionBar } from '@/components/shared/SelectionBar'
 import { JobSuggestedTab } from '@/components/jobs/suggested/JobSuggestedTab'
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
@@ -1103,7 +1104,11 @@ export default function JobDetail() {
                 <div className="mb-3 shrink-0">
                   <PipelineSectionTabs
                     value={pipelineSectionTab as PipelineSection}
-                    onChange={(v) => setPipelineSectionTab(v as any)}
+                    onChange={(v) => {
+                      setSelectedCandidateIds([])
+                      setSelectionMode(false)
+                      setPipelineSectionTab(v as any)
+                    }}
                     counts={{
                       suggested: suggestedCount,
                       application: applicationCount,
@@ -1164,38 +1169,14 @@ export default function JobDetail() {
                             Select
                           </Button>
                         )}
-                        {selectionMode && (
-                          <>
-                            {selectedCandidateIds.length > 0 && (
-                              <>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  icon={Mail}
-                                  onClick={() => setShowBulkEmailDialog(true)}
-                                >
-                                  Email
-                                </Button>
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() => setShowBulkRejectionDialog(true)}
-                                >
-                                  Reject
-                                </Button>
-                              </>
-                            )}
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCandidateIds([])
-                                setSelectionMode(false)
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </>
+                        {selectionMode && selectedCandidateIds.length === 0 && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setSelectionMode(false)}
+                          >
+                            Cancel
+                          </Button>
                         )}
                         <Button
                           variant="primary"
@@ -1210,7 +1191,7 @@ export default function JobDetail() {
                     }
                   />
                 </div>
-                <div className="p-0 flex-1 min-h-0">
+                <div className="relative p-0 flex-1 min-h-0">
                   {pipelineSectionTab === 'recruiting' && pipelineView === 'board' ? (
                     <>
                       <div className="h-full min-h-[52dvh] w-full overflow-y-auto sm:hidden p-layout-md pb-[calc(env(safe-area-inset-bottom,0px)+96px)]">
@@ -1353,6 +1334,37 @@ export default function JobDetail() {
                         </div>
                       )}
                     </ScrollArea>
+                  )}
+
+                  {/* Floating bulk bar — zero layout, never shifts the table. */}
+                  {!(pipelineSectionTab === 'recruiting' && pipelineView === 'board') && (
+                    <SelectionBar
+                      count={selectedCandidateIds.length}
+                      onClear={() => {
+                        setSelectedCandidateIds([])
+                        setSelectionMode(false)
+                      }}
+                      actions={[
+                        {
+                          id: 'email',
+                          label: 'Email',
+                          icon: Mail,
+                          slot: 'secondary',
+                          onClick: () => setShowBulkEmailDialog(true),
+                        },
+                        ...(pipelineSectionTab === 'rejected' || pipelineSectionTab === 'hired'
+                          ? []
+                          : [
+                              {
+                                id: 'reject',
+                                label: 'Reject',
+                                slot: 'overflow' as const,
+                                destructive: true,
+                                onClick: () => setShowBulkRejectionDialog(true),
+                              },
+                            ]),
+                      ]}
+                    />
                   )}
                 </div>
               </div>

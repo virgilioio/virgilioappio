@@ -7,7 +7,8 @@ import { useSuggestedCandidateStatus } from '@/hooks/useSuggestedCandidateStatus
 import { SuggestedToolbar, type SuggestedState } from './SuggestedToolbar'
 import { SuggestedTable } from './SuggestedTable'
 import { SuggestedSkeleton } from './SuggestedSkeleton'
-import { SuggestedBulkBar } from './SuggestedBulkBar'
+import { SelectionBar } from '@/components/shared/SelectionBar'
+import { Plus, ThumbsDown } from 'lucide-react'
 import { SuggestedCleared, SuggestedEmpty, SuggestedNoResults } from './SuggestedStates'
 import {
   DEFAULT_SUGGESTED_FILTERS,
@@ -231,30 +232,20 @@ export function JobSuggestedTab({
   const everythingReviewed = !isLoading && candidates.length > 0 && visible.length === 0
 
   return (
-    <div>
-      {selected.size > 0 && state === 'results' ? (
-        <SuggestedBulkBar
-          count={selected.size}
-          busy={bulkBusy}
-          onAdd={handleBulkAdd}
-          onDismiss={handleBulkDismiss}
-          onClear={() => setSelected(new Set())}
-        />
-      ) : (
-        <SuggestedToolbar
-          state={state}
-          total={visible.length}
-          shown={filtered.length}
-          searched={searchedCount}
-          updatedAt={lastUpdatedAt}
-          filters={filters}
-          skillOptions={skillOptions}
-          locationOptions={locationOptions}
-          onRemoveFilter={(id) => setFilters((prev) => prev.filter((f) => f.id !== id))}
-          onAddFilter={(f) => setFilters((prev) => addSuggestedFilter(prev, f))}
-          onRefresh={handleRefresh}
-        />
-      )}
+    <div style={{ position: 'relative' }}>
+      <SuggestedToolbar
+        state={state}
+        total={visible.length}
+        shown={filtered.length}
+        searched={searchedCount}
+        updatedAt={lastUpdatedAt}
+        filters={filters}
+        skillOptions={skillOptions}
+        locationOptions={locationOptions}
+        onRemoveFilter={(id) => setFilters((prev) => prev.filter((f) => f.id !== id))}
+        onAddFilter={(f) => setFilters((prev) => addSuggestedFilter(prev, f))}
+        onRefresh={handleRefresh}
+      />
 
       {state === 'loading' && (
         <SuggestedSkeleton criteria={jobSkills?.length ? jobSkills.slice(0, 5).join(' · ') : null} />
@@ -299,6 +290,28 @@ export function JobSuggestedTab({
           onClearFilters={() => setFilters([])}
         />
       )}
+
+      <SelectionBar
+        count={selected.size}
+        busy={bulkBusy}
+        onClear={() => setSelected(new Set())}
+        actions={[
+          {
+            id: 'add',
+            label: 'Add to pipeline',
+            icon: Plus,
+            slot: 'primary',
+            onClick: handleBulkAdd,
+          },
+          {
+            id: 'not-a-fit',
+            label: 'Not a fit',
+            icon: ThumbsDown,
+            slot: 'overflow',
+            onClick: handleBulkDismiss,
+          },
+        ]}
+      />
 
       {state === 'empty' &&
         (everythingReviewed ? (
