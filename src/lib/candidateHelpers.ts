@@ -321,7 +321,10 @@ export async function mergeCandidate(existingCandidateId: string, candidateData:
     'skills',
     'status',
     'source',
+    'current_job_title',
+    'company_current',
   ] as const
+
 
   const updateFields: Record<string, any> = {}
   for (const key of allowedColumns) {
