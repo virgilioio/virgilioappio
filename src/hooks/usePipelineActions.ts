@@ -17,6 +17,9 @@ export interface PipelineAssociation {
   whatsapp_template_sent_at: string | null
   ai_fit_score?: number | null
   is_favorite: boolean
+  added_by?: string | null
+  current_role?: string | null
+  current_company?: string | null
 }
 
 /**
@@ -30,7 +33,7 @@ export function usePipelineActions() {
     // 1) Load associations for job
     const { data: associations, error: assocError } = await supabase
       .from('job_candidate_associations')
-      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite')
+      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite, added_by')
       .eq('job_id', jobId)
       .order('pipeline_position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
@@ -52,7 +55,7 @@ export function usePipelineActions() {
     // 2) Load candidate names/links from independent candidates table
     const { data: candidates, error: candError } = await supabase
       .from('candidates')
-      .select('id, candidate_name, linkedin_url, phone')
+      .select('id, candidate_name, linkedin_url, phone, current_role, current_company')
       .in('id', candidateIds as string[])
 
     if (candError) {
@@ -83,6 +86,9 @@ export function usePipelineActions() {
         whatsapp_template_sent_at: (a as any).whatsapp_template_sent_at ?? null,
         ai_fit_score: (a as any).ai_fit_score ?? null,
         is_favorite: (a as any).is_favorite ?? false,
+        added_by: (a as any).added_by ?? null,
+        current_role: (c as any)?.current_role ?? null,
+        current_company: (c as any)?.current_company ?? null,
       }
     })
 
