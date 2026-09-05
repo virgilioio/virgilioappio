@@ -74,8 +74,14 @@ export interface CreateIndependentCandidateData {
   skills?: string[] | null
   status?: string
   source?: string
+  current_job_title?: string | null
+  company_current?: string | null
+  /** Aliases used by the candidate form / resume parser. */
+  current_role?: string | null
+  current_company?: string | null
   organization_id?: string | null
 }
+
 
 export interface DuplicateResult {
   isDuplicate: true
