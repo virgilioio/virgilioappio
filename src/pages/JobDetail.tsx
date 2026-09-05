@@ -1187,8 +1187,7 @@ export default function JobDetail() {
                     </div>
                   ) : (
                     <ScrollArea className="h-full w-full scrollbar-black">
-                      {pipelineSectionTab === 'recruiting' ? null
-                      ) : pipelineSectionTab === 'suggested' ? (
+                      {pipelineSectionTab === 'suggested' ? (
                         <div className="w-full p-layout-md">
                           <JobSuggestedTab
                             jobId={id!}
