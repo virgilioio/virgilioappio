@@ -791,11 +791,14 @@ serve(async (req) => {
     }
 
     // 7. Filter ≥40% and sort
-    const filtered = scoredCandidates
+    const passing = scoredCandidates
       .filter((sc: any) => sc.ai_fit_score >= 40)
-      .sort((a: any, b: any) => b.ai_fit_score - a.ai_fit_score)
+      .sort((a: any, b: any) => b.ai_fit_score - a.ai_fit_score);
+
+    const filtered = passing
       .slice(0, limit)
       .map((sc: any) => buildResponseCandidate(sc.candidate, sc.ai_fit_score, sc.ai_fit_confidence, sc.ai_fit_rationale));
+
 
     const avgScore = filtered.length > 0 
       ? Math.round(filtered.reduce((sum: number, c: any) => sum + c.ai_fit_score, 0) / filtered.length)
