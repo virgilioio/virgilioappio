@@ -26,6 +26,7 @@ import {
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { ContactPair, PhoneContactPair } from '@/components/candidates/profile/primitives/ContactPair'
 import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
+import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
@@ -540,26 +541,18 @@ export default function IndependentCandidateProfile() {
               <div className="space-y-4 min-w-0">
                 {activeTab === 'overview' && (
                   <>
-                    <ProfileCard
-                      title="Profile summary"
-                      badge={<Badge tone="lilac" size="xs" icon={Sparkles}>Gio summary</Badge>}
-                      action={<Button variant="ghost" size="sm">Regenerate</Button>}
-                    >
-                      {candidate.profile_summary ? (
-                        looksLikeHtml(candidate.profile_summary) ? (
-                          <SafeHtml
-                            content={candidate.profile_summary}
-                            className="font-inter text-[13.5px] leading-relaxed text-[#1F2230] [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                          />
-                        ) : (
-                          <ProfileSummaryMarkdown content={candidate.profile_summary} />
-                        )
-                      ) : (
-                        <p className="font-inter text-[13px] text-[#8B8F9E] italic">
-                          No summary yet. Regenerate to let Gio write one from the candidate's profile.
-                        </p>
-                      )}
-                    </ProfileCard>
+                    <ProfileSummaryCard
+                      candidateId={candidate.id}
+                      candidateName={candidate.candidate_name}
+                      summary={candidate.profile_summary}
+                      externallyRunning={isEnriching}
+                      onRegenerated={() => {
+                        queryClient.invalidateQueries({ queryKey: ['independent-candidate', candidate.id] })
+                        queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
+                        setProfileDataKey(k => k + 1)
+                      }}
+                    />
+
 
                     <ProfileCard
                       title="Contact information"

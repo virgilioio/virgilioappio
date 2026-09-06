@@ -94,7 +94,7 @@ import { CandidateDetailsCollapsible } from './CandidateDetailsCollapsible'
 import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
 
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
@@ -123,6 +123,7 @@ import {
   CommentsSidebar,
 } from '@/components/candidates/profile/tabs/SidebarRouter'
 import { Upload } from 'lucide-react'
+import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
@@ -183,6 +184,7 @@ interface CandidateProfileSheetProps {
 }
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount, asPage = false }: CandidateProfileSheetProps) {
+  const summaryQueryClient = useQueryClient()
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
@@ -1724,31 +1726,17 @@ const stageHasAutomation = useMemo(() => {
                           )
                         })()}
 
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between">
-                              <span>Profile Summary</span>
-                              <Sparkles className="h-4 w-4 text-purple-500" />
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {candidate.profile_summary ? (
-                              /<\w+[^>]*>/.test(candidate.profile_summary) ? (
-                                <SafeHtml
-                                  content={candidate.profile_summary}
-                                  className="text-text-primary leading-relaxed text-[13.5px] font-inter [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                                />
-                              ) : (
-                                <ProfileSummaryMarkdown
-                                  content={candidate.profile_summary}
-                                  className="text-text-primary leading-relaxed"
-                                />
-                              )
-                            ) : (
-                              <InlineEmpty text="No summary available." />
-                            )}
-                          </CardContent>
-                        </Card>
+                        <ProfileSummaryCard
+                          candidateId={independentCandidateId || candidateId}
+                          candidateName={(candidate as any)?.candidate_name}
+                          summary={candidate.profile_summary}
+                          canRegenerate={canEditCandidates}
+                          onRegenerated={() => {
+                            summaryQueryClient.invalidateQueries({ queryKey: ['candidates'] })
+                            summaryQueryClient.invalidateQueries({ queryKey: ['candidate', candidateId] })
+                          }}
+                        />
+
 
                         <Card className="bg-surface-primary border-border">
                           <CardHeader>

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Sparkles } from 'lucide-react'
 import { suggestedRowStyle } from './suggestedGrid'
+import { gioSweepCss } from '@/components/shared/GioSweepBar'
 
 const inter = "'Inter', system-ui, sans-serif"
 const poppins = "'Poppins', system-ui, sans-serif"
@@ -28,17 +29,16 @@ function Shim({
 const shimCss = `
 @keyframes sugShimmer { from { background-position: 100% 50% } to { background-position: -100% 50% } }
 @keyframes sugPulse { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
-@keyframes sugSweep { from { transform: translateX(-100%) } to { transform: translateX(250%) } }
 .sug-shim {
   background: linear-gradient(90deg,#F1F0EC 0%,#FAFAF7 50%,#F1F0EC 100%);
   background-size: 200% 100%;
   animation: sugShimmer 1.4s ease-in-out infinite;
 }
 .sug-pulse { animation: sugPulse 1.4s ease-in-out infinite; }
-.sug-sweep { animation: sugSweep 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .sug-shim, .sug-pulse, .sug-sweep { animation: none !important; }
+  .sug-shim, .sug-pulse { animation: none !important; }
 }
+${gioSweepCss}
 `
 
 /** Progress banner + seven skeleton rows on the shared grid. */
