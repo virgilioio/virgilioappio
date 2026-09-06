@@ -54,13 +54,302 @@ const TOOL_SCHEMA = {
   },
 };
 
+const SENIORITY_WORDS = [
+  "senior", "sr", "junior", "jr", "lead", "head", "vp", "vice", "president",
+  "director", "chief", "principal", "staff", "intern", "trainee", "entry",
+  "mid", "associate", "assistant", "manager",
+];
+
+const STOP_WORDS = new Set([
+  "and", "or", "the", "for", "with", "of", "in", "at", "to", "a", "an", "de", "del",
+  "la", "el", "los", "las", "y", "en", "para", "por", "con", "und", "der", "die",
+  "remote", "hybrid", "onsite", "full", "time", "part", "job", "role", "position",
+  "we", "you", "our", "your", "will", "have", "are", "is", "be", "as", "that", "this",
+  "from", "on", "not", "who", "their", "they", "its", "it", "all", "can", "must",
+]);
+
+function normalize(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9+#.\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function tokenize(text: string): string[] {
+  return normalize(text).split(" ").filter(Boolean);
+}
+
 function computeSkillsHash(job: any): string {
+  const titleTokens = tokenize(job.title || "");
+  const seniority = titleTokens.filter((t) => SENIORITY_WORDS.includes(t)).sort().join(",");
   const parts = [
     (job.title || "").toLowerCase().trim(),
     (job.skills || []).slice().sort().join(",").toLowerCase(),
-    (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500).toLowerCase(),
+    seniority,
   ];
   return parts.join("|");
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic scoring (0-100). No AI.
+// Title 35 · Skills 25 · Domain density 15 · Location 15 · Seniority 10
+// Missing data reduces a component's contribution but never disqualifies.
+// ---------------------------------------------------------------------------
+
+interface JobSignals {
+  titleTokens: string[];
+  headNoun: string | null;
+  modifiers: string[];
+  skills: string[];
+  domainKeywords: string[];
+  country: string | null;
+  locationRaw: string;
+  isRemote: boolean;
+  seniorityRank: number | null;
+}
+
+const SENIORITY_RANK: Record<string, number> = {
+  intern: 1, trainee: 1, entry: 1,
+  junior: 2, jr: 2,
+  associate: 3, mid: 3,
+  senior: 4, sr: 4,
+  lead: 5, staff: 5, principal: 6,
+  manager: 5, head: 6,
+  director: 7, vp: 8, chief: 9, c_level: 9,
+};
+
+function seniorityRankFromTokens(tokens: string[]): number | null {
+  let rank: number | null = null;
+  for (const t of tokens) {
+    const r = SENIORITY_RANK[t];
+    if (r !== undefined) rank = rank === null ? r : Math.max(rank, r);
+  }
+  return rank;
+}
+
+// Very rough country grouping used only for partial location credit.
+const REGION_BY_COUNTRY: Record<string, string> = {
+  "united states": "north-america", usa: "north-america", us: "north-america",
+  canada: "north-america", mexico: "north-america",
+  brazil: "latam", brasil: "latam", argentina: "latam", chile: "latam",
+  colombia: "latam", peru: "latam", uruguay: "latam", paraguay: "latam",
+  bolivia: "latam", ecuador: "latam", venezuela: "latam", "costa rica": "latam",
+  panama: "latam", guatemala: "latam", "dominican republic": "latam",
+  "united kingdom": "europe", uk: "europe", ireland: "europe", spain: "europe",
+  portugal: "europe", france: "europe", germany: "europe", netherlands: "europe",
+  belgium: "europe", italy: "europe", poland: "europe", sweden: "europe",
+  norway: "europe", denmark: "europe", finland: "europe", switzerland: "europe",
+  austria: "europe", romania: "europe", "czech republic": "europe", greece: "europe",
+  india: "apac", china: "apac", japan: "apac", singapore: "apac", australia: "apac",
+  "new zealand": "apac", philippines: "apac", indonesia: "apac", vietnam: "apac",
+  thailand: "apac", malaysia: "apac", "south korea": "apac",
+  "south africa": "emea", nigeria: "emea", kenya: "emea", egypt: "emea",
+  "united arab emirates": "emea", uae: "emea", israel: "emea", turkey: "emea",
+};
+
+function regionOf(country: string | null): string | null {
+  if (!country) return null;
+  return REGION_BY_COUNTRY[normalize(country)] || null;
+}
+
+function extractCountryFromLocation(location: string): string | null {
+  const parts = (location || "").split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return null;
+  const last = normalize(parts[parts.length - 1]);
+  return REGION_BY_COUNTRY[last] ? last : last || null;
+}
+
+function buildJobSignals(job: any, jobDescription: string): JobSignals {
+  const titleTokens = tokenize(job.title || "").filter((t) => !STOP_WORDS.has(t));
+  const modifiers = titleTokens.filter((t) => SENIORITY_WORDS.includes(t));
+  const contentTokens = titleTokens.filter((t) => !SENIORITY_WORDS.includes(t) && t.length >= 3);
+  const headNoun = contentTokens.length > 0 ? contentTokens[contentTokens.length - 1] : null;
+
+  const pk = job.priority_keywords && typeof job.priority_keywords === "object"
+    ? job.priority_keywords
+    : null;
+  const pkTitle: string[] = Array.isArray(pk?.title_keywords) ? pk.title_keywords : [];
+  const pkDomain: string[] = Array.isArray(pk?.domain_keywords) ? pk.domain_keywords : [];
+
+  const skills: string[] = ((job.skills || []) as string[]).map((s: string) => normalize(s)).filter(Boolean);
+
+  let domainKeywords: string[];
+  if (pkDomain.length > 0) {
+    domainKeywords = pkDomain.map((k) => normalize(k)).filter(Boolean);
+  } else {
+    // Derive from skills + the most significant repeated terms in the description.
+    const freq = new Map<string, number>();
+    for (const t of tokenize(jobDescription)) {
+      if (t.length < 4 || STOP_WORDS.has(t)) continue;
+      freq.set(t, (freq.get(t) || 0) + 1);
+    }
+    const descTerms = [...freq.entries()]
+      .filter(([, n]) => n >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([t]) => t);
+    domainKeywords = [...new Set([...skills, ...contentTokens, ...descTerms])];
+  }
+
+  const extraTitleTokens = pkTitle.flatMap((k) => tokenize(k)).filter((t) => !STOP_WORDS.has(t));
+
+  const locationRaw = job.location || "";
+  const isRemote = job.work_mode === "remote" ||
+    /\bremote\b|\bteletrabajo\b|\bremoto\b/i.test(`${locationRaw} ${jobDescription.slice(0, 800)}`);
+
+  return {
+    titleTokens: [...new Set([...contentTokens, ...extraTitleTokens])],
+    headNoun,
+    modifiers,
+    skills: [...new Set(skills)],
+    domainKeywords,
+    country: extractCountryFromLocation(locationRaw),
+    locationRaw,
+    isRemote,
+    seniorityRank: seniorityRankFromTokens(titleTokens),
+  };
+}
+
+function tokenMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 3 || b.length < 3) return false; // short tokens require exact equality
+  const longer = a.length >= b.length ? a : b;
+  const shorter = a.length >= b.length ? b : a;
+  if (shorter.length < 4) return false;
+  return longer.startsWith(shorter) || longer.endsWith(shorter);
+}
+
+function scoreTitle(signals: JobSignals, candidate: any): number {
+  const candidateTitles = [
+    candidate.role_current,
+    candidate.current_job_title,
+    candidate.standardized_title,
+  ].filter(Boolean).map((t: string) => tokenize(t));
+
+  if (candidateTitles.length === 0) return 35 * 0.4; // unknown title → neutral-low, never zero-out
+  if (!signals.headNoun) {
+    // No usable head noun on the job: give neutral credit rather than fabricate a match.
+    return 35 * 0.5;
+  }
+
+  let best = 0;
+  for (const tokens of candidateTitles) {
+    const headMatch = tokens.some((t) => tokenMatch(t, signals.headNoun!));
+    if (!headMatch) {
+      // Other content words may still align (e.g. "sales" in "Sales Executive").
+      const otherHits = signals.titleTokens.filter((jt) =>
+        jt !== signals.headNoun && tokens.some((t) => tokenMatch(t, jt))
+      ).length;
+      if (otherHits > 0) best = Math.max(best, 35 * 0.25);
+      continue;
+    }
+    const candModifiers = tokens.filter((t) => SENIORITY_WORDS.includes(t));
+    const modifierMatch = signals.modifiers.length === 0
+      ? true
+      : signals.modifiers.some((m) => candModifiers.includes(m));
+    best = Math.max(best, modifierMatch ? 35 : 35 * 0.8);
+  }
+  return best;
+}
+
+function scoreSkills(signals: JobSignals, candidate: any): number {
+  if (signals.skills.length === 0) return 25 * 0.5; // no requirement stated → neutral
+  const candidateSkills = [...(candidate.skills || []), ...(candidate.standardized_skills || [])]
+    .map((s: string) => normalize(s))
+    .filter(Boolean);
+  if (candidateSkills.length === 0) return 25 * 0.3; // missing data → reduced, not zero
+
+  const candidateTokens = new Set(candidateSkills.flatMap((s) => s.split(" ")));
+  let matched = 0;
+  for (const js of signals.skills) {
+    const jsTokens = js.split(" ").filter(Boolean);
+    const hit = jsTokens.length > 1
+      ? candidateSkills.some((cs) => cs === js) ||
+        jsTokens.every((jt) => [...candidateTokens].some((ct) => tokenMatch(ct, jt)))
+      : [...candidateTokens].some((ct) => tokenMatch(ct, js));
+    if (hit) matched++;
+  }
+  return Math.round((matched / signals.skills.length) * 25);
+}
+
+function countWholeWord(corpus: string, term: string): number {
+  if (!term) return 0;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = corpus.match(new RegExp(`\\b${escaped}\\b`, "g"));
+  return matches ? matches.length : 0;
+}
+
+function scoreDomain(signals: JobSignals, corpus: string): number {
+  if (signals.domainKeywords.length === 0) return 15 * 0.5;
+  let hits = 0;
+  let present = 0;
+  for (const kw of signals.domainKeywords) {
+    const n = countWholeWord(corpus, kw);
+    if (n > 0) { present++; hits += Math.min(n, 3); }
+  }
+  const existence = present / signals.domainKeywords.length;
+  const density = Math.min(1, hits / (signals.domainKeywords.length * 2));
+  return Math.round((existence * 0.6 + density * 0.4) * 15);
+}
+
+function scoreLocation(signals: JobSignals, candidate: any): number {
+  // Penalty only — never a gate.
+  const candCountry = candidate.location_country ? normalize(candidate.location_country) : null;
+  if (!candCountry) return 15 * 0.5;
+  if (signals.isRemote) return 15 * 0.85;
+  if (!signals.country) return 15 * 0.5;
+  if (candCountry === signals.country) return 15;
+  const jobRegion = regionOf(signals.country);
+  const candRegion = regionOf(candCountry);
+  if (jobRegion && candRegion && jobRegion === candRegion) return 15 * 0.5;
+  return 0;
+}
+
+function scoreSeniority(signals: JobSignals, candidate: any): number {
+  const candTokens = tokenize(
+    [candidate.seniority_level, candidate.role_current, candidate.current_job_title]
+      .filter(Boolean).join(" ")
+  );
+  const candRank = seniorityRankFromTokens(candTokens);
+  const years = typeof candidate.years_experience === "number" ? candidate.years_experience : null;
+
+  if (signals.seniorityRank === null) {
+    return candRank !== null || years !== null ? 10 * 0.7 : 10 * 0.5;
+  }
+  if (candRank === null && years === null) return 10 * 0.5; // missing data → neutral
+
+  const impliedRank = candRank ?? (years! >= 12 ? 6 : years! >= 8 ? 5 : years! >= 5 ? 4 : years! >= 2 ? 3 : 2);
+  const gap = Math.abs(impliedRank - signals.seniorityRank);
+  if (gap === 0) return 10;
+  if (gap === 1) return 10 * 0.8;
+  if (gap === 2) return 10 * 0.55;
+  if (gap === 3) return 10 * 0.35;
+  return 10 * 0.2;
+}
+
+function deterministicScore(signals: JobSignals, candidate: any): number {
+  const corpus = normalize([
+    candidate.profile_summary,
+    candidate.role_current,
+    candidate.current_job_title,
+    candidate.standardized_title,
+    candidate.company_current,
+    candidate.functional_area,
+    (candidate.skills || []).join(" "),
+    (candidate.standardized_skills || []).join(" "),
+    candidate.__corpusExtra || "",
+  ].filter(Boolean).join(" "));
+
+  return Math.round(
+    scoreTitle(signals, candidate) +
+    scoreSkills(signals, candidate) +
+    scoreDomain(signals, corpus) +
+    scoreLocation(signals, candidate) +
+    scoreSeniority(signals, candidate)
+  );
 }
 
 function buildCandidateSummary(c: any, workExp: any[]): string {
@@ -68,6 +357,8 @@ function buildCandidateSummary(c: any, workExp: any[]): string {
   if (c.role_current) summary += ` | Current: ${c.role_current}`;
   if (c.company_current) summary += ` at ${c.company_current}`;
   if (c.years_experience) summary += ` | ${c.years_experience}y exp`;
+  if (c.seniority_level) summary += ` | Seniority: ${c.seniority_level}`;
+  if (c.functional_area) summary += ` | Function: ${c.functional_area}`;
   if (c.skills?.length) summary += ` | Skills: ${c.skills.slice(0, 15).join(", ")}`;
   if (c.location_city || c.location_country) {
     summary += ` | Location: ${[c.location_city, c.location_state, c.location_country].filter(Boolean).join(", ")}`;
@@ -76,14 +367,20 @@ function buildCandidateSummary(c: any, workExp: any[]): string {
     summary += ` | Salary: ${c.salary_currency || "USD"} ${c.salary_amount} ${c.salary_period || "yearly"}`;
   }
   if (c.profile_summary) summary += ` | Summary: ${c.profile_summary.slice(0, 300)}`;
-  
-  const recentExp = workExp.slice(0, 3);
+
+  const recentExp = workExp.slice(0, 5);
   if (recentExp.length > 0) {
-    summary += ` | Experience: ${recentExp.map((w: any) => `${w.job_title} at ${w.company_name}${w.duration_months ? ` (${Math.round(w.duration_months/12)}y)` : ""}`).join("; ")}`;
+    summary += ` | Experience: ${recentExp.map((w: any) => {
+      let entry = `${w.job_title || w.standardized_title || "Role"} at ${w.company_name || "—"}`;
+      if (w.duration_months) entry += ` (${Math.max(1, Math.round(w.duration_months / 12))}y)`;
+      if (w.description) entry += ` — ${String(w.description).replace(/\s+/g, " ").trim().slice(0, 200)}`;
+      return entry;
+    }).join("; ")}`;
   }
-  
+
   return summary;
 }
+
 
 serve(async (req) => {
   const preflight = handlePreflight(req);
@@ -128,7 +425,7 @@ serve(async (req) => {
     // 1. Fetch job data
     const { data: job, error: jobError } = await sb
       .from("jobs")
-      .select("id, title, description, skills, location, department, salary_min, salary_max, currency, tenant_id")
+      .select("id, title, description, skills, location, department, salary_min, salary_max, currency, tenant_id, work_mode, priority_keywords")
       .eq("id", job_id)
       .maybeSingle();
 
@@ -210,62 +507,63 @@ serve(async (req) => {
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
 
-    // 5. No cache — run AI scoring
-    const jobSkills = (job.skills || []).map((s: string) => s.toLowerCase());
-    const jobTitle = (job.title || "").toLowerCase();
-    const titleWords = jobTitle.split(/\s+/).filter((w: string) => w.length > 3);
+    // 5. No cache — deterministic ranking over the FULL tenant pool, then LLM on the top 40.
+    const signals = buildJobSignals(job, jobDescription);
 
-    let query = sb
-      .from("candidates")
-      .select("id, candidate_name, role_current, company_current, current_job_title, skills, standardized_skills, years_experience, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at")
-      .eq("tenant_id", job.tenant_id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(500);
+    const CANDIDATE_COLUMNS =
+      "id, candidate_name, role_current, company_current, current_job_title, standardized_title, skills, standardized_skills, years_experience, seniority_level, functional_area, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at";
 
-    const { data: allCandidates, error: candError } = await query;
-    if (candError) {
-      console.error("Error fetching candidates:", candError);
-      throw new Error("Failed to fetch candidates");
+    // Paginate through the entire pool — no 500-row cap, no created_at ordering.
+    const allCandidates: any[] = [];
+    const PAGE = 1000;
+    for (let page = 0; ; page++) {
+      const { data: pageRows, error: candError } = await sb
+        .from("candidates")
+        .select(CANDIDATE_COLUMNS)
+        .eq("tenant_id", job.tenant_id)
+        .is("deleted_at", null)
+        .order("id", { ascending: true })
+        .range(page * PAGE, page * PAGE + PAGE - 1);
+
+      if (candError) {
+        console.error("Error fetching candidates:", candError);
+        throw new Error("Failed to fetch candidates");
+      }
+      const rows = pageRows || [];
+      allCandidates.push(...rows.filter((c: any) => !excludeIds.has(c.id)));
+      if (rows.length < PAGE) break;
+      if (page > 50) break; // hard safety valve
     }
 
-    const preFiltered = (allCandidates || []).filter((c: any) => {
-      if (excludeIds.has(c.id)) return false;
-      
-      const candidateSkills = [...(c.skills || []), ...(c.standardized_skills || [])].map((s: string) => s.toLowerCase());
-      const candidateTitle = (c.role_current || c.current_job_title || "").toLowerCase();
-      
-      const hasSkillOverlap = jobSkills.length > 0 && candidateSkills.some((cs: string) => 
-        jobSkills.some((js: string) => cs.includes(js) || js.includes(cs))
-      );
-      
-      const hasTitleMatch = titleWords.length > 0 && titleWords.some((tw: string) => 
-        candidateTitle.includes(tw)
-      );
-      
-      if (jobSkills.length === 0) return hasTitleMatch || true;
-      
-      return hasSkillOverlap || hasTitleMatch;
-    }).slice(0, 50);
+    // Deterministic score for EVERY candidate in the pool.
+    const ranked = allCandidates
+      .map((c: any) => ({ candidate: c, base: deterministicScore(signals, c) }))
+      .filter((r) => r.base > 0)
+      .sort((a, b) => b.base - a.base);
+
+    const TOP_N = 40;
+    const shortlist = ranked.slice(0, TOP_N).map((r) => r.candidate);
 
     if (count_only) {
-      return new Response(JSON.stringify({ 
-        total_count: preFiltered.length, 
-        breakdown: { localCandidates: preFiltered.length, averageMatch: 0 } 
+      return new Response(JSON.stringify({
+        total_count: shortlist.length,
+        breakdown: { localCandidates: shortlist.length, averageMatch: 0 }
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
 
-    if (preFiltered.length === 0) {
-      return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates?.length || 0, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
+    if (shortlist.length === 0) {
+      return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates.length, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
         headers: { ...headers, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch work experience
+    const preFiltered = shortlist;
+
+    // Fetch work experience for the shortlist
     const candidateIds = preFiltered.map((c: any) => c.id);
     const { data: allWorkExp } = await sb
       .from("candidate_work_experience")
-      .select("candidate_id, job_title, company_name, duration_months, is_current")
+      .select("candidate_id, job_title, standardized_title, company_name, duration_months, is_current, description")
       .in("candidate_id", candidateIds)
       .order("start_date", { ascending: false });
 
@@ -275,6 +573,7 @@ serve(async (req) => {
       list.push(w);
       workExpMap.set(w.candidate_id, list);
     });
+
 
     // Build job context
     let jobContext = `JOB: ${job.title}`;
@@ -391,7 +690,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       candidates: filtered,
       total_count: filtered.length,
-      searched_count: preFiltered.length,
+      searched_count: allCandidates.length,
       breakdown: {
         localCandidates: filtered.length,
         apolloCandidates: 0,
