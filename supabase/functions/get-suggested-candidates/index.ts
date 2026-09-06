@@ -425,7 +425,7 @@ serve(async (req) => {
     // 1. Fetch job data
     const { data: job, error: jobError } = await sb
       .from("jobs")
-      .select("id, title, description, skills, location, department, salary_min, salary_max, currency, tenant_id")
+      .select("id, title, description, skills, location, department, salary_min, salary_max, currency, tenant_id, work_mode, priority_keywords")
       .eq("id", job_id)
       .maybeSingle();
 
