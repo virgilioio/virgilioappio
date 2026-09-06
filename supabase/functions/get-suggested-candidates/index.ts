@@ -174,7 +174,7 @@ function buildJobSignals(job: any, jobDescription: string): JobSignals {
   const pkTitle: string[] = Array.isArray(pk?.title_keywords) ? pk.title_keywords : [];
   const pkDomain: string[] = Array.isArray(pk?.domain_keywords) ? pk.domain_keywords : [];
 
-  const skills = (job.skills || []).map((s: string) => normalize(s)).filter(Boolean);
+  const skills: string[] = ((job.skills || []) as string[]).map((s: string) => normalize(s)).filter(Boolean);
 
   let domainKeywords: string[];
   if (pkDomain.length > 0) {
