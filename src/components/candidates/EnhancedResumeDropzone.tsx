@@ -63,6 +63,8 @@ export function EnhancedResumeDropzone({
   className = '',
   showUpload = true,
   parseOnly = false,
+  skipParsing = false,
+
   onFileCaptured,
   useTwoStageAI = false,
   onResumeTextCaptured,
