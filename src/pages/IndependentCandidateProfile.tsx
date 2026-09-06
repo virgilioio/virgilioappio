@@ -662,51 +662,33 @@ export default function IndependentCandidateProfile() {
                 )}
 
                 {activeTab === 'resume' && (
-                  <ProfileCard
-                    title="Resume"
-                    subtitle={resumeOnFile ? `${resumeFileName} · uploaded ${resumeUploadedDate || '—'}` : undefined}
-                    badge={
-                      isEnriching ? (
-                        <Badge tone="lilac" size="xs" icon={Sparkles} pulse>Gio is reading this resume</Badge>
-                      ) : resumeOnFile ? (
-                        <Badge tone="lilac" size="xs" icon={Sparkles}>Parsed by Gio</Badge>
-                      ) : undefined
+                  <ResumeTabCard
+                    candidateId={candidate.id}
+                    resumeOnFile={resumeOnFile}
+                    fileName={resumeFileName}
+                    uploadedDate={resumeUploadedDate}
+                    fallbackResumeUrl={candidate.resume_url}
+                    parsing={isResumeUploading || isEnriching}
+                    onFile={(file) => void handleResumeUpload(file)}
+                    onAskCandidate={onSendEmail}
+                    viewerActions={
+                      <>
+                        <input ref={replaceResumeInputRef} type="file" className="hidden" onChange={onReplaceResume} accept=".pdf,.doc,.docx" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={Upload}
+                          onClick={() => replaceResumeInputRef.current?.click()}
+                          disabled={isResumeUploading || isEnriching}
+                          loading={isResumeUploading}
+                        >
+                          Replace
+                        </Button>
+                      </>
                     }
-                    action={
-                      resumeOnFile ? (
-                        <>
-                          <input ref={replaceResumeInputRef} type="file" className="hidden" onChange={onReplaceResume} accept=".pdf,.doc,.docx" />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            icon={Upload}
-                            onClick={() => replaceResumeInputRef.current?.click()}
-                            disabled={isResumeUploading || isEnriching}
-                            loading={isResumeUploading}
-                          >
-                            Replace
-                          </Button>
-                        </>
-                      ) : undefined
-                    }
-                    bodyPadding="none"
-                  >
-                    <div className="bg-[#FAFAF7] p-4">
-                      {resumeOnFile ? (
-                        <CandidateResumeViewer candidateId={candidate.id} fallbackResumeUrl={candidate.resume_url} />
-                      ) : (
-                        <EnhancedResumeDropzone
-                          onUpload={handleResumeUpload}
-                          isUploading={isResumeUploading}
-                          candidateId={candidate.id}
-                          parseOnly={false}
-                          skipParsing
-
-                        />
-                      )}
-                    </div>
-                  </ProfileCard>
+                  />
                 )}
+
 
 
                 {activeTab === 'experience' && (() => {
