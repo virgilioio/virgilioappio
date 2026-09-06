@@ -809,7 +809,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       candidates: filtered,
       total_count: filtered.length,
+      evaluated_count: preFiltered.length,
+      passing_count: passing.length,
       searched_count: allCandidates.length,
+
       breakdown: {
         localCandidates: filtered.length,
         apolloCandidates: 0,
