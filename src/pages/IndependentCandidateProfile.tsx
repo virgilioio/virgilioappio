@@ -700,6 +700,8 @@ export default function IndependentCandidateProfile() {
                           isUploading={isResumeUploading}
                           candidateId={candidate.id}
                           parseOnly={false}
+                          skipParsing
+
                         />
                       )}
                     </div>
