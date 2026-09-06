@@ -95,7 +95,8 @@ function computeSkillsHash(job: any): string {
 
 // ---------------------------------------------------------------------------
 // Deterministic scoring (0-100). No AI.
-// Title 35 · Skills 25 · Domain density 15 · Location 15 · Seniority 10
+// Title 40 · Skills 30 · Domain density 20 · Seniority 10
+// then × location scope multiplier (1.0 in scope / 0.85 unknown / 0.5 out of scope)
 // Missing data reduces a component's contribution but never disqualifies.
 // ---------------------------------------------------------------------------
 
@@ -106,10 +107,12 @@ interface JobSignals {
   skills: string[];
   domainKeywords: string[];
   country: string | null;
+  allowedCountries: Set<string>;
   locationRaw: string;
   isRemote: boolean;
   seniorityRank: number | null;
 }
+
 
 const SENIORITY_RANK: Record<string, number> = {
   intern: 1, trainee: 1, entry: 1,
