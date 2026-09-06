@@ -286,6 +286,8 @@ function buildJobSignals(job: any, jobDescription: string): JobSignals {
     skills: [...new Set(skills)],
     domainKeywords,
     country: extractCountryFromLocation(locationRaw),
+    allowedCountries: buildAllowedCountries(job),
+
     locationRaw,
     isRemote,
     seniorityRank: seniorityRankFromTokens(titleTokens),
