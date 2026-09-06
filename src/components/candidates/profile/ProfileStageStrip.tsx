@@ -34,7 +34,10 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
+    <div
+      className="flex bg-white border border-[#E7E8EE] rounded-xl p-1.5 gap-1.5 mb-4"
+      style={{ padding: 6, gap: 6, borderRadius: 12 }}
+    >
       {sorted.map((opt, idx) => {
         const isPast = currentIdx >= 0 && idx < currentIdx
         const isCurrent = currentIdx >= 0 && idx === currentIdx
@@ -42,54 +45,61 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
         const m = meta[opt.jhsId] || {}
         const clickable = interactive && !isCurrent
 
-        const base = 'flex-1 min-w-[140px] rounded-[10px] px-3 py-2.5 transition-all text-left'
+        const base = 'flex-1 min-w-0 rounded-lg px-3 py-2.5 transition-all text-left flex items-center gap-2'
         const stateClass = isPast
-          ? 'bg-[#D1FAE5] text-[#065F46]'
+          ? 'bg-[#D1FAE5] text-[#065F46] border border-solid border-transparent'
           : isCurrent
-          ? 'bg-[#0d0d09] text-[#fffcf9]'
-          : 'border border-dashed border-[#D1D0CB] text-[#8B8F9E] bg-transparent'
+          ? 'bg-[#0d0d09] text-[#fffcf9] border border-solid border-transparent'
+          : 'border border-dashed border-[#D1D0CB] text-[#8B8F9E] bg-white'
         const interactiveClass = clickable
           ? 'cursor-pointer hover:ring-2 hover:ring-virgilio-purple/30 hover:border-virgilio-purple/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40'
           : ''
         const pendingClass = isPending ? 'opacity-60' : ''
 
+        const daysText = isPast
+          ? (m.passedInDays != null ? `${m.passedInDays}d` : null)
+          : isCurrent
+          ? (m.currentDay && m.totalDays
+              ? `day ${m.currentDay} of ${m.totalDays}`
+              : m.currentDay
+              ? `day ${m.currentDay}`
+              : null)
+          : null
+
         const content = (
           <>
-            <div className="flex items-center gap-1.5">
-              {isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" />
-              ) : isPast ? (
-                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#12B886]">
-                  <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
-                </span>
-              ) : isCurrent ? (
-                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white/15">
-                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                </span>
-              ) : (
-                <Circle className="h-3.5 w-3.5 opacity-50" />
-              )}
-              <span className={cn(
-                'font-poppins text-[11.5px] tracking-[-0.005em] truncate',
-                isCurrent ? 'font-semibold' : 'font-medium'
-              )}>
-                {opt.stage.stage_name}
+            {isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70 flex-shrink-0" />
+            ) : isPast ? (
+              <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#12B886] flex-shrink-0">
+                <Check className="h-[9px] w-[9px] text-white" strokeWidth={3} />
               </span>
-            </div>
-            <div className={cn(
-              'mt-1 font-inter text-[10.5px] tracking-[-0.005em] truncate',
-              isPast ? 'text-[#065F46]/80' : isCurrent ? 'text-white/70' : 'text-[#8B8F9E]/80'
+            ) : isCurrent ? (
+              <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white/25 flex-shrink-0" />
+            ) : (
+              <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border-[1.5px] border-[#C2C6D2] flex-shrink-0" />
+            )}
+            <span className={cn(
+              'font-poppins text-[12.5px] leading-[1.2] tracking-[-0.005em] truncate',
+              isCurrent ? 'font-semibold' : 'font-medium'
             )}>
-              {isPast
-                ? (m.passedInDays != null ? `✓ Passed in ${m.passedInDays}d` : '✓ Passed')
-                : isCurrent
-                ? (m.currentDay && m.totalDays
-                    ? `In stage · day ${m.currentDay} of ${m.totalDays}`
-                    : m.currentDay
-                    ? `In stage · day ${m.currentDay}`
-                    : 'In stage')
-                : 'Upcoming'}
-            </div>
+              {opt.stage.stage_name}
+            </span>
+            {daysText && (
+              <span
+                className={cn(
+                  'ml-auto flex-shrink-0 font-inter text-[10.5px] font-semibold px-1.5 rounded-full',
+                  isPast && 'bg-[#065F46]/10',
+                  isCurrent && 'bg-white/18',
+                  !isPast && !isCurrent && 'bg-[#F1F0EC] opacity-80'
+                )}
+                style={{
+                  backgroundColor: isCurrent ? 'rgba(255,255,255,0.18)' : undefined,
+                }}
+              >
+                {daysText}
+              </span>
+            )}
           </>
         )
 
@@ -102,6 +112,7 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
               onClick={() => handleClick(opt.jhsId)}
               className={cn(base, stateClass, interactiveClass, pendingClass)}
               title={`Move to ${opt.stage.stage_name}`}
+              style={{ borderRadius: 8 }}
             >
               {content}
             </button>
@@ -109,7 +120,7 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
         }
 
         return (
-          <div key={opt.jhsId} className={cn(base, stateClass)}>
+          <div key={opt.jhsId} className={cn(base, stateClass)} style={{ borderRadius: 8 }}>
             {content}
           </div>
         )
