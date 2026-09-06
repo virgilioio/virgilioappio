@@ -1985,7 +1985,7 @@ const stageHasAutomation = useMemo(() => {
 
                   {/* Right column — per-tab sidebar */}
                   <div className="hidden lg:block">
-                    <div className="sticky top-4 space-y-4">
+                    <div className={cn("sticky space-y-4", asPage ? "top-0" : "top-4")}>
                       {(() => {
                         const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
                         const currentIdx = currentStageId ? sortedStages.findIndex(s => s.jhsId === currentStageId) : -1
