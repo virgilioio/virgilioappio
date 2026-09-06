@@ -201,7 +201,7 @@ export default function IndependentCandidateProfile() {
   }
 
   // ── Loading / not-found ──
-  if (candidatesLoading && !candidate) {
+  if (!candidate && (candidateLoading || !candidateFetched)) {
     return (
       <AuthGate>
         <PermissionGate permission="canViewCandidates">
@@ -735,7 +735,7 @@ export default function IndependentCandidateProfile() {
               await updateCandidate(candidate.id, data)
               setIsFormOpen(false)
             }}
-            isLoading={candidatesLoading}
+            isLoading={candidateLoading}
             candidate={candidate as any}
           />
 
