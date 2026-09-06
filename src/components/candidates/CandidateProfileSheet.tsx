@@ -1656,48 +1656,37 @@ const stageHasAutomation = useMemo(() => {
 
                     {/* Resume Tab */}
                     {activeTab === 'resume' && (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle>Resume</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {jobCandidateId ? (
-                            resumeAttachment ? (
-                              <>
-                                <div className="flex gap-2">
-                                  <input
-                                    ref={replaceResumeInputRef}
-                                    type="file"
-                                    className="hidden"
-                                    onChange={handleReplaceResumeChange}
-                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
-                                  />
-                                  <Button variant="secondary" size="sm" onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
-                                    Replace Resume
-                                  </Button>
-                                  <Button variant="danger" size="sm" onClick={handleDeleteResume}>
-                                    Delete Resume
-                                  </Button>
-                                </div>
-                                <CandidateResumeViewer candidateId={independentCandidateId || candidateId} />
-                              </>
-                            ) : (
-                              <EmptyState
-                                size="card"
-                                illustration={<SoftPaper />}
-                                title="No resume yet"
-                                body="Upload a resume to auto-extract candidate information."
-                                primary={canEditCandidates ? (
-                                  <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>Upload resume</Button>
-                                ) : undefined}
+                      jobCandidateId ? (
+                        <ResumeTabCard
+                          candidateId={independentCandidateId || candidateId}
+                          resumeOnFile={!!resumeAttachment}
+                          fileName={resumeAttachment?.file_name ?? null}
+                          uploadedDate={resumeAttachment?.created_at ? new Date(resumeAttachment.created_at).toLocaleDateString() : null}
+                          parsing={isResumeUploading}
+                          onFile={(file) => { void uploadResume(file, true) }}
+                          viewerActions={
+                            <>
+                              <input
+                                ref={replaceResumeInputRef}
+                                type="file"
+                                className="hidden"
+                                onChange={handleReplaceResumeChange}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
                               />
-                            )
-                          ) : (
-                            <InlineEmpty text="No job candidate record linked." />
-                          )}
-                        </CardContent>
-                      </Card>
+                              <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                                Replace
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={handleDeleteResume}>
+                                Delete
+                              </Button>
+                            </>
+                          }
+                        />
+                      ) : (
+                        <InlineEmpty text="No job candidate record linked." />
+                      )
                     )}
+
 
                     {/* Overview Tab — Profile summary, skills, URLs, attachments */}
                     {activeTab === 'overview' && (
