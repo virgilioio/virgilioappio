@@ -158,12 +158,88 @@ function regionOf(country: string | null): string | null {
   return REGION_BY_COUNTRY[normalize(country)] || null;
 }
 
+// Spanish/English/abbreviation aliases → canonical country key used by REGION_BY_COUNTRY.
+const COUNTRY_ALIASES: Record<string, string> = {
+  brasil: "brazil", brazil: "brazil",
+  mexico: "mexico",
+  peru: "peru",
+  "estados unidos": "united states", "united states": "united states",
+  usa: "united states", us: "united states", "u s a": "united states",
+  "reino unido": "united kingdom", "united kingdom": "united kingdom", uk: "united kingdom",
+  espana: "spain", spain: "spain",
+  alemania: "germany", germany: "germany",
+  francia: "france", france: "france",
+  italia: "italy", italy: "italy",
+  japon: "japan", japan: "japan",
+  canada: "canada",
+  colombia: "colombia", argentina: "argentina", chile: "chile",
+};
+
+function canonicalCountry(raw: string | null | undefined): string | null {
+  const n = normalize(raw || "");
+  if (!n) return null;
+  return COUNTRY_ALIASES[n] || n;
+}
+
+const REGION_ALIASES: Record<string, string> = {
+  latam: "latam", "latin america": "latam", "america latina": "latam",
+  emea: "emea",
+  apac: "apac", asia: "apac", "asia pacific": "apac",
+  nam: "north-america", "north america": "north-america", "norteamerica": "north-america",
+  europe: "europe", europa: "europe",
+};
+
+function regionKey(raw: string | null | undefined): string | null {
+  const n = normalize(raw || "");
+  if (!n) return null;
+  return REGION_ALIASES[n] || null;
+}
+
+function countriesInRegion(region: string): string[] {
+  return Object.entries(REGION_BY_COUNTRY)
+    .filter(([, r]) => r === region)
+    .map(([c]) => c);
+}
+
 function extractCountryFromLocation(location: string): string | null {
   const parts = (location || "").split(",").map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return null;
-  const last = normalize(parts[parts.length - 1]);
-  return REGION_BY_COUNTRY[last] ? last : last || null;
+  return canonicalCountry(parts[parts.length - 1]);
 }
+
+/**
+ * Authoritative geographic scope for the job:
+ *   a) additional_locations array wins
+ *   b) region name in location / standardized_location expands to member countries
+ *   c) a single country named in location
+ *   d) empty set → no scope, location is neutral for everyone
+ */
+function buildAllowedCountries(job: any): Set<string> {
+  const set = new Set<string>();
+
+  const additional = Array.isArray(job.additional_locations) ? job.additional_locations : [];
+  if (additional.length > 0) {
+    for (const entry of additional) {
+      const c = canonicalCountry(typeof entry === "string" ? entry : entry?.country || entry?.name);
+      if (c) set.add(c);
+    }
+    if (set.size > 0) return set;
+  }
+
+  for (const raw of [job.location, job.standardized_location, job.location_requirement]) {
+    const region = regionKey(raw);
+    if (region) {
+      countriesInRegion(region).forEach((c) => set.add(canonicalCountry(c)!));
+      if (set.size > 0) return set;
+    }
+  }
+
+  const single = extractCountryFromLocation(job.location || job.standardized_location || "");
+  if (single && REGION_BY_COUNTRY[single]) set.add(single);
+
+  return set;
+}
+
 
 function buildJobSignals(job: any, jobDescription: string): JobSignals {
   const titleTokens = tokenize(job.title || "").filter((t) => !STOP_WORDS.has(t));
