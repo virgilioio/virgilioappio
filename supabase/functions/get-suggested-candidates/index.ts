@@ -690,7 +690,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       candidates: filtered,
       total_count: filtered.length,
-      searched_count: preFiltered.length,
+      searched_count: allCandidates.length,
       breakdown: {
         localCandidates: filtered.length,
         apolloCandidates: 0,
