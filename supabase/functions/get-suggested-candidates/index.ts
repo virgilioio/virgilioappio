@@ -584,8 +584,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         candidates: results,
         total_count: results.length,
+        evaluated_count: validCached.length,
+        passing_count: results.length,
         // Size of the pool that was compared, not the number that passed.
         searched_count: validCached.length,
+
         breakdown: { localCandidates: results.length, apolloCandidates: 0, averageMatch: avgScore },
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
