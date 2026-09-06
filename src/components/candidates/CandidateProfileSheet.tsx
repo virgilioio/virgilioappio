@@ -122,6 +122,7 @@ import {
   EmailsSidebar,
   CommentsSidebar,
 } from '@/components/candidates/profile/tabs/SidebarRouter'
+import { Upload } from 'lucide-react'
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
