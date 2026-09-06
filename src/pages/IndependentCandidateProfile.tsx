@@ -31,6 +31,10 @@ import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
+import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
+import { useQueryClient } from '@tanstack/react-query'
+
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
@@ -292,7 +296,11 @@ export default function IndependentCandidateProfile() {
   // ── Derived ──
   const location = formatLocation(candidate)
   const salary = formatSalary(candidate)
-  const resumeOnFile = !!candidate.resume_url
+  const resumeAttachment = attachments.find(a => a.is_resume) ?? attachments[0] ?? null
+  const resumeOnFile = !!resumeAttachment || !!candidate.resume_url
+  const resumeFileName = resumeAttachment?.file_name || 'Resume.pdf'
+  const resumeUploadedDate = formatDate(resumeAttachment?.created_at) || addedDate
+
   const yearsExp = candidate.years_experience ?? null
   const currentRole = candidate.current_job_title || candidate.standardized_title
   const currentCompany = candidate.company_current
