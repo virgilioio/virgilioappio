@@ -40,6 +40,9 @@ interface EnhancedResumeDropzoneProps {
   className?: string
   showUpload?: boolean // Whether to actually upload files
   parseOnly?: boolean // Only parse, don't upload
+  /** Upload the file but let the caller handle parsing (avoids a duplicate AI read). */
+  skipParsing?: boolean
+
   onFileCaptured?: (file: File) => void // Capture the raw file even when not uploading immediately
   // Two-stage AI parsing mode for new candidates
   useTwoStageAI?: boolean // Use fast AI core extraction (3-5s), background enrichment for rest
@@ -60,6 +63,8 @@ export function EnhancedResumeDropzone({
   className = '',
   showUpload = true,
   parseOnly = false,
+  skipParsing = false,
+
   onFileCaptured,
   useTwoStageAI = false,
   onResumeTextCaptured,
@@ -97,6 +102,13 @@ export function EnhancedResumeDropzone({
       if (showUpload && onUpload && !parseOnly) {
         await onUpload(file)
       }
+
+      // Caller owns parsing (e.g. background enrichment) — stop after the upload.
+      if (skipParsing) {
+        setIsProcessing(false)
+        return
+      }
+
 
       // Use two-stage AI parsing for new candidates
       let parsed: ParsedResumeData | undefined

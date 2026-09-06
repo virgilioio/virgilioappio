@@ -31,6 +31,10 @@ import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
+import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
+import { useQueryClient } from '@tanstack/react-query'
+
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
@@ -88,6 +92,8 @@ export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+
 
   // Resolve THIS candidate directly by id — never search inside a capped list.
   const { candidate, isLoading: candidateLoading, isFetched: candidateFetched, updateCandidate } = useIndependentCandidate(candidateId)
@@ -156,6 +162,8 @@ export default function IndependentCandidateProfile() {
 
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
+  // Bumped when Gio finishes re-reading a resume so experience/education reload.
+  const [profileDataKey, setProfileDataKey] = useState(0)
 
   useEffect(() => {
     if (!candidateId) return
@@ -170,35 +178,83 @@ export default function IndependentCandidateProfile() {
       setEducation((eduData as any) || [])
     })()
     return () => { cancelled = true }
-  }, [candidateId])
+  }, [candidateId, profileDataKey])
 
   const { jobAssociations } = useCandidateJobAssociations(candidate?.id ?? null)
 
-  // Resume upload
-  const [isResumeUploading, setIsResumeUploading] = useState(false)
+  // Resume upload — stored as a candidate attachment, then re-read by Gio
+  const { attachments, uploadAttachment, isUploading: isResumeUploading, refetch: refetchAttachments } =
+    useCandidateAttachments(candidateId || '')
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
+  const [isEnriching, setIsEnriching] = useState(false)
+  const enrichBaselineRef = useRef<string | null>(null)
+
   const handleResumeUpload = async (file: File) => {
-    if (!candidate) return
-    setIsResumeUploading(true)
+    if (!candidateId) return
     try {
-      const ext = file.name.split('.').pop()
-      const path = `independent/${candidate.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error: storageError } = await supabase.storage.from('candidate-attachments').upload(path, file)
-      if (storageError) throw storageError
-      const { error: dbError } = await supabase.from('candidates').update({ resume_url: path }).eq('id', candidate.id)
-      if (dbError) throw dbError
-      toast({ title: 'Resume uploaded', description: 'Resume updated successfully' })
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to upload resume', variant: 'destructive' })
-    } finally {
-      setIsResumeUploading(false)
+      await uploadAttachment(file, true)
+      enrichBaselineRef.current = (candidate as any)?.enriched_at ?? null
+      setIsEnriching(true)
+      triggerBackgroundEnrichment(candidateId, undefined, candidate?.candidate_name || undefined)
+      toast({ title: 'Resume saved', description: 'Gio is reading it now — the profile will refresh automatically.' })
+    } catch {
+      // uploadAttachment already surfaces the error
     }
   }
+
+  // Poll until the re-read finishes, then refresh the profile in place.
+  useEffect(() => {
+    if (!isEnriching || !candidateId) return
+    let cancelled = false
+    let attempts = 0
+
+    const poll = async () => {
+      attempts += 1
+      const { data } = await supabase
+        .from('candidates')
+        .select('enrichment_status, enriched_at')
+        .eq('id', candidateId)
+        .maybeSingle()
+
+      if (cancelled) return
+
+      const status = (data as any)?.enrichment_status as string | undefined
+      const enrichedAt = (data as any)?.enriched_at ?? null
+      const finished =
+        (enrichedAt && enrichedAt !== enrichBaselineRef.current) ||
+        status === 'failed' ||
+        status === 'not_possible'
+
+      if (finished || attempts >= 40) {
+        setIsEnriching(false)
+        queryClient.invalidateQueries({ queryKey: ['independent-candidate', candidateId] })
+        queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
+        setProfileDataKey(k => k + 1)
+        void refetchAttachments()
+        if (status === 'failed' || status === 'not_possible') {
+          toast({
+            title: 'Could not read this resume',
+            description: 'The file was saved, but Gio could not extract enough text from it.',
+            variant: 'destructive',
+          })
+        } else if (finished) {
+          toast({ title: 'Profile updated', description: 'Summary, skills, experience and education were refreshed.' })
+        }
+        return
+      }
+      timer = setTimeout(poll, 4000)
+    }
+
+    let timer = setTimeout(poll, 5000)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [isEnriching, candidateId, queryClient, refetchAttachments])
+
   const onReplaceResume = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) void handleResumeUpload(file)
     e.currentTarget.value = ''
   }
+
 
   // ── Loading / not-found ──
   if (!candidate && (candidateLoading || !candidateFetched)) {
@@ -242,7 +298,11 @@ export default function IndependentCandidateProfile() {
   // ── Derived ──
   const location = formatLocation(candidate)
   const salary = formatSalary(candidate)
-  const resumeOnFile = !!candidate.resume_url
+  const resumeAttachment = attachments.find(a => a.is_resume) ?? attachments[0] ?? null
+  const resumeOnFile = !!resumeAttachment || !!candidate.resume_url
+  const resumeFileName = resumeAttachment?.file_name || 'Resume.pdf'
+  const resumeUploadedDate = formatDate(resumeAttachment?.created_at) || formatDate(candidate.created_at)
+
   const yearsExp = candidate.years_experience ?? null
   const currentRole = candidate.current_job_title || candidate.standardized_title
   const currentCompany = candidate.company_current
@@ -329,12 +389,13 @@ export default function IndependentCandidateProfile() {
         {resumeOnFile ? (
           <FileRow
             icon={FileIcon}
-            name="Resume.pdf"
-            meta={addedDate ? `Uploaded ${addedDate}` : undefined}
+            name={resumeFileName}
+            meta={resumeUploadedDate ? `Uploaded ${resumeUploadedDate}` : undefined}
             isResume
             downloadIcon={Download}
             onDownload={() => setTab('resume')}
           />
+
         ) : (
           <p className="font-inter text-[12px] text-[#8B8F9E] py-1">No files uploaded.</p>
         )}
@@ -603,13 +664,26 @@ export default function IndependentCandidateProfile() {
                 {activeTab === 'resume' && (
                   <ProfileCard
                     title="Resume"
-                    subtitle={resumeOnFile ? `Resume.pdf · uploaded ${addedDate || '—'}` : undefined}
-                    badge={resumeOnFile ? <Badge tone="lilac" size="xs" icon={Sparkles}>Parsed by Gio</Badge> : undefined}
+                    subtitle={resumeOnFile ? `${resumeFileName} · uploaded ${resumeUploadedDate || '—'}` : undefined}
+                    badge={
+                      isEnriching ? (
+                        <Badge tone="lilac" size="xs" icon={Sparkles} pulse>Gio is reading this resume</Badge>
+                      ) : resumeOnFile ? (
+                        <Badge tone="lilac" size="xs" icon={Sparkles}>Parsed by Gio</Badge>
+                      ) : undefined
+                    }
                     action={
                       resumeOnFile ? (
                         <>
                           <input ref={replaceResumeInputRef} type="file" className="hidden" onChange={onReplaceResume} accept=".pdf,.doc,.docx" />
-                          <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={Upload}
+                            onClick={() => replaceResumeInputRef.current?.click()}
+                            disabled={isResumeUploading || isEnriching}
+                            loading={isResumeUploading}
+                          >
                             Replace
                           </Button>
                         </>
@@ -619,19 +693,21 @@ export default function IndependentCandidateProfile() {
                   >
                     <div className="bg-[#FAFAF7] p-4">
                       {resumeOnFile ? (
-                        <CandidateResumeViewer fallbackResumeUrl={candidate.resume_url!} />
+                        <CandidateResumeViewer candidateId={candidate.id} fallbackResumeUrl={candidate.resume_url} />
                       ) : (
                         <EnhancedResumeDropzone
                           onUpload={handleResumeUpload}
                           isUploading={isResumeUploading}
                           candidateId={candidate.id}
-                          showUpload={false}
-                          parseOnly={true}
+                          parseOnly={false}
+                          skipParsing
+
                         />
                       )}
                     </div>
                   </ProfileCard>
                 )}
+
 
                 {activeTab === 'experience' && (() => {
                   const totalMonths = workExperience.reduce((sum, e) => {
