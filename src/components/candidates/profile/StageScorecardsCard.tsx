@@ -172,9 +172,9 @@ export function StageScorecardsCard({
 
                 {/* Required-to-advance banner (current stage only) */}
                 {bannerActive && (
-                  <div className="mx-5 sm:mx-6 mt-3 flex items-center gap-3 rounded-[10px] border border-[#EDE4FF] bg-[#FAF8FF] px-3.5 py-3">
-                    <div className="h-8 w-8 rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0">
-                      <ClipboardCheck className="h-4 w-4" />
+                  <div className="mx-5 sm:mx-6 mt-3 flex items-center gap-2.5 rounded-[9px] border border-[#EDE4FF] bg-[#FAF8FF] px-3 py-2.5">
+                    <div className="h-7 w-7 rounded-lg bg-[#EDE4FF] text-[#6F3FF5] inline-flex items-center justify-center shrink-0">
+                      <ClipboardCheck className="h-[15px] w-[15px]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -217,14 +217,14 @@ export function StageScorecardsCard({
                         key={s.id}
                         type="button"
                         onClick={() => onOpenFullSheet(s.id, g.stageInstanceId)}
-                        className="w-full text-left px-5 sm:px-6 py-4 hover:bg-[hsl(var(--menu-hover))] transition-colors"
+                        className="w-full text-left px-5 sm:px-6 py-2.5 hover:bg-[hsl(var(--menu-hover))] transition-colors"
                       >
-                        <div className="flex items-start gap-3">
-                          <Avatar className="h-7 w-7 shrink-0">
+                        <div className="flex items-start gap-[9px]">
+                          <Avatar className="h-6 w-6 shrink-0">
                             <AvatarFallback className="text-[10.5px] font-medium">{initials(name)}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-[9px] flex-wrap">
                               <span className="font-poppins font-medium text-[13px] text-text-primary truncate">
                                 {name}
                               </span>
@@ -234,7 +234,7 @@ export function StageScorecardsCard({
                               </span>
                             </div>
                             {s.general_overview && (
-                              <p className="mt-1.5 italic text-[12.5px] text-text-secondary font-poppins line-clamp-2">
+                              <p className="mt-[5px] italic text-[12.5px] text-text-secondary font-poppins line-clamp-2">
                                 “{s.general_overview.replace(/<[^>]+>/g, '').trim()}”
                               </p>
                             )}
@@ -312,12 +312,12 @@ export function StageScorecardsCard({
                     const isBusy = requestingKey === `${g.stageInstanceId}:${p.userId}`
                     const isMe = !!currentUserId && p.userId === currentUserId
                     return (
-                      <div key={`${g.stageInstanceId}:${p.userId}`} className="px-5 sm:px-6 py-4 flex items-start gap-3">
-                        <Avatar className="h-[26px] w-[26px] shrink-0">
+                      <div key={`${g.stageInstanceId}:${p.userId}`} className="px-5 sm:px-6 py-2.5 flex items-start gap-[9px]">
+                        <Avatar className="h-6 w-6 shrink-0">
                           <AvatarFallback className="text-[10.5px] font-medium">{initials(p.name)}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-[9px] flex-wrap">
                             <span className="font-poppins font-medium text-[13px] text-text-primary">{p.name}</span>
                             {isMe && <Badge tone="lilac" size="xs">You</Badge>}
                             {g.required && <Badge tone="purple" size="xs" dot>Required</Badge>}

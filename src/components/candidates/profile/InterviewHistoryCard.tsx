@@ -314,17 +314,17 @@ function PastEventRow({
             )}
           </div>
           {ev.interviewers.length > 0 ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-[9px]">
               <AvatarStack
                 people={ev.interviewers.map(i => ({ name: i.name, src: i.src, fallback: i.name }))}
-                size={26}
+                size={24}
                 max={4}
               />
               <div className="min-w-0">
-                <div className="font-poppins font-medium text-[13px] text-[#1F2230]">
+                <div className="font-poppins font-medium text-[12px] text-[#1F2230]">
                   {ev.interviewers.length} {ev.interviewers.length === 1 ? 'panelist' : 'panelists'}
                 </div>
-                <div className="mt-0.5 text-[11.5px] text-[#8B8F9E] font-poppins">
+                <div className="mt-0.5 text-[10.5px] text-[#8B8F9E] font-poppins">
                   {ev.scorecardCount} {ev.scorecardCount === 1 ? 'scorecard' : 'scorecards'} in
                 </div>
               </div>
