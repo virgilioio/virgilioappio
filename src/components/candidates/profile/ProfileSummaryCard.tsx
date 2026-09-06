@@ -3,7 +3,7 @@ import { ProfileCard } from './primitives/ProfileCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { GioSweepBar } from '@/components/shared/GioSweepBar'
-import { SafeHtml } from '@/components/ui/SafeHtml'
+import { SafeHtml } from '@/components/ui/safe-html'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { useRegenerateSummary } from '@/hooks/useRegenerateSummary'
 
