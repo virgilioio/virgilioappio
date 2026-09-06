@@ -247,7 +247,7 @@ export function StageScorecardsCard({
                                   return (
                                     <div
                                       key={c.questionId}
-                                      className="rounded-[10px] border border-virgilio-border bg-white px-3 py-2.5"
+                                      className="rounded-[9px] border border-virgilio-border bg-white px-3 py-2.5"
                                     >
                                       <div
                                         className="font-poppins uppercase tracking-[0.06em] truncate"
