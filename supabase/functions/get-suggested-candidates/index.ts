@@ -618,9 +618,36 @@ serve(async (req) => {
       if (page > 50) break; // hard safety valve
     }
 
+    // Work experience for the ENTIRE pool, so the ranker sees work history.
+    const poolIds = allCandidates.map((c: any) => c.id);
+    const experienceTextMap = new Map<string, string>();
+    const ID_CHUNK = 300;
+    for (let i = 0; i < poolIds.length; i += ID_CHUNK) {
+      const chunk = poolIds.slice(i, i + ID_CHUNK);
+      const { data: expRows, error: expErr } = await sb
+        .from("candidate_work_experience")
+        .select("candidate_id, job_title, standardized_title, company_name, description")
+        .in("candidate_id", chunk);
+      if (expErr) {
+        console.error("Work experience fetch error:", expErr);
+        continue;
+      }
+      for (const w of expRows || []) {
+        const prev = experienceTextMap.get(w.candidate_id) || "";
+        if (prev.length >= 1500) continue;
+        const piece = [w.job_title, w.standardized_title, w.company_name, w.description]
+          .filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+        if (!piece) continue;
+        experienceTextMap.set(w.candidate_id, `${prev} ${piece}`.trim().slice(0, 1500));
+      }
+    }
+
     // Deterministic score for EVERY candidate in the pool.
     const ranked = allCandidates
-      .map((c: any) => ({ candidate: c, base: deterministicScore(signals, c) }))
+      .map((c: any) => ({
+        candidate: c,
+        base: deterministicScore(signals, c, experienceTextMap.get(c.id) || ""),
+      }))
       .filter((r) => r.base > 0)
       .sort((a, b) => b.base - a.base);
 
@@ -628,11 +655,16 @@ serve(async (req) => {
     const shortlist = ranked.slice(0, TOP_N).map((r) => r.candidate);
 
     if (count_only) {
+      // No cache yet: we can only honestly say how many WILL be evaluated.
       return new Response(JSON.stringify({
         total_count: shortlist.length,
+        evaluated_count: shortlist.length,
+        searched_count: allCandidates.length,
+        is_estimate: true,
         breakdown: { localCandidates: shortlist.length, averageMatch: 0 }
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
+
 
     if (shortlist.length === 0) {
       return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates.length, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
