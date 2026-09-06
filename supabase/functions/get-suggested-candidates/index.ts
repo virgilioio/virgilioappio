@@ -153,10 +153,11 @@ const REGION_BY_COUNTRY: Record<string, string> = {
   "united arab emirates": "emea", uae: "emea", israel: "emea", turkey: "emea",
 };
 
-function regionOf(country: string | null): string | null {
+function _regionOf(country: string | null): string | null {
   if (!country) return null;
   return REGION_BY_COUNTRY[normalize(country)] || null;
 }
+
 
 // Spanish/English/abbreviation aliases → canonical country key used by REGION_BY_COUNTRY.
 const COUNTRY_ALIASES: Record<string, string> = {
