@@ -1473,20 +1473,18 @@ const stageHasAutomation = useMemo(() => {
                     />
                     {/* Card 2 — stages OR status banner (active = stages, otherwise banner replaces it) */}
                     {associationStatus === 'active' ? (
-                      <section className="bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] p-3">
-                        <ProfileStageStrip
-                          stages={planStages}
-                          currentStageId={currentStageId}
-                          meta={currentStageId && daysInStage != null ? { [currentStageId]: { currentDay: daysInStage } } : {}}
-                          disabled={!associationId}
-                          onStageClick={async (jhsId) => {
-                            if (!associationId || jhsId === currentStageId) return
-                            await moveAssociationToStage(associationId, jhsId)
-                            setCurrentStageId(jhsId)
-                            onStageChanged?.()
-                          }}
-                        />
-                      </section>
+                      <ProfileStageStrip
+                        stages={planStages}
+                        currentStageId={currentStageId}
+                        meta={currentStageId && daysInStage != null ? { [currentStageId]: { currentDay: daysInStage } } : {}}
+                        disabled={!associationId}
+                        onStageClick={async (jhsId) => {
+                          if (!associationId || jhsId === currentStageId) return
+                          await moveAssociationToStage(associationId, jhsId)
+                          setCurrentStageId(jhsId)
+                          onStageChanged?.()
+                        }}
+                      />
                     ) : associationStatus === 'offer' && candidateId ? (
                       <OfferBannerSmart
                         candidateId={candidateId}
