@@ -156,6 +156,8 @@ export default function IndependentCandidateProfile() {
 
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
+  // Bumped when Gio finishes re-reading a resume so experience/education reload.
+  const [profileDataKey, setProfileDataKey] = useState(0)
 
   useEffect(() => {
     if (!candidateId) return
@@ -170,35 +172,83 @@ export default function IndependentCandidateProfile() {
       setEducation((eduData as any) || [])
     })()
     return () => { cancelled = true }
-  }, [candidateId])
+  }, [candidateId, profileDataKey])
 
   const { jobAssociations } = useCandidateJobAssociations(candidate?.id ?? null)
 
-  // Resume upload
-  const [isResumeUploading, setIsResumeUploading] = useState(false)
+  // Resume upload — stored as a candidate attachment, then re-read by Gio
+  const { attachments, uploadAttachment, isUploading: isResumeUploading, refetch: refetchAttachments } =
+    useCandidateAttachments(candidateId || '')
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
+  const [isEnriching, setIsEnriching] = useState(false)
+  const enrichBaselineRef = useRef<string | null>(null)
+
   const handleResumeUpload = async (file: File) => {
-    if (!candidate) return
-    setIsResumeUploading(true)
+    if (!candidateId) return
     try {
-      const ext = file.name.split('.').pop()
-      const path = `independent/${candidate.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error: storageError } = await supabase.storage.from('candidate-attachments').upload(path, file)
-      if (storageError) throw storageError
-      const { error: dbError } = await supabase.from('candidates').update({ resume_url: path }).eq('id', candidate.id)
-      if (dbError) throw dbError
-      toast({ title: 'Resume uploaded', description: 'Resume updated successfully' })
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to upload resume', variant: 'destructive' })
-    } finally {
-      setIsResumeUploading(false)
+      await uploadAttachment(file, true)
+      enrichBaselineRef.current = (candidate as any)?.enriched_at ?? null
+      setIsEnriching(true)
+      triggerBackgroundEnrichment(candidateId, undefined, candidate?.candidate_name || undefined)
+      toast({ title: 'Resume saved', description: 'Gio is reading it now — the profile will refresh automatically.' })
+    } catch {
+      // uploadAttachment already surfaces the error
     }
   }
+
+  // Poll until the re-read finishes, then refresh the profile in place.
+  useEffect(() => {
+    if (!isEnriching || !candidateId) return
+    let cancelled = false
+    let attempts = 0
+
+    const poll = async () => {
+      attempts += 1
+      const { data } = await supabase
+        .from('candidates')
+        .select('enrichment_status, enriched_at')
+        .eq('id', candidateId)
+        .maybeSingle()
+
+      if (cancelled) return
+
+      const status = (data as any)?.enrichment_status as string | undefined
+      const enrichedAt = (data as any)?.enriched_at ?? null
+      const finished =
+        (enrichedAt && enrichedAt !== enrichBaselineRef.current) ||
+        status === 'failed' ||
+        status === 'not_possible'
+
+      if (finished || attempts >= 40) {
+        setIsEnriching(false)
+        queryClient.invalidateQueries({ queryKey: ['independent-candidate', candidateId] })
+        queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
+        setProfileDataKey(k => k + 1)
+        void refetchAttachments()
+        if (status === 'failed' || status === 'not_possible') {
+          toast({
+            title: 'Could not read this resume',
+            description: 'The file was saved, but Gio could not extract enough text from it.',
+            variant: 'destructive',
+          })
+        } else if (finished) {
+          toast({ title: 'Profile updated', description: 'Summary, skills, experience and education were refreshed.' })
+        }
+        return
+      }
+      timer = setTimeout(poll, 4000)
+    }
+
+    let timer = setTimeout(poll, 5000)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [isEnriching, candidateId, queryClient, refetchAttachments])
+
   const onReplaceResume = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) void handleResumeUpload(file)
     e.currentTarget.value = ''
   }
+
 
   // ── Loading / not-found ──
   if (!candidate && (candidateLoading || !candidateFetched)) {
