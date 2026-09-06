@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { extractText } from "https://esm.sh/unpdf@0.12.1";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
