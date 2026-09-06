@@ -552,7 +552,7 @@ serve(async (req) => {
 
       if (count_only) {
         const passCount = validCached.filter((cs: any) => cs.ai_fit_score >= 40).length;
-        return new Response(JSON.stringify({ total_count: passCount, breakdown: { localCandidates: passCount, averageMatch: 0 } }), {
+        return new Response(JSON.stringify({ total_count: passCount, passing_count: passCount, evaluated_count: validCached.length, searched_count: validCached.length, is_estimate: false, breakdown: { localCandidates: passCount, averageMatch: 0 } }), {
           headers: { ...headers, "Content-Type": "application/json" },
         });
       }
