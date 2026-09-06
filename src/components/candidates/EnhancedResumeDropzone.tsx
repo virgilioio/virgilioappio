@@ -103,6 +103,13 @@ export function EnhancedResumeDropzone({
         await onUpload(file)
       }
 
+      // Caller owns parsing (e.g. background enrichment) — stop after the upload.
+      if (skipParsing) {
+        setIsProcessing(false)
+        return
+      }
+
+
       // Use two-stage AI parsing for new candidates
       let parsed: ParsedResumeData | undefined
       let resumeText: string | undefined
