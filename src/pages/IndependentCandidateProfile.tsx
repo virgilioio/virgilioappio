@@ -29,8 +29,7 @@ import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
-import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
+import { ResumeTabCard, NoResumeFileSlot } from '@/components/candidates/profile/ResumeTabCard'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { useQueryClient } from '@tanstack/react-query'
@@ -379,7 +378,7 @@ export default function IndependentCandidateProfile() {
       )}
 
       <SidebarBlock
-        label={`Files (${resumeOnFile ? 1 : 0})`}
+        label={`Files (${resumeOnFile ? 1 : 1})`}
         action={
           <Button variant="ghost" size="xs" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()}>
             Upload
@@ -397,7 +396,7 @@ export default function IndependentCandidateProfile() {
           />
 
         ) : (
-          <p className="font-inter text-[12px] text-[#8B8F9E] py-1">No files uploaded.</p>
+          <NoResumeFileSlot />
         )}
         <input ref={replaceResumeInputRef} type="file" className="hidden" onChange={onReplaceResume} accept=".pdf,.doc,.docx" />
       </SidebarBlock>
