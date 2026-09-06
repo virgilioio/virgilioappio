@@ -232,52 +232,167 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     )
   }
 
+  const pillClass =
+    'inline-flex h-7 items-center gap-2 rounded-[7px] border border-[#E7E8EE] bg-white px-2.5 font-inter text-[11.5px] text-[#1F2230] transition-colors hover:bg-[#FAFAF7] disabled:opacity-50 disabled:pointer-events-none'
+  const iconPillClass =
+    'inline-flex h-7 w-7 items-center justify-center rounded-[7px] border border-[#E7E8EE] bg-white text-[#1F2230] transition-colors hover:bg-[#FAFAF7] disabled:opacity-50 disabled:pointer-events-none'
+
+  const openInNewTab = () => {
+    const url = previewUrl || signedUrl
+    if (!url) {
+      toast.error('No resume URL available')
+      return
+    }
+    const newWindow = window.open(url, '_blank')
+    if (!newWindow) toast.error('Popup blocked. Please allow popups for this site.')
+  }
+
+  const downloadOriginal = async () => {
+    const url = signedUrl
+    if (!url) {
+      toast.error('No resume URL available')
+      return
+    }
+    try {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Download failed')
+      const blob = await response.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+      toast.success('Resume downloaded successfully')
+    } catch {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
+  const downloadConverted = async () => {
+    if (!convertedPdfUrl) return
+    try {
+      const response = await fetch(convertedPdfUrl)
+      if (!response.ok) throw new Error('Download failed')
+      const blob = await response.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+      toast.success('PDF downloaded successfully')
+    } catch {
+      const link = document.createElement('a')
+      link.href = convertedPdfUrl
+      link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
   return (
     <div className={className}>
-      <div className="space-y-3">
-        <div className="w-full border border-border rounded-lg overflow-hidden bg-surface-secondary">
-          {/* Show conversion status for documents that need conversion */}
-          {needsConversion && conversionStatus !== 'completed' && (
-            <div className="bg-muted/50 border-b p-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  {conversionStatus === 'processing' && (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                      <span>Converting to PDF...</span>
-                    </>
-                  )}
-                  {conversionStatus === 'failed' && (
-                    <>
-                      <span className="text-destructive">Conversion failed</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={retryConversion}
-                        disabled={isRetrying}
-                        className="h-6 px-2 ml-2"
-                      >
-                        <RotateCcw className={`h-3 w-3 mr-1 ${isRetrying ? 'animate-spin' : ''}`} />
-                        Retry
-                      </Button>
-                    </>
-                  )}
-                  {conversionStatus === 'pending' && (
-                    <span className="text-muted-foreground">Conversion pending...</span>
-                  )}
-                </div>
-              </div>
-              {conversionError && (
-                <div className="text-xs text-destructive mt-1">{conversionError}</div>
-              )}
-            </div>
-          )}
+      {/* Toolbar strip */}
+      <div className="flex items-center gap-2 border-b border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2.5">
+        <span className={pillClass}>
+          <FileText className="h-[11px] w-[11px] text-[#8B8F9E]" strokeWidth={2} />
+          <span className="truncate max-w-[220px]">{fileName}</span>
+        </span>
 
-          {/* Document content */}
+        {needsConversion && conversionStatus !== 'completed' && (
+          <span className={pillClass}>
+            {conversionStatus === 'processing' && (
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#6F3FF5] border-t-transparent" />
+            )}
+            <span className="text-[#5A6072]">
+              {conversionStatus === 'processing'
+                ? 'Converting to PDF'
+                : conversionStatus === 'failed'
+                  ? 'Conversion failed'
+                  : 'Conversion pending'}
+            </span>
+          </span>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {conversionStatus === 'failed' && (
+            <button type="button" className={pillClass} onClick={retryConversion} disabled={isRetrying}>
+              <RotateCcw className={`h-[11px] w-[11px] ${isRetrying ? 'animate-spin' : ''}`} strokeWidth={2} />
+              Retry
+            </button>
+          )}
+          {error && (
+            <button
+              type="button"
+              className={pillClass}
+              onClick={() => {
+                setError(null)
+                setIframeError(false)
+                refetch()
+              }}
+            >
+              <RotateCcw className="h-[11px] w-[11px]" strokeWidth={2} />
+              Retry
+            </button>
+          )}
+          <button
+            type="button"
+            className={pillClass}
+            onClick={openInNewTab}
+            disabled={!previewUrl && !signedUrl}
+          >
+            <ExternalLink className="h-[11px] w-[11px]" strokeWidth={2} />
+            Open in new tab
+          </button>
+          {convertedPdfUrl && conversionStatus === 'completed' && needsConversion && (
+            <button type="button" className={pillClass} onClick={downloadConverted}>
+              <Download className="h-[11px] w-[11px]" strokeWidth={2} />
+              PDF
+            </button>
+          )}
+          <button
+            type="button"
+            className={iconPillClass}
+            onClick={downloadOriginal}
+            disabled={!signedUrl}
+            aria-label="Download resume"
+            title="Download"
+          >
+            <Download className="h-[13px] w-[13px]" strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+
+      {conversionError && (
+        <div className="border-b border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2 font-inter text-[11px] text-destructive">
+          {conversionError}
+        </div>
+      )}
+      {error && (
+        <div className="border-b border-[#F1F0EC] bg-[#FAFAF7] px-3.5 py-2 font-inter text-[11.5px] text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* Document */}
+      <div className="bg-[#F6F5F1] px-5 py-6">
+        <div className="mx-auto max-w-[860px] overflow-hidden rounded-[10px] border border-[#E7E8EE] bg-white shadow-[0_2px_12px_rgba(13,13,9,0.07)]">
           {isPdf && previewUrl ? (
             <PDFResumeViewer url={previewUrl} height={height} />
           ) : isImage && signedUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={signedUrl}
               alt="Candidate resume preview"
@@ -288,145 +403,17 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           ) : needsConversion && signedUrl ? (
             <DOCXResumeViewer url={signedUrl} height={height} />
           ) : (
-            <div className="p-6 text-center text-text-secondary" style={{ height: `${height}vh` }}>
-              <div className="flex items-center justify-center h-full">
-                <div className="text-sm">
+            <div className="p-6 text-center" style={{ height: `${height}vh` }}>
+              <div className="flex h-full items-center justify-center">
+                <div className="font-inter text-[12px] text-[#5A6072]">
                   This file type cannot be previewed inline. You can download or open it in a new tab.
                 </div>
               </div>
             </div>
           )}
         </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mb-3 text-sm text-destructive">
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              const url = previewUrl || signedUrl
-              if (!url) {
-                toast.error('No resume URL available')
-                return
-              }
-              console.log('🔗 Opening URL in new tab:', url)
-              const newWindow = window.open(url, '_blank')
-              if (!newWindow) {
-                toast.error('Popup blocked. Please allow popups for this site.')
-              }
-            }}
-            disabled={!previewUrl && !signedUrl}
-            className="flex items-center gap-2"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open in new tab
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              const url = signedUrl
-              if (!url) {
-                toast.error('No resume URL available')
-                return
-              }
-              
-              try {
-                console.log('⬇️ Downloading from URL:', url)
-                
-                // Try fetch + blob approach for better reliability
-                const response = await fetch(url)
-                if (!response.ok) throw new Error('Download failed')
-                
-                const blob = await response.blob()
-                const blobUrl = window.URL.createObjectURL(blob)
-                
-                const link = document.createElement('a')
-                link.href = blobUrl
-                link.download = fileName
-                document.body.appendChild(link)
-                link.click()
-                document.body.removeChild(link)
-                
-                window.URL.revokeObjectURL(blobUrl)
-                toast.success('Resume downloaded successfully')
-              } catch (err) {
-                console.error('❌ Download error:', err)
-                
-                // Fallback to simple link download
-                const link = document.createElement('a')
-                link.href = url
-                link.download = fileName
-                link.target = '_blank'
-                document.body.appendChild(link)
-                link.click()
-                document.body.removeChild(link)
-              }
-            }}
-            disabled={!signedUrl}
-            className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Download {needsConversion ? 'Original' : ''}
-          </Button>
-          {convertedPdfUrl && conversionStatus === 'completed' && needsConversion && (
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                try {
-                  const response = await fetch(convertedPdfUrl)
-                  if (!response.ok) throw new Error('Download failed')
-                  
-                  const blob = await response.blob()
-                  const blobUrl = window.URL.createObjectURL(blob)
-                  
-                  const link = document.createElement('a')
-                  link.href = blobUrl
-                  link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
-                  document.body.appendChild(link)
-                  link.click()
-                  document.body.removeChild(link)
-                  
-                  window.URL.revokeObjectURL(blobUrl)
-                  toast.success('PDF downloaded successfully')
-                } catch (err) {
-                  console.error('❌ Download error:', err)
-                  const link = document.createElement('a')
-                  link.href = convertedPdfUrl
-                  link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
-                  link.target = '_blank'
-                  document.body.appendChild(link)
-                  link.click()
-                  document.body.removeChild(link)
-                }
-              }}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-          )}
-          {error && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setError(null)
-                setIframeError(false)
-                refetch()
-              }}
-              className="flex items-center gap-2"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Retry
-            </Button>
-          )}
-        </div>
       </div>
     </div>
   )
 }
+
