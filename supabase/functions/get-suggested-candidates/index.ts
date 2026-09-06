@@ -667,7 +667,8 @@ serve(async (req) => {
 
 
     if (shortlist.length === 0) {
-      return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates.length, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
+      return new Response(JSON.stringify({ candidates: [], total_count: 0, evaluated_count: 0, passing_count: 0, searched_count: allCandidates.length, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
+
         headers: { ...headers, "Content-Type": "application/json" },
       });
     }
