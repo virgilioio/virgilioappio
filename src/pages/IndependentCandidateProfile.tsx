@@ -92,6 +92,8 @@ export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+
 
   // Resolve THIS candidate directly by id — never search inside a capped list.
   const { candidate, isLoading: candidateLoading, isFetched: candidateFetched, updateCandidate } = useIndependentCandidate(candidateId)
@@ -387,12 +389,13 @@ export default function IndependentCandidateProfile() {
         {resumeOnFile ? (
           <FileRow
             icon={FileIcon}
-            name="Resume.pdf"
-            meta={addedDate ? `Uploaded ${addedDate}` : undefined}
+            name={resumeFileName}
+            meta={resumeUploadedDate ? `Uploaded ${resumeUploadedDate}` : undefined}
             isResume
             downloadIcon={Download}
             onDownload={() => setTab('resume')}
           />
+
         ) : (
           <p className="font-inter text-[12px] text-[#8B8F9E] py-1">No files uploaded.</p>
         )}
@@ -661,13 +664,26 @@ export default function IndependentCandidateProfile() {
                 {activeTab === 'resume' && (
                   <ProfileCard
                     title="Resume"
-                    subtitle={resumeOnFile ? `Resume.pdf · uploaded ${addedDate || '—'}` : undefined}
-                    badge={resumeOnFile ? <Badge tone="lilac" size="xs" icon={Sparkles}>Parsed by Gio</Badge> : undefined}
+                    subtitle={resumeOnFile ? `${resumeFileName} · uploaded ${resumeUploadedDate || '—'}` : undefined}
+                    badge={
+                      isEnriching ? (
+                        <Badge tone="lilac" size="xs" icon={Sparkles} pulse>Gio is reading this resume</Badge>
+                      ) : resumeOnFile ? (
+                        <Badge tone="lilac" size="xs" icon={Sparkles}>Parsed by Gio</Badge>
+                      ) : undefined
+                    }
                     action={
                       resumeOnFile ? (
                         <>
                           <input ref={replaceResumeInputRef} type="file" className="hidden" onChange={onReplaceResume} accept=".pdf,.doc,.docx" />
-                          <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={Upload}
+                            onClick={() => replaceResumeInputRef.current?.click()}
+                            disabled={isResumeUploading || isEnriching}
+                            loading={isResumeUploading}
+                          >
                             Replace
                           </Button>
                         </>
@@ -677,19 +693,19 @@ export default function IndependentCandidateProfile() {
                   >
                     <div className="bg-[#FAFAF7] p-4">
                       {resumeOnFile ? (
-                        <CandidateResumeViewer fallbackResumeUrl={candidate.resume_url!} />
+                        <CandidateResumeViewer candidateId={candidate.id} fallbackResumeUrl={candidate.resume_url} />
                       ) : (
                         <EnhancedResumeDropzone
                           onUpload={handleResumeUpload}
                           isUploading={isResumeUploading}
                           candidateId={candidate.id}
-                          showUpload={false}
-                          parseOnly={true}
+                          parseOnly={false}
                         />
                       )}
                     </div>
                   </ProfileCard>
                 )}
+
 
                 {activeTab === 'experience' && (() => {
                   const totalMonths = workExperience.reduce((sum, e) => {
