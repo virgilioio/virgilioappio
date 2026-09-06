@@ -301,7 +301,7 @@ export default function IndependentCandidateProfile() {
   const resumeAttachment = attachments.find(a => a.is_resume) ?? attachments[0] ?? null
   const resumeOnFile = !!resumeAttachment || !!candidate.resume_url
   const resumeFileName = resumeAttachment?.file_name || 'Resume.pdf'
-  const resumeUploadedDate = formatDate(resumeAttachment?.created_at) || addedDate
+  const resumeUploadedDate = formatDate(resumeAttachment?.created_at) || formatDate(candidate.created_at)
 
   const yearsExp = candidate.years_experience ?? null
   const currentRole = candidate.current_job_title || candidate.standardized_title
