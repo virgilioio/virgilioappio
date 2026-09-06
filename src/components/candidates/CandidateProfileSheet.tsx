@@ -1724,31 +1724,17 @@ const stageHasAutomation = useMemo(() => {
                           )
                         })()}
 
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between">
-                              <span>Profile Summary</span>
-                              <Sparkles className="h-4 w-4 text-purple-500" />
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {candidate.profile_summary ? (
-                              /<\w+[^>]*>/.test(candidate.profile_summary) ? (
-                                <SafeHtml
-                                  content={candidate.profile_summary}
-                                  className="text-text-primary leading-relaxed text-[13.5px] font-inter [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                                />
-                              ) : (
-                                <ProfileSummaryMarkdown
-                                  content={candidate.profile_summary}
-                                  className="text-text-primary leading-relaxed"
-                                />
-                              )
-                            ) : (
-                              <InlineEmpty text="No summary available." />
-                            )}
-                          </CardContent>
-                        </Card>
+                        <ProfileSummaryCard
+                          candidateId={independentCandidateId || candidateId}
+                          candidateName={(candidate as any)?.candidate_name}
+                          summary={candidate.profile_summary}
+                          canRegenerate={canEditCandidates}
+                          onRegenerated={() => {
+                            queryClient.invalidateQueries({ queryKey: ['candidates'] })
+                            queryClient.invalidateQueries({ queryKey: ['candidate', candidateId] })
+                          }}
+                        />
+
 
                         <Card className="bg-surface-primary border-border">
                           <CardHeader>
