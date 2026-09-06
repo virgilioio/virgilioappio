@@ -378,7 +378,7 @@ export default function IndependentCandidateProfile() {
       )}
 
       <SidebarBlock
-        label={`Files (${resumeOnFile ? 1 : 1})`}
+        label="Files (1)"
         action={
           <Button variant="ghost" size="xs" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()}>
             Upload
