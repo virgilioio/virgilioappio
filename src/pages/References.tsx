@@ -365,8 +365,11 @@ export default function ReferencesPage() {
           onClose={() => setConfirm(null)}
           onConfirm={() => {
             const { mode, row } = confirm
-            const mutation = mode === 'cancel' ? cancelRequest : deleteRequest
-            mutation.mutate(row.id, { onSuccess: () => setConfirm(null) })
+            if (mode === 'cancel') {
+              cancelRequest.mutate(row.id, { onSuccess: () => setConfirm(null) })
+            } else {
+              deleteRequest.mutate(row.id, { onSuccess: () => setConfirm(null) })
+            }
           }}
         />
       )}
