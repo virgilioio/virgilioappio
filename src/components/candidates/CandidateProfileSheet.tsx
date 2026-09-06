@@ -94,7 +94,7 @@ import { CandidateDetailsCollapsible } from './CandidateDetailsCollapsible'
 import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
 
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
@@ -123,6 +123,7 @@ import {
   CommentsSidebar,
 } from '@/components/candidates/profile/tabs/SidebarRouter'
 import { Upload } from 'lucide-react'
+import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
@@ -183,6 +184,7 @@ interface CandidateProfileSheetProps {
 }
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, autoOpenScorecardStageId, autoOpenScorecardId, onScorecardOpened, onScorecardChange, currentIndex, totalCount, asPage = false }: CandidateProfileSheetProps) {
+  const summaryQueryClient = useQueryClient()
   const { canEditCandidates, isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const navigate = useNavigate()
   
@@ -1730,8 +1732,8 @@ const stageHasAutomation = useMemo(() => {
                           summary={candidate.profile_summary}
                           canRegenerate={canEditCandidates}
                           onRegenerated={() => {
-                            queryClient.invalidateQueries({ queryKey: ['candidates'] })
-                            queryClient.invalidateQueries({ queryKey: ['candidate', candidateId] })
+                            summaryQueryClient.invalidateQueries({ queryKey: ['candidates'] })
+                            summaryQueryClient.invalidateQueries({ queryKey: ['candidate', candidateId] })
                           }}
                         />
 
