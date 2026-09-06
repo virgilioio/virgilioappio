@@ -40,6 +40,8 @@ import type { EmailHistoryCardEmail } from '@/components/candidates/EmailHistory
 import { getReplySubject, getForwardSubject, formatQuotedReply, formatForwardedMessage } from '@/utils/emailFormatUtils'
 
 import { useIndependentCandidates, type IndependentCandidate } from '@/hooks/useIndependentCandidates'
+import { useIndependentCandidate } from '@/hooks/useIndependentCandidate'
+
 import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
 
 import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations'
@@ -87,8 +89,10 @@ export default function IndependentCandidateProfile() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const { candidates, isLoading: candidatesLoading, updateCandidate } = useIndependentCandidates()
-  const candidate = useMemo(() => candidates.find(c => c.id === candidateId) || null, [candidates, candidateId])
+  // Resolve THIS candidate directly by id — never search inside a capped list.
+  const { candidate, isLoading: candidateLoading, isFetched: candidateFetched, updateCandidate } = useIndependentCandidate(candidateId)
+  // The list is used only for the prev/next arrows and the "x of y" counter.
+  const { candidates } = useIndependentCandidates()
   const { name: createdByName } = useUserDisplayName((candidate as any)?.created_by || null)
 
 
@@ -96,6 +100,7 @@ export default function IndependentCandidateProfile() {
   const hasPrev = idx > 0
   const hasNext = idx >= 0 && idx < candidates.length - 1
   const total = candidates.length
+
 
   const tabFromUrl = (searchParams.get('tab') as TabKey) || 'overview'
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl)
@@ -196,7 +201,7 @@ export default function IndependentCandidateProfile() {
   }
 
   // ── Loading / not-found ──
-  if (candidatesLoading && !candidate) {
+  if (!candidate && (candidateLoading || !candidateFetched)) {
     return (
       <AuthGate>
         <PermissionGate permission="canViewCandidates">
@@ -730,7 +735,7 @@ export default function IndependentCandidateProfile() {
               await updateCandidate(candidate.id, data)
               setIsFormOpen(false)
             }}
-            isLoading={candidatesLoading}
+            isLoading={candidateLoading}
             candidate={candidate as any}
           />
 
