@@ -119,7 +119,7 @@ export const PDFResumeViewer = ({ url, height }: PDFResumeViewerProps) => {
   if (loading && !pdfDoc) {
     return (
       <div 
-        className="flex items-center justify-center bg-muted/30 rounded-lg border border-border"
+        className="flex items-center justify-center bg-white"
         style={{ height: `${height}vh` }}
       >
         <div className="text-center space-y-3">
@@ -133,7 +133,7 @@ export const PDFResumeViewer = ({ url, height }: PDFResumeViewerProps) => {
   if (error) {
     return (
       <div 
-        className="flex items-center justify-center bg-muted/30 rounded-lg border border-border"
+        className="flex items-center justify-center bg-white"
         style={{ height: `${height}vh` }}
       >
         <div className="text-center space-y-3 p-6 max-w-md">
@@ -151,12 +151,12 @@ export const PDFResumeViewer = ({ url, height }: PDFResumeViewerProps) => {
   return (
     <div 
       ref={containerRef}
-      className="bg-muted/30 rounded-lg border border-border overflow-y-auto"
+      className="bg-white overflow-y-auto"
       style={{ height: `${height}vh` }}
     >
       <div className="p-4 space-y-4">
         {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
-          <div key={pageNum} className="bg-background rounded shadow-sm">
+          <div key={pageNum} className="bg-white">
             <canvas
               ref={(el) => {
                 if (el) {
