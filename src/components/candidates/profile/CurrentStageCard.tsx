@@ -64,7 +64,7 @@ function fmtStarted(iso?: string | null) {
 }
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="font-poppins font-semibold text-[10.5px] uppercase tracking-[0.06em] text-[hsl(var(--menu-group-color))] mb-3">
+  <div className="font-poppins font-semibold text-[10.5px] uppercase tracking-[0.06em] text-[hsl(var(--menu-group-color))] mb-1.5">
     {children}
   </div>
 )
@@ -419,8 +419,8 @@ export function CurrentStageCard({
       {isInterviewStage ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* NEXT EVENT */}
-          <div className="rounded-xl bg-[#FAFAF7] p-4 relative">
-            <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="rounded-[9px] bg-[#FAFAF7] p-3 relative">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
               <div className="font-poppins font-semibold text-[10.5px] uppercase tracking-[0.06em] text-[hsl(var(--menu-group-color))]">
                 Next event
               </div>
@@ -477,29 +477,29 @@ export function CurrentStageCard({
             </div>
 
             {nextEventDate && nextBooking && hasUpcoming ? (
-              <div className="flex items-start gap-3">
-                <div className="flex flex-col items-center justify-center bg-text-primary text-white rounded-lg px-2.5 py-2 min-w-[44px] shrink-0">
-                  <span className="font-poppins text-[9.5px] font-semibold tracking-[0.08em] opacity-80">
+              <div className="flex items-start gap-[9px]">
+                <div className="flex flex-col items-center justify-center bg-text-primary text-white rounded-[9px] h-[38px] w-[38px] shrink-0">
+                  <span className="font-poppins text-[9px] font-semibold tracking-[0.08em] opacity-80 leading-none">
                     {fmtMonth(nextEventDate)}
                   </span>
-                  <span className="font-poppins font-semibold text-[18px] leading-none mt-0.5">
+                  <span className="font-poppins font-bold text-[15px] leading-none mt-[3px]">
                     {nextEventDate.getDate()}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-inter font-medium text-[13px] text-text-primary truncate">
+                  <div className="font-inter font-medium text-[12.5px] text-text-primary truncate">
                     {(nextBooking as any).title || (nextBooking as any).event_title || `${stageName}`}
                   </div>
                   {eventTimeLabel && (
-                    <div className="mt-1 text-[11.5px] text-[#5A6072] font-inter">
+                    <div className="mt-px text-[11px] text-[#5A6072] font-inter">
                       {eventTimeLabel}
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="flex items-start gap-3">
-                <div className="flex items-center justify-center bg-[#F6F5F1] rounded-lg h-11 w-11 shrink-0">
+              <div className="flex items-start gap-[9px]">
+                <div className="flex items-center justify-center bg-[#F6F5F1] rounded-[9px] h-[38px] w-[38px] shrink-0">
                   <CalendarOff className="h-4 w-4 text-[#8B8F9E]" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -536,21 +536,21 @@ export function CurrentStageCard({
 
 
           {/* INTERVIEWERS */}
-          <div className="rounded-xl bg-[#FAFAF7] p-4">
+          <div className="rounded-[9px] bg-[#FAFAF7] p-3">
             <SectionLabel>Interviewers</SectionLabel>
             {allInterviewers.length > 0 ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-[9px]">
                 <AvatarStack
                   people={allInterviewers.map(i => ({ name: i.name, src: i.src, fallback: i.name }))}
-                  size={28}
+                  size={24}
                   max={4}
                 />
                 <div className="min-w-0">
-                  <div className="font-poppins font-medium text-[13.5px] text-text-primary">
+                  <div className="font-poppins font-medium text-[12px] text-text-primary">
                     {allInterviewers.length} {allInterviewers.length === 1 ? 'panelist' : 'panelists'}
                   </div>
                   {scorecardsSubmittedCount != null && (
-                    <div className="mt-0.5 text-[12.5px] text-text-tertiary font-poppins">
+                    <div className="mt-0.5 text-[10.5px] text-text-tertiary font-poppins">
                       {scorecardsSubmittedCount} scorecard{scorecardsSubmittedCount === 1 ? '' : 's'} in
                     </div>
                   )}
@@ -565,7 +565,7 @@ export function CurrentStageCard({
           </div>
         </div>
       ) : (
-        <div className="rounded-xl bg-[#FAFAF7] p-4 text-[13px] text-text-secondary font-poppins">
+        <div className="rounded-[9px] bg-[#FAFAF7] p-3 text-[13px] text-text-secondary font-poppins">
           This stage doesn't require interviews. Use the actions on the right to advance the candidate when ready.
         </div>
       )}

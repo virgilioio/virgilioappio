@@ -181,8 +181,8 @@ export function InterviewHistoryCard({
   if (totalEvents === 0) return null
 
   return (
-    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6">
-      <div className="mb-4">
+    <section className="bg-white border border-virgilio-border rounded-2xl shadow-sm p-3">
+      <div className="mb-3 px-2 pt-1">
         <h3 className="font-poppins font-semibold text-[15px] tracking-[-0.01em] text-text-primary">
           Interview history
         </h3>
@@ -191,7 +191,7 @@ export function InterviewHistoryCard({
         </p>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-3">
         {grouped.map((group) => {
           const lastCompleted = group.events[0].scheduled_end
           return (
@@ -252,20 +252,20 @@ function PastEventRow({
   const title = ev.title || ev.event_title || 'Interview'
 
   return (
-    <div className="rounded-xl border border-[#EDECE6] bg-white overflow-hidden">
+    <div className="rounded-[9px] border border-[#EDECE6] bg-white overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3">
         {/* Left: PAST EVENT tile */}
-        <div className="rounded-lg bg-[#FBFAF7] p-3">
-          <div className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E] mb-2">
+        <div className="rounded-[9px] bg-[#FBFAF7] p-3">
+          <div className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E] mb-1.5">
             Past event
           </div>
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-[9px]">
             <div className="relative shrink-0">
-              <div className="flex flex-col items-center justify-center bg-[#F1F0EC] text-[#5A6072] rounded-lg px-2.5 py-2 min-w-[44px]">
-                <span className="font-poppins text-[9.5px] font-semibold tracking-[0.08em] opacity-80">
+              <div className="flex flex-col items-center justify-center bg-[#F1F0EC] text-[#5A6072] rounded-[9px] h-[38px] w-[38px]">
+                <span className="font-poppins text-[9px] font-semibold tracking-[0.08em] opacity-80 leading-none">
                   {fmtMonth(start)}
                 </span>
-                <span className="font-poppins font-semibold text-[18px] leading-none mt-0.5">
+                <span className="font-poppins font-bold text-[15px] leading-none mt-[3px]">
                   {start.getDate()}
                 </span>
               </div>
@@ -278,10 +278,10 @@ function PastEventRow({
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="font-inter font-medium text-[13px] text-[#1F2230] truncate">
+              <div className="font-inter font-medium text-[12.5px] text-[#1F2230] truncate">
                 {title}
               </div>
-              <div className="mt-1 font-inter text-[11.5px] text-[#8B8F9E]">
+              <div className="mt-px font-inter text-[11px] text-[#8B8F9E]">
                 {fmtTimeLine(ev.scheduled_start, ev.scheduled_end)}
               </div>
             </div>
@@ -289,8 +289,8 @@ function PastEventRow({
         </div>
 
         {/* Right: INTERVIEWERS tile */}
-        <div className="rounded-lg bg-[#FBFAF7] p-3">
-          <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="rounded-[9px] bg-[#FBFAF7] p-3">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]">
               Interviewers
             </div>
@@ -314,17 +314,17 @@ function PastEventRow({
             )}
           </div>
           {ev.interviewers.length > 0 ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-[9px]">
               <AvatarStack
                 people={ev.interviewers.map(i => ({ name: i.name, src: i.src, fallback: i.name }))}
-                size={26}
+                size={24}
                 max={4}
               />
               <div className="min-w-0">
-                <div className="font-poppins font-medium text-[13px] text-[#1F2230]">
+                <div className="font-poppins font-medium text-[12px] text-[#1F2230]">
                   {ev.interviewers.length} {ev.interviewers.length === 1 ? 'panelist' : 'panelists'}
                 </div>
-                <div className="mt-0.5 text-[11.5px] text-[#8B8F9E] font-poppins">
+                <div className="mt-0.5 text-[10.5px] text-[#8B8F9E] font-poppins">
                   {ev.scorecardCount} {ev.scorecardCount === 1 ? 'scorecard' : 'scorecards'} in
                 </div>
               </div>
