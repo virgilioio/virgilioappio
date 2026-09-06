@@ -95,7 +95,8 @@ function computeSkillsHash(job: any): string {
 
 // ---------------------------------------------------------------------------
 // Deterministic scoring (0-100). No AI.
-// Title 35 · Skills 25 · Domain density 15 · Location 15 · Seniority 10
+// Title 40 · Skills 30 · Domain density 20 · Seniority 10
+// then × location scope multiplier (1.0 in scope / 0.85 unknown / 0.5 out of scope)
 // Missing data reduces a component's contribution but never disqualifies.
 // ---------------------------------------------------------------------------
 
@@ -106,10 +107,12 @@ interface JobSignals {
   skills: string[];
   domainKeywords: string[];
   country: string | null;
+  allowedCountries: Set<string>;
   locationRaw: string;
   isRemote: boolean;
   seniorityRank: number | null;
 }
+
 
 const SENIORITY_RANK: Record<string, number> = {
   intern: 1, trainee: 1, entry: 1,
@@ -150,17 +153,94 @@ const REGION_BY_COUNTRY: Record<string, string> = {
   "united arab emirates": "emea", uae: "emea", israel: "emea", turkey: "emea",
 };
 
-function regionOf(country: string | null): string | null {
+function _regionOf(country: string | null): string | null {
   if (!country) return null;
   return REGION_BY_COUNTRY[normalize(country)] || null;
+}
+
+
+// Spanish/English/abbreviation aliases → canonical country key used by REGION_BY_COUNTRY.
+const COUNTRY_ALIASES: Record<string, string> = {
+  brasil: "brazil", brazil: "brazil",
+  mexico: "mexico",
+  peru: "peru",
+  "estados unidos": "united states", "united states": "united states",
+  usa: "united states", us: "united states", "u s a": "united states",
+  "reino unido": "united kingdom", "united kingdom": "united kingdom", uk: "united kingdom",
+  espana: "spain", spain: "spain",
+  alemania: "germany", germany: "germany",
+  francia: "france", france: "france",
+  italia: "italy", italy: "italy",
+  japon: "japan", japan: "japan",
+  canada: "canada",
+  colombia: "colombia", argentina: "argentina", chile: "chile",
+};
+
+function canonicalCountry(raw: string | null | undefined): string | null {
+  const n = normalize(raw || "");
+  if (!n) return null;
+  return COUNTRY_ALIASES[n] || n;
+}
+
+const REGION_ALIASES: Record<string, string> = {
+  latam: "latam", "latin america": "latam", "america latina": "latam",
+  emea: "emea",
+  apac: "apac", asia: "apac", "asia pacific": "apac",
+  nam: "north-america", "north america": "north-america", "norteamerica": "north-america",
+  europe: "europe", europa: "europe",
+};
+
+function regionKey(raw: string | null | undefined): string | null {
+  const n = normalize(raw || "");
+  if (!n) return null;
+  return REGION_ALIASES[n] || null;
+}
+
+function countriesInRegion(region: string): string[] {
+  return Object.entries(REGION_BY_COUNTRY)
+    .filter(([, r]) => r === region)
+    .map(([c]) => c);
 }
 
 function extractCountryFromLocation(location: string): string | null {
   const parts = (location || "").split(",").map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return null;
-  const last = normalize(parts[parts.length - 1]);
-  return REGION_BY_COUNTRY[last] ? last : last || null;
+  return canonicalCountry(parts[parts.length - 1]);
 }
+
+/**
+ * Authoritative geographic scope for the job:
+ *   a) additional_locations array wins
+ *   b) region name in location / standardized_location expands to member countries
+ *   c) a single country named in location
+ *   d) empty set → no scope, location is neutral for everyone
+ */
+function buildAllowedCountries(job: any): Set<string> {
+  const set = new Set<string>();
+
+  const additional = Array.isArray(job.additional_locations) ? job.additional_locations : [];
+  if (additional.length > 0) {
+    for (const entry of additional) {
+      const c = canonicalCountry(typeof entry === "string" ? entry : entry?.country || entry?.name);
+      if (c) set.add(c);
+    }
+    if (set.size > 0) return set;
+  }
+
+  for (const raw of [job.location, job.standardized_location, job.location_requirement]) {
+    const region = regionKey(raw);
+    if (region) {
+      countriesInRegion(region).forEach((c) => set.add(canonicalCountry(c)!));
+      if (set.size > 0) return set;
+    }
+  }
+
+  const single = extractCountryFromLocation(job.location || job.standardized_location || "");
+  if (single && REGION_BY_COUNTRY[single]) set.add(single);
+
+  return set;
+}
+
 
 function buildJobSignals(job: any, jobDescription: string): JobSignals {
   const titleTokens = tokenize(job.title || "").filter((t) => !STOP_WORDS.has(t));
@@ -207,6 +287,8 @@ function buildJobSignals(job: any, jobDescription: string): JobSignals {
     skills: [...new Set(skills)],
     domainKeywords,
     country: extractCountryFromLocation(locationRaw),
+    allowedCountries: buildAllowedCountries(job),
+
     locationRaw,
     isRemote,
     seniorityRank: seniorityRankFromTokens(titleTokens),
@@ -229,10 +311,10 @@ function scoreTitle(signals: JobSignals, candidate: any): number {
     candidate.standardized_title,
   ].filter(Boolean).map((t: string) => tokenize(t));
 
-  if (candidateTitles.length === 0) return 35 * 0.4; // unknown title → neutral-low, never zero-out
+  if (candidateTitles.length === 0) return 40 * 0.4; // unknown title → neutral-low, never zero-out
   if (!signals.headNoun) {
     // No usable head noun on the job: give neutral credit rather than fabricate a match.
-    return 35 * 0.5;
+    return 40 * 0.5;
   }
 
   let best = 0;
@@ -243,24 +325,24 @@ function scoreTitle(signals: JobSignals, candidate: any): number {
       const otherHits = signals.titleTokens.filter((jt) =>
         jt !== signals.headNoun && tokens.some((t) => tokenMatch(t, jt))
       ).length;
-      if (otherHits > 0) best = Math.max(best, 35 * 0.25);
+      if (otherHits > 0) best = Math.max(best, 40 * 0.25);
       continue;
     }
     const candModifiers = tokens.filter((t) => SENIORITY_WORDS.includes(t));
     const modifierMatch = signals.modifiers.length === 0
       ? true
       : signals.modifiers.some((m) => candModifiers.includes(m));
-    best = Math.max(best, modifierMatch ? 35 : 35 * 0.8);
+    best = Math.max(best, modifierMatch ? 40 : 40 * 0.8);
   }
   return best;
 }
 
 function scoreSkills(signals: JobSignals, candidate: any): number {
-  if (signals.skills.length === 0) return 25 * 0.5; // no requirement stated → neutral
+  if (signals.skills.length === 0) return 30 * 0.5; // no requirement stated → neutral
   const candidateSkills = [...(candidate.skills || []), ...(candidate.standardized_skills || [])]
     .map((s: string) => normalize(s))
     .filter(Boolean);
-  if (candidateSkills.length === 0) return 25 * 0.3; // missing data → reduced, not zero
+  if (candidateSkills.length === 0) return 30 * 0.3; // missing data → reduced, not zero
 
   const candidateTokens = new Set(candidateSkills.flatMap((s) => s.split(" ")));
   let matched = 0;
@@ -272,7 +354,7 @@ function scoreSkills(signals: JobSignals, candidate: any): number {
       : [...candidateTokens].some((ct) => tokenMatch(ct, js));
     if (hit) matched++;
   }
-  return Math.round((matched / signals.skills.length) * 25);
+  return Math.round((matched / signals.skills.length) * 30);
 }
 
 function countWholeWord(corpus: string, term: string): number {
@@ -283,7 +365,7 @@ function countWholeWord(corpus: string, term: string): number {
 }
 
 function scoreDomain(signals: JobSignals, corpus: string): number {
-  if (signals.domainKeywords.length === 0) return 15 * 0.5;
+  if (signals.domainKeywords.length === 0) return 20 * 0.5;
   let hits = 0;
   let present = 0;
   for (const kw of signals.domainKeywords) {
@@ -292,20 +374,20 @@ function scoreDomain(signals: JobSignals, corpus: string): number {
   }
   const existence = present / signals.domainKeywords.length;
   const density = Math.min(1, hits / (signals.domainKeywords.length * 2));
-  return Math.round((existence * 0.6 + density * 0.4) * 15);
+  return Math.round((existence * 0.6 + density * 0.4) * 20);
 }
 
-function scoreLocation(signals: JobSignals, candidate: any): number {
-  // Penalty only — never a gate.
-  const candCountry = candidate.location_country ? normalize(candidate.location_country) : null;
-  if (!candCountry) return 15 * 0.5;
-  if (signals.isRemote) return 15 * 0.85;
-  if (!signals.country) return 15 * 0.5;
-  if (candCountry === signals.country) return 15;
-  const jobRegion = regionOf(signals.country);
-  const candRegion = regionOf(candCountry);
-  if (jobRegion && candRegion && jobRegion === candRegion) return 15 * 0.5;
-  return 0;
+/**
+ * Scope multiplier — never a hard gate.
+ * In scope 1.0 · unknown country 0.85 · no job scope 1.0 · out of scope 0.5
+ * Work mode does NOT widen the scope: "remote" means no specific city,
+ * not "anywhere on earth".
+ */
+function locationMultiplier(signals: JobSignals, candidate: any): number {
+  if (signals.allowedCountries.size === 0) return 1.0;
+  const candCountry = canonicalCountry(candidate.location_country);
+  if (!candCountry) return 0.85;
+  return signals.allowedCountries.has(candCountry) ? 1.0 : 0.5;
 }
 
 function scoreSeniority(signals: JobSignals, candidate: any): number {
@@ -330,7 +412,7 @@ function scoreSeniority(signals: JobSignals, candidate: any): number {
   return 10 * 0.2;
 }
 
-function deterministicScore(signals: JobSignals, candidate: any): number {
+function deterministicScore(signals: JobSignals, candidate: any, experienceText = ""): number {
   const corpus = normalize([
     candidate.profile_summary,
     candidate.role_current,
@@ -340,17 +422,18 @@ function deterministicScore(signals: JobSignals, candidate: any): number {
     candidate.functional_area,
     (candidate.skills || []).join(" "),
     (candidate.standardized_skills || []).join(" "),
-    candidate.__corpusExtra || "",
+    experienceText,
   ].filter(Boolean).join(" "));
 
-  return Math.round(
+  const base =
     scoreTitle(signals, candidate) +
     scoreSkills(signals, candidate) +
     scoreDomain(signals, corpus) +
-    scoreLocation(signals, candidate) +
-    scoreSeniority(signals, candidate)
-  );
+    scoreSeniority(signals, candidate);
+
+  return Math.round(base * locationMultiplier(signals, candidate));
 }
+
 
 function buildCandidateSummary(c: any, workExp: any[]): string {
   let summary = `${c.candidate_name}`;
@@ -425,7 +508,7 @@ serve(async (req) => {
     // 1. Fetch job data
     const { data: job, error: jobError } = await sb
       .from("jobs")
-      .select("id, title, description, skills, location, department, salary_min, salary_max, currency, tenant_id, work_mode, priority_keywords")
+      .select("id, title, description, skills, location, additional_locations, standardized_location, location_requirement, department, salary_min, salary_max, currency, tenant_id, work_mode, priority_keywords")
       .eq("id", job_id)
       .maybeSingle();
 
@@ -469,7 +552,7 @@ serve(async (req) => {
 
       if (count_only) {
         const passCount = validCached.filter((cs: any) => cs.ai_fit_score >= 40).length;
-        return new Response(JSON.stringify({ total_count: passCount, breakdown: { localCandidates: passCount, averageMatch: 0 } }), {
+        return new Response(JSON.stringify({ total_count: passCount, passing_count: passCount, evaluated_count: validCached.length, searched_count: validCached.length, is_estimate: false, breakdown: { localCandidates: passCount, averageMatch: 0 } }), {
           headers: { ...headers, "Content-Type": "application/json" },
         });
       }
@@ -501,8 +584,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         candidates: results,
         total_count: results.length,
+        evaluated_count: validCached.length,
+        passing_count: results.length,
         // Size of the pool that was compared, not the number that passed.
         searched_count: validCached.length,
+
         breakdown: { localCandidates: results.length, apolloCandidates: 0, averageMatch: avgScore },
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
@@ -535,9 +621,36 @@ serve(async (req) => {
       if (page > 50) break; // hard safety valve
     }
 
+    // Work experience for the ENTIRE pool, so the ranker sees work history.
+    const poolIds = allCandidates.map((c: any) => c.id);
+    const experienceTextMap = new Map<string, string>();
+    const ID_CHUNK = 300;
+    for (let i = 0; i < poolIds.length; i += ID_CHUNK) {
+      const chunk = poolIds.slice(i, i + ID_CHUNK);
+      const { data: expRows, error: expErr } = await sb
+        .from("candidate_work_experience")
+        .select("candidate_id, job_title, standardized_title, company_name, description")
+        .in("candidate_id", chunk);
+      if (expErr) {
+        console.error("Work experience fetch error:", expErr);
+        continue;
+      }
+      for (const w of expRows || []) {
+        const prev = experienceTextMap.get(w.candidate_id) || "";
+        if (prev.length >= 1500) continue;
+        const piece = [w.job_title, w.standardized_title, w.company_name, w.description]
+          .filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+        if (!piece) continue;
+        experienceTextMap.set(w.candidate_id, `${prev} ${piece}`.trim().slice(0, 1500));
+      }
+    }
+
     // Deterministic score for EVERY candidate in the pool.
     const ranked = allCandidates
-      .map((c: any) => ({ candidate: c, base: deterministicScore(signals, c) }))
+      .map((c: any) => ({
+        candidate: c,
+        base: deterministicScore(signals, c, experienceTextMap.get(c.id) || ""),
+      }))
       .filter((r) => r.base > 0)
       .sort((a, b) => b.base - a.base);
 
@@ -545,14 +658,20 @@ serve(async (req) => {
     const shortlist = ranked.slice(0, TOP_N).map((r) => r.candidate);
 
     if (count_only) {
+      // No cache yet: we can only honestly say how many WILL be evaluated.
       return new Response(JSON.stringify({
         total_count: shortlist.length,
+        evaluated_count: shortlist.length,
+        searched_count: allCandidates.length,
+        is_estimate: true,
         breakdown: { localCandidates: shortlist.length, averageMatch: 0 }
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
 
+
     if (shortlist.length === 0) {
-      return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates.length, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
+      return new Response(JSON.stringify({ candidates: [], total_count: 0, evaluated_count: 0, passing_count: 0, searched_count: allCandidates.length, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
+
         headers: { ...headers, "Content-Type": "application/json" },
       });
     }
@@ -675,11 +794,14 @@ serve(async (req) => {
     }
 
     // 7. Filter ≥40% and sort
-    const filtered = scoredCandidates
+    const passing = scoredCandidates
       .filter((sc: any) => sc.ai_fit_score >= 40)
-      .sort((a: any, b: any) => b.ai_fit_score - a.ai_fit_score)
+      .sort((a: any, b: any) => b.ai_fit_score - a.ai_fit_score);
+
+    const filtered = passing
       .slice(0, limit)
       .map((sc: any) => buildResponseCandidate(sc.candidate, sc.ai_fit_score, sc.ai_fit_confidence, sc.ai_fit_rationale));
+
 
     const avgScore = filtered.length > 0 
       ? Math.round(filtered.reduce((sum: number, c: any) => sum + c.ai_fit_score, 0) / filtered.length)
@@ -690,7 +812,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       candidates: filtered,
       total_count: filtered.length,
+      evaluated_count: preFiltered.length,
+      passing_count: passing.length,
       searched_count: allCandidates.length,
+
       breakdown: {
         localCandidates: filtered.length,
         apolloCandidates: 0,
