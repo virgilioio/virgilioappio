@@ -507,62 +507,63 @@ serve(async (req) => {
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
 
-    // 5. No cache — run AI scoring
-    const jobSkills = (job.skills || []).map((s: string) => s.toLowerCase());
-    const jobTitle = (job.title || "").toLowerCase();
-    const titleWords = jobTitle.split(/\s+/).filter((w: string) => w.length > 3);
+    // 5. No cache — deterministic ranking over the FULL tenant pool, then LLM on the top 40.
+    const signals = buildJobSignals(job, jobDescription);
 
-    let query = sb
-      .from("candidates")
-      .select("id, candidate_name, role_current, company_current, current_job_title, skills, standardized_skills, years_experience, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at")
-      .eq("tenant_id", job.tenant_id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(500);
+    const CANDIDATE_COLUMNS =
+      "id, candidate_name, role_current, company_current, current_job_title, standardized_title, skills, standardized_skills, years_experience, seniority_level, functional_area, location_city, location_state, location_country, salary_amount, salary_currency, salary_period, profile_summary, linkedin_url, source, created_at, enriched_at";
 
-    const { data: allCandidates, error: candError } = await query;
-    if (candError) {
-      console.error("Error fetching candidates:", candError);
-      throw new Error("Failed to fetch candidates");
+    // Paginate through the entire pool — no 500-row cap, no created_at ordering.
+    const allCandidates: any[] = [];
+    const PAGE = 1000;
+    for (let page = 0; ; page++) {
+      const { data: pageRows, error: candError } = await sb
+        .from("candidates")
+        .select(CANDIDATE_COLUMNS)
+        .eq("tenant_id", job.tenant_id)
+        .is("deleted_at", null)
+        .order("id", { ascending: true })
+        .range(page * PAGE, page * PAGE + PAGE - 1);
+
+      if (candError) {
+        console.error("Error fetching candidates:", candError);
+        throw new Error("Failed to fetch candidates");
+      }
+      const rows = pageRows || [];
+      allCandidates.push(...rows.filter((c: any) => !excludeIds.has(c.id)));
+      if (rows.length < PAGE) break;
+      if (page > 50) break; // hard safety valve
     }
 
-    const preFiltered = (allCandidates || []).filter((c: any) => {
-      if (excludeIds.has(c.id)) return false;
-      
-      const candidateSkills = [...(c.skills || []), ...(c.standardized_skills || [])].map((s: string) => s.toLowerCase());
-      const candidateTitle = (c.role_current || c.current_job_title || "").toLowerCase();
-      
-      const hasSkillOverlap = jobSkills.length > 0 && candidateSkills.some((cs: string) => 
-        jobSkills.some((js: string) => cs.includes(js) || js.includes(cs))
-      );
-      
-      const hasTitleMatch = titleWords.length > 0 && titleWords.some((tw: string) => 
-        candidateTitle.includes(tw)
-      );
-      
-      if (jobSkills.length === 0) return hasTitleMatch || true;
-      
-      return hasSkillOverlap || hasTitleMatch;
-    }).slice(0, 50);
+    // Deterministic score for EVERY candidate in the pool.
+    const ranked = allCandidates
+      .map((c: any) => ({ candidate: c, base: deterministicScore(signals, c) }))
+      .filter((r) => r.base > 0)
+      .sort((a, b) => b.base - a.base);
+
+    const TOP_N = 40;
+    const shortlist = ranked.slice(0, TOP_N).map((r) => r.candidate);
 
     if (count_only) {
-      return new Response(JSON.stringify({ 
-        total_count: preFiltered.length, 
-        breakdown: { localCandidates: preFiltered.length, averageMatch: 0 } 
+      return new Response(JSON.stringify({
+        total_count: shortlist.length,
+        breakdown: { localCandidates: shortlist.length, averageMatch: 0 }
       }), { headers: { ...headers, "Content-Type": "application/json" } });
     }
 
-    if (preFiltered.length === 0) {
-      return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates?.length || 0, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
+    if (shortlist.length === 0) {
+      return new Response(JSON.stringify({ candidates: [], total_count: 0, searched_count: allCandidates.length, breakdown: { localCandidates: 0, averageMatch: 0 } }), {
         headers: { ...headers, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch work experience
+    const preFiltered = shortlist;
+
+    // Fetch work experience for the shortlist
     const candidateIds = preFiltered.map((c: any) => c.id);
     const { data: allWorkExp } = await sb
       .from("candidate_work_experience")
-      .select("candidate_id, job_title, company_name, duration_months, is_current")
+      .select("candidate_id, job_title, standardized_title, company_name, duration_months, is_current, description")
       .in("candidate_id", candidateIds)
       .order("start_date", { ascending: false });
 
@@ -572,6 +573,7 @@ serve(async (req) => {
       list.push(w);
       workExpMap.set(w.candidate_id, list);
     });
+
 
     // Build job context
     let jobContext = `JOB: ${job.title}`;
