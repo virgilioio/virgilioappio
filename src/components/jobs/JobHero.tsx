@@ -102,6 +102,7 @@ function HiringTeamStack({ members }: { members: HiringTeamMember[] }) {
 export function JobHero({
   title,
   status,
+  priority,
   department,
   location,
   createdAt,
