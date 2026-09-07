@@ -28,6 +28,8 @@ import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds'
 import { jobMatchesUsers } from '@/utils/jobInvolvement'
 import { Job } from '@/hooks/useJobs'
 import { cn } from '@/lib/utils'
+import { JobPriorityBadge } from '@/components/jobs/JobPriorityBadge'
+import { JOB_PRIORITIES, jobPriorityRank, type JobPriority } from '@/lib/job-priority'
 
 type StatusSegment = 'active' | 'all' | 'paused' | 'closed' | 'archived'
 
@@ -84,6 +86,8 @@ export function JobsTable({
   const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [postedRange, setPostedRange] = useState<string[]>([])
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<'newest' | 'priority'>('newest')
 
   const { assignedJobIds } = useUserAssignedJobIds(selectedUsers)
 
@@ -130,6 +134,15 @@ export function JobsTable({
     return map
   }, [members])
 
+  const priorityOptions: FilterChipOption[] = useMemo(() => {
+    const counts = new Map<string, number>()
+    jobs.forEach(j => {
+      const p = ((j as any).priority ?? 'standard') as string
+      counts.set(p, (counts.get(p) ?? 0) + 1)
+    })
+    return JOB_PRIORITIES.map(p => ({ value: p.id, label: p.label, count: counts.get(p.id) ?? 0 }))
+  }, [jobs])
+
   const postedOptions: FilterChipOption[] = useMemo(() => [
     { value: 'today', label: 'Today', count: 0 },
     { value: '7d', label: 'Last 7 days', count: 0 },
@@ -152,6 +165,7 @@ export function JobsTable({
       if (selectedCompanies.length && !selectedCompanies.includes(job.organization_name || '')) return false
       if (selectedDepartments.length && !selectedDepartments.includes(job.department || '')) return false
       if (selectedLocations.length && !selectedLocations.includes(job.location || '')) return false
+      if (selectedPriorities.length && !selectedPriorities.includes(((job as any).priority ?? 'standard') as string)) return false
 
       if (postedRange.length) {
         const days = differenceInDays(new Date(), new Date(job.created_at))
@@ -164,9 +178,18 @@ export function JobsTable({
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false
       return true
     })
-  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedDepartments, selectedLocations, selectedUsers, postedRange, assignedJobIds])
+  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedDepartments, selectedLocations, selectedUsers, postedRange, selectedPriorities, assignedJobIds])
 
-  const visibleIds = useMemo(() => filteredJobs.map(j => j.id), [filteredJobs])
+  const sortedJobs = useMemo(() => {
+    if (sortBy !== 'priority') return filteredJobs
+    return [...filteredJobs].sort((a, b) => {
+      const d = jobPriorityRank((a as any).priority) - jobPriorityRank((b as any).priority)
+      if (d !== 0) return d
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+  }, [filteredJobs, sortBy])
+
+  const visibleIds = useMemo(() => sortedJobs.map(j => j.id), [sortedJobs])
   const { data: metrics = [] } = usePipelineJobMetrics(visibleIds)
   const metricsByJob = useMemo(() => {
     const m = new Map<string, typeof metrics[number]>()
@@ -180,6 +203,7 @@ export function JobsTable({
     selectedDepartments.length > 0 ||
     selectedLocations.length > 0 ||
     selectedUsers.length > 0 ||
+    selectedPriorities.length > 0 ||
     postedRange.length > 0
 
   const clearAll = () => {
@@ -188,6 +212,7 @@ export function JobsTable({
     setSelectedDepartments([])
     setSelectedLocations([])
     setSelectedUsers([])
+    setSelectedPriorities([])
     setPostedRange([])
   }
 
@@ -268,6 +293,23 @@ export function JobsTable({
               />
             )}
             <FilterChipPopover
+              label="Priority"
+              options={priorityOptions}
+              selectedValues={selectedPriorities}
+              onSelectionChange={setSelectedPriorities}
+              searchable={false}
+            />
+            <FilterChipPopover
+              label="Sort"
+              options={[
+                { value: 'newest', label: 'Newest first', count: 0 },
+                { value: 'priority', label: 'Priority (most urgent first)', count: 0 },
+              ]}
+              selectedValues={[sortBy]}
+              onSelectionChange={(vals) => setSortBy((vals.slice(-1)[0] as 'newest' | 'priority') || 'newest')}
+              searchable={false}
+            />
+            <FilterChipPopover
               label="Posted"
               options={postedOptions}
               selectedValues={postedRange}
@@ -296,7 +338,7 @@ export function JobsTable({
           <TableBody>
             {isLoading ? (
               <TableSkeleton rows={5} columns={COLS} />
-            ) : filteredJobs.length === 0 ? (
+            ) : sortedJobs.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={COLS} className="p-4">
                   {jobs.length === 0 ? (
@@ -322,7 +364,7 @@ export function JobsTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredJobs.map(job => {
+              sortedJobs.map(job => {
                 const days = differenceInDays(new Date(), new Date(job.created_at))
                 const overdue = days >= 21
                 const status = statusBadge(job.status)
@@ -358,6 +400,7 @@ export function JobsTable({
                         name={
                           <span className="inline-flex items-center gap-2 min-w-0">
                             <span className="truncate">{job.title}</span>
+                            <JobPriorityBadge value={(job as any).priority} quietLowPriority />
                             {trending && (
                               <Badge tone="purple" size="xs">Trending</Badge>
                             )}
