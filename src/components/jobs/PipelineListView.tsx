@@ -295,7 +295,7 @@ export function PipelineListView({
                       </div>
 
                       {/* 2 · candidate */}
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, maxWidth: '100%' }} className="overflow-hidden">
                         <div className="flex items-center" style={{ gap: 6, minWidth: 0 }}>
                           <span
                             className="truncate"
@@ -320,6 +320,7 @@ export function PipelineListView({
                             fontSize: 11.5,
                             color: PIPELINE_MUTED,
                           }}
+                          title={[row.role, row.company].filter(Boolean).join(' @ ')}
                         >
                           {row.role || '—'}
                           {row.company && (

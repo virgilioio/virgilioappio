@@ -135,7 +135,7 @@ export default function CandidateCard(props: CandidateCardProps) {
 
         <div
           className={cn(
-            'flex items-start gap-[10px] transition-[padding-left] duration-150 ease-out',
+            'flex items-start gap-[10px] min-w-0 max-w-full transition-[padding-left] duration-150 ease-out',
             checkboxVisible
               ? 'pl-[22px]'
               : props.showCheckbox
@@ -144,7 +144,7 @@ export default function CandidateCard(props: CandidateCardProps) {
           )}
         >
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 max-w-full overflow-hidden">
             <div className="flex items-center gap-[6px]">
               <span
                 className="flex-1 truncate"
@@ -157,16 +157,18 @@ export default function CandidateCard(props: CandidateCardProps) {
             </div>
             {role && (
               <div
-                className="truncate"
+                className="truncate max-w-full"
                 style={{ fontFamily: 'Inter, sans-serif', fontSize: 10.5, color: PIPELINE_TERTIARY, marginTop: 1 }}
+                title={role}
               >
                 {role}
               </div>
             )}
             {company && (
               <div
-                className="truncate"
+                className="truncate max-w-full"
                 style={{ fontFamily: 'Inter, sans-serif', fontSize: 10.5, color: PIPELINE_TERTIARY, marginTop: 1 }}
+                title={company}
               >
                 @ {company}
               </div>
