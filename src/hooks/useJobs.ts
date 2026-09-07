@@ -80,6 +80,7 @@ export interface CreateJobData {
   min_years_experience?: number
   max_years_experience?: number
   target_fill_date?: string | null
+  priority?: JobPriority
 }
 
 export interface UpdateJobData {
