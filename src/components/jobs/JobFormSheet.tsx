@@ -79,9 +79,10 @@ export function JobFormSheet({
         min_years_experience: job.min_years_experience ?? undefined,
         max_years_experience: job.max_years_experience ?? undefined,
         target_fill_date: (job as any).target_fill_date ?? undefined,
+        priority: ((job as any).priority ?? 'standard') as any,
       })
     } else {
-      setJobData({ status: 'draft', currency: 'USD', show_salary_public: true })
+      setJobData({ status: 'draft', currency: 'USD', show_salary_public: true, priority: 'standard' })
     }
   }, [isOpen, job])
 
@@ -124,6 +125,7 @@ export function JobFormSheet({
       status: src.status || 'draft',
       department_id: src.department_id ?? null,
       target_fill_date: trimOrNull(src.target_fill_date),
+      priority: src.priority || 'standard',
     }
     if (src.organization_id) payload.organization_id = src.organization_id
 

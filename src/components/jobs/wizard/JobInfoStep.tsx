@@ -28,6 +28,8 @@ import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useDepartments } from '@/hooks/useDepartments'
 import { DepartmentFormDialog } from '@/components/settings/DepartmentFormDialog'
+import { JobPriorityPicker } from '@/components/jobs/JobPriorityPicker'
+import { DEFAULT_JOB_PRIORITY } from '@/lib/job-priority'
 
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
@@ -291,6 +293,9 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
               />
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <FieldLabel>Target hire date</FieldLabel>
             <div className="mt-2">
@@ -304,7 +309,20 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
               Drives pacing — projected fill on the Job Dashboard is measured against this.
             </FieldHint>
           </div>
+          <div>
+            <FieldLabel required>Priority</FieldLabel>
+            <div className="mt-2">
+              <JobPriorityPicker
+                value={jobData.priority ?? DEFAULT_JOB_PRIORITY}
+                onChange={(v) => set('priority', v)}
+              />
+            </div>
+            <FieldHint>
+              Ranks this req against the rest — drives default sort and escalation on the Job Dashboard.
+            </FieldHint>
+          </div>
         </div>
+
       </SectionCard>
 
       {/* ----------------------------------- LOCATION & EMPLOYMENT */}

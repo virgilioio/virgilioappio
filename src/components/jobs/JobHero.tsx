@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
+import { JobPriorityBadge } from '@/components/jobs/JobPriorityBadge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -39,6 +40,7 @@ type HiringTeamMember = {
 interface JobHeroProps {
   title: string
   status?: string | null
+  priority?: string | null
   department?: string | null
   location?: string | null
   createdAt?: string | null
@@ -100,6 +102,7 @@ function HiringTeamStack({ members }: { members: HiringTeamMember[] }) {
 export function JobHero({
   title,
   status,
+  priority,
   department,
   location,
   createdAt,
@@ -147,6 +150,7 @@ export function JobHero({
         {/* Meta row */}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body-sm text-text-secondary">
           <Badge tone={statusInfo.tone as any} dot size="sm">{statusInfo.label}</Badge>
+          <JobPriorityBadge value={priority} />
           {location && (
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" /> {location}

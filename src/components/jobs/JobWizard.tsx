@@ -116,9 +116,9 @@ const STEP_META: Record<
 
 export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   const seedData = (): Partial<CreateJobData> => {
-    if (!initialData) return { status: 'draft' }
+    if (!initialData) return { status: 'draft', priority: 'standard' }
     const { sourceJobTitle, ...rest } = initialData as any
-    return { status: 'draft', ...rest }
+    return { status: 'draft', priority: 'standard', ...rest }
   }
 
   const [wizardState, setWizardState] = useState<WizardState>({

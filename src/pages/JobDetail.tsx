@@ -1091,6 +1091,7 @@ export default function JobDetail() {
                 <JobHero
                   title={job.title}
                   status={job.status}
+                  priority={(job as any).priority}
                   department={(job as any).organization_name || (job as any).organization?.name || (job as any).department || null}
                   location={job.location}
                   createdAt={job.created_at}

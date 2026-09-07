@@ -10,6 +10,7 @@ import { log } from '@/lib/logger'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
 import { useUserJobRoles } from './useUserJobRoles'
+import type { JobPriority } from '@/lib/job-priority'
 
 export type JobWorkMode = 'remote' | 'hybrid' | 'onsite'
 export type JobEmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'temporary'
@@ -51,6 +52,7 @@ export interface Job {
   min_years_experience?: number | null
   max_years_experience?: number | null
   target_fill_date?: string | null
+  priority?: JobPriority
 }
 
 export interface CreateJobData {
@@ -79,6 +81,7 @@ export interface CreateJobData {
   min_years_experience?: number
   max_years_experience?: number
   target_fill_date?: string | null
+  priority?: JobPriority
 }
 
 export interface UpdateJobData {
@@ -106,6 +109,7 @@ export interface UpdateJobData {
   min_years_experience?: number | null
   max_years_experience?: number | null
   target_fill_date?: string | null
+  priority?: JobPriority
 }
 
 // Cached tenant_id per organization to avoid repeated lookups
