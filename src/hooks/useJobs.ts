@@ -108,6 +108,7 @@ export interface UpdateJobData {
   min_years_experience?: number | null
   max_years_experience?: number | null
   target_fill_date?: string | null
+  priority?: JobPriority
 }
 
 // Cached tenant_id per organization to avoid repeated lookups
