@@ -10,6 +10,7 @@ import { log } from '@/lib/logger'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { logActivity } from '@/lib/activityLogger'
 import { useUserJobRoles } from './useUserJobRoles'
+import type { JobPriority } from '@/lib/job-priority'
 
 export type JobWorkMode = 'remote' | 'hybrid' | 'onsite'
 export type JobEmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'temporary'
