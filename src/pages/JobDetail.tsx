@@ -548,8 +548,7 @@ export default function JobDetail() {
       onBulkEmail: () => setShowBulkEmailDialog(true),
       onBulkReject: () => setShowBulkRejectionDialog(true),
       onStartReview: () => {
-        const first = sectionCandidateList[0]
-        if (first) openProfileInPlace(first.id, 'application', sectionCandidateList)
+        if (applicationReviewCandidates.length > 0) setShowApplicationReview(true)
       },
       onSharePosting: () => {
         if (activePosting) openActivePosting()
@@ -561,7 +560,7 @@ export default function JobDetail() {
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sectionCandidateList, sectionProfileContext, screeningStageId, associations, activePosting],
+    [sectionCandidateList, sectionProfileContext, screeningStageId, associations, activePosting, applicationReviewCandidates],
   )
 
   // Real-time skill matching for suggested count (using existing job from query below)  
