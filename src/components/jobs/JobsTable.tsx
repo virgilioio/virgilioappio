@@ -482,10 +482,10 @@ export function JobsTable({
           </TableBody>
         </Table>
 
-        {filteredJobs.length > 0 && !isLoading && (
+        {sortedJobs.length > 0 && !isLoading && (
           <TableFooterSummary
             rangeStart={1}
-            rangeEnd={filteredJobs.length}
+            rangeEnd={sortedJobs.length}
             total={jobs.length}
             entityLabel="jobs"
           />
@@ -496,7 +496,7 @@ export function JobsTable({
       <div className="lg:hidden space-y-2">
         {isLoading ? (
           <Card><CardContent className="p-4 text-text-tertiary text-sm">Loading…</CardContent></Card>
-        ) : filteredJobs.length === 0 ? (
+        ) : sortedJobs.length === 0 ? (
           <Card><CardContent className="p-4">
             {jobs.length === 0 ? (
               <EmptyState
@@ -520,7 +520,7 @@ export function JobsTable({
             )}
           </CardContent></Card>
         ) : (
-          filteredJobs.map(job => {
+          sortedJobs.map(job => {
             const status = statusBadge(job.status)
             const metric = metricsByJob.get(job.id)
             const count = metric?.active_candidates ?? 0
