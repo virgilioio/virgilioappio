@@ -4275,6 +4275,7 @@ export type Database = {
           must_have_skills: string[]
           normalization_metadata: Json | null
           organization_id: string
+          priority: Database["public"]["Enums"]["job_priority"]
           priority_keywords: Json | null
           reports_to_user_id: string | null
           salary_max: number | null
@@ -4323,6 +4324,7 @@ export type Database = {
           must_have_skills?: string[]
           normalization_metadata?: Json | null
           organization_id: string
+          priority?: Database["public"]["Enums"]["job_priority"]
           priority_keywords?: Json | null
           reports_to_user_id?: string | null
           salary_max?: number | null
@@ -4371,6 +4373,7 @@ export type Database = {
           must_have_skills?: string[]
           normalization_metadata?: Json | null
           organization_id?: string
+          priority?: Database["public"]["Enums"]["job_priority"]
           priority_keywords?: Json | null
           reports_to_user_id?: string | null
           salary_max?: number | null
@@ -9046,6 +9049,7 @@ export type Database = {
         | "contract"
         | "internship"
         | "temporary"
+      job_priority: "critical" | "high" | "standard" | "low"
       job_status: "draft" | "open" | "closed" | "archived"
       job_work_mode: "remote" | "hybrid" | "onsite"
       notification_category:
@@ -9397,6 +9401,7 @@ export const Constants = {
         "internship",
         "temporary",
       ],
+      job_priority: ["critical", "high", "standard", "low"],
       job_status: ["draft", "open", "closed", "archived"],
       job_work_mode: ["remote", "hybrid", "onsite"],
       notification_category: [
