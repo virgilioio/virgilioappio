@@ -374,14 +374,10 @@ export function ScorecardsSidebar(p: ScorecardsSidebarProps) {
 }
 
 export interface ActivitySidebarProps {
-  counts: {
-    all: number
-    stageMoves: number
-    scorecards: number
-    emails: number
-    comments: number
-    files: number
-  }
+  /** Total number of events (drives the "All events" row). */
+  totalEvents: number
+  /** Derived per-category counts; zero-count categories must be omitted by the caller. */
+  categoryRows: { id: string; label: string; count: number }[]
   filters: Record<string, boolean>
   onFilterChange: (filters: Record<string, boolean>) => void
   stats?: {
@@ -392,53 +388,54 @@ export interface ActivitySidebarProps {
   }
 }
 export function ActivitySidebar(p: ActivitySidebarProps) {
-  const rows: { key: keyof typeof p.counts; label: string }[] = [
-    { key: 'all', label: 'All events' },
-    { key: 'stageMoves', label: 'Stage moves' },
-    { key: 'scorecards', label: 'Scorecards' },
-    { key: 'emails', label: 'Emails' },
-    { key: 'comments', label: 'Comments' },
-    { key: 'files', label: 'Files' },
+  const allChecked = p.categoryRows.every((r) => p.filters[r.id] ?? true)
+  const rows = [
+    { id: 'all', label: 'All events', count: p.totalEvents, checked: allChecked },
+    ...p.categoryRows.map((r) => ({ ...r, checked: p.filters[r.id] ?? true })),
   ]
   return (
     <ProfileSidebar>
       <SidebarBlock label="Filter">
         <div className="space-y-1.5">
-          {rows.map(({ key, label }) => {
-            const checked = p.filters[key] ?? key === 'all'
-            return (
-              <label
-                key={key}
-                className="flex items-center gap-2 cursor-pointer py-1 hover:bg-[#FAFAF7] -mx-1 px-1 rounded"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) =>
-                    p.onFilterChange({ ...p.filters, [key]: e.target.checked })
+          {rows.map(({ id, label, count, checked }) => (
+            <label
+              key={id}
+              className="flex items-center gap-2 cursor-pointer py-1 hover:bg-[#FAFAF7] -mx-1 px-1 rounded"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => {
+                  if (id === 'all') {
+                    const next: Record<string, boolean> = {}
+                    p.categoryRows.forEach((r) => { next[r.id] = e.target.checked })
+                    p.onFilterChange(next)
+                  } else {
+                    p.onFilterChange({ ...p.filters, [id]: e.target.checked })
                   }
-                  className="h-3.5 w-3.5 accent-virgilio-purple rounded"
-                />
-                <span className="font-inter text-[12px] text-[#1F2230] flex-1">{label}</span>
-                <span className="font-inter text-[11px] text-[#8B8F9E] tabular-nums">
-                  {p.counts[key]}
-                </span>
-              </label>
-            )
-          })}
+                }}
+                className="h-3.5 w-3.5 accent-virgilio-purple rounded"
+              />
+              <span className="font-inter text-[12px] text-[#1F2230] flex-1">{label}</span>
+              <span className="font-inter text-[11px] text-[#8B8F9E] tabular-nums">
+                {count}
+              </span>
+            </label>
+          ))}
         </div>
       </SidebarBlock>
       {p.stats && (
         <SidebarBlock label="Stats">
           <MetaRow label="Active" value={p.stats.activeDays != null ? `${p.stats.activeDays}d` : null} />
-          <MetaRow label="Events" value={p.stats.eventsLogged ?? null} />
-          <MetaRow label="Our touches" value={p.stats.touchesFromUs ?? null} />
+          <MetaRow label="Events" value={p.stats.eventsLogged != null ? `${p.stats.eventsLogged} logged` : null} />
+          <MetaRow label="Touches" value={p.stats.touchesFromUs != null ? `${p.stats.touchesFromUs} from us` : null} />
           <MetaRow label="Last contact" value={fmtDate(p.stats.lastContact)} />
         </SidebarBlock>
       )}
     </ProfileSidebar>
   )
 }
+
 
 export interface EmailsSidebarProps {
   sent: number
