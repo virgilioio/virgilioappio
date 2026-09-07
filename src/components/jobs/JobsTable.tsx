@@ -30,6 +30,8 @@ import { Job } from '@/hooks/useJobs'
 import { cn } from '@/lib/utils'
 import { JobPriorityBadge } from '@/components/jobs/JobPriorityBadge'
 import { JOB_PRIORITIES, jobPriorityRank, type JobPriority } from '@/lib/job-priority'
+import { JobPriorityFilterChip } from '@/components/jobs/JobPriorityFilterChip'
+import { useSearchParams } from 'react-router-dom'
 
 type StatusSegment = 'active' | 'all' | 'paused' | 'closed' | 'archived'
 
@@ -64,7 +66,7 @@ function statusBadge(status: Job['status']) {
   return map[status]
 }
 
-const COLS = 8 // job, company, location, stage, pipeline, days, owner, actions
+const COLS = 9 // priority, job, company, location, stage, pipeline, days, owner, actions
 
 export function JobsTable({
   jobs,
@@ -86,8 +88,31 @@ export function JobsTable({
   const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [postedRange, setPostedRange] = useState<string[]>([])
-  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<'newest' | 'priority'>('newest')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedPriorities = useMemo(() => {
+    const raw = searchParams.get('priority')
+    if (!raw) return [] as string[]
+    const allowed = new Set<string>(JOB_PRIORITIES.map(p => p.id))
+    return raw.split(',').filter(v => allowed.has(v))
+  }, [searchParams])
+  const sortBy: 'newest' | 'priority' = searchParams.get('sort') === 'newest' ? 'newest' : 'priority'
+
+  const setSelectedPriorities = (values: string[]) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (values.length) next.set('priority', values.join(','))
+      else next.delete('priority')
+      return next
+    }, { replace: true })
+  }
+  const setSortBy = (value: 'newest' | 'priority') => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (value === 'priority') next.delete('sort')
+      else next.set('sort', value)
+      return next
+    }, { replace: true })
+  }
 
   const { assignedJobIds } = useUserAssignedJobIds(selectedUsers)
 
@@ -134,15 +159,6 @@ export function JobsTable({
     return map
   }, [members])
 
-  const priorityOptions: FilterChipOption[] = useMemo(() => {
-    const counts = new Map<string, number>()
-    jobs.forEach(j => {
-      const p = ((j as any).priority ?? 'standard') as string
-      counts.set(p, (counts.get(p) ?? 0) + 1)
-    })
-    return JOB_PRIORITIES.map(p => ({ value: p.id, label: p.label, count: counts.get(p.id) ?? 0 }))
-  }, [jobs])
-
   const postedOptions: FilterChipOption[] = useMemo(() => [
     { value: 'today', label: 'Today', count: 0 },
     { value: '7d', label: 'Last 7 days', count: 0 },
@@ -181,11 +197,13 @@ export function JobsTable({
   }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedDepartments, selectedLocations, selectedUsers, postedRange, selectedPriorities, assignedJobIds])
 
   const sortedJobs = useMemo(() => {
-    if (sortBy !== 'priority') return filteredJobs
+    const byRecency = (a: Job, b: Job) =>
+      new Date((b as any).updated_at ?? b.created_at).getTime() -
+      new Date((a as any).updated_at ?? a.created_at).getTime()
+    if (sortBy === 'newest') return [...filteredJobs].sort(byRecency)
     return [...filteredJobs].sort((a, b) => {
       const d = jobPriorityRank((a as any).priority) - jobPriorityRank((b as any).priority)
-      if (d !== 0) return d
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return d !== 0 ? d : byRecency(a, b)
     })
   }, [filteredJobs, sortBy])
 
@@ -292,21 +310,15 @@ export function JobsTable({
                 searchable
               />
             )}
-            <FilterChipPopover
-              label="Priority"
-              options={priorityOptions}
-              selectedValues={selectedPriorities}
-              onSelectionChange={setSelectedPriorities}
-              searchable={false}
-            />
+            <JobPriorityFilterChip selected={selectedPriorities} onChange={setSelectedPriorities} />
             <FilterChipPopover
               label="Sort"
               options={[
-                { value: 'newest', label: 'Newest first', count: 0 },
                 { value: 'priority', label: 'Priority (most urgent first)', count: 0 },
+                { value: 'newest', label: 'Recently updated', count: 0 },
               ]}
               selectedValues={[sortBy]}
-              onSelectionChange={(vals) => setSortBy((vals.slice(-1)[0] as 'newest' | 'priority') || 'newest')}
+              onSelectionChange={(vals) => setSortBy((vals.slice(-1)[0] as 'newest' | 'priority') || 'priority')}
               searchable={false}
             />
             <FilterChipPopover
@@ -325,6 +337,7 @@ export function JobsTable({
         <Table density="comfortable">
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[84px]">Priority</TableHead>
               <TableHead>Job</TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Location</TableHead>
@@ -394,13 +407,15 @@ export function JobsTable({
                     className="group cursor-pointer"
                     onClick={() => onView(job)}
                   >
+                    <TableCell className="w-[84px]">
+                      <JobPriorityBadge priority={(job as any).priority} />
+                    </TableCell>
                     <TableCell>
                       <IdentityCell
                         hideAvatar
                         name={
                           <span className="inline-flex items-center gap-2 min-w-0">
                             <span className="truncate">{job.title}</span>
-                            <JobPriorityBadge value={(job as any).priority} quietLowPriority />
                             {trending && (
                               <Badge tone="purple" size="xs">Trending</Badge>
                             )}
