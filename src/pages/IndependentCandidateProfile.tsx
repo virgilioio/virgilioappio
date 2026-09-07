@@ -100,6 +100,7 @@ export default function IndependentCandidateProfile() {
   // The list is used only for the prev/next arrows and the "x of y" counter.
   const { candidates } = useIndependentCandidates()
   const { name: createdByName } = useUserDisplayName((candidate as any)?.created_by || null)
+  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
 
 
   const idx = useMemo(() => candidates.findIndex(c => c.id === candidateId), [candidates, candidateId])
@@ -416,9 +417,6 @@ export default function IndependentCandidateProfile() {
       )}
     </ProfileSidebar>
   )
-
-  const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
-
 
   return (
     <AuthGate>
