@@ -2181,10 +2181,12 @@ const stageHasAutomation = useMemo(() => {
                           case 'activity':
                             return (
                               <ActivitySidebar
-                                counts={{ all: 0, stageMoves: 0, scorecards: 0, emails: 0, comments: 0, files: 0 }}
+                                totalEvents={activityDerived.events.length}
+                                categoryRows={activityDerived.categoryRows}
                                 filters={activityFilters}
                                 onFilterChange={setActivityFilters}
-                                stats={{ activeDays: daysInStage, eventsLogged: null, touchesFromUs: null, lastContact: null }}
+                                stats={{ activeDays: daysInStage, eventsLogged: activityDerived.events.length, touchesFromUs: activityDerived.sentCount, lastContact: activityDerived.lastContact }}
+
                               />
                             )
                           case 'emails':
