@@ -17,7 +17,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus,
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus,
   ListChecks,
 
 } from 'lucide-react'
@@ -73,6 +73,9 @@ import { EmailHistoryList } from './EmailHistoryList'
 import { EmailsTabContent, EmailsSidebarContainer } from '@/components/candidates/profile/tabs/EmailsTabContent'
 import { EmailHistoryCardEmail } from './EmailHistoryCard'
 import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
+import { activityMeta, ACTIVITY_CATEGORIES, type ActivityCategory } from '@/lib/activityRegistry'
+import { useActivityFeed } from '@/hooks/useActivityFeed'
+import { formatDistanceToNow } from 'date-fns'
 import { ActivityFeedList } from './ActivityFeedList'
 import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
@@ -263,7 +266,40 @@ const daysInStage = useMemo(() => {
   if (Number.isNaN(ms) || ms < 0) return 0
   return Math.floor(ms / 86_400_000)
 }, [enteredStageAt])
-const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>({ all: true })
+const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>({})
+// Activity feed — one source for the feed, the card subtitle, the sidebar and the tab badge.
+const { data: activityEvents = [], refetch: refetchActivity, isFetching: activityFetching } =
+  useActivityFeed(candidateId || undefined, jobId)
+const activityDerived = useMemo(() => {
+  const events = activityEvents || []
+  const byCategory = new Map<string, number>()
+  events.forEach((e) => {
+    const cat = activityMeta(e.activity_type).category
+    byCategory.set(cat, (byCategory.get(cat) || 0) + 1)
+  })
+  const categoryRows = ACTIVITY_CATEGORIES
+    .map((c) => ({ id: c.id as string, label: c.label, count: byCategory.get(c.id) || 0 }))
+    .filter((c) => c.count > 0)
+  const sentCount = events.filter((e) => e.activity_type === 'candidate_email_sent').length
+  const lastContact = events
+    .filter((e) => e.activity_type === 'candidate_email_sent' || e.activity_type === 'candidate_email_received')
+    .map((e) => e.created_at)
+    .sort()
+    .pop() || null
+  const lastUpdate = events
+    .map((e) => e.created_at)
+    .sort()
+    .pop() || null
+  return { events, categoryRows, sentCount, lastContact, lastUpdate }
+}, [activityEvents])
+const visibleActivityCategories = useMemo(
+  () =>
+    activityDerived.categoryRows
+      .filter((c) => activityFilters[c.id] ?? true)
+      .map((c) => c.id as ActivityCategory),
+  [activityDerived.categoryRows, activityFilters]
+)
+
 type PlanStageOption = { jhsId: string; stage: JobStage; position: number }
 const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
 const [openStageId, setOpenStageId] = useState<string | null>(null)
@@ -1431,7 +1467,7 @@ const stageHasAutomation = useMemo(() => {
                             { value: 'resume', label: 'Resume', Icon: FileText },
                             ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
-                            { value: 'activity', label: 'Activity', Icon: Activity },
+                            { value: 'activity', label: 'Activity', Icon: Activity, count: activityDerived.events.length },
                             { value: 'emails', label: 'Emails', Icon: Mail },
                             { value: 'comments', label: 'Comments', Icon: MessageSquare },
                           ]}
@@ -1829,8 +1865,25 @@ const stageHasAutomation = useMemo(() => {
                     {activeTab === 'activity' && (
                       <>
                         <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Activity Feed</CardTitle>
+                          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+                            <div>
+                              <CardTitle>Activity</CardTitle>
+                              <p className="mt-1 font-inter text-[11.5px] text-[#8B8F9E]">
+                                {activityDerived.events.length} event{activityDerived.events.length === 1 ? '' : 's'}
+                                {activityDerived.lastUpdate
+                                  ? ` · last update ${formatDistanceToNow(new Date(activityDerived.lastUpdate), { addSuffix: true })}`
+                                  : ''}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={RotateCw}
+                              onClick={() => refetchActivity()}
+                              loading={activityFetching}
+                            >
+                              Refresh
+                            </Button>
                           </CardHeader>
                           <CardContent className="p-0">
                             <ScrollArea className="h-[460px]">
@@ -1838,11 +1891,13 @@ const stageHasAutomation = useMemo(() => {
                                 <ActivityFeedList 
                                   candidateId={candidate.id}
                                   jobId={jobId}
+                                  visibleCategories={visibleActivityCategories}
                                 />
                               </div>
                             </ScrollArea>
                           </CardContent>
                         </Card>
+
                         <Card className="bg-surface-primary border-border">
                           <CardHeader>
                             <CardTitle>Email History</CardTitle>
@@ -2126,10 +2181,12 @@ const stageHasAutomation = useMemo(() => {
                           case 'activity':
                             return (
                               <ActivitySidebar
-                                counts={{ all: 0, stageMoves: 0, scorecards: 0, emails: 0, comments: 0, files: 0 }}
+                                totalEvents={activityDerived.events.length}
+                                categoryRows={activityDerived.categoryRows}
                                 filters={activityFilters}
                                 onFilterChange={setActivityFilters}
-                                stats={{ activeDays: daysInStage, eventsLogged: null, touchesFromUs: null, lastContact: null }}
+                                stats={{ activeDays: daysInStage, eventsLogged: activityDerived.events.length, touchesFromUs: activityDerived.sentCount, lastContact: activityDerived.lastContact }}
+
                               />
                             )
                           case 'emails':
