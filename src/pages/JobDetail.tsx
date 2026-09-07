@@ -560,7 +560,7 @@ export default function JobDetail() {
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sectionCandidateList, sectionProfileContext, screeningStageId, associations, activePosting],
+    [sectionCandidateList, sectionProfileContext, screeningStageId, associations, activePosting, applicationReviewCandidates],
   )
 
   // Real-time skill matching for suggested count (using existing job from query below)  
