@@ -90,7 +90,7 @@ export default function CandidateCard(props: CandidateCardProps) {
   return (
     <>
       <div
-        className={cn('group/card relative cursor-grab bg-white', props.selected && 'is-selected')}
+        className={cn('group/card relative cursor-grab bg-white w-full max-w-full min-w-0 overflow-hidden', props.selected && 'is-selected')}
         style={{
           border: `1px solid ${props.selected ? '#6F3FF5' : '#E7E8EE'}`,
           borderRadius: 10,
