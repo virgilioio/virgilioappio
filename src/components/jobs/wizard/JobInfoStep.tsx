@@ -28,6 +28,8 @@ import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useDepartments } from '@/hooks/useDepartments'
 import { DepartmentFormDialog } from '@/components/settings/DepartmentFormDialog'
+import { JobPriorityPicker } from '@/components/jobs/JobPriorityPicker'
+import { DEFAULT_JOB_PRIORITY } from '@/lib/job-priority'
 
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
