@@ -1865,8 +1865,25 @@ const stageHasAutomation = useMemo(() => {
                     {activeTab === 'activity' && (
                       <>
                         <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Activity Feed</CardTitle>
+                          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+                            <div>
+                              <CardTitle>Activity</CardTitle>
+                              <p className="mt-1 font-inter text-[11.5px] text-[#8B8F9E]">
+                                {activityDerived.events.length} event{activityDerived.events.length === 1 ? '' : 's'}
+                                {activityDerived.lastUpdate
+                                  ? ` · last update ${formatDistanceToNow(new Date(activityDerived.lastUpdate), { addSuffix: true })}`
+                                  : ''}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={RotateCw}
+                              onClick={() => refetchActivity()}
+                              loading={activityFetching}
+                            >
+                              Refresh
+                            </Button>
                           </CardHeader>
                           <CardContent className="p-0">
                             <ScrollArea className="h-[460px]">
@@ -1874,11 +1891,13 @@ const stageHasAutomation = useMemo(() => {
                                 <ActivityFeedList 
                                   candidateId={candidate.id}
                                   jobId={jobId}
+                                  visibleCategories={visibleActivityCategories}
                                 />
                               </div>
                             </ScrollArea>
                           </CardContent>
                         </Card>
+
                         <Card className="bg-surface-primary border-border">
                           <CardHeader>
                             <CardTitle>Email History</CardTitle>
