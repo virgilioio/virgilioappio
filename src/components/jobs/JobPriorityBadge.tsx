@@ -2,12 +2,14 @@ import { jobPriorityMeta, isLoudJobPriority, type JobPriority } from '@/lib/job-
 
 interface JobPriorityBadgeProps {
   value?: JobPriority | string | null
-  /** In dense lists, standard/low render dot-only so the list doesn't turn into confetti. */
+  /** Alias so callers can pass `priority` directly. */
+  priority?: JobPriority | string | null
+  /** In very dense rows, standard/low can render dot-only. */
   quietLowPriority?: boolean
 }
 
-export function JobPriorityBadge({ value, quietLowPriority }: JobPriorityBadgeProps) {
-  const p = jobPriorityMeta(value)
+export function JobPriorityBadge({ value, priority, quietLowPriority }: JobPriorityBadgeProps) {
+  const p = jobPriorityMeta(priority ?? value)
   const loud = isLoudJobPriority(p.id)
 
   if (quietLowPriority && !loud) {
@@ -25,16 +27,16 @@ export function JobPriorityBadge({ value, quietLowPriority }: JobPriorityBadgePr
       className="inline-flex items-center whitespace-nowrap"
       style={{
         gap: 5,
-        padding: '3px 9px',
+        padding: loud ? '3px 9px' : '3px 8px 3px 6px',
         borderRadius: 999,
-        background: p.tint,
-        color: p.ink,
+        background: loud ? p.tint : 'transparent',
+        color: loud ? p.ink : '#8B8F9E',
         fontFamily: 'Inter, sans-serif',
-        fontSize: 11.5,
-        fontWeight: 600,
+        fontSize: 11,
+        fontWeight: loud ? 600 : 500,
       }}
     >
-      <span aria-hidden style={{ width: 7, height: 7, borderRadius: 999, background: p.dot, flex: '0 0 7px' }} />
+      <span aria-hidden style={{ width: 6, height: 6, borderRadius: 999, background: p.dot, flex: '0 0 6px' }} />
       {p.label}
     </span>
   )
