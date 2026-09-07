@@ -17,7 +17,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus,
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus,
   ListChecks,
 
 } from 'lucide-react'
@@ -1467,7 +1467,7 @@ const stageHasAutomation = useMemo(() => {
                             { value: 'resume', label: 'Resume', Icon: FileText },
                             ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
-                            { value: 'activity', label: 'Activity', Icon: Activity },
+                            { value: 'activity', label: 'Activity', Icon: Activity, count: activityDerived.events.length },
                             { value: 'emails', label: 'Emails', Icon: Mail },
                             { value: 'comments', label: 'Comments', Icon: MessageSquare },
                           ]}
