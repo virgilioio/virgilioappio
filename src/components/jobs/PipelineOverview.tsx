@@ -97,9 +97,11 @@ function ColumnShell({
   return (
     <div
       ref={setNodeRef}
-      className="group flex flex-col min-h-0"
+      className="group flex flex-col min-h-0 min-w-0"
       style={{
         flex: '0 0 280px',
+        width: 280,
+        maxWidth: 280,
         background: isOver ? '#FAF8FF' : '#FAFAF7',
         border: isOver ? '1.5px dashed #D7C5FB' : '1px solid #E7E8EE',
         borderRadius: 12,
