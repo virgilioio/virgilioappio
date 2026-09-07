@@ -263,7 +263,40 @@ const daysInStage = useMemo(() => {
   if (Number.isNaN(ms) || ms < 0) return 0
   return Math.floor(ms / 86_400_000)
 }, [enteredStageAt])
-const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>({ all: true })
+const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>({})
+// Activity feed — one source for the feed, the card subtitle, the sidebar and the tab badge.
+const { data: activityEvents = [], refetch: refetchActivity, isFetching: activityFetching } =
+  useActivityFeed(candidateId || undefined, jobId)
+const activityDerived = useMemo(() => {
+  const events = activityEvents || []
+  const byCategory = new Map<string, number>()
+  events.forEach((e) => {
+    const cat = activityMeta(e.activity_type).category
+    byCategory.set(cat, (byCategory.get(cat) || 0) + 1)
+  })
+  const categoryRows = ACTIVITY_CATEGORIES
+    .map((c) => ({ id: c.id as string, label: c.label, count: byCategory.get(c.id) || 0 }))
+    .filter((c) => c.count > 0)
+  const sentCount = events.filter((e) => e.activity_type === 'candidate_email_sent').length
+  const lastContact = events
+    .filter((e) => e.activity_type === 'candidate_email_sent' || e.activity_type === 'candidate_email_received')
+    .map((e) => e.created_at)
+    .sort()
+    .pop() || null
+  const lastUpdate = events
+    .map((e) => e.created_at)
+    .sort()
+    .pop() || null
+  return { events, categoryRows, sentCount, lastContact, lastUpdate }
+}, [activityEvents])
+const visibleActivityCategories = useMemo(
+  () =>
+    activityDerived.categoryRows
+      .filter((c) => activityFilters[c.id] ?? true)
+      .map((c) => c.id as ActivityCategory),
+  [activityDerived.categoryRows, activityFilters]
+)
+
 type PlanStageOption = { jhsId: string; stage: JobStage; position: number }
 const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
 const [openStageId, setOpenStageId] = useState<string | null>(null)
