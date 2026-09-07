@@ -125,6 +125,7 @@ export function JobFormSheet({
       status: src.status || 'draft',
       department_id: src.department_id ?? null,
       target_fill_date: trimOrNull(src.target_fill_date),
+      priority: src.priority || 'standard',
     }
     if (src.organization_id) payload.organization_id = src.organization_id
 
