@@ -440,7 +440,8 @@ async function replacePlaceholders(
   job: any,
   user: any,
   bookingUrl: string | null,
-  stageBookingUrl?: string | null
+  stageBookingUrl?: string | null,
+  context?: { clientName?: string | null; organizationName?: string | null }
 ): Promise<string> {
   // Step 1: Collapse any accidental double braces from legacy content
   let result = collapseDoubleBraces(text);
