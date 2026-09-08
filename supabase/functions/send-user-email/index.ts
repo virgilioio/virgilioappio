@@ -468,7 +468,12 @@ async function replacePlaceholders(
     data['job.title'] = job.title || '';
     data['job.department'] = job.department || '';
     data['job.location'] = job.location || '';
+    data['department.name'] = job.department || '';
   }
+
+  // Client = the CRM company the job is for; organization = the workspace/tenant
+  data['client.name'] = context?.clientName || '';
+  data['organization.name'] = context?.organizationName || '';
   
   if (user) {
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
@@ -709,16 +714,38 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Fetch job data if provided
     let jobData = null;
+    let clientName: string | null = null;
     if (request.job_id) {
       const { data: job } = await supabase
         .from('jobs')
-        .select('title, department, location')
+        .select('title, department, location, organization_id')
         .eq('id', request.job_id)
         .single();
       
       if (job) {
         jobData = job;
+
+        // Resolve the client company (CRM organization) for {{client.name}}
+        if ((job as any).organization_id) {
+          const { data: clientOrg } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', (job as any).organization_id)
+            .maybeSingle();
+          clientName = clientOrg?.name ?? null;
+        }
       }
+    }
+
+    // Workspace (tenant) name for {{organization.name}}
+    let workspaceName: string | null = null;
+    if (tenantId) {
+      const { data: tenantRow } = await supabase
+        .from('tenants')
+        .select('name')
+        .eq('id', tenantId)
+        .maybeSingle();
+      workspaceName = tenantRow?.name ?? null;
     }
 
     // Get user profile for sender placeholders
