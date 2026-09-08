@@ -93,6 +93,7 @@ export function useBulkSendEmail() {
               },
               organizationName: job.tenant?.name,
               departmentName: job.organization?.name,
+              clientName: job.organization?.name,
             });
 
             // Resolve placeholders using the robust rendering function

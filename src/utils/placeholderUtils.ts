@@ -48,6 +48,7 @@ export const AVAILABLE_PLACEHOLDERS = [
   { value: 'candidate.email', label: 'Candidate Email', category: 'Candidate' },
   { value: 'candidate.phone', label: 'Candidate Phone', category: 'Candidate' },
   { value: 'candidate.location', label: 'Candidate Location', category: 'Candidate' },
+  { value: 'client.name', label: 'Client Name', category: 'Client' },
   { value: 'job.title', label: 'Job Title', category: 'Job' },
   { value: 'job.department', label: 'Job Department', category: 'Job' },
   { value: 'job.location', label: 'Job Location', category: 'Job' },
