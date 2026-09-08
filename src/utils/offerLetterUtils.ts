@@ -63,6 +63,7 @@ export function processOfferLetterTemplate(
   // Replace organization placeholders
   const organizationPlaceholders = {
     '{{organization.name}}': data.organization?.name || '',
+    '{{client.name}}': data.organization?.name || '',
     '{{organization.country}}': data.organization?.country || '',
     '{{organization.default_currency}}': data.organization?.default_currency || ''
   }
