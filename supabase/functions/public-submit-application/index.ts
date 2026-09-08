@@ -123,7 +123,7 @@ serve(async (req) => {
     // Get job from posting (include tenant_id for proper isolation)
     const { data: posting, error: postingErr } = await supabase
       .from("job_postings")
-      .select("id, job_id, is_active, tenant_id, job:jobs(organization_id, title)")
+      .select("id, job_id, is_active, tenant_id, job:jobs(organization_id, title, department)")
       .eq("id", postingId)
       .maybeSingle();
 
