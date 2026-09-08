@@ -905,15 +905,18 @@ serve(async (req) => {
             tenantName = tenant?.name || '';
           }
 
-          // Fetch department (job folder) name for {{department.name}}
-          let deptName = '';
+          // Department comes from the job itself for {{department.name}}
+          const deptName = (posting as any).job?.department || '';
+
+          // Fetch the client company (CRM organization) for {{client.name}}
+          let clientName = '';
           if ((posting as any).job?.organization_id) {
-            const { data: dept } = await supabase
+            const { data: clientOrg } = await supabase
               .from('organizations')
               .select('name')
               .eq('id', (posting as any).job.organization_id)
               .maybeSingle();
-            deptName = dept?.name || '';
+            clientName = clientOrg?.name || '';
           }
 
           // Parse candidate first name from full name
@@ -927,6 +930,7 @@ serve(async (req) => {
               .replace(/\{\{candidate\.email\}\}/g, candidateEmail)
               .replace(/\{\{job\.title\}\}/g, jobTitle)
               .replace(/\{\{organization\.name\}\}/g, tenantName)
+              .replace(/\{\{client\.name\}\}/g, clientName)
               .replace(/\{\{department\.name\}\}/g, deptName);
           };
 
