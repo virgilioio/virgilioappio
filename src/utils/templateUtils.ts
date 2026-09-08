@@ -93,6 +93,9 @@ export interface PlaceholderData {
   // Organization / tenant fields
   'organization.name'?: string;
   'department.name'?: string;
+
+  // Client (the CRM company the job is for)
+  'client.name'?: string;
   
   // Allow additional custom keys
   [key: string]: string | undefined;
@@ -179,7 +182,8 @@ export const PLACEHOLDER_OPTIONS = [
   { key: 'sender.linkedin', label: 'Your LinkedIn URL', category: 'Sender' },
   { key: 'sender.booking_link', label: 'Your Booking Link', category: 'Sender' },
   { key: 'stage.booking_link', label: 'Stage Interviewer Booking Link', category: 'Stage' },
-  { key: 'organization.name', label: 'Company / Workspace Name', category: 'Organization' },
+  { key: 'client.name', label: 'Client Name', category: 'Client' },
+  { key: 'organization.name', label: 'Your Workspace Name', category: 'Organization' },
   { key: 'department.name', label: 'Department / Job Folder Name', category: 'Organization' },
 ];
 
@@ -211,8 +215,9 @@ export function buildPlaceholderData(options: {
   bookingLink?: string;
   organizationName?: string;
   departmentName?: string;
+  clientName?: string;
 }): PlaceholderData {
-  const { candidate, job, sender, bookingLink, organizationName, departmentName } = options;
+  const { candidate, job, sender, bookingLink, organizationName, departmentName, clientName } = options;
   
   const data: PlaceholderData = {};
   
@@ -257,6 +262,10 @@ export function buildPlaceholderData(options: {
 
   if (departmentName) {
     data['department.name'] = departmentName;
+  }
+
+  if (clientName) {
+    data['client.name'] = clientName;
   }
   
   return data;

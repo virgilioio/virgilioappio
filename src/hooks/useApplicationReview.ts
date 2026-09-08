@@ -276,6 +276,7 @@ export function useApplicationReview(jobId: string) {
               },
               organizationName: jobData?.tenant?.name,
               departmentName: jobData?.organization?.name,
+              clientName: jobData?.organization?.name,
             })
 
             emailData = {

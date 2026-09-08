@@ -46,7 +46,8 @@ export function PlaceholderHelper({ templateId, onInsert, offerFormFields, showF
   ]
 
   const organizationPlaceholders = [
-    { key: '{{organization.name}}', description: 'Company / Workspace name' },
+    { key: '{{client.name}}', description: 'Client company the job is for (from the CRM)' },
+    { key: '{{organization.name}}', description: 'Your workspace name' },
     { key: '{{department.name}}', description: 'Department / Job folder name' },
     { key: '{{organization.default_currency}}', description: 'Default currency' }
   ]
