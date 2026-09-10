@@ -51,7 +51,7 @@ export function AutomationEmailComposer({
   const subjectRef = useRef<SubjectTemplateEditorHandle>(null);
   const bodyRef = useRef<BodyTemplateEditorHandle>(null);
   const lastFocused = useRef<'subject' | 'body'>('body');
-  const [varOpen, setVarOpen] = useState(false);
+  const [varOpen, setVarOpen] = useState<null | 'subject' | 'body'>(null);
   const [varQuery, setVarQuery] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -73,9 +73,10 @@ export function AutomationEmailComposer({
   }, [filteredVars]);
 
   const insertVariable = (key: string) => {
-    if (lastFocused.current === 'subject') subjectRef.current?.insertPlaceholder(key);
+    const target = varOpen || lastFocused.current;
+    if (target === 'subject') subjectRef.current?.insertPlaceholder(key);
     else bodyRef.current?.insertPlaceholder(key);
-    setVarOpen(false);
+    setVarOpen(null);
     setVarQuery('');
   };
 
@@ -138,6 +139,39 @@ export function AutomationEmailComposer({
     'scheduling.link': 'https://app.gogio.io/book/…',
   };
 
+  const variablePopover = (target: 'subject' | 'body', trigger: React.ReactNode) => (
+    <Popover modal open={varOpen === target} onOpenChange={(o) => { setVarOpen(o ? target : null); if (!o) setVarQuery(''); }}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent align="start" sideOffset={6} className={cn(menuPanel, 'w-[280px] p-0 z-[1300]')}>
+        <div className="flex items-center gap-2 px-3 h-9" style={{ borderBottom: '1px solid #F1F0EC' }}>
+          <Search className="h-3.5 w-3.5" style={{ color: '#8B8F9E' }} />
+          <input
+            autoFocus
+            value={varQuery}
+            onChange={(e) => setVarQuery(e.target.value)}
+            placeholder="Search variables"
+            className="flex-1 bg-transparent outline-none font-inter"
+            style={{ fontSize: 12.5 }}
+          />
+        </div>
+        <div className="p-1 max-h-[280px] overflow-y-auto overscroll-contain" onWheel={(e) => e.stopPropagation()}>
+          {groups.length === 0 && <div className="px-3 py-2 font-inter" style={{ fontSize: 12.5, color: '#8B8F9E' }}>No matches</div>}
+          {groups.map(([group, vars]) => (
+            <div key={group}>
+              <div className={menuGroupLabel}>{group}</div>
+              {vars.map((v) => (
+                <button key={v.key} type="button" className={cn(menuItem, 'w-full justify-between')} onClick={() => insertVariable(v.key)}>
+                  <span>{v.label}</span>
+                  <span className="font-mono" style={{ fontSize: 10.5, color: '#8B8F9E' }}>{`{{${v.key}}}`}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   const ToolBtn = ({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) => (
     <button
       type="button"
@@ -199,7 +233,14 @@ export function AutomationEmailComposer({
 
       {/* Subject */}
       <div className="px-4 pt-3">
-        <div style={LABEL} className="font-inter mb-1">Subject</div>
+        <div className="flex items-center justify-between mb-1">
+          <div style={LABEL} className="font-inter">Subject</div>
+          {variablePopover('subject', (
+            <button type="button" onMouseDown={(e) => e.preventDefault()} className="h-6 px-1.5 rounded-md inline-flex items-center gap-1 font-inter hover:bg-[#F1F0EC]" style={{ fontSize: 11.5, color: '#6F3FF5' }}>
+              <Braces className="h-3 w-3" /> Variable
+            </button>
+          ))}
+        </div>
         <SubjectTemplateEditor
           ref={subjectRef}
           value={step.subject}
@@ -235,40 +276,11 @@ export function AutomationEmailComposer({
           </PopoverContent>
         </Popover>
         <span className="mx-1 h-4 w-px" style={{ background: '#E8E6E0' }} />
-        <Popover open={varOpen} onOpenChange={(o) => { setVarOpen(o); if (!o) setVarQuery(''); }}>
-          <PopoverTrigger asChild>
-            <button type="button" onMouseDown={(e) => e.preventDefault()} className="h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]" style={{ fontSize: 12, color: '#6F3FF5' }}>
-              <Braces className="h-3.5 w-3.5" /> Insert variable
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" sideOffset={6} className={cn(menuPanel, 'w-[280px] p-0 z-[1300]')}>
-            <div className="flex items-center gap-2 px-3 h-9" style={{ borderBottom: '1px solid #F1F0EC' }}>
-              <Search className="h-3.5 w-3.5" style={{ color: '#8B8F9E' }} />
-              <input
-                autoFocus
-                value={varQuery}
-                onChange={(e) => setVarQuery(e.target.value)}
-                placeholder="Search variables"
-                className="flex-1 bg-transparent outline-none font-inter"
-                style={{ fontSize: 12.5 }}
-              />
-            </div>
-            <div className="p-1 max-h-[280px] overflow-y-auto">
-              {groups.length === 0 && <div className="px-3 py-2 font-inter" style={{ fontSize: 12.5, color: '#8B8F9E' }}>No matches</div>}
-              {groups.map(([group, vars]) => (
-                <div key={group}>
-                  <div className={menuGroupLabel}>{group}</div>
-                  {vars.map((v) => (
-                    <button key={v.key} type="button" className={cn(menuItem, 'w-full justify-between')} onClick={() => insertVariable(v.key)}>
-                      <span>{v.label}</span>
-                      <span className="font-mono" style={{ fontSize: 10.5, color: '#8B8F9E' }}>{`{{${v.key}}}`}</span>
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+        {variablePopover('body', (
+          <button type="button" onMouseDown={(e) => e.preventDefault()} className="h-7 px-2 rounded-md inline-flex items-center gap-1.5 font-inter hover:bg-[#F1F0EC]" style={{ fontSize: 12, color: '#6F3FF5' }}>
+            <Braces className="h-3.5 w-3.5" /> Insert variable
+          </button>
+        ))}
         <div className="flex-1" />
         <button
           type="button"
