@@ -119,6 +119,8 @@ Deno.serve(async (req) => {
   const auth = req.headers.get('Authorization') || '';
   const authorized = (!!expectedSecret && gotSecret === expectedSecret) || auth.includes(supabaseServiceKey);
   if (!authorized) {
+    // Never log the secret itself — just enough to see that a caller was rejected.
+    console.warn(`[auth-gate] Unauthorized call. secretConfigured=${!!expectedSecret} secretHeaderPresent=${!!gotSecret} bearerPresent=${!!auth}`);
     return new Response(JSON.stringify({ error: 'not_found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
   }
 
