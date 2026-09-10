@@ -92,7 +92,7 @@ export function AutomationsTab({ jhsId, jobId, stageName = 'This stage' }: Autom
           </p>
         </div>
         {automations.length > 0 && (
-          <Button onClick={() => openCreate()} size="sm" icon={<Plus className="h-3.5 w-3.5" />}>New automation</Button>
+          <Button onClick={() => openCreate()} size="sm" icon={Plus}>New automation</Button>
         )}
       </div>
 

@@ -315,7 +315,7 @@ export function AutomationBuilderSheet({ open, onOpenChange, jobId, jhsId, stage
                       </div>
                     ))}
                     {action === 'sequence' && emails.length < 5 && (
-                      <Button variant="secondary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => patch({ emails: [...emails, { ...emptyEmailStep(), delay_days: 3 }] })}>
+                      <Button variant="secondary" size="sm" icon={Plus} onClick={() => patch({ emails: [...emails, { ...emptyEmailStep(), delay_days: 3 }] })}>
                         Add another email
                       </Button>
                     )}
@@ -526,7 +526,7 @@ export function AutomationBuilderSheet({ open, onOpenChange, jobId, jhsId, stage
               )}
             </div>
             <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleSave} loading={isSaving} icon={<Check className="h-4 w-4" />}>
+            <Button onClick={handleSave} loading={isSaving} icon={Check}>
               {automation ? 'Save changes' : 'Create automation'}
             </Button>
           </div>

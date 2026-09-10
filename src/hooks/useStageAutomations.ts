@@ -312,7 +312,7 @@ export function useAutomationRuns(automationId: string | null) {
       const ids = Array.from(new Set(runs.map((r) => r.candidate_id)));
       if (ids.length) {
         const { data: cands } = await db.from('candidates').select('id, candidate_name').in('id', ids);
-        const names = new Map((cands || []).map((c: any) => [c.id, c.candidate_name]));
+        const names = new Map<string, string>((cands || []).map((c: any) => [c.id as string, c.candidate_name as string]));
         for (const r of runs) r.candidate_name = names.get(r.candidate_id) || null;
       }
       return runs;
