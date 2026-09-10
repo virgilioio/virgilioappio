@@ -1101,6 +1101,8 @@ const handler = async (req: Request): Promise<Response> => {
         p_description: activityDescription,
         p_metadata: {
           email_log_id: logData?.id,
+          ...(processedRequest.job_id ? { job_id: processedRequest.job_id } : {}),
+          ...(processedRequest.association_id ? { association_id: processedRequest.association_id } : {}),
           message_id: gmailData.id,
           thread_id: gmailData.threadId,
           subject: processedRequest.subject,
