@@ -171,13 +171,17 @@ export function JobHero({
       </div>
 
       {/* Actions */}
-      {canEdit && (
-        <div className="flex items-center gap-2 shrink-0">
-          {onShare && (
-            <Button variant="secondary" size="md" icon={Share2} onClick={onShare}>
-              Share
-            </Button>
-          )}
+      <div className="flex items-center gap-2 shrink-0">
+        {jobId && (
+          <JobShareMenu
+            jobId={jobId}
+            canManageTeam={canManageTeam}
+            onManage={onManageAccess}
+          />
+        )}
+        {canEdit && (
+          <>
+
           {hasPosting && onViewPosting && (
             <Button
               variant="secondary"
