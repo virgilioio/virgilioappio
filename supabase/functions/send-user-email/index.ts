@@ -906,8 +906,41 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Extra context: stage name, next interview, salary range (best effort)
+    let stageName: string | null = null;
+    let interviewDatetime: string | null = null;
+    let salaryRange: string | null = null;
+    try {
+      if (request.jhs_id) {
+        const { data: jhs } = await supabase.from('job_hiring_stages')
+          .select('custom_stage_name, job_stages(stage_name)').eq('id', request.jhs_id).maybeSingle();
+        stageName = (jhs as any)?.custom_stage_name || (jhs as any)?.job_stages?.stage_name || null;
+      }
+      if (request.association_id) {
+        const { data: booking } = await supabase.from('scheduled_bookings')
+          .select('scheduled_start, candidate_timezone').eq('job_candidate_association_id', request.association_id)
+          .neq('status', 'cancelled').gte('scheduled_start', new Date().toISOString())
+          .order('scheduled_start', { ascending: true }).limit(1).maybeSingle();
+        if (booking?.scheduled_start) {
+          interviewDatetime = new Intl.DateTimeFormat('en-US', {
+            timeZone: booking.candidate_timezone || 'UTC', weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+          }).format(new Date(booking.scheduled_start));
+        }
+      }
+      if (request.job_id) {
+        const { data: j } = await supabase.from('jobs').select('salary_min, salary_max, currency').eq('id', request.job_id).maybeSingle();
+        if (j?.salary_min || j?.salary_max) {
+          const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: j.currency || 'USD', maximumFractionDigits: 0 }).format(n);
+          salaryRange = j.salary_min && j.salary_max ? `${fmt(j.salary_min)} – ${fmt(j.salary_max)}` : fmt(j.salary_min || j.salary_max);
+        }
+      }
+    } catch (ctxErr) {
+      console.warn('Extra placeholder context failed:', ctxErr);
+    }
+    const placeholderCtx = { clientName, organizationName: workspaceName, stageName, interviewDatetime, salaryRange };
+
     // Replace placeholders in subject and body
-    const processedSubject = await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, { clientName, organizationName: workspaceName });
+    const processedSubject = await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, placeholderCtx);
     const processedBodyText = request.body_text 
       ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, { clientName, organizationName: workspaceName })
       : undefined;
