@@ -196,6 +196,24 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     return () => root.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Deep link support: /jobs/:id/setup#hiring-team lands on the section.
+  const [highlightSection, setHighlightSection] = useState<SectionId | null>(null)
+  useEffect(() => {
+    const hash = (typeof window !== 'undefined' ? window.location.hash : '').replace('#', '')
+    if (!hash) return
+    const valid: SectionId[] = ['hiring-plan', 'hiring-team', 'offer-approval']
+    if (!valid.includes(hash as SectionId)) return
+    const t = setTimeout(() => {
+      scrollTo(hash as SectionId)
+      setHighlightSection(hash as SectionId)
+    }, 120)
+    const clear = setTimeout(() => setHighlightSection(null), 2200)
+    return () => {
+      clearTimeout(t)
+      clearTimeout(clear)
+    }
+  }, [])
+
   const scrollTo = (id: SectionId) => {
     const root = scrollRef.current
     if (!root) return
@@ -502,7 +520,16 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             </div>
 
             {/* Hiring team */}
-            <div data-section="hiring-team">
+            <div
+              data-section="hiring-team"
+              className="transition-colors duration-700"
+              style={{
+                background: highlightSection === 'hiring-team' ? '#EFE9FE' : 'transparent',
+                borderRadius: 16,
+                padding: highlightSection === 'hiring-team' ? 12 : 0,
+                margin: highlightSection === 'hiring-team' ? -12 : 0,
+              }}
+            >
               <section className="space-y-5">
                 {/* Section heading */}
                 <div className="flex items-end justify-between gap-3">
