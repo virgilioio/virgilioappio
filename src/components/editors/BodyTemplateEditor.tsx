@@ -285,13 +285,40 @@ export const BodyTemplateEditor = forwardRef<BodyTemplateEditorHandle, BodyTempl
       },
       focus: () => {
         editorRef.current?.focus();
-      }
+      },
+      exec: (command: BodyEditorCommand, arg?: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.focus();
+        switch (command) {
+          case 'bold':
+          case 'italic':
+          case 'underline':
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, command);
+            break;
+          case 'ul':
+            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+            break;
+          case 'ol':
+            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+            break;
+          case 'quote':
+            editor.update(() => {
+              const selection = $getSelection();
+              if ($isRangeSelection(selection)) $setBlocksType(selection, () => $createQuoteNode());
+            });
+            break;
+          case 'link':
+            editor.dispatchCommand(TOGGLE_LINK_COMMAND, arg ? arg : null);
+            break;
+        }
+      },
     }));
 
     const initialConfig = {
       namespace: 'BodyTemplateEditor',
       theme: lexicalTheme,
-      nodes: [PlaceholderNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HeadingNode],
+      nodes: [PlaceholderNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HeadingNode, QuoteNode],
       onError: (error: Error) => {
         console.error('Lexical error:', error);
       },
