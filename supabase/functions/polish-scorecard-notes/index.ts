@@ -3,6 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 function stripHtml(html: string): string {
   if (!html) return '';
   return html

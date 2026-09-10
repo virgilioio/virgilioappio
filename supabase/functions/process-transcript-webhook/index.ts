@@ -4,6 +4,7 @@ import { Webhook } from "npm:svix@1.24.0";
 import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',

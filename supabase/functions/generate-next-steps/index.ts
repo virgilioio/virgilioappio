@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {

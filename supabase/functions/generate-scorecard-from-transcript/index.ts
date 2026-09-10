@@ -4,6 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Resend } from "npm:resend@2.0.0";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

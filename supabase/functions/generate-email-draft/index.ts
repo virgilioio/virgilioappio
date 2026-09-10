@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.20.1";
+import { AI_MODELS } from '../_shared/aiModels.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
