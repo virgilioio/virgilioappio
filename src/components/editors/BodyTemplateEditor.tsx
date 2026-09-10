@@ -19,8 +19,9 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ListNode, ListItemNode } from '@lexical/list';
-import { LinkNode, AutoLinkNode } from '@lexical/link';
-import { HeadingNode } from '@lexical/rich-text';
+import { LinkNode, AutoLinkNode, TOGGLE_LINK_COMMAND } from '@lexical/link';
+import { HeadingNode, QuoteNode, $createQuoteNode } from '@lexical/rich-text';
+import { $setBlocksType } from '@lexical/selection';
 import { 
   $getRoot, 
   $createParagraphNode, 
@@ -60,10 +61,14 @@ export interface BodyTemplateEditorProps {
   hideToolbar?: boolean;
 }
 
+export type BodyEditorCommand = 'bold' | 'italic' | 'underline' | 'ul' | 'ol' | 'quote' | 'link';
+
 export interface BodyTemplateEditorHandle {
   insertPlaceholder: (placeholder: string) => void;
   insertHtml: (html: string) => void;
   focus: () => void;
+  /** Drive formatting from an external toolbar. `link` takes a URL (empty string removes the link). */
+  exec: (command: BodyEditorCommand, arg?: string) => void;
 }
 
 // Toolbar component
