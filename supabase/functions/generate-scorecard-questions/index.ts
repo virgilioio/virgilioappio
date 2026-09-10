@@ -130,7 +130,7 @@ Generate 5-8 tailored interview questions with interviewer notes.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: AI_MODELS.reasoning,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -177,7 +177,8 @@ Generate 5-8 tailored interview questions with interviewer notes.`;
           },
         ],
         tool_choice: { type: "function", function: { name: "suggest_interview_questions" } },
-        temperature: 0.7,
+        reasoning_effort: "low",
+        max_completion_tokens: 4000,
       }),
     }, 'generate-scorecard-questions');
 

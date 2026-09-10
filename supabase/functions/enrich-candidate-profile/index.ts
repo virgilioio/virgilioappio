@@ -261,15 +261,15 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: AI_MODELS.reasoning,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
         ],
         tools: [EXTRACTION_TOOL],
         tool_choice: { type: 'function', function: { name: 'extract_candidate_profile' } },
-        temperature: 0.2,
-        max_tokens: 4000,
+        reasoning_effort: 'low',
+        max_completion_tokens: 8000,
       }),
     }, 'enrich-candidate-profile');
 

@@ -101,7 +101,7 @@ async function ocrPdfWithVision(pdfBytes: Uint8Array, openaiApiKey: string): Pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: AI_MODELS.vision,
         messages: [{
           role: 'user',
           content: [

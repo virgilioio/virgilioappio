@@ -331,14 +331,14 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: AI_MODELS.reasoning,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}` },
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
-        temperature: 0.2,
+        reasoning_effort: "medium",
       }),
     }, 'analyze-candidate-fit');
 

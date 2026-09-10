@@ -724,14 +724,14 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: AI_MODELS.reasoning,
             messages: [
               { role: "system", content: SCORING_PROMPT },
               { role: "user", content: userPrompt },
             ],
             tools: [TOOL_SCHEMA],
             tool_choice: { type: "function", function: { name: "submit_scores" } },
-            temperature: 0.2,
+            reasoning_effort: "medium",
           }),
         }, 'get-suggested-candidates');
 

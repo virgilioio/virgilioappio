@@ -221,14 +221,14 @@ Respond with a JSON object containing "subject" and "body" fields. The body shou
     const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: AI_MODELS.reasoning,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7,
-      max_tokens: 1000,
+      reasoning_effort: "low",
+      max_completion_tokens: 4000,
     });
 
     const content = completion.choices[0]?.message?.content;

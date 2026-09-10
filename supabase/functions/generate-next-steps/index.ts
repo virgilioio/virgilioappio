@@ -105,12 +105,14 @@ Respond in JSON format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: AI_MODELS.reasoning,
         messages: [
           { role: 'system', content: 'You are a helpful recruiting assistant that provides actionable next-step recommendations based on interview feedback. Always respond in valid JSON format.' },
           { role: 'user', content: prompt }
         ],
         response_format: { type: "json_object" },
+        reasoning_effort: 'low',
+        max_completion_tokens: 4000,
       }),
     }, 'generate-next-steps');
 

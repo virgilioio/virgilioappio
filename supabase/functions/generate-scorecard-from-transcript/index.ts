@@ -259,12 +259,13 @@ ${questionsContext}`;
     // Build request body — use tool calling when questions exist, plain text as fallback
     const hasQuestions = scorecardQuestions.length > 0;
     const requestBody: any = {
-      model: 'gpt-4.1-mini',
+      model: AI_MODELS.reasoning,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      max_completion_tokens: 3000,
+      max_completion_tokens: 8000,
+      reasoning_effort: 'medium',
     };
 
     if (hasQuestions) {
