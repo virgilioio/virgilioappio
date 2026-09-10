@@ -19,8 +19,9 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ListNode, ListItemNode } from '@lexical/list';
-import { LinkNode, AutoLinkNode } from '@lexical/link';
-import { HeadingNode } from '@lexical/rich-text';
+import { LinkNode, AutoLinkNode, TOGGLE_LINK_COMMAND } from '@lexical/link';
+import { HeadingNode, QuoteNode, $createQuoteNode } from '@lexical/rich-text';
+import { $setBlocksType } from '@lexical/selection';
 import { 
   $getRoot, 
   $createParagraphNode, 
@@ -60,10 +61,14 @@ export interface BodyTemplateEditorProps {
   hideToolbar?: boolean;
 }
 
+export type BodyEditorCommand = 'bold' | 'italic' | 'underline' | 'ul' | 'ol' | 'quote' | 'link';
+
 export interface BodyTemplateEditorHandle {
   insertPlaceholder: (placeholder: string) => void;
   insertHtml: (html: string) => void;
   focus: () => void;
+  /** Drive formatting from an external toolbar. `link` takes a URL (empty string removes the link). */
+  exec: (command: BodyEditorCommand, arg?: string) => void;
 }
 
 // Toolbar component
@@ -280,13 +285,40 @@ export const BodyTemplateEditor = forwardRef<BodyTemplateEditorHandle, BodyTempl
       },
       focus: () => {
         editorRef.current?.focus();
-      }
+      },
+      exec: (command: BodyEditorCommand, arg?: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.focus();
+        switch (command) {
+          case 'bold':
+          case 'italic':
+          case 'underline':
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, command);
+            break;
+          case 'ul':
+            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+            break;
+          case 'ol':
+            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+            break;
+          case 'quote':
+            editor.update(() => {
+              const selection = $getSelection();
+              if ($isRangeSelection(selection)) $setBlocksType(selection, () => $createQuoteNode());
+            });
+            break;
+          case 'link':
+            editor.dispatchCommand(TOGGLE_LINK_COMMAND, arg ? arg : null);
+            break;
+        }
+      },
     }));
 
     const initialConfig = {
       namespace: 'BodyTemplateEditor',
       theme: lexicalTheme,
-      nodes: [PlaceholderNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HeadingNode],
+      nodes: [PlaceholderNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HeadingNode, QuoteNode],
       onError: (error: Error) => {
         console.error('Lexical error:', error);
       },

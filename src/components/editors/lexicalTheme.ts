@@ -28,6 +28,7 @@ export const lexicalTheme: EditorThemeClasses = {
     },
   },
   link: 'lexical-link',
+  quote: 'lexical-quote',
   placeholder: 'lexical-placeholder-node',
 };
 
@@ -41,6 +42,12 @@ export const LEXICAL_EDITOR_STYLES = `
     outline: none;
     min-height: inherit;
     overflow-wrap: break-word;
+  }
+  .lexical-quote {
+    margin: 4px 0;
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid #E0DDD3;
+    color: #5A6072;
   }
   
   .lexical-paragraph {
