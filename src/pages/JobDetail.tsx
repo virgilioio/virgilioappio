@@ -88,7 +88,7 @@ export default function JobDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, userType } = useAuth()
   const permissions = usePermissions()
-  const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(id)
+  const { isHiringManagerOnJob, isInterviewerOnJob, isRecruiterOnJob } = useJobRole(id)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
   
@@ -1096,7 +1096,14 @@ export default function JobDetail() {
                   location={job.location}
                   createdAt={job.created_at}
                   hiringTeam={(job.hiring_team as any[]) || []}
-                  onShare={() => {}}
+                  jobId={id!}
+                  canManageTeam={
+                    permissions.canManageJobAssignments || isRecruiterOnJob
+                  }
+                  onManageAccess={() => {
+                    setActiveTab('job-setup')
+                    navigate(`/jobs/${id}/setup#hiring-team`)
+                  }}
                   onViewPosting={() => {
                     openActivePosting()
                   }}
