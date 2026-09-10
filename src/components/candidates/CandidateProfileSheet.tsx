@@ -73,7 +73,7 @@ import { EmailHistoryList } from './EmailHistoryList'
 import { EmailsTabContent, EmailsSidebarContainer } from '@/components/candidates/profile/tabs/EmailsTabContent'
 import { EmailHistoryCardEmail } from './EmailHistoryCard'
 import { formatQuotedReply, formatForwardedMessage, getReplySubject, getForwardSubject } from '@/utils/emailFormatUtils'
-import { activityMeta, ACTIVITY_CATEGORIES, type ActivityCategory } from '@/lib/activityRegistry'
+import { activityMeta, ACTIVITY_CATEGORIES, isAutomated, type ActivityCategory } from '@/lib/activityRegistry'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { formatDistanceToNow } from 'date-fns'
 import { ActivityFeedList } from './ActivityFeedList'
@@ -267,6 +267,8 @@ const daysInStage = useMemo(() => {
   return Math.floor(ms / 86_400_000)
 }, [enteredStageAt])
 const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>({})
+// "Open in Emails" from an activity email card.
+const [focusEmailId, setFocusEmailId] = useState<string | null>(null)
 // Activity feed — one source for the feed, the card subtitle, the sidebar and the tab badge.
 const { data: activityEvents = [], refetch: refetchActivity, isFetching: activityFetching } =
   useActivityFeed(candidateId || undefined, jobId)
@@ -280,9 +282,17 @@ const activityDerived = useMemo(() => {
   const categoryRows = ACTIVITY_CATEGORIES
     .map((c) => ({ id: c.id as string, label: c.label, count: byCategory.get(c.id) || 0 }))
     .filter((c) => c.count > 0)
-  const sentCount = events.filter((e) => e.activity_type === 'candidate_email_sent').length
+  // Emails a person wrote, kept apart from what the machine sent.
+  const sentCount = events.filter(
+    (e) => e.activity_type === 'candidate_email_sent' && !isAutomated(e)
+  ).length
+  const automatedCount = events.filter((e) => isAutomated(e)).length
   const lastContact = events
-    .filter((e) => e.activity_type === 'candidate_email_sent' || e.activity_type === 'candidate_email_received')
+    .filter((e) =>
+      e.activity_type === 'candidate_email_sent' ||
+      e.activity_type === 'candidate_email_received' ||
+      e.activity_type === 'candidate_email_automated'
+    )
     .map((e) => e.created_at)
     .sort()
     .pop() || null
@@ -290,7 +300,7 @@ const activityDerived = useMemo(() => {
     .map((e) => e.created_at)
     .sort()
     .pop() || null
-  return { events, categoryRows, sentCount, lastContact, lastUpdate }
+  return { events, categoryRows, sentCount, automatedCount, lastContact, lastUpdate }
 }, [activityEvents])
 const visibleActivityCategories = useMemo(
   () =>
@@ -1892,6 +1902,10 @@ const stageHasAutomation = useMemo(() => {
                                   candidateId={candidate.id}
                                   jobId={jobId}
                                   visibleCategories={visibleActivityCategories}
+                                  onOpenInEmails={(id) => {
+                                    setFocusEmailId(id)
+                                    setActiveTab('emails')
+                                  }}
                                 />
                               </div>
                             </ScrollArea>
@@ -1922,6 +1936,7 @@ const stageHasAutomation = useMemo(() => {
                       <EmailsTabContent
                         candidateId={candidate.id}
                         jobId={jobId}
+                        focusEmailId={focusEmailId}
                         onCompose={() => {
                           resetEmailComposer()
                           setEmailComposerOpen(true)
@@ -2185,7 +2200,7 @@ const stageHasAutomation = useMemo(() => {
                                 categoryRows={activityDerived.categoryRows}
                                 filters={activityFilters}
                                 onFilterChange={setActivityFilters}
-                                stats={{ activeDays: daysInStage, eventsLogged: activityDerived.events.length, touchesFromUs: activityDerived.sentCount, lastContact: activityDerived.lastContact }}
+                                stats={{ activeDays: daysInStage, eventsLogged: activityDerived.events.length, touchesFromUs: activityDerived.sentCount, automatedEvents: activityDerived.automatedCount, lastContact: activityDerived.lastContact }}
 
                               />
                             )

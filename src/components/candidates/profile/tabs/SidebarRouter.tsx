@@ -384,6 +384,7 @@ export interface ActivitySidebarProps {
     activeDays?: number | null
     eventsLogged?: number | null
     touchesFromUs?: number | null
+    automatedEvents?: number | null
     lastContact?: string | null
   }
 }
@@ -428,7 +429,8 @@ export function ActivitySidebar(p: ActivitySidebarProps) {
         <SidebarBlock label="Stats">
           <MetaRow label="Active" value={p.stats.activeDays != null ? `${p.stats.activeDays}d` : null} />
           <MetaRow label="Events" value={p.stats.eventsLogged != null ? `${p.stats.eventsLogged} logged` : null} />
-          <MetaRow label="Touches" value={p.stats.touchesFromUs != null ? `${p.stats.touchesFromUs} from us` : null} />
+          <MetaRow label="Emails sent" value={p.stats.touchesFromUs != null ? `${p.stats.touchesFromUs} by hand` : null} />
+          <MetaRow label="Automated" value={p.stats.automatedEvents != null ? `${p.stats.automatedEvents} events` : null} />
           <MetaRow label="Last contact" value={fmtDate(p.stats.lastContact)} />
         </SidebarBlock>
       )}
