@@ -942,10 +942,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Replace placeholders in subject and body
     const processedSubject = await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, placeholderCtx);
     const processedBodyText = request.body_text 
-      ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, { clientName, organizationName: workspaceName })
+      ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, placeholderCtx)
       : undefined;
     const processedBodyHtml = request.body_html
-      ? textToHtml(await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, { clientName, organizationName: workspaceName }))
+      ? textToHtml(await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl, stageBookingUrl, placeholderCtx))
       : undefined;
     
     // Detect if a booking link placeholder was used in the original content
