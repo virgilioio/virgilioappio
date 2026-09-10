@@ -64,6 +64,37 @@ export function useStageAutomations(jhsId: string | null) {
     enabled: !!jhsId
   });
   
+  // Bridge to the new engine: mirror legacy email rows into the `config` payload
+  // the automation worker executes (name/action/trigger/timing/config).
+  const toEngineShape = (
+    automation_type: 'single_email' | 'email_sequence',
+    trigger_event: 'on_stage_enter' | 'on_stage_exit',
+    emails: Omit<AutomationEmail, 'id' | 'template_name'>[],
+  ) => {
+    const first = emails[0];
+    const days = (v: number | null, u: string | null) => (v ? (u === 'weeks' ? v * 7 : v) : 0);
+    const firstDelay = days(first?.delay_value ?? null, first?.delay_unit ?? null);
+    return {
+      name: automation_type === 'email_sequence' ? 'Email sequence' : 'Stage email',
+      action: automation_type === 'email_sequence' ? 'sequence' : 'email',
+      trigger: trigger_event === 'on_stage_exit' ? 'exit' : 'enter',
+      timing: firstDelay > 0 ? 'delay' : 'immediate',
+      delay_amount: firstDelay > 0 ? firstDelay : null,
+      delay_unit: firstDelay > 0 ? 'days' : null,
+      config: {
+        from: first?.from_email || '',
+        cc: [], bcc: [],
+        template_id: first?.email_template_id || null,
+        emails: emails.map((e, i) => ({
+          subject: e.subject,
+          body_html: e.body,
+          attachments: [],
+          delay_days: i === 0 ? 0 : days(e.delay_value, e.delay_unit),
+        })),
+      },
+    } as any;
+  };
+
   const createAutomation = useMutation({
     mutationFn: async (data: {
       job_hiring_stage_id: string;
@@ -77,7 +108,8 @@ export function useStageAutomations(jhsId: string | null) {
           job_hiring_stage_id: data.job_hiring_stage_id,
           automation_type: data.automation_type,
           trigger_event: data.trigger_event,
-          is_active: true
+          is_active: true,
+          ...toEngineShape(data.automation_type, data.trigger_event, data.emails),
         })
         .select()
         .single();
