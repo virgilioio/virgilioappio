@@ -742,14 +742,19 @@ Deno.serve(async (req) => {
       { role: 'user' as const, content: question },
     ];
 
-    const gwRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const gwRes = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Lovable-API-Key': LOVABLE_API_KEY,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({ model: MODEL, messages }),
-    });
+      body: JSON.stringify({
+        model: MODEL,
+        messages,
+        reasoning_effort: 'low',
+        max_completion_tokens: 4000,
+      }),
+    }, 'job-ask-gio');
 
     if (!gwRes.ok) {
       const text = await gwRes.text().catch(() => '');

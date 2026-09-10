@@ -22,9 +22,11 @@ import {
   type Finding,
   type HealthStatus,
 } from '../_shared/jobBriefing/index.ts';
+import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 
-const BRIEFING_MODEL = Deno.env.get('BRIEFING_MODEL') ?? 'google/gemini-2.5-flash';
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const BRIEFING_MODEL = Deno.env.get('BRIEFING_MODEL') ?? AI_MODELS.reasoning;
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
 type Briefing = {
   paragraph: string;
