@@ -441,7 +441,7 @@ async function replacePlaceholders(
   user: any,
   bookingUrl: string | null,
   stageBookingUrl?: string | null,
-  context?: { clientName?: string | null; organizationName?: string | null }
+  context?: { clientName?: string | null; organizationName?: string | null; stageName?: string | null; interviewDatetime?: string | null; salaryRange?: string | null }
 ): Promise<string> {
   // Step 1: Collapse any accidental double braces from legacy content
   let result = collapseDoubleBraces(text);
@@ -456,6 +456,7 @@ async function replacePlaceholders(
   
   if (candidate) {
     data['candidate.name'] = candidate.candidate_name || '';
+    data['candidate.full_name'] = candidate.candidate_name || '';
     data['candidate.first_name'] = candidate.candidate_name?.split(' ')[0] || '';
     data['candidate.email'] = candidate.email || '';
     data['candidate.phone'] = candidate.phone || '';
@@ -469,11 +470,14 @@ async function replacePlaceholders(
     data['job.department'] = job.department || '';
     data['job.location'] = job.location || '';
     data['department.name'] = job.department || '';
+    data['job.salary_range'] = context?.salaryRange || '';
   }
 
   // Client = the CRM company the job is for; organization = the workspace/tenant
   data['client.name'] = context?.clientName || '';
   data['organization.name'] = context?.organizationName || '';
+  data['stage.name'] = context?.stageName || '';
+  data['interview.datetime'] = context?.interviewDatetime || '';
   
   if (user) {
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
@@ -484,6 +488,8 @@ async function replacePlaceholders(
     data['sender.title'] = user.title || '';
     data['sender.phone'] = user.phone || '';
     data['sender.linkedin'] = user.linkedin_url || '';
+    data['recruiter.first_name'] = user.first_name || '';
+    data['recruiter.name'] = fullName || user.email || '';
   }
   
   if (bookingUrl) {
@@ -497,6 +503,7 @@ async function replacePlaceholders(
     // Fallback to sender's booking link if no stage-specific one
     data['stage.booking_link'] = bookingUrl;
   }
+  data['scheduling.link'] = data['stage.booking_link'] || data['sender.booking_link'] || '';
   
   // Step 4: Replace all placeholder tokens using whitespace-tolerant regex
   // This matches {{ key }}, {{key}}, {{ key}}, etc.
