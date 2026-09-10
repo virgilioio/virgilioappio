@@ -161,6 +161,7 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
                   jhsId={jhsId}
                   jobId={jobId}
                   organizationId={job.organization_id}
+                  stageName={config.customStageName || config.stageName}
                 />
               )}
               {activeTab === 'scorecards' && job && jhsId && (
