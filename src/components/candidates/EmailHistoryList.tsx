@@ -43,6 +43,8 @@ interface EmailHistoryListProps {
   onCompose?: () => void
   onReply?: (email: EmailHistoryCardEmail) => void
   onForward?: (email: EmailHistoryCardEmail) => void
+  /** Message to open and scroll to, e.g. when arriving from the Activity feed. */
+  focusEmailId?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -504,8 +506,20 @@ export function EmailHistoryList({
   onCompose,
   onReply,
   onForward,
+  focusEmailId,
 }: EmailHistoryListProps) {
   const { data: emails, isLoading, refetch, isFetching, dataUpdatedAt } = useEmailLogs(candidateId, jobId)
+
+  // Arriving from the Activity feed: bring the requested message into view.
+  useEffect(() => {
+    if (!focusEmailId) return
+    const t = window.setTimeout(() => {
+      document
+        .querySelector(`[data-email-log-id="${focusEmailId}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [focusEmailId, emails])
 
   const list = emails ?? []
   const newCount = list.filter(
@@ -658,14 +672,15 @@ export function EmailHistoryList({
                 </div>
                 <div className="flex flex-col" style={{ gap: 8 }}>
                   {b.emails.map((e) => (
-                    <EmailRow
-                      key={e.id}
-                      email={e as any}
-                      candidateFirstName={candidateFirstName}
-                      defaultOpen={e.id === firstUnreadId}
-                      onReply={onReply}
-                      onForward={onForward}
-                    />
+                    <div key={e.id} data-email-log-id={e.id}>
+                      <EmailRow
+                        email={e as any}
+                        candidateFirstName={candidateFirstName}
+                        defaultOpen={e.id === firstUnreadId || e.id === focusEmailId}
+                        onReply={onReply}
+                        onForward={onForward}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

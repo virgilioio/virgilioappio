@@ -8969,6 +8969,11 @@ export type Database = {
         | "candidate_applied"
         | "interview_cancelled"
         | "interview_rescheduled"
+        | "candidate_email_automated"
+        | "automation_triggered"
+        | "automation_skipped"
+        | "sequence_enrolled"
+        | "sequence_completed"
       application_field_source: "library" | "custom"
       automation_type: "single_email" | "email_sequence"
       candidate_list_access: "view" | "comment" | "comment_score"
@@ -9307,6 +9312,11 @@ export const Constants = {
         "candidate_applied",
         "interview_cancelled",
         "interview_rescheduled",
+        "candidate_email_automated",
+        "automation_triggered",
+        "automation_skipped",
+        "sequence_enrolled",
+        "sequence_completed",
       ],
       application_field_source: ["library", "custom"],
       automation_type: ["single_email", "email_sequence"],

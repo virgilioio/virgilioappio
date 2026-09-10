@@ -11,9 +11,11 @@ interface ActivityFeedListProps {
   jobId?: string;
   /** Category ids to show. Undefined = show everything. */
   visibleCategories?: ActivityCategory[];
+  /** Jump to the Emails tab and scroll a message into view. */
+  onOpenInEmails?: (emailLogId: string) => void;
 }
 
-export function ActivityFeedList({ candidateId, jobId, visibleCategories }: ActivityFeedListProps) {
+export function ActivityFeedList({ candidateId, jobId, visibleCategories, onOpenInEmails }: ActivityFeedListProps) {
   const { data: activities, isLoading, error } = useActivityFeed(candidateId, jobId);
 
   const visible = useMemo(() => {
@@ -66,6 +68,7 @@ export function ActivityFeedList({ candidateId, jobId, visibleCategories }: Acti
           key={activity.id}
           activity={activity}
           isLast={index === visible.length - 1}
+          onOpenInEmails={onOpenInEmails}
         />
       ))}
     </div>

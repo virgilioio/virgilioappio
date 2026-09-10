@@ -1049,10 +1049,14 @@ const handler = async (req: Request): Promise<Response> => {
       const activityTitle = `Email sent: ${processedRequest.subject}`;
       const activityDescription = `Email sent to ${processedRequest.to.join(', ')}${processedRequest.cc?.length ? ` (CC: ${processedRequest.cc.join(', ')})` : ''}`;
       
+      const automationCtx = (body as any)?.automation && typeof (body as any).automation === 'object'
+        ? (body as any).automation
+        : null;
+
       const { error: activityError } = await supabase.rpc('log_activity', {
         p_user_id: user.id,
         p_organization_id: memberData.organization_id,
-        p_activity_type: 'candidate_email_sent',
+        p_activity_type: automationCtx ? 'candidate_email_automated' : 'candidate_email_sent',
         p_title: activityTitle,
         p_description: activityDescription,
         p_metadata: {
@@ -1063,6 +1067,15 @@ const handler = async (req: Request): Promise<Response> => {
           to: processedRequest.to,
           cc: processedRequest.cc,
           has_attachments: (processedRequest.attachments?.length || 0) > 0,
+          ...(automationCtx
+            ? {
+                automation: {
+                  name: automationCtx.name || 'Automation',
+                  ...(automationCtx.step ? { step: automationCtx.step } : {}),
+                  ...(automationCtx.trigger ? { trigger: automationCtx.trigger } : {}),
+                },
+              }
+            : {}),
         },
         p_entity_type: 'candidate',
         p_entity_id: processedRequest.candidate_id,

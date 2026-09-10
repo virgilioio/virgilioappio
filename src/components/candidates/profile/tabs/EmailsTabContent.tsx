@@ -11,6 +11,8 @@ interface EmailsTabContentProps {
   onCompose: () => void
   onReply?: (email: EmailHistoryCardEmail) => void
   onForward?: (email: EmailHistoryCardEmail) => void
+  /** Message to open and scroll to (set when arriving from the Activity feed). */
+  focusEmailId?: string | null
 }
 
 /**
@@ -24,6 +26,7 @@ export function EmailsTabContent({
   onCompose,
   onReply,
   onForward,
+  focusEmailId,
 }: EmailsTabContentProps) {
   const [firstName, setFirstName] = useState<string | undefined>(undefined)
 
@@ -53,6 +56,7 @@ export function EmailsTabContent({
       onCompose={onCompose}
       onReply={onReply}
       onForward={onForward}
+      focusEmailId={focusEmailId}
     />
   )
 }
