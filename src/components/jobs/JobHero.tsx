@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { JobShareMenu } from './JobShareMenu'
 
 type HiringTeamMember = {
   user_id?: string
@@ -38,6 +39,9 @@ type HiringTeamMember = {
 }
 
 interface JobHeroProps {
+  jobId?: string
+  canManageTeam?: boolean
+  onManageAccess?: () => void
   title: string
   status?: string | null
   priority?: string | null
@@ -100,6 +104,9 @@ function HiringTeamStack({ members }: { members: HiringTeamMember[] }) {
 }
 
 export function JobHero({
+  jobId,
+  canManageTeam = false,
+  onManageAccess,
   title,
   status,
   priority,
@@ -171,13 +178,17 @@ export function JobHero({
       </div>
 
       {/* Actions */}
-      {canEdit && (
-        <div className="flex items-center gap-2 shrink-0">
-          {onShare && (
-            <Button variant="secondary" size="md" icon={Share2} onClick={onShare}>
-              Share
-            </Button>
-          )}
+      <div className="flex items-center gap-2 shrink-0">
+        {jobId && (
+          <JobShareMenu
+            jobId={jobId}
+            canManageTeam={canManageTeam}
+            onManage={onManageAccess}
+          />
+        )}
+        {canEdit && (
+          <>
+
           {hasPosting && onViewPosting && (
             <Button
               variant="secondary"
@@ -253,8 +264,10 @@ export function JobHero({
           ) : onMoreActions ? (
             <Button variant="secondary" size="md" iconOnly icon={MoreHorizontal} aria-label="More actions" onClick={onMoreActions} />
           ) : null}
-        </div>
-      )}
+          </>
+        )}
+      </div>
+
     </header>
   )
 }

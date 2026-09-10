@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -86,9 +86,10 @@ export default function JobDetail() {
   const id = params.id || params.jobId
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
   const { user, userType } = useAuth()
   const permissions = usePermissions()
-  const { isHiringManagerOnJob, isInterviewerOnJob } = useJobRole(id)
+  const { isHiringManagerOnJob, isInterviewerOnJob, isRecruiterOnJob } = useJobRole(id)
   const isRestrictedViewer = (isHiringManagerOnJob || isInterviewerOnJob) && !permissions.isAdmin && !permissions.isWorkspaceOwner && !permissions.isPlatformAdmin
   const isMobile = useIsMobile()
   
@@ -105,6 +106,13 @@ export default function JobDetail() {
       setActiveTab('pipeline')
     }
   }, [isRestrictedViewer, activeTab])
+
+  // Deep link: /jobs/:id/setup (optionally #hiring-team) opens the Setup tab.
+  useEffect(() => {
+    if (location.pathname.endsWith('/setup')) {
+      setActiveTab('job-setup')
+    }
+  }, [location.pathname])
 
   // Setup quick-links can ask the page to switch tabs via a custom event.
   useEffect(() => {
@@ -1096,7 +1104,14 @@ export default function JobDetail() {
                   location={job.location}
                   createdAt={job.created_at}
                   hiringTeam={(job.hiring_team as any[]) || []}
-                  onShare={() => {}}
+                  jobId={id!}
+                  canManageTeam={
+                    permissions.canManageJobAssignments || isRecruiterOnJob
+                  }
+                  onManageAccess={() => {
+                    setActiveTab('job-setup')
+                    navigate(`/jobs/${id}/setup#hiring-team`)
+                  }}
                   onViewPosting={() => {
                     openActivePosting()
                   }}
