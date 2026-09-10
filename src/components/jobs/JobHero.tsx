@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { JobShareMenu } from './JobShareMenu'
 
 type HiringTeamMember = {
   user_id?: string
@@ -38,6 +39,9 @@ type HiringTeamMember = {
 }
 
 interface JobHeroProps {
+  jobId?: string
+  canManageTeam?: boolean
+  onManageAccess?: () => void
   title: string
   status?: string | null
   priority?: string | null
@@ -100,6 +104,9 @@ function HiringTeamStack({ members }: { members: HiringTeamMember[] }) {
 }
 
 export function JobHero({
+  jobId,
+  canManageTeam = false,
+  onManageAccess,
   title,
   status,
   priority,
