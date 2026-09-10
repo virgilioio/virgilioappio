@@ -118,8 +118,8 @@ Hard rules:
     "status_reason_short": "string, max 5 words, for a status pill" }`;
 
 async function callLlm(snapshot: JobSnapshot, findings: Finding[]): Promise<Briefing | null> {
-  if (!LOVABLE_API_KEY) {
-    console.warn('generate-job-briefing: LOVABLE_API_KEY missing, degrading to fallback');
+  if (!OPENAI_API_KEY) {
+    console.warn('generate-job-briefing: OPENAI_API_KEY missing, degrading to fallback');
     return null;
   }
   const userPayload = {
@@ -132,18 +132,20 @@ async function callLlm(snapshot: JobSnapshot, findings: Finding[]): Promise<Brie
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: JSON.stringify(userPayload) },
     ],
+    reasoning_effort: 'medium',
+    max_completion_tokens: 4000,
   };
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const res = await openaiFetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      });
+      }, 'generate-job-briefing');
       if (!res.ok) {
         const txt = await res.text();
-        console.error('briefing gateway error', res.status, txt);
+        console.error('briefing openai error', res.status, txt);
         if (res.status === 429 || res.status === 402) return null; // surface as fallback
         continue;
       }
