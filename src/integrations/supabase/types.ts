@@ -7162,34 +7162,130 @@ export type Database = {
           },
         ]
       }
+      stage_automation_runs: {
+        Row: {
+          association_id: string | null
+          automation_id: string
+          candidate_id: string
+          created_at: string
+          executed_at: string | null
+          id: string
+          reason: string | null
+          scheduled_for: string | null
+          status: string
+          step: number
+          updated_at: string
+        }
+        Insert: {
+          association_id?: string | null
+          automation_id: string
+          candidate_id: string
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          reason?: string | null
+          scheduled_for?: string | null
+          status: string
+          step?: number
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string | null
+          automation_id?: string
+          candidate_id?: string
+          created_at?: string
+          executed_at?: string | null
+          id?: string
+          reason?: string | null
+          scheduled_for?: string | null
+          status?: string
+          step?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_automation_runs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "stage_automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stage_automations: {
         Row: {
+          action: Database["public"]["Enums"]["automation_action"]
           automation_type: Database["public"]["Enums"]["automation_type"]
+          config: Json
           created_at: string
           created_by: string | null
+          delay_amount: number | null
+          delay_unit: string | null
           id: string
           is_active: boolean
           job_hiring_stage_id: string
+          job_id: string | null
+          name: string
+          once_per_candidate: boolean
+          position: number
+          send_at: string | null
+          skip_if_replied: boolean
+          timing: string
+          trigger: Database["public"]["Enums"]["automation_trigger"]
+          trigger_days: number | null
           trigger_event: Database["public"]["Enums"]["trigger_event_type"]
           updated_at: string
         }
         Insert: {
-          automation_type: Database["public"]["Enums"]["automation_type"]
+          action?: Database["public"]["Enums"]["automation_action"]
+          automation_type?: Database["public"]["Enums"]["automation_type"]
+          config?: Json
           created_at?: string
           created_by?: string | null
+          delay_amount?: number | null
+          delay_unit?: string | null
           id?: string
           is_active?: boolean
           job_hiring_stage_id: string
-          trigger_event: Database["public"]["Enums"]["trigger_event_type"]
+          job_id?: string | null
+          name?: string
+          once_per_candidate?: boolean
+          position?: number
+          send_at?: string | null
+          skip_if_replied?: boolean
+          timing?: string
+          trigger?: Database["public"]["Enums"]["automation_trigger"]
+          trigger_days?: number | null
+          trigger_event?: Database["public"]["Enums"]["trigger_event_type"]
           updated_at?: string
         }
         Update: {
+          action?: Database["public"]["Enums"]["automation_action"]
           automation_type?: Database["public"]["Enums"]["automation_type"]
+          config?: Json
           created_at?: string
           created_by?: string | null
+          delay_amount?: number | null
+          delay_unit?: string | null
           id?: string
           is_active?: boolean
           job_hiring_stage_id?: string
+          job_id?: string | null
+          name?: string
+          once_per_candidate?: boolean
+          position?: number
+          send_at?: string | null
+          skip_if_replied?: boolean
+          timing?: string
+          trigger?: Database["public"]["Enums"]["automation_trigger"]
+          trigger_days?: number | null
           trigger_event?: Database["public"]["Enums"]["trigger_event_type"]
           updated_at?: string
         }
@@ -7199,6 +7295,13 @@ export type Database = {
             columns: ["job_hiring_stage_id"]
             isOneToOne: false
             referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_automations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -8308,6 +8411,15 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_stage_automation_runs: {
+        Args: {
+          p_association_id: string
+          p_jhs_id: string
+          p_keep_trigger?: Database["public"]["Enums"]["automation_trigger"]
+          p_reason: string
+        }
+        Returns: undefined
+      }
       categorize_skills: {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
@@ -8557,6 +8669,14 @@ export type Database = {
         Returns: string
       }
       encrypt_refresh_token: { Args: { token: string }; Returns: string }
+      enqueue_stage_automation_runs: {
+        Args: {
+          p_association_id: string
+          p_jhs_id: string
+          p_trigger: Database["public"]["Enums"]["automation_trigger"]
+        }
+        Returns: number
+      }
       ensure_default_deal_stages: { Args: never; Returns: undefined }
       execute_candidate_sync: { Args: never; Returns: undefined }
       extract_domain_from_email: { Args: { email: string }; Returns: string }
@@ -8975,6 +9095,33 @@ export type Database = {
         | "sequence_enrolled"
         | "sequence_completed"
       application_field_source: "library" | "custom"
+      automation_action:
+        | "email"
+        | "sequence"
+        | "chat"
+        | "scheduling"
+        | "documents"
+        | "notify"
+        | "task"
+        | "scorecard"
+        | "assign"
+        | "move"
+        | "reject"
+        | "tag"
+        | "pool"
+        | "reference"
+        | "webhook"
+      automation_trigger:
+        | "enter"
+        | "exit"
+        | "idle"
+        | "noreply"
+        | "replied"
+        | "scheduled"
+        | "completed"
+        | "scorecard"
+        | "allscorecards"
+        | "rejected"
       automation_type: "single_email" | "email_sequence"
       candidate_list_access: "view" | "comment" | "comment_score"
       candidate_list_reviewer_status: "pending" | "active" | "removed"
@@ -9319,6 +9466,35 @@ export const Constants = {
         "sequence_completed",
       ],
       application_field_source: ["library", "custom"],
+      automation_action: [
+        "email",
+        "sequence",
+        "chat",
+        "scheduling",
+        "documents",
+        "notify",
+        "task",
+        "scorecard",
+        "assign",
+        "move",
+        "reject",
+        "tag",
+        "pool",
+        "reference",
+        "webhook",
+      ],
+      automation_trigger: [
+        "enter",
+        "exit",
+        "idle",
+        "noreply",
+        "replied",
+        "scheduled",
+        "completed",
+        "scorecard",
+        "allscorecards",
+        "rejected",
+      ],
       automation_type: ["single_email", "email_sequence"],
       candidate_list_access: ["view", "comment", "comment_score"],
       candidate_list_reviewer_status: ["pending", "active", "removed"],
