@@ -493,7 +493,13 @@ serve(async (req) => {
         p_activity_type: 'candidate_email_received',
         p_title: `Email received: ${(emailData.subject || '(No Subject)').slice(0, 100)}`,
         p_description: `Reply from ${parsedFrom}`,
-        p_metadata: {},
+        p_metadata: {
+          email_log_id: emailLog.id,
+          subject: emailData.subject || '',
+          from: parsedFrom,
+          ...(association.job_id ? { job_id: association.job_id } : {}),
+          association_id: association.id,
+        },
         p_entity_type: 'candidate',
         p_entity_id: association.candidate_id,
       });
