@@ -257,8 +257,10 @@ export function JobHero({
           ) : onMoreActions ? (
             <Button variant="secondary" size="md" iconOnly icon={MoreHorizontal} aria-label="More actions" onClick={onMoreActions} />
           ) : null}
-        </div>
-      )}
+          </>
+        )}
+      </div>
+
     </header>
   )
 }
