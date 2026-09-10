@@ -6,9 +6,11 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handlePreflight, corsHeadersFor } from '../_shared/cors.ts';
+import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 
-const MODEL = 'google/gemini-2.5-flash';
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const MODEL = AI_MODELS.reasoning;
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
@@ -74,9 +76,9 @@ Deno.serve(async (req) => {
   const cors = corsHeadersFor(req.headers.get('origin') ?? undefined);
 
   try {
-    if (!LOVABLE_API_KEY) {
+    if (!OPENAI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }),
+        JSON.stringify({ error: 'OPENAI_API_KEY not configured' }),
         { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } },
       );
     }
