@@ -17,7 +17,7 @@ import {
   type AutomationEmailStep, type AttachmentRef,
 } from '@/lib/automations';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
-import { previewTemplate } from '@/utils/templateUtils';
+import { renderTemplate as previewTemplate } from "@/utils/templateUtils";
 
 const LABEL: React.CSSProperties = { fontSize: 11, color: '#8B8F9E', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 };
 
