@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useAutomationRuns, type StageAutomation, type AutomationRun } from '@/hooks/useStageAutomations';
-import { TableSkeleton } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const TONE: Record<AutomationRun['status'], any> = {
   sent: 'green', scheduled: 'blue', skipped: 'neutral', failed: 'red', cancelled: 'neutral',
@@ -26,7 +26,7 @@ export function AutomationRunsDialog({ automation, onClose }: { automation: Stag
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto">
           {isLoading ? (
-            <div className="p-4"><TableSkeleton rows={4} columns={3} /></div>
+            <div className="p-4 space-y-2">{[0,1,2,3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
           ) : runs.length === 0 ? (
             <div className="px-6 py-10 text-center font-inter" style={{ fontSize: 12.5, color: '#8B8F9E' }}>
               Nothing yet. Runs appear here as candidates hit the trigger.
