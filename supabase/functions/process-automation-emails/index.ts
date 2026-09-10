@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       .from('automation_email_queue')
       .select(`
         *,
-        stage_automation_emails!inner(*),
+        stage_automation_emails!inner(*, stage_automations(automation_type, trigger_event)),
         job_candidate_associations!inner(
           id,
           job_id,
@@ -133,11 +133,13 @@ Deno.serve(async (req) => {
           association_id: association.id,
           // Machine-sent: the activity feed records this as an automation, not a person.
           automation: {
-            name: emailConfig.name || emailConfig.subject || 'Stage automation',
+            name: emailConfig.stage_automations?.automation_type === 'email_sequence'
+              ? 'Email sequence'
+              : 'Stage automation',
             step: emailConfig.is_recurring
               ? `Reminder ${queueItem.occurrence_number || 1}`
-              : null,
-            trigger: emailConfig.trigger_event || null,
+              : (emailConfig.sequence_order ? `Step ${emailConfig.sequence_order}` : null),
+            trigger: emailConfig.stage_automations?.trigger_event || null,
           }
         };
         
