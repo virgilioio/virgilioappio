@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.20.1";
+import { AI_MODELS } from '../_shared/aiModels.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -221,14 +222,14 @@ Respond with a JSON object containing "subject" and "body" fields. The body shou
     const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: AI_MODELS.reasoning,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      temperature: 0.7,
-      max_tokens: 1000,
+      reasoning_effort: "low",
+      max_completion_tokens: 4000,
     });
 
     const content = completion.choices[0]?.message?.content;

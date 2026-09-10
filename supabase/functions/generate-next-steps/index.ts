@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
@@ -105,12 +106,14 @@ Respond in JSON format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: AI_MODELS.reasoning,
         messages: [
           { role: 'system', content: 'You are a helpful recruiting assistant that provides actionable next-step recommendations based on interview feedback. Always respond in valid JSON format.' },
           { role: 'user', content: prompt }
         ],
         response_format: { type: "json_object" },
+        reasoning_effort: 'low',
+        max_completion_tokens: 4000,
       }),
     }, 'generate-next-steps');
 

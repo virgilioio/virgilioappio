@@ -4,6 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { Resend } from "npm:resend@2.0.0";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -259,12 +260,13 @@ ${questionsContext}`;
     // Build request body — use tool calling when questions exist, plain text as fallback
     const hasQuestions = scorecardQuestions.length > 0;
     const requestBody: any = {
-      model: 'gpt-4.1-mini',
+      model: AI_MODELS.reasoning,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      max_completion_tokens: 3000,
+      max_completion_tokens: 8000,
+      reasoning_effort: 'medium',
     };
 
     if (hasQuestions) {

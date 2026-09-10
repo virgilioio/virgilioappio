@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -331,14 +332,14 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: AI_MODELS.reasoning,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}` },
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
-        temperature: 0.2,
+        reasoning_effort: "medium",
       }),
     }, 'analyze-candidate-fit');
 

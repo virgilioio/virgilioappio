@@ -5,6 +5,7 @@ import { extractText } from "https://esm.sh/unpdf@0.12.1";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { AI_MODELS } from '../_shared/aiModels.ts';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -261,15 +262,15 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: AI_MODELS.reasoning,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
         ],
         tools: [EXTRACTION_TOOL],
         tool_choice: { type: 'function', function: { name: 'extract_candidate_profile' } },
-        temperature: 0.2,
-        max_tokens: 4000,
+        reasoning_effort: 'low',
+        max_completion_tokens: 8000,
       }),
     }, 'enrich-candidate-profile');
 
