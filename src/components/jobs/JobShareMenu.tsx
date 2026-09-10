@@ -140,8 +140,6 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
     }
   }
 
-  const items: Array<HTMLElement | null> = []
-
   const onPanelKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
     e.preventDefault()
