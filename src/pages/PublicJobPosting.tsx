@@ -340,9 +340,9 @@ export default function PublicJobPosting() {
         : !!d.show_salary || jobSalary.show
     const hasCommissions = !!d.has_commissions || !!comp.variable_enabled
     return {
-      location: d.location || null,
+      location: d.location || jobPlace.location || null,
       employmentType: d.employment_type || null,
-      locationType: d.location_type || null,
+      locationType: d.location_type || jobPlace.workMode || null,
       salaryCurrency,
       salaryAmount,
       salaryMin: detailMin ?? jobSalary.min,
@@ -353,7 +353,7 @@ export default function PublicJobPosting() {
       commissionsCurrency: d.commissions_currency || comp.commission_currency || null,
       commissionsAmount: d.commissions_amount ?? comp.commission_amount ?? null,
     }
-  }, [posting, jobSalary])
+  }, [posting, jobSalary, jobPlace])
 
   const brandColor = ((posting?.details as any)?.brand_color as string) || '#6F3FF5'
   const bannerUrl = ((posting?.details as any)?.banner_url as string) || null
