@@ -190,7 +190,7 @@ export default function PublicJobPosting() {
   }, [])
 
   const [jobSalary, setJobSalary] = useState<{ min: number | null; max: number | null; currency: string | null; show: boolean }>({ min: null, max: null, currency: null, show: false })
-  const [jobPlace, setJobPlace] = useState<{ location: string | null; workMode: string | null }>({ location: null, workMode: null })
+  const [jobPlace, setJobPlace] = useState<{ location: string | null; additionalLocations: string[]; workMode: string | null }>({ location: null, additionalLocations: [], workMode: null })
 
   useEffect(() => {
     const load = async () => {
@@ -210,7 +210,7 @@ export default function PublicJobPosting() {
           updated_at,
           is_active,
           syndication,
-          jobs!inner(status, salary_min, salary_max, currency, show_salary_public, location, work_mode)
+          jobs!inner(status, salary_min, salary_max, currency, show_salary_public, location, additional_locations, work_mode)
         `)
         .eq('slug', slug)
         .eq('is_active', true)
@@ -232,6 +232,7 @@ export default function PublicJobPosting() {
         })
         setJobPlace({
           location: jobRow.location ?? null,
+          additionalLocations: Array.isArray(jobRow.additional_locations) ? jobRow.additional_locations : [],
           workMode: jobRow.work_mode ?? null,
         })
       }
@@ -339,8 +340,12 @@ export default function PublicJobPosting() {
         ? d.show_salary_public
         : !!d.show_salary || jobSalary.show
     const hasCommissions = !!d.has_commissions || !!comp.variable_enabled
+    const additionalLocations = Array.isArray(d.additional_locations)
+      ? d.additional_locations.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
+      : jobPlace.additionalLocations
     return {
       location: d.location || jobPlace.location || null,
+      additionalLocations,
       employmentType: d.employment_type || null,
       locationType: d.location_type || jobPlace.workMode || null,
       salaryCurrency,
@@ -397,7 +402,7 @@ export default function PublicJobPosting() {
     })
   }
 
-  function JobDetailsCard({ details, className }: { className?: string; details: { location: string | null; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryMin: number | null; salaryMax: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
+  function JobDetailsCard({ details, className }: { className?: string; details: { location: string | null; additionalLocations: string[]; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryMin: number | null; salaryMax: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -410,6 +415,9 @@ export default function PublicJobPosting() {
               <div className="text-sm font-medium">Location</div>
               <div className="text-sm text-muted-foreground">
                 {details.location || 'Not specified'}
+                {details.additionalLocations.map((location) => (
+                  <span key={location} className="block">{location}</span>
+                ))}
                 {details.locationType && (
                   <span> • {formatLabel(details.locationType)}</span>
                 )}
@@ -775,10 +783,10 @@ export default function PublicJobPosting() {
   })()
 
   const metaChips: { icon?: any; label: string }[] = []
-  if (details.location || details.locationType) {
+  if (details.location || details.additionalLocations.length > 0 || details.locationType) {
     metaChips.push({
       icon: MapPin,
-      label: [details.location, formatLabel(details.locationType)].filter(Boolean).join(' · '),
+      label: [[details.location, ...details.additionalLocations].filter(Boolean).join(' · '), formatLabel(details.locationType)].filter(Boolean).join(' · '),
     })
   }
   if (details.employmentType) metaChips.push({ icon: Briefcase, label: formatLabel(details.employmentType)! })
@@ -816,7 +824,12 @@ export default function PublicJobPosting() {
 
   const summaryRows = [
     { label: 'Posted', value: posting.created_at ? formatDate(new Date(posting.created_at), 'MMM d, yyyy') : null },
-    { label: 'Location', value: details.location || null },
+    { id: 'primary-location', label: 'Primary location', value: details.location || null },
+    ...details.additionalLocations.map((location, index) => ({
+      id: `additional-location-${index}`,
+      label: 'Additional location',
+      value: location,
+    })),
     { label: 'Work model', value: formatLabel(details.locationType) || null },
     { label: 'Type', value: formatLabel(details.employmentType) || null },
     { label: 'Compensation', value: compensationLabel },

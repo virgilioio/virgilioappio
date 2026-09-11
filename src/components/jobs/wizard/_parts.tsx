@@ -331,6 +331,7 @@ export function ChipInput({
   className,
   inputClassName,
   maxChips,
+  disabled = false,
 }: {
   values: string[]
   onChange: (next: string[]) => void
@@ -339,11 +340,13 @@ export function ChipInput({
   className?: string
   inputClassName?: string
   maxChips?: number
+  disabled?: boolean
 }) {
   const [draft, setDraft] = React.useState('')
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   const commit = (raw: string) => {
+    if (disabled) return
     const v = raw.trim().replace(/,$/, '').trim()
     if (!v) return
     if (values.some((x) => x.toLowerCase() === v.toLowerCase())) return
@@ -353,6 +356,7 @@ export function ChipInput({
   }
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
       commit(draft)
@@ -373,7 +377,7 @@ export function ChipInput({
         'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
         className
       )}
-      onClick={() => inputRef.current?.focus()}
+      onClick={() => !disabled && inputRef.current?.focus()}
     >
       {values.map((v) => (
         <span
@@ -388,8 +392,10 @@ export function ChipInput({
             type="button"
             onClick={(e) => {
               e.stopPropagation()
+              if (disabled) return
               onChange(values.filter((x) => x !== v))
             }}
+            disabled={disabled}
             className="rounded-full p-0.5 hover:bg-black/5"
             aria-label={`Remove ${v}`}
           >
@@ -403,6 +409,7 @@ export function ChipInput({
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKey}
         onBlur={() => draft && commit(draft)}
+        disabled={disabled}
         placeholder={values.length === 0 ? placeholder : ''}
         className={cn(
           'flex-1 min-w-[120px] bg-transparent text-[13px] outline-none placeholder:text-text-tertiary',
