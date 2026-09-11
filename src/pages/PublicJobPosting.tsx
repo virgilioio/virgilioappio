@@ -190,6 +190,7 @@ export default function PublicJobPosting() {
   }, [])
 
   const [jobSalary, setJobSalary] = useState<{ min: number | null; max: number | null; currency: string | null; show: boolean }>({ min: null, max: null, currency: null, show: false })
+  const [jobPlace, setJobPlace] = useState<{ location: string | null; workMode: string | null }>({ location: null, workMode: null })
 
   useEffect(() => {
     const load = async () => {
