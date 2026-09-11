@@ -11,7 +11,7 @@ import type { SalaryFieldConfig, LocationFieldConfig, PhoneFieldConfig, FieldTyp
 // ---- Shared constants ----
 
 export const ALL_FIELD_TYPES: FieldType[] = [
-  'text', 'number', 'email', 'url', 'textarea', 'select',
+  'text', 'number', 'email', 'url', 'textarea', 'select', 'score',
   'checkbox', 'checkbox_group', 'date', 'file', 'salary', 'location', 'phone', 'linkedin', 'recruiter', 'employment_type', 'work_location'
 ]
 
@@ -22,6 +22,7 @@ export const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','CHF','JPY','INR','BRL'
 export function fieldTypeLabel(t: string) {
   switch (t) {
     case 'checkbox_group': return 'Checkbox Group'
+    case 'score': return 'Score (stars)'
     case 'salary': return 'Salary'
     case 'location': return 'Location'
     case 'phone': return 'Phone'
