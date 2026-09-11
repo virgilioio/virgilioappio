@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
-import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge, SalaryInput } from './_parts'
+import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge, SalaryInput, ChipInput } from './_parts'
 import type { CreateJobData } from '@/hooks/useJobs'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
@@ -188,6 +188,10 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     const [deadline, setDeadline] = useState<Date | undefined>(undefined)
     const [showInSearch, setShowInSearch] = useState(true)
     const [showResponseBadge, setShowResponseBadge] = useState(true)
+
+    /* --- posting locations (seeded from the parent job) --- */
+    const [primaryLocation, setPrimaryLocation] = useState(jobData.location || '')
+    const [additionalLocations, setAdditionalLocations] = useState<string[]>(jobData.additional_locations || [])
 
     /* --- compensation (commissions only — base salary lives on jobData) --- */
     const [variableEnabled, setVariableEnabled] = useState(false)
@@ -396,6 +400,10 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           // Denormalize from the parent job so postings stay groupable without an extra join.
           department: deptName,
           department_id: deptId,
+          location: primaryLocation.trim() || null,
+          additional_locations: additionalLocations,
+          location_type: jobData.work_mode || null,
+          employment_type: jobData.employment_type || null,
           compensation: {
             variable_enabled: variableEnabled,
             commission_currency: variableEnabled ? commissionCurrency : null,
@@ -531,6 +539,38 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
               checked={showResponseBadge}
               onChange={setShowResponseBadge}
             />
+          </div>
+        </SectionCard>
+
+        {/* ---------- LOCATIONS ---------- */}
+        <SectionCard title="Locations" trailing={<AiAssistedBadge>Pulled from step 1</AiAssistedBadge>}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <FieldLabel htmlFor="posting-primary-location">Primary location</FieldLabel>
+              <div className="relative mt-2">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+                <Input
+                  id="posting-primary-location"
+                  value={primaryLocation}
+                  onChange={(e) => setPrimaryLocation(e.target.value)}
+                  placeholder="e.g. New York, NY"
+                  className="pl-9 h-11"
+                />
+              </div>
+              <FieldHint>The main location shown on this job post.</FieldHint>
+            </div>
+            <div>
+              <FieldLabel optional>Additional locations</FieldLabel>
+              <div className="mt-2">
+                <ChipInput
+                  values={additionalLocations}
+                  onChange={setAdditionalLocations}
+                  placeholder="Add location…"
+                  tone="purple"
+                />
+              </div>
+              <FieldHint>Press Enter or comma after each location.</FieldHint>
+            </div>
           </div>
         </SectionCard>
 

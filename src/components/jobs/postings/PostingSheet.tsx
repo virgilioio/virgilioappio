@@ -43,7 +43,7 @@ import {
   PostingBrandingCard,
   type BrandingValue,
 } from './PostingBrandingCard'
-import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint } from '@/components/jobs/wizard/_parts'
+import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint, ChipInput } from '@/components/jobs/wizard/_parts'
 
 interface PostingSheetProps {
   jobId: string
@@ -94,6 +94,7 @@ export function PostingSheet({
 
   // Compensation & location (unified with wizard shape)
   const [location, setLocation] = useState('')
+  const [additionalLocations, setAdditionalLocations] = useState<string[]>([])
   const [employmentType, setEmploymentType] = useState('full_time')
   const [locationType, setLocationType] = useState('onsite')
   const [salaryCurrency, setSalaryCurrency] = useState('USD')
@@ -148,7 +149,7 @@ export function PostingSheet({
       if (jobId) {
         const { data } = await supabase
           .from('jobs')
-          .select('salary_min, salary_max, currency, show_salary_public, include_equity, include_signing_bonus')
+          .select('salary_min, salary_max, currency, show_salary_public, include_equity, include_signing_bonus, location, additional_locations, work_mode, employment_type')
           .eq('id', jobId)
           .maybeSingle()
         job = data || null
@@ -175,7 +176,12 @@ export function PostingSheet({
           setShow24h(!!d.show_24h_badge)
           setIsPrimary(!!d.is_primary)
 
-          setLocation(d.location || '')
+          setLocation(d.location ?? job?.location ?? '')
+          setAdditionalLocations(
+            Array.isArray(d.additional_locations)
+              ? d.additional_locations.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
+              : (job?.additional_locations || [])
+          )
           // Department: prefer stored id; fallback to matching name to id
           const storedDeptId: string | undefined = d.department_id || undefined
           const storedDeptName: string | undefined = d.department || undefined
@@ -189,8 +195,8 @@ export function PostingSheet({
           } else {
             setDepartmentId('')
           }
-          setEmploymentType(d.employment_type || 'full_time')
-          setLocationType(d.location_type || 'onsite')
+          setEmploymentType(d.employment_type || job?.employment_type || 'full_time')
+          setLocationType(d.location_type || job?.work_mode || 'onsite')
 
           // Compensation — prefer posting.details override, fall back to job (wizard values).
           // Legacy postings may only have salary_amount → map to both min and max.
@@ -253,10 +259,11 @@ export function PostingSheet({
         setIsActive(false)
         setIsPrimary(false)
         setDescription('')
-        setLocation('')
+        setLocation(job?.location || '')
+        setAdditionalLocations(job?.additional_locations || [])
         setDepartmentId('')
-        setEmploymentType('full_time')
-        setLocationType('onsite')
+        setEmploymentType(job?.employment_type || 'full_time')
+        setLocationType(job?.work_mode || 'onsite')
         // Seed from parent job so a new posting inherits wizard compensation.
         setSalaryCurrency(job?.currency || 'USD')
         setSalaryMin(job?.salary_min ?? undefined)
@@ -291,6 +298,7 @@ export function PostingSheet({
     is_primary: isPrimary,
     // Compensation & location — unified with wizard shape
     location: location || null,
+    additional_locations: additionalLocations,
     // Department (denormalized name + id for careers page grouping)
     department_id: departmentId || null,
     department: (departments.find((d) => d.id === departmentId)?.name) || null,
@@ -601,8 +609,17 @@ export function PostingSheet({
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField label="Location">
+                  <FormField label="Primary location">
                     <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., New York, NY" disabled={readOnly} />
+                  </FormField>
+                  <FormField label="Additional locations" helpText="Press Enter or comma after each location.">
+                    <ChipInput
+                      values={additionalLocations}
+                      onChange={setAdditionalLocations}
+                      placeholder="Add location…"
+                      tone="purple"
+                      disabled={readOnly}
+                    />
                   </FormField>
                   <FormField label="Employment type">
                     <Select value={employmentType} onValueChange={setEmploymentType} disabled={readOnly}>
