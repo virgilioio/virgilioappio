@@ -199,6 +199,7 @@ export function ApplicationFormBuilder({
       type: bt.type,
       required: false,
       icon: bt.icon,
+      fieldConfig: bt.type === 'score' ? { max: 5 } : undefined,
     }])
   }
   const addFromLibrary = (lf: { id: string; field_label: string; field_type: string; is_required: boolean; help_text?: string | null }) => {
