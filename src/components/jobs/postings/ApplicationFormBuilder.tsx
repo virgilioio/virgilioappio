@@ -16,7 +16,7 @@ import {
   Sparkles, GripVertical, Lock, Trash2, Plus, Puzzle,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
-  Check, X, Settings2,
+  Check, X, Settings2, Star,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,7 +40,7 @@ import { InlineEmpty } from '@/components/ui/empty-state'
 
 export type FieldType =
   | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext' | 'date'
-  | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location'
+  | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location' | 'score'
 
 export interface AppField {
   id: string
@@ -82,6 +82,7 @@ export const BASIC_TYPES: { type: FieldType; label: string; icon: React.Componen
   { type: 'date',     label: 'Date',          icon: CalendarIcon },
   { type: 'select',   label: 'Single select', icon: List },
   { type: 'yesno',    label: 'Yes / No',      icon: ToggleLeft },
+  { type: 'score',    label: 'Score (stars)', icon: Star },
   { type: 'file',     label: 'File upload',   icon: FileText },
 ]
 
@@ -91,7 +92,7 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   text: Type, longtext: AlignLeft, textarea: AlignLeft, number: Hash, email: Mail, url: Link2,
   date: CalendarIcon, select: List, yesno: ToggleLeft, checkbox: ToggleLeft, file: FileText, phone: Phone,
   linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
-  work_location: Building2, recruiter: Users,
+  work_location: Building2, recruiter: Users, score: Star,
 }
 export const iconForType = (t: string): React.ComponentType<{ className?: string }> =>
   TYPE_ICON[t] || MessageSquare
