@@ -190,6 +190,7 @@ export default function PublicJobPosting() {
   }, [])
 
   const [jobSalary, setJobSalary] = useState<{ min: number | null; max: number | null; currency: string | null; show: boolean }>({ min: null, max: null, currency: null, show: false })
+  const [jobPlace, setJobPlace] = useState<{ location: string | null; workMode: string | null }>({ location: null, workMode: null })
 
   useEffect(() => {
     const load = async () => {
@@ -209,7 +210,7 @@ export default function PublicJobPosting() {
           updated_at,
           is_active,
           syndication,
-          jobs!inner(status, salary_min, salary_max, currency, show_salary_public)
+          jobs!inner(status, salary_min, salary_max, currency, show_salary_public, location, work_mode)
         `)
         .eq('slug', slug)
         .eq('is_active', true)
@@ -228,6 +229,10 @@ export default function PublicJobPosting() {
           max: jobRow.salary_max ?? null,
           currency: jobRow.currency ?? null,
           show: !!jobRow.show_salary_public,
+        })
+        setJobPlace({
+          location: jobRow.location ?? null,
+          workMode: jobRow.work_mode ?? null,
         })
       }
       setOrganizationName('our company')
@@ -335,9 +340,9 @@ export default function PublicJobPosting() {
         : !!d.show_salary || jobSalary.show
     const hasCommissions = !!d.has_commissions || !!comp.variable_enabled
     return {
-      location: d.location || null,
+      location: d.location || jobPlace.location || null,
       employmentType: d.employment_type || null,
-      locationType: d.location_type || null,
+      locationType: d.location_type || jobPlace.workMode || null,
       salaryCurrency,
       salaryAmount,
       salaryMin: detailMin ?? jobSalary.min,
@@ -348,7 +353,7 @@ export default function PublicJobPosting() {
       commissionsCurrency: d.commissions_currency || comp.commission_currency || null,
       commissionsAmount: d.commissions_amount ?? comp.commission_amount ?? null,
     }
-  }, [posting, jobSalary])
+  }, [posting, jobSalary, jobPlace])
 
   const brandColor = ((posting?.details as any)?.brand_color as string) || '#6F3FF5'
   const bannerUrl = ((posting?.details as any)?.banner_url as string) || null
@@ -812,6 +817,7 @@ export default function PublicJobPosting() {
   const summaryRows = [
     { label: 'Posted', value: posting.created_at ? formatDate(new Date(posting.created_at), 'MMM d, yyyy') : null },
     { label: 'Location', value: details.location || null },
+    { label: 'Work model', value: formatLabel(details.locationType) || null },
     { label: 'Type', value: formatLabel(details.employmentType) || null },
     { label: 'Compensation', value: compensationLabel },
     { label: 'Variable comp', value: variableCompLabel },
