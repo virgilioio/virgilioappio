@@ -119,6 +119,7 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
           field_label: `New ${bt.label.toLowerCase()} question`,
           field_type: sharedTypeToDb(bt.type),
           is_required: false,
+          field_config: bt.type === 'score' ? ({ max: 5 } as any) : undefined,
         })
       }}
       onAddFromLibrary={(lf) => {

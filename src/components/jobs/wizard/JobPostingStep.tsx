@@ -55,7 +55,7 @@ const BRAND_SWATCHES = ['#6F3FF5', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '
 
 type FieldType =
   | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext' | 'date'
-  | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location'
+  | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location' | 'score'
 
 interface SmartFieldDef {
   id: string

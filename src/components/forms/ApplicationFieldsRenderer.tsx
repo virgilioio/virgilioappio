@@ -12,6 +12,7 @@ import { CurrencySelect } from '@/components/ui/currency-select'
 import { MapPin } from 'lucide-react'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
 import { format } from 'date-fns'
+import { StarScoreInput, type ScoreFieldConfig } from '@/components/forms/StarScoreInput'
 
 function getAutoPlaceholder(field: { field_label: string; field_type: string; placeholder_text?: string | null }): string {
   if (field.placeholder_text) return field.placeholder_text
@@ -86,6 +87,35 @@ export function ApplicationFieldsRenderer({
                     type="number"
                     placeholder={getAutoPlaceholder(field)}
                     {...formField}
+                  />
+                </FormControl>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )
+
+      case 'score' as any:
+        return (
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <FormControl>
+                  <StarScoreInput
+                    value={formField.value}
+                    onChange={(v) => formField.onChange(v)}
+                    config={(field as any).field_config as ScoreFieldConfig | null}
+                    ariaLabel={field.field_label}
                   />
                 </FormControl>
                 {field.help_text && (

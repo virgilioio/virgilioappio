@@ -44,10 +44,16 @@ DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayNam
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+>(({ className, collisionPadding = 12, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn("z-50 min-w-[8rem] overflow-hidden", menuPanel, className)}
+    collisionPadding={collisionPadding}
+    className={cn(
+      "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto overscroll-contain",
+      "max-h-[var(--radix-dropdown-menu-content-available-height)]",
+      menuPanel,
+      className
+    )}
     {...props}
   />
 ))
@@ -56,12 +62,18 @@ DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayNam
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 8, ...props }, ref) => (
+>(({ className, sideOffset = 8, collisionPadding = 12, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn("z-50 min-w-[8rem] overflow-hidden", menuPanel, className)}
+      collisionPadding={collisionPadding}
+      className={cn(
+        "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto overscroll-contain",
+        "max-h-[var(--radix-dropdown-menu-content-available-height)]",
+        menuPanel,
+        className
+      )}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
