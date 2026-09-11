@@ -825,11 +825,11 @@ export default function PublicJobPosting() {
   const summaryRows = [
     { label: 'Posted', value: posting.created_at ? formatDate(new Date(posting.created_at), 'MMM d, yyyy') : null },
     { id: 'primary-location', label: 'Primary location', value: details.location || null },
-    ...details.additionalLocations.map((location, index) => ({
-      id: `additional-location-${index}`,
-      label: 'Additional location',
-      value: location,
-    })),
+    {
+      id: 'additional-locations',
+      label: details.additionalLocations.length === 1 ? 'Additional location' : 'Additional locations',
+      value: details.additionalLocations.length > 0 ? details.additionalLocations : null,
+    },
     { label: 'Work model', value: formatLabel(details.locationType) || null },
     { label: 'Type', value: formatLabel(details.employmentType) || null },
     { label: 'Compensation', value: compensationLabel },
