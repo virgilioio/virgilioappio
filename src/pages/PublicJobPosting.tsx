@@ -209,7 +209,7 @@ export default function PublicJobPosting() {
           updated_at,
           is_active,
           syndication,
-          jobs!inner(status, salary_min, salary_max, currency, show_salary_public)
+          jobs!inner(status, salary_min, salary_max, currency, show_salary_public, location, work_mode)
         `)
         .eq('slug', slug)
         .eq('is_active', true)
