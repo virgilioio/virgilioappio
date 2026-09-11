@@ -423,6 +423,55 @@ function FieldRow({
         </div>
         {f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>}
       </div>
+      {f.type === 'score' && !readOnly && onConfigChange && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-full bg-[#F1F0EC] px-2.5 text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-secondary hover:bg-[#E8E6DE]"
+              title="Configure the score range and end labels"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              <span>1–{(f.fieldConfig?.max as number) === 10 ? 10 : 5}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 space-y-3 p-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-tertiary">Range</label>
+              <Select
+                value={String((f.fieldConfig?.max as number) === 10 ? 10 : 5)}
+                onValueChange={(v) => onConfigChange({ max: Number(v) })}
+              >
+                <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">1 – 5 stars</SelectItem>
+                  <SelectItem value="10">1 – 10 stars</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-tertiary">Lowest label</label>
+              <input
+                defaultValue={(f.fieldConfig?.min_label as string) || ''}
+                placeholder="e.g. Basic"
+                onBlur={(e) => onConfigChange({ min_label: e.target.value.trim() || null })}
+                className="w-full h-9 rounded-lg border border-virgilio-border px-2.5 text-[13px] outline-none focus:ring-2 focus:ring-virgilio-purple/30"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-tertiary">Highest label</label>
+              <input
+                defaultValue={(f.fieldConfig?.max_label as string) || ''}
+                placeholder="e.g. Fluent"
+                onBlur={(e) => onConfigChange({ max_label: e.target.value.trim() || null })}
+                className="w-full h-9 rounded-lg border border-virgilio-border px-2.5 text-[13px] outline-none focus:ring-2 focus:ring-virgilio-purple/30"
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
       {f.type === 'salary' && !readOnly && onConfigChange && (
         <Popover>
           <PopoverTrigger asChild>
