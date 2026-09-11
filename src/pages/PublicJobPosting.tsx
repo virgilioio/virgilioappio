@@ -230,6 +230,10 @@ export default function PublicJobPosting() {
           currency: jobRow.currency ?? null,
           show: !!jobRow.show_salary_public,
         })
+        setJobPlace({
+          location: jobRow.location ?? null,
+          workMode: jobRow.work_mode ?? null,
+        })
       }
       setOrganizationName('our company')
 
