@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAnonKey, supabaseUrl } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import {
   JobDashboardBriefingLoader,
@@ -388,7 +387,6 @@ interface JobBriefingTabProps {
 }
 
 export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -594,7 +592,36 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     [data],
   );
 
-  if ((!data && showLoader) || (!data && streamError)) {
+  const streamedIssueCards = streamIssues?.filter((finding) => finding.severity !== 'positive').slice(0, 3).length ? (
+    <div>
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B8F9E]">Needs attention</span>
+        <span className="inline-flex items-center justify-center rounded-full bg-[#F1F0EC] px-[7px] py-0.5 text-[10.5px] font-semibold text-[#5A6072]">
+          {streamIssues.filter((finding) => finding.severity !== 'positive').slice(0, 3).length}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {streamIssues.filter((finding) => finding.severity !== 'positive').slice(0, 3).map((finding, index) => {
+          const copy = evidenceCard(finding);
+          const Icon = copy.icon;
+          const critical = copy.tone === 'red';
+          return (
+            <div key={finding.id} className="briefing-tile-rise flex gap-3 bg-white p-4" style={{ animationDelay: `${120 + index * 90}ms` }}>
+              <span className="inline-flex size-[30px] shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: critical ? '#FEE2E2' : '#FEF3C7' }}>
+                <Icon size={14} color={critical ? '#C92A2A' : '#B45309'} strokeWidth={2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-poppins text-[13.5px] font-semibold text-[#0d0d09]">{copy.title}</h3>
+                {copy.body && <p className="mt-1 text-[12.5px] leading-[1.6] text-[#5A6072]">{copy.body}</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : undefined;
+
+  if ((!data && showLoader) || (!data && streamError) || (refreshing && showLoader && streamProse.length > 0)) {
     const read = phases.read;
     const receipt = read?.detail ? `Read ${read.detail}` : undefined;
     return <>
@@ -607,9 +634,15 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         slowAnalysis={slowAnalysis}
         error={streamError}
         incomplete={streamIncomplete}
-        onCancel={() => requestControllerRef.current?.abort()}
+        onCancel={() => {
+          requestControllerRef.current?.abort();
+          setLoading(false);
+          setRefreshing(false);
+          setStreamError('Generation was cancelled.');
+        }}
         onRetry={() => void load(true)}
         receipt={receipt}
+        issueCards={streamedIssueCards}
       />
     </>;
   }
