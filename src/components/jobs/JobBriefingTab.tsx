@@ -790,7 +790,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
 
   return (
     <div
-      className={`mx-auto w-full transition-opacity duration-150 ${refreshing && showLoader && streamProse.length === 0 ? 'opacity-50' : ''}`}
+      className={`mx-auto w-full transition-opacity duration-150 ${refreshing && !showLoader ? 'opacity-50' : ''}`}
       style={{
         maxWidth: 768,
         padding: '24px 28px 56px',
@@ -801,6 +801,31 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
       <div className="flex justify-end mb-3">
         <StatusPill health={data.health} reason={data.briefing.status_reason_short} />
       </div>
+
+      {/* Refresh fallback note: a failed/cancelled refresh keeps the previous briefing */}
+      {refreshNotice && (
+        <div
+          role="status"
+          className="mb-3 flex items-center gap-2 rounded-lg border border-[#F5E3B3] bg-[#FEF6E4] px-3 py-2"
+        >
+          <Info size={13} color="#B45309" strokeWidth={2} className="shrink-0" />
+          <span
+            className="flex-1"
+            style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#8A5A12' }}
+          >
+            {refreshNotice}
+          </span>
+          <button
+            type="button"
+            onClick={() => setRefreshNotice(null)}
+            aria-label="Dismiss"
+            className="hover:text-[#5A6072]"
+            style={{ color: '#B45309', padding: 2, background: 'transparent', border: 'none', fontSize: 14, lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* 2 · Briefing card (cream hero) */}
       <div
