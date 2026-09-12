@@ -628,7 +628,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     </div>
   ) : undefined;
 
-  if ((!data && showLoader) || (!data && streamError) || (refreshing && showLoader && streamProse.length > 0)) {
+  if ((!data && showLoader) || streamError != null || (refreshing && showLoader && streamProse.length > 0)) {
     const read = phases.read;
     const receipt = read?.detail ? `Read ${read.detail}` : undefined;
     return <>
