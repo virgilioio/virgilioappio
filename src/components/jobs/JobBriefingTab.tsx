@@ -543,8 +543,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           completed = true;
           setData(event.payload);
         } else if (event.type === 'error') {
-          setStreamIncomplete(receivedProse);
-          setStreamError(event.message);
+          failSoft(event.message, receivedProse);
         }
       };
       while (true) {
@@ -560,15 +559,13 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         }
       }
       if (!completed && !controller.signal.aborted) {
-        setStreamIncomplete(receivedProse);
-        setStreamError('The connection closed before the briefing finished.');
+        failSoft('The connection closed before the briefing finished.', receivedProse);
       }
     } catch (err) {
       if (controller.signal.aborted) return;
       const message = err instanceof Error ? err.message : 'Could not generate briefing.';
-      setStreamIncomplete(receivedProse);
-      setStreamError(message);
-      setShowLoader(true);
+      failSoft(message, receivedProse);
+      if (!dataRef.current) setShowLoader(true);
     } finally {
       if (visibilityTimer) clearTimeout(visibilityTimer);
       if (!controller.signal.aborted) {
