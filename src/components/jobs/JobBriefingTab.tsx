@@ -1221,14 +1221,14 @@ function AskBox({
                 wordBreak: 'break-word',
               }}
             >
+              <span className={m.role === 'assistant' ? 'pb-5' : ''}>
+                {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+              </span>
               {m.role === 'assistant' && (
-                <div className="absolute top-1 right-1">
+                <div className="absolute bottom-0 right-0">
                   <CopyButton text={m.content.replace(/\*\*/g, '')} label="Copy response" size={12} />
                 </div>
               )}
-              <span className={m.role === 'assistant' ? 'pr-5' : ''}>
-                {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
-              </span>
             </div>
           ))}
           {pending && (
