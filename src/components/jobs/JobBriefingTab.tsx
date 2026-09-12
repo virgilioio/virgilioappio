@@ -708,6 +708,30 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
 
   const s = data.snapshot;
 
+  // Plain-text snapshot of the dashboard for copying.
+  const dashboardCopyText = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(`${jobTitle}`);
+    lines.push(`Status: ${data.health.label}${data.briefing.status_reason_short ? ` — ${data.briefing.status_reason_short}` : ''}`);
+    lines.push('');
+    if (data.briefing.paragraph) {
+      lines.push(data.briefing.paragraph.replace(/\*\*/g, ''));
+      lines.push('');
+    }
+    lines.push(`Active candidates: ${s.pipeline.active_count}`);
+    lines.push(`Closest to offer: ${closestCount}`);
+    lines.push(`Projected fill: ${projected.value} — ${projected.qualifier}`);
+    if (ranked.length > 0) {
+      lines.push('');
+      lines.push('Needs attention:');
+      ranked.forEach((f) => {
+        const card = evidenceCard(f);
+        lines.push(`• ${card.title}: ${card.body.replace(/\*\*/g, '')}`);
+      });
+    }
+    return lines.join('\n');
+  }, [data, jobTitle, s, closestCount, projected, ranked]);
+
   // Closest-to-offer tile (within 2 stages of offer)
   const closestList = s.pipeline.stages.flatMap((st) => {
     const dist = s.pipeline.stages_from_offer[st.stage] ?? 99;
