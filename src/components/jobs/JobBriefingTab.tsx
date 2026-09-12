@@ -398,10 +398,13 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   const [streamProse, setStreamProse] = useState('');
   const [streamError, setStreamError] = useState<string | null>(null);
   const [streamIncomplete, setStreamIncomplete] = useState(false);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [requestStartedAt, setRequestStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [slowAnalysis, setSlowAnalysis] = useState(false);
   const requestControllerRef = useRef<AbortController | null>(null);
+  const dataRef = useRef<Payload | null>(null);
+  dataRef.current = data;
   const [ask, setAsk] = useState('');
   const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [pending, setPending] = useState(false);
@@ -459,7 +462,13 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     let narrativeStarted = false;
     let delayPassed = false;
     let visibilityTimer: ReturnType<typeof setTimeout> | null = null;
-    if (force) setRefreshing(true); else setLoading(true);
+    if (force) {
+      setRefreshing(true);
+      // Refresh is a deliberate user action — start narrating on the first
+      // phase event instead of waiting out the 400ms fast-path suppression.
+      delayPassed = true;
+    } else setLoading(true);
+    setRefreshNotice(null);
     setRequestStartedAt(startedAt);
     setElapsedSeconds(0);
     setSlowAnalysis(false);
@@ -475,6 +484,17 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
       if (narrativeStarted) setShowLoader(true);
     }, 400);
 
+    // When a previous briefing exists, a failed refresh restores it with an
+    // inline note instead of replacing it with the full-screen error loader.
+    const failSoft = (message: string, incomplete: boolean) => {
+      if (dataRef.current) {
+        setRefreshNotice(message);
+        setShowLoader(false);
+      } else {
+        setStreamIncomplete(incomplete);
+        setStreamError(message);
+      }
+    };
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Your session has expired. Please sign in again.');
@@ -523,8 +543,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           completed = true;
           setData(event.payload);
         } else if (event.type === 'error') {
-          setStreamIncomplete(receivedProse);
-          setStreamError(event.message);
+          failSoft(event.message, receivedProse);
         }
       };
       while (true) {
@@ -540,15 +559,13 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         }
       }
       if (!completed && !controller.signal.aborted) {
-        setStreamIncomplete(receivedProse);
-        setStreamError('The connection closed before the briefing finished.');
+        failSoft('The connection closed before the briefing finished.', receivedProse);
       }
     } catch (err) {
       if (controller.signal.aborted) return;
       const message = err instanceof Error ? err.message : 'Could not generate briefing.';
-      setStreamIncomplete(receivedProse);
-      setStreamError(message);
-      setShowLoader(true);
+      failSoft(message, receivedProse);
+      if (!dataRef.current) setShowLoader(true);
     } finally {
       if (visibilityTimer) clearTimeout(visibilityTimer);
       if (!controller.signal.aborted) {
@@ -628,7 +645,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     </div>
   ) : undefined;
 
-  if ((!data && showLoader) || streamError != null || (refreshing && showLoader && streamProse.length > 0)) {
+  if ((!data && showLoader) || streamError != null || (refreshing && showLoader)) {
     const read = phases.read;
     const receipt = read?.detail ? `Read ${read.detail}` : undefined;
     return <>
@@ -645,7 +662,12 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           requestControllerRef.current?.abort();
           setLoading(false);
           setRefreshing(false);
-          setStreamError('Generation was cancelled.');
+          if (dataRef.current) {
+            setShowLoader(false);
+            setRefreshNotice('Generation was cancelled — showing the previous briefing.');
+          } else {
+            setStreamError('Generation was cancelled.');
+          }
         }}
         onRetry={() => void load(true)}
         receipt={receipt}
