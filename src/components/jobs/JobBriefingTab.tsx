@@ -761,7 +761,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
 
   return (
     <div
-      className="mx-auto w-full"
+      className={`mx-auto w-full transition-opacity duration-150 ${refreshing && showLoader && streamProse.length === 0 ? 'opacity-50' : ''}`}
       style={{
         maxWidth: 768,
         padding: '24px 28px 56px',
