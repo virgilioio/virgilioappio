@@ -39,6 +39,37 @@ export const THRESHOLDS = {
     maxMedianDaysToRejection: 3,
     minRejections: 4,
   },
+
+  // D6 · offer_stuck
+  offerStuck: {
+    minPendingApprovals: 1,
+  },
+
+  // D7 · outreach_not_landing
+  outreach: {
+    minContacted: 8,
+    maxReplyRatePct: 20,
+    minAwaitingOver3d: 5,
+  },
+
+  // D8 · interview_reliability
+  interviewReliability: {
+    minInterviews: 5,
+    maxDisruptionPct: 30,       // (cancelled + rescheduled) / total
+    minUnconfirmedUpcoming: 3,
+  },
+
+  // D9 · rejection_concentration
+  rejectionConcentration: {
+    minRejections: 6,
+    dominantSharePct: 50,
+  },
+
+  // P2 · ahead_of_benchmark
+  benchmark: {
+    minComparableJobs: 3,
+    activeLeadRatio: 1.5,       // active per job vs peer median
+  },
 } as const;
 
 // Stage types considered "pre-interview" for D4.

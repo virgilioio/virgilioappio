@@ -210,6 +210,133 @@ function p1_fastDecisions(s: JobSnapshot): Finding | null {
   };
 }
 
+// --- D6 · offer_stuck ------------------------------------------------------
+function d6_offerStuck(s: JobSnapshot): Finding | null {
+  const { minPendingApprovals } = THRESHOLDS.offerStuck;
+  const o = s.offers;
+  const blocked = o.approval_blocked > 0;
+  const pending = o.approval_pending >= minPendingApprovals;
+  if (!blocked && !pending) return null;
+  const title = s.job.title;
+  return {
+    id: 'offer_stuck',
+    severity: blocked ? 'critical' : 'warning',
+    evidence: {
+      approval_pending: o.approval_pending,
+      approval_blocked: o.approval_blocked,
+      offers_sent: o.sent,
+      offers_accepted: o.accepted,
+      offers_declined: o.declined,
+    },
+    actions: [
+      { label: 'Show the approval state', prompt: `Who still has to approve the open offers on ${title}, and how long have they been waiting?` },
+      { label: 'Draft an approval nudge', prompt: `Draft a short nudge to the pending offer approvers on ${title}` },
+    ],
+  };
+}
+
+// --- D7 · outreach_not_landing --------------------------------------------
+function d7_outreach(s: JobSnapshot): Finding | null {
+  const { minContacted, maxReplyRatePct, minAwaitingOver3d } = THRESHOLDS.outreach;
+  const c = s.communication;
+  if (c.candidates_contacted < minContacted) return null;
+  const lowReply = c.reply_rate_pct != null && c.reply_rate_pct <= maxReplyRatePct;
+  const waiting = c.awaiting_reply_over_3d >= minAwaitingOver3d;
+  if (!lowReply && !waiting) return null;
+  const title = s.job.title;
+  return {
+    id: 'outreach_not_landing',
+    severity: 'warning',
+    evidence: {
+      candidates_contacted: c.candidates_contacted,
+      replies: c.replies,
+      reply_rate_pct: c.reply_rate_pct,
+      awaiting_reply_over_3d: c.awaiting_reply_over_3d,
+      median_hours_to_first_reply: c.median_hours_to_first_reply,
+    },
+    actions: [
+      { label: 'Improve the outreach', prompt: `Our outreach for ${title} is getting few replies — rewrite the message to get more responses` },
+      { label: 'Show who never replied', prompt: `Which ${title} candidates were contacted and never replied?` },
+    ],
+  };
+}
+
+// --- D8 · interview_reliability -------------------------------------------
+function d8_interviewReliability(s: JobSnapshot): Finding | null {
+  const { minInterviews, maxDisruptionPct, minUnconfirmedUpcoming } = THRESHOLDS.interviewReliability;
+  const i = s.interviews;
+  const disruptionPct = i.total > 0 ? ((i.cancelled + i.rescheduled) / i.total) * 100 : 0;
+  const disrupted = i.total >= minInterviews && disruptionPct >= maxDisruptionPct;
+  const unconfirmed = i.unconfirmed_upcoming >= minUnconfirmedUpcoming;
+  if (!disrupted && !unconfirmed) return null;
+  const title = s.job.title;
+  return {
+    id: 'interview_reliability',
+    severity: 'warning',
+    evidence: {
+      total: i.total,
+      cancelled: i.cancelled,
+      rescheduled: i.rescheduled,
+      disruption_pct: Math.round(disruptionPct * 10) / 10,
+      unconfirmed_upcoming: i.unconfirmed_upcoming,
+      next_scheduled_at: i.next_scheduled_at,
+    },
+    actions: [
+      { label: 'Review the schedule', prompt: `Show the interview schedule for ${title}, including cancellations and unconfirmed slots` },
+      { label: 'Chase confirmations', prompt: `Draft a confirmation reminder for the upcoming ${title} interviews` },
+    ],
+  };
+}
+
+// --- D9 · rejection_concentration -----------------------------------------
+function d9_rejectionConcentration(s: JobSnapshot): Finding | null {
+  const { minRejections, dominantSharePct } = THRESHOLDS.rejectionConcentration;
+  const r = s.rejections;
+  if (r.total < minRejections) return null;
+  const entries = Object.entries(r.by_reason).filter(([reason]) => reason !== 'No reason recorded');
+  if (entries.length === 0) return null;
+  entries.sort((a, b) => b[1] - a[1]);
+  const [reason, count] = entries[0];
+  const sharePct = (count / r.total) * 100;
+  if (sharePct < dominantSharePct) return null;
+  const title = s.job.title;
+  return {
+    id: 'rejection_concentration',
+    severity: 'warning',
+    evidence: {
+      dominant_reason: reason,
+      count,
+      share_pct: Math.round(sharePct * 10) / 10,
+      total_rejections: r.total,
+      by_stage: r.by_stage,
+    },
+    actions: [
+      { label: 'Fix the filter upstream', prompt: `Most ${title} rejections are "${reason}" — how should we change sourcing or screening?` },
+      { label: 'See the rejected candidates', prompt: `Show the ${title} candidates rejected for "${reason}"` },
+    ],
+  };
+}
+
+// --- P2 · ahead_of_benchmark ----------------------------------------------
+function p2_benchmark(s: JobSnapshot): Finding | null {
+  const { minComparableJobs, activeLeadRatio } = THRESHOLDS.benchmark;
+  const b = s.benchmarks;
+  if (!b || b.comparable_jobs < minComparableJobs) return null;
+  if (b.median_active_per_job == null || b.median_active_per_job <= 0) return null;
+  if (s.pipeline.active_count < b.median_active_per_job * activeLeadRatio) return null;
+  return {
+    id: 'ahead_of_benchmark',
+    severity: 'positive',
+    evidence: {
+      active_count: s.pipeline.active_count,
+      peer_median_active: b.median_active_per_job,
+      comparable_jobs: b.comparable_jobs,
+      basis: b.basis,
+    },
+    actions: [],
+  };
+}
+
 // --- Public API ------------------------------------------------------------
 export function evaluateDetectors(s: JobSnapshot): Finding[] {
   const findings: Finding[] = [];
@@ -218,7 +345,12 @@ export function evaluateDetectors(s: JobSnapshot): Finding[] {
   const d3 = d3_salary(s);           if (d3) findings.push(d3);
   const d4 = d4_thinPipeline(s);     if (d4) findings.push(d4);
   const d5 = d5_noActivity(s, !!d1); if (d5) findings.push(d5);
+  const d6 = d6_offerStuck(s);       if (d6) findings.push(d6);
+  const d7 = d7_outreach(s);         if (d7) findings.push(d7);
+  const d8 = d8_interviewReliability(s); if (d8) findings.push(d8);
+  const d9 = d9_rejectionConcentration(s); if (d9) findings.push(d9);
   const p1 = p1_fastDecisions(s);    if (p1) findings.push(p1);
+  const p2 = p2_benchmark(s);        if (p2) findings.push(p2);
   return findings;
 }
 
@@ -237,6 +369,7 @@ export function deriveHealth(s: JobSnapshot, findings: Finding[]): HealthStatus 
       stalled_near_offer: 'final review',
       dead_posting: 'no inbound',
       no_activity: 'no activity',
+      offer_stuck: 'offer approval',
     };
     const reason = reasonMap[top.id] ?? top.id.replace(/_/g, ' ');
     return { status: 'stalled', label: `Stalled — ${reason}` };
