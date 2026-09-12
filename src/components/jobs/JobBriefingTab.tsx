@@ -398,10 +398,13 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   const [streamProse, setStreamProse] = useState('');
   const [streamError, setStreamError] = useState<string | null>(null);
   const [streamIncomplete, setStreamIncomplete] = useState(false);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [requestStartedAt, setRequestStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [slowAnalysis, setSlowAnalysis] = useState(false);
   const requestControllerRef = useRef<AbortController | null>(null);
+  const dataRef = useRef<Payload | null>(null);
+  dataRef.current = data;
   const [ask, setAsk] = useState('');
   const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [pending, setPending] = useState(false);
@@ -459,7 +462,13 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     let narrativeStarted = false;
     let delayPassed = false;
     let visibilityTimer: ReturnType<typeof setTimeout> | null = null;
-    if (force) setRefreshing(true); else setLoading(true);
+    if (force) {
+      setRefreshing(true);
+      // Refresh is a deliberate user action — start narrating on the first
+      // phase event instead of waiting out the 400ms fast-path suppression.
+      delayPassed = true;
+    } else setLoading(true);
+    setRefreshNotice(null);
     setRequestStartedAt(startedAt);
     setElapsedSeconds(0);
     setSlowAnalysis(false);
