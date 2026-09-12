@@ -666,11 +666,11 @@ export async function buildJobSnapshot(
     : null;
 
   // Skills — must-haves coverage, matched on normalised skill tokens (not exact strings).
-  const musts = (job.must_have_skills ?? []).map((m: string) => String(m).trim()).filter(Boolean);
+  const musts: string[] = (job.must_have_skills ?? []).map((m: unknown) => String(m ?? '').trim()).filter(Boolean);
   let skills: JobSnapshot['composition']['skills'] = null;
   if (musts.length > 0) {
     const perSkillHits: Record<string, number> = {};
-    musts.forEach((m) => { perSkillHits[m] = 0; });
+    musts.forEach((m: string) => { perSkillHits[m] = 0; });
     let skDataPoints = 0, allHaveAll = 0;
     for (const a of list) {
       const c = (a as any).candidates;
