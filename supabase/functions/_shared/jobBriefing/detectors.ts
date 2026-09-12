@@ -369,6 +369,7 @@ export function deriveHealth(s: JobSnapshot, findings: Finding[]): HealthStatus 
       stalled_near_offer: 'final review',
       dead_posting: 'no inbound',
       no_activity: 'no activity',
+      offer_stuck: 'offer approval',
     };
     const reason = reasonMap[top.id] ?? top.id.replace(/_/g, ' ');
     return { status: 'stalled', label: `Stalled — ${reason}` };

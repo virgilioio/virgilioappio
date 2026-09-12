@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
         const findings = evaluateDetectors(snapshot);
         const health = deriveHealth(snapshot, findings);
         const candidateCount = snapshot.pipeline.active_count + snapshot.pipeline.rejected_count + snapshot.pipeline.withdrawn_count + snapshot.pipeline.hired_count;
-        const readDetail = `${candidateCount} candidates · ${snapshot.pipeline.stages.length} stages · 14 days of activity`;
+        const readDetail = `${candidateCount} candidates · ${snapshot.pipeline.stages.length} stages · ${ACTIVITY_WINDOW_DAYS} days of activity`;
         const stats = buildStatTiles(snapshot, health);
 
         if (!force) {
