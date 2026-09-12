@@ -645,7 +645,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     </div>
   ) : undefined;
 
-  if ((!data && showLoader) || streamError != null || (refreshing && showLoader && streamProse.length > 0)) {
+  if ((!data && showLoader) || streamError != null || (refreshing && showLoader)) {
     const read = phases.read;
     const receipt = read?.detail ? `Read ${read.detail}` : undefined;
     return <>
@@ -662,7 +662,12 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           requestControllerRef.current?.abort();
           setLoading(false);
           setRefreshing(false);
-          setStreamError('Generation was cancelled.');
+          if (dataRef.current) {
+            setShowLoader(false);
+            setRefreshNotice('Generation was cancelled — showing the previous briefing.');
+          } else {
+            setStreamError('Generation was cancelled.');
+          }
         }}
         onRetry={() => void load(true)}
         receipt={receipt}
