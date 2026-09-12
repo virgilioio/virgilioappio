@@ -311,6 +311,27 @@ function StatusPill({ health, reason }: { health: Health; reason: string }) {
 // ---- stat tile -----------------------------------------------------------
 
 type TileTone = 'neutral' | 'amber' | 'red' | 'green';
+
+// Projected fill tile — shared by the dashboard body and the copy snapshot.
+function computeProjectedFill(s: Snapshot, data: Payload) {
+  if (!s.job.target_fill_date) {
+    return { value: '—', qualifier: 'no target set', tone: 'neutral' as TileTone, empty: true };
+  }
+  const days = Math.ceil(
+    (new Date(s.job.target_fill_date).getTime() - Date.now()) / 86_400_000,
+  );
+  const noMovement = s.velocity.transitions_last_7d === 0 && s.pipeline.active_count > 0;
+  if (days < 0) {
+    return { value: `${Math.abs(days)}d over`, qualifier: 'past target fill date', tone: 'red' as TileTone, empty: false };
+  }
+  if (noMovement) {
+    return { value: '—', qualifier: 'no forecast without movement', tone: 'red' as TileTone, empty: true };
+  }
+  if (data.health.status === 'on_track') {
+    return { value: `${days}d`, qualifier: 'on target', tone: 'green' as TileTone, empty: false };
+  }
+  return { value: `${days}d`, qualifier: 'to target fill date', tone: 'neutral' as TileTone, empty: false };
+}
 const TILE_TONE: Record<TileTone, string> = {
   neutral: '#8B8F9E',
   amber:   '#B45309',
