@@ -311,6 +311,27 @@ function StatusPill({ health, reason }: { health: Health; reason: string }) {
 // ---- stat tile -----------------------------------------------------------
 
 type TileTone = 'neutral' | 'amber' | 'red' | 'green';
+
+// Projected fill tile — shared by the dashboard body and the copy snapshot.
+function computeProjectedFill(s: Snapshot, data: Payload) {
+  if (!s.job.target_fill_date) {
+    return { value: '—', qualifier: 'no target set', tone: 'neutral' as TileTone, empty: true };
+  }
+  const days = Math.ceil(
+    (new Date(s.job.target_fill_date).getTime() - Date.now()) / 86_400_000,
+  );
+  const noMovement = s.velocity.transitions_last_7d === 0 && s.pipeline.active_count > 0;
+  if (days < 0) {
+    return { value: `${Math.abs(days)}d over`, qualifier: 'past target fill date', tone: 'red' as TileTone, empty: false };
+  }
+  if (noMovement) {
+    return { value: '—', qualifier: 'no forecast without movement', tone: 'red' as TileTone, empty: true };
+  }
+  if (data.health.status === 'on_track') {
+    return { value: `${days}d`, qualifier: 'on target', tone: 'green' as TileTone, empty: false };
+  }
+  return { value: `${days}d`, qualifier: 'to target fill date', tone: 'neutral' as TileTone, empty: false };
+}
 const TILE_TONE: Record<TileTone, string> = {
   neutral: '#8B8F9E',
   amber:   '#B45309',
@@ -644,6 +665,38 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     [data],
   );
 
+  // Plain-text snapshot of the dashboard for copying.
+  const dashboardCopyText = useMemo(() => {
+    if (!data) return '';
+    const s = data.snapshot;
+    const closest = s.pipeline.stages.reduce((count, st) => {
+      const dist = s.pipeline.stages_from_offer[st.stage] ?? 99;
+      if (dist > 2 || st.stage_type === 'offer' || st.stage_type === 'onboarding') return count;
+      return count + st.candidates.length;
+    }, 0);
+    const fill = computeProjectedFill(s, data);
+    const lines: string[] = [];
+    lines.push(`${jobTitle}`);
+    lines.push(`Status: ${data.health.label}${data.briefing.status_reason_short ? ` — ${data.briefing.status_reason_short}` : ''}`);
+    lines.push('');
+    if (data.briefing.paragraph) {
+      lines.push(data.briefing.paragraph.replace(/\*\*/g, ''));
+      lines.push('');
+    }
+    lines.push(`Active candidates: ${s.pipeline.active_count}`);
+    lines.push(`Closest to offer: ${closest}`);
+    lines.push(`Projected fill: ${fill.value} — ${fill.qualifier}`);
+    if (ranked.length > 0) {
+      lines.push('');
+      lines.push('Needs attention:');
+      ranked.forEach((f) => {
+        const card = evidenceCard(f);
+        lines.push(`• ${card.title}: ${card.body.replace(/\*\*/g, '')}`);
+      });
+    }
+    return lines.join('\n');
+  }, [data, jobTitle, ranked]);
+
   const streamedIssueCards = streamIssues?.filter((finding) => finding.severity !== 'positive').slice(0, 3).length ? (
     <div>
       <div className="mb-2.5 flex items-center gap-2">
@@ -744,73 +797,8 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         : { text: 'within 2 stages of offer', tone: 'neutral' as TileTone };
 
   // Projected fill
-  let projected: { value: string; qualifier: string; tone: TileTone; empty: boolean };
-  if (!s.job.target_fill_date) {
-    projected = {
-      value: '—',
-      qualifier: 'no target set',
-      tone: 'neutral',
-      empty: true,
-    };
-  } else {
-    const days = Math.ceil(
-      (new Date(s.job.target_fill_date).getTime() - Date.now()) / 86_400_000,
-    );
-    const noMovement = s.velocity.transitions_last_7d === 0 && s.pipeline.active_count > 0;
-    if (days < 0) {
-      projected = {
-        value: `${Math.abs(days)}d over`,
-        qualifier: 'past target fill date',
-        tone: 'red',
-        empty: false,
-      };
-    } else if (noMovement) {
-      projected = {
-        value: '—',
-        qualifier: 'no forecast without movement',
-        tone: 'red',
-        empty: true,
-      };
-    } else if (data.health.status === 'on_track') {
-      projected = {
-        value: `${days}d`,
-        qualifier: 'on target',
-        tone: 'green',
-        empty: false,
-      };
-    } else {
-      projected = {
-        value: `${days}d`,
-        qualifier: 'to target fill date',
-        tone: 'neutral',
-        empty: false,
-      };
-    }
-  }
+  const projected = computeProjectedFill(s, data);
 
-  // Plain-text snapshot of the dashboard for copying.
-  const dashboardCopyText = useMemo(() => {
-    const lines: string[] = [];
-    lines.push(`${jobTitle}`);
-    lines.push(`Status: ${data.health.label}${data.briefing.status_reason_short ? ` — ${data.briefing.status_reason_short}` : ''}`);
-    lines.push('');
-    if (data.briefing.paragraph) {
-      lines.push(data.briefing.paragraph.replace(/\*\*/g, ''));
-      lines.push('');
-    }
-    lines.push(`Active candidates: ${s.pipeline.active_count}`);
-    lines.push(`Closest to offer: ${closestCount}`);
-    lines.push(`Projected fill: ${projected.value} — ${projected.qualifier}`);
-    if (ranked.length > 0) {
-      lines.push('');
-      lines.push('Needs attention:');
-      ranked.forEach((f) => {
-        const card = evidenceCard(f);
-        lines.push(`• ${card.title}: ${card.body.replace(/\*\*/g, '')}`);
-      });
-    }
-    return lines.join('\n');
-  }, [data, jobTitle, s, closestCount, projected, ranked]);
 
   // Sparse data note for salary
   const salaryDatapoints =
