@@ -797,49 +797,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         : { text: 'within 2 stages of offer', tone: 'neutral' as TileTone };
 
   // Projected fill
-  let projected: { value: string; qualifier: string; tone: TileTone; empty: boolean };
-  if (!s.job.target_fill_date) {
-    projected = {
-      value: '—',
-      qualifier: 'no target set',
-      tone: 'neutral',
-      empty: true,
-    };
-  } else {
-    const days = Math.ceil(
-      (new Date(s.job.target_fill_date).getTime() - Date.now()) / 86_400_000,
-    );
-    const noMovement = s.velocity.transitions_last_7d === 0 && s.pipeline.active_count > 0;
-    if (days < 0) {
-      projected = {
-        value: `${Math.abs(days)}d over`,
-        qualifier: 'past target fill date',
-        tone: 'red',
-        empty: false,
-      };
-    } else if (noMovement) {
-      projected = {
-        value: '—',
-        qualifier: 'no forecast without movement',
-        tone: 'red',
-        empty: true,
-      };
-    } else if (data.health.status === 'on_track') {
-      projected = {
-        value: `${days}d`,
-        qualifier: 'on target',
-        tone: 'green',
-        empty: false,
-      };
-    } else {
-      projected = {
-        value: `${days}d`,
-        qualifier: 'to target fill date',
-        tone: 'neutral',
-        empty: false,
-      };
-    }
-  }
+  const projected = computeProjectedFill(s, data);
 
   // Plain-text snapshot of the dashboard for copying.
   const dashboardCopyText = useMemo(() => {
