@@ -665,6 +665,38 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     [data],
   );
 
+  // Plain-text snapshot of the dashboard for copying.
+  const dashboardCopyText = useMemo(() => {
+    if (!data) return '';
+    const s = data.snapshot;
+    const closest = s.pipeline.stages.reduce((count, st) => {
+      const dist = s.pipeline.stages_from_offer[st.stage] ?? 99;
+      if (dist > 2 || st.stage_type === 'offer' || st.stage_type === 'onboarding') return count;
+      return count + st.candidates.length;
+    }, 0);
+    const fill = computeProjectedFill(s, data);
+    const lines: string[] = [];
+    lines.push(`${jobTitle}`);
+    lines.push(`Status: ${data.health.label}${data.briefing.status_reason_short ? ` — ${data.briefing.status_reason_short}` : ''}`);
+    lines.push('');
+    if (data.briefing.paragraph) {
+      lines.push(data.briefing.paragraph.replace(/\*\*/g, ''));
+      lines.push('');
+    }
+    lines.push(`Active candidates: ${s.pipeline.active_count}`);
+    lines.push(`Closest to offer: ${closest}`);
+    lines.push(`Projected fill: ${fill.value} — ${fill.qualifier}`);
+    if (ranked.length > 0) {
+      lines.push('');
+      lines.push('Needs attention:');
+      ranked.forEach((f) => {
+        const card = evidenceCard(f);
+        lines.push(`• ${card.title}: ${card.body.replace(/\*\*/g, '')}`);
+      });
+    }
+    return lines.join('\n');
+  }, [data, jobTitle, ranked]);
+
   const streamedIssueCards = streamIssues?.filter((finding) => finding.severity !== 'positive').slice(0, 3).length ? (
     <div>
       <div className="mb-2.5 flex items-center gap-2">
