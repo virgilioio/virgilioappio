@@ -4,8 +4,15 @@ import {
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
-import { useToast } from '@/hooks/use-toast';
+import { supabaseAnonKey, supabaseUrl } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import {
+  JobDashboardBriefingLoader,
+  jobDashboardBriefingLoaderCss,
+  type BriefingPhaseKey,
+  type BriefingPhaseState,
+  type BriefingStatTile,
+} from './JobDashboardBriefingLoader';
 
 // ---- shapes mirroring the edge function payload --------------------------
 
@@ -71,6 +78,16 @@ type Payload = {
   generated_at: string;
   cached: boolean;
 };
+
+type DashboardStreamEvent =
+  | { type: 'phase'; phase: BriefingPhaseKey; status: 'start' | 'done'; at: number; detail?: string }
+  | { type: 'stats'; payload: BriefingStatTile[] }
+  | { type: 'token'; text: string }
+  | { type: 'issues'; payload: Finding[] }
+  | { type: 'meta'; payload: { workingWell?: string; updatedAt: string; model: string } }
+  | { type: 'cached'; payload: Payload }
+  | { type: 'complete'; payload: Payload }
+  | { type: 'error'; phase?: BriefingPhaseKey; message: string; retryable: boolean };
 
 // ---- helpers --------------------------------------------------------------
 
@@ -370,11 +387,21 @@ interface JobBriefingTabProps {
 }
 
 export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
+  const [phases, setPhases] = useState<Partial<Record<BriefingPhaseKey, BriefingPhaseState>>>({});
+  const [streamStats, setStreamStats] = useState<BriefingStatTile[] | null>(null);
+  const [streamIssues, setStreamIssues] = useState<Finding[] | null>(null);
+  const [streamProse, setStreamProse] = useState('');
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const [streamIncomplete, setStreamIncomplete] = useState(false);
+  const [requestStartedAt, setRequestStartedAt] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [slowAnalysis, setSlowAnalysis] = useState(false);
+  const requestControllerRef = useRef<AbortController | null>(null);
   const [ask, setAsk] = useState('');
   const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [pending, setPending] = useState(false);
@@ -422,33 +449,138 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   );
 
 
-  const load = useCallback(
-    async (force = false) => {
-      if (force) setRefreshing(true);
-      else setLoading(true);
-      try {
-        const { data: res, error } = await supabase.functions.invoke('generate-job-briefing', {
-          body: { job_id: jobId, force },
-        });
-        if (error) throw error;
-        setData(res as Payload);
-      } catch (err: any) {
-        toast({
-          title: 'Briefing unavailable',
-          description: err?.message ?? 'Could not generate briefing.',
-          variant: 'destructive' as any,
-        });
-      } finally {
+  const load = useCallback(async (force = false) => {
+    requestControllerRef.current?.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    const startedAt = Date.now();
+    let completed = false;
+    let receivedProse = false;
+    let narrativeStarted = false;
+    let delayPassed = false;
+    let visibilityTimer: ReturnType<typeof setTimeout> | null = null;
+    if (force) setRefreshing(true); else setLoading(true);
+    setRequestStartedAt(startedAt);
+    setElapsedSeconds(0);
+    setSlowAnalysis(false);
+    setStreamError(null);
+    setStreamIncomplete(false);
+    setPhases({});
+    setStreamStats(null);
+    setStreamIssues(null);
+    setStreamProse('');
+    setShowLoader(false);
+    visibilityTimer = setTimeout(() => {
+      delayPassed = true;
+      if (narrativeStarted) setShowLoader(true);
+    }, 400);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Your session has expired. Please sign in again.');
+      const response = await fetch(`${supabaseUrl}/functions/v1/generate-job-briefing`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: supabaseAnonKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ job_id: jobId, force }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(typeof body?.error === 'string' ? body.error : `Request failed (${response.status})`);
+      }
+      if (!response.body) throw new Error('The briefing stream did not start.');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      const consume = (event: DashboardStreamEvent) => {
+        if (event.type === 'phase') {
+          narrativeStarted = true;
+          if (delayPassed || Date.now() - startedAt >= 400) setShowLoader(true);
+          setPhases((current) => {
+            const previous = current[event.phase];
+            return {
+              ...current,
+              [event.phase]: event.status === 'start'
+                ? { status: 'active', startedAt: event.at, detail: event.detail }
+                : { status: 'done', startedAt: previous?.startedAt, endedAt: event.at, detail: event.detail ?? previous?.detail },
+            };
+          });
+        } else if (event.type === 'stats') setStreamStats(event.payload);
+        else if (event.type === 'issues') setStreamIssues(event.payload);
+        else if (event.type === 'token') {
+          receivedProse = true;
+          setStreamProse((current) => current + event.text);
+        } else if (event.type === 'cached') {
+          completed = true;
+          if (visibilityTimer) clearTimeout(visibilityTimer);
+          setShowLoader(false);
+          setData(event.payload);
+        } else if (event.type === 'complete') {
+          completed = true;
+          setData(event.payload);
+        } else if (event.type === 'error') {
+          setStreamIncomplete(receivedProse);
+          setStreamError(event.message);
+        }
+      };
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+        for (const frame of frames) {
+          const line = frame.split('\n').find((item) => item.startsWith('data: '));
+          if (!line) continue;
+          try { consume(JSON.parse(line.slice(6)) as DashboardStreamEvent); } catch { /* ignore malformed frames */ }
+        }
+      }
+      if (!completed && !controller.signal.aborted) {
+        setStreamIncomplete(receivedProse);
+        setStreamError('The connection closed before the briefing finished.');
+      }
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      const message = err instanceof Error ? err.message : 'Could not generate briefing.';
+      setStreamIncomplete(receivedProse);
+      setStreamError(message);
+      setShowLoader(true);
+    } finally {
+      if (visibilityTimer) clearTimeout(visibilityTimer);
+      if (!controller.signal.aborted) {
         setLoading(false);
         setRefreshing(false);
       }
-    },
-    [jobId, toast],
-  );
+    }
+  }, [jobId]);
 
   useEffect(() => {
-    load(false);
+    void load(false);
+    return () => requestControllerRef.current?.abort();
   }, [load]);
+
+  useEffect(() => {
+    if (requestStartedAt == null || (!loading && !refreshing)) return;
+    const tick = () => setElapsedSeconds((Date.now() - requestStartedAt) / 1000);
+    tick();
+    const interval = window.setInterval(tick, 100);
+    return () => window.clearInterval(interval);
+  }, [loading, refreshing, requestStartedAt]);
+
+  useEffect(() => {
+    const analyse = phases.analyse;
+    if (analyse?.status !== 'active' || analyse.startedAt == null) {
+      setSlowAnalysis(false);
+      return;
+    }
+    const remaining = Math.max(0, 10_000 - (Date.now() - analyse.startedAt));
+    const timer = window.setTimeout(() => setSlowAnalysis(true), remaining);
+    return () => window.clearTimeout(timer);
+  }, [phases.analyse]);
 
   const ranked = useMemo(() => {
     if (!data) return [];
@@ -467,28 +599,62 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     [data],
   );
 
-  if (loading || !data) {
-    return (
-      <div
-        className="mx-auto"
-        style={{
-          maxWidth: 768,
-          padding: '24px 28px 56px',
-          backgroundColor: 'transparent',
-        }}
-      >
-        <div className="space-y-4 animate-pulse">
-          <div className="h-7 w-32 rounded bg-[#EDEDE6]" />
-          <div className="h-40 rounded-[14px] bg-[#EDEDE6]" />
-          <div className="grid grid-cols-3 gap-3">
-            <div className="h-24 rounded-[12px] bg-[#EDEDE6]" />
-            <div className="h-24 rounded-[12px] bg-[#EDEDE6]" />
-            <div className="h-24 rounded-[12px] bg-[#EDEDE6]" />
-          </div>
-        </div>
+  const streamedIssueCards = streamIssues?.filter((finding) => finding.severity !== 'positive').slice(0, 3).length ? (
+    <div>
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B8F9E]">Needs attention</span>
+        <span className="inline-flex items-center justify-center rounded-full bg-[#F1F0EC] px-[7px] py-0.5 text-[10.5px] font-semibold text-[#5A6072]">
+          {streamIssues.filter((finding) => finding.severity !== 'positive').slice(0, 3).length}
+        </span>
       </div>
-    );
+      <div className="flex flex-col gap-2.5">
+        {streamIssues.filter((finding) => finding.severity !== 'positive').slice(0, 3).map((finding, index) => {
+          const copy = evidenceCard(finding);
+          const Icon = copy.icon;
+          const critical = copy.tone === 'red';
+          return (
+            <div key={finding.id} className="briefing-tile-rise flex gap-3 bg-white p-4" style={{ animationDelay: `${120 + index * 90}ms` }}>
+              <span className="inline-flex size-[30px] shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: critical ? '#FEE2E2' : '#FEF3C7' }}>
+                <Icon size={14} color={critical ? '#C92A2A' : '#B45309'} strokeWidth={2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-poppins text-[13.5px] font-semibold text-[#0d0d09]">{copy.title}</h3>
+                {copy.body && <p className="mt-1 text-[12.5px] leading-[1.6] text-[#5A6072]">{copy.body}</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : undefined;
+
+  if ((!data && showLoader) || streamError != null || (refreshing && showLoader && streamProse.length > 0)) {
+    const read = phases.read;
+    const receipt = read?.detail ? `Read ${read.detail}` : undefined;
+    return <>
+      <style>{jobDashboardBriefingLoaderCss}</style>
+      <JobDashboardBriefingLoader
+        phases={phases}
+        stats={streamStats}
+        prose={streamProse}
+        elapsedSeconds={elapsedSeconds}
+        slowAnalysis={slowAnalysis}
+        error={streamError}
+        incomplete={streamIncomplete}
+        onCancel={() => {
+          requestControllerRef.current?.abort();
+          setLoading(false);
+          setRefreshing(false);
+          setStreamError('Generation was cancelled.');
+        }}
+        onRetry={() => void load(true)}
+        receipt={receipt}
+        issueCards={streamedIssueCards}
+      />
+    </>;
   }
+
+  if (!data) return null;
 
   const s = data.snapshot;
 
@@ -602,7 +768,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
 
   return (
     <div
-      className="mx-auto w-full"
+      className={`mx-auto w-full transition-opacity duration-150 ${refreshing && showLoader && streamProse.length === 0 ? 'opacity-50' : ''}`}
       style={{
         maxWidth: 768,
         padding: '24px 28px 56px',
