@@ -379,7 +379,33 @@ function StatTile({
   );
 }
 
+// ---- copy button ----------------------------------------------------------
+
+function CopyButton({ text, label, size = 13 }: { text: string; label?: string; size?: number }) {
+  const [copied, setCopied] = useState(false);
+  const handleClick = useCallback(async () => {
+    const ok = await copyToClipboardSilent(text);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    }
+  }, [text]);
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={label ?? 'Copy to clipboard'}
+      title={label ?? 'Copy to clipboard'}
+      className="inline-flex items-center justify-center hover:text-[#1F2230]"
+      style={{ color: copied ? '#0B7A52' : '#8B8F9E', padding: 4, background: 'transparent', border: 'none' }}
+    >
+      {copied ? <Check size={size} strokeWidth={2} /> : <Copy size={size} strokeWidth={2} />}
+    </button>
+  );
+}
+
 // ---- main -----------------------------------------------------------------
+
 
 interface JobBriefingTabProps {
   jobId: string;
