@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info,
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
+  Copy,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAnonKey, supabaseUrl } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { copyToClipboardSilent } from '@/utils/clipboard';
 import {
   JobDashboardBriefingLoader,
   jobDashboardBriefingLoaderCss,
@@ -377,7 +379,33 @@ function StatTile({
   );
 }
 
+// ---- copy button ----------------------------------------------------------
+
+function CopyButton({ text, label, size = 13 }: { text: string; label?: string; size?: number }) {
+  const [copied, setCopied] = useState(false);
+  const handleClick = useCallback(async () => {
+    const ok = await copyToClipboardSilent(text);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    }
+  }, [text]);
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      aria-label={label ?? 'Copy to clipboard'}
+      title={label ?? 'Copy to clipboard'}
+      className="inline-flex items-center justify-center hover:text-[#1F2230]"
+      style={{ color: copied ? '#0B7A52' : '#8B8F9E', padding: 4, background: 'transparent', border: 'none' }}
+    >
+      {copied ? <Check size={size} strokeWidth={2} /> : <Copy size={size} strokeWidth={2} />}
+    </button>
+  );
+}
+
 // ---- main -----------------------------------------------------------------
+
 
 interface JobBriefingTabProps {
   jobId: string;
@@ -760,6 +788,30 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     }
   }
 
+  // Plain-text snapshot of the dashboard for copying.
+  const dashboardCopyText = useMemo(() => {
+    const lines: string[] = [];
+    lines.push(`${jobTitle}`);
+    lines.push(`Status: ${data.health.label}${data.briefing.status_reason_short ? ` — ${data.briefing.status_reason_short}` : ''}`);
+    lines.push('');
+    if (data.briefing.paragraph) {
+      lines.push(data.briefing.paragraph.replace(/\*\*/g, ''));
+      lines.push('');
+    }
+    lines.push(`Active candidates: ${s.pipeline.active_count}`);
+    lines.push(`Closest to offer: ${closestCount}`);
+    lines.push(`Projected fill: ${projected.value} — ${projected.qualifier}`);
+    if (ranked.length > 0) {
+      lines.push('');
+      lines.push('Needs attention:');
+      ranked.forEach((f) => {
+        const card = evidenceCard(f);
+        lines.push(`• ${card.title}: ${card.body.replace(/\*\*/g, '')}`);
+      });
+    }
+    return lines.join('\n');
+  }, [data, jobTitle, s, closestCount, projected, ranked]);
+
   // Sparse data note for salary
   const salaryDatapoints =
     (s.composition?.salary?.datapoints as number | undefined) ?? 0;
@@ -896,16 +948,19 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           >
             Updated {relativeFromIso(data.generated_at)} from pipeline activity
           </span>
-          <button
-            type="button"
-            onClick={() => load(true)}
-            disabled={refreshing}
-            aria-label="Refresh briefing"
-            className="inline-flex items-center justify-center hover:text-[#1F2230] disabled:opacity-50"
-            style={{ color: '#8B8F9E', padding: 4, background: 'transparent', border: 'none' }}
-          >
-            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} strokeWidth={2} />
-          </button>
+          <div className="flex items-center" style={{ gap: 2 }}>
+            <CopyButton text={dashboardCopyText} label="Copy briefing" />
+            <button
+              type="button"
+              onClick={() => load(true)}
+              disabled={refreshing}
+              aria-label="Refresh briefing"
+              className="inline-flex items-center justify-center hover:text-[#1F2230] disabled:opacity-50"
+              style={{ color: '#8B8F9E', padding: 4, background: 'transparent', border: 'none' }}
+            >
+              <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} strokeWidth={2} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1163,6 +1218,7 @@ function AskBox({
             <div
               key={i}
               style={{
+                position: 'relative',
                 alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
                 maxWidth: '92%',
                 padding: m.role === 'user' ? '8px 12px' : '10px 14px',
@@ -1177,7 +1233,14 @@ function AskBox({
                 wordBreak: 'break-word',
               }}
             >
-              {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+              {m.role === 'assistant' && (
+                <div className="absolute top-1 right-1">
+                  <CopyButton text={m.content.replace(/\*\*/g, '')} label="Copy response" size={12} />
+                </div>
+              )}
+              <span className={m.role === 'assistant' ? 'pr-5' : ''}>
+                {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+              </span>
             </div>
           ))}
           {pending && (
