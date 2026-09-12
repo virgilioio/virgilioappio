@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info,
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
+  Copy,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseAnonKey, supabaseUrl } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { copyToClipboardSilent } from '@/utils/clipboard';
 import {
   JobDashboardBriefingLoader,
   jobDashboardBriefingLoaderCss,
