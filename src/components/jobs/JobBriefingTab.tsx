@@ -484,6 +484,17 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
       if (narrativeStarted) setShowLoader(true);
     }, 400);
 
+    // When a previous briefing exists, a failed refresh restores it with an
+    // inline note instead of replacing it with the full-screen error loader.
+    const failSoft = (message: string, incomplete: boolean) => {
+      if (dataRef.current) {
+        setRefreshNotice(message);
+        setShowLoader(false);
+      } else {
+        setStreamIncomplete(incomplete);
+        setStreamError(message);
+      }
+    };
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Your session has expired. Please sign in again.');
