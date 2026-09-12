@@ -221,7 +221,6 @@ Deno.serve(async (req) => {
               ? templateRamping(snapshot)
               : templateOnTrack(snapshot);
           emit({ type: 'token', text: briefing.paragraph });
-          phase('write', 'done', Date.now());
         } else {
           if (!OPENAI_API_KEY) throw new Error('The briefing model is not configured.');
           activePhase = 'analyse';
