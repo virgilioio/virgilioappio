@@ -1,7 +1,7 @@
 // buildJobSnapshot(jobId) — deterministic SQL-driven snapshot.
 // No AI, no opinion. Pure facts.
 
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import {
   OFFER_STAGE_TYPES,
   TERMINAL_STATUSES,
@@ -196,7 +196,7 @@ export type JobSnapshot = {
 
 // Payload discipline: the longest-waiting candidates per stage carry the signal.
 const STAGE_CANDIDATE_LIMIT = 8;
-const ACTIVITY_WINDOW_DAYS = 14;
+export const ACTIVITY_WINDOW_DAYS = 14;
 
 function daysBetween(a: Date, b: Date): number {
   return Math.max(0, Math.floor((b.getTime() - a.getTime()) / 86_400_000));

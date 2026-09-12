@@ -7,6 +7,7 @@ import {
   buildJobSnapshot,
   evaluateDetectors,
   deriveHealth,
+  ACTIVITY_WINDOW_DAYS,
   type JobSnapshot,
   type Finding,
 } from '../_shared/jobBriefing/index.ts';
