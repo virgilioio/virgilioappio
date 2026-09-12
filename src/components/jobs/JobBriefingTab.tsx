@@ -456,6 +456,8 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     const startedAt = Date.now();
     let completed = false;
     let receivedProse = false;
+    let narrativeStarted = false;
+    let delayPassed = false;
     let visibilityTimer: ReturnType<typeof setTimeout> | null = null;
     if (force) setRefreshing(true); else setLoading(true);
     setRequestStartedAt(startedAt);
@@ -468,7 +470,10 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     setStreamIssues(null);
     setStreamProse('');
     setShowLoader(false);
-    visibilityTimer = setTimeout(() => setShowLoader(true), 400);
+    visibilityTimer = setTimeout(() => {
+      delayPassed = true;
+      if (narrativeStarted) setShowLoader(true);
+    }, 400);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -493,6 +498,8 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
       let buffer = '';
       const consume = (event: DashboardStreamEvent) => {
         if (event.type === 'phase') {
+          narrativeStarted = true;
+          if (delayPassed || Date.now() - startedAt >= 400) setShowLoader(true);
           setPhases((current) => {
             const previous = current[event.phase];
             return {
