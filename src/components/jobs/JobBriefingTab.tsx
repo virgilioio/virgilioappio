@@ -1218,6 +1218,7 @@ function AskBox({
             <div
               key={i}
               style={{
+                position: 'relative',
                 alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
                 maxWidth: '92%',
                 padding: m.role === 'user' ? '8px 12px' : '10px 14px',
@@ -1232,7 +1233,14 @@ function AskBox({
                 wordBreak: 'break-word',
               }}
             >
-              {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+              {m.role === 'assistant' && (
+                <div className="absolute top-1 right-1">
+                  <CopyButton text={m.content.replace(/\*\*/g, '')} label="Copy response" size={12} />
+                </div>
+              )}
+              <span className={m.role === 'assistant' ? 'pr-5' : ''}>
+                {m.role === 'assistant' ? renderParagraph(m.content) : m.content}
+              </span>
             </div>
           ))}
           {pending && (
