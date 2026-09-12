@@ -948,16 +948,19 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           >
             Updated {relativeFromIso(data.generated_at)} from pipeline activity
           </span>
-          <button
-            type="button"
-            onClick={() => load(true)}
-            disabled={refreshing}
-            aria-label="Refresh briefing"
-            className="inline-flex items-center justify-center hover:text-[#1F2230] disabled:opacity-50"
-            style={{ color: '#8B8F9E', padding: 4, background: 'transparent', border: 'none' }}
-          >
-            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} strokeWidth={2} />
-          </button>
+          <div className="flex items-center" style={{ gap: 2 }}>
+            <CopyButton text={dashboardCopyText} label="Copy briefing" />
+            <button
+              type="button"
+              onClick={() => load(true)}
+              disabled={refreshing}
+              aria-label="Refresh briefing"
+              className="inline-flex items-center justify-center hover:text-[#1F2230] disabled:opacity-50"
+              style={{ color: '#8B8F9E', padding: 4, background: 'transparent', border: 'none' }}
+            >
+              <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} strokeWidth={2} />
+            </button>
+          </div>
         </div>
       </div>
 
