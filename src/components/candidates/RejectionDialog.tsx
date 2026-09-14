@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   UserRoundX, X, Plus, Mail, Send, Clock, Calendar as CalendarIcon,
-  Check, ChevronDown, History, TriangleAlert, Loader2, Eye, EyeOff,
+  Check, History, TriangleAlert, Loader2, EyeOff,
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +17,7 @@ import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 
 interface RejectionDialogProps {
   open: boolean;
@@ -148,10 +149,16 @@ export function RejectionDialog({
   // Esc to close
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onOpenChange(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !mutationPending) onOpenChange(false);
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canSubmit && !mutationPending) {
+        e.preventDefault();
+        void handleSubmit();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onOpenChange]);
+  });
 
   const recruiterReasons = reasons.filter((r) => r.category === 'recruiter_rejected');
   const candidateReasons = reasons.filter((r) => r.category === 'candidate_declined');
@@ -673,26 +680,22 @@ export function RejectionDialog({
               {sendEmail ? (isBulk ? `${candidateCount} personalized emails will be sent` : 'Candidate will be emailed') : (isBulk ? "Candidates won't be notified" : "Candidate won't be notified")}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="font-poppins hover:bg-[#F1F0EC] transition"
-            style={{ height: 34, padding: '0 14px', borderRadius: 9, fontSize: 13, fontWeight: 500, color: '#1F2230' }}
-          >
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={() => onOpenChange(false)}
+              disabled={mutationPending}
+            >
             Cancel
-          </button>
-          <button
+            </Button>
+            <Button
             type="button"
+              variant="dangerSolid"
+              size="md"
             onClick={handleSubmit}
             disabled={!canSubmit || mutationPending}
-            className={cn('inline-flex items-center gap-1.5 font-poppins transition', (!canSubmit || mutationPending) && 'pointer-events-none')}
-            style={{
-              height: 34, padding: '0 14px', borderRadius: 9,
-              fontSize: 13, fontWeight: 500,
-              backgroundColor: '#DC2626', color: '#FFFFFF',
-              boxShadow: '0 1px 2px rgba(220,38,38,0.30)',
-              opacity: (!canSubmit || mutationPending) ? 0.4 : 1,
-            }}
+              className={cn((!canSubmit || mutationPending) && 'pointer-events-none')}
           >
             {mutationPending ? (
               <><Loader2 size={13} className="animate-spin" /> Rejecting…</>
@@ -703,7 +706,7 @@ export function RejectionDialog({
             ) : (
               <><UserRoundX size={13} /> Reject {isBulk ? `${candidateCount} candidates` : 'candidate'}</>
             )}
-          </button>
+            </Button>
         </div>
       </div>
     </div>
