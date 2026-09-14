@@ -313,6 +313,7 @@ export function Header() {
             )
           })}
         </nav>
+        </div>
 
         {/* Right: utility cluster */}
         <div className="flex items-center gap-2 text-white">
