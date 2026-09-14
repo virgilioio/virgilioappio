@@ -91,11 +91,26 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
                 onClick={expanded ? handleCollapse : handleExpand}
                 aria-label={expanded ? 'Close search' : 'Search'}
                 className={cn(
-                  'h-8 w-8 rounded-full flex items-center justify-center transition-colors hover:bg-white/[0.08] focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40',
-                  expanded && 'relative z-[1]',
+                  'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/40',
+                  expanded
+                    ? 'relative z-[1] h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/[0.08]'
+                    : 'hidden md:flex h-[30px] min-w-[180px] shrink items-center gap-2 rounded-lg border border-white/[0.12] bg-white/[0.08] px-2.5 text-[13px] text-white/70 hover:bg-white/[0.12] hover:text-white',
                 )}
               >
-                {expanded ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+                {expanded ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  <>
+                    <Search className="h-3.5 w-3.5 shrink-0" />
+                    <span className="min-w-0 truncate whitespace-nowrap">
+                      Search candidates, jobs, companies…
+                    </span>
+                    <span className="ml-auto flex items-center gap-0.5 text-[10px] text-white/50 shrink-0">
+                      <kbd className="px-1 py-0.5 rounded font-mono bg-white/[0.12]">⌘</kbd>
+                      <kbd className="px-1 py-0.5 rounded font-mono bg-white/[0.12]">/</kbd>
+                    </span>
+                  </>
+                )}
               </button>
             )}
             {(!collapsible || expanded) && (
