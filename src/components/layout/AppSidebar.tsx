@@ -1,6 +1,5 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Settings as SettingsIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -8,6 +7,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
 import { ReferencesGlyph as SharedReferencesGlyph } from '@/components/icons/ReferencesGlyph'
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 
 
 export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'settings' | 'my-profile' | null
@@ -180,7 +180,7 @@ export function AppSidebar() {
           )
         })}
 
-        {/* Bottom group: Settings cog + user avatar */}
+        {/* Bottom group: Settings + user avatar */}
         <div className="mt-auto flex flex-col items-center" style={{ rowGap: 6 }}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -189,9 +189,20 @@ export function AppSidebar() {
                 aria-current={active === 'settings' ? 'page' : undefined}
                 aria-label="Settings"
                 title="Settings"
-                className={cn(tileBase, active === 'settings' ? tileActive : tileInactive)}
+                className={cn(tileBase, active === 'settings' ? tileActive : tileInactive, 'group')}
               >
-                <SettingsIcon className="h-5 w-5" strokeWidth={1.75} />
+                {active === 'settings' ? (
+                  <SettingsGlyph size={20} color="#0d0d09" accent="#D7C5FB" />
+                ) : (
+                  <span className="relative h-5 w-5" aria-hidden>
+                    <span className="absolute inset-0 transition-opacity group-hover:opacity-0">
+                      <SettingsGlyph size={20} color="rgba(255,252,249,0.72)" accent="rgba(255,252,249,0.72)" />
+                    </span>
+                    <span className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100">
+                      <SettingsGlyph size={20} color="#fffcf9" accent="#fffcf9" />
+                    </span>
+                  </span>
+                )}
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={12}>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { TrendingUp, BarChart3, LogOut, Settings, Search } from 'lucide-react'
+import { TrendingUp, BarChart3, LogOut, Search } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { cn } from '@/lib/utils'
 import { SearchResultsDialog } from '@/components/search/SearchResultsDialog'
 import gioAvatar from '@/assets/gio-avatar.png'
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 
 export function MobileBottomNav() {
   const { user, logout, isLoggingOut } = useAuth()
@@ -112,7 +113,7 @@ export function MobileBottomNav() {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/settings">
-                  <Settings className="h-3.5 w-3.5" />
+                  <SettingsGlyph size={18} color="#5A6072" accent="#5A6072" />
                   <span>Settings</span>
                 </Link>
               </DropdownMenuItem>

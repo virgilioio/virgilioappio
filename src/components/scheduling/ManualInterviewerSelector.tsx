@@ -5,7 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Info, Settings } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { getOrganizationTree } from '@/lib/organizationHelpers';
@@ -151,7 +152,7 @@ export function ManualInterviewerSelector({
         )}
         <Button variant="outline" asChild>
           <Link to="/settings?tab=booking">
-            <Settings className="h-4 w-4 mr-2" />
+            <span className="mr-2"><SettingsGlyph size={16} color="#5A6072" accent="#5A6072" /></span>
             Configure Booking Availability
           </Link>
         </Button>

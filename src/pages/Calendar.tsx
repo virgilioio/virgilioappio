@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft,
   ChevronRight,
-  Settings2,
   CalendarPlus,
   Briefcase,
   Users,
@@ -31,6 +30,7 @@ import {
 } from 'date-fns'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
@@ -336,7 +336,7 @@ export default function CalendarPage() {
                   style={{ borderColor: C.border }}
                   onClick={() => navigate('/settings?tab=availability')}
                 >
-                  <Settings2 size={14} strokeWidth={2} />
+                  <SettingsGlyph size={16} color="#5A6072" accent="#5A6072" />
                   Availability
                 </button>
                 <button

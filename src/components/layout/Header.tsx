@@ -15,7 +15,6 @@ import {
   Home,
   Briefcase,
   Building2,
-  Settings,
   LogOut,
   Users,
   TrendingUp,
