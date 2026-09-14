@@ -66,7 +66,7 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
             width="450"
             shapeRendering="geometricPrecision"
             style={{ overflow: 'visible' }}
-            aria-label="gio"
+            aria-label="Gio ATS"
           >
             <circle
               className="part dot"
