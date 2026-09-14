@@ -107,9 +107,12 @@ export default function AcceptInvite() {
 
     if (!password) {
       newErrors.password = 'Password is required'
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
+    } else if (!/[a-zA-Z]/.test(password) || !/[0-9\W]/.test(password)) {
+      newErrors.password = 'Password must include letters and at least one number or symbol'
     }
+
 
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password'
@@ -147,8 +150,18 @@ export default function AcceptInvite() {
       if (signUpError) {
         console.error('Error creating user:', signUpError)
         
+        const weakPassword =
+          (signUpError as any)?.code === 'weak_password' ||
+          /weak|easy to guess|pwned|compromised/i.test(signUpError.message || '')
+
         // Handle specific signup errors
-        if (signUpError.message.includes('User already registered')) {
+        if (weakPassword) {
+          setErrors({
+            password: 'This password was rejected as too easy to guess. Please choose a stronger, less common password.'
+          })
+          return
+        } else if (signUpError.message.includes('User already registered')) {
+
           console.log('User already exists, trying to sign them in...')
           
           // Try to sign in the existing user
@@ -260,8 +273,15 @@ export default function AcceptInvite() {
       let errorMessage = 'Failed to accept invitation. Please try again.'
       
       // Provide more specific error messages
-      if (error.message?.includes('User already registered')) {
+      if (/weak|easy to guess|pwned|compromised/i.test(error.message || '')) {
+        setErrors({
+          password: 'This password was rejected as too easy to guess. Please choose a stronger, less common password.'
+        })
+        setIsSubmitting(false)
+        return
+      } else if (error.message?.includes('User already registered')) {
         errorMessage = 'This email is already registered. Please try logging in instead.'
+
       } else if (error.message?.includes('expired')) {
         errorMessage = 'This invitation has expired. Please request a new invitation.'
       } else if (error.message?.includes('Email not confirmed')) {
@@ -481,10 +501,15 @@ export default function AcceptInvite() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password && (
+              {errors.password ? (
                 <p className="text-sm text-destructive mt-1">{errors.password}</p>
+              ) : (
+                <p className="text-sm text-text-secondary mt-1">
+                  At least 8 characters, including letters and a number or symbol. Avoid common words.
+                </p>
               )}
             </div>
+
 
             <div>
               <Label htmlFor="confirmPassword" className="text-text-primary">Confirm Password</Label>
