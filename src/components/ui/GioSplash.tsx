@@ -99,8 +99,10 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
                 <path fill="#0d0d09" d={O_PATH} />
               </g>
             </g>
-            <g className="part gl gl-ats" transform="translate(68, 45.728) scale(.03, -.03)">
-              <path fill="#0d0d09" d={ATS_PATH} />
+            <g transform="translate(68, 45.728) scale(.03, -.03)">
+              <g className="part gl gl-ats">
+                <path fill="#0d0d09" d={ATS_PATH} />
+              </g>
             </g>
           </svg>
         </div>
