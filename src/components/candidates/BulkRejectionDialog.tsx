@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { RejectionDialog } from './RejectionDialog';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +46,16 @@ export function BulkRejectionDialog({
   jobId,
   onSuccess,
 }: BulkRejectionDialogProps) {
-  const [associationIds, setAssociationIds] = useState<string[]>([]);
+  return (
+    <RejectionDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      candidateIds={candidateIds}
+      jobId={jobId}
+      onSuccess={onSuccess}
+    />
+  );
+/*
   const getStoredPrefs = () => {
     try {
       const stored = localStorage.getItem('rejection-dialog-prefs');
@@ -435,5 +444,5 @@ export function BulkRejectionDialog({
         )}
       </DialogContent>
     </Dialog>
-  );
+  );*/
 }
