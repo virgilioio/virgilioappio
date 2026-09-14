@@ -107,9 +107,12 @@ export default function AcceptInvite() {
 
     if (!password) {
       newErrors.password = 'Password is required'
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
+    } else if (!/[a-zA-Z]/.test(password) || !/[0-9\W]/.test(password)) {
+      newErrors.password = 'Password must include letters and at least one number or symbol'
     }
+
 
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password'
@@ -481,10 +484,15 @@ export default function AcceptInvite() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password && (
+              {errors.password ? (
                 <p className="text-sm text-destructive mt-1">{errors.password}</p>
+              ) : (
+                <p className="text-sm text-text-secondary mt-1">
+                  At least 8 characters, including letters and a number or symbol. Avoid common words.
+                </p>
               )}
             </div>
+
 
             <div>
               <Label htmlFor="confirmPassword" className="text-text-primary">Confirm Password</Label>
