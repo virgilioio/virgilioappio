@@ -227,7 +227,9 @@ export function RejectionDialog({
       }
 
       // Persist prefs + recent
-      const nextRecent = [rejectionReasonId!, ...recentReasonIds.filter((id) => id !== rejectionReasonId)].slice(0, MAX_RECENT);
+      const nextRecent = rejectionReasonId
+        ? [rejectionReasonId, ...recentReasonIds.filter((id) => id !== rejectionReasonId)].slice(0, MAX_RECENT)
+        : recentReasonIds;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           rejectionReasonId,
@@ -254,7 +256,7 @@ export function RejectionDialog({
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-6"
       style={{ backgroundColor: 'rgba(13,13,9,0.34)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
+      onClick={(e) => { if (e.target === e.currentTarget && !mutationPending) onOpenChange(false); }}
       role="dialog"
       aria-modal="true"
     >
@@ -292,8 +294,9 @@ export function RejectionDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
+              disabled={mutationPending}
               aria-label="Close"
-              className="flex items-center justify-center hover:bg-[#F1F0EC] rounded-md transition"
+              className="flex items-center justify-center hover:bg-[#F1F0EC] rounded-md transition disabled:pointer-events-none disabled:opacity-45"
               style={{ width: 30, height: 30, color: '#8B8F9E' }}
             >
               <X size={17} />
@@ -323,7 +326,7 @@ export function RejectionDialog({
                   Rejection reason
                 </label>
                 <span className="font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>
-                  Internal only — never shown to the candidate
+                  Internal only — never shown to {isBulk ? 'candidates' : 'the candidate'}
                 </span>
               </div>
 
@@ -482,7 +485,7 @@ export function RejectionDialog({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-poppins" style={{ fontSize: 13, fontWeight: 600, color: '#1F2230' }}>
-                    Send rejection email
+                    Send rejection {isBulk ? 'emails' : 'email'}
                   </div>
                   <div className="font-inter" style={{ fontSize: 11.5, color: '#8B8F9E', marginTop: 1 }}>
                     {sendEmail
@@ -680,22 +683,22 @@ export function RejectionDialog({
               {sendEmail ? (isBulk ? `${candidateCount} personalized emails will be sent` : 'Candidate will be emailed') : (isBulk ? "Candidates won't be notified" : "Candidate won't be notified")}
             </span>
           </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              onClick={() => onOpenChange(false)}
-              disabled={mutationPending}
-            >
-            Cancel
-            </Button>
-            <Button
+          <Button
             type="button"
-              variant="dangerSolid"
-              size="md"
+            variant="secondary"
+            size="md"
+            onClick={() => onOpenChange(false)}
+            disabled={mutationPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="dangerSolid"
+            size="md"
             onClick={handleSubmit}
             disabled={!canSubmit || mutationPending}
-              className={cn((!canSubmit || mutationPending) && 'pointer-events-none')}
+            className={cn((!canSubmit || mutationPending) && 'pointer-events-none')}
           >
             {mutationPending ? (
               <><Loader2 size={13} className="animate-spin" /> Rejecting…</>
@@ -706,7 +709,7 @@ export function RejectionDialog({
             ) : (
               <><UserRoundX size={13} /> Reject {isBulk ? `${candidateCount} candidates` : 'candidate'}</>
             )}
-            </Button>
+          </Button>
         </div>
       </div>
     </div>
