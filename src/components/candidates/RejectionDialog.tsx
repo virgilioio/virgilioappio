@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   UserRoundX, X, Plus, Mail, Send, Clock, Calendar as CalendarIcon,
-  Check, ChevronDown, History, TriangleAlert, Loader2, Eye, EyeOff,
+  Check, History, TriangleAlert, Loader2, EyeOff,
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,15 +12,20 @@ import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
 import { useRejectionReasons } from '@/hooks/useRejectionReasons';
 import { useRejectCandidate } from '@/hooks/useRejectCandidate';
+import { useBulkRejectCandidates } from '@/hooks/useBulkRejectCandidates';
 import { convertHtmlToPlaceholders } from '@/utils/placeholderUtils';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 
 interface RejectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  associationId: string;
-  candidateName: string;
-  candidateEmail: string;
+  associationId?: string;
+  candidateIds?: string[];
+  candidateName?: string;
+  candidateEmail?: string;
   candidateId?: string;
   jobId?: string;
   jobTitle?: string;
@@ -64,9 +69,11 @@ function resolvePresetDate(preset: SchedulePreset, custom?: string): Date | unde
 }
 
 export function RejectionDialog({
-  open, onOpenChange, associationId, candidateName, candidateEmail,
+  open, onOpenChange, associationId, candidateIds = [], candidateName = 'Candidate', candidateEmail = '',
   candidateId, jobId, jobTitle, onSuccess,
 }: RejectionDialogProps) {
+  const isBulk = candidateIds.length > 0;
+  const candidateCount = isBulk ? candidateIds.length : 1;
   const prefs = useMemo(readPrefs, [open]);
 
   const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>(prefs.rejectionReasonId);
@@ -92,9 +99,34 @@ export function RejectionDialog({
 
   const { reasons } = useRejectionReasons('organization');
   const rejectCandidate = useRejectCandidate();
+  const bulkReject = useBulkRejectCandidates();
+  const [bulkAssociationIds, setBulkAssociationIds] = useState<string[]>([]);
 
   const firstName = (candidateName || 'Candidate').trim().split(/\s+/)[0];
   const jobLabel = jobTitle || 'this job';
+  const mutationPending = isBulk ? bulkReject.isPending : rejectCandidate.isPending;
+
+  useEffect(() => {
+    if (!open || !isBulk || !jobId) return;
+    let active = true;
+    setBulkAssociationIds([]);
+    void supabase
+      .from('job_candidate_associations')
+      .select('id')
+      .eq('job_id', jobId)
+      .in('candidate_id', candidateIds)
+      .not('status', 'eq', 'rejected')
+      .not('status', 'eq', 'hired')
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error('Failed to load candidates for bulk rejection:', error);
+          return;
+        }
+        setBulkAssociationIds((data || []).map((row) => row.id));
+      });
+    return () => { active = false; };
+  }, [open, isBulk, jobId, candidateIds]);
 
   // Reset per-candidate state when opening
   useEffect(() => {
@@ -117,10 +149,16 @@ export function RejectionDialog({
   // Esc to close
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onOpenChange(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !mutationPending) onOpenChange(false);
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canSubmit && !mutationPending) {
+        e.preventDefault();
+        void handleSubmit();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onOpenChange]);
+  });
 
   const recruiterReasons = reasons.filter((r) => r.category === 'recruiter_rejected');
   const candidateReasons = reasons.filter((r) => r.category === 'candidate_declined');
@@ -146,8 +184,9 @@ export function RejectionDialog({
     }
   };
 
-  const emailComplete = !!(fromEmail && toEmail && subjectHtml && bodyHtml);
-  const canSubmit = !!rejectionReasonId && (!sendEmail || emailComplete);
+  const emailComplete = !!(fromEmail && (isBulk || toEmail) && subjectHtml && bodyHtml);
+  const hasTargets = isBulk ? bulkAssociationIds.length > 0 : !!associationId;
+  const canSubmit = hasTargets && !!rejectionReasonId && (!sendEmail || emailComplete);
   const scheduleFor = sendEmail && sendOption === 'later' ? resolvePresetDate(preset, customDateTime) : undefined;
   const isScheduled = !!scheduleFor;
 
@@ -156,24 +195,41 @@ export function RejectionDialog({
     try {
       const emailData = sendEmail && emailComplete ? {
         fromEmail,
-        toEmails: toEmail.split(/[,;]/).map((e) => e.trim()).filter(Boolean),
+        toEmails: isBulk ? [] : toEmail.split(/[,;]/).map((e) => e.trim()).filter(Boolean),
         subject: convertHtmlToPlaceholders(subjectHtml),
         bodyHtml: convertHtmlToPlaceholders(bodyHtml),
         candidateId,
         jobId,
       } : undefined;
 
-      await rejectCandidate.mutateAsync({
-        associationId,
-        rejectionReasonId,
-        rejectionNotes: rejectionNotes.trim() || undefined,
-        sendEmail: !!emailData,
-        emailData,
-        scheduleFor,
-      });
+      if (isBulk) {
+        await bulkReject.mutateAsync({
+          associationIds: bulkAssociationIds,
+          rejectionReasonId,
+          rejectionNotes: rejectionNotes.trim() || undefined,
+          sendEmail: !!emailData,
+          emailData: emailData ? {
+            fromEmail: emailData.fromEmail,
+            subject: emailData.subject,
+            bodyHtml: emailData.bodyHtml,
+          } : undefined,
+          scheduleFor,
+        });
+      } else if (associationId) {
+        await rejectCandidate.mutateAsync({
+          associationId,
+          rejectionReasonId,
+          rejectionNotes: rejectionNotes.trim() || undefined,
+          sendEmail: !!emailData,
+          emailData,
+          scheduleFor,
+        });
+      }
 
       // Persist prefs + recent
-      const nextRecent = [rejectionReasonId!, ...recentReasonIds.filter((id) => id !== rejectionReasonId)].slice(0, MAX_RECENT);
+      const nextRecent = rejectionReasonId
+        ? [rejectionReasonId, ...recentReasonIds.filter((id) => id !== rejectionReasonId)].slice(0, MAX_RECENT)
+        : recentReasonIds;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           rejectionReasonId,
@@ -192,11 +248,15 @@ export function RejectionDialog({
 
   if (!open) return null;
 
+  const progressPercent = bulkReject.progress.total > 0
+    ? ((bulkReject.progress.completed + bulkReject.progress.failed) / bulkReject.progress.total) * 100
+    : 0;
+
   const dialog = (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-6"
       style={{ backgroundColor: 'rgba(13,13,9,0.34)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
+      onClick={(e) => { if (e.target === e.currentTarget && !mutationPending) onOpenChange(false); }}
       role="dialog"
       aria-modal="true"
     >
@@ -222,33 +282,43 @@ export function RejectionDialog({
                 className="font-inter uppercase"
                 style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.09em', color: '#8B8F9E' }}
               >
-                CANDIDATE · {jobLabel}
+                {isBulk ? `${candidateCount} CANDIDATES` : 'CANDIDATE'} · {jobLabel}
               </div>
               <div
                 className="font-poppins whitespace-nowrap overflow-hidden text-ellipsis"
                 style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.035em', color: '#0d0d09', marginTop: 2 }}
               >
-                Reject {candidateName}<span style={{ color: '#D7C5FB' }}>.</span>
+                {isBulk ? `Reject ${candidateCount} candidates` : `Reject ${candidateName}`}<span style={{ color: '#D7C5FB' }}>.</span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
+              disabled={mutationPending}
               aria-label="Close"
-              className="flex items-center justify-center hover:bg-[#F1F0EC] rounded-md transition"
+              className="flex items-center justify-center hover:bg-[#F1F0EC] rounded-md transition disabled:pointer-events-none disabled:opacity-45"
               style={{ width: 30, height: 30, color: '#8B8F9E' }}
             >
               <X size={17} />
             </button>
           </div>
           <p className="font-inter" style={{ fontSize: 12.5, color: '#5A6072', lineHeight: 1.5, marginTop: 12 }}>
-            Removes {firstName} from <span style={{ color: '#1F2230', fontWeight: 600 }}>{jobLabel}</span>. Their profile and history stay in your talent pool.
+            {isBulk ? `Removes all ${candidateCount} selected candidates` : `Removes ${firstName}`} from <span style={{ color: '#1F2230', fontWeight: 600 }}>{jobLabel}</span>. Their {isBulk ? 'profiles and histories stay' : 'profile and history stays'} in your talent pool.
           </p>
         </div>
 
         {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto" style={{ padding: 24 }}>
           <div className="flex flex-col" style={{ gap: 20 }}>
+            {isBulk && bulkReject.isPending && (
+              <div className="flex-shrink-0" style={{ backgroundColor: '#FAFAF7', border: '1px solid #EDECE6', borderRadius: 10, padding: '10px 12px' }}>
+                <div className="flex items-center justify-between font-inter mb-2" style={{ fontSize: 11.5, color: '#5A6072' }}>
+                  <span>Processing rejections…</span>
+                  <span>{bulkReject.progress.completed + bulkReject.progress.failed}/{bulkReject.progress.total}</span>
+                </div>
+                <Progress value={progressPercent} className="h-1.5" />
+              </div>
+            )}
             {/* 1. Rejection reason */}
             <section className="flex-shrink-0">
               <div className="flex items-center justify-between mb-2">
@@ -256,7 +326,7 @@ export function RejectionDialog({
                   Rejection reason
                 </label>
                 <span className="font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>
-                  Internal only — never shown to the candidate
+                  Internal only — never shown to {isBulk ? 'candidates' : 'the candidate'}
                 </span>
               </div>
 
@@ -415,10 +485,12 @@ export function RejectionDialog({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-poppins" style={{ fontSize: 13, fontWeight: 600, color: '#1F2230' }}>
-                    Send rejection email
+                    Send rejection {isBulk ? 'emails' : 'email'}
                   </div>
                   <div className="font-inter" style={{ fontSize: 11.5, color: '#8B8F9E', marginTop: 1 }}>
-                    {sendEmail ? `${firstName} will be notified about your decision.` : `${firstName} won't be notified.`}
+                    {sendEmail
+                      ? (isBulk ? 'Each candidate will receive a personalized email.' : `${firstName} will be notified about your decision.`)
+                      : (isBulk ? "Candidates won't be notified." : `${firstName} won't be notified.`)}
                   </div>
                 </div>
                 <button
@@ -480,7 +552,7 @@ export function RejectionDialog({
                       </Select>
 
                       {/* From + To */}
-                      <div className="grid grid-cols-2" style={{ gap: 12 }}>
+                      <div className={isBulk ? '' : 'grid grid-cols-2'} style={{ gap: 12 }}>
                         <div>
                           <FieldLabel>From</FieldLabel>
                           <Select value={fromEmail} onValueChange={setFromEmail}>
@@ -496,17 +568,19 @@ export function RejectionDialog({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <FieldLabel>To</FieldLabel>
-                          <input
-                            type="email"
-                            value={toEmail}
-                            onChange={(e) => setToEmail(e.target.value)}
-                            placeholder="recipient@example.com"
-                            className="w-full font-inter focus:outline-none focus:ring-2 focus:ring-virgilio-purple/20"
-                            style={{ height: 38, border: '1px solid #E0DDD3', borderRadius: 9, padding: '0 12px', fontSize: 13, color: '#1F2230' }}
-                          />
-                        </div>
+                        {!isBulk && (
+                          <div>
+                            <FieldLabel>To</FieldLabel>
+                            <input
+                              type="email"
+                              value={toEmail}
+                              onChange={(e) => setToEmail(e.target.value)}
+                              placeholder="recipient@example.com"
+                              className="w-full font-inter focus:outline-none focus:ring-2 focus:ring-virgilio-purple/20"
+                              style={{ height: 38, border: '1px solid #E0DDD3', borderRadius: 9, padding: '0 12px', fontSize: 13, color: '#1F2230' }}
+                            />
+                          </div>
+                        )}
                       </div>
 
                       {/* Subject */}
@@ -591,7 +665,7 @@ export function RejectionDialog({
               >
                 <TriangleAlert size={14} style={{ color: '#B45309', marginTop: 1, flexShrink: 0 }} />
                 <span className="font-inter" style={{ fontSize: 12, color: '#7A5510', lineHeight: 1.45 }}>
-                  Add a recipient and subject to send the rejection email.
+                  {isBulk ? 'Choose a sender and add a subject and message to email the selected candidates.' : 'Add a recipient and subject to send the rejection email.'}
                 </span>
               </div>
             )}
@@ -606,40 +680,36 @@ export function RejectionDialog({
           <div className="flex items-center gap-1.5 flex-1 min-w-0 font-inter" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
             {sendEmail ? <Mail size={12} /> : <EyeOff size={12} />}
             <span className="truncate">
-              {sendEmail ? 'Candidate will be emailed' : "Candidate won't be notified"}
+              {sendEmail ? (isBulk ? `${candidateCount} personalized emails will be sent` : 'Candidate will be emailed') : (isBulk ? "Candidates won't be notified" : "Candidate won't be notified")}
             </span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="md"
             onClick={() => onOpenChange(false)}
-            className="font-poppins hover:bg-[#F1F0EC] transition"
-            style={{ height: 34, padding: '0 14px', borderRadius: 9, fontSize: 13, fontWeight: 500, color: '#1F2230' }}
+            disabled={mutationPending}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="dangerSolid"
+            size="md"
             onClick={handleSubmit}
-            disabled={!canSubmit || rejectCandidate.isPending}
-            className={cn('inline-flex items-center gap-1.5 font-poppins transition', (!canSubmit || rejectCandidate.isPending) && 'pointer-events-none')}
-            style={{
-              height: 34, padding: '0 14px', borderRadius: 9,
-              fontSize: 13, fontWeight: 500,
-              backgroundColor: '#DC2626', color: '#FFFFFF',
-              boxShadow: '0 1px 2px rgba(220,38,38,0.30)',
-              opacity: (!canSubmit || rejectCandidate.isPending) ? 0.4 : 1,
-            }}
+            disabled={!canSubmit || mutationPending}
+            className={cn((!canSubmit || mutationPending) && 'pointer-events-none')}
           >
-            {rejectCandidate.isPending ? (
+            {mutationPending ? (
               <><Loader2 size={13} className="animate-spin" /> Rejecting…</>
             ) : isScheduled ? (
-              <><Clock size={13} /> Reject & schedule email</>
+              <><Clock size={13} /> Reject & schedule {isBulk ? 'emails' : 'email'}</>
             ) : sendEmail ? (
-              <><Send size={13} /> Reject & send email</>
+              <><Send size={13} /> Reject & send {isBulk ? 'emails' : 'email'}</>
             ) : (
-              <><UserRoundX size={13} /> Reject candidate</>
+              <><UserRoundX size={13} /> Reject {isBulk ? `${candidateCount} candidates` : 'candidate'}</>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1506,6 +1506,7 @@ export default function JobDetail() {
           onOpenChange={setShowBulkRejectionDialog}
           candidateIds={selectedCandidateIds}
           jobId={id!}
+          jobTitle={job.title}
           onSuccess={handleBulkRejectionSuccess}
         />
 
