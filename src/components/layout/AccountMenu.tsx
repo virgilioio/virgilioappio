@@ -30,7 +30,7 @@ const MenuSettingsGlyph = (_props: { className?: string }) => (
 )
 
 type RowProps = {
-  icon: typeof UserIcon
+  icon: React.ComponentType<{ className?: string }>
   label: string
   meta?: string
   to?: string

@@ -426,7 +426,7 @@ function FooterBtn({
   label,
   onClick,
 }: {
-  icon: typeof LinkIcon
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties; strokeWidth?: number }>
   label: string
   onClick: () => void
 }) {

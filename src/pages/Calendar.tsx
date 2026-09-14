@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft,
   ChevronRight,
-  Settings2,
   CalendarPlus,
   Briefcase,
   Users,
@@ -31,6 +30,7 @@ import {
 } from 'date-fns'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
