@@ -168,7 +168,9 @@ const splashCss = `
 .gio-splash.play .gl-g { animation-delay: .72s; }
 .gio-splash.play .gl-i { animation-delay: .80s; }
 .gio-splash.play .gl-o { animation-delay: .88s; }
-.gio-splash.play .gl-ats { animation-delay: 1.02s; }
+.gio-splash.play .gl-a { animation-delay: 1.02s; }
+.gio-splash.play .gl-t { animation-delay: 1.08s; }
+.gio-splash.play .gl-s { animation-delay: 1.14s; }
 
 @keyframes gio-dot {
   0%   { opacity: 0; transform: translate(26px, -5px) scale(.18); }
