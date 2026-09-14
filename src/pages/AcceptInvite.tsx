@@ -150,8 +150,18 @@ export default function AcceptInvite() {
       if (signUpError) {
         console.error('Error creating user:', signUpError)
         
+        const weakPassword =
+          (signUpError as any)?.code === 'weak_password' ||
+          /weak|easy to guess|pwned|compromised/i.test(signUpError.message || '')
+
         // Handle specific signup errors
-        if (signUpError.message.includes('User already registered')) {
+        if (weakPassword) {
+          setErrors({
+            password: 'This password was rejected as too easy to guess. Please choose a stronger, less common password.'
+          })
+          return
+        } else if (signUpError.message.includes('User already registered')) {
+
           console.log('User already exists, trying to sign them in...')
           
           // Try to sign in the existing user
