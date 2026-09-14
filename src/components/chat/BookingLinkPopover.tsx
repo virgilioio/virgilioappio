@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, User, Plus, X, CalendarPlus, Link as LinkIcon, Settings2 } from 'lucide-react'
+import { Briefcase, User, Plus, X, CalendarPlus, Link as LinkIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useBookingConfig } from '@/hooks/useBookingConfig'
 import { useContextualBookingLink } from '@/hooks/useContextualBookingLink'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
+
+const MenuSettingsGlyph = (_props: { className?: string; style?: React.CSSProperties; strokeWidth?: number }) => (
+  <SettingsGlyph size={17} color="#5A6072" accent="#5A6072" />
+)
 
 export interface BookingCardPayload {
   kind: 'booking_link'
@@ -311,7 +316,7 @@ export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpen
       >
         <FooterBtn icon={LinkIcon} label="Paste a link" onClick={handlePaste} />
         <FooterBtn
-          icon={Settings2}
+          icon={MenuSettingsGlyph}
           label="Manage links"
           onClick={() => {
             onOpenChange(false)

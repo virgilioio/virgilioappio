@@ -336,7 +336,7 @@ export default function CalendarPage() {
                   style={{ borderColor: C.border }}
                   onClick={() => navigate('/settings?tab=availability')}
                 >
-                  <Settings2 size={14} strokeWidth={2} />
+                  <SettingsGlyph size={16} color="#5A6072" accent="#5A6072" />
                   Availability
                 </button>
                 <button

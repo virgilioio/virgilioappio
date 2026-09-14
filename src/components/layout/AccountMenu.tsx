@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   User as UserIcon,
   CalendarClock,
-  Settings,
   CreditCard,
   Users,
   LifeBuoy,
@@ -24,6 +23,11 @@ import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useBookingConfig } from '@/hooks/useBookingConfig'
 import { cn } from '@/lib/utils'
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
+
+const MenuSettingsGlyph = (_props: { className?: string }) => (
+  <SettingsGlyph size={18} color="#5A6072" accent="#5A6072" />
+)
 
 type RowProps = {
   icon: typeof UserIcon
@@ -368,7 +372,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
               closeMenu={close}
             />
             <Row
-              icon={Settings}
+              icon={MenuSettingsGlyph}
               label="Settings"
               to="/settings"
               closeMenu={close}
