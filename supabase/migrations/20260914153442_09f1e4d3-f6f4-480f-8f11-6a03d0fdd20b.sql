@@ -1,0 +1,1 @@
+GRANT SELECT (location, additional_locations, work_mode) ON public.jobs TO anon;
