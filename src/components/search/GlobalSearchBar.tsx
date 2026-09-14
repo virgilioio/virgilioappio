@@ -82,7 +82,7 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
             ref={wrapperRef}
             className={cn(
               'relative hidden md:flex items-center justify-end',
-              collapsible ? 'h-8 w-8' : '',
+              collapsible ? (expanded ? 'h-8 w-8' : 'h-8') : '',
             )}
           >
             {collapsible && (
