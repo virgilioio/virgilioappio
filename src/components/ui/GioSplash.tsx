@@ -67,8 +67,8 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
       >
         <div className="logo-holder">
           <svg
-            viewBox="0 0 123 71.25"
-            width="450"
+            viewBox="0 0 128.25 71.25"
+            width="470"
             shapeRendering="geometricPrecision"
             style={{ overflow: 'visible' }}
             aria-label="Gio ATS"
@@ -104,9 +104,19 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
                 <path fill="#0d0d09" d={O_PATH} />
               </g>
             </g>
-            <g transform="translate(68, 45.728) scale(.03, -.03)">
-              <g className="part gl gl-ats">
-                <path fill="#0d0d09" d={ATS_PATH} />
+            <g transform="translate(69.108004, 45.331043)">
+              <g className="part gl gl-a">
+                <path fill="#0d0d09" d={A_PATH} />
+              </g>
+            </g>
+            <g transform="translate(87.596235, 45.331043)">
+              <g className="part gl gl-t">
+                <path fill="#0d0d09" d={T_PATH} />
+              </g>
+            </g>
+            <g transform="translate(96.373302, 45.331043)">
+              <g className="part gl gl-s">
+                <path fill="#0d0d09" d={S_PATH} />
               </g>
             </g>
           </svg>
