@@ -273,8 +273,15 @@ export default function AcceptInvite() {
       let errorMessage = 'Failed to accept invitation. Please try again.'
       
       // Provide more specific error messages
-      if (error.message?.includes('User already registered')) {
+      if (/weak|easy to guess|pwned|compromised/i.test(error.message || '')) {
+        setErrors({
+          password: 'This password was rejected as too easy to guess. Please choose a stronger, less common password.'
+        })
+        setIsSubmitting(false)
+        return
+      } else if (error.message?.includes('User already registered')) {
         errorMessage = 'This email is already registered. Please try logging in instead.'
+
       } else if (error.message?.includes('expired')) {
         errorMessage = 'This invitation has expired. Please request a new invitation.'
       } else if (error.message?.includes('Email not confirmed')) {
