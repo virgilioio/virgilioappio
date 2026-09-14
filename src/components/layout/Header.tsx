@@ -230,8 +230,18 @@ export function Header() {
       style={{ backgroundColor: '#0d0d09' }}
     >
       <div className="flex w-full items-center justify-between gap-6 px-3">
-        {/* Left: section nav (or Chat slot on /chat routes) */}
-        <nav className="flex items-center gap-0.5 min-w-0">
+        {/* Left: logo + section nav */}
+        <div className="flex items-center gap-3 min-w-0">
+          <Link to="/" className="flex shrink-0 items-center gap-3" aria-label="Gio ATS home">
+            <img
+              src="/brand/gio-ats-logo.png"
+              alt="Gio ATS"
+              className="ml-1.5 block h-11 w-auto shrink-0"
+            />
+            <span aria-hidden className="h-5 w-px shrink-0 bg-[rgba(255,252,249,0.14)]" />
+          </Link>
+
+          <nav className="flex items-center gap-0.5 min-w-0">
           {location.pathname.startsWith('/chat') && <ChatHeaderSlot />}
           {visibleNavItems.map((item) => {
             const Icon = item.icon
