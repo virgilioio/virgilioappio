@@ -6339,8 +6339,10 @@ export type Database = {
           transcript_ingest_code: string | null
           transcript_ingest_email: string | null
           transcript_metadata: Json | null
+          transcript_notified_at: string | null
           transcript_raw: string | null
           transcript_received_at: string | null
+          transcript_source_message_id: string | null
           transcript_summary: string | null
           updated_at: string | null
         }
@@ -6388,8 +6390,10 @@ export type Database = {
           transcript_ingest_code?: string | null
           transcript_ingest_email?: string | null
           transcript_metadata?: Json | null
+          transcript_notified_at?: string | null
           transcript_raw?: string | null
           transcript_received_at?: string | null
+          transcript_source_message_id?: string | null
           transcript_summary?: string | null
           updated_at?: string | null
         }
@@ -6437,8 +6441,10 @@ export type Database = {
           transcript_ingest_code?: string | null
           transcript_ingest_email?: string | null
           transcript_metadata?: Json | null
+          transcript_notified_at?: string | null
           transcript_raw?: string | null
           transcript_received_at?: string | null
+          transcript_source_message_id?: string | null
           transcript_summary?: string | null
           updated_at?: string | null
         }
