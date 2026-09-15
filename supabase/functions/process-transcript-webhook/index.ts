@@ -534,6 +534,7 @@ serve(async (req) => {
         transcript_raw: content,
         transcript_metadata: metadata,
         transcript_received_at: new Date().toISOString(),
+        transcript_source_message_id: inboundMessageId,
       })
       .eq('id', booking.id);
 
@@ -555,37 +556,48 @@ serve(async (req) => {
       });
     }
 
-    console.log('[Transcript Webhook] Transcript stored, triggering scorecard generation...');
+    console.log('[Transcript Webhook] Transcript stored, triggering scorecard generation in background...');
 
+    // Trigger scorecard generation WITHOUT blocking the webhook response.
+    // Generation can take minutes; holding the response open makes the sender
+    // treat the delivery as failed and retry it, which duplicated notifications.
+    const generationTask = (async () => {
+      try {
+        const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-scorecard-from-transcript`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ booking_id: booking.id }),
+        });
 
-    // Trigger scorecard generation (async call)
-    const generateResponse = await fetch(`${supabaseUrl}/functions/v1/generate-scorecard-from-transcript`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        booking_id: booking.id,
-      }),
-    });
+        if (!generateResponse.ok) {
+          const errorText = await generateResponse.text();
+          console.error('[Transcript Webhook] Scorecard generation failed:', errorText);
+        } else {
+          console.log('[Transcript Webhook] Scorecard generation completed');
+        }
+      } catch (genError) {
+        console.error('[Transcript Webhook] Scorecard generation error:', genError);
+      }
+    })();
 
-    if (!generateResponse.ok) {
-      const errorText = await generateResponse.text();
-      console.error('[Transcript Webhook] Scorecard generation failed:', errorText);
-      // Don't fail the webhook - transcript is stored, generation can be retried
-    } else {
-      console.log('[Transcript Webhook] Scorecard generation triggered successfully');
+    // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(generationTask);
     }
 
     return new Response(JSON.stringify({ 
-      status: 'success',
+      status: 'accepted',
       booking_id: booking.id,
       transcript_length: content.length,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
 
   } catch (error) {
     console.error('[process-transcript-webhook] Error:', error);
