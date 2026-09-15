@@ -414,6 +414,21 @@ serve(async (req) => {
 
     console.log('[Transcript Webhook] Found booking:', booking.id, 'for candidate:', booking.candidate?.candidate_name);
 
+    // Idempotency: ignore a repeat delivery of the same inbound message
+    const inboundMessageId: string | null = emailData.email_id ?? null;
+    if (inboundMessageId && booking.transcript_source_message_id === inboundMessageId) {
+      console.log('[Transcript Webhook] Duplicate delivery of message', inboundMessageId, '- skipping');
+      return new Response(JSON.stringify({
+        status: 'duplicate_delivery',
+        booking_id: booking.id,
+        email_id: inboundMessageId,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+
     // Attempt to infer pipeline context when the booking was created without it
     if (booking.candidate_id && !booking.job_hiring_stage_id) {
       const { data: activeAssociations } = await supabase
