@@ -452,13 +452,30 @@ ${questionsContext}`;
       }
     }
 
-    // Send notification email to interviewer
+    // Send notification email to interviewer — once per booking.
+    // Claim the notification atomically so a re-run (or a duplicate delivery)
+    // regenerates the draft without re-emailing the interviewer.
+    let notificationClaimed = false;
     if (interviewer?.email) {
+      const { data: claimed } = await supabase
+        .from('scheduled_bookings')
+        .update({ transcript_notified_at: new Date().toISOString() })
+        .eq('id', booking_id)
+        .is('transcript_notified_at', null)
+        .select('id');
+      notificationClaimed = !!claimed && claimed.length > 0;
+      if (!notificationClaimed) {
+        console.log('[generate-scorecard] Notification already sent for booking, skipping email:', booking_id);
+      }
+    }
+
+    if (interviewer?.email && notificationClaimed) {
       const scorecardUrl = scorecardId && booking.job_id && booking.candidate_id
         ? `${frontendUrl}/jobs/${booking.job_id}?candidate=${booking.candidate_id}&open=scorecard`
         : `${frontendUrl}/jobs/${booking.job_id}?candidate=${booking.candidate_id}`;
 
       try {
+
         await resend.emails.send({
           from: 'GoGio <noreply@app.gogio.io>',
           to: [interviewer.email],
@@ -504,7 +521,13 @@ ${questionsContext}`;
         console.log('[generate-scorecard] Notification email sent to:', interviewer.email);
       } catch (emailError) {
         console.error('[generate-scorecard] Failed to send notification email:', emailError);
+        // Release the claim so a later run can retry the notification
+        await supabase
+          .from('scheduled_bookings')
+          .update({ transcript_notified_at: null })
+          .eq('id', booking_id);
       }
+
     }
 
     return new Response(JSON.stringify({
