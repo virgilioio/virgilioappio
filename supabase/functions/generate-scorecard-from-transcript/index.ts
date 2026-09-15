@@ -521,7 +521,13 @@ ${questionsContext}`;
         console.log('[generate-scorecard] Notification email sent to:', interviewer.email);
       } catch (emailError) {
         console.error('[generate-scorecard] Failed to send notification email:', emailError);
+        // Release the claim so a later run can retry the notification
+        await supabase
+          .from('scheduled_bookings')
+          .update({ transcript_notified_at: null })
+          .eq('id', booking_id);
       }
+
     }
 
     return new Response(JSON.stringify({
