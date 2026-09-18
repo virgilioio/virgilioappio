@@ -226,8 +226,11 @@ export function ShareDossierMenu({
         ? 'Anyone with the link can view — no Gio account needed'
         : 'Off — the link resolves to an unavailable page'
 
-  return (
-    <div ref={panelRef} style={PANEL}>
+  return createPortal(
+    <div
+      ref={panelRef}
+      style={{ ...PANEL, top: anchor?.top ?? -9999, left: anchor?.left ?? -9999, visibility: anchor ? 'visible' : 'hidden' }}
+    >
       {/* Row 1 — internal link */}
       <button
         type="button"
@@ -367,6 +370,7 @@ export function ShareDossierMenu({
         Public links always serve the client-ready view — no weights, no scoring mechanics, no compensation.
         They deactivate on their own when the candidate is rejected or the job closes.
       </p>
-    </div>
+    </div>,
+    document.body,
   )
 }
