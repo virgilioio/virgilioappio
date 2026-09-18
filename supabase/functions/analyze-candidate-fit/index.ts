@@ -436,7 +436,9 @@ serve(async (req) => {
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
-        reasoning_effort: "medium",
+        // Higher effort than the translation pass: this call now makes one
+        // judgement per required skill on top of the overall assessment.
+        reasoning_effort: "high",
       }),
     }, 'analyze-candidate-fit');
 
