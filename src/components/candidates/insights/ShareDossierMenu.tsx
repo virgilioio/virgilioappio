@@ -7,7 +7,8 @@
  * promises the implementation keeps: public links are always client-ready, and
  * they deactivate themselves.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, Globe, Link2, ShieldOff, Users } from 'lucide-react'
 
 import { copyToClipboardSilent } from '@/utils/clipboard'
@@ -29,17 +30,17 @@ interface ShareDossierMenuProps {
   triggerRef?: React.RefObject<HTMLElement>
 }
 
+const MENU_WIDTH = 340
+
 const PANEL: React.CSSProperties = {
-  position: 'absolute',
-  top: 36,
-  right: 0,
-  width: 340,
+  position: 'fixed',
+  width: MENU_WIDTH,
   background: '#fff',
   borderRadius: 12,
   padding: 6,
   border: '1px solid #E7E8EE',
   boxShadow: '0 18px 44px -12px rgba(13,13,9,0.22), 0 2px 6px rgba(13,13,9,0.05)',
-  zIndex: 60,
+  zIndex: 100,
   textAlign: 'left',
 }
 
@@ -163,6 +164,31 @@ export function ShareDossierMenu({
   const urlRef = useRef<HTMLSpanElement | null>(null)
   const internalCopy = useInlineCopy()
   const publicCopy = useInlineCopy()
+  // The menu renders through a portal so no scrolling ancestor can clip it;
+  // these coordinates pin it just below the trigger, right-aligned to it.
+  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null)
+
+  const measure = useCallback(() => {
+    const trigger = triggerRef?.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const left = Math.max(12, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 12))
+    setAnchor({ top: rect.bottom + 8, left })
+  }, [triggerRef])
+
+  useEffect(() => {
+    if (!open) {
+      setAnchor(null)
+      return
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+    }
+  }, [open, measure])
 
   useEffect(() => {
     if (!open) return
@@ -202,8 +228,11 @@ export function ShareDossierMenu({
         ? 'Anyone with the link can view — no Gio account needed'
         : 'Off — the link resolves to an unavailable page'
 
-  return (
-    <div ref={panelRef} style={PANEL}>
+  return createPortal(
+    <div
+      ref={panelRef}
+      style={{ ...PANEL, top: anchor?.top ?? -9999, left: anchor?.left ?? -9999, visibility: anchor ? 'visible' : 'hidden' }}
+    >
       {/* Row 1 — internal link */}
       <button
         type="button"
@@ -343,6 +372,7 @@ export function ShareDossierMenu({
         Public links always serve the client-ready view — no weights, no scoring mechanics, no compensation.
         They deactivate on their own when the candidate is rejected or the job closes.
       </p>
-    </div>
+    </div>,
+    document.body,
   )
 }
