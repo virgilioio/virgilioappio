@@ -242,7 +242,7 @@ export function PublicDossierBody({
                           color: '#1F2230',
                         }}
                       >
-                        {item.label}
+                        {item.skill}
                       </span>
                     ))}
                   </div>
