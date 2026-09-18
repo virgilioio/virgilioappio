@@ -28,6 +28,7 @@ export interface DossierPrintProps {
   candidateSkills: string[]
   workExperience: CandidateWorkExperience[]
   education: CandidateEducation[]
+  salaryExpectation?: string | null
   outputLanguageName: string | null
   clientReady: boolean
   includeContact: boolean
