@@ -118,7 +118,7 @@ const TOOL_SCHEMA = {
           additionalProperties: false,
         },
       },
-      required: ["overall_score", "confidence", "confidence_reason", "profile_summary", "executive_summary", "dimensions", "validation_points", "data_sources_used", "data_sources_missing", "detected_languages"],
+      required: ["overall_score", "confidence", "confidence_reason", "profile_summary", "executive_summary", "dimensions", "validation_points", "skill_evidence", "data_sources_used", "data_sources_missing", "detected_languages"],
       additionalProperties: false,
     },
   },
