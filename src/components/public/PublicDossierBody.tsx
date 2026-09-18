@@ -110,6 +110,13 @@ export function PublicDossierBody({
     readSkillEvidence(analysis),
   )
   const profileSummary = analysis.profile_summary || candidate.profile_summary || ''
+  // Only the positive half of the executive summary belongs in a client view.
+  const strongestSignal = summary?.strongest ?? ''
+  const skillSections = [
+    { title: 'Evidenced', items: skillGroups.evidenced },
+    { title: 'Partly evidenced', items: skillGroups.partly },
+    { title: 'Not evidenced', items: skillGroups.notEvidenced },
+  ].filter((section) => section.items.length > 0)
 
   return (
     <div>
@@ -192,7 +199,7 @@ export function PublicDossierBody({
         className="public-dossier-grid"
       >
         <div>
-          {(profileSummary || summary.headline) && (
+          {(profileSummary || strongestSignal) && (
             <section>
               <p style={HEADING}>Summary</p>
               {profileSummary && (
