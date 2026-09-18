@@ -322,18 +322,13 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const currentCompany = asString(candidate?.company_current)
   const roleLine = [currentRole, currentCompany].filter(Boolean).join(currentRole && currentCompany ? ' at ' : '')
   const location = [candidate?.location_city, candidate?.location_state, candidate?.location_country].map(asString).filter(Boolean).join(', ')
-  const metadata = [
-    location || null,
-    asString(candidate?.work_authorization),
-    asString(candidate?.availability),
-    asStringArray(candidate?.languages).join(', ') || asString(candidate?.languages),
-  ].filter((item): item is string => !!item)
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
   const dimensions = analysis.dimensions || []
   const scoredDimensions = dimensions.filter((dimension) => dimension.score !== null)
   const scoredWeight = scoredDimensions.reduce((sum, dimension) => sum + (Number(dimension.weight) || 0), 0)
   const contributionTotal = scoredDimensions.reduce((sum, dimension) => sum + (Number(dimension.score) * (Number(dimension.weight) || 0) / 100), 0)
-  const recomputedScore = scoredWeight > 0 ? contributionTotal * 100 / scoredWeight : score
+  const recomputedScore = scoredWeight > 0 ? contributionTotal * 100 / scoredWeight : null
+  const scoreReconciles = recomputedScore !== null && Math.round(recomputedScore) === Math.round(score)
   const nullDimensions = dimensions.filter((dimension) => dimension.score === null)
 
   return (
@@ -348,15 +343,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
               {asString(candidate?.candidate_name)}<span className="text-fit-lilac">.</span>
             </h2>
             {roleLine && <p className="mt-1 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
-            {metadata.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 text-[12px] text-fit-muted">
-                {metadata.map((item, index) => (
-                  <span key={`${item}-${index}`} className="inline-flex items-center gap-2">
-                    {index > 0 && <span className="text-fit-separator">·</span>}{item}
-                  </span>
-                ))}
-              </div>
-            )}
+            {location && <p className="mt-2 text-[12px] text-fit-muted">{location}</p>}
           </div>
           <div className="flex shrink-0 items-end gap-3 sm:justify-end">
             <div className="text-right">
@@ -467,7 +454,14 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             </div>
             <div>{dimensions.map((dimension, index) => <DimensionRow key={`${dimension.name}-${index}`} dimension={dimension} colorIndex={index} open={openDimension === index} onToggle={() => setOpenDimension(openDimension === index ? null : index)} />)}</div>
             <div className="bg-fit-paper px-4 py-3.5">
-              <div className="flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Weighted mean of scored dimensions</span><span className="text-[11.5px] tabular-nums text-fit-subtle">{contributionTotal.toFixed(1)} / {scoredWeight}</span><span className="font-poppins text-[15px] font-semibold tabular-nums text-virgilio-purple">{Math.round(recomputedScore)}</span></div>
+              <div className="flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Weighted mean of scored dimensions</span><span className="text-[11.5px] tabular-nums text-fit-subtle">{contributionTotal.toFixed(1)} / {scoredWeight}</span><span className="font-poppins text-[15px] font-semibold tabular-nums text-virgilio-purple">{Math.round(score)}</span></div>
+              {!scoreReconciles && (
+                <p className="mt-2 rounded-md border border-fit-risk-border bg-fit-warning-soft px-2 py-1.5 text-[11px] leading-[1.45] text-fit-warning">
+                  {recomputedScore === null
+                    ? `The stored Gio Fit score is ${Math.round(score)}, but no scored dimension weights are available to verify it.`
+                    : `The stored Gio Fit score is ${Math.round(score)}, while the scored dimensions calculate to ${recomputedScore.toFixed(1)}.`}
+                </p>
+              )}
               {(nullDimensions.length > 0 || score > 80) && <p className="mt-2 text-[11px] leading-[1.45] text-fit-subtle">{[...nullDimensions.map((dimension) => `${dimension.name} is nulled — its ${dimension.weight} points are excluded rather than guessed.`), ...(score > 80 ? ['Scores above 80 require no unresolved must-have gaps.'] : [])].join(' ')}</p>}
             </div>
           </section>
