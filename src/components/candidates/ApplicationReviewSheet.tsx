@@ -447,9 +447,12 @@ function RejectionConfigPanel({
 function FitInsightsPanel({ candidateId, jobId }: { candidateId: string; jobId: string }) {
   const { insights, isLoading, isRefreshing, refreshInsights } = useCandidateFitInsights(candidateId, jobId)
 
-  // Auto-trigger if no analysis exists
+  // Generate only when nothing is stored at all — never on reopen.
+  const hasTriggered = useRef(false)
   useEffect(() => {
-    if (!isLoading && !insights?.analysis && !isRefreshing) {
+    if (isLoading || isRefreshing || hasTriggered.current) return
+    if (insights && !insights.analysis) {
+      hasTriggered.current = true
       refreshInsights()
     }
   }, [isLoading, insights?.analysis]) // eslint-disable-line react-hooks/exhaustive-deps

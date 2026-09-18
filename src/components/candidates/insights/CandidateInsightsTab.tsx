@@ -346,6 +346,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             {clientReady ? 'Scoring mechanics and salary are hidden. This is what the client sees.' : 'Full view with weights, nulls, and validation priorities.'}
           </p>
           <div className="flex shrink-0 items-center gap-2">
+            {needsSkillVerdicts && !isRefreshing && (
+              <span className="text-[11.5px] text-fit-subtle">Refresh to update the skill read</span>
+            )}
             <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
             <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
