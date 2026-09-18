@@ -206,6 +206,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
   const [exportOpen, setExportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const shareButtonRef = useRef<HTMLButtonElement | null>(null)
+  // Read-only roles may reach the menu and copy the internal link, never publish.
+  const { canEditCandidates } = usePermissions()
   // The share row is created the first time the menu opens — never before.
   const { share, isLoading: shareLoading, error: shareError, setPublic: setSharePublic } = useDossierShare(
     insights?.associationId ?? null,
