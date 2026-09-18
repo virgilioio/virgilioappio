@@ -213,21 +213,23 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     [candidateSkills, requiredSkills, skillEvidence],
   )
 
-  // An analysis produced before per-skill adjudication has no verdicts; regenerate
-  // it once so the chips agree with the dimensions. The ref keeps route changes
-  // and refetches from looping it.
+  // An analysis produced before per-skill adjudication has no verdicts. That is a
+  // format gap, not new information — it never triggers a regeneration on its own.
   const needsSkillVerdicts = Boolean(insights?.analysis) && requiredSkills.length > 0 && !skillEvidence
+  const isStale = Boolean(insights?.isStale)
+  // Generate only when nothing is stored, or when the candidate's inputs actually
+  // changed after the stored analysis. Opening the tab alone never spends credits.
   useEffect(() => {
-    if (isLoading || hasTriggered.current || jdText.length < 30) return
-    if (!insights?.analysis || needsSkillVerdicts) {
+    if (isLoading || hasTriggered.current || jdText.length < 30 || !insights) return
+    if (!insights.analysis || isStale) {
       hasTriggered.current = true
       refreshInsights()
     }
-  }, [isLoading, insights?.analysis, needsSkillVerdicts, jdText])
+  }, [isLoading, insights?.analysis, isStale, jdText])
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
 
   if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
-  if (isLoading || (isRefreshing && (!insights?.analysis || needsSkillVerdicts))) {
+  if (isLoading || (isRefreshing && !insights?.analysis)) {
     return (
       <div className={cn(cardClass, 'flex min-h-[280px] flex-col items-center justify-center gap-3')}>
         <Loader2 className="h-7 w-7 animate-spin text-virgilio-purple" />
