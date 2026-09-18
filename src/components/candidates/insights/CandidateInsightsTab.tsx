@@ -523,5 +523,6 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         buildData={buildExportData}
       />
     </div>
+    </TooltipProvider>
   )
 }
