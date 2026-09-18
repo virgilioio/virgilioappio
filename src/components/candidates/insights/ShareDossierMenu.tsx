@@ -125,7 +125,7 @@ export function ShareDossierMenu({
   wrapperRef,
   triggerRef,
 }: ShareDossierMenuProps) {
-  const urlRef = useRef<HTMLSpanElement | null>(null)
+  const urlRef = useRef<HTMLElement | null>(null)
   const internalCopy = useInlineCopy()
   const publicCopy = useInlineCopy()
 
