@@ -185,14 +185,14 @@ function d5_noActivity(s: JobSnapshot, d1Fired: boolean): Finding | null {
       id: 'no_activity',
       severity: 'critical',
       evidence: { variant: 'empty_pipeline', days_since_last_activity: days, active_count: 0 },
-      actions: [{ label: "What's stuck?", prompt: `Walk me through every active candidate on ${title} and what their next step is` }],
+      actions: [{ label: 'Review next actions', prompt: `Walk me through every active candidate on ${title} and recommend their next step` }],
     };
   }
   return {
     id: 'no_activity',
     severity: 'critical',
     evidence: { variant: 'no_transitions', days_since_last_activity: days, active_count: s.pipeline.active_count },
-    actions: [{ label: "What's stuck?", prompt: `Walk me through every active candidate on ${title} and what their next step is` }],
+    actions: [{ label: 'Review next actions', prompt: `Walk me through every active candidate on ${title} and recommend their next step` }],
   };
 }
 
@@ -311,7 +311,7 @@ function d9_rejectionConcentration(s: JobSnapshot): Finding | null {
       by_stage: r.by_stage,
     },
     actions: [
-      { label: 'Fix the filter upstream', prompt: `Most ${title} rejections are "${reason}" — how should we change sourcing or screening?` },
+      { label: 'Refine the filter upstream', prompt: `Most ${title} rejections are "${reason}" — how should we improve sourcing or screening?` },
       { label: 'See the rejected candidates', prompt: `Show the ${title} candidates rejected for "${reason}"` },
     ],
   };
@@ -372,8 +372,8 @@ export function deriveHealth(s: JobSnapshot, findings: Finding[]): HealthStatus 
       offer_stuck: 'offer approval',
     };
     const reason = reasonMap[top.id] ?? top.id.replace(/_/g, ' ');
-    return { status: 'stalled', label: `Stalled — ${reason}` };
+    return { status: 'stalled', label: `Action recommended — ${reason}` };
   }
-  if (warnings.length > 0) return { status: 'at_risk', label: 'At risk' };
+  if (warnings.length > 0) return { status: 'at_risk', label: 'Improvement opportunity' };
   return { status: 'on_track', label: 'On track' };
 }

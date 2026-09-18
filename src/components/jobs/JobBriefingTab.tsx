@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info,
+  Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info, Calendar,
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
   Copy,
 } from 'lucide-react';
@@ -33,6 +33,7 @@ type Briefing = {
   paragraph: string;
   ranked_detector_ids: string[];
   status_reason_short: string;
+  language_version?: number;
   source: string;
 };
 type Snapshot = {
@@ -180,8 +181,8 @@ function evidenceCard(f: Finding): CardCopy {
       return {
         tone: sev,
         icon: Hourglass,
-        title: 'Final review is the bottleneck',
-        body: `${names} have been in ${e.near_offer_stage} for ${days} days. These are the candidates closest to an offer.${more}`,
+        title: 'Final review is the clearest opportunity to accelerate',
+        body: `${names} have been in ${e.near_offer_stage} for ${days} days and are closest to an offer. Prioritizing their review can create the fastest progress.${more}`,
         candidates: top,
       };
     }
@@ -194,8 +195,8 @@ function evidenceCard(f: Finding): CardCopy {
       return {
         tone: sev,
         icon: Megaphone,
-        title: "The posting isn't producing candidates",
-        body: `${head} The pipeline is surviving on manual sourcing (${e.sourced_total} sourced).`,
+        title: 'Inbound reach can be strengthened',
+        body: `${head} Manual sourcing has contributed ${e.sourced_total} candidate${e.sourced_total === 1 ? '' : 's'}; broader distribution can add inbound volume.`,
         candidates: [],
       };
     }
@@ -214,16 +215,16 @@ function evidenceCard(f: Finding): CardCopy {
         return {
           tone: sev,
           icon: Banknote,
-          title: 'Pipeline expectations exceed the budget',
-          body: `Median expectation ${fmt(e.median)} ${e.budget.currency} vs cap ${fmt(e.budget.max)} (+${gap}%). Without a band adjustment, this job will die at offer stage.`,
+          title: 'Align pipeline expectations with the budget',
+          body: `Median expectation ${fmt(e.median)} ${e.budget.currency} vs cap ${fmt(e.budget.max)} (+${gap}%). Adjusting the band or candidate targeting now can improve offer-stage conversion.`,
           candidates: [],
         };
       }
       return {
         tone: sev,
         icon: Scale,
-        title: 'Salary expectations are incoherent',
-        body: `Spread ${e.spread_ratio?.toFixed(1)}× between p10 ${fmt(e.p10)} and p90 ${fmt(e.p90)}. A spread this wide usually means the role mixes mid and senior profiles, and no budget band is set.`,
+        title: 'A clearer salary band can sharpen targeting',
+        body: `Spread ${e.spread_ratio?.toFixed(1)}× between p10 ${fmt(e.p10)} and p90 ${fmt(e.p90)}. This range suggests a mix of mid and senior profiles; setting a budget band can focus the search.`,
         candidates: [],
       };
     }
@@ -232,8 +233,8 @@ function evidenceCard(f: Finding): CardCopy {
       return {
         tone: sev,
         icon: AlertTriangle,
-        title: 'Not enough candidates at the top',
-        body: `Only ${e.active_pre_interview} active candidate${e.active_pre_interview === 1 ? '' : 's'} before interviews. Even perfect conversion can't produce a hire from this funnel.`,
+        title: 'Build more early-stage pipeline',
+        body: `${e.active_pre_interview} active candidate${e.active_pre_interview === 1 ? '' : 's'} remain before interviews. Adding qualified candidates now will improve the funnel's capacity to produce a hire.`,
         candidates: [],
       };
     }
@@ -247,21 +248,84 @@ function evidenceCard(f: Finding): CardCopy {
         return {
           tone: sev,
           icon: AlertTriangle,
-          title: 'Empty pipeline on an open job',
-          body: `No active candidates and no transitions in the last 7 days.`,
+          title: 'Restart candidate flow',
+          body: `The job currently has 0 active candidates and 0 transitions in the last 7 days. New sourcing activity is the clearest next step.`,
           candidates: [],
         };
       }
       return {
         tone: sev,
         icon: AlertTriangle,
-        title: 'No movement this week',
-        body: `${e.active_count} active candidate${e.active_count === 1 ? '' : 's'} but zero stage transitions in the last 7 days. Something is stuck.`,
+        title: 'Create the next pipeline movement',
+        body: `${e.active_count} active candidate${e.active_count === 1 ? '' : 's'} and 0 stage transitions in the last 7 days. A focused review can identify and advance the next actions.`,
+        candidates: [],
+      };
+    }
+    case 'offer_stuck': {
+      const e = f.evidence as {
+        approval_pending: number;
+        approval_blocked: number;
+        offers_sent: number;
+        offers_accepted: number;
+        offers_declined: number;
+      };
+      return {
+        tone: sev,
+        icon: Hourglass,
+        title: 'Offer approvals are ready to move forward',
+        body: `${e.approval_pending} approval${e.approval_pending === 1 ? '' : 's'} pending and ${e.approval_blocked} blocked. Confirming the outstanding decisions can restore offer momentum.`,
+        candidates: [],
+      };
+    }
+    case 'outreach_not_landing': {
+      const e = f.evidence as {
+        candidates_contacted: number;
+        replies: number;
+        reply_rate_pct: number | null;
+        awaiting_reply_over_3d: number;
+      };
+      const replyRate = e.reply_rate_pct == null ? 'No reply rate available' : `${e.reply_rate_pct}% reply rate`;
+      return {
+        tone: sev,
+        icon: Megaphone,
+        title: 'Outreach can invite more responses',
+        body: `${e.candidates_contacted} candidates contacted, ${e.replies} replies, and ${replyRate.toLowerCase()}; ${e.awaiting_reply_over_3d} have waited over 3 days. Refining the message and follow-up can improve engagement.`,
+        candidates: [],
+      };
+    }
+    case 'interview_reliability': {
+      const e = f.evidence as {
+        total: number;
+        cancelled: number;
+        rescheduled: number;
+        disruption_pct: number;
+        unconfirmed_upcoming: number;
+      };
+      return {
+        tone: sev,
+        icon: Calendar,
+        title: 'Interview coordination can be more reliable',
+        body: `${e.cancelled} cancelled and ${e.rescheduled} rescheduled across ${e.total} interviews (${e.disruption_pct}% disrupted), with ${e.unconfirmed_upcoming} upcoming unconfirmed. Earlier confirmation can protect the schedule.`,
+        candidates: [],
+      };
+    }
+    case 'rejection_concentration': {
+      const e = f.evidence as {
+        dominant_reason: string;
+        count: number;
+        share_pct: number;
+        total_rejections: number;
+      };
+      return {
+        tone: sev,
+        icon: Scale,
+        title: 'Rejection patterns can sharpen the search',
+        body: `${e.count} of ${e.total_rejections} rejections (${e.share_pct}%) cite “${e.dominant_reason}”. Applying that signal earlier can improve sourcing and screening alignment.`,
         candidates: [],
       };
     }
     default:
-      return { tone: sev, icon: AlertTriangle, title: f.id, body: '', candidates: [] };
+      return { tone: sev, icon: AlertTriangle, title: 'Review this hiring signal', body: 'Gio found an opportunity to improve progress. Review the suggested next action.', candidates: [] };
   }
 }
 
@@ -277,9 +341,9 @@ function StatusPill({ health, reason }: { health: Health; reason: string }) {
 
   const label =
     health.status === 'stalled'
-      ? `Stalled${reason ? ` — ${reason}` : ''}`
+      ? `Action recommended${reason ? ` — ${reason}` : ''}`
       : health.status === 'at_risk'
-        ? `At risk${reason ? ` — ${reason}` : ''}`
+        ? `Improvement opportunity${reason ? ` — ${reason}` : ''}`
         : health.status === 'on_track'
           ? 'On track'
           : 'Ramping up';
@@ -688,7 +752,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
     lines.push(`Projected fill: ${fill.value} — ${fill.qualifier}`);
     if (ranked.length > 0) {
       lines.push('');
-      lines.push('Needs attention:');
+      lines.push('Opportunities to improve:');
       ranked.forEach((f) => {
         const card = evidenceCard(f);
         lines.push(`• ${card.title}: ${card.body.replace(/\*\*/g, '')}`);
@@ -700,7 +764,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
   const streamedIssueCards = streamIssues?.filter((finding) => finding.severity !== 'positive').slice(0, 3).length ? (
     <div>
       <div className="mb-2.5 flex items-center gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B8F9E]">Needs attention</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8B8F9E]">Opportunities to improve</span>
         <span className="inline-flex items-center justify-center rounded-full bg-[#F1F0EC] px-[7px] py-0.5 text-[10.5px] font-semibold text-[#5A6072]">
           {streamIssues.filter((finding) => finding.severity !== 'positive').slice(0, 3).length}
         </span>
@@ -992,7 +1056,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         </div>
       )}
 
-      {/* 4 · Needs attention */}
+      {/* 4 · Opportunities to improve */}
       {ranked.length > 0 && (
         <div style={{ marginTop: 30 }}>
           <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
@@ -1006,7 +1070,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
                 textTransform: 'uppercase',
               }}
             >
-              Needs attention
+              Opportunities to improve
             </span>
             <span
               className="inline-flex items-center justify-center"
