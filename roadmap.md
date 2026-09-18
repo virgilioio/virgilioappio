@@ -5,3 +5,4 @@
 - [x] Preserve score invariance through post-score text translation.
 - [x] Add dossier language provenance and names/titles controls.
 - [x] Verify the edge function, settings, and responsive dossier UI.
+- [ ] Replace the Gio Fit export dialog and generate the shared, searchable dossier PDF.
