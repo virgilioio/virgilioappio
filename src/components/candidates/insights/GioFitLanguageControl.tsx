@@ -43,6 +43,14 @@ export function GioFitLanguageControl({ analysis, workspaceLanguage, overrideLan
     return aSource - bSource || a.name.localeCompare(b.name)
   }), [detectedCodes])
 
+  // The candidate sheet locks page scroll, which swallows wheel events aimed at
+  // this portaled popover. Scroll manually on capture so the list always scrolls.
+  const allowWheelScroll = (event: React.WheelEvent<HTMLElement>) => {
+    const el = event.currentTarget
+    el.scrollTop += event.deltaY
+    event.stopPropagation()
+  }
+
   const apply = async () => {
     setOpen(false)
     try {
