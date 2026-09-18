@@ -227,7 +227,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
 
   if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
-  if (isLoading || (isRefreshing && !insights?.analysis)) {
+  if (isLoading || (isRefreshing && (!insights?.analysis || needsSkillVerdicts))) {
     return (
       <div className={cn(cardClass, 'flex min-h-[280px] flex-col items-center justify-center gap-3')}>
         <Loader2 className="h-7 w-7 animate-spin text-virgilio-purple" />
