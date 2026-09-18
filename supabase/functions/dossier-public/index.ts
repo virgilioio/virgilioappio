@@ -352,6 +352,7 @@ Deno.serve(async (req) => {
       },
       required_skills: requiredSkills,
       score: Number(assocFit.ai_fit_score),
+      output_language: assocFit.ai_fit_output_language ?? null,
       analysis: clientReadyAnalysis(assocFit.ai_fit_analysis as Record<string, unknown>),
       work_experience: experience ?? [],
       education: education ?? [],
