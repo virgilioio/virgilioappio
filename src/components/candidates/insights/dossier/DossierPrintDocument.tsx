@@ -196,7 +196,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
   const blocks: Block[] = []
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
   const stats = computeExperienceStats(workExperience)
-  const skills = buildSkillGroups(requiredSkills, candidateSkills)
+  const skills = buildSkillGroups(requiredSkills, candidateSkills, readSkillEvidence(analysis))
   const dimensions = analysis.dimensions || []
   const visibleDimensions = clientReady ? dimensions.filter((dimension) => !/salary|compensation/i.test(dimension.name)) : dimensions
   const scored = dimensions.filter((dimension) => dimension.score !== null)
