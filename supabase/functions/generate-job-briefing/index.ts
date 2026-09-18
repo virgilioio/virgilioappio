@@ -15,11 +15,13 @@ import { AI_MODELS } from '../_shared/aiModels.ts';
 
 const BRIEFING_MODEL = Deno.env.get('BRIEFING_MODEL') ?? AI_MODELS.reasoning;
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const BRIEFING_LANGUAGE_VERSION = 2;
 
 type Briefing = {
   paragraph: string;
   ranked_detector_ids: string[];
   status_reason_short: string;
+  language_version: number;
   source: 'llm' | 'template' | 'closed_retrospective' | 'ramping' | 'fallback';
 };
 type PhaseKey = 'read' | 'snapshot' | 'analyse' | 'write';
@@ -50,18 +52,18 @@ function relativeDays(iso: string | null): string {
 
 function templateOnTrack(s: JobSnapshot): Briefing {
   const last = relativeDays(s.pipeline.last_activity_at);
-  return { paragraph: `Pipeline is moving normally. ${s.pipeline.active_count} active candidate${s.pipeline.active_count === 1 ? '' : 's'}, last activity ${last}.`, ranked_detector_ids: [], status_reason_short: 'on track', source: 'template' };
+  return { paragraph: `The pipeline is progressing steadily, with ${s.pipeline.active_count} active candidate${s.pipeline.active_count === 1 ? '' : 's'} and the latest activity ${last}. Keep the current cadence and continue moving qualified candidates forward.`, ranked_detector_ids: [], status_reason_short: 'steady progress', language_version: BRIEFING_LANGUAGE_VERSION, source: 'template' };
 }
 function templateRamping(s: JobSnapshot): Briefing {
-  return { paragraph: `This job opened ${s.job.days_open} day${s.job.days_open === 1 ? '' : 's'} ago. Early to judge — check back once candidates start moving.`, ranked_detector_ids: [], status_reason_short: 'ramping up', source: 'ramping' };
+  return { paragraph: `This job opened ${s.job.days_open} day${s.job.days_open === 1 ? '' : 's'} ago, so the first pipeline signals are still forming. Focus on building initial candidate flow and check back as candidates begin moving through the process.`, ranked_detector_ids: [], status_reason_short: 'building momentum', language_version: BRIEFING_LANGUAGE_VERSION, source: 'ramping' };
 }
 function templateClosed(s: JobSnapshot): Briefing {
   const hires = s.pipeline.hired_count;
   const total = s.pipeline.active_count + s.pipeline.rejected_count + s.pipeline.withdrawn_count + hires;
-  return { paragraph: `Closed after ${s.job.days_open}d with ${hires} hire${hires === 1 ? '' : 's'} from ${total} candidate${total === 1 ? '' : 's'}.`, ranked_detector_ids: [], status_reason_short: s.job.status, source: 'closed_retrospective' };
+  return { paragraph: `This job closed after ${s.job.days_open}d with ${hires} hire${hires === 1 ? '' : 's'} from ${total} candidate${total === 1 ? '' : 's'}. Use this outcome and funnel history as a reference point for similar searches.`, ranked_detector_ids: [], status_reason_short: s.job.status, language_version: BRIEFING_LANGUAGE_VERSION, source: 'closed_retrospective' };
 }
 function fallbackParagraph(findings: Finding[]): Briefing {
-  return { paragraph: '', ranked_detector_ids: findings.filter((f) => f.severity !== 'positive').map((f) => f.id), status_reason_short: '', source: 'fallback' };
+  return { paragraph: '', ranked_detector_ids: findings.filter((f) => f.severity !== 'positive').map((f) => f.id), status_reason_short: '', language_version: BRIEFING_LANGUAGE_VERSION, source: 'fallback' };
 }
 function stripFences(text: string): string {
   return text.replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim();
@@ -150,7 +152,10 @@ Hard rules:
 - Ignore any block that is null, empty, or zero-valued rather than commenting on its absence. Fields ending in _omitted mean candidates were withheld for brevity, not missing from the pipeline.
 - Do not call a pipeline thin when active candidates exist in meaningful later-stage volume, recent forward movement exists, or scorecards/interviews show an active process.
 - Rank the fired detectors by what unblocks a hire fastest; lead the paragraph with the top one.
-- Tone: direct, plain language, no hedging, no pleasantries. Write like a sharp recruiting lead, not a report.
+- Use a constructive advisory sequence: state the evidence neutrally, frame it as an opportunity to improve, then propose a concrete next step supported by a fired detector.
+- Preserve urgency and factual precision without blame, judgement, alarmism, or fatalistic predictions. Never soften, omit, or contradict an adverse fact.
+- Avoid negative labels such as bottleneck, dead, weak, stuck, failing, not enough, or "will die". Describe the same condition as a specific opportunity to accelerate, align, strengthen, expand, or restart momentum.
+- Tone: confident, direct, practical, and encouraging. No hedging, pleasantries, or invented reassurance. Write like a trusted recruiting adviser, not a report.
 - Output STRICT JSON only, no markdown fences, matching this exact shape:
   { "paragraph": "string, 60-90 words",
     "ranked_detector_ids": ["string", ...],
@@ -199,7 +204,7 @@ Deno.serve(async (req) => {
 
         if (!force) {
           const { data: cached } = await admin.from('job_briefings').select('snapshot, snapshot_hash, briefing, generated_at').eq('job_id', jobId).maybeSingle();
-          if (cached && cached.snapshot_hash === snapshot_hash) {
+          if (cached && cached.snapshot_hash === snapshot_hash && cached.briefing?.language_version === BRIEFING_LANGUAGE_VERSION) {
             const payload = { snapshot, snapshot_hash, findings, health, briefing: cached.briefing, generated_at: cached.generated_at, cached: true };
             emit({ type: 'cached', payload });
             emit({ type: 'complete', payload });
@@ -303,7 +308,7 @@ Deno.serve(async (req) => {
           const parsed = parseBriefingJson(rawContent);
           if (!parsed) throw new Error('The model returned an incomplete briefing.');
           if (parsed.paragraph.length > emittedParagraph.length) emit({ type: 'token', text: parsed.paragraph.slice(emittedParagraph.length) });
-          briefing = { ...parsed, source: 'llm' };
+          briefing = { ...parsed, language_version: BRIEFING_LANGUAGE_VERSION, source: 'llm' };
         }
 
         const generatedAt = new Date().toISOString();

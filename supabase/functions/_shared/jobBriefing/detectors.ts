@@ -372,8 +372,8 @@ export function deriveHealth(s: JobSnapshot, findings: Finding[]): HealthStatus 
       offer_stuck: 'offer approval',
     };
     const reason = reasonMap[top.id] ?? top.id.replace(/_/g, ' ');
-    return { status: 'stalled', label: `Stalled — ${reason}` };
+    return { status: 'stalled', label: `Action recommended — ${reason}` };
   }
-  if (warnings.length > 0) return { status: 'at_risk', label: 'At risk' };
+  if (warnings.length > 0) return { status: 'at_risk', label: 'Improvement opportunity' };
   return { status: 'on_track', label: 'On track' };
 }
