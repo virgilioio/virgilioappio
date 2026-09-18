@@ -211,14 +211,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     return mustHave.length ? mustHave : asStringArray(job?.skills)
   }, [job])
   const candidateSkills = useMemo(() => asStringArray(candidate?.skills), [candidate])
-  const skillGroups = useMemo(() => {
-    const candidateMap = new Map(candidateSkills.map((skill) => [normalizeSkill(skill), skill]))
-    const requiredMap = new Map(requiredSkills.map((skill) => [normalizeSkill(skill), skill]))
-    const evidenced = requiredSkills.filter((skill) => candidateMap.has(normalizeSkill(skill)))
-    const notEvidenced = requiredSkills.filter((skill) => !candidateMap.has(normalizeSkill(skill)))
-    const additional = candidateSkills.filter((skill) => !requiredMap.has(normalizeSkill(skill)))
-    return { evidenced, notEvidenced, additional }
-  }, [candidateSkills, requiredSkills])
+  const skillGroups = useMemo(() => buildSkillGroups(requiredSkills, candidateSkills), [candidateSkills, requiredSkills])
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
 
   if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
