@@ -295,7 +295,7 @@ Deno.serve(async (req) => {
 
     const { data: assocFit } = await supabase
       .from("job_candidate_associations")
-      .select("ai_fit_score, ai_fit_analysis, ai_fit_generated_at")
+      .select("ai_fit_score, ai_fit_analysis, ai_fit_generated_at, ai_fit_output_language")
       .eq("id", assoc.id)
       .maybeSingle();
 
