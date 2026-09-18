@@ -227,35 +227,44 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     }
   }, [isLoading, insights?.analysis, isStale, jdText])
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
+  // Narration is driven while a request is open; step 5 never completes early.
+  const { stepIndex, progress } = useGioFitNarration(isRefreshing)
 
-  if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
-  if (isLoading || (isRefreshing && !insights?.analysis)) {
-    return (
-      <div className={cn(cardClass, 'flex min-h-[280px] flex-col items-center justify-center gap-3')}>
-        <Loader2 className="h-7 w-7 animate-spin text-virgilio-purple" />
-        <p className="font-poppins text-[13px] font-medium text-fit-muted">Preparing the Gio dossier…</p>
-      </div>
-    )
-  }
-  if (!insights?.analysis || insights.score === null) {
-    return (
-      <div className={cn(cardClass, 'flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 text-center')}>
-        <Sparkles className="h-6 w-6 text-virgilio-purple" />
-        <div>
-          <p className="font-poppins text-[14px] font-semibold text-fit-ink">No Gio Fit analysis yet</p>
-          <p className="mt-1 text-[12px] text-fit-muted">Generate the dossier from the candidate and job information already on file.</p>
-        </div>
-        <Button variant="purple" size="md" icon={Sparkles} loading={isRefreshing} onClick={refreshInsights}>Generate insights</Button>
-      </div>
-    )
-  }
-
-  const { analysis } = insights
-  const score = insights.score
+  const candidateName = asString(candidate?.candidate_name) || 'Candidate'
   const currentRole = asString(candidate?.role_current) || asString(candidate?.current_job_title)
   const currentCompany = asString(candidate?.company_current)
   const roleLine = [currentRole, currentCompany].filter(Boolean).join(currentRole && currentCompany ? ' at ' : '')
   const location = [candidate?.location_city, candidate?.location_state, candidate?.location_country].map(asString).filter(Boolean).join(', ')
+  const appliedLanguage = insights?.appliedOutputLanguage || insights?.resolvedOutputLanguage || 'en'
+  const outputLanguageName = getGioFitLanguage(appliedLanguage).name
+  const narrationSteps = buildNarrationSteps(outputLanguageName)
+  const hasStoredAnalysis = Boolean(insights?.analysis) && insights?.score !== null
+
+  // Under 30 characters of job description there is nothing to assess against, so
+  // no call is made. Once the description passes 30 characters the effect above
+  // generates on the next visit without being asked.
+  if (jdText.length < 30 || isBlocked) {
+    return <GioFitBlockedCard jobId={jobId} onRetry={refreshInsights} isRetrying={isRefreshing} />
+  }
+  if (generationError && !hasStoredAnalysis) {
+    return <GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} />
+  }
+  // Cold: nothing on file, so show the shape of what is coming plus the narration.
+  if (isLoading || !hasStoredAnalysis) {
+    return (
+      <GioFitColdSkeleton
+        candidateName={candidateName}
+        roleLine={roleLine || null}
+        outputLanguageName={outputLanguageName}
+        stepIndex={stepIndex}
+        progress={progress}
+      />
+    )
+  }
+
+  const analysis = insights!.analysis as FitAnalysis
+  const score = insights!.score as number
+  const isRescoring = isRefreshing
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
   const dimensions = analysis.dimensions || []
   const scoredDimensions = dimensions.filter((dimension) => dimension.score !== null)
