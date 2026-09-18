@@ -30,9 +30,11 @@ interface ShareDossierMenuProps {
   triggerRef?: React.RefObject<HTMLElement>
 }
 
+const MENU_WIDTH = 340
+
 const PANEL: React.CSSProperties = {
   position: 'fixed',
-  width: 340,
+  width: MENU_WIDTH,
   background: '#fff',
   borderRadius: 12,
   padding: 6,
@@ -170,7 +172,7 @@ export function ShareDossierMenu({
     const trigger = triggerRef?.current
     if (!trigger) return
     const rect = trigger.getBoundingClientRect()
-    const left = Math.max(12, Math.min(rect.right - PANEL.width, window.innerWidth - PANEL.width - 12))
+    const left = Math.max(12, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 12))
     setAnchor({ top: rect.bottom + 8, left })
   }, [triggerRef])
 
