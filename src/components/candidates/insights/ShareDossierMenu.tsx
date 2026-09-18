@@ -279,6 +279,7 @@ export function ShareDossierMenu({
           <div style={{ margin: '8px 10px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span
+                ref={urlRef}
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -298,7 +299,7 @@ export function ShareDossierMenu({
               </span>
               <button
                 type="button"
-                onClick={() => void publicCopy.copy(url)}
+                onClick={() => void publicCopy.copy(url, urlRef.current)}
                 style={{
                   border: '1px solid #E0DDD3',
                   background: publicCopy.copied ? '#E4F5EA' : '#fff',
@@ -311,7 +312,7 @@ export function ShareDossierMenu({
                   cursor: 'pointer',
                 }}
               >
-                {publicCopy.copied ? 'Copied' : 'Copy'}
+                {publicCopy.manual ? 'Press ⌘C' : publicCopy.copied ? 'Copied' : 'Copy'}
               </button>
             </div>
             <p style={{ margin: '7px 0 0', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
