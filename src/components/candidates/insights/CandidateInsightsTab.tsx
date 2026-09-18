@@ -507,6 +507,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         </aside>
       </div>
 
+      </div>
+
       <GioFitExportDialog
         open={exportOpen}
         onOpenChange={setExportOpen}
@@ -514,7 +516,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         hasContactDetails={contactItems.length > 0}
         candidateName={candidateName}
         jobTitle={jobTitle || null}
-        outputLanguageName={getGioFitLanguage(appliedLanguage).name}
+        outputLanguageName={outputLanguageName}
         buildData={buildExportData}
       />
     </div>
