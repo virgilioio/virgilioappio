@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { formatDistanceToNow } from 'date-fns'
 import {
   BarChart3,
   BriefcaseBusiness,
@@ -386,7 +385,6 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           {analysis.data_sources_missing.map((source) => (
             <span key={`missing-${source}`} className="inline-flex items-center gap-1 rounded-md bg-fit-warning-soft px-2 py-[3px] text-[11px] font-medium text-fit-warning"><Minus className="h-3 w-3" />{source.replace(/_/g, ' ')}</span>
           ))}
-          <p className="ml-auto shrink-0 text-[11.5px] text-fit-subtle">v{insights.version}{insights.generatedAt ? ` · updated ${formatDistanceToNow(new Date(insights.generatedAt), { addSuffix: true })}` : ''}</p>
         </div>
         <div className="mt-[18px] flex flex-nowrap items-center gap-2.5 overflow-x-auto border-t border-fit-hairline pt-4 scrollbar-none">
           <div className="flex shrink-0 rounded-lg bg-fit-chip p-[3px]" role="group" aria-label="Dossier view">
