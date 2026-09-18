@@ -165,7 +165,9 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
     try {
       // A 202 means enrichment is still landing. Keep the loading state and poll;
       // a deferral is never surfaced as an error.
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      // The server budget for one assessment is ~150s, so keep the narrated
+      // loader alive across the whole window instead of giving up after 24s.
+      for (let attempt = 0; attempt < 27; attempt += 1) {
         const status = await requestFitAnalysis(candidateId, jobId, controller.signal)
         if (status === 'no_job_description') {
           setIsBlocked(true)

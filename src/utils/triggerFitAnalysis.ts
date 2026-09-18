@@ -28,6 +28,10 @@ export async function requestFitAnalysis(
   if (payload?.error === 'no_job_description') return 'no_job_description'
   // 202: the candidate row was just touched and enrichment has not landed yet.
   if (response.status === 202) return 'deferred'
+  // 504: the assessment ran past its time budget. Nothing stored was changed.
+  if (response.status === 504 || payload?.error === 'timeout') {
+    throw new Error('The assessment took longer than expected and was stopped. Your previous assessment is unchanged.')
+  }
   if (!response.ok) throw new Error(payload?.error || `The assessment failed (${response.status})`)
   return 'ok'
 }
