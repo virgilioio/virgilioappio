@@ -46,6 +46,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import { cn } from '@/lib/utils'
+import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 
 interface CandidateInsightsTabProps {
   candidateId: string
