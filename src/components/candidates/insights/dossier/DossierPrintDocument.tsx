@@ -10,6 +10,7 @@ import {
   formatDate,
   formatDuration,
   getScoreBand,
+  readSkillEvidence,
   splitExecutiveSummary,
   stripHtml,
 } from './dossierData'
