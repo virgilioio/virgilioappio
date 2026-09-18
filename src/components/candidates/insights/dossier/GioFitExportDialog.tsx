@@ -38,16 +38,16 @@ function localePageSize(): DossierPageSize {
 const groupLabel = 'font-inter text-[10px] font-semibold uppercase tracking-[0.09em] text-fit-subtle'
 const rule = 'my-4 h-px bg-fit-hairline'
 
-function Segmented<T extends string>({
+function Segmented({
   value,
   options,
   onChange,
   small,
   label,
 }: {
-  value: T
-  options: { value: T; label: string }[]
-  onChange: (value: T) => void
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (value: string) => void
   small?: boolean
   label: string
 }) {
@@ -201,10 +201,10 @@ export function GioFitExportDialog({
             <div className="border-r border-fit-hairline px-[22px] pb-5 pt-[18px]">
               <p className={groupLabel}>Version</p>
               <div className="mt-2">
-                <Segmented<'internal' | 'client'>
+                <Segmented
                   label="Dossier version"
                   value={clientReady ? 'client' : 'internal'}
-                  onChange={handleVersion}
+                  onChange={(value) => handleVersion(value as 'internal' | 'client')}
                   options={[
                     { value: 'internal', label: 'Internal' },
                     { value: 'client', label: 'Client-ready' },
@@ -262,11 +262,11 @@ export function GioFitExportDialog({
 
               <p className={groupLabel}>Page size</p>
               <div className="mt-2">
-                <Segmented<DossierPageSize>
+                <Segmented
                   small
                   label="Page size"
                   value={pageSize}
-                  onChange={(value) => setPageSize(value)}
+                  onChange={(value) => setPageSize(value as DossierPageSize)}
                   options={[
                     { value: 'letter', label: 'Letter' },
                     { value: 'a4', label: 'A4' },
