@@ -44,23 +44,24 @@ function clientReadyAnalysis(raw: Record<string, unknown>) {
     .filter((d: any) => d.score !== null && d.score !== undefined)
     .filter((d: any) => !SALARY.test(String(d.name ?? "")))
     .map((d: any) => ({
+      // Deliberately absent: weight, contribution, verdict mechanics.
       name: String(d.name ?? ""),
       score: Number(d.score),
       insight: typeof d.insight === "string" ? d.insight : null,
       matches: Array.isArray(d.matches) ? d.matches.map(String) : [],
       gaps: Array.isArray(d.gaps) ? d.gaps.map(String) : [],
-      // Deliberately absent: weight, contribution, verdict mechanics.
-      weight: 0,
     }));
 
   const validation_points = (Array.isArray(raw.validation_points) ? raw.validation_points : [])
     .filter((p: any) => p && typeof p === "object")
     .filter((p: any) => !SALARY.test(`${p.question ?? ""} ${p.reason ?? ""}`))
     .map((p: any) => ({
+      // No priority — the client has no use for our triage order.
       question: String(p.question ?? ""),
-      reason: typeof p.reason === "string" && !MECHANICS.test(p.reason) ? p.reason : "",
+      reason: typeof p.reason === "string" && p.reason.trim() && !MECHANICS.test(p.reason)
+        ? p.reason.trim()
+        : "The written record does not settle this either way.",
       suggested_stage: typeof p.suggested_stage === "string" ? p.suggested_stage : "",
-      priority: "low",
     }))
     .filter((p: any) => p.question);
 
@@ -73,17 +74,31 @@ function clientReadyAnalysis(raw: Record<string, unknown>) {
     })).filter((entry: any) => entry.skill)
     : undefined;
 
+  // Source languages only — the client cannot hover a provenance chip, so the
+  // names of the languages the CV was written in travel with the payload.
+  const detected = raw.detected_languages as any;
+  const detected_languages = detected && Array.isArray(detected.sources)
+    ? {
+      sources: detected.sources
+        .filter((s: any) => s && typeof s === "object")
+        .map((s: any) => ({
+          label: String(s.label ?? ""),
+          code: String(s.code ?? ""),
+          name: String(s.name ?? ""),
+        }))
+        .filter((s: any) => s.name),
+    }
+    : undefined;
+
   return {
     overall_score: Number(raw.overall_score ?? 0),
     confidence: raw.confidence ?? "medium",
-    confidence_reason: "",
     profile_summary: typeof raw.profile_summary === "string" ? raw.profile_summary : undefined,
     executive_summary: typeof raw.executive_summary === "string" ? raw.executive_summary : "",
     dimensions,
     validation_points,
-    data_sources_used: [],
-    data_sources_missing: [],
     ...(skill_evidence ? { skill_evidence } : {}),
+    ...(detected_languages ? { detected_languages } : {}),
   };
 }
 
@@ -280,7 +295,7 @@ Deno.serve(async (req) => {
 
     const { data: assocFit } = await supabase
       .from("job_candidate_associations")
-      .select("ai_fit_score, ai_fit_analysis, ai_fit_generated_at")
+      .select("ai_fit_score, ai_fit_analysis, ai_fit_generated_at, ai_fit_output_language")
       .eq("id", assoc.id)
       .maybeSingle();
 
@@ -337,6 +352,7 @@ Deno.serve(async (req) => {
       },
       required_skills: requiredSkills,
       score: Number(assocFit.ai_fit_score),
+      output_language: assocFit.ai_fit_output_language ?? null,
       analysis: clientReadyAnalysis(assocFit.ai_fit_analysis as Record<string, unknown>),
       work_experience: experience ?? [],
       education: education ?? [],
