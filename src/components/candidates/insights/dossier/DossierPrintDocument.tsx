@@ -29,9 +29,23 @@ export interface DossierPrintProps {
   outputLanguageName: string | null
   clientReady: boolean
   includeContact: boolean
+  includeEvidence: boolean
+  includeValidation: boolean
+  pageSize: DossierPageSize
   preparedBy: string | null
   preparedOn: string
 }
+
+export type DossierPageSize = 'letter' | 'a4'
+
+/** One geometry source for the document and for the dialog's preview. */
+export const DOSSIER_PAGE_GEOMETRY: Record<DossierPageSize, { width: number; height: number }> = {
+  letter: { width: 816, height: 1056 },
+  a4: { width: 794, height: 1123 },
+}
+
+const PAGE_MARGIN = 56
+const FOOTER_BAND = 30
 
 interface Block {
   key: string
@@ -39,56 +53,72 @@ interface Block {
   keepWithNext?: boolean
 }
 
-const PAGE_CONTENT_HEIGHT = 940 // Letter height minus page padding and the footer band
 const RUNNING_HEAD_HEIGHT = 42
 
 function Heading({ children, spaced }: { children: string; spaced?: boolean }) {
   return <p className={spaced ? 'gio-heading gio-section-gap' : 'gio-heading'}>{children}</p>
 }
 
-function useBlockPages(blocks: Block[]) {
+/**
+ * Flows the measured blocks onto pages. This is the single pagination routine —
+ * the dialog's page count and the footers' "of n" both come out of here.
+ */
+export function paginateBlocks(blocks: Block[], heights: number[], pageSize: DossierPageSize): Block[][] {
+  const contentHeight = DOSSIER_PAGE_GEOMETRY[pageSize].height - PAGE_MARGIN * 2 - FOOTER_BAND
+  const result: Block[][] = []
+  let current: Block[] = []
+  let used = 0
+  let index = 0
+
+  while (index < blocks.length) {
+    // A group is a block plus every block it must stay with (headings + first row).
+    let end = index
+    while (blocks[end]?.keepWithNext && end + 1 < blocks.length) end += 1
+    const groupHeight = heights.slice(index, end + 1).reduce((sum, value) => sum + value, 0)
+    const limit = contentHeight - (result.length > 0 ? RUNNING_HEAD_HEIGHT : 0)
+
+    if (current.length > 0 && used + groupHeight > limit) {
+      result.push(current)
+      current = []
+      used = 0
+    }
+    for (let i = index; i <= end; i += 1) current.push(blocks[i])
+    used += groupHeight
+    index = end + 1
+  }
+  if (current.length > 0) result.push(current)
+  return result.length > 0 ? result : [[]]
+}
+
+function useBlockPages(blocks: Block[], pageSize: DossierPageSize) {
   const measureRef = useRef<HTMLDivElement>(null)
   const [pages, setPages] = useState<Block[][] | null>(null)
 
   useLayoutEffect(() => {
     setPages(null)
-  }, [blocks])
+  }, [blocks, pageSize])
 
   useLayoutEffect(() => {
     if (pages || !measureRef.current) return
     const nodes = Array.from(measureRef.current.children) as HTMLElement[]
     const heights = nodes.map((node) => node.getBoundingClientRect().height)
-    const result: Block[][] = []
-    let current: Block[] = []
-    let used = 0
-    let index = 0
-
-    while (index < blocks.length) {
-      // A group is a block plus every block it must stay with (headings + first row).
-      let end = index
-      while (blocks[end]?.keepWithNext && end + 1 < blocks.length) end += 1
-      const groupHeight = heights.slice(index, end + 1).reduce((sum, value) => sum + value, 0)
-      const limit = PAGE_CONTENT_HEIGHT - (result.length > 0 ? RUNNING_HEAD_HEIGHT : 0)
-
-      if (current.length > 0 && used + groupHeight > limit) {
-        result.push(current)
-        current = []
-        used = 0
-      }
-      for (let i = index; i <= end; i += 1) current.push(blocks[i])
-      used += groupHeight
-      index = end + 1
-    }
-    if (current.length > 0) result.push(current)
-    setPages(result.length > 0 ? result : [[]])
-  }, [blocks, pages])
+    setPages(paginateBlocks(blocks, heights, pageSize))
+  }, [blocks, pages, pageSize])
 
   return { measureRef, pages }
 }
 
-export function DossierPrintDocument({ data, onReady }: { data: DossierPrintProps; onReady?: () => void }) {
+export function DossierPrintDocument({
+  data,
+  onReady,
+  onPageCount,
+}: {
+  data: DossierPrintProps
+  onReady?: () => void
+  onPageCount?: (count: number) => void
+}) {
   const blocks = useMemo(() => buildBlocks(data), [data])
-  const { measureRef, pages } = useBlockPages(blocks)
+  const { measureRef, pages } = useBlockPages(blocks, data.pageSize)
 
   useEffect(() => {
     if (!pages || !onReady) return
@@ -96,20 +126,27 @@ export function DossierPrintDocument({ data, onReady }: { data: DossierPrintProp
     return () => cancelAnimationFrame(frame)
   }, [pages, onReady])
 
+  useEffect(() => {
+    if (pages && onPageCount) onPageCount(pages.length)
+  }, [pages, onPageCount])
+
   const total = pages?.length ?? 1
+  const geometry = DOSSIER_PAGE_GEOMETRY[data.pageSize]
+  const contentWidth = geometry.width - PAGE_MARGIN * 2
   const footer = `Confidential${data.preparedBy ? ` — prepared by ${data.preparedBy}` : ''}, ${data.preparedOn}`
 
   return (
     <div className="gio-print-root">
       {!pages && (
-        <div className="gio-measure" ref={measureRef}>
+        <div className="gio-measure" ref={measureRef} style={{ width: contentWidth }}>
           {blocks.map((block) => (
             <div key={block.key}>{block.node}</div>
           ))}
         </div>
       )}
       {pages?.map((pageBlocks, pageIndex) => (
-        <div className="gio-page" key={`page-${pageIndex}`}>
+        <div className={data.pageSize === 'a4' ? 'gio-page gio-page--a4' : 'gio-page'} key={`page-${pageIndex}`}>
+          {!data.clientReady && <div className="gio-watermark">Internal</div>}
           {pageIndex > 0 && (
             <div className="gio-runhead">
               <span className="gio-runhead-name">{data.candidateName}</span>
@@ -152,6 +189,8 @@ function buildBlocks(data: DossierPrintProps): Block[] {
     outputLanguageName,
     clientReady,
     includeContact,
+    includeEvidence,
+    includeValidation,
   } = data
 
   const blocks: Block[] = []
@@ -375,7 +414,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
   }
 
   const evidenceDimensions = visibleDimensions.filter((dimension) => (dimension.matches || []).length + (dimension.gaps || []).length > 0 || dimension.insight)
-  if (evidenceDimensions.length > 0) {
+  if (includeEvidence && evidenceDimensions.length > 0) {
     blocks.push({ key: 'ev-heading', node: <Heading spaced>Evidence</Heading>, keepWithNext: true })
     evidenceDimensions.forEach((dimension, index) => {
       const weight = Number(dimension.weight) || 0
@@ -407,7 +446,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
     })
   }
 
-  if (validationPoints.length > 0) {
+  if (includeValidation && validationPoints.length > 0) {
     blocks.push({
       key: 'val-heading',
       node: <Heading spaced>{clientReady ? 'Still to verify' : 'Validation points'}</Heading>,

@@ -23,7 +23,7 @@ import type { CandidateWorkExperience } from '@/components/candidates/CandidateW
 import { NoJobDescriptionCard } from './NoJobDescriptionCard'
 import { GioFitLanguageControl, GioFitLanguageProvenance } from './GioFitLanguageControl'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
-import { GioFitExportDialog } from './dossier/GioFitExportDialog'
+import { GioFitExportDialog, type DossierExportOptions } from './dossier/GioFitExportDialog'
 import type { DossierPrintProps } from './dossier/DossierPrintDocument'
 import {
   asString,
@@ -47,7 +47,6 @@ interface CandidateInsightsTabProps {
   candidate?: Record<string, unknown> | null
   workExperience: CandidateWorkExperience[]
   education: CandidateEducation[]
-  onExportPdf: () => void
 }
 
 const cardClass = 'rounded-[14px] border border-virgilio-border bg-surface-primary'
@@ -191,7 +190,7 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
   )
 }
 
-export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, onExportPdf }: CandidateInsightsTabProps) {
+export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education }: CandidateInsightsTabProps) {
   const { insights, isLoading, isRefreshing, refreshInsights, updateLanguagePreferences } = useCandidateFitInsights(candidateId, jobId)
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
@@ -273,7 +272,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const contactItems = [asString(candidate?.email), asString(candidate?.phone), asString(candidate?.linkedin_url)].filter((item): item is string => !!item)
   const preparedBy = asString((job?.organization as { name?: string } | null | undefined)?.name)
   const appliedLanguage = insights.appliedOutputLanguage || insights.resolvedOutputLanguage
-  const buildExportData = ({ clientReady: exportClientReady, includeContact }: { clientReady: boolean; includeContact: boolean }): DossierPrintProps => ({
+  const buildExportData = ({ clientReady: exportClientReady, includeContact, includeEvidence, includeValidation, pageSize }: DossierExportOptions): DossierPrintProps => ({
     analysis,
     score,
     candidateName,
@@ -288,6 +287,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     outputLanguageName: getGioFitLanguage(appliedLanguage).name,
     clientReady: exportClientReady,
     includeContact,
+    includeEvidence,
+    includeValidation,
+    pageSize,
     preparedBy,
     preparedOn: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
   })
@@ -441,8 +443,10 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         onOpenChange={setExportOpen}
         defaultClientReady={clientReady}
         hasContactDetails={contactItems.length > 0}
+        candidateName={candidateName}
+        jobTitle={jobTitle || null}
+        outputLanguageName={getGioFitLanguage(appliedLanguage).name}
         buildData={buildExportData}
-        fileName={`${candidateName} — Gio dossier${jobTitle ? ` · ${jobTitle}` : ''}`}
       />
     </div>
   )

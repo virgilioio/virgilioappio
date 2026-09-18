@@ -29,7 +29,7 @@ export async function printDossier(data: DossierPrintProps, fileHint: string) {
     doc.head.appendChild(node.cloneNode(true))
   })
   const style = doc.createElement('style')
-  style.textContent = printCss
+  style.textContent = `${printCss}\n@page { size: ${data.pageSize === 'a4' ? 'A4' : 'Letter'}; margin: 0; }`
   doc.head.appendChild(style)
 
   const mount = doc.createElement('div')
