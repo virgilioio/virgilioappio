@@ -25,6 +25,7 @@ interface ProfileHeroCardProps {
   onOpenFullProfile?: () => void
   linkedinUrl?: string | null
   fitScore?: number | null
+  onFitClick?: () => void
   onClose?: () => void
   index?: number | null
   total?: number | null
@@ -57,7 +58,7 @@ function relativeTime(iso?: string | null) {
 export function ProfileHeroCard({
   candidateName, candidateFirstName, candidateId, jobId, jobTitle, source, appliedAt,
   currentStageName, daysInStage, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
-  fitScore,
+  fitScore, onFitClick,
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs,
   nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
@@ -100,12 +101,19 @@ export function ProfileHeroCard({
 
         <div className="flex items-center gap-2 shrink-0">
           {typeof fitScore === 'number' && fitScore > 0 && (
-            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 h-[34px] rounded-full bg-[#F4EFFE] border border-[#E6DAFB]">
-              <span className="font-inter font-bold text-[10px] tracking-[0.08em] text-virgilio-purple uppercase">AI FIT</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={onFitClick}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 h-[34px] rounded-full bg-[#F4EFFE] border border-[#E6DAFB] hover:bg-[#EDE4FF]"
+              aria-label={`Open Gio Fit analysis, score ${Math.round(fitScore)}`}
+            >
+              <span className="font-inter font-bold text-[10px] tracking-[0.08em] text-virgilio-purple uppercase">GIO FIT</span>
               <span className="font-poppins font-semibold text-virgilio-purple text-[14px] leading-none tabular-nums">
                 {Math.round(fitScore)}
               </span>
-            </div>
+            </Button>
           )}
           {nextStageLabel && !isRejected && !isHired && onAdvance && (
             <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
