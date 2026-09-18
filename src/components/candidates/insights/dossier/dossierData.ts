@@ -73,13 +73,71 @@ export function dropScoreClause(value: string) {
     .trim()
 }
 
-export function buildSkillGroups(requiredSkills: string[], candidateSkills: string[]) {
-  const candidateMap = new Map(candidateSkills.map((skill) => [normalizeSkill(skill), skill]))
+export type SkillStatus = 'evidenced' | 'partial' | 'not_evidenced'
+
+export interface SkillVerdict {
+  skill: string
+  status: SkillStatus
+  evidence: string | null
+  source: string | null
+}
+
+export interface SkillGroups {
+  evidenced: SkillVerdict[]
+  partly: SkillVerdict[]
+  notEvidenced: SkillVerdict[]
+  additional: string[]
+  /** True when the groups come from the analysis's per-skill verdicts. */
+  hasVerdicts: boolean
+}
+
+/** Reads the per-skill verdicts stored on the analysis, if they are present and well formed. */
+export function readSkillEvidence(analysis: unknown): SkillVerdict[] | null {
+  const raw = (analysis as Record<string, unknown> | null | undefined)?.skill_evidence
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  const entries = raw
+    .map((entry) => {
+      const record = entry as Record<string, unknown>
+      const skill = typeof record?.skill === 'string' ? record.skill.trim() : ''
+      const status = record?.status
+      if (!skill) return null
+      if (status !== 'evidenced' && status !== 'partial' && status !== 'not_evidenced') return null
+      const evidence = typeof record?.evidence === 'string' && record.evidence.trim() ? record.evidence.trim() : null
+      const source = typeof record?.source === 'string' && record.source.trim() ? record.source.trim() : null
+      return { skill, status, evidence, source } as SkillVerdict
+    })
+    .filter((entry): entry is SkillVerdict => entry !== null)
+  return entries.length > 0 ? entries : null
+}
+
+export function buildSkillGroups(
+  requiredSkills: string[],
+  candidateSkills: string[],
+  skillEvidence?: SkillVerdict[] | null,
+): SkillGroups {
   const requiredMap = new Map(requiredSkills.map((skill) => [normalizeSkill(skill), skill]))
+  const additional = candidateSkills.filter((skill) => !requiredMap.has(normalizeSkill(skill)))
+
+  if (skillEvidence && skillEvidence.length > 0) {
+    return {
+      evidenced: skillEvidence.filter((entry) => entry.status === 'evidenced'),
+      partly: skillEvidence.filter((entry) => entry.status === 'partial'),
+      notEvidenced: skillEvidence.filter((entry) => entry.status === 'not_evidenced'),
+      additional,
+      hasVerdicts: true,
+    }
+  }
+
+  // Legacy analyses carry no verdicts. The literal comparison is only a holding
+  // pattern until the analysis is regenerated.
+  const candidateMap = new Map(candidateSkills.map((skill) => [normalizeSkill(skill), skill]))
+  const asVerdict = (skill: string, status: SkillStatus): SkillVerdict => ({ skill, status, evidence: null, source: null })
   return {
-    evidenced: requiredSkills.filter((skill) => candidateMap.has(normalizeSkill(skill))),
-    notEvidenced: requiredSkills.filter((skill) => !candidateMap.has(normalizeSkill(skill))),
-    additional: candidateSkills.filter((skill) => !requiredMap.has(normalizeSkill(skill))),
+    evidenced: requiredSkills.filter((skill) => candidateMap.has(normalizeSkill(skill))).map((skill) => asVerdict(skill, 'evidenced')),
+    partly: [],
+    notEvidenced: requiredSkills.filter((skill) => !candidateMap.has(normalizeSkill(skill))).map((skill) => asVerdict(skill, 'not_evidenced')),
+    additional,
+    hasVerdicts: false,
   }
 }
 
