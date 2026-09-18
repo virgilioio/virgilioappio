@@ -187,6 +187,9 @@ export function ShareDossierMenu({
       window.removeEventListener('scroll', measure, true)
     }
   }, [open, measure])
+
+  useEffect(() => {
+    if (!open) return
     const close = () => {
       onClose()
       triggerRef?.current?.focus()
