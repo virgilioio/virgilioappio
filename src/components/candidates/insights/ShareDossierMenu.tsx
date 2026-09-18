@@ -162,9 +162,31 @@ export function ShareDossierMenu({
   const urlRef = useRef<HTMLSpanElement | null>(null)
   const internalCopy = useInlineCopy()
   const publicCopy = useInlineCopy()
+  // The menu renders through a portal so no scrolling ancestor can clip it;
+  // these coordinates pin it just below the trigger, right-aligned to it.
+  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null)
+
+  const measure = useCallback(() => {
+    const trigger = triggerRef?.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    const left = Math.max(12, Math.min(rect.right - PANEL.width, window.innerWidth - PANEL.width - 12))
+    setAnchor({ top: rect.bottom + 8, left })
+  }, [triggerRef])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setAnchor(null)
+      return
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+    }
+  }, [open, measure])
     const close = () => {
       onClose()
       triggerRef?.current?.focus()
