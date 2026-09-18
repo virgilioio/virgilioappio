@@ -436,11 +436,13 @@ serve(async (req) => {
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
-        // Higher effort than the translation pass: this call now makes one
-        // judgement per required skill on top of the overall assessment.
-        reasoning_effort: "high",
+        // Balanced effort: "high" routinely ran past any sane request budget
+        // once this call also had to adjudicate every required skill, so every
+        // run was cut off before it could return. Medium finishes comfortably
+        // and keeps the per-skill judgement intact.
+        reasoning_effort: "medium",
       }),
-    }, 'analyze-candidate-fit');
+    }, 'analyze-candidate-fit', { timeoutMs: FIT_CALL_TIMEOUT_MS });
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
