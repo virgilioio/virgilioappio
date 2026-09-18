@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, MessageSquareText } from 'lucide-react'
 
 import { Badge, type BadgeTone } from '@/components/ui/badge'
+import { SafeHtml } from '@/components/ui/safe-html'
 import { cn } from '@/lib/utils'
 import { ratingLabel, ratingTone } from '@/lib/scorecardRatings'
 import type { DossierPendingScorecard, DossierScorecard } from './dossierScorecards'
@@ -66,9 +67,10 @@ export function InterviewScorecardsSection({
               {open && (
                 <div className="pb-4">
                   <div className="space-y-2 rounded-lg border border-fit-row-border bg-fit-paper p-3">
-                    {scorecard.takeawayParagraphs.map((paragraph, index) => (
-                      <p key={`${scorecard.id}-takeaway-${index}`} className="whitespace-pre-line text-[12.5px] leading-[1.65] text-fit-ink">{paragraph}</p>
-                    ))}
+                    <SafeHtml
+                      content={scorecard.takeawayHtml || scorecard.takeawayParagraphs.map((paragraph) => `<p>${paragraph}</p>`).join('')}
+                      className="dossier-scorecard-rich-text text-[12.5px] leading-[1.65] text-fit-ink [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_h1]:my-3 [&_h1]:font-poppins [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:my-3 [&_h2]:font-poppins [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:my-2 [&_h3]:font-poppins [&_h3]:text-[13px] [&_h3]:font-semibold [&_h4]:my-2 [&_h4]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_li]:pl-0.5 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-fit-chip [&_blockquote]:pl-3 [&_blockquote]:text-fit-muted [&_strong]:font-semibold [&_a]:underline"
+                    />
                     {!clientReady && scorecard.areas && scorecard.areas.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 border-t border-fit-chip pt-3">
                         {scorecard.areas.map((area) => (

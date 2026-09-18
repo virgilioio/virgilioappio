@@ -12,6 +12,7 @@ export interface DossierScorecard {
   submittedAt: string
   stage: string
   rating: ScoreRating
+  takeawayHtml: string
   takeawayParagraphs: string[]
   areas?: DossierScorecardArea[]
 }
@@ -45,6 +46,11 @@ export function richTextParagraphs(value?: string | null): string[] {
     .split(/\n+/)
     .map((paragraph) => paragraph.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
+}
+
+/** Plain-text fallback used by the collapsed two-line scorecard preview. */
+export function richTextSummary(value?: string | null): string {
+  return richTextParagraphs(value).join(' ')
 }
 
 export function shortDossierDate(value: string) {

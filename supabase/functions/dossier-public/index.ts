@@ -331,8 +331,16 @@ Deno.serve(async (req) => {
       stage.id,
       stage.custom_stage_name || baseStageById.get(stage.stage_id) || "Interview",
     ]));
+    const sanitizeScorecardHtml = (value: string) => value
+      .replace(/<!--([\s\S]*?)-->/g, "")
+      .replace(/<(script|style|iframe|object|embed|svg|form)[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+      .replace(/<(?!\/?(?:p|br|strong|b|em|i|u|h[1-6]|ul|ol|li|blockquote|div)\b)[^>]*>/gi, "")
+      .replace(/<(p|br|strong|b|em|i|u|h[1-6]|ul|ol|li|blockquote|div)\b[^>]*>/gi, "<$1>")
+      .replace(/<\/(p|strong|b|em|i|u|h[1-6]|ul|ol|li|blockquote|div)\s*>/gi, "</$1>");
+
     const scorecards = submittedScorecards.map((row: any) => {
       const author = authorById.get(row.created_by) as any;
+      const takeawayHtml = sanitizeScorecardHtml(String(row.general_overview));
       return {
         id: row.id,
         interviewerName: [author?.first_name, author?.last_name].filter(Boolean).join(" ") || "Interviewer",
@@ -340,7 +348,8 @@ Deno.serve(async (req) => {
         submittedAt: row.updated_at || row.created_at,
         stage: stageById.get(row.stage_instance_id) || "Interview",
         rating: row.rating,
-        takeawayParagraphs: String(row.general_overview)
+        takeawayHtml,
+        takeawayParagraphs: takeawayHtml
           .replace(/<\/(?:p|div|li|blockquote|h[1-6])>|<br\s*\/?>/gi, "\n")
           .replace(/<[^>]*>/g, "")
           .replace(/&nbsp;/gi, " ")
