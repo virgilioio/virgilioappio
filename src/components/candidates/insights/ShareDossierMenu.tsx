@@ -7,7 +7,8 @@
  * promises the implementation keeps: public links are always client-ready, and
  * they deactivate themselves.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, Globe, Link2, ShieldOff, Users } from 'lucide-react'
 
 import { copyToClipboardSilent } from '@/utils/clipboard'
