@@ -176,6 +176,7 @@ export function computeExperienceStats(
     ...(totalMonths > 0 ? [{ value: `${(totalMonths / 12).toFixed(totalMonths % 12 ? 1 : 0)} yrs`, label: 'Total experience' }] : []),
     ...(seniorMonths > 0 ? [{ value: `${(seniorMonths / 12).toFixed(seniorMonths % 12 ? 1 : 0)} yrs`, label: 'Senior or above', footnote: 'Based on role titles' }] : []),
     ...(companies > 0 ? [{ value: String(companies), label: 'Companies' }] : []),
+    ...(salaryExpectation ? [{ value: salaryExpectation, label: 'Salary expectation', footnote: 'Stated by the candidate' }] : []),
     ...(teamSizes.length ? [{ value: String(Math.max(...teamSizes)), label: 'Largest team led', footnote: 'Explicitly stated in experience' }] : []),
   ]
 }
