@@ -405,6 +405,26 @@
   color: #b45309;
 }
 
+.gio-chip.partial {
+  border-color: #e7e8ee;
+  background: #faf9f6;
+  color: #1f2230;
+}
+
+.gio-skill-verdict {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 100%;
+}
+
+.gio-skill-evidence {
+  padding-left: 2px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: #8b8f9e;
+}
+
 /* experience */
 
 .gio-exp {
