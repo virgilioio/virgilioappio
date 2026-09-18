@@ -123,7 +123,6 @@ export default {
 					chip: 'hsl(var(--fit-chip))',
 					'open-row': 'hsl(var(--fit-open-row))',
 					null: 'hsl(var(--fit-null))',
-					'neutral-rail': 'hsl(var(--fit-neutral-rail))',
 					lilac: 'hsl(var(--fit-lilac))',
 					'violet-deep': 'hsl(var(--fit-violet-deep))',
 					'violet-mid': 'hsl(var(--fit-violet-mid))',

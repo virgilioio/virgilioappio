@@ -9,7 +9,6 @@ import {
   ChevronUp,
   Download,
   GraduationCap,
-  HelpCircle,
   Loader2,
   Minus,
   RefreshCw,
@@ -176,12 +175,10 @@ function ExperienceRow({ entry }: { entry: CandidateWorkExperience }) {
   )
 }
 
-function EvidenceItem({ kind, children }: { kind: 'match' | 'gap' | 'neutral'; children: string }) {
+function EvidenceItem({ kind, children }: { kind: 'match' | 'gap'; children: string }) {
   const config = kind === 'match'
     ? { Icon: Check, icon: 'bg-fit-match-soft text-fit-match-dark', rail: 'border-l-virgilio-success' }
-    : kind === 'gap'
-      ? { Icon: X, icon: 'bg-fit-gap-soft text-fit-gap-dark', rail: 'border-l-virgilio-error' }
-      : { Icon: HelpCircle, icon: 'bg-fit-hairline text-fit-muted', rail: 'border-l-fit-neutral-rail' }
+    : { Icon: X, icon: 'bg-fit-gap-soft text-fit-gap-dark', rail: 'border-l-virgilio-error' }
   return (
     <div className={cn('flex items-start gap-2 rounded-lg border border-fit-row-border border-l-2 bg-surface-primary px-[11px] py-[9px]', config.rail)}>
       <span className={cn('mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full', config.icon)}>
@@ -222,11 +219,10 @@ function DimensionRow({ dimension, colorIndex, open, onToggle }: { dimension: Fi
         <div className="border-t border-fit-row-border bg-fit-paper px-4 py-3">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <p className="font-poppins text-[13px] font-semibold text-fit-ink">{dimension.name} verdict</p>
               {score === null ? (
-                <Badge tone="yellow" size="xs" shape="square" className="mt-1.5">Not assessed</Badge>
+                <Badge tone="yellow" size="xs" shape="square">Not assessed</Badge>
               ) : (
-                <p className="mt-1 text-[11px] tabular-nums text-fit-subtle">{score} × {weight}% = {contribution?.toFixed(1)} pts</p>
+                <p className="text-[11px] tabular-nums text-fit-subtle">{score} × {weight}% = {contribution?.toFixed(1)} pts</p>
               )}
             </div>
             {score !== null && <span className="text-right text-[11px] text-fit-subtle">{matches.length} matches · {gaps.length} gaps</span>}
@@ -235,7 +231,6 @@ function DimensionRow({ dimension, colorIndex, open, onToggle }: { dimension: Fi
           <div className="mt-3 space-y-2">
             {matches.map((item, index) => <EvidenceItem key={`match-${index}-${item}`} kind="match">{item}</EvidenceItem>)}
             {gaps.map((item, index) => <EvidenceItem key={`gap-${index}-${item}`} kind="gap">{item}</EvidenceItem>)}
-            {score === null && dimension.insight && <EvidenceItem kind="neutral">{dimension.insight}</EvidenceItem>}
           </div>
         </div>
       )}
