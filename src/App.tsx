@@ -82,6 +82,7 @@ const ReferenceTemplateEditor = lazy(() => import('./pages/ReferenceTemplateEdit
 
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
 const SharedList = lazy(() => import('./pages/SharedList'))
+const PublicDossier = lazy(() => import('./pages/PublicDossier'))
 const OAuthConsent = lazy(() => import('./pages/OAuthConsent'))
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -146,6 +147,8 @@ function AppContent() {
         <Route path="/reference/:token" element={<PublicReferenceAnswer />} />
         <Route path="/report/:token" element={<PublicReferenceReport />} />
         <Route path="/reference-report/:token" element={<PublicReferenceReport />} />
+        {/* Public candidate dossier — always client-ready, resolved server-side. */}
+        <Route path="/d/:token" element={<PublicDossier />} />
 
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}

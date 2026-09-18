@@ -3157,6 +3157,88 @@ export type Database = {
           },
         ]
       }
+      dossier_feedback: {
+        Row: {
+          created_at: string
+          decision: string
+          id: string
+          note: string | null
+          share_id: string
+        }
+        Insert: {
+          created_at?: string
+          decision: string
+          id?: string
+          note?: string | null
+          share_id: string
+        }
+        Update: {
+          created_at?: string
+          decision?: string
+          id?: string
+          note?: string | null
+          share_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_feedback_share_id_fkey"
+            columns: ["share_id"]
+            isOneToOne: false
+            referencedRelation: "dossier_shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dossier_shares: {
+        Row: {
+          association_id: string
+          created_at: string
+          created_by: string | null
+          deactivated_at: string | null
+          deactivated_reason: string | null
+          id: string
+          is_public: boolean
+          last_viewed_at: string | null
+          token: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_reason?: string | null
+          id?: string
+          is_public?: boolean
+          last_viewed_at?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_reason?: string | null
+          id?: string
+          is_public?: boolean
+          last_viewed_at?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_shares_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: true
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           attachments: Json | null
@@ -8660,6 +8742,14 @@ export type Database = {
           status: string
         }[]
       }
+      dossier_share_can_manage: {
+        Args: { _association_id: string }
+        Returns: boolean
+      }
+      dossier_share_is_live: {
+        Args: { _association_id: string }
+        Returns: boolean
+      }
       duplicate_job_posting: {
         Args: {
           new_description?: string
@@ -8972,6 +9062,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      record_dossier_view: { Args: { _token: string }; Returns: undefined }
       resequence_posting_fields_for_library_order: {
         Args: { p_posting_id: string }
         Returns: undefined
