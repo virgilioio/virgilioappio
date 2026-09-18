@@ -41,6 +41,11 @@
   visibility: hidden;
 }
 
+/* flow-root keeps each block's own margins inside the measured box */
+.gio-measure > div {
+  display: flow-root;
+}
+
 .gio-runhead {
   display: flex;
   align-items: baseline;
@@ -194,6 +199,7 @@
 
 .gio-seal-band i {
   display: block;
+  text-transform: capitalize;
   margin-top: 1px;
   font-style: normal;
   font-size: 10.5px;
@@ -209,6 +215,7 @@
 
 .gio-heading {
   margin: 0 0 10px;
+  padding: 0;
   font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -392,7 +399,7 @@
 }
 
 .gio-exp-dates {
-  flex: 0 0 136px;
+  flex: 0 0 150px;
 }
 
 .gio-exp-dates b {
@@ -464,6 +471,14 @@
   gap: 10px;
   padding: 6px 0;
   border-bottom: 1px solid #f1f0ec;
+}
+
+.gio-dim-head .gio-dim-score,
+.gio-dim-head .gio-dim-weight,
+.gio-dim-head .gio-dim-points {
+  font: inherit;
+  letter-spacing: 0.09em;
+  color: #8b8f9e;
 }
 
 .gio-dim-head {
@@ -590,7 +605,7 @@
 }
 
 .gio-ev-item {
-  margin-top: 4px;
+  margin: 4px 0 0;
   padding: 1px 0 1px 8px;
   border-left: 2px solid #12b886;
   font-size: 10.5px;

@@ -39,7 +39,7 @@ interface Block {
   keepWithNext?: boolean
 }
 
-const PAGE_CONTENT_HEIGHT = 1056 - 48 - 40 - 34 // page minus padding minus footer band
+const PAGE_CONTENT_HEIGHT = 940 // Letter height minus page padding and the footer band
 const RUNNING_HEAD_HEIGHT = 42
 
 function Heading({ children, spaced }: { children: string; spaced?: boolean }) {
@@ -262,7 +262,6 @@ function buildBlocks(data: DossierPrintProps): Block[] {
             </span>
           </div>
         ),
-        keepWithNext: index < skillRows.length - 1 ? false : false,
       })
     })
   }

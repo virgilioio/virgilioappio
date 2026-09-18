@@ -23,6 +23,20 @@ import type { CandidateWorkExperience } from '@/components/candidates/CandidateW
 import { NoJobDescriptionCard } from './NoJobDescriptionCard'
 import { GioFitLanguageControl, GioFitLanguageProvenance } from './GioFitLanguageControl'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
+import { GioFitExportDialog } from './dossier/GioFitExportDialog'
+import type { DossierPrintProps } from './dossier/DossierPrintDocument'
+import {
+  asString,
+  asStringArray,
+  buildSkillGroups,
+  computeExperienceStats,
+  formatDate,
+  formatDuration,
+  getScoreBand,
+  splitExecutiveSummary,
+  stripHtml,
+} from './dossier/dossierData'
+import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import { cn } from '@/lib/utils'
 
 interface CandidateInsightsTabProps {
@@ -48,98 +62,6 @@ const dimensionColors = [
   { dot: 'bg-fit-lilac', fill: 'bg-fit-lilac' },
 ]
 
-function asString(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null
-}
-
-function asStringArray(value: unknown) {
-  if (!Array.isArray(value)) return []
-  return value.map((item) => asString(item)).filter((item): item is string => !!item)
-}
-
-function stripHtml(value?: string | null) {
-  if (!value) return ''
-  return value.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim()
-}
-
-function formatDate(value?: string) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-}
-
-function formatDuration(startValue?: string, endValue?: string) {
-  if (!startValue) return null
-  const start = new Date(startValue)
-  const end = endValue ? new Date(endValue) : new Date()
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null
-  const months = Math.max(1, Math.round((end.getTime() - start.getTime()) / 2_629_746_000))
-  const years = Math.floor(months / 12)
-  const remainder = months % 12
-  if (!years) return `${months} mo`
-  return `${years} yr${years === 1 ? '' : 's'}${remainder ? ` ${remainder} mo` : ''}`
-}
-
-function normalizeSkill(value: string) {
-  let normalized = value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ')
-  normalized = normalized
-    .split(' ')
-    .map((word) => {
-      if (word.length > 4 && word.endsWith('ies')) return `${word.slice(0, -3)}y`
-      if (word.length > 4 && word.endsWith('es')) return word.slice(0, -2)
-      if (word.length > 3 && word.endsWith('s')) return word.slice(0, -1)
-      return word
-    })
-    .join(' ')
-  return normalized
-}
-
-function getScoreBand(score: number) {
-  if (score >= 90) return 'Exceptional'
-  if (score >= 75) return 'Strong'
-  if (score >= 60) return 'Mixed'
-  if (score >= 40) return 'Weak'
-  return 'Poor'
-}
-
-function splitExecutiveSummary(summary: string) {
-  const match = summary.match(/strongest signal\s*[:—-]\s*([\s\S]+?)\s+biggest risk\s*[:—-]\s*([\s\S]+)/i)
-  if (!match) return null
-  const strongest = match[1]?.trim()
-  const risk = match[2]?.trim()
-  return strongest && risk ? { strongest, risk } : null
-}
-
-function computeExperienceStats(experience: CandidateWorkExperience[]) {
-  const validRows = experience
-    .map((entry) => {
-      const start = entry.start_date ? new Date(entry.start_date) : null
-      const end = entry.end_date ? new Date(entry.end_date) : new Date()
-      if (!start || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null
-      return { entry, start, end }
-    })
-    .filter((row): row is { entry: CandidateWorkExperience; start: Date; end: Date } => !!row)
-
-  const totalMonths = validRows.reduce((sum, row) => sum + Math.max(1, Math.round((row.end.getTime() - row.start.getTime()) / 2_629_746_000)), 0)
-  const seniorPattern = /\b(senior|sr\.?|lead|head|director|vp|vice president|chief|principal|manager)\b/i
-  const seniorMonths = validRows
-    .filter(({ entry }) => seniorPattern.test(`${entry.job_title} ${entry.standardized_title || ''}`))
-    .reduce((sum, row) => sum + Math.max(1, Math.round((row.end.getTime() - row.start.getTime()) / 2_629_746_000)), 0)
-  const companies = new Set(experience.map((entry) => entry.company_name?.trim().toLocaleLowerCase()).filter(Boolean)).size
-  const teamSizes = experience.flatMap((entry) => {
-    const description = stripHtml(entry.description)
-    const matches = [...description.matchAll(/(?:team(?: of)?|managed|led|supervised)\s+(?:a\s+)?(?:team\s+of\s+)?(\d{1,4})\b/gi)]
-    return matches.map((match) => Number(match[1])).filter((value) => Number.isFinite(value) && value > 0)
-  })
-
-  return [
-    ...(totalMonths > 0 ? [{ value: `${(totalMonths / 12).toFixed(totalMonths % 12 ? 1 : 0)} yrs`, label: 'Total experience' }] : []),
-    ...(seniorMonths > 0 ? [{ value: `${(seniorMonths / 12).toFixed(seniorMonths % 12 ? 1 : 0)} yrs`, label: 'Senior or above', footnote: 'Based on role titles' }] : []),
-    ...(companies > 0 ? [{ value: String(companies), label: 'Companies' }] : []),
-    ...(teamSizes.length ? [{ value: String(Math.max(...teamSizes)), label: 'Largest team led', footnote: 'Explicitly stated in experience' }] : []),
-  ]
-}
 
 function ExperienceRow({ entry }: { entry: CandidateWorkExperience }) {
   const [expanded, setExpanded] = useState(false)
@@ -274,6 +196,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
+  const [exportOpen, setExportOpen] = useState(false)
   const hasTriggered = useRef(false)
   const jdText = stripHtml(jobDescription)
 
@@ -289,14 +212,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     return mustHave.length ? mustHave : asStringArray(job?.skills)
   }, [job])
   const candidateSkills = useMemo(() => asStringArray(candidate?.skills), [candidate])
-  const skillGroups = useMemo(() => {
-    const candidateMap = new Map(candidateSkills.map((skill) => [normalizeSkill(skill), skill]))
-    const requiredMap = new Map(requiredSkills.map((skill) => [normalizeSkill(skill), skill]))
-    const evidenced = requiredSkills.filter((skill) => candidateMap.has(normalizeSkill(skill)))
-    const notEvidenced = requiredSkills.filter((skill) => !candidateMap.has(normalizeSkill(skill)))
-    const additional = candidateSkills.filter((skill) => !requiredMap.has(normalizeSkill(skill)))
-    return { evidenced, notEvidenced, additional }
-  }, [candidateSkills, requiredSkills])
+  const skillGroups = useMemo(() => buildSkillGroups(requiredSkills, candidateSkills), [candidateSkills, requiredSkills])
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
 
   if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
@@ -352,6 +268,30 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     }
   }
 
+  const candidateName = asString(candidate?.candidate_name) || 'Candidate'
+  const jobTitle = asString(job?.title)
+  const contactItems = [asString(candidate?.email), asString(candidate?.phone), asString(candidate?.linkedin_url)].filter((item): item is string => !!item)
+  const preparedBy = asString((job?.organization as { name?: string } | null | undefined)?.name)
+  const appliedLanguage = insights.appliedOutputLanguage || insights.resolvedOutputLanguage
+  const buildExportData = ({ clientReady: exportClientReady, includeContact }: { clientReady: boolean; includeContact: boolean }): DossierPrintProps => ({
+    analysis,
+    score,
+    candidateName,
+    roleLine: roleLine || null,
+    jobTitle,
+    location: location || null,
+    contactItems,
+    requiredSkills,
+    candidateSkills,
+    workExperience,
+    education,
+    outputLanguageName: getGioFitLanguage(appliedLanguage).name,
+    clientReady: exportClientReady,
+    includeContact,
+    preparedBy,
+    preparedOn: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+  })
+
   return (
     <div className={cn('relative space-y-3.5 transition-opacity', isRefreshing && insights?.analysis && 'opacity-40')}>
       {isRefreshing && insights?.analysis && <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3px] overflow-hidden rounded-full bg-fit-violet-wash"><div className="h-full w-1/3 animate-[loading-sweep_1.1s_ease-in-out_infinite] bg-virgilio-purple" /></div>}
@@ -392,7 +332,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           <div className="flex shrink-0 items-center gap-2">
             <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
-            <Button variant="secondary" size="sm" icon={Download} onClick={onExportPdf}>Export PDF</Button>
+            <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
           </div>
         </div>
       </section>
@@ -495,6 +435,15 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           <ValidationPoints points={visibleValidationPoints} clientReady={clientReady} />
         </aside>
       </div>
+
+      <GioFitExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        defaultClientReady={clientReady}
+        hasContactDetails={contactItems.length > 0}
+        buildData={buildExportData}
+        fileName={`${candidateName} — Gio dossier${jobTitle ? ` · ${jobTitle}` : ''}`}
+      />
     </div>
   )
 }
