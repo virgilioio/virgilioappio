@@ -41,5 +41,10 @@ export function invariantSnapshot(analysis: FitAnalysisRecord) {
     data_sources_missing: analysis.data_sources_missing,
     detected_languages: analysis.detected_languages,
     priorities: (analysis.validation_points || []).map((point: FitAnalysisRecord) => point.priority),
+    skill_evidence: (analysis.skill_evidence || []).map((entry: FitAnalysisRecord) => ({
+      skill: entry.skill,
+      status: entry.status,
+      source: entry.source,
+    })),
   })
 }
