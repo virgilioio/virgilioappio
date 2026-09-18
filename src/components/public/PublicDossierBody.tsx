@@ -205,8 +205,8 @@ export function PublicDossierBody({
               {profileSummary && (
                 <p className="font-inter" style={{ fontSize: 13, lineHeight: 1.6, color: '#1F2230', margin: '8px 0 0' }}>{stripHtml(profileSummary)}</p>
               )}
-              {summary.headline && (
-                <p className="font-inter" style={{ fontSize: 12.5, lineHeight: 1.6, color: '#5A6072', margin: '10px 0 0' }}>{summary.headline}</p>
+              {strongestSignal && (
+                <p className="font-inter" style={{ fontSize: 12.5, lineHeight: 1.6, color: '#5A6072', margin: '10px 0 0' }}>{strongestSignal}</p>
               )}
               {stats.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 14 }}>
@@ -221,16 +221,16 @@ export function PublicDossierBody({
             </section>
           )}
 
-          {skillGroups.length > 0 && (
+          {skillSections.length > 0 && (
             <section style={{ marginTop: 22, paddingTop: 20, borderTop: '1px solid #F1F0EC' }}>
               <p style={HEADING}>Identified skills</p>
-              {skillGroups.map((group) => (
+              {skillSections.map((group) => (
                 <div key={group.title} style={{ marginTop: 12 }}>
                   <p className="font-inter" style={{ fontSize: 11.5, fontWeight: 600, color: '#5A6072', margin: 0 }}>{group.title}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
                     {group.items.map((item) => (
                       <span
-                        key={item.label}
+                        key={item.skill}
                         title={item.evidence ?? undefined}
                         className="font-inter"
                         style={{
