@@ -1,0 +1,168 @@
+/* Gio Fit · loading, re-scoring and failure states.
+   All literal values live here so the components stay token/class driven. */
+
+@keyframes gf-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes gf-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.gf-sk {
+  background: linear-gradient(90deg, #F1F0EC 0%, #F1F0EC 40%, #F8F7F4 50%, #F1F0EC 60%, #F1F0EC 100%);
+  background-size: 200% 100%;
+  animation: gf-shimmer 1.6s linear infinite;
+  border-radius: 6px;
+}
+
+.gf-sk-dark {
+  background: linear-gradient(90deg, #E7E5DC 0%, #E7E5DC 40%, #F1EFE8 50%, #E7E5DC 60%, #E7E5DC 100%);
+  background-size: 200% 100%;
+  animation: gf-shimmer 1.6s linear infinite;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gf-sk,
+  .gf-sk-dark { animation: none; background: #F1F0EC; }
+  .gf-step-marker--active { animation: none; }
+  .gf-rescore-chip { animation: none; }
+}
+
+/* ---------- narration ---------- */
+
+.gf-step {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.gf-step-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.gf-step-marker--done { background: #EDE4FF; color: #5B21B6; }
+.gf-step-marker--active { background: #6F3FF5; animation: gf-pulse 1.4s ease-in-out infinite; }
+.gf-step-marker--active::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #fff;
+}
+.gf-step-marker--pending { background: #F1F0EC; }
+
+.gf-step-label { font-size: 12.5px; line-height: 1.35; }
+.gf-step-label--done { font-weight: 500; color: #1F2230; }
+.gf-step-label--active { font-weight: 600; color: #1F2230; }
+.gf-step-label--pending { font-weight: 500; color: #8B8F9E; }
+
+.gf-step-detail { font-size: 11.5px; color: #8B8F9E; margin-top: 2px; line-height: 1.4; }
+
+/* ---------- progress ---------- */
+
+.gf-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: #F1F0EC;
+  overflow: hidden;
+}
+
+.gf-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #6F3FF5;
+  transition: width 400ms ease;
+}
+
+.gf-progress-note { font-size: 11px; color: #8B8F9E; margin-top: 8px; }
+
+/* ---------- cold skeleton furniture ---------- */
+
+.gf-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6F3FF5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gf-callout-green { background: #F9FCFA; border: 1px solid #ECF4EF; border-radius: 8px; }
+.gf-callout-amber { background: #FFFDF6; border: 1px solid #F7F0DD; border-radius: 8px; }
+
+.gf-hairline { border-top: 1px solid #F1F0EC; }
+.gf-statline { border-top: 1px solid #F5F4F0; }
+
+/* ---------- re-scoring ---------- */
+
+.gf-rescore-dim {
+  opacity: 0.4;
+  pointer-events: none;
+  filter: saturate(0.7);
+  padding-top: 62px;
+}
+
+.gf-rescore-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #fff;
+  border: 1px solid #E6DAFB;
+  border-radius: 12px;
+  box-shadow: 0 10px 26px -14px rgba(13, 13, 9, 0.24);
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gf-rescore-chip {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #F4EFFE;
+  color: #6F3FF5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  animation: gf-pulse 1.4s ease-in-out infinite;
+}
+
+.gf-rescore-title { font-size: 12.5px; font-weight: 600; color: #1F2230; }
+.gf-rescore-note { font-size: 11.5px; color: #8B8F9E; }
+
+.gf-fade-in { animation: gf-fade-in 200ms ease-out; }
+@keyframes gf-fade-in { from { opacity: 0.4; } to { opacity: 1; } }
+
+/* ---------- failure ---------- */
+
+.gf-fail-chip {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #FEF3C7;
+  color: #B45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gf-fail-title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; color: #1F2230; }
+.gf-fail-body { font-size: 13px; line-height: 1.6; color: #5A6072; max-width: 560px; margin-top: 6px; }
