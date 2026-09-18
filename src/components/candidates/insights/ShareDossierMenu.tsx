@@ -22,6 +22,7 @@ interface ShareDossierMenuProps {
   isLoading: boolean
   error: string | null
   isRejected: boolean
+  rejectedAt?: string | null
   /** Read-only roles may copy the internal link but never publish. */
   canPublish?: boolean
   candidateFirstName: string
@@ -118,6 +119,7 @@ export function ShareDossierMenu({
   isLoading,
   error,
   isRejected,
+  rejectedAt,
   canPublish = true,
   candidateFirstName,
   internalUrl,
@@ -132,7 +134,7 @@ export function ShareDossierMenu({
   useEffect(() => {
     if (!open) return
     const close = () => {
-      onClose()
+      close()
       triggerRef?.current?.focus()
     }
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close() }
@@ -153,8 +155,9 @@ export function ShareDossierMenu({
   const live = Boolean(share?.isPublic) && !isRejected
   const url = share ? dossierPublicUrl(share.token) : ''
   const viewed = relative(share?.lastViewedAt ?? null)
-  const deactivatedOn = share?.deactivatedAt
-    ? new Date(share.deactivatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const deactivatedAt = share?.deactivatedAt ?? rejectedAt
+  const deactivatedOn = deactivatedAt
+    ? new Date(deactivatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
   const description = isRejected
@@ -217,7 +220,7 @@ export function ShareDossierMenu({
             onCheckedChange={onTogglePublic}
             aria-label="Public dossier"
             aria-pressed={live}
-            className="h-[22px] w-[38px] border-0 p-0 [&>span]:h-4 [&>span]:w-4 [&>span]:shadow-[0_1px_2px_rgba(13,13,9,0.2)] data-[state=checked]:[&>span]:translate-x-4"
+            className="h-[22px] w-[38px] border-0 p-0 [&>span]:ml-[3px] [&>span]:h-4 [&>span]:w-4 [&>span]:shadow-[0_1px_2px_rgba(13,13,9,0.2)] data-[state=checked]:[&>span]:translate-x-4"
             style={{
               background: isRejected || !canPublish || !share || isLoading ? '#E7E5DC' : live ? '#6F3FF5' : '#D5D3CA',
               borderColor: 'transparent',
@@ -242,7 +245,7 @@ export function ShareDossierMenu({
             <ShieldOff size={13} strokeWidth={2} color="#B45309" style={{ flexShrink: 0, marginTop: 1 }} />
             <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontSize: 11, lineHeight: 1.5, color: '#7A4A08', textWrap: 'pretty' }}>
               <strong>Deactivated automatically</strong>
-              {deactivatedOn ? ` on ${deactivatedOn}` : ' on the rejection date'}, when {candidateFirstName} was rejected. Reactivate her on this job to share again.
+              {deactivatedOn ? ` on ${deactivatedOn}` : ''}, when {candidateFirstName} was rejected. Reactivate her on this job to share again.
             </p>
           </div>
         )}

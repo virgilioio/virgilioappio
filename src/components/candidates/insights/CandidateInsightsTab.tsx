@@ -405,6 +405,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 isLoading={shareLoading}
                 error={shareError}
                 isRejected={Boolean(insights.isRejected)}
+                rejectedAt={insights.rejectedAt}
                 canPublish={canEditCandidates}
                 candidateFirstName={candidateName.split(' ')[0] || candidateName}
                 internalUrl={`${window.location.origin}/jobs/${jobId}/candidates/${candidateId}?tab=fit`}
