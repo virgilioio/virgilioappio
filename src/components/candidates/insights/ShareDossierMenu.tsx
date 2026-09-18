@@ -20,9 +20,13 @@ interface ShareDossierMenuProps {
   isLoading: boolean
   error: string | null
   isRejected: boolean
+  /** Read-only roles may copy the internal link but never publish. */
+  canPublish?: boolean
   candidateFirstName: string
   internalUrl: string
   onTogglePublic: (next: boolean) => void
+  /** The button the menu hangs from — keeps outside-click sane and returns focus. */
+  triggerRef?: React.RefObject<HTMLElement>
 }
 
 const PANEL: React.CSSProperties = {
@@ -116,15 +120,30 @@ function Switch({ checked, disabled, onChange }: { checked: boolean; disabled?: 
 
 function useInlineCopy() {
   const [copied, setCopied] = useState(false)
+  const [manual, setManual] = useState(false)
   const timer = useRef<number | null>(null)
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
-  const copy = async (value: string) => {
-    await copyToClipboardSilent(value)
-    setCopied(true)
+  const copy = async (value: string, selectTarget?: HTMLElement | null) => {
+    const ok = await copyToClipboardSilent(value)
     if (timer.current) window.clearTimeout(timer.current)
+    if (!ok) {
+      // Never fail silently: select the text so the user can copy it by hand.
+      if (selectTarget) {
+        const range = document.createRange()
+        range.selectNodeContents(selectTarget)
+        const selection = window.getSelection()
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+      }
+      setManual(true)
+      timer.current = window.setTimeout(() => setManual(false), 4000)
+      return
+    }
+    setManual(false)
+    setCopied(true)
     timer.current = window.setTimeout(() => setCopied(false), 1600)
   }
-  return { copied, copy }
+  return { copied, manual, copy }
 }
 
 export function ShareDossierMenu({
