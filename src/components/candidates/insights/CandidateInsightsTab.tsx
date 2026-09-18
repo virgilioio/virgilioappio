@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { NoJobDescriptionCard } from './NoJobDescriptionCard'
+import { GioFitLanguageControl, GioFitLanguageProvenance } from './GioFitLanguageControl'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { cn } from '@/lib/utils'
 
@@ -270,7 +271,8 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
 }
 
 export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, onExportPdf }: CandidateInsightsTabProps) {
-  const { insights, isLoading, isRefreshing, refreshInsights } = useCandidateFitInsights(candidateId, jobId)
+  const { insights, isLoading, isRefreshing, refreshInsights, updateLanguagePreferences } = useCandidateFitInsights(candidateId, jobId)
+  const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
   const hasTriggered = useRef(false)
@@ -341,9 +343,19 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const visibleValidationPoints = clientReady
     ? (analysis.validation_points || []).filter((point) => !/salary|compensation|pay|remuneration/i.test(`${point.question} ${point.reason}`))
     : (analysis.validation_points || [])
+  const handleLanguageApply = async (language: string | null, keepProperNouns: boolean) => {
+    setRewriteError(null)
+    try {
+      await updateLanguagePreferences(language, keepProperNouns)
+    } catch (error) {
+      setRewriteError(error instanceof Error ? error.message : 'The dossier could not be re-written. Your previous version is unchanged.')
+      throw error
+    }
+  }
 
   return (
-    <div className="space-y-3.5">
+    <div className={cn('relative space-y-3.5 transition-opacity', isRefreshing && insights?.analysis && 'opacity-40')}>
+      {isRefreshing && insights?.analysis && <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3px] overflow-hidden rounded-full bg-fit-violet-wash"><div className="h-full w-1/3 animate-[loading-sweep_1.1s_ease-in-out_infinite] bg-virgilio-purple" /></div>}
       <section className={cn(cardClass, 'p-[22px]')}>
         <div className="flex flex-col items-start gap-6 sm:flex-row">
           <div className="min-w-0">
@@ -388,11 +400,13 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             {clientReady ? 'Scoring mechanics and salary are hidden. This is what the client sees.' : 'Full view with weights, nulls, and validation priorities.'}
           </p>
           <div className="flex shrink-0 items-center gap-2">
+            <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
             <Button variant="secondary" size="sm" icon={Download} onClick={onExportPdf}>Export PDF</Button>
           </div>
         </div>
       </section>
+      {rewriteError && <p role="alert" className="rounded-lg border border-fit-risk-border bg-fit-warning-soft px-3 py-2 text-[12px] text-fit-risk-copy">{rewriteError}</p>}
 
       <div className="grid items-start gap-3.5 xl:grid-cols-[minmax(0,1fr)_400px]">
         <section className={cardClass}>
@@ -413,8 +427,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                     )}
                   </div>
                 </div>
-                {experienceStats.length > 0 && (
+                {(experienceStats.length > 0 || analysis.detected_languages) && (
                   <div className="divide-y divide-fit-chip">
+                    <GioFitLanguageProvenance analysis={analysis} outputLanguage={insights.appliedOutputLanguage || insights.resolvedOutputLanguage} />
                     {experienceStats.map((stat) => <div key={stat.label} className="py-3 first:pt-0 last:pb-0"><p className="font-poppins text-[20px] font-semibold text-fit-ink">{stat.value}</p><p className="text-[12px] font-medium text-fit-ink">{stat.label}</p>{stat.footnote && <p className="mt-0.5 text-[11px] text-fit-subtle">{stat.footnote}</p>}</div>)}
                   </div>
                 )}
