@@ -10,6 +10,7 @@ import type { LucideIcon } from 'lucide-react'
 import { CheckCircle2, ChevronDown, GraduationCap, Languages, MapPin } from 'lucide-react'
 
 import type { PublicDossierPayload } from '@/pages/PublicDossier'
+import { InterviewScorecardsSection } from '@/components/candidates/insights/dossier/InterviewScorecardsSection'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import {
   buildSkillGroups,
@@ -301,6 +302,8 @@ export function PublicDossierBody({
               ))}
             </section>
           )}
+
+          <InterviewScorecardsSection scorecards={payload.scorecards} clientReady />
 
           {payload.work_experience.length > 0 && (
             <section style={{ marginTop: 22, paddingTop: 20, borderTop: '1px solid #F1F0EC' }}>

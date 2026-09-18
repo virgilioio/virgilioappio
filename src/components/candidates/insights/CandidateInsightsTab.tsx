@@ -29,9 +29,13 @@ import { buildNarrationSteps, useGioFitNarration } from './loading/GioFitNarrati
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
+import { useApplicationScorecardRequirements } from '@/hooks/useApplicationScorecardRequirements'
 import { ShareDossierMenu } from '@/components/candidates/insights/ShareDossierMenu'
+import { InterviewScorecardsSection } from './dossier/InterviewScorecardsSection'
 import { GioFitExportDialog, type DossierExportOptions } from './dossier/GioFitExportDialog'
 import type { DossierPrintProps } from './dossier/DossierPrintDocument'
+import { richTextParagraphs, type DossierScorecard } from './dossier/dossierScorecards'
 import {
   asString,
   asStringArray,
@@ -48,6 +52,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import { cn } from '@/lib/utils'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
+import { coerceRating } from '@/lib/scorecardRatings'
 
 interface CandidateInsightsTabProps {
   candidateId: string
@@ -216,6 +221,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     insights?.associationId ?? null,
     shareOpen,
   )
+  const { scorecards: rawScorecards } = useAssociationScorecards(insights?.associationId ?? null)
+  const scorecardRequirements = useApplicationScorecardRequirements(insights?.associationId ?? null, jobId, null)
   const hasTriggered = useRef(false)
   const jdText = stripHtml(jobDescription)
 
@@ -248,6 +255,28 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     [candidate],
   )
   const experienceStats = useMemo(() => computeExperienceStats(workExperience, salaryExpectation), [workExperience, salaryExpectation])
+  const dossierScorecards = useMemo<DossierScorecard[]>(() => rawScorecards.flatMap((scorecard) => {
+    const rating = coerceRating(scorecard.rating)
+    const takeawayParagraphs = richTextParagraphs(scorecard.general_overview)
+    if (scorecard.is_ai_draft || !rating || takeawayParagraphs.length === 0) return []
+    return [{
+      id: scorecard.id,
+      interviewerName: scorecard.author_name || scorecard.author_email || 'Interviewer',
+      interviewerRole: scorecard.author_title || null,
+      submittedAt: scorecard.updated_at || scorecard.created_at,
+      stage: scorecard.stage_name || 'Interview',
+      rating,
+      takeawayParagraphs,
+      areas: (scorecard.criterion_scores || []).flatMap((area) => {
+        const areaRating = coerceRating(area.rating)
+        return areaRating ? [{ label: area.questionText, rating: areaRating }] : []
+      }),
+    }]
+  }), [rawScorecards])
+  const pendingScorecards = useMemo(() => {
+    const people = Object.values(scorecardRequirements.byStage).flatMap((stage) => stage.pending)
+    return [...new Map(people.map((person) => [person.userId, { userId: person.userId, name: person.name }])).values()]
+  }, [scorecardRequirements.byStage])
   // Narration is driven while a request is open; step 5 never completes early.
   const { stepIndex, progress } = useGioFitNarration(isRefreshing)
 
@@ -328,6 +357,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     workExperience,
     education,
     salaryExpectation,
+    scorecards: dossierScorecards,
     outputLanguageName: getGioFitLanguage(appliedLanguage).name,
     clientReady: exportClientReady,
     includeContact,
@@ -502,6 +532,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
               </div>
             </div>
           )}
+
+          <InterviewScorecardsSection scorecards={dossierScorecards} pending={pendingScorecards} clientReady={clientReady} />
 
           {workExperience.length > 0 && (
             <div className="border-t border-fit-hairline p-5 sm:p-6">

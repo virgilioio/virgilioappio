@@ -299,6 +299,60 @@ Deno.serve(async (req) => {
       .eq("id", assoc.id)
       .maybeSingle();
 
+    const { data: scorecardRows } = await supabase
+      .from("job_stage_scorecards")
+      .select("id, stage_instance_id, created_by, rating, general_overview, created_at, updated_at, is_ai_draft")
+      .eq("association_id", assoc.id)
+      .eq("is_ai_draft", false)
+      .not("rating", "is", null)
+      .not("general_overview", "is", null)
+      .order("created_at", { ascending: false });
+
+    const submittedScorecards = (scorecardRows ?? []).filter((row: any) =>
+      typeof row.general_overview === "string" && row.general_overview.trim().length > 0
+    );
+    const authorIds = [...new Set(submittedScorecards.map((row: any) => row.created_by).filter(Boolean))];
+    const stageIds = [...new Set(submittedScorecards.map((row: any) => row.stage_instance_id).filter(Boolean))];
+    const [{ data: authorProfiles }, { data: hiringStages }] = await Promise.all([
+      authorIds.length
+        ? supabase.from("profiles").select("user_id, first_name, last_name, title").in("user_id", authorIds)
+        : Promise.resolve({ data: [] }),
+      stageIds.length
+        ? supabase.from("job_hiring_stages").select("id, custom_stage_name, stage_id").in("id", stageIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const baseStageIds = [...new Set((hiringStages ?? []).map((stage: any) => stage.stage_id).filter(Boolean))];
+    const { data: baseStages } = baseStageIds.length
+      ? await supabase.from("job_stages").select("id, stage_name").in("id", baseStageIds)
+      : { data: [] };
+    const authorById = new Map((authorProfiles ?? []).map((profile: any) => [profile.user_id, profile]));
+    const baseStageById = new Map((baseStages ?? []).map((stage: any) => [stage.id, stage.stage_name]));
+    const stageById = new Map((hiringStages ?? []).map((stage: any) => [
+      stage.id,
+      stage.custom_stage_name || baseStageById.get(stage.stage_id) || "Interview",
+    ]));
+    const scorecards = submittedScorecards.map((row: any) => {
+      const author = authorById.get(row.created_by) as any;
+      return {
+        id: row.id,
+        interviewerName: [author?.first_name, author?.last_name].filter(Boolean).join(" ") || "Interviewer",
+        interviewerRole: author?.title || null,
+        submittedAt: row.updated_at || row.created_at,
+        stage: stageById.get(row.stage_instance_id) || "Interview",
+        rating: row.rating,
+        takeawayParagraphs: String(row.general_overview)
+          .replace(/<\/(?:p|div|li|blockquote|h[1-6])>|<br\s*\/?>/gi, "\n")
+          .replace(/<[^>]*>/g, "")
+          .replace(/&nbsp;/gi, " ")
+          .replace(/&amp;/gi, "&")
+          .replace(/&lt;/gi, "<")
+          .replace(/&gt;/gi, ">")
+          .split(/\n+/)
+          .map((paragraph: string) => paragraph.replace(/\s+/g, " ").trim())
+          .filter(Boolean),
+      };
+    });
+
     if (!assocFit?.ai_fit_analysis || assocFit.ai_fit_score === null) {
       return json(200, {
         state: "deactivated",
@@ -356,6 +410,7 @@ Deno.serve(async (req) => {
       analysis: clientReadyAnalysis(assocFit.ai_fit_analysis as Record<string, unknown>),
       work_experience: experience ?? [],
       education: education ?? [],
+      scorecards,
       feedback: feedback ?? null,
     });
   } catch (error) {

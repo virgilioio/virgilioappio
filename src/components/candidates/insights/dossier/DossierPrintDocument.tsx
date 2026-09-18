@@ -15,6 +15,9 @@ import {
   splitExecutiveSummary,
   stripHtml,
 } from './dossierData'
+import type { DossierScorecard } from './dossierScorecards'
+import { shortDossierDate } from './dossierScorecards'
+import { ratingLabel } from '@/lib/scorecardRatings'
 
 export interface DossierPrintProps {
   analysis: FitAnalysis
@@ -29,6 +32,7 @@ export interface DossierPrintProps {
   workExperience: CandidateWorkExperience[]
   education: CandidateEducation[]
   salaryExpectation?: string | null
+  scorecards: DossierScorecard[]
   outputLanguageName: string | null
   clientReady: boolean
   includeContact: boolean
@@ -54,6 +58,7 @@ interface Block {
   key: string
   node: ReactNode
   keepWithNext?: boolean
+  breakBefore?: boolean
 }
 
 const RUNNING_HEAD_HEIGHT = 42
@@ -74,6 +79,11 @@ export function paginateBlocks(blocks: Block[], heights: number[], pageSize: Dos
   let index = 0
 
   while (index < blocks.length) {
+    if (blocks[index]?.breakBefore && current.length > 0) {
+      result.push(current)
+      current = []
+      used = 0
+    }
     // A group is a block plus every block it must stay with (headings + first row).
     let end = index
     while (blocks[end]?.keepWithNext && end + 1 < blocks.length) end += 1
@@ -191,6 +201,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
     workExperience,
     education,
     salaryExpectation,
+    scorecards,
     outputLanguageName,
     clientReady,
     includeContact,
@@ -331,8 +342,36 @@ function buildBlocks(data: DossierPrintProps): Block[] {
     }
   }
 
+  if (scorecards.length > 0) {
+    blocks.push({ key: 'scorecards-heading', breakBefore: true, node: <Heading>Interview scorecards</Heading>, keepWithNext: true })
+    scorecards.forEach((scorecard) => {
+      blocks.push({
+        key: `scorecard-${scorecard.id}`,
+        node: (
+          <div className="gio-block gio-scorecard">
+            <div className="gio-scorecard-head">
+              <div>
+                <p className="gio-scorecard-name">{scorecard.interviewerName}{scorecard.interviewerRole ? <span> · {scorecard.interviewerRole}</span> : null}</p>
+                <p className="gio-scorecard-meta">{scorecard.stage} · {shortDossierDate(scorecard.submittedAt)}</p>
+              </div>
+              <span className={`gio-scorecard-rating rating-${scorecard.rating}`}>{ratingLabel(scorecard.rating)}</span>
+            </div>
+            <div className="gio-scorecard-takeaways">
+              {scorecard.takeawayParagraphs.map((paragraph, index) => <p key={`${scorecard.id}-${index}`}>{paragraph}</p>)}
+            </div>
+            {!clientReady && scorecard.areas && scorecard.areas.length > 0 && (
+              <div className="gio-scorecard-areas">
+                {scorecard.areas.map((area) => <span key={`${scorecard.id}-${area.label}`}>{area.label} · {ratingLabel(area.rating)}</span>)}
+              </div>
+            )}
+          </div>
+        ),
+      })
+    })
+  }
+
   if (workExperience.length > 0) {
-    blocks.push({ key: 'exp-heading', node: <Heading spaced>Experience</Heading>, keepWithNext: true })
+    blocks.push({ key: 'exp-heading', breakBefore: scorecards.length > 0, node: <Heading spaced>Experience</Heading>, keepWithNext: true })
     workExperience.forEach((entry, index) => {
       const start = formatDate(entry.start_date)
       const end = entry.is_current ? 'present' : formatDate(entry.end_date)
