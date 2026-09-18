@@ -56,6 +56,7 @@ export interface FitInsightsData {
   staleReason: string | null
   /** Rejected candidates cannot be shared publicly — the share link self-deactivates. */
   isRejected: boolean
+  rejectedAt: string | null
 }
 
 export function useCandidateFitInsights(candidateId: string | null, jobId: string | null) {
@@ -145,6 +146,7 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         isStale,
         staleReason,
         isRejected: Boolean(assoc.rejected_at) || assoc.status === 'rejected',
+        rejectedAt: assoc.rejected_at,
       }
     },
     enabled: !!candidateId && !!jobId,
