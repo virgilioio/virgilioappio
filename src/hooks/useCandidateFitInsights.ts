@@ -136,9 +136,14 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         jobOutputLanguage,
         workspaceOutputLanguage,
         resolvedOutputLanguage: outputLanguage || jobOutputLanguage || workspaceOutputLanguage || 'en',
+        isStale,
+        staleReason,
       }
     },
     enabled: !!candidateId && !!jobId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   })
 
   const refreshInsights = async () => {
