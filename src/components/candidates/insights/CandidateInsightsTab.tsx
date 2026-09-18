@@ -262,8 +262,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     )
   }
 
-  const analysis = insights!.analysis as FitAnalysis
-  const score = insights!.score as number
+  if (!insights?.analysis || insights.score === null) return null
+  const analysis = insights.analysis
+  const score = insights.score
   const isRescoring = isRefreshing
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
   const dimensions = analysis.dimensions || []
