@@ -147,7 +147,10 @@ export interface ExperienceStat {
   footnote?: string
 }
 
-export function computeExperienceStats(experience: CandidateWorkExperience[]): ExperienceStat[] {
+export function computeExperienceStats(
+  experience: CandidateWorkExperience[],
+  salaryExpectation?: string | null,
+): ExperienceStat[] {
   const validRows = experience
     .map((entry) => {
       const start = entry.start_date ? new Date(entry.start_date) : null
