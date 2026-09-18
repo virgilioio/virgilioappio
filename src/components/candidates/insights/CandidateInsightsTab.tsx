@@ -387,8 +387,12 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             {needsSkillVerdicts && !isRefreshing && (
               <span className="text-[11.5px] text-fit-subtle">Refresh to update the skill read</span>
             )}
+            <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
+            <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
+            <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
+            {/* Share is the terminal action of this row, and the only primary. */}
             <div className="relative shrink-0">
-              <Button variant="purple" size="sm" icon={Share2} onClick={() => setShareOpen((open) => !open)}>Share with client</Button>
+              <Button ref={shareButtonRef} variant="primary" size="sm" icon={Share2} onClick={() => setShareOpen((open) => !open)}>Share with client</Button>
               <ShareDossierMenu
                 open={shareOpen}
                 onClose={() => setShareOpen(false)}
@@ -396,14 +400,13 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 isLoading={shareLoading}
                 error={shareError}
                 isRejected={Boolean(insights.isRejected)}
+                canPublish={canEditCandidates}
                 candidateFirstName={candidateName.split(' ')[0] || candidateName}
                 internalUrl={`${window.location.origin}/jobs/${jobId}/candidates/${candidateId}?tab=fit`}
                 onTogglePublic={(next) => void setSharePublic(next)}
+                triggerRef={shareButtonRef}
               />
             </div>
-            <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
-            <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
-            <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
           </div>
         </div>
       </section>
