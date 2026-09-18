@@ -42,7 +42,6 @@ import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
 
 import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
 import { StageBookingsList } from '@/components/candidates/StageBookingsList'
-import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
@@ -532,7 +531,6 @@ const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
 // Offer delete warning dialog
 const [showOfferDeleteWarning, setShowOfferDeleteWarning] = useState(false)
 const [pendingStatusAction, setPendingStatusAction] = useState<(() => Promise<void>) | null>(null)
-const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
 // Stage automations query for lightning icon
 
 // Stage automations query for lightning icon
@@ -1839,7 +1837,6 @@ const stageHasAutomation = useMemo(() => {
                         candidate={candidate}
                         workExperience={workExperience}
                         education={education}
-                        onExportPdf={() => setDownloadDialogOpen(true)}
                       />
                     )}
 
@@ -2430,19 +2427,6 @@ const stageHasAutomation = useMemo(() => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-    {candidate && (
-      <CandidateProfileDownloadDialog
-        open={downloadDialogOpen}
-        onOpenChange={setDownloadDialogOpen}
-        pdfOptions={{
-          candidate,
-          job,
-          workExperience,
-          education,
-          certifications,
-        }}
-      />
-    )}
   </>
   )
 }

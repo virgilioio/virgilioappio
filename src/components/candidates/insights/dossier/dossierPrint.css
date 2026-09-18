@@ -21,11 +21,16 @@
   box-sizing: border-box;
   width: 816px;
   height: 1056px;
-  padding: 48px 52px 40px;
+  padding: 56px;
   background: #fff;
   overflow: hidden;
   break-after: page;
   page-break-after: always;
+}
+
+.gio-page--a4 {
+  width: 794px;
+  height: 1123px;
 }
 
 .gio-page:last-child {
@@ -33,11 +38,26 @@
   page-break-after: auto;
 }
 
+.gio-watermark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42%;
+  text-align: center;
+  font-family: 'Poppins', sans-serif;
+  font-size: 66px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(111, 63, 245, 0.07);
+  transform: rotate(-26deg);
+  pointer-events: none;
+}
+
 .gio-measure {
   position: absolute;
   left: -10000px;
   top: 0;
-  width: 712px;
   visibility: hidden;
 }
 
@@ -88,9 +108,9 @@
 
 .gio-foot {
   position: absolute;
-  left: 52px;
-  right: 52px;
-  bottom: 26px;
+  left: 56px;
+  right: 56px;
+  bottom: 30px;
   display: flex;
   align-items: center;
   gap: 10px;
