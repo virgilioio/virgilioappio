@@ -5,9 +5,23 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { mergeTranslatedProse } from './language-utils.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const SUPPORTED_LANGUAGES: Record<string, string> = {
+  en: "English", es: "Spanish", pt: "Portuguese", fr: "French",
+  de: "German", it: "Italian", nl: "Dutch", pl: "Polish",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  current_role: "Candidate profile", current_company: "Candidate profile",
+  profile_summary: "Candidate profile", skills: "Candidate profile",
+  years_experience: "Candidate profile", location: "Candidate profile",
+  salary: "Candidate profile", work_experience: "Work experience",
+  education: "Education", resume: "Résumé", scorecards: "Scorecards",
+};
 
 const TOOL_SCHEMA = {
   type: "function",
@@ -23,6 +37,7 @@ const TOOL_SCHEMA = {
         },
         confidence: { type: "string", enum: ["low", "medium", "high"] },
         confidence_reason: { type: "string", description: "Why this confidence level" },
+        profile_summary: { type: "string", description: "A concise evidence-based candidate profile summary" },
         executive_summary: { type: "string", description: "1-2 sentences only: strongest fit signal AND biggest hiring risk. No generic statements." },
         dimensions: {
           type: "array",
@@ -32,11 +47,12 @@ const TOOL_SCHEMA = {
               name: { type: "string" },
               score: { type: ["integer", "null"], description: "0-100 or null if insufficient data" },
               weight: { type: "integer" },
+              verdict: { type: ["string", "null"], description: "A concise evidence-based verdict for this dimension" },
               matches: { type: "array", items: { type: "string" } },
               gaps: { type: "array", items: { type: "string" } },
               insight: { type: ["string", "null"] },
             },
-            required: ["name", "score", "weight", "insight"],
+            required: ["name", "score", "weight", "verdict", "insight", "matches", "gaps"],
           },
         },
         validation_points: {
@@ -54,8 +70,30 @@ const TOOL_SCHEMA = {
         },
         data_sources_used: { type: "array", items: { type: "string" } },
         data_sources_missing: { type: "array", items: { type: "string" } },
+        detected_languages: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "English language name, or Mixed when sources differ" },
+            confidence: { type: "string", enum: ["low", "medium", "high"] },
+            sources: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  label: { type: "string" },
+                  code: { type: "string", description: "ISO 639-1 language code" },
+                  name: { type: "string", description: "English language name" },
+                },
+                required: ["label", "code", "name"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["summary", "confidence", "sources"],
+          additionalProperties: false,
+        },
       },
-      required: ["overall_score", "confidence", "confidence_reason", "executive_summary", "dimensions", "validation_points", "data_sources_used", "data_sources_missing"],
+      required: ["overall_score", "confidence", "confidence_reason", "profile_summary", "executive_summary", "dimensions", "validation_points", "data_sources_used", "data_sources_missing", "detected_languages"],
       additionalProperties: false,
     },
   },
@@ -190,7 +228,7 @@ serve(async (req) => {
       sb.from("candidate_education").select("*").eq("candidate_id", candidate_id),
       sb.from("candidate_attachments").select("*").eq("candidate_id", candidate_id).eq("is_resume", true).limit(1),
       sb.from("job_stage_scorecards").select("*").eq("job_id", job_id).eq("candidate_id", candidate_id),
-      sb.from("job_candidate_associations").select("id, ai_fit_version").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
+      sb.from("job_candidate_associations").select("id, ai_fit_version, output_language, ai_fit_keep_proper_nouns").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
     ]);
 
     const candidate = candidateRes.data;
@@ -210,6 +248,15 @@ serve(async (req) => {
         headers: { ...headers, "Content-Type": "application/json" },
       });
     }
+
+    const { data: organization } = await sb
+      .from("organizations")
+      .select("default_output_language")
+      .eq("id", job.organization_id)
+      .maybeSingle();
+    const requestedLanguage = association.output_language || job.output_language || organization?.default_output_language || "en";
+    const outputLanguage = SUPPORTED_LANGUAGES[requestedLanguage] ? requestedLanguage : "en";
+    const keepProperNouns = association.ai_fit_keep_proper_nouns !== false;
 
     // Check if job has a meaningful description
     const jobDescription = job.description || "";
@@ -324,6 +371,8 @@ serve(async (req) => {
       );
     }
 
+    const allowedLabels = [...new Set(dataSources.map((source) => SOURCE_LABELS[source]).filter(Boolean))];
+
     // Call OpenAI
     const aiResponse = await openaiFetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -335,7 +384,7 @@ serve(async (req) => {
         model: AI_MODELS.reasoning,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}` },
+          { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}\n\nLANGUAGE DETECTION: Report source languages separately. Use only these exact source labels because they correspond to inputs actually supplied: ${allowedLabels.join(", ")}. Never report an absent source.` },
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
@@ -355,15 +404,23 @@ serve(async (req) => {
       throw new Error("No structured response from AI");
     }
 
-    const analysis = JSON.parse(toolCall.function.arguments);
+    const canonicalAnalysis = JSON.parse(toolCall.function.arguments);
+    let analysis = canonicalAnalysis;
 
     // Override data_sources with our tracked ones
-    analysis.data_sources_used = dataSources;
-    analysis.data_sources_missing = dataMissing;
+    canonicalAnalysis.data_sources_used = dataSources;
+    canonicalAnalysis.data_sources_missing = dataMissing;
+    canonicalAnalysis.detected_languages = {
+      summary: canonicalAnalysis.detected_languages?.summary || "English",
+      confidence: canonicalAnalysis.detected_languages?.confidence || "low",
+      sources: (canonicalAnalysis.detected_languages?.sources || [])
+        .filter((source: any) => allowedLabels.includes(source.label))
+        .map((source: any) => ({ label: source.label, code: String(source.code || "").toLowerCase().slice(0, 2), name: source.name })),
+    };
 
     // Enforce null scores for dimensions where data is deterministically missing
-    if (dataMissing.includes('salary') && analysis.dimensions) {
-      const salaryDim = analysis.dimensions.find(
+    if (dataMissing.includes('salary') && canonicalAnalysis.dimensions) {
+      const salaryDim = canonicalAnalysis.dimensions.find(
         (d: any) => d.name?.toLowerCase().includes('salary')
       );
       if (salaryDim && salaryDim.score !== null) {
@@ -375,18 +432,50 @@ serve(async (req) => {
     }
 
     // Recalculate overall_score excluding null dimensions
-    if (analysis.dimensions) {
+    if (canonicalAnalysis.dimensions) {
       let totalWeight = 0;
       let weightedSum = 0;
-      for (const dim of analysis.dimensions) {
+      for (const dim of canonicalAnalysis.dimensions) {
         if (dim.score !== null && dim.score !== undefined) {
           totalWeight += dim.weight || 0;
           weightedSum += (dim.score * (dim.weight || 0));
         }
       }
       if (totalWeight > 0) {
-        analysis.overall_score = Math.round(weightedSum / totalWeight);
+        canonicalAnalysis.overall_score = Math.round(weightedSum / totalWeight);
       }
+    }
+
+    // Score first, then translate prose only. Invariant values are always copied
+    // back from the canonical analysis so output language cannot affect scoring.
+    if (outputLanguage !== "en") {
+      const translationResponse = await openaiFetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: AI_MODELS.reasoning,
+          messages: [
+            {
+              role: "system",
+              content: `Translate only the human-readable prose in this recruiting dossier into ${SUPPORTED_LANGUAGES[outputLanguage]}. Preserve meaning and evidence exactly. Do not alter numbers, scores, weights, confidence, priorities, source keys, language detection, array order, or evidence membership. ${keepProperNouns ? "Keep company names, institutions, certifications, product names, and job titles exactly as written in the source." : "Translate proper nouns only when a standard localized form exists."}`,
+            },
+            { role: "user", content: JSON.stringify(canonicalAnalysis) },
+          ],
+          tools: [TOOL_SCHEMA],
+          tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
+          reasoning_effort: "medium",
+        }),
+      }, "analyze-candidate-fit-translation");
+      if (!translationResponse.ok) {
+        const message = await translationResponse.text();
+        console.error("Translation error:", translationResponse.status, message);
+        throw new Error(`Translation failed: ${translationResponse.status}`);
+      }
+      const translatedData = await translationResponse.json();
+      const translatedArguments = translatedData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+      if (!translatedArguments) throw new Error("No structured translation from AI");
+      const translated = JSON.parse(translatedArguments);
+      analysis = mergeTranslatedProse(canonicalAnalysis, translated);
     }
 
     // Store in database
@@ -399,6 +488,7 @@ serve(async (req) => {
         ai_fit_confidence: analysis.confidence,
         ai_fit_generated_at: new Date().toISOString(),
         ai_fit_version: currentVersion + 1,
+        ai_fit_output_language: outputLanguage,
       })
       .eq("id", association.id);
 

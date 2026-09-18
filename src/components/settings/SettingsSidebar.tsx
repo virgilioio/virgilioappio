@@ -1,7 +1,7 @@
 import {
   Zap, User, Mail, Clock, Bell,
   Building2, Users, Folder, Plug, CreditCard,
-  GitBranch, ListChecks, FileText, Workflow, Globe, Megaphone,
+  GitBranch, ListChecks, FileText, Workflow, Globe, Megaphone, Sparkles,
   Handshake, Building, Gauge, Package, ShieldCheck,
 } from 'lucide-react'
 
@@ -84,6 +84,7 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
       label: 'RECRUITING',
       show: isAdminOrOwner,
       items: [
+        { id: 'gio', label: 'Gio', icon: Sparkles, show: true },
         { id: 'pipeline-stages', label: 'Pipeline stages', icon: GitBranch, show: true },
         { id: 'application-form', label: 'Application form', icon: ListChecks, show: true },
         { id: 'templates', label: 'Templates', icon: FileText, show: true },
