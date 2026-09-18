@@ -54,6 +54,8 @@ export interface FitInsightsData {
   /** True when candidate/job inputs changed after the stored analysis was generated. */
   isStale: boolean
   staleReason: string | null
+  /** Rejected candidates cannot be shared publicly — the share link self-deactivates. */
+  isRejected: boolean
 }
 
 export function useCandidateFitInsights(candidateId: string | null, jobId: string | null) {
@@ -73,7 +75,7 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
 
       const { data: assoc, error } = await supabase
         .from('job_candidate_associations')
-        .select('id, ai_fit_score, ai_fit_analysis, ai_fit_confidence, ai_fit_generated_at, ai_fit_version, output_language, ai_fit_output_language, ai_fit_keep_proper_nouns, entered_stage_at, job:jobs!inner(output_language, organization:organizations!inner(default_output_language))')
+        .select('id, status, rejected_at, ai_fit_score, ai_fit_analysis, ai_fit_confidence, ai_fit_generated_at, ai_fit_version, output_language, ai_fit_output_language, ai_fit_keep_proper_nouns, entered_stage_at, job:jobs!inner(output_language, organization:organizations!inner(default_output_language))')
         .eq('candidate_id', candidateId)
         .eq('job_id', jobId)
         .maybeSingle()
@@ -142,6 +144,7 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         resolvedOutputLanguage: outputLanguage || jobOutputLanguage || workspaceOutputLanguage || 'en',
         isStale,
         staleReason,
+        isRejected: Boolean(assoc.rejected_at) || assoc.status === 'rejected',
       }
     },
     enabled: !!candidateId && !!jobId,
