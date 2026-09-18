@@ -9,7 +9,6 @@ import {
   CircleDashed,
   Download,
   GraduationCap,
-  Loader2,
   MapPin,
   Minus,
   RefreshCw,
@@ -21,8 +20,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
-import { NoJobDescriptionCard } from './NoJobDescriptionCard'
 import { GioFitLanguageControl, GioFitLanguageProvenance } from './GioFitLanguageControl'
+import { GioFitColdSkeleton } from './loading/GioFitColdSkeleton'
+import { GioFitBlockedCard, GioFitErrorCard } from './loading/GioFitFailureCard'
+import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
+import { buildNarrationSteps, useGioFitNarration } from './loading/GioFitNarration'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { GioFitExportDialog, type DossierExportOptions } from './dossier/GioFitExportDialog'
 import type { DossierPrintProps } from './dossier/DossierPrintDocument'
@@ -194,7 +196,7 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
 }
 
 export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education }: CandidateInsightsTabProps) {
-  const { insights, isLoading, isRefreshing, refreshInsights, updateLanguagePreferences } = useCandidateFitInsights(candidateId, jobId)
+  const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences } = useCandidateFitInsights(candidateId, jobId)
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
@@ -227,35 +229,45 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     }
   }, [isLoading, insights?.analysis, isStale, jdText])
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
+  // Narration is driven while a request is open; step 5 never completes early.
+  const { stepIndex, progress } = useGioFitNarration(isRefreshing)
 
-  if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
-  if (isLoading || (isRefreshing && !insights?.analysis)) {
-    return (
-      <div className={cn(cardClass, 'flex min-h-[280px] flex-col items-center justify-center gap-3')}>
-        <Loader2 className="h-7 w-7 animate-spin text-virgilio-purple" />
-        <p className="font-poppins text-[13px] font-medium text-fit-muted">Preparing the Gio dossier…</p>
-      </div>
-    )
-  }
-  if (!insights?.analysis || insights.score === null) {
-    return (
-      <div className={cn(cardClass, 'flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 text-center')}>
-        <Sparkles className="h-6 w-6 text-virgilio-purple" />
-        <div>
-          <p className="font-poppins text-[14px] font-semibold text-fit-ink">No Gio Fit analysis yet</p>
-          <p className="mt-1 text-[12px] text-fit-muted">Generate the dossier from the candidate and job information already on file.</p>
-        </div>
-        <Button variant="purple" size="md" icon={Sparkles} loading={isRefreshing} onClick={refreshInsights}>Generate insights</Button>
-      </div>
-    )
-  }
-
-  const { analysis } = insights
-  const score = insights.score
+  const candidateName = asString(candidate?.candidate_name) || 'Candidate'
   const currentRole = asString(candidate?.role_current) || asString(candidate?.current_job_title)
   const currentCompany = asString(candidate?.company_current)
   const roleLine = [currentRole, currentCompany].filter(Boolean).join(currentRole && currentCompany ? ' at ' : '')
   const location = [candidate?.location_city, candidate?.location_state, candidate?.location_country].map(asString).filter(Boolean).join(', ')
+  const appliedLanguage = insights?.appliedOutputLanguage || insights?.resolvedOutputLanguage || 'en'
+  const outputLanguageName = getGioFitLanguage(appliedLanguage).name
+  const narrationSteps = buildNarrationSteps(outputLanguageName)
+  const hasStoredAnalysis = Boolean(insights?.analysis) && insights?.score !== null
+
+  // Under 30 characters of job description there is nothing to assess against, so
+  // no call is made. Once the description passes 30 characters the effect above
+  // generates on the next visit without being asked.
+  if (jdText.length < 30 || isBlocked) {
+    return <GioFitBlockedCard jobId={jobId} onRetry={refreshInsights} isRetrying={isRefreshing} />
+  }
+  if (generationError && !hasStoredAnalysis) {
+    return <GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} />
+  }
+  // Cold: nothing on file, so show the shape of what is coming plus the narration.
+  if (isLoading || !hasStoredAnalysis) {
+    return (
+      <GioFitColdSkeleton
+        candidateName={candidateName}
+        roleLine={roleLine || null}
+        outputLanguageName={outputLanguageName}
+        stepIndex={stepIndex}
+        progress={progress}
+      />
+    )
+  }
+
+  if (!insights?.analysis || insights.score === null) return null
+  const analysis = insights.analysis
+  const score = insights.score
+  const isRescoring = isRefreshing
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
   const dimensions = analysis.dimensions || []
   const scoredDimensions = dimensions.filter((dimension) => dimension.score !== null)
@@ -281,11 +293,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     }
   }
 
-  const candidateName = asString(candidate?.candidate_name) || 'Candidate'
   const jobTitle = asString(job?.title)
   const contactItems = [asString(candidate?.email), asString(candidate?.phone), asString(candidate?.linkedin_url)].filter((item): item is string => !!item)
   const preparedBy = asString((job?.organization as { name?: string } | null | undefined)?.name)
-  const appliedLanguage = insights.appliedOutputLanguage || insights.resolvedOutputLanguage
   const buildExportData = ({ clientReady: exportClientReady, includeContact, includeEvidence, includeValidation, pageSize }: DossierExportOptions): DossierPrintProps => ({
     analysis,
     score,
@@ -309,8 +319,20 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   })
 
   return (
-    <div className={cn('relative space-y-3.5 transition-opacity', isRefreshing && insights?.analysis && 'opacity-40')}>
-      {isRefreshing && insights?.analysis && <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3px] overflow-hidden rounded-full bg-fit-violet-wash"><div className="h-full w-1/3 animate-[loading-sweep_1.1s_ease-in-out_infinite] bg-virgilio-purple" /></div>}
+    <div className="relative">
+      {/* Re-scoring: the previous dossier stays mounted and readable underneath. */}
+      {isRescoring && (
+        <GioFitRescoringBar
+          stepLabel={narrationSteps[stepIndex]?.label || 'working'}
+          progress={progress}
+          previousGeneratedAt={insights.generatedAt}
+          onCancel={cancelRefresh}
+        />
+      )}
+      {generationError && !isRescoring && (
+        <div className="mb-3.5"><GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} /></div>
+      )}
+      <div key={insights.generatedAt || 'dossier'} className={cn('space-y-3.5', isRescoring ? 'gf-rescore-dim' : 'gf-fade-in')}>
       <section className={cn(cardClass, 'p-[22px]')}>
         <div className="flex flex-col items-start gap-6 sm:flex-row">
           <div className="min-w-0">
@@ -487,6 +509,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         </aside>
       </div>
 
+      </div>
+
       <GioFitExportDialog
         open={exportOpen}
         onOpenChange={setExportOpen}
@@ -494,7 +518,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         hasContactDetails={contactItems.length > 0}
         candidateName={candidateName}
         jobTitle={jobTitle || null}
-        outputLanguageName={getGioFitLanguage(appliedLanguage).name}
+        outputLanguageName={outputLanguageName}
         buildData={buildExportData}
       />
     </div>

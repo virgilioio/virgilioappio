@@ -1,24 +1,40 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabaseClient'
+
+export type FitAnalysisStatus = 'ok' | 'deferred' | 'no_job_description'
+
+/**
+ * Calls the analyze-candidate-fit function. Uses fetch directly (rather than
+ * functions.invoke) so a re-score can be aborted from the UI.
+ */
+export async function requestFitAnalysis(
+  candidateId: string,
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<FitAnalysisStatus> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const response = await fetch(`${supabaseUrl}/functions/v1/analyze-candidate-fit`, {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${session?.access_token || supabaseAnonKey}`,
+    },
+    body: JSON.stringify({ candidate_id: candidateId, job_id: jobId }),
+  })
+
+  const payload = await response.json().catch(() => null)
+
+  if (payload?.error === 'no_job_description') return 'no_job_description'
+  // 202: the candidate row was just touched and enrichment has not landed yet.
+  if (response.status === 202) return 'deferred'
+  if (!response.ok) throw new Error(payload?.error || `The assessment failed (${response.status})`)
+  return 'ok'
+}
 
 /**
  * Triggers the AI fit analysis for a candidate-job pair.
- * Fire-and-forget: does not throw on failure, just logs.
  */
 export async function triggerFitAnalysis(candidateId: string, jobId: string): Promise<void> {
-  try {
-    const { data, error } = await supabase.functions.invoke('analyze-candidate-fit', {
-      body: { candidate_id: candidateId, job_id: jobId },
-    })
-    if (error) {
-      console.error('[triggerFitAnalysis] Edge function error:', error)
-      throw error
-    } else if (data?.error === 'no_job_description') {
-      console.log('[triggerFitAnalysis] Skipped: no job description')
-    } else {
-      console.log('[triggerFitAnalysis] Analysis complete for', candidateId, jobId)
-    }
-  } catch (e) {
-    console.error('[triggerFitAnalysis] Unexpected error:', e)
-    throw e
-  }
+  await requestFitAnalysis(candidateId, jobId)
 }
