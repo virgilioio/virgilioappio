@@ -3656,6 +3656,8 @@ export type Database = {
           ai_fit_analysis: Json | null
           ai_fit_confidence: string | null
           ai_fit_generated_at: string | null
+          ai_fit_keep_proper_nouns: boolean
+          ai_fit_output_language: string | null
           ai_fit_score: number | null
           ai_fit_version: number | null
           booking_link_sent_at: string | null
@@ -3673,6 +3675,7 @@ export type Database = {
           notes: string | null
           offered_at: string | null
           offered_by: string | null
+          output_language: string | null
           pipeline_position: number | null
           rejected_at: string | null
           rejected_by: string | null
@@ -3689,6 +3692,8 @@ export type Database = {
           ai_fit_analysis?: Json | null
           ai_fit_confidence?: string | null
           ai_fit_generated_at?: string | null
+          ai_fit_keep_proper_nouns?: boolean
+          ai_fit_output_language?: string | null
           ai_fit_score?: number | null
           ai_fit_version?: number | null
           booking_link_sent_at?: string | null
@@ -3706,6 +3711,7 @@ export type Database = {
           notes?: string | null
           offered_at?: string | null
           offered_by?: string | null
+          output_language?: string | null
           pipeline_position?: number | null
           rejected_at?: string | null
           rejected_by?: string | null
@@ -3722,6 +3728,8 @@ export type Database = {
           ai_fit_analysis?: Json | null
           ai_fit_confidence?: string | null
           ai_fit_generated_at?: string | null
+          ai_fit_keep_proper_nouns?: boolean
+          ai_fit_output_language?: string | null
           ai_fit_score?: number | null
           ai_fit_version?: number | null
           booking_link_sent_at?: string | null
@@ -3739,6 +3747,7 @@ export type Database = {
           notes?: string | null
           offered_at?: string | null
           offered_by?: string | null
+          output_language?: string | null
           pipeline_position?: number | null
           rejected_at?: string | null
           rejected_by?: string | null
@@ -4275,6 +4284,7 @@ export type Database = {
           must_have_skills: string[]
           normalization_metadata: Json | null
           organization_id: string
+          output_language: string | null
           priority: Database["public"]["Enums"]["job_priority"]
           priority_keywords: Json | null
           reports_to_user_id: string | null
@@ -4324,6 +4334,7 @@ export type Database = {
           must_have_skills?: string[]
           normalization_metadata?: Json | null
           organization_id: string
+          output_language?: string | null
           priority?: Database["public"]["Enums"]["job_priority"]
           priority_keywords?: Json | null
           reports_to_user_id?: string | null
@@ -4373,6 +4384,7 @@ export type Database = {
           must_have_skills?: string[]
           normalization_metadata?: Json | null
           organization_id?: string
+          output_language?: string | null
           priority?: Database["public"]["Enums"]["job_priority"]
           priority_keywords?: Json | null
           reports_to_user_id?: string | null
@@ -5375,6 +5387,7 @@ export type Database = {
           country: string | null
           created_at: string
           created_by: string | null
+          default_output_language: string
           description: string | null
           hq_city: string | null
           id: string
@@ -5410,6 +5423,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           created_by?: string | null
+          default_output_language?: string
           description?: string | null
           hq_city?: string | null
           id?: string
@@ -5445,6 +5459,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           created_by?: string | null
+          default_output_language?: string
           description?: string | null
           hq_city?: string | null
           id?: string
