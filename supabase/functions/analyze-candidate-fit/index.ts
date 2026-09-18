@@ -68,6 +68,31 @@ const TOOL_SCHEMA = {
             required: ["question", "reason", "priority", "suggested_stage"],
           },
         },
+        skill_evidence: {
+          type: "array",
+          description: "One entry per skill listed under REQUIRED SKILLS, in the same order and with the job's exact spelling. Never add, drop, merge or rename a skill.",
+          items: {
+            type: "object",
+            properties: {
+              skill: { type: "string", description: "The required skill, copied verbatim from the job's list." },
+              status: {
+                type: "string",
+                enum: ["evidenced", "partial", "not_evidenced"],
+                description: "evidenced = the candidate data directly supports this skill, in any language. partial = adjacent or general experience supports it but the named skill, tool or framework is not itself shown. not_evidenced = nothing in the candidate data supports it.",
+              },
+              evidence: {
+                type: ["string", "null"],
+                description: "For evidenced and partial: a short quote or close paraphrase of the candidate wording relied on, in the source language. Null only when status is not_evidenced.",
+              },
+              source: {
+                type: ["string", "null"],
+                description: "Where the evidence came from: the listed skills, the profile summary, a named role or company, the résumé, or a scorecard. Null only when status is not_evidenced.",
+              },
+            },
+            required: ["skill", "status", "evidence", "source"],
+            additionalProperties: false,
+          },
+        },
         data_sources_used: { type: "array", items: { type: "string" } },
         data_sources_missing: { type: "array", items: { type: "string" } },
         detected_languages: {
