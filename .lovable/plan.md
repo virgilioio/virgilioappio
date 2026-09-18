@@ -31,6 +31,13 @@ Chips keep the job's wording (Outbound, B2B), so the list still scans against th
 - `DossierPrintDocument.tsx` renders the three groups from the same helper; no second skill-grouping implementation.
 - No schema change: `skill_evidence` lives inside the existing `ai_fit_analysis` JSON on `job_candidate_associations`.
 
+## The model behind it
+
+The analysis already runs on the strongest reasoning model in use (GPT-5.1, thinking depth "medium"), through the existing OpenAI integration — which stays as it is. Its own reading of this candidate was accurate, so the wrong chips are not a model-capability problem: the chips never consult the model. Two adjustments come with the new work, because the call now makes one judgement per required skill rather than one overall:
+
+- Raise `reasoning_effort` from `medium` to `high` on this call only.
+- Require the model to quote the phrase it relied on for every evidenced or partly evidenced skill. A verdict with no quotable evidence is stored as not evidenced, which keeps the chips anchored to the candidate's own words rather than to the model's impression.
+
 ## Out of scope
 
 The duplicate Harsh Sampat records are a separate data issue and are not touched here.
