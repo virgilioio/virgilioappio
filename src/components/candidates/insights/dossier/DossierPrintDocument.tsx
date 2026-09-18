@@ -28,6 +28,7 @@ export interface DossierPrintProps {
   candidateSkills: string[]
   workExperience: CandidateWorkExperience[]
   education: CandidateEducation[]
+  salaryExpectation?: string | null
   outputLanguageName: string | null
   clientReady: boolean
   includeContact: boolean
@@ -189,6 +190,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
     candidateSkills,
     workExperience,
     education,
+    salaryExpectation,
     outputLanguageName,
     clientReady,
     includeContact,
@@ -198,7 +200,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
 
   const blocks: Block[] = []
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
-  const stats = computeExperienceStats(workExperience)
+  const stats = computeExperienceStats(workExperience, salaryExpectation)
   const skills = buildSkillGroups(requiredSkills, candidateSkills, readSkillEvidence(analysis))
   const dimensions = analysis.dimensions || []
   const visibleDimensions = clientReady ? dimensions.filter((dimension) => !/salary|compensation/i.test(dimension.name)) : dimensions

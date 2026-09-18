@@ -147,7 +147,10 @@ export interface ExperienceStat {
   footnote?: string
 }
 
-export function computeExperienceStats(experience: CandidateWorkExperience[]): ExperienceStat[] {
+export function computeExperienceStats(
+  experience: CandidateWorkExperience[],
+  salaryExpectation?: string | null,
+): ExperienceStat[] {
   const validRows = experience
     .map((entry) => {
       const start = entry.start_date ? new Date(entry.start_date) : null
@@ -173,6 +176,7 @@ export function computeExperienceStats(experience: CandidateWorkExperience[]): E
     ...(totalMonths > 0 ? [{ value: `${(totalMonths / 12).toFixed(totalMonths % 12 ? 1 : 0)} yrs`, label: 'Total experience' }] : []),
     ...(seniorMonths > 0 ? [{ value: `${(seniorMonths / 12).toFixed(seniorMonths % 12 ? 1 : 0)} yrs`, label: 'Senior or above', footnote: 'Based on role titles' }] : []),
     ...(companies > 0 ? [{ value: String(companies), label: 'Companies' }] : []),
+    ...(salaryExpectation ? [{ value: salaryExpectation, label: 'Salary expectation', footnote: 'Stated by the candidate' }] : []),
     ...(teamSizes.length ? [{ value: String(Math.max(...teamSizes)), label: 'Largest team led', footnote: 'Explicitly stated in experience' }] : []),
   ]
 }
