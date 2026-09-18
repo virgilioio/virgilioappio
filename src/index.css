@@ -60,6 +60,41 @@
     --virgilio-error: 4 90% 58%; /* #FA5252 */
     --virgilio-rejected: 0 100% 63%; /* #ff4040 */
 
+    /* Gio Fit dossier */
+    --fit-ink: 231 22% 15%;
+    --fit-muted: 220 13% 40%;
+    --fit-subtle: 228 9% 58%;
+    --fit-separator: 220 13% 83%;
+    --fit-hairline: 40 14% 93%;
+    --fit-row-border: 40 13% 92%;
+    --fit-paper: 40 33% 98%;
+    --fit-chip: 48 17% 95%;
+    --fit-open-row: 267 100% 98%;
+    --fit-null: 48 20% 85%;
+    --fit-neutral-rail: 48 7% 70%;
+    --fit-lilac: 267 84% 88%;
+    --fit-violet-deep: 262 69% 39%;
+    --fit-violet-mid: 258 90% 66%;
+    --fit-violet-bright: 286 78% 57%;
+    --fit-violet-soft: 258 90% 84%;
+    --fit-stone: 51 10% 87%;
+    --fit-match-panel: 150 50% 98%;
+    --fit-match-border: 148 54% 86%;
+    --fit-match-dark: 161 94% 20%;
+    --fit-match-copy: 151 55% 17%;
+    --fit-match-soft: 152 81% 90%;
+    --fit-risk-panel: 48 100% 96%;
+    --fit-risk-border: 43 90% 85%;
+    --fit-risk-label: 29 91% 37%;
+    --fit-risk-copy: 34 83% 25%;
+    --fit-warning-soft: 48 96% 89%;
+    --fit-warning: 32 95% 29%;
+    --fit-gap-soft: 0 93% 94%;
+    --fit-gap-dark: 0 72% 31%;
+    --fit-skill-evidenced-bg: 264 88% 97%;
+    --fit-skill-evidenced-border: 264 70% 92%;
+    --fit-skill-evidenced-text: 262 69% 39%;
+
     /* Pastel colors for skills */
     --pastel-blue: 219 92% 95%;
     --pastel-blue-foreground: 213 94% 24%;

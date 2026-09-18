@@ -202,7 +202,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { name: createdByName } = useUserDisplayName(createdByUserId)
 
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
@@ -661,6 +661,7 @@ const stageHasAutomation = useMemo(() => {
         if (tabParam === 'communications' || tabParam === 'emails') initialTab = 'emails'
         else if (tabParam === 'activity') initialTab = 'activity'
         else if (tabParam === 'scorecards') initialTab = 'scorecards'
+        else if (tabParam === 'fit') initialTab = 'fit'
         else if (tabParam === 'overview') initialTab = 'overview'
         else if (tabParam === 'comments') initialTab = 'comments'
         else if (tabParam === 'offer') initialTab = 'offer'
@@ -801,7 +802,7 @@ const stageHasAutomation = useMemo(() => {
       // Load job info
       const { data: jobData } = await supabase
         .from('jobs')
-        .select('id, title, description')
+        .select('id, title, description, skills, must_have_skills')
         .eq('id', jobId)
         .maybeSingle()
       setJob(jobData || null)
@@ -1449,6 +1450,7 @@ const stageHasAutomation = useMemo(() => {
                       onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
                       linkedinUrl={candidate.linkedin_url || null}
                       fitScore={fitInsights?.score ?? null}
+                      onFitClick={() => setActiveTab('fit')}
                       onClose={() => onOpenChange(false)}
                       index={currentIndex ?? null}
                       total={totalCount ?? null}
@@ -1476,6 +1478,7 @@ const stageHasAutomation = useMemo(() => {
                             { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
                             { value: 'resume', label: 'Resume', Icon: FileText },
                             ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
+                            ...(!isRestrictedViewer ? [{ value: 'fit', label: 'Gio Fit', Icon: Sparkles }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
                             { value: 'activity', label: 'Activity', Icon: Activity, count: activityDerived.events.length },
                             { value: 'emails', label: 'Emails', Icon: Mail },
@@ -1583,7 +1586,7 @@ const stageHasAutomation = useMemo(() => {
 
                 {/* Tabs moved into ProfileHeroCard */}
 
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+                <div className={cn('grid grid-cols-1 gap-4', activeTab !== 'fit' && 'lg:grid-cols-[minmax(0,1fr)_320px]')}>
                   {/* Left column — tab content */}
                   <div className="space-y-4 min-w-0">
                     {/* Job Overview Tab */}
@@ -1824,14 +1827,20 @@ const stageHasAutomation = useMemo(() => {
                           <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
                         )}
 
-                        {candidateId && (
-                          <CandidateInsightsTab
-                            candidateId={candidateId}
-                            jobId={jobId}
-                            jobDescription={job?.description}
-                          />
-                        )}
                       </>
+                    )}
+
+                    {activeTab === 'fit' && candidateId && (
+                      <CandidateInsightsTab
+                        candidateId={candidateId}
+                        jobId={jobId}
+                        jobDescription={job?.description}
+                        job={job}
+                        candidate={candidate}
+                        workExperience={workExperience}
+                        education={education}
+                        onExportPdf={() => setDownloadDialogOpen(true)}
+                      />
                     )}
 
                     {/* Scorecards Tab */}
@@ -2032,7 +2041,7 @@ const stageHasAutomation = useMemo(() => {
                   </div>
 
                   {/* Right column — per-tab sidebar */}
-                  <div className="hidden lg:block">
+                  <div className={cn('hidden lg:block', activeTab === 'fit' && 'lg:hidden')}>
                     <div className={cn("sticky space-y-4", asPage ? "top-0" : "top-4")}>
                       {(() => {
                         const sortedStages = [...planStages].sort((a, b) => a.position - b.position)
