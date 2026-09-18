@@ -1,0 +1,461 @@
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { FitAnalysis, FitDimension, ValidationPoint } from '@/hooks/useCandidateFitInsights'
+import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
+import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import {
+  buildSkillGroups,
+  computeExperienceStats,
+  dropScoreClause,
+  educationYear,
+  formatDate,
+  formatDuration,
+  getScoreBand,
+  splitExecutiveSummary,
+  stripHtml,
+} from './dossierData'
+
+export interface DossierPrintProps {
+  analysis: FitAnalysis
+  score: number
+  candidateName: string
+  roleLine: string | null
+  jobTitle: string | null
+  location: string | null
+  contactItems: string[]
+  requiredSkills: string[]
+  candidateSkills: string[]
+  workExperience: CandidateWorkExperience[]
+  education: CandidateEducation[]
+  outputLanguageName: string | null
+  clientReady: boolean
+  includeContact: boolean
+  preparedBy: string | null
+  preparedOn: string
+}
+
+interface Block {
+  key: string
+  node: ReactNode
+  keepWithNext?: boolean
+}
+
+const PAGE_CONTENT_HEIGHT = 1056 - 48 - 40 - 34 // page minus padding minus footer band
+const RUNNING_HEAD_HEIGHT = 42
+
+function Heading({ children, spaced }: { children: string; spaced?: boolean }) {
+  return <p className={spaced ? 'gio-heading gio-section-gap' : 'gio-heading'}>{children}</p>
+}
+
+function useBlockPages(blocks: Block[]) {
+  const measureRef = useRef<HTMLDivElement>(null)
+  const [pages, setPages] = useState<Block[][] | null>(null)
+
+  useLayoutEffect(() => {
+    setPages(null)
+  }, [blocks])
+
+  useLayoutEffect(() => {
+    if (pages || !measureRef.current) return
+    const nodes = Array.from(measureRef.current.children) as HTMLElement[]
+    const heights = nodes.map((node) => node.getBoundingClientRect().height)
+    const result: Block[][] = []
+    let current: Block[] = []
+    let used = 0
+    let index = 0
+
+    while (index < blocks.length) {
+      // A group is a block plus every block it must stay with (headings + first row).
+      let end = index
+      while (blocks[end]?.keepWithNext && end + 1 < blocks.length) end += 1
+      const groupHeight = heights.slice(index, end + 1).reduce((sum, value) => sum + value, 0)
+      const limit = PAGE_CONTENT_HEIGHT - (result.length > 0 ? RUNNING_HEAD_HEIGHT : 0)
+
+      if (current.length > 0 && used + groupHeight > limit) {
+        result.push(current)
+        current = []
+        used = 0
+      }
+      for (let i = index; i <= end; i += 1) current.push(blocks[i])
+      used += groupHeight
+      index = end + 1
+    }
+    if (current.length > 0) result.push(current)
+    setPages(result.length > 0 ? result : [[]])
+  }, [blocks, pages])
+
+  return { measureRef, pages }
+}
+
+export function DossierPrintDocument({ data, onReady }: { data: DossierPrintProps; onReady?: () => void }) {
+  const blocks = useMemo(() => buildBlocks(data), [data])
+  const { measureRef, pages } = useBlockPages(blocks)
+
+  useEffect(() => {
+    if (!pages || !onReady) return
+    const frame = requestAnimationFrame(() => onReady())
+    return () => cancelAnimationFrame(frame)
+  }, [pages, onReady])
+
+  const total = pages?.length ?? 1
+  const footer = `Confidential${data.preparedBy ? ` — prepared by ${data.preparedBy}` : ''}, ${data.preparedOn}`
+
+  return (
+    <div className="gio-print-root">
+      {!pages && (
+        <div className="gio-measure" ref={measureRef}>
+          {blocks.map((block) => (
+            <div key={block.key}>{block.node}</div>
+          ))}
+        </div>
+      )}
+      {pages?.map((pageBlocks, pageIndex) => (
+        <div className="gio-page" key={`page-${pageIndex}`}>
+          {pageIndex > 0 && (
+            <div className="gio-runhead">
+              <span className="gio-runhead-name">{data.candidateName}</span>
+              <span className="gio-runhead-meta">
+                Gio dossier{data.jobTitle ? ` · ${data.jobTitle}` : ''}
+              </span>
+              <span className="gio-runhead-score">
+                Gio fit <b>{Math.round(data.score)}</b>
+              </span>
+            </div>
+          )}
+          {pageBlocks.map((block) => (
+            <Fragment key={block.key}>{block.node}</Fragment>
+          ))}
+          <div className="gio-foot">
+            <span>{footer}</span>
+            <span className="gio-foot-pages">
+              Page {pageIndex + 1} of {total}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function buildBlocks(data: DossierPrintProps): Block[] {
+  const {
+    analysis,
+    score,
+    candidateName,
+    roleLine,
+    jobTitle,
+    location,
+    contactItems,
+    requiredSkills,
+    candidateSkills,
+    workExperience,
+    education,
+    outputLanguageName,
+    clientReady,
+    includeContact,
+  } = data
+
+  const blocks: Block[] = []
+  const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
+  const stats = computeExperienceStats(workExperience)
+  const skills = buildSkillGroups(requiredSkills, candidateSkills)
+  const dimensions = analysis.dimensions || []
+  const visibleDimensions = clientReady ? dimensions.filter((dimension) => !/salary|compensation/i.test(dimension.name)) : dimensions
+  const scored = dimensions.filter((dimension) => dimension.score !== null)
+  const scoredWeight = scored.reduce((sum, dimension) => sum + (Number(dimension.weight) || 0), 0)
+  const contributionTotal = scored.reduce((sum, dimension) => sum + Number(dimension.score) * (Number(dimension.weight) || 0) / 100, 0)
+  const nullDimensions = dimensions.filter((dimension) => dimension.score === null)
+  const validationPoints = (clientReady
+    ? (analysis.validation_points || []).filter((point) => !/salary|compensation|pay|remuneration/i.test(`${point.question} ${point.reason}`))
+    : analysis.validation_points || []) as ValidationPoint[]
+
+  const metaItems = [location, ...(includeContact && !clientReady ? contactItems : [])].filter(Boolean) as string[]
+
+  blocks.push({
+    key: 'masthead',
+    node: (
+      <div className="gio-block gio-masthead">
+        <div style={{ minWidth: 0 }}>
+          <p className="gio-eyebrow">Gio dossier{jobTitle ? ` · prepared for ${jobTitle}` : ''}</p>
+          <h1 className="gio-name">
+            {candidateName}
+            <span>.</span>
+          </h1>
+          {roleLine && <p className="gio-role">{roleLine}</p>}
+          {metaItems.length > 0 && <p className="gio-meta">{metaItems.join(' · ')}</p>}
+        </div>
+        <div className="gio-seal">
+          <p className="gio-seal-label">Gio fit</p>
+          <div className="gio-seal-row">
+            <span className="gio-seal-score">{Math.round(score)}</span>
+            <span className="gio-seal-band">
+              <b>{getScoreBand(score)} fit</b>
+              <i>{analysis.confidence} confidence</i>
+            </span>
+          </div>
+        </div>
+      </div>
+    ),
+  })
+
+  const summaryProse = typeof analysis.profile_summary === 'string' ? analysis.profile_summary.trim() : ''
+  if (summaryProse || executiveSplit || stats.length > 0) {
+    blocks.push({ key: 'summary-heading', node: <Heading spaced>Summary</Heading>, keepWithNext: true })
+    blocks.push({
+      key: 'summary',
+      node: (
+        <div className="gio-block gio-summary">
+          <div className="gio-summary-main">
+            {summaryProse && <p className="gio-prose">{summaryProse}</p>}
+            {executiveSplit ? (
+              <div className="gio-callouts">
+                <div className="gio-callout signal">
+                  <p className="gio-callout-title">Strongest signal</p>
+                  <p>{executiveSplit.strongest}</p>
+                </div>
+                <div className="gio-callout risk">
+                  <p className="gio-callout-title">Biggest risk</p>
+                  <p>{clientReady ? dropScoreClause(executiveSplit.risk) : executiveSplit.risk}</p>
+                </div>
+              </div>
+            ) : (
+              analysis.executive_summary && <p className="gio-prose" style={{ marginTop: summaryProse ? 10 : 0 }}>{analysis.executive_summary}</p>
+            )}
+          </div>
+          {stats.length > 0 && (
+            <div className="gio-stats">
+              {stats.map((stat) => (
+                <div className="gio-stat" key={stat.label}>
+                  <span className="gio-stat-value">{stat.value}</span>
+                  <span className="gio-stat-label">
+                    {stat.label}
+                    {stat.footnote && <i>{stat.footnote}</i>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    })
+  }
+
+  const skillRows = [
+    { label: 'Required and evidenced', items: skills.evidenced, chip: 'evidenced' },
+    { label: 'Required, not evidenced', items: skills.notEvidenced, chip: 'gap' },
+    { label: 'Additional — beyond the job spec', items: skills.additional, chip: '' },
+  ].filter((row) => row.items.length > 0)
+
+  if (skillRows.length > 0) {
+    blocks.push({ key: 'skills-heading', node: <Heading spaced>Identified skills</Heading>, keepWithNext: true })
+    skillRows.forEach((row, index) => {
+      blocks.push({
+        key: `skills-${index}`,
+        node: (
+          <div className="gio-block gio-skill-row">
+            <span className="gio-skill-label">{row.label}</span>
+            <span className="gio-skill-chips">
+              {row.items.map((skill) => (
+                <span className={`gio-chip ${row.chip}`.trim()} key={`${row.label}-${skill}`}>
+                  {skill}
+                </span>
+              ))}
+            </span>
+          </div>
+        ),
+        keepWithNext: index < skillRows.length - 1 ? false : false,
+      })
+    })
+  }
+
+  if (workExperience.length > 0) {
+    blocks.push({ key: 'exp-heading', node: <Heading spaced>Experience</Heading>, keepWithNext: true })
+    workExperience.forEach((entry, index) => {
+      const start = formatDate(entry.start_date)
+      const end = entry.is_current ? 'present' : formatDate(entry.end_date)
+      const duration = formatDuration(entry.start_date, entry.is_current ? undefined : entry.end_date)
+      const description = stripHtml(entry.description)
+      blocks.push({
+        key: `exp-${entry.id ?? index}`,
+        node: (
+          <div className="gio-block gio-exp">
+            <div className="gio-exp-dates">
+              <b>{[[start, end].filter(Boolean).join(' — '), duration].filter(Boolean).join(' · ')}</b>
+              {entry.location && <i>{entry.location}</i>}
+            </div>
+            <div className="gio-exp-body">
+              <p className="gio-exp-title">
+                {entry.job_title}
+                {entry.company_name && <span> · {entry.company_name}</span>}
+              </p>
+              {description && <p className="gio-exp-desc">{description}</p>}
+            </div>
+          </div>
+        ),
+      })
+    })
+  }
+
+  if (education.length > 0) {
+    blocks.push({ key: 'edu-heading', node: <Heading spaced>Education</Heading>, keepWithNext: true })
+    education.forEach((item, index) => {
+      blocks.push({
+        key: `edu-${item.id ?? index}`,
+        node: (
+          <div className="gio-block gio-exp">
+            <div className="gio-exp-dates">
+              <b>{educationYear(item) ?? ''}</b>
+            </div>
+            <div className="gio-exp-body">
+              <p className="gio-exp-title">
+                {item.degree_type || item.field_of_study || 'Education'}
+                {item.institution_name && <span> · {item.institution_name}</span>}
+              </p>
+            </div>
+          </div>
+        ),
+      })
+    })
+  }
+
+  const detected = analysis.detected_languages
+  if (detected && outputLanguageName) {
+    const sources = (detected.sources || []).map((source) => `${source.label} — ${source.name}`).join(' · ')
+    blocks.push({ key: 'lang-heading', node: <Heading spaced>Languages of the source material</Heading>, keepWithNext: true })
+    blocks.push({
+      key: 'lang',
+      node: (
+        <p className="gio-block gio-prose" style={{ fontSize: 10.5 }}>
+          This dossier is written in {outputLanguageName}.{sources ? ` ${sources}.` : ''} Company, school, and certification names are kept as written in the source.
+        </p>
+      ),
+    })
+  }
+
+  if (visibleDimensions.length > 0) {
+    blocks.push({ key: 'dim-heading', node: <Heading spaced>Dimension breakdown</Heading>, keepWithNext: true })
+    blocks.push({
+      key: 'dim-head',
+      keepWithNext: true,
+      node: (
+        <div className="gio-block gio-dim-head">
+          <span className="gio-dim-name">Dimension</span>
+          {!clientReady && <span className="gio-dim-weight">Weight</span>}
+          <span className="gio-dim-score">Score</span>
+          {!clientReady && <span className="gio-dim-points">Points</span>}
+          <span className="gio-bar" style={{ background: 'transparent' }} />
+        </div>
+      ),
+    })
+    visibleDimensions.forEach((dimension, index) => {
+      blocks.push({ key: `dim-${index}`, node: <DimensionTableRow dimension={dimension} clientReady={clientReady} /> })
+    })
+    if (!clientReady) {
+      blocks.push({
+        key: 'dim-total',
+        node: (
+          <div className="gio-block">
+            <div className="gio-dim-total">
+              <span style={{ flex: '1 1 auto' }}>Weighted mean of scored dimensions</span>
+              <span className="gio-dim-weight">{scoredWeight}%</span>
+              <span className="gio-dim-score" style={{ color: '#6f3ff5' }}>{Math.round(score)}</span>
+              <span className="gio-dim-points">{contributionTotal.toFixed(1)} / {scoredWeight}</span>
+              <span className="gio-bar" style={{ background: 'transparent' }} />
+            </div>
+            {(nullDimensions.length > 0 || score > 80) && (
+              <p className="gio-note">
+                {[
+                  ...nullDimensions.map((dimension) => `${dimension.name} is nulled — its ${dimension.weight} points are excluded from the calculation rather than guessed.`),
+                  ...(score > 80 ? ['Scores above 80 require no unresolved must-have gaps.'] : []),
+                ].join(' ')}
+              </p>
+            )}
+          </div>
+        ),
+      })
+    }
+  }
+
+  const evidenceDimensions = visibleDimensions.filter((dimension) => (dimension.matches || []).length + (dimension.gaps || []).length > 0 || dimension.insight)
+  if (evidenceDimensions.length > 0) {
+    blocks.push({ key: 'ev-heading', node: <Heading spaced>Evidence</Heading>, keepWithNext: true })
+    evidenceDimensions.forEach((dimension, index) => {
+      const weight = Number(dimension.weight) || 0
+      const contribution = dimension.score === null ? null : (Number(dimension.score) * weight) / 100
+      blocks.push({
+        key: `ev-${index}`,
+        node: (
+          <div className="gio-block gio-ev-group">
+            <div className="gio-ev-head">
+              <span className="gio-dot" />
+              <b>{dimension.name}</b>
+              {dimension.score === null ? (
+                <i>not assessed</i>
+              ) : (
+                <i>{clientReady ? dimension.score : `${dimension.score} × ${weight}% = ${contribution?.toFixed(1)} pts`}</i>
+              )}
+              {dimension.verdict && <span className="gio-ev-verdict">{dimension.verdict}</span>}
+            </div>
+            {dimension.insight && <p className="gio-ev-item neutral">{dimension.insight}</p>}
+            {(dimension.matches || []).map((item, itemIndex) => (
+              <p className="gio-ev-item" key={`m-${itemIndex}`}>{item}</p>
+            ))}
+            {(dimension.gaps || []).map((item, itemIndex) => (
+              <p className="gio-ev-item gap" key={`g-${itemIndex}`}>{item}</p>
+            ))}
+          </div>
+        ),
+      })
+    })
+  }
+
+  if (validationPoints.length > 0) {
+    blocks.push({
+      key: 'val-heading',
+      node: <Heading spaced>{clientReady ? 'Still to verify' : 'Validation points'}</Heading>,
+      keepWithNext: true,
+    })
+    validationPoints.forEach((point, index) => {
+      const showReason = point.reason && (!clientReady || !/points?|weight|score|calculation|rubric/i.test(point.reason))
+      blocks.push({
+        key: `val-${index}`,
+        node: (
+          <div className="gio-block gio-val">
+            <span className="gio-val-ring" />
+            <div className="gio-val-body">
+              <p className="gio-val-q">{point.question}</p>
+              {showReason && <p className="gio-val-r">{point.reason}</p>}
+            </div>
+            <div className="gio-val-side">
+              {!clientReady && point.priority && <span className={`gio-prio ${point.priority}`}>{point.priority}</span>}
+              {point.suggested_stage && <span>{point.suggested_stage}</span>}
+            </div>
+          </div>
+        ),
+      })
+    })
+  }
+
+  return blocks
+}
+
+function DimensionTableRow({ dimension, clientReady }: { dimension: FitDimension; clientReady: boolean }) {
+  const weight = Number(dimension.weight) || 0
+  const score = dimension.score
+  const contribution = score === null ? null : (Number(score) * weight) / 100
+  return (
+    <div className="gio-block gio-dim-row">
+      <span className="gio-dim-name">
+        <span className="gio-dot" style={score === null ? { background: '#d5d3ca' } : undefined} />
+        {dimension.name}
+      </span>
+      {!clientReady && <span className="gio-dim-weight">{weight}%</span>}
+      <span className="gio-dim-score">{score === null ? '—' : score}</span>
+      {!clientReady && (
+        <span className={score === null ? 'gio-dim-points excluded' : 'gio-dim-points'}>
+          {score === null ? 'excluded' : `${contribution?.toFixed(1)} / ${weight}`}
+        </span>
+      )}
+      <span className="gio-bar">{score !== null && <div style={{ width: `${Math.max(0, Math.min(100, Number(score)))}%` }} />}</span>
+    </div>
+  )
+}
