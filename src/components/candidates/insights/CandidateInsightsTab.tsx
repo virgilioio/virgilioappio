@@ -376,10 +376,10 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           ))}
           <p className="ml-auto shrink-0 text-[11.5px] text-fit-subtle">v{insights.version}{insights.generatedAt ? ` · updated ${formatDistanceToNow(new Date(insights.generatedAt), { addSuffix: true })}` : ''}</p>
         </div>
-        <div className="mt-[18px] flex flex-nowrap items-center gap-2.5 border-t border-fit-hairline pt-4">
+        <div className="mt-[18px] flex flex-nowrap items-center gap-2.5 overflow-x-auto border-t border-fit-hairline pt-4 scrollbar-none">
           <div className="flex shrink-0 rounded-lg bg-fit-chip p-[3px]" role="group" aria-label="Dossier view">
             {(['internal', 'client'] as const).map((mode) => (
-              <Button key={mode} type="button" variant="ghost" size="xs" onClick={() => setViewMode(mode)} className={cn('h-[26px] rounded-md px-3 text-[12px]', viewMode === mode ? 'border border-fit-row-border bg-surface-primary font-semibold text-fit-ink shadow-[0_1px_2px_rgba(13,13,9,0.08)] hover:bg-surface-primary' : 'font-medium text-fit-subtle')}>
+              <Button key={mode} type="button" variant="ghost" size="xs" aria-pressed={viewMode === mode} onClick={() => setViewMode(mode)} className={cn('h-[26px] rounded-md px-3 text-[12px]', viewMode === mode ? 'border border-fit-row-border bg-surface-primary font-semibold text-fit-ink shadow-[0_1px_2px_rgba(13,13,9,0.08)] hover:bg-surface-primary' : 'font-medium text-fit-subtle')}>
                 {mode === 'internal' ? 'Internal' : 'Client-ready'}
               </Button>
             ))}
@@ -406,7 +406,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                     {executiveSplit ? (
                       <div className="grid gap-2.5 sm:grid-cols-2">
                         <div className="rounded-lg border border-fit-match-border bg-fit-match-panel p-3"><p className="text-[10.5px] font-semibold uppercase text-fit-match-dark">Strongest signal</p><p className="mt-1.5 text-[12px] leading-[1.55] text-fit-match-copy">{executiveSplit.strongest}</p></div>
-                        <div className="rounded-lg border border-fit-risk-border bg-fit-risk-panel p-3"><p className="text-[10.5px] font-semibold uppercase text-fit-risk-label">Biggest risk</p><p className="mt-1.5 text-[12px] leading-[1.55] text-fit-risk-copy">{executiveSplit.risk}</p></div>
+                        {!clientReady && <div className="rounded-lg border border-fit-risk-border bg-fit-risk-panel p-3"><p className="text-[10.5px] font-semibold uppercase text-fit-risk-label">Biggest risk</p><p className="mt-1.5 text-[12px] leading-[1.55] text-fit-risk-copy">{executiveSplit.risk}</p></div>}
                       </div>
                     ) : (
                       <p className="text-[12.5px] leading-[1.6] text-fit-muted">{analysis.executive_summary}</p>
@@ -469,7 +469,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           <section className={cardClass}>
             <div className="border-b border-fit-hairline px-4 py-4">
               <h3 className={sectionHeadingClass}><BarChart3 className="h-3 w-3" /> Dimension breakdown</h3>
-              <p className="mt-2 text-[12px] leading-[1.5] text-fit-muted">Seven dimensions, weighted for this role. Open a row for its matches and gaps.</p>
+              <p className="mt-2 text-[12px] leading-[1.5] text-fit-muted">{clientReady ? 'Open a row for the evidence behind this assessment.' : `${dimensions.length} dimensions, weighted for this role. Open a row for its matches and gaps.`}</p>
             </div>
             <div>{visibleDimensions.map((dimension) => {
               const payloadIndex = dimensions.indexOf(dimension)
