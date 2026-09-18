@@ -317,8 +317,20 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   })
 
   return (
-    <div className={cn('relative space-y-3.5 transition-opacity', isRefreshing && insights?.analysis && 'opacity-40')}>
-      {isRefreshing && insights?.analysis && <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3px] overflow-hidden rounded-full bg-fit-violet-wash"><div className="h-full w-1/3 animate-[loading-sweep_1.1s_ease-in-out_infinite] bg-virgilio-purple" /></div>}
+    <div className="relative">
+      {/* Re-scoring: the previous dossier stays mounted and readable underneath. */}
+      {isRescoring && (
+        <GioFitRescoringBar
+          stepLabel={narrationSteps[stepIndex]?.label || 'working'}
+          progress={progress}
+          previousGeneratedAt={insights.generatedAt}
+          onCancel={cancelRefresh}
+        />
+      )}
+      {generationError && !isRescoring && (
+        <div className="mb-3.5"><GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} /></div>
+      )}
+      <div key={insights.generatedAt || 'dossier'} className={cn('space-y-3.5', isRescoring ? 'gf-rescore-dim' : 'gf-fade-in')}>
       <section className={cn(cardClass, 'p-[22px]')}>
         <div className="flex flex-col items-start gap-6 sm:flex-row">
           <div className="min-w-0">
