@@ -378,14 +378,6 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             </div>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          {analysis.data_sources_used.map((source) => (
-            <span key={`used-${source}`} className="inline-flex items-center gap-1 rounded-md bg-fit-chip px-2 py-[3px] text-[11px] font-medium text-fit-muted"><Check className="h-3 w-3" />{source.replace(/_/g, ' ')}</span>
-          ))}
-          {analysis.data_sources_missing.map((source) => (
-            <span key={`missing-${source}`} className="inline-flex items-center gap-1 rounded-md bg-fit-warning-soft px-2 py-[3px] text-[11px] font-medium text-fit-warning"><Minus className="h-3 w-3" />{source.replace(/_/g, ' ')}</span>
-          ))}
-        </div>
         <div className="mt-[18px] flex flex-nowrap items-center gap-2.5 overflow-x-auto border-t border-fit-hairline pt-4 scrollbar-none">
           <div className="flex shrink-0 rounded-lg bg-fit-chip p-[3px]" role="group" aria-label="Dossier view">
             {(['internal', 'client'] as const).map((mode) => (
