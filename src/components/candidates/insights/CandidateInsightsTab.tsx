@@ -213,21 +213,23 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     [candidateSkills, requiredSkills, skillEvidence],
   )
 
-  // An analysis produced before per-skill adjudication has no verdicts; regenerate
-  // it once so the chips agree with the dimensions. The ref keeps route changes
-  // and refetches from looping it.
+  // An analysis produced before per-skill adjudication has no verdicts. That is a
+  // format gap, not new information — it never triggers a regeneration on its own.
   const needsSkillVerdicts = Boolean(insights?.analysis) && requiredSkills.length > 0 && !skillEvidence
+  const isStale = Boolean(insights?.isStale)
+  // Generate only when nothing is stored, or when the candidate's inputs actually
+  // changed after the stored analysis. Opening the tab alone never spends credits.
   useEffect(() => {
-    if (isLoading || hasTriggered.current || jdText.length < 30) return
-    if (!insights?.analysis || needsSkillVerdicts) {
+    if (isLoading || hasTriggered.current || jdText.length < 30 || !insights) return
+    if (!insights.analysis || isStale) {
       hasTriggered.current = true
       refreshInsights()
     }
-  }, [isLoading, insights?.analysis, needsSkillVerdicts, jdText])
+  }, [isLoading, insights?.analysis, isStale, jdText])
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
 
   if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
-  if (isLoading || (isRefreshing && (!insights?.analysis || needsSkillVerdicts))) {
+  if (isLoading || (isRefreshing && !insights?.analysis)) {
     return (
       <div className={cn(cardClass, 'flex min-h-[280px] flex-col items-center justify-center gap-3')}>
         <Loader2 className="h-7 w-7 animate-spin text-virgilio-purple" />
@@ -344,6 +346,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             {clientReady ? 'Scoring mechanics and salary are hidden. This is what the client sees.' : 'Full view with weights, nulls, and validation priorities.'}
           </p>
           <div className="flex shrink-0 items-center gap-2">
+            {needsSkillVerdicts && !isRefreshing && (
+              <span className="text-[11.5px] text-fit-subtle">Refresh to update the skill read</span>
+            )}
             <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
             <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
