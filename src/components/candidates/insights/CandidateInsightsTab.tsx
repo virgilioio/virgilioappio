@@ -268,6 +268,30 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     }
   }
 
+  const candidateName = asString(candidate?.candidate_name) || 'Candidate'
+  const jobTitle = asString(job?.title)
+  const contactItems = [asString(candidate?.email), asString(candidate?.phone), asString(candidate?.linkedin_url)].filter((item): item is string => !!item)
+  const preparedBy = asString((job?.organization as { name?: string } | null | undefined)?.name)
+  const appliedLanguage = insights.appliedOutputLanguage || insights.resolvedOutputLanguage
+  const buildExportData = ({ clientReady: exportClientReady, includeContact }: { clientReady: boolean; includeContact: boolean }): DossierPrintProps => ({
+    analysis,
+    score,
+    candidateName,
+    roleLine: roleLine || null,
+    jobTitle,
+    location: location || null,
+    contactItems,
+    requiredSkills,
+    candidateSkills,
+    workExperience,
+    education,
+    outputLanguageName: getGioFitLanguage(appliedLanguage).name,
+    clientReady: exportClientReady,
+    includeContact,
+    preparedBy,
+    preparedOn: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+  })
+
   return (
     <div className={cn('relative space-y-3.5 transition-opacity', isRefreshing && insights?.analysis && 'opacity-40')}>
       {isRefreshing && insights?.analysis && <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3px] overflow-hidden rounded-full bg-fit-violet-wash"><div className="h-full w-1/3 animate-[loading-sweep_1.1s_ease-in-out_infinite] bg-virgilio-purple" /></div>}
