@@ -51,6 +51,9 @@ export interface FitInsightsData {
   jobOutputLanguage: string | null
   workspaceOutputLanguage: string
   resolvedOutputLanguage: string
+  /** True when candidate/job inputs changed after the stored analysis was generated. */
+  isStale: boolean
+  staleReason: string | null
 }
 
 export function useCandidateFitInsights(candidateId: string | null, jobId: string | null) {
