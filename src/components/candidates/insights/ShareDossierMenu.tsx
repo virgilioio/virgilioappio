@@ -153,19 +153,29 @@ export function ShareDossierMenu({
   isLoading,
   error,
   isRejected,
+  canPublish = true,
   candidateFirstName,
   internalUrl,
   onTogglePublic,
+  triggerRef,
 }: ShareDossierMenuProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
+  const urlRef = useRef<HTMLSpanElement | null>(null)
   const internalCopy = useInlineCopy()
   const publicCopy = useInlineCopy()
 
   useEffect(() => {
     if (!open) return
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    const close = () => {
+      onClose()
+      triggerRef?.current?.focus()
+    }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close() }
     const onClick = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) onClose()
+      const target = event.target as Node
+      if (panelRef.current?.contains(target)) return
+      if (triggerRef?.current?.contains(target)) return
+      onClose()
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onClick)
@@ -173,7 +183,7 @@ export function ShareDossierMenu({
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onClick)
     }
-  }, [open, onClose])
+  }, [open, onClose, triggerRef])
 
   if (!open) return null
 
@@ -186,9 +196,11 @@ export function ShareDossierMenu({
 
   const description = isRejected
     ? 'Unavailable while the candidate is rejected'
-    : live
-      ? 'Anyone with the link can view — no Gio account needed'
-      : 'Off — the link resolves to an unavailable page'
+    : !canPublish
+      ? 'You do not have permission to publish this dossier'
+      : live
+        ? 'Anyone with the link can view — no Gio account needed'
+        : 'Off — the link resolves to an unavailable page'
 
   return (
     <div ref={panelRef} style={PANEL}>
