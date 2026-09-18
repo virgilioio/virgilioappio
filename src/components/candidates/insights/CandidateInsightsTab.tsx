@@ -208,6 +208,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const [exportOpen, setExportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const shareButtonRef = useRef<HTMLButtonElement | null>(null)
+  const shareWrapperRef = useRef<HTMLDivElement | null>(null)
   // Read-only roles may reach the menu and copy the internal link, never publish.
   const { canEditCandidates } = usePermissions()
   // The share row is created the first time the menu opens — never before.
@@ -376,7 +377,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             </div>
           </div>
         </div>
-        <div className="mt-[18px] flex flex-nowrap items-center gap-2.5 overflow-x-auto border-t border-fit-hairline pt-4 scrollbar-none">
+        <div className="mt-[18px] flex flex-wrap items-center gap-2.5 overflow-visible border-t border-fit-hairline pt-4">
           <div className="flex shrink-0 rounded-lg bg-fit-chip p-[3px]" role="group" aria-label="Dossier view">
             {(['internal', 'client'] as const).map((mode) => (
               <Button key={mode} type="button" variant="ghost" size="xs" aria-pressed={viewMode === mode} onClick={() => setViewMode(mode)} className={cn('h-[26px] rounded-md px-3 text-[12px]', viewMode === mode ? 'border border-fit-row-border bg-surface-primary font-semibold text-fit-ink shadow-[0_1px_2px_rgba(13,13,9,0.08)] hover:bg-surface-primary' : 'font-medium text-fit-subtle')}>
@@ -395,7 +396,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
             <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
             {/* Share is the terminal action of this row, and the only primary. */}
-            <div className="relative shrink-0">
+            <div ref={shareWrapperRef} className="relative shrink-0">
               <Button ref={shareButtonRef} variant="primary" size="sm" icon={Share2} onClick={() => setShareOpen((open) => !open)}>Share with client</Button>
               <ShareDossierMenu
                 open={shareOpen}
@@ -408,6 +409,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 candidateFirstName={candidateName.split(' ')[0] || candidateName}
                 internalUrl={`${window.location.origin}/jobs/${jobId}/candidates/${candidateId}?tab=fit`}
                 onTogglePublic={(next) => void setSharePublic(next)}
+                wrapperRef={shareWrapperRef}
                 triggerRef={shareButtonRef}
               />
             </div>

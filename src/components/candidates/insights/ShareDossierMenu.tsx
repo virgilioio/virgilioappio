@@ -7,10 +7,11 @@
  * promises the implementation keeps: public links are always client-ready, and
  * they deactivate themselves.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { Check, Globe, Link2, ShieldOff, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, Copy, Eye, Globe, Link2, ShieldOff } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { copyToClipboardSilent } from '@/utils/clipboard'
 import { dossierPublicUrl, type DossierShare } from '@/hooks/useDossierShare'
 
@@ -26,21 +27,23 @@ interface ShareDossierMenuProps {
   candidateFirstName: string
   internalUrl: string
   onTogglePublic: (next: boolean) => void
-  /** The button the menu hangs from — keeps outside-click sane and returns focus. */
+  /** The shared wrapper contains both trigger and menu. */
+  wrapperRef: React.RefObject<HTMLDivElement>
+  /** Returns focus when Escape closes the menu. */
   triggerRef?: React.RefObject<HTMLElement>
 }
 
-const MENU_WIDTH = 340
-
 const PANEL: React.CSSProperties = {
-  position: 'fixed',
-  width: MENU_WIDTH,
+  position: 'absolute',
+  top: 36,
+  right: 0,
+  zIndex: 80,
+  width: 340,
   background: '#fff',
-  borderRadius: 12,
-  padding: 6,
   border: '1px solid #E7E8EE',
+  borderRadius: 12,
   boxShadow: '0 18px 44px -12px rgba(13,13,9,0.22), 0 2px 6px rgba(13,13,9,0.05)',
-  zIndex: 100,
+  padding: 6,
   textAlign: 'left',
 }
 
@@ -77,45 +80,6 @@ function Chip({ tone, children }: { tone: 'neutral' | 'live' | 'done'; children:
     >
       {children}
     </span>
-  )
-}
-
-function Switch({ checked, disabled, onChange }: { checked: boolean; disabled?: boolean; onChange: (next: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label="Public dossier"
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      style={{
-        position: 'relative',
-        width: 38,
-        height: 22,
-        borderRadius: 999,
-        border: 'none',
-        padding: 0,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        background: disabled ? '#E7E5DC' : checked ? '#6F3FF5' : '#D5D3CA',
-        transition: 'background-color 140ms ease',
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          top: 3,
-          left: checked ? 19 : 3,
-          width: 16,
-          height: 16,
-          borderRadius: 999,
-          background: '#fff',
-          boxShadow: '0 1px 2px rgba(13,13,9,0.2)',
-          transition: 'left 140ms ease',
-        }}
-      />
-    </button>
   )
 }
 
@@ -158,37 +122,12 @@ export function ShareDossierMenu({
   candidateFirstName,
   internalUrl,
   onTogglePublic,
+  wrapperRef,
   triggerRef,
 }: ShareDossierMenuProps) {
-  const panelRef = useRef<HTMLDivElement | null>(null)
   const urlRef = useRef<HTMLSpanElement | null>(null)
   const internalCopy = useInlineCopy()
   const publicCopy = useInlineCopy()
-  // The menu renders through a portal so no scrolling ancestor can clip it;
-  // these coordinates pin it just below the trigger, right-aligned to it.
-  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null)
-
-  const measure = useCallback(() => {
-    const trigger = triggerRef?.current
-    if (!trigger) return
-    const rect = trigger.getBoundingClientRect()
-    const left = Math.max(12, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 12))
-    setAnchor({ top: rect.bottom + 8, left })
-  }, [triggerRef])
-
-  useEffect(() => {
-    if (!open) {
-      setAnchor(null)
-      return
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    window.addEventListener('scroll', measure, true)
-    return () => {
-      window.removeEventListener('resize', measure)
-      window.removeEventListener('scroll', measure, true)
-    }
-  }, [open, measure])
 
   useEffect(() => {
     if (!open) return
@@ -198,9 +137,7 @@ export function ShareDossierMenu({
     }
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close() }
     const onClick = (event: MouseEvent) => {
-      const target = event.target as Node
-      if (panelRef.current?.contains(target)) return
-      if (triggerRef?.current?.contains(target)) return
+      if (wrapperRef.current?.contains(event.target as Node)) return
       onClose()
     }
     document.addEventListener('keydown', onKey)
@@ -209,7 +146,7 @@ export function ShareDossierMenu({
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onClick)
     }
-  }, [open, onClose, triggerRef])
+  }, [open, onClose, triggerRef, wrapperRef])
 
   if (!open) return null
 
@@ -228,11 +165,8 @@ export function ShareDossierMenu({
         ? 'Anyone with the link can view — no Gio account needed'
         : 'Off — the link resolves to an unavailable page'
 
-  return createPortal(
-    <div
-      ref={panelRef}
-      style={{ ...PANEL, top: anchor?.top ?? -9999, left: anchor?.left ?? -9999, visibility: anchor ? 'visible' : 'hidden' }}
-    >
+  return (
+    <div style={PANEL}>
       {/* Row 1 — internal link */}
       <button
         type="button"
@@ -253,13 +187,13 @@ export function ShareDossierMenu({
         onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
       >
         <Chip tone={internalCopy.copied ? 'done' : 'neutral'}>
-          {internalCopy.copied ? <Check size={13} /> : <Link2 size={13} />}
+          {internalCopy.copied ? <Check size={13} strokeWidth={2.1} /> : <Link2 size={13} strokeWidth={2.1} />}
         </Chip>
-        <span style={{ minWidth: 0 }}>
+        <span style={{ minWidth: 0, flex: 1 }}>
           <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>
             {internalCopy.manual ? 'Press ⌘C to copy' : internalCopy.copied ? 'Copied to clipboard' : 'Copy internal link'}
           </span>
-          <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
+          <span style={{ display: 'block', marginTop: 1, fontFamily: 'Inter, sans-serif', fontSize: 11, lineHeight: 1.4, color: '#8B8F9E' }}>
             Opens in Gio · teammates with access to this job
           </span>
         </span>
@@ -267,8 +201,8 @@ export function ShareDossierMenu({
 
       {/* Row 2 — public dossier */}
       <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid #F1F0EC' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px' }}>
-          <Chip tone={live ? 'live' : 'neutral'}>{live ? <Globe size={13} /> : <Users size={13} />}</Chip>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '0 10px 8px' }}>
+          <Chip tone={live ? 'live' : 'neutral'}><Globe size={13} strokeWidth={2.1} /></Chip>
           <span style={{ minWidth: 0, flex: 1 }}>
             <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 600, color: isRejected || !canPublish ? '#8B8F9E' : '#1F2230' }}>
               Public dossier
@@ -280,7 +214,16 @@ export function ShareDossierMenu({
           <Switch
             checked={live}
             disabled={isRejected || !canPublish || !share || isLoading}
-            onChange={(next) => onTogglePublic(next)}
+            onCheckedChange={onTogglePublic}
+            aria-label="Public dossier"
+            aria-pressed={live}
+            className="h-[22px] w-[38px] border-0 p-0 [&>span]:h-4 [&>span]:w-4 [&>span]:shadow-[0_1px_2px_rgba(13,13,9,0.2)] data-[state=checked]:[&>span]:translate-x-4"
+            style={{
+              background: isRejected || !canPublish || !share || isLoading ? '#E7E5DC' : live ? '#6F3FF5' : '#D5D3CA',
+              borderColor: 'transparent',
+              opacity: isRejected || !canPublish || !share || isLoading ? 0.7 : 1,
+              transition: 'background 140ms ease',
+            }}
           />
         </div>
 
@@ -289,25 +232,25 @@ export function ShareDossierMenu({
             style={{
               display: 'flex',
               gap: 8,
-              margin: '8px 10px 0',
-              padding: '8px 10px',
+              margin: '0 10px 8px',
+              padding: '9px 10px',
               background: '#FFFBEB',
               border: '1px solid #FDE9B5',
               borderRadius: 9,
             }}
           >
-            <ShieldOff size={13} color="#B45309" style={{ flexShrink: 0, marginTop: 2 }} />
-            <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontSize: 11, lineHeight: 1.5, color: '#7A4A08' }}>
+            <ShieldOff size={13} strokeWidth={2} color="#B45309" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ margin: 0, fontFamily: 'Inter, sans-serif', fontSize: 11, lineHeight: 1.5, color: '#7A4A08', textWrap: 'pretty' }}>
               <strong>Deactivated automatically</strong>
-              {deactivatedOn ? ` on ${deactivatedOn}` : ''}, when {candidateFirstName} was rejected. Reactivate them on this job to share again.
+              {deactivatedOn ? ` on ${deactivatedOn}` : ' on the rejection date'}, when {candidateFirstName} was rejected. Reactivate her on this job to share again.
             </p>
           </div>
         )}
 
         {live && share && (
-          <div style={{ margin: '8px 10px 0' }}>
+          <div style={{ margin: '0 10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
+              <code
                 ref={urlRef}
                 style={{
                   flex: 1,
@@ -318,36 +261,28 @@ export function ShareDossierMenu({
                   border: '1px solid #EFEEE8',
                   borderRadius: 7,
                   padding: '7px 9px',
-                  color: '#1F2230',
+                  color: '#5A6072',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }}
               >
                 {url}
-              </span>
-              <button
-                type="button"
+              </code>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={publicCopy.copied ? Check : Copy}
                 onClick={() => void publicCopy.copy(url, urlRef.current)}
-                style={{
-                  border: '1px solid #E0DDD3',
-                  background: publicCopy.copied ? '#E4F5EA' : '#fff',
-                  color: publicCopy.copied ? '#1F7A45' : '#1F2230',
-                  borderRadius: 7,
-                  padding: '6px 9px',
-                  fontFamily: 'Poppins, sans-serif',
-                  fontSize: 11.5,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
               >
                 {publicCopy.manual ? 'Press ⌘C' : publicCopy.copied ? 'Copied' : 'Copy'}
-              </button>
+              </Button>
             </div>
-            <p style={{ margin: '7px 0 0', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
-              👁 Viewed {share.viewCount} {share.viewCount === 1 ? 'time' : 'times'}
-              {viewed ? ` · last ${viewed} ago` : ''} · Client-ready view
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 10px 4px', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={11} />Viewed {share.viewCount} {share.viewCount === 1 ? 'time' : 'times'}{viewed ? ` · last ${viewed} ago` : ''}</span>
+              <span style={{ color: '#D1D5DB' }}>·</span>
+              <span>Client-ready view</span>
+            </div>
           </div>
         )}
       </div>
@@ -367,12 +302,12 @@ export function ShareDossierMenu({
           fontSize: 10.5,
           lineHeight: 1.5,
           color: '#8B8F9E',
+          textWrap: 'pretty',
         }}
       >
         Public links always serve the client-ready view — no weights, no scoring mechanics, no compensation.
         They deactivate on their own when the candidate is rejected or the job closes.
       </p>
-    </div>,
-    document.body,
+    </div>
   )
 }
