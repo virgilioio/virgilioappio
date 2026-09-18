@@ -31,16 +31,14 @@ interface ShareDossierMenuProps {
 }
 
 const PANEL: React.CSSProperties = {
-  position: 'absolute',
-  top: 36,
-  right: 0,
+  position: 'fixed',
   width: 340,
   background: '#fff',
   borderRadius: 12,
   padding: 6,
   border: '1px solid #E7E8EE',
   boxShadow: '0 18px 44px -12px rgba(13,13,9,0.22), 0 2px 6px rgba(13,13,9,0.05)',
-  zIndex: 60,
+  zIndex: 100,
   textAlign: 'left',
 }
 
