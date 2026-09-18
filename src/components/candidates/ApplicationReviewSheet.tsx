@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { ensureAbsoluteUrl } from '@/lib/utils'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
