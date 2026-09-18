@@ -144,7 +144,14 @@ export function GioFitExportDialog({
     [clientReady, options.includeContact, includeEvidence, includeValidation, pageSize],
   )
 
-  const fileName = `${candidateName.trim().replace(/\s+/g, '-')}${jobTitle ? `_${jobTitle.trim().replace(/\s+/g, '-')}` : ''}_Gio-dossier.pdf`
+  const slug = (value: string) =>
+    value
+      .trim()
+      .replace(/[^\p{L}\p{N}\s-]+/gu, '')
+      .replace(/\s+/g, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^-|-$/g, '')
+  const fileName = `${slug(candidateName)}${jobTitle ? `_${slug(jobTitle)}` : ''}_Gio-dossier.pdf`
   const geometry = DOSSIER_PAGE_GEOMETRY[pageSize]
 
   const handleVersion = (next: 'internal' | 'client') => {
