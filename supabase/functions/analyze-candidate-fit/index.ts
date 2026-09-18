@@ -218,7 +218,20 @@ DIMENSIONS TO EVALUATE (use these exact names):
 
 Adjust weights only if the role makes a dimension unusually important. If adjusted, explain why.
 
-For each validation_point, suggest the best interview stage to verify (Phone Screen, Technical Interview, Culture Fit, Final Round, etc.).`;
+For each validation_point, suggest the best interview stage to verify (Phone Screen, Technical Interview, Culture Fit, Final Round, etc.).
+
+PER-SKILL ADJUDICATION (skill_evidence)
+
+The user message lists the job's REQUIRED SKILLS. Return exactly one skill_evidence entry per listed skill, in the same order, with the skill string copied verbatim from that list. Do not add skills the job did not list, do not drop one, do not merge two, do not rename or reword one.
+
+Rule for each skill:
+- evidenced: the candidate data directly supports it. Read everything supplied — listed skills, profile summary, work experience, résumé and scorecards — not just the skills array. Cross-language equivalents count ("Ventas" = "Sales"), as do close variants of the same thing ("Outbound Sales" evidences "Outbound", "B2B sales" evidences "B2B").
+- partial: adjacent or general experience supports the area, but the named skill, tool, method or framework is not itself shown. Selling to enterprise accounts is partial evidence of "Enterprise"; running a full sales cycle is partial evidence of "E2E Sales".
+- not_evidenced: nothing in the supplied data supports it. Named methodologies and tools (MEDDICC, HubSpot, a specific CRM) are not_evidenced unless the candidate data actually names them or an unmistakable equivalent. Do not infer a tool from the fact that the role would normally use one.
+
+Evidence is mandatory for evidenced and partial: quote or closely paraphrase the candidate's own wording, in its source language, and name where it came from. If you cannot point to a specific phrase, the status is not_evidenced. Never invent or embellish a quote.
+
+These verdicts must agree with the Skills Alignment dimension's matches and gaps — they are the same judgement stated per skill.`;
 
 serve(async (req) => {
   const preflight = handlePreflight(req);
