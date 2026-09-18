@@ -69,7 +69,7 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
 
       const { data: assoc, error } = await supabase
         .from('job_candidate_associations')
-        .select('id, ai_fit_score, ai_fit_analysis, ai_fit_confidence, ai_fit_generated_at, ai_fit_version, output_language, ai_fit_output_language, ai_fit_keep_proper_nouns, job:jobs!inner(output_language, organization:organizations!inner(default_output_language))')
+        .select('id, ai_fit_score, ai_fit_analysis, ai_fit_confidence, ai_fit_generated_at, ai_fit_version, output_language, ai_fit_output_language, ai_fit_keep_proper_nouns, entered_stage_at, job:jobs!inner(output_language, organization:organizations!inner(default_output_language))')
         .eq('candidate_id', candidateId)
         .eq('job_id', jobId)
         .maybeSingle()
