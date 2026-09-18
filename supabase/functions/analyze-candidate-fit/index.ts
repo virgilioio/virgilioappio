@@ -5,6 +5,7 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { mergeTranslatedProse } from './language-utils.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -379,7 +380,7 @@ serve(async (req) => {
         model: AI_MODELS.reasoning,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}` },
+          { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}\n\nLANGUAGE DETECTION: Report source languages separately. Use only these exact source labels because they correspond to inputs actually supplied: ${allowedLabels.join(", ")}. Never report an absent source.` },
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
@@ -471,23 +472,7 @@ serve(async (req) => {
       const translatedArguments = translatedData.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
       if (!translatedArguments) throw new Error("No structured translation from AI");
       const translated = JSON.parse(translatedArguments);
-      analysis = {
-        ...canonicalAnalysis,
-        confidence_reason: translated.confidence_reason,
-        executive_summary: translated.executive_summary,
-        dimensions: canonicalAnalysis.dimensions.map((dimension: any, index: number) => ({
-          ...dimension,
-          insight: translated.dimensions?.[index]?.insight ?? dimension.insight,
-          matches: translated.dimensions?.[index]?.matches ?? dimension.matches,
-          gaps: translated.dimensions?.[index]?.gaps ?? dimension.gaps,
-        })),
-        validation_points: canonicalAnalysis.validation_points.map((point: any, index: number) => ({
-          ...point,
-          question: translated.validation_points?.[index]?.question ?? point.question,
-          reason: translated.validation_points?.[index]?.reason ?? point.reason,
-          suggested_stage: translated.validation_points?.[index]?.suggested_stage ?? point.suggested_stage,
-        })),
-      };
+      analysis = mergeTranslatedProse(canonicalAnalysis, translated);
     }
 
     // Store in database

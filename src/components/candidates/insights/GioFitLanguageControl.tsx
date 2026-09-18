@@ -44,8 +44,12 @@ export function GioFitLanguageControl({ analysis, workspaceLanguage, overrideLan
   }), [detectedCodes])
 
   const apply = async () => {
-    await onApply(draftLanguage, draftKeepProperNouns)
     setOpen(false)
+    try {
+      await onApply(draftLanguage, draftKeepProperNouns)
+    } catch {
+      // The dossier keeps its previous content and the parent shows the error.
+    }
   }
 
   return (
