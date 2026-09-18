@@ -457,6 +457,44 @@ serve(async (req) => {
     const canonicalAnalysis = JSON.parse(toolCall.function.arguments);
     let analysis = canonicalAnalysis;
 
+    // Skill adjudication: keep the job's list authoritative. Every required
+    // skill gets exactly one entry, in the job's order and spelling. A model
+    // entry that is malformed, unmatched, or claims evidence without quoting
+    // any is dropped to not_evidenced rather than guessed at.
+    const VALID_SKILL_STATUS = new Set(["evidenced", "partial", "not_evidenced"]);
+    const returnedEvidence: any[] = Array.isArray(canonicalAnalysis.skill_evidence)
+      ? canonicalAnalysis.skill_evidence
+      : [];
+    const byNormalizedSkill = new Map<string, any>();
+    for (const entry of returnedEvidence) {
+      const skill = typeof entry?.skill === "string" ? entry.skill.trim() : "";
+      if (!skill) continue;
+      const key = skill.toLowerCase();
+      if (!byNormalizedSkill.has(key)) byNormalizedSkill.set(key, entry);
+    }
+    canonicalAnalysis.skill_evidence = requiredSkills.map((skill) => {
+      const entry = byNormalizedSkill.get(skill.toLowerCase());
+      const status = VALID_SKILL_STATUS.has(entry?.status) ? entry.status : "not_evidenced";
+      const evidence = typeof entry?.evidence === "string" && entry.evidence.trim().length > 0
+        ? entry.evidence.trim()
+        : null;
+      const source = typeof entry?.source === "string" && entry.source.trim().length > 0
+        ? entry.source.trim()
+        : null;
+      if (status !== "not_evidenced" && !evidence) {
+        return { skill, status: "not_evidenced", evidence: null, source: null };
+      }
+      if (status === "not_evidenced") {
+        return { skill, status, evidence: null, source: null };
+      }
+      return { skill, status, evidence, source };
+    });
+    const droppedEvidence = returnedEvidence.length - canonicalAnalysis.skill_evidence.length;
+    if (droppedEvidence !== 0) {
+      console.log(`[analyze-candidate-fit] skill_evidence reconciled: model returned ${returnedEvidence.length}, job requires ${requiredSkills.length}.`);
+    }
+    canonicalAnalysis.skill_evidence_version = 3;
+
     // Override data_sources with our tracked ones
     canonicalAnalysis.data_sources_used = dataSources;
     canonicalAnalysis.data_sources_missing = dataMissing;
