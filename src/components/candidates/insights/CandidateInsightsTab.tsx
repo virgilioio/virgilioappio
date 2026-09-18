@@ -199,19 +199,28 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const hasTriggered = useRef(false)
   const jdText = stripHtml(jobDescription)
 
-  useEffect(() => {
-    if (!isLoading && !insights?.analysis && !hasTriggered.current && jdText.length >= 30) {
-      hasTriggered.current = true
-      refreshInsights()
-    }
-  }, [isLoading, insights?.analysis, jdText])
-
   const requiredSkills = useMemo(() => {
     const mustHave = asStringArray(job?.must_have_skills)
     return mustHave.length ? mustHave : asStringArray(job?.skills)
   }, [job])
   const candidateSkills = useMemo(() => asStringArray(candidate?.skills), [candidate])
-  const skillGroups = useMemo(() => buildSkillGroups(requiredSkills, candidateSkills), [candidateSkills, requiredSkills])
+  const skillEvidence = useMemo(() => readSkillEvidence(insights?.analysis), [insights?.analysis])
+  const skillGroups = useMemo(
+    () => buildSkillGroups(requiredSkills, candidateSkills, skillEvidence),
+    [candidateSkills, requiredSkills, skillEvidence],
+  )
+
+  // An analysis produced before per-skill adjudication has no verdicts; regenerate
+  // it once so the chips agree with the dimensions. The ref keeps route changes
+  // and refetches from looping it.
+  const needsSkillVerdicts = Boolean(insights?.analysis) && requiredSkills.length > 0 && !skillEvidence
+  useEffect(() => {
+    if (isLoading || hasTriggered.current || jdText.length < 30) return
+    if (!insights?.analysis || needsSkillVerdicts) {
+      hasTriggered.current = true
+      refreshInsights()
+    }
+  }, [isLoading, insights?.analysis, needsSkillVerdicts, jdText])
   const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
 
   if (jdText.length < 30) return <NoJobDescriptionCard jobId={jobId} />
