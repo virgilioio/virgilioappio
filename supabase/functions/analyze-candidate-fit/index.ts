@@ -369,6 +369,8 @@ serve(async (req) => {
       );
     }
 
+    const allowedLabels = [...new Set(dataSources.map((source) => SOURCE_LABELS[source]).filter(Boolean))];
+
     // Call OpenAI
     const aiResponse = await openaiFetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -406,7 +408,6 @@ serve(async (req) => {
     // Override data_sources with our tracked ones
     canonicalAnalysis.data_sources_used = dataSources;
     canonicalAnalysis.data_sources_missing = dataMissing;
-    const allowedLabels = [...new Set(dataSources.map((source) => SOURCE_LABELS[source]).filter(Boolean))];
     canonicalAnalysis.detected_languages = {
       summary: canonicalAnalysis.detected_languages?.summary || "English",
       confidence: canonicalAnalysis.detected_languages?.confidence || "low",
