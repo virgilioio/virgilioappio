@@ -261,8 +261,71 @@ function evidenceCard(f: Finding): CardCopy {
         candidates: [],
       };
     }
+    case 'offer_stuck': {
+      const e = f.evidence as {
+        approval_pending: number;
+        approval_blocked: number;
+        offers_sent: number;
+        offers_accepted: number;
+        offers_declined: number;
+      };
+      return {
+        tone: sev,
+        icon: Hourglass,
+        title: 'Offer approvals are ready to move forward',
+        body: `${e.approval_pending} approval${e.approval_pending === 1 ? '' : 's'} pending and ${e.approval_blocked} blocked. Confirming the outstanding decisions can restore offer momentum.`,
+        candidates: [],
+      };
+    }
+    case 'outreach_not_landing': {
+      const e = f.evidence as {
+        candidates_contacted: number;
+        replies: number;
+        reply_rate_pct: number | null;
+        awaiting_reply_over_3d: number;
+      };
+      const replyRate = e.reply_rate_pct == null ? 'No reply rate available' : `${e.reply_rate_pct}% reply rate`;
+      return {
+        tone: sev,
+        icon: Megaphone,
+        title: 'Outreach can invite more responses',
+        body: `${e.candidates_contacted} candidates contacted, ${e.replies} replies, and ${replyRate.toLowerCase()}; ${e.awaiting_reply_over_3d} have waited over 3 days. Refining the message and follow-up can improve engagement.`,
+        candidates: [],
+      };
+    }
+    case 'interview_reliability': {
+      const e = f.evidence as {
+        total: number;
+        cancelled: number;
+        rescheduled: number;
+        disruption_pct: number;
+        unconfirmed_upcoming: number;
+      };
+      return {
+        tone: sev,
+        icon: Calendar,
+        title: 'Interview coordination can be more reliable',
+        body: `${e.cancelled} cancelled and ${e.rescheduled} rescheduled across ${e.total} interviews (${e.disruption_pct}% disrupted), with ${e.unconfirmed_upcoming} upcoming unconfirmed. Earlier confirmation can protect the schedule.`,
+        candidates: [],
+      };
+    }
+    case 'rejection_concentration': {
+      const e = f.evidence as {
+        dominant_reason: string;
+        count: number;
+        share_pct: number;
+        total_rejections: number;
+      };
+      return {
+        tone: sev,
+        icon: Scale,
+        title: 'Rejection patterns can sharpen the search',
+        body: `${e.count} of ${e.total_rejections} rejections (${e.share_pct}%) cite “${e.dominant_reason}”. Applying that signal earlier can improve sourcing and screening alignment.`,
+        candidates: [],
+      };
+    }
     default:
-      return { tone: sev, icon: AlertTriangle, title: f.id, body: '', candidates: [] };
+      return { tone: sev, icon: AlertTriangle, title: 'Review this hiring signal', body: 'Gio found an opportunity to improve progress. Review the suggested next action.', candidates: [] };
   }
 }
 
@@ -993,7 +1056,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
         </div>
       )}
 
-      {/* 4 · Needs attention */}
+      {/* 4 · Opportunities to improve */}
       {ranked.length > 0 && (
         <div style={{ marginTop: 30 }}>
           <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
