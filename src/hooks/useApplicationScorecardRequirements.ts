@@ -46,6 +46,23 @@ export function useApplicationScorecardRequirements(
       }
       setLoading(true)
 
+      let reachedPosition = currentStagePosition
+      if (reachedPosition == null) {
+        const { data: association } = await supabase
+          .from('job_candidate_associations')
+          .select('current_stage_id')
+          .eq('id', associationId)
+          .maybeSingle()
+        if (association?.current_stage_id) {
+          const { data: currentStage } = await supabase
+            .from('job_hiring_stages')
+            .select('position')
+            .eq('id', association.current_stage_id)
+            .maybeSingle()
+          reachedPosition = currentStage?.position ?? null
+        }
+      }
+
       // 1. Stages of this job the candidate has reached.
       const { data: stageRows } = await supabase
         .from('job_hiring_stages')
@@ -54,7 +71,7 @@ export function useApplicationScorecardRequirements(
         .order('position', { ascending: true })
 
       const reached = (stageRows || []).filter((s: any) =>
-        currentStagePosition == null ? true : (s.position ?? 0) <= currentStagePosition,
+        reachedPosition == null ? true : (s.position ?? 0) <= reachedPosition,
       ) as any[]
       const stageIds = reached.map((s) => s.id as string)
       if (stageIds.length === 0) {

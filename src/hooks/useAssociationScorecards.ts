@@ -82,7 +82,7 @@ export function useAssociationScorecards(
 
       // Author info (one lookup per distinct user)
       const authorIds = Array.from(new Set(rows.map((s) => s.created_by).filter(Boolean)));
-      const authorById: Record<string, { name: string | null; email: string | null }> = {};
+      const authorById: Record<string, { name: string | null; email: string | null; title: string | null }> = {};
       await Promise.all(
         authorIds.map(async (uid) => {
           try {
@@ -93,17 +93,41 @@ export function useAssociationScorecards(
             authorById[uid] = {
               name: a?.first_name && a?.last_name ? `${a.first_name} ${a.last_name}` : null,
               email: a?.email || null,
+              title: null,
             };
           } catch {
-            authorById[uid] = { name: null, email: null };
+            authorById[uid] = { name: null, email: null, title: null };
           }
         }),
       );
+
+      if (authorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, title")
+          .in("user_id", authorIds);
+        for (const profile of (profiles || []) as any[]) {
+          if (authorById[profile.user_id]) authorById[profile.user_id].title = profile.title || null;
+        }
+      }
+
+      const stageById: Record<string, string> = {};
+      if (stageIds.length > 0) {
+        const { data: stages } = await supabase
+          .from("job_hiring_stages")
+          .select("id, custom_stage_name, job_stages(stage_name)")
+          .in("id", stageIds);
+        for (const stage of (stages || []) as any[]) {
+          stageById[stage.id] = stage.custom_stage_name || stage.job_stages?.stage_name || "Interview";
+        }
+      }
 
       const withAuthors = rows.map((s) => ({
         ...s,
         author_name: authorById[s.created_by]?.name ?? null,
         author_email: authorById[s.created_by]?.email ?? null,
+        author_title: authorById[s.created_by]?.title ?? null,
+        stage_name: stageById[s.stage_instance_id] ?? "Interview",
         criterion_scores: responsesByScorecard[s.id] || [],
       })) as ScorecardWithAuthor[];
 

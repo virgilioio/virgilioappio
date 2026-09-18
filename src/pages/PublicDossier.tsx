@@ -18,6 +18,7 @@ import { printDossier } from '@/components/candidates/insights/dossier/printDoss
 import type { FitAnalysis } from '@/hooks/useCandidateFitInsights'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import type { DossierScorecard } from '@/components/candidates/insights/dossier/dossierScorecards'
 import { supabaseUrl, supabaseAnonKey } from '@/integrations/supabase/client'
 
 /**
@@ -61,6 +62,7 @@ export interface PublicDossierPayload {
   analysis: PublicFitAnalysis
   work_experience: CandidateWorkExperience[]
   education: CandidateEducation[]
+  scorecards: DossierScorecard[]
   feedback: { decision: string; created_at: string } | null
 }
 
@@ -187,6 +189,7 @@ export default function PublicDossier() {
       candidateSkills: live.candidate.skills,
       workExperience: live.work_experience,
       education: live.education,
+      scorecards: live.scorecards,
       outputLanguageName: null,
       clientReady: true,
       includeContact: false,

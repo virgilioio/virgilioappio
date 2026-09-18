@@ -24,6 +24,8 @@ export interface ScorecardWithAuthor {
   updated_at: string;
   author_name: string | null;
   author_email: string | null;
+  author_title?: string | null;
+  stage_name?: string | null;
   // AI draft fields
   is_ai_draft?: boolean;
   ai_suggested_rating?: string | null;
