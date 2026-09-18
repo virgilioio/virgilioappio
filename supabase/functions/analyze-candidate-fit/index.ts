@@ -387,7 +387,17 @@ serve(async (req) => {
     // Job context
     let jobContext = `JOB: ${job.title}`;
     if (job.description) jobContext += `\nDescription: ${job.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()}`;
-    if (job.skills?.length) jobContext += `\nRequired Skills: ${job.skills.join(", ")}`;
+    // The chips adjudicate this exact list, in this exact order, with this spelling.
+    const requiredSkills: string[] = (
+      Array.isArray(job.must_have_skills) && job.must_have_skills.length
+        ? job.must_have_skills
+        : Array.isArray(job.skills) ? job.skills : []
+    )
+      .map((skill: unknown) => String(skill || "").trim())
+      .filter((skill: string) => skill.length > 0);
+    if (requiredSkills.length) {
+      jobContext += `\nREQUIRED SKILLS (adjudicate each one, in this order, using this spelling): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill}`).join(" | ")}`;
+    }
     if (job.salary_min || job.salary_max) {
       jobContext += `\nSalary Range: ${job.currency || "USD"} ${job.salary_min || "?"} - ${job.salary_max || "?"}`;
     }
