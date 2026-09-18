@@ -237,7 +237,11 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
       refreshInsights()
     }
   }, [isLoading, insights?.analysis, isStale, jdText])
-  const experienceStats = useMemo(() => computeExperienceStats(workExperience), [workExperience])
+  const salaryExpectation = useMemo(
+    () => formatSalaryExpectation(candidate as Parameters<typeof formatSalaryExpectation>[0]),
+    [candidate],
+  )
+  const experienceStats = useMemo(() => computeExperienceStats(workExperience, salaryExpectation), [workExperience, salaryExpectation])
   // Narration is driven while a request is open; step 5 never completes early.
   const { stepIndex, progress } = useGioFitNarration(isRefreshing)
 
