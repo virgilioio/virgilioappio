@@ -9,7 +9,6 @@ import {
   CircleDashed,
   Download,
   GraduationCap,
-  Loader2,
   MapPin,
   Minus,
   RefreshCw,
