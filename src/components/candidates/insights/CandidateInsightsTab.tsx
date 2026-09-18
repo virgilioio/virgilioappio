@@ -10,6 +10,7 @@ import {
   Download,
   GraduationCap,
   Loader2,
+  MapPin,
   Minus,
   RefreshCw,
   Sparkles,
@@ -189,7 +190,7 @@ function EvidenceItem({ kind, children }: { kind: 'match' | 'gap'; children: str
   )
 }
 
-function DimensionRow({ dimension, colorIndex, open, onToggle }: { dimension: FitDimension; colorIndex: number; open: boolean; onToggle: () => void }) {
+function DimensionRow({ dimension, colorIndex, open, clientReady, onToggle }: { dimension: FitDimension; colorIndex: number; open: boolean; clientReady: boolean; onToggle: () => void }) {
   const score = dimension.score
   const weight = Number(dimension.weight) || 0
   const contribution = score === null ? null : score * weight / 100
@@ -210,9 +211,11 @@ function DimensionRow({ dimension, colorIndex, open, onToggle }: { dimension: Fi
           <div className="h-[5px] min-w-0 flex-1 overflow-hidden rounded-full bg-fit-hairline">
             {score !== null && <div className={cn('h-full rounded-full', color.fill)} style={{ width: `${Math.max(0, Math.min(100, score))}%` }} />}
           </div>
-          <span className={cn('w-[92px] text-right text-[11px] tabular-nums', score === null ? 'text-fit-warning' : 'text-fit-subtle')}>
-            {score === null ? `${weight}% excluded` : `${weight}% · ${contribution?.toFixed(1)} pts`}
-          </span>
+          {!clientReady && (
+            <span className={cn('w-[92px] text-right text-[11px] tabular-nums', score === null ? 'text-fit-warning' : 'text-fit-subtle')}>
+              {score === null ? `${weight}% excluded` : `${weight}% · ${contribution?.toFixed(1)} pts`}
+            </span>
+          )}
         </div>
       </button>
       {open && (
@@ -221,9 +224,9 @@ function DimensionRow({ dimension, colorIndex, open, onToggle }: { dimension: Fi
             <div className="min-w-0 flex-1">
               {score === null ? (
                 <Badge tone="yellow" size="xs" shape="square">Not assessed</Badge>
-              ) : (
+              ) : !clientReady ? (
                 <p className="text-[11px] tabular-nums text-fit-subtle">{score} × {weight}% = {contribution?.toFixed(1)} pts</p>
-              )}
+              ) : null}
             </div>
             {score !== null && <span className="text-right text-[11px] text-fit-subtle">{matches.length} matches · {gaps.length} gaps</span>}
           </div>
@@ -238,14 +241,14 @@ function DimensionRow({ dimension, colorIndex, open, onToggle }: { dimension: Fi
   )
 }
 
-function ValidationPoints({ points }: { points: ValidationPoint[] }) {
+function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; clientReady: boolean }) {
   if (!points.length) return null
   const priorityTone = { high: 'red', medium: 'yellow', low: 'neutral' } as const
   return (
     <section className={cardClass}>
       <div className="border-b border-fit-hairline px-4 py-4">
-        <h3 className={sectionHeadingClass}><CheckCircle2 className="h-3 w-3" /> Validation points</h3>
-        <p className="mt-2 text-[12px] leading-[1.5] text-fit-muted">What the model could not settle, and where to settle it.</p>
+        <h3 className={sectionHeadingClass}><CheckCircle2 className="h-3 w-3" /> {clientReady ? 'Still to verify' : 'Validation points'}</h3>
+        <p className="mt-2 text-[12px] leading-[1.5] text-fit-muted">{clientReady ? 'Questions to settle together during the next conversation.' : 'What the model could not settle, and where to settle it.'}</p>
       </div>
       <div className="divide-y divide-fit-hairline px-4">
         {points.map((point, index) => (
@@ -253,9 +256,9 @@ function ValidationPoints({ points }: { points: ValidationPoint[] }) {
             <span className="mt-0.5 h-[15px] w-[15px] shrink-0 rounded-full border border-fit-null" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-[12.5px] font-semibold leading-[1.45] text-fit-ink">{point.question}</p>
-              {point.reason && <p className="mt-1 text-[11.5px] leading-[1.45] text-fit-subtle">{point.reason}</p>}
+              {point.reason && (!clientReady || !/points?|weight|score|calculation|rubric/i.test(point.reason)) && <p className="mt-1 text-[11.5px] leading-[1.45] text-fit-subtle">{point.reason}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Badge tone={priorityTone[point.priority]} size="xs" shape="square" className="capitalize">{point.priority}</Badge>
+                {!clientReady && <Badge tone={priorityTone[point.priority]} size="xs" shape="square" className="capitalize">{point.priority}</Badge>}
                 {point.suggested_stage && <span className="text-[11.5px] text-fit-muted">→ {point.suggested_stage}</span>}
               </div>
             </div>
@@ -269,6 +272,7 @@ function ValidationPoints({ points }: { points: ValidationPoint[] }) {
 export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, onExportPdf }: CandidateInsightsTabProps) {
   const { insights, isLoading, isRefreshing, refreshInsights } = useCandidateFitInsights(candidateId, jobId)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
   const hasTriggered = useRef(false)
   const jdText = stripHtml(jobDescription)
 
@@ -330,48 +334,63 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const recomputedScore = scoredWeight > 0 ? contributionTotal * 100 / scoredWeight : null
   const scoreReconciles = recomputedScore !== null && Math.round(recomputedScore) === Math.round(score)
   const nullDimensions = dimensions.filter((dimension) => dimension.score === null)
+  const clientReady = viewMode === 'client'
+  const visibleDimensions = clientReady
+    ? dimensions.filter((dimension) => !/salary|compensation/i.test(dimension.name))
+    : dimensions
+  const visibleValidationPoints = clientReady
+    ? (analysis.validation_points || []).filter((point) => !/salary|compensation|pay|remuneration/i.test(`${point.question} ${point.reason}`))
+    : (analysis.validation_points || [])
 
   return (
     <div className="space-y-3.5">
-      <section className={cn(cardClass, 'px-5 py-5 sm:px-6')}>
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+      <section className={cn(cardClass, 'p-[22px]')}>
+        <div className="flex flex-col items-start gap-6 sm:flex-row">
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 font-inter text-[10px] font-semibold uppercase tracking-[0.1em] text-virgilio-purple">
               <Sparkles className="h-3 w-3" /> Gio dossier · prepared for {asString(job?.title)}
             </p>
-            <h2 className="mt-2 font-poppins text-[26px] font-semibold leading-tight tracking-normal text-fit-ink">
+            <h2 className="font-poppins text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] text-fit-ink">
               {asString(candidate?.candidate_name)}<span className="text-fit-lilac">.</span>
             </h2>
-            {roleLine && <p className="mt-1 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
-            {location && <p className="mt-2 text-[12px] text-fit-muted">{location}</p>}
+            {roleLine && <p className="mt-1.5 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
+            {location && <p className="mt-2 flex items-center gap-1.5 text-[12px] text-fit-muted"><MapPin className="h-3 w-3 text-fit-subtle" />{location}</p>}
           </div>
-          <div className="flex shrink-0 items-end gap-3 sm:justify-end">
-            <div className="text-right">
-              <p className="font-inter text-[10px] font-semibold uppercase tracking-[0.1em] text-fit-subtle">Gio fit</p>
-              <p className="font-poppins text-[44px] font-semibold leading-none tracking-normal text-virgilio-purple">{Math.round(score)}</p>
-            </div>
-            <div className="pb-1">
-              <p className="font-poppins text-[13px] font-semibold text-fit-ink">{getScoreBand(score)}</p>
-              <p className="mt-0.5 text-[11.5px] capitalize text-fit-subtle">{analysis.confidence} confidence</p>
+          <div className="ml-auto shrink-0 text-right">
+            <p className="font-inter text-[10px] font-semibold uppercase tracking-[0.1em] text-fit-subtle">Gio fit</p>
+            <div className="mt-1 flex items-end justify-end gap-3">
+              <p className="font-poppins text-[44px] font-semibold leading-none tracking-[-0.04em] text-virgilio-purple">{Math.round(score)}</p>
+              <div className="pb-[3px] text-left">
+                <p className="font-poppins text-[13px] font-semibold text-fit-ink">{getScoreBand(score)} fit</p>
+                <p className="mt-0.5 text-[11px] capitalize text-fit-subtle">{analysis.confidence} confidence</p>
+              </div>
             </div>
           </div>
         </div>
-        <div className="mt-5 flex flex-col gap-3 border-t border-fit-hairline pt-4 xl:flex-row xl:items-center">
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          {analysis.data_sources_used.map((source) => (
+            <span key={`used-${source}`} className="inline-flex items-center gap-1 rounded-md bg-fit-chip px-2 py-[3px] text-[11px] font-medium text-fit-muted"><Check className="h-3 w-3" />{source.replace(/_/g, ' ')}</span>
+          ))}
+          {analysis.data_sources_missing.map((source) => (
+            <span key={`missing-${source}`} className="inline-flex items-center gap-1 rounded-md bg-fit-warning-soft px-2 py-[3px] text-[11px] font-medium text-fit-warning"><Minus className="h-3 w-3" />{source.replace(/_/g, ' ')}</span>
+          ))}
+          <p className="ml-auto shrink-0 text-[11.5px] text-fit-subtle">v{insights.version}{insights.generatedAt ? ` · updated ${formatDistanceToNow(new Date(insights.generatedAt), { addSuffix: true })}` : ''}</p>
+        </div>
+        <div className="mt-[18px] flex flex-nowrap items-center gap-2.5 overflow-x-auto border-t border-fit-hairline pt-4 scrollbar-none">
+          <div className="flex shrink-0 rounded-lg bg-fit-chip p-[3px]" role="group" aria-label="Dossier view">
+            {(['internal', 'client'] as const).map((mode) => (
+              <Button key={mode} type="button" variant="ghost" size="xs" aria-pressed={viewMode === mode} onClick={() => setViewMode(mode)} className={cn('h-[26px] rounded-md px-3 text-[12px]', viewMode === mode ? 'border border-fit-row-border bg-surface-primary font-semibold text-fit-ink shadow-[0_1px_2px_rgba(13,13,9,0.08)] hover:bg-surface-primary' : 'font-medium text-fit-subtle')}>
+                {mode === 'internal' ? 'Internal' : 'Client-ready'}
+              </Button>
+            ))}
+          </div>
+          <p className="min-w-0 flex-1 truncate text-[11.5px] text-fit-subtle">
+            {clientReady ? 'Scoring mechanics and salary are hidden. This is what the client sees.' : 'Full view with weights, nulls, and validation priorities.'}
+          </p>
           <div className="flex shrink-0 items-center gap-2">
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
             <Button variant="secondary" size="sm" icon={Download} onClick={onExportPdf}>Export PDF</Button>
           </div>
-          <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-            {analysis.data_sources_used.map((source) => (
-              <span key={`used-${source}`} className="inline-flex items-center gap-1 rounded-md bg-fit-chip px-2 py-[3px] text-[11px] font-medium text-fit-muted"><Check className="h-3 w-3" />{source.replace(/_/g, ' ')}</span>
-            ))}
-            {analysis.data_sources_missing.map((source) => (
-              <span key={`missing-${source}`} className="inline-flex items-center gap-1 rounded-md bg-fit-warning-soft px-2 py-[3px] text-[11px] font-medium text-fit-warning"><Minus className="h-3 w-3" />{source.replace(/_/g, ' ')}</span>
-            ))}
-          </div>
-          <p className="shrink-0 text-[11.5px] text-fit-subtle">
-            v{insights.version}{insights.generatedAt ? ` · updated ${formatDistanceToNow(new Date(insights.generatedAt), { addSuffix: true })}` : ''}
-          </p>
         </div>
       </section>
 
@@ -387,7 +406,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                     {executiveSplit ? (
                       <div className="grid gap-2.5 sm:grid-cols-2">
                         <div className="rounded-lg border border-fit-match-border bg-fit-match-panel p-3"><p className="text-[10.5px] font-semibold uppercase text-fit-match-dark">Strongest signal</p><p className="mt-1.5 text-[12px] leading-[1.55] text-fit-match-copy">{executiveSplit.strongest}</p></div>
-                        <div className="rounded-lg border border-fit-risk-border bg-fit-risk-panel p-3"><p className="text-[10.5px] font-semibold uppercase text-fit-risk-label">Biggest risk</p><p className="mt-1.5 text-[12px] leading-[1.55] text-fit-risk-copy">{executiveSplit.risk}</p></div>
+                        {!clientReady && <div className="rounded-lg border border-fit-risk-border bg-fit-risk-panel p-3"><p className="text-[10.5px] font-semibold uppercase text-fit-risk-label">Biggest risk</p><p className="mt-1.5 text-[12px] leading-[1.55] text-fit-risk-copy">{executiveSplit.risk}</p></div>}
                       </div>
                     ) : (
                       <p className="text-[12.5px] leading-[1.6] text-fit-muted">{analysis.executive_summary}</p>
@@ -450,10 +469,13 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           <section className={cardClass}>
             <div className="border-b border-fit-hairline px-4 py-4">
               <h3 className={sectionHeadingClass}><BarChart3 className="h-3 w-3" /> Dimension breakdown</h3>
-              <p className="mt-2 text-[12px] leading-[1.5] text-fit-muted">Seven dimensions, weighted for this role. Open a row for its matches and gaps.</p>
+              <p className="mt-2 text-[12px] leading-[1.5] text-fit-muted">{clientReady ? 'Open a row for the evidence behind this assessment.' : `${dimensions.length} dimensions, weighted for this role. Open a row for its matches and gaps.`}</p>
             </div>
-            <div>{dimensions.map((dimension, index) => <DimensionRow key={`${dimension.name}-${index}`} dimension={dimension} colorIndex={index} open={openDimension === index} onToggle={() => setOpenDimension(openDimension === index ? null : index)} />)}</div>
-            <div className="bg-fit-paper px-4 py-3.5">
+            <div>{visibleDimensions.map((dimension) => {
+              const payloadIndex = dimensions.indexOf(dimension)
+              return <DimensionRow key={`${dimension.name}-${payloadIndex}`} dimension={dimension} colorIndex={payloadIndex} clientReady={clientReady} open={openDimension === payloadIndex} onToggle={() => setOpenDimension(openDimension === payloadIndex ? null : payloadIndex)} />
+            })}</div>
+            {!clientReady && <div className="bg-fit-paper px-4 py-3.5">
               <div className="flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Weighted mean of scored dimensions</span><span className="text-[11.5px] tabular-nums text-fit-subtle">{contributionTotal.toFixed(1)} / {scoredWeight}</span><span className="font-poppins text-[15px] font-semibold tabular-nums text-virgilio-purple">{Math.round(score)}</span></div>
               {!scoreReconciles && (
                 <p className="mt-2 rounded-md border border-fit-risk-border bg-fit-warning-soft px-2 py-1.5 text-[11px] leading-[1.45] text-fit-warning">
@@ -463,9 +485,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 </p>
               )}
               {(nullDimensions.length > 0 || score > 80) && <p className="mt-2 text-[11px] leading-[1.45] text-fit-subtle">{[...nullDimensions.map((dimension) => `${dimension.name} is nulled — its ${dimension.weight} points are excluded rather than guessed.`), ...(score > 80 ? ['Scores above 80 require no unresolved must-have gaps.'] : [])].join(' ')}</p>}
-            </div>
+            </div>}
           </section>
-          <ValidationPoints points={analysis.validation_points || []} />
+          <ValidationPoints points={visibleValidationPoints} clientReady={clientReady} />
         </aside>
       </div>
     </div>
