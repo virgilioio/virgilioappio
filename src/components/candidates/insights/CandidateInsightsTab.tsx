@@ -196,6 +196,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
+  const [exportOpen, setExportOpen] = useState(false)
   const hasTriggered = useRef(false)
   const jdText = stripHtml(jobDescription)
 
