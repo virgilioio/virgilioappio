@@ -290,11 +290,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     }
   }
 
-  const candidateName = asString(candidate?.candidate_name) || 'Candidate'
   const jobTitle = asString(job?.title)
   const contactItems = [asString(candidate?.email), asString(candidate?.phone), asString(candidate?.linkedin_url)].filter((item): item is string => !!item)
   const preparedBy = asString((job?.organization as { name?: string } | null | undefined)?.name)
-  const appliedLanguage = insights.appliedOutputLanguage || insights.resolvedOutputLanguage
   const buildExportData = ({ clientReady: exportClientReady, includeContact, includeEvidence, includeValidation, pageSize }: DossierExportOptions): DossierPrintProps => ({
     analysis,
     score,
