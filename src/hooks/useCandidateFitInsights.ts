@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
-import { useState } from 'react'
-import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
+import { useCallback, useRef, useState } from 'react'
+import { requestFitAnalysis } from '@/utils/triggerFitAnalysis'
 
 export interface FitDimension {
   name: string
