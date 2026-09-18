@@ -23,6 +23,20 @@ import type { CandidateWorkExperience } from '@/components/candidates/CandidateW
 import { NoJobDescriptionCard } from './NoJobDescriptionCard'
 import { GioFitLanguageControl, GioFitLanguageProvenance } from './GioFitLanguageControl'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
+import { GioFitExportDialog } from './dossier/GioFitExportDialog'
+import type { DossierPrintProps } from './dossier/DossierPrintDocument'
+import {
+  asString,
+  asStringArray,
+  buildSkillGroups,
+  computeExperienceStats,
+  formatDate,
+  formatDuration,
+  getScoreBand,
+  splitExecutiveSummary,
+  stripHtml,
+} from './dossier/dossierData'
+import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import { cn } from '@/lib/utils'
 
 interface CandidateInsightsTabProps {
