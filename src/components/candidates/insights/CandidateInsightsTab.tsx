@@ -378,25 +378,57 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             </div>
           )}
 
-          {(skillGroups.evidenced.length > 0 || skillGroups.notEvidenced.length > 0 || skillGroups.additional.length > 0) && (
+          {(skillGroups.evidenced.length > 0 || skillGroups.partly.length > 0 || skillGroups.notEvidenced.length > 0 || skillGroups.additional.length > 0) && (
             <div className="border-t border-fit-hairline p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className={sectionHeadingClass}><Sparkles className="h-3 w-3" /> Identified skills</h3>
-                {requiredSkills.length > 0 && <span className="text-[11.5px] text-fit-subtle">{skillGroups.evidenced.length} of {requiredSkills.length} required skills evidenced</span>}
+                {requiredSkills.length > 0 && (
+                  <span className="text-[11.5px] text-fit-subtle">
+                    {skillGroups.hasVerdicts
+                      ? `${skillGroups.evidenced.length} evidenced · ${skillGroups.partly.length} partly · ${skillGroups.notEvidenced.length} not evidenced`
+                      : `${skillGroups.evidenced.length} of ${requiredSkills.length} required skills evidenced`}
+                  </span>
+                )}
               </div>
               <div className="mt-4 space-y-3">
                 {[
                   { label: 'Required and evidenced', items: skillGroups.evidenced, className: 'border-fit-skill-evidenced-border bg-fit-skill-evidenced-bg text-fit-skill-evidenced-text', Icon: Check },
+                  { label: 'Required, partly evidenced', items: skillGroups.partly, className: 'border-fit-row-border bg-fit-paper text-fit-ink', Icon: CircleDashed },
                   { label: 'Required, not evidenced', items: skillGroups.notEvidenced, className: 'border-fit-risk-border bg-fit-warning-soft text-fit-risk-copy', Icon: Minus },
-                  { label: 'Additional — beyond the job spec', items: skillGroups.additional, className: 'border-fit-row-border bg-fit-paper text-fit-muted', Icon: null },
                 ].filter((group) => group.items.length > 0).map((group) => (
                   <div key={group.label} className="grid gap-2 sm:grid-cols-[190px_minmax(0,1fr)] sm:gap-3">
                     <p className="pt-1 text-[11.5px] font-medium text-fit-muted">{group.label}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {group.items.map((skill) => <span key={`${group.label}-${skill}`} className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium', group.className)}>{group.Icon && <group.Icon className="h-3 w-3" />}{skill}</span>)}
+                      {group.items.map((entry) => {
+                        const chip = (
+                          <span className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium', group.className)}>
+                            {group.Icon && <group.Icon className="h-3 w-3" />}{entry.skill}
+                          </span>
+                        )
+                        if (!entry.evidence) return <span key={`${group.label}-${entry.skill}`}>{chip}</span>
+                        return (
+                          <Tooltip key={`${group.label}-${entry.skill}`}>
+                            <TooltipTrigger asChild><span className="cursor-help">{chip}</span></TooltipTrigger>
+                            <TooltipContent className="max-w-[280px]">
+                              <p className="text-[11.5px] leading-relaxed">“{entry.evidence}”</p>
+                              {entry.source && <p className="mt-1 text-[10.5px] opacity-70">{entry.source}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
+                {skillGroups.additional.length > 0 && (
+                  <div className="grid gap-2 sm:grid-cols-[190px_minmax(0,1fr)] sm:gap-3">
+                    <p className="pt-1 text-[11.5px] font-medium text-fit-muted">Additional — beyond the job spec</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {skillGroups.additional.map((skill) => (
+                        <span key={`additional-${skill}`} className="inline-flex items-center rounded-md border border-fit-row-border bg-fit-paper px-2 py-1 text-[11px] font-medium text-fit-muted">{skill}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
