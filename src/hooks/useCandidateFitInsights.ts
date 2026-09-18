@@ -146,16 +146,53 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
     refetchOnMount: false,
   })
 
-  const refreshInsights = async () => {
+  const refreshInsights = useCallback(async () => {
     if (!candidateId || !jobId) return
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    setGenerationError(null)
+    setIsBlocked(false)
+    setIsDeferred(false)
     setIsRefreshing(true)
     try {
-      await triggerFitAnalysis(candidateId, jobId)
-      await queryClient.invalidateQueries({ queryKey })
+      // A 202 means enrichment is still landing. Keep the loading state and poll;
+      // a deferral is never surfaced as an error.
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const status = await requestFitAnalysis(candidateId, jobId, controller.signal)
+        if (status === 'no_job_description') {
+          setIsBlocked(true)
+          return
+        }
+        if (status === 'ok') {
+          setIsDeferred(false)
+          await queryClient.invalidateQueries({ queryKey })
+          return
+        }
+        setIsDeferred(true)
+        await new Promise((resolve) => setTimeout(resolve, 6000))
+        if (controller.signal.aborted) return
+      }
+      setGenerationError('deferred')
+    } catch (error) {
+      // Cancelling restores the previous dossier untouched — not a failure.
+      if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return
+      setGenerationError(error instanceof Error ? error.message : 'The assessment could not be completed')
+      throw error
     } finally {
+      if (abortRef.current === controller) abortRef.current = null
       setIsRefreshing(false)
+      setIsDeferred(false)
     }
-  }
+  }, [candidateId, jobId, queryClient])
+
+  /** Aborts an in-flight run. Stored ai_fit_* columns are never touched by a cancel. */
+  const cancelRefresh = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setIsRefreshing(false)
+    setIsDeferred(false)
+  }, [])
 
   const updateLanguagePreferences = async (outputLanguage: string | null, keepProperNouns: boolean) => {
     if (!data?.associationId) throw new Error('Candidate association is not available')
