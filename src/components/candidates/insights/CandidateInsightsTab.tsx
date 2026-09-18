@@ -10,7 +10,6 @@ import {
   Download,
   GraduationCap,
   HelpCircle,
-  History,
   Loader2,
   Minus,
   RefreshCw,
@@ -309,7 +308,18 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
       </div>
     )
   }
-  if (!insights?.analysis || insights.score === null) return null
+  if (!insights?.analysis || insights.score === null) {
+    return (
+      <div className={cn(cardClass, 'flex min-h-[260px] flex-col items-center justify-center gap-3 px-6 text-center')}>
+        <Sparkles className="h-6 w-6 text-virgilio-purple" />
+        <div>
+          <p className="font-poppins text-[14px] font-semibold text-fit-ink">No Gio Fit analysis yet</p>
+          <p className="mt-1 text-[12px] text-fit-muted">Generate the dossier from the candidate and job information already on file.</p>
+        </div>
+        <Button variant="purple" size="md" icon={Sparkles} loading={isRefreshing} onClick={refreshInsights}>Generate insights</Button>
+      </div>
+    )
+  }
 
   const { analysis } = insights
   const score = insights.score
@@ -328,8 +338,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const scoredDimensions = dimensions.filter((dimension) => dimension.score !== null)
   const scoredWeight = scoredDimensions.reduce((sum, dimension) => sum + (Number(dimension.weight) || 0), 0)
   const contributionTotal = scoredDimensions.reduce((sum, dimension) => sum + (Number(dimension.score) * (Number(dimension.weight) || 0) / 100), 0)
+  const recomputedScore = scoredWeight > 0 ? contributionTotal * 100 / scoredWeight : score
   const nullDimensions = dimensions.filter((dimension) => dimension.score === null)
-  const unresolvedMustHave = dimensions.some((dimension) => /skills alignment/i.test(dimension.name) && (dimension.gaps?.length || 0) > 0)
 
   return (
     <div className="space-y-3.5">
@@ -462,8 +472,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             </div>
             <div>{dimensions.map((dimension, index) => <DimensionRow key={`${dimension.name}-${index}`} dimension={dimension} colorIndex={index} open={openDimension === index} onToggle={() => setOpenDimension(openDimension === index ? null : index)} />)}</div>
             <div className="bg-fit-paper px-4 py-3.5">
-              <div className="flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Weighted mean of scored dimensions</span><span className="text-[11.5px] tabular-nums text-fit-subtle">{contributionTotal.toFixed(1)} / {scoredWeight}</span><span className="font-poppins text-[15px] font-semibold tabular-nums text-virgilio-purple">{Math.round(score)}</span></div>
-              {(nullDimensions.length > 0 || (score > 80 && unresolvedMustHave)) && <p className="mt-2 text-[11px] leading-[1.45] text-fit-subtle">{[...nullDimensions.map((dimension) => `${dimension.name} is nulled — its ${dimension.weight} points are excluded rather than guessed.`), ...(score > 80 && unresolvedMustHave ? ['Scores above 80 require no unresolved must-have gaps.'] : [])].join(' ')}</p>}
+              <div className="flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Weighted mean of scored dimensions</span><span className="text-[11.5px] tabular-nums text-fit-subtle">{contributionTotal.toFixed(1)} / {scoredWeight}</span><span className="font-poppins text-[15px] font-semibold tabular-nums text-virgilio-purple">{Math.round(recomputedScore)}</span></div>
+              {(nullDimensions.length > 0 || score > 80) && <p className="mt-2 text-[11px] leading-[1.45] text-fit-subtle">{[...nullDimensions.map((dimension) => `${dimension.name} is nulled — its ${dimension.weight} points are excluded rather than guessed.`), ...(score > 80 ? ['Scores above 80 require no unresolved must-have gaps.'] : [])].join(' ')}</p>}
             </div>
           </section>
           <ValidationPoints points={analysis.validation_points || []} />
