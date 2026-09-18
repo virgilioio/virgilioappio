@@ -34,9 +34,11 @@ import {
   formatDate,
   formatDuration,
   getScoreBand,
+  readSkillEvidence,
   splitExecutiveSummary,
   stripHtml,
 } from './dossier/dossierData'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import { cn } from '@/lib/utils'
 
