@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type WheelEvent } from 'react'
 import { Check, ChevronDown, Languages } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -43,6 +43,14 @@ export function GioFitLanguageControl({ analysis, workspaceLanguage, overrideLan
     return aSource - bSource || a.name.localeCompare(b.name)
   }), [detectedCodes])
 
+  // The candidate sheet locks page scroll, which swallows wheel events aimed at
+  // this portaled popover. Scroll manually on capture so the list always scrolls.
+  const allowWheelScroll = (event: WheelEvent<HTMLElement>) => {
+    const el = event.currentTarget
+    el.scrollTop += event.deltaY
+    event.stopPropagation()
+  }
+
   const apply = async () => {
     setOpen(false)
     try {
@@ -62,8 +70,8 @@ export function GioFitLanguageControl({ analysis, workspaceLanguage, overrideLan
           <ChevronDown className="h-3 w-3 text-fit-null" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={6} className="w-[344px] overflow-hidden rounded-xl border border-virgilio-border bg-surface-primary p-0 shadow-[0_18px_44px_-12px_rgba(13,13,9,0.22),0_2px_6px_rgba(13,13,9,0.05)]">
-        <section className="border-b border-fit-chip bg-fit-paper px-3.5 py-3">
+      <PopoverContent align="end" sideOffset={6} onWheelCapture={allowWheelScroll} className="flex w-[344px] flex-col rounded-xl border border-virgilio-border bg-surface-primary p-0 shadow-[0_18px_44px_-12px_rgba(13,13,9,0.22),0_2px_6px_rgba(13,13,9,0.05)]">
+        <section className="shrink-0 border-b border-fit-chip bg-fit-paper px-3.5 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.09em] text-fit-subtle">Detected in the source</p>
           <div className="mt-2 space-y-[5px]">
             {(detected?.sources || []).map((source, index) => (
@@ -78,10 +86,10 @@ export function GioFitLanguageControl({ analysis, workspaceLanguage, overrideLan
           <p className="mt-2 text-[10.5px] leading-[1.5] text-fit-subtle">Detection is automatic and not editable. Scoring already compares across languages, so this never changes the score.</p>
         </section>
 
-        <section className="px-3.5 pb-2.5 pt-3">
+        <section className="shrink-0 px-3.5 pb-2.5 pt-3">
           <p className="text-[10px] font-semibold uppercase tracking-[0.09em] text-fit-subtle">Gio writes in</p>
           <p className="mt-1 text-[11.5px] leading-[1.5] text-fit-muted">Applies to the profile summary, dossier prose, dimension insights, and validation points.</p>
-          <div className="mt-2 max-h-[186px] space-y-0.5 overflow-y-auto">
+          <div className="mt-2 max-h-[186px] space-y-0.5 overflow-y-auto overscroll-contain" onWheelCapture={allowWheelScroll}>
             <button type="button" onClick={() => setDraftLanguage(null)} className={cn('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-left', draftLanguage === null && 'bg-fit-violet-wash')}>
               <span className="min-w-0 flex-1"><span className="block text-[12.5px] font-medium text-fit-ink">Workspace default</span><span className="block text-[11px] text-fit-subtle">{getGioFitLanguage(workspaceLanguage).name} · set in Settings → Recruiting</span></span>
               {draftLanguage === null && <Check className="h-3.5 w-3.5 text-virgilio-purple" strokeWidth={2.5} />}
@@ -96,12 +104,12 @@ export function GioFitLanguageControl({ analysis, workspaceLanguage, overrideLan
           </div>
         </section>
 
-        <section className="flex items-center gap-3 border-t border-fit-hairline px-3.5 py-2.5">
+        <section className="flex shrink-0 items-center gap-3 border-t border-fit-hairline px-3.5 py-2.5">
           <div className="min-w-0 flex-1"><p className="text-[12px] font-medium text-fit-ink">Keep names and titles as written</p><p className="mt-0.5 text-[11px] leading-[1.45] text-fit-subtle">Companies, schools, and certifications stay in the original — a translated employer name is unsearchable.</p></div>
           <Switch checked={draftKeepProperNouns} onCheckedChange={setDraftKeepProperNouns} className="h-[22px] w-[38px] border-0 [&>span]:h-4 [&>span]:w-4 data-[state=checked]:[&>span]:translate-x-4" aria-label="Keep names and titles as written" />
         </section>
 
-        <footer className="flex items-center gap-3 border-t border-fit-hairline bg-fit-paper px-3.5 py-2.5">
+        <footer className="flex shrink-0 items-center gap-3 border-t border-fit-hairline bg-fit-paper px-3.5 py-2.5">
           <p className="min-w-0 flex-1 text-[10.5px] leading-[1.45] text-fit-subtle">Re-writes the dossier. The score, dimensions, and evidence are unchanged.</p>
           <Button variant={changed ? 'primary' : 'secondary'} size="sm" disabled={!changed || isRewriting} loading={isRewriting} onClick={apply}>{changed ? 'Re-write' : 'Applied'}</Button>
         </footer>
