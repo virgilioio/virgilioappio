@@ -228,7 +228,7 @@ export function ShareDossierMenu({
         </Chip>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>
-            {internalCopy.copied ? 'Copied to clipboard' : 'Copy internal link'}
+            {internalCopy.manual ? 'Press ⌘C to copy' : internalCopy.copied ? 'Copied to clipboard' : 'Copy internal link'}
           </span>
           <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
             Opens in Gio · teammates with access to this job
@@ -241,16 +241,16 @@ export function ShareDossierMenu({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px' }}>
           <Chip tone={live ? 'live' : 'neutral'}>{live ? <Globe size={13} /> : <Users size={13} />}</Chip>
           <span style={{ minWidth: 0, flex: 1 }}>
-            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 600, color: '#1F2230' }}>
+            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 600, color: isRejected || !canPublish ? '#8B8F9E' : '#1F2230' }}>
               Public dossier
             </span>
-            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
+            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, lineHeight: 1.45, color: '#8B8F9E' }}>
               {isLoading && !share ? 'Preparing the link…' : description}
             </span>
           </span>
           <Switch
             checked={live}
-            disabled={isRejected || !share || isLoading}
+            disabled={isRejected || !canPublish || !share || isLoading}
             onChange={(next) => onTogglePublic(next)}
           />
         </div>
