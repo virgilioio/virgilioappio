@@ -498,14 +498,55 @@
   margin-top: 10px;
 }
 
-.gio-scorecard-takeaways p {
+.gio-scorecard-takeaways p,
+.gio-scorecard-takeaways li,
+.gio-scorecard-takeaways blockquote {
   margin: 0 0 7px;
   font-size: 10.5px;
   line-height: 1.55;
   color: #1f2230;
 }
 
-.gio-scorecard-takeaways p:last-child { margin-bottom: 0; }
+.gio-scorecard-takeaways p:last-child,
+.gio-scorecard-takeaways li:last-child { margin-bottom: 0; }
+
+.gio-scorecard-takeaways h1,
+.gio-scorecard-takeaways h2,
+.gio-scorecard-takeaways h3,
+.gio-scorecard-takeaways h4,
+.gio-scorecard-takeaways h5,
+.gio-scorecard-takeaways h6 {
+  margin: 12px 0 5px;
+  font-family: "Poppins", sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #11131c;
+}
+
+.gio-scorecard-takeaways h1:first-child,
+.gio-scorecard-takeaways h2:first-child,
+.gio-scorecard-takeaways h3:first-child { margin-top: 0; }
+
+.gio-scorecard-takeaways ul,
+.gio-scorecard-takeaways ol {
+  margin: 6px 0 9px;
+  padding-left: 18px;
+}
+
+.gio-scorecard-takeaways ul { list-style: disc; }
+.gio-scorecard-takeaways ol { list-style: decimal; }
+.gio-scorecard-takeaways li { margin-bottom: 3px; padding-left: 2px; }
+.gio-scorecard-takeaways strong,
+.gio-scorecard-takeaways b { font-weight: 600; }
+.gio-scorecard-takeaways em,
+.gio-scorecard-takeaways i { font-style: italic; }
+.gio-scorecard-takeaways blockquote {
+  margin-left: 0;
+  padding-left: 10px;
+  border-left: 2px solid #dedde5;
+  color: #5a6072;
+}
 
 .gio-scorecard-areas {
   display: flex;

@@ -266,6 +266,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
       submittedAt: scorecard.updated_at || scorecard.created_at,
       stage: scorecard.stage_name || 'Interview',
       rating,
+      takeawayHtml: scorecard.general_overview || '',
       takeawayParagraphs,
       areas: (scorecard.criterion_scores || []).flatMap((area) => {
         const areaRating = coerceRating(area.rating)

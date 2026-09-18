@@ -18,6 +18,7 @@ import {
 import type { DossierScorecard } from './dossierScorecards'
 import { shortDossierDate } from './dossierScorecards'
 import { ratingLabel } from '@/lib/scorecardRatings'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 export interface DossierPrintProps {
   analysis: FitAnalysis
@@ -357,7 +358,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
               <span className={`gio-scorecard-rating rating-${scorecard.rating}`}>{ratingLabel(scorecard.rating)}</span>
             </div>
             <div className="gio-scorecard-takeaways">
-              {scorecard.takeawayParagraphs.map((paragraph, index) => <p key={`${scorecard.id}-${index}`}>{paragraph}</p>)}
+              <SafeHtml content={scorecard.takeawayHtml || scorecard.takeawayParagraphs.map((paragraph) => `<p>${paragraph}</p>`).join('')} />
             </div>
             {!clientReady && scorecard.areas && scorecard.areas.length > 0 && (
               <div className="gio-scorecard-areas">
