@@ -20,9 +20,13 @@ interface ShareDossierMenuProps {
   isLoading: boolean
   error: string | null
   isRejected: boolean
+  /** Read-only roles may copy the internal link but never publish. */
+  canPublish?: boolean
   candidateFirstName: string
   internalUrl: string
   onTogglePublic: (next: boolean) => void
+  /** The button the menu hangs from — keeps outside-click sane and returns focus. */
+  triggerRef?: React.RefObject<HTMLElement>
 }
 
 const PANEL: React.CSSProperties = {
@@ -116,15 +120,30 @@ function Switch({ checked, disabled, onChange }: { checked: boolean; disabled?: 
 
 function useInlineCopy() {
   const [copied, setCopied] = useState(false)
+  const [manual, setManual] = useState(false)
   const timer = useRef<number | null>(null)
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
-  const copy = async (value: string) => {
-    await copyToClipboardSilent(value)
-    setCopied(true)
+  const copy = async (value: string, selectTarget?: HTMLElement | null) => {
+    const ok = await copyToClipboardSilent(value)
     if (timer.current) window.clearTimeout(timer.current)
+    if (!ok) {
+      // Never fail silently: select the text so the user can copy it by hand.
+      if (selectTarget) {
+        const range = document.createRange()
+        range.selectNodeContents(selectTarget)
+        const selection = window.getSelection()
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+      }
+      setManual(true)
+      timer.current = window.setTimeout(() => setManual(false), 4000)
+      return
+    }
+    setManual(false)
+    setCopied(true)
     timer.current = window.setTimeout(() => setCopied(false), 1600)
   }
-  return { copied, copy }
+  return { copied, manual, copy }
 }
 
 export function ShareDossierMenu({
@@ -134,19 +153,29 @@ export function ShareDossierMenu({
   isLoading,
   error,
   isRejected,
+  canPublish = true,
   candidateFirstName,
   internalUrl,
   onTogglePublic,
+  triggerRef,
 }: ShareDossierMenuProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
+  const urlRef = useRef<HTMLSpanElement | null>(null)
   const internalCopy = useInlineCopy()
   const publicCopy = useInlineCopy()
 
   useEffect(() => {
     if (!open) return
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    const close = () => {
+      onClose()
+      triggerRef?.current?.focus()
+    }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close() }
     const onClick = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) onClose()
+      const target = event.target as Node
+      if (panelRef.current?.contains(target)) return
+      if (triggerRef?.current?.contains(target)) return
+      onClose()
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onClick)
@@ -154,7 +183,7 @@ export function ShareDossierMenu({
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('mousedown', onClick)
     }
-  }, [open, onClose])
+  }, [open, onClose, triggerRef])
 
   if (!open) return null
 
@@ -167,9 +196,11 @@ export function ShareDossierMenu({
 
   const description = isRejected
     ? 'Unavailable while the candidate is rejected'
-    : live
-      ? 'Anyone with the link can view — no Gio account needed'
-      : 'Off — the link resolves to an unavailable page'
+    : !canPublish
+      ? 'You do not have permission to publish this dossier'
+      : live
+        ? 'Anyone with the link can view — no Gio account needed'
+        : 'Off — the link resolves to an unavailable page'
 
   return (
     <div ref={panelRef} style={PANEL}>
@@ -197,7 +228,7 @@ export function ShareDossierMenu({
         </Chip>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>
-            {internalCopy.copied ? 'Copied to clipboard' : 'Copy internal link'}
+            {internalCopy.manual ? 'Press ⌘C to copy' : internalCopy.copied ? 'Copied to clipboard' : 'Copy internal link'}
           </span>
           <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
             Opens in Gio · teammates with access to this job
@@ -210,16 +241,16 @@ export function ShareDossierMenu({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px' }}>
           <Chip tone={live ? 'live' : 'neutral'}>{live ? <Globe size={13} /> : <Users size={13} />}</Chip>
           <span style={{ minWidth: 0, flex: 1 }}>
-            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 600, color: '#1F2230' }}>
+            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 600, color: isRejected || !canPublish ? '#8B8F9E' : '#1F2230' }}>
               Public dossier
             </span>
-            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>
+            <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 11, lineHeight: 1.45, color: '#8B8F9E' }}>
               {isLoading && !share ? 'Preparing the link…' : description}
             </span>
           </span>
           <Switch
             checked={live}
-            disabled={isRejected || !share || isLoading}
+            disabled={isRejected || !canPublish || !share || isLoading}
             onChange={(next) => onTogglePublic(next)}
           />
         </div>
@@ -248,6 +279,7 @@ export function ShareDossierMenu({
           <div style={{ margin: '8px 10px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span
+                ref={urlRef}
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -267,7 +299,7 @@ export function ShareDossierMenu({
               </span>
               <button
                 type="button"
-                onClick={() => void publicCopy.copy(url)}
+                onClick={() => void publicCopy.copy(url, urlRef.current)}
                 style={{
                   border: '1px solid #E0DDD3',
                   background: publicCopy.copied ? '#E4F5EA' : '#fff',
@@ -280,7 +312,7 @@ export function ShareDossierMenu({
                   cursor: 'pointer',
                 }}
               >
-                {publicCopy.copied ? 'Copied' : 'Copy'}
+                {publicCopy.manual ? 'Press ⌘C' : publicCopy.copied ? 'Copied' : 'Copy'}
               </button>
             </div>
             <p style={{ margin: '7px 0 0', fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8B8F9E' }}>

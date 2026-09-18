@@ -28,6 +28,7 @@ import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
 import { buildNarrationSteps, useGioFitNarration } from './loading/GioFitNarration'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
+import { usePermissions } from '@/hooks/usePermissions'
 import { ShareDossierMenu } from '@/components/candidates/insights/ShareDossierMenu'
 import { GioFitExportDialog, type DossierExportOptions } from './dossier/GioFitExportDialog'
 import type { DossierPrintProps } from './dossier/DossierPrintDocument'
@@ -206,6 +207,9 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
   const [exportOpen, setExportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const shareButtonRef = useRef<HTMLButtonElement | null>(null)
+  // Read-only roles may reach the menu and copy the internal link, never publish.
+  const { canEditCandidates } = usePermissions()
   // The share row is created the first time the menu opens — never before.
   const { share, isLoading: shareLoading, error: shareError, setPublic: setSharePublic } = useDossierShare(
     insights?.associationId ?? null,
@@ -387,8 +391,12 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             {needsSkillVerdicts && !isRefreshing && (
               <span className="text-[11.5px] text-fit-subtle">Refresh to update the skill read</span>
             )}
+            <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
+            <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
+            <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
+            {/* Share is the terminal action of this row, and the only primary. */}
             <div className="relative shrink-0">
-              <Button variant="purple" size="sm" icon={Share2} onClick={() => setShareOpen((open) => !open)}>Share with client</Button>
+              <Button ref={shareButtonRef} variant="primary" size="sm" icon={Share2} onClick={() => setShareOpen((open) => !open)}>Share with client</Button>
               <ShareDossierMenu
                 open={shareOpen}
                 onClose={() => setShareOpen(false)}
@@ -396,14 +404,13 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 isLoading={shareLoading}
                 error={shareError}
                 isRejected={Boolean(insights.isRejected)}
+                canPublish={canEditCandidates}
                 candidateFirstName={candidateName.split(' ')[0] || candidateName}
                 internalUrl={`${window.location.origin}/jobs/${jobId}/candidates/${candidateId}?tab=fit`}
                 onTogglePublic={(next) => void setSharePublic(next)}
+                triggerRef={shareButtonRef}
               />
             </div>
-            <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
-            <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
-            <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
           </div>
         </div>
       </section>
