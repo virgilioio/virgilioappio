@@ -81,6 +81,48 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
       const workspaceOutputLanguage = jobRelation?.organization?.default_output_language || 'en'
       const jobOutputLanguage = jobRelation?.output_language || null
       const outputLanguage = assoc.output_language || null
+
+      // Staleness: only real new information about the candidate justifies
+      // spending credits on a regeneration. Timestamps already stored, no new columns.
+      let isStale = false
+      let staleReason: string | null = null
+      const generatedAt = assoc.ai_fit_generated_at
+      if (assoc.ai_fit_analysis && generatedAt) {
+        const generatedMs = new Date(generatedAt).getTime()
+        const newer = (value: string | null | undefined) =>
+          Boolean(value) && new Date(value as string).getTime() > generatedMs
+
+        const [resume, scorecard] = await Promise.all([
+          supabase
+            .from('candidate_attachments')
+            .select('created_at')
+            .eq('candidate_id', candidateId)
+            .eq('is_resume', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from('job_stage_scorecards')
+            .select('updated_at')
+            .eq('candidate_id', candidateId)
+            .eq('job_id', jobId)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ])
+
+        if (newer(assoc.entered_stage_at)) {
+          isStale = true
+          staleReason = 'The candidate moved stage'
+        } else if (newer(scorecard.data?.updated_at)) {
+          isStale = true
+          staleReason = 'A new scorecard was submitted'
+        } else if (newer(resume.data?.created_at)) {
+          isStale = true
+          staleReason = 'A new resume was uploaded'
+        }
+      }
+
       return {
         score: assoc.ai_fit_score,
         analysis: assoc.ai_fit_analysis as unknown as FitAnalysis | null,
