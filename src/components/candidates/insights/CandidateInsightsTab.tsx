@@ -40,7 +40,7 @@ import {
   splitExecutiveSummary,
   stripHtml,
 } from './dossier/dossierData'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import { cn } from '@/lib/utils'
 
@@ -319,6 +319,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   })
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="relative">
       {/* Re-scoring: the previous dossier stays mounted and readable underneath. */}
       {isRescoring && (
