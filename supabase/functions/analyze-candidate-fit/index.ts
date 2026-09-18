@@ -68,6 +68,31 @@ const TOOL_SCHEMA = {
             required: ["question", "reason", "priority", "suggested_stage"],
           },
         },
+        skill_evidence: {
+          type: "array",
+          description: "One entry per skill listed under REQUIRED SKILLS, in the same order and with the job's exact spelling. Never add, drop, merge or rename a skill.",
+          items: {
+            type: "object",
+            properties: {
+              skill: { type: "string", description: "The required skill, copied verbatim from the job's list." },
+              status: {
+                type: "string",
+                enum: ["evidenced", "partial", "not_evidenced"],
+                description: "evidenced = the candidate data directly supports this skill, in any language. partial = adjacent or general experience supports it but the named skill, tool or framework is not itself shown. not_evidenced = nothing in the candidate data supports it.",
+              },
+              evidence: {
+                type: ["string", "null"],
+                description: "For evidenced and partial: a short quote or close paraphrase of the candidate wording relied on, in the source language. Null only when status is not_evidenced.",
+              },
+              source: {
+                type: ["string", "null"],
+                description: "Where the evidence came from: the listed skills, the profile summary, a named role or company, the résumé, or a scorecard. Null only when status is not_evidenced.",
+              },
+            },
+            required: ["skill", "status", "evidence", "source"],
+            additionalProperties: false,
+          },
+        },
         data_sources_used: { type: "array", items: { type: "string" } },
         data_sources_missing: { type: "array", items: { type: "string" } },
         detected_languages: {
@@ -93,7 +118,7 @@ const TOOL_SCHEMA = {
           additionalProperties: false,
         },
       },
-      required: ["overall_score", "confidence", "confidence_reason", "profile_summary", "executive_summary", "dimensions", "validation_points", "data_sources_used", "data_sources_missing", "detected_languages"],
+      required: ["overall_score", "confidence", "confidence_reason", "profile_summary", "executive_summary", "dimensions", "validation_points", "skill_evidence", "data_sources_used", "data_sources_missing", "detected_languages"],
       additionalProperties: false,
     },
   },
@@ -193,7 +218,20 @@ DIMENSIONS TO EVALUATE (use these exact names):
 
 Adjust weights only if the role makes a dimension unusually important. If adjusted, explain why.
 
-For each validation_point, suggest the best interview stage to verify (Phone Screen, Technical Interview, Culture Fit, Final Round, etc.).`;
+For each validation_point, suggest the best interview stage to verify (Phone Screen, Technical Interview, Culture Fit, Final Round, etc.).
+
+PER-SKILL ADJUDICATION (skill_evidence)
+
+The user message lists the job's REQUIRED SKILLS. Return exactly one skill_evidence entry per listed skill, in the same order, with the skill string copied verbatim from that list. Do not add skills the job did not list, do not drop one, do not merge two, do not rename or reword one.
+
+Rule for each skill:
+- evidenced: the candidate data directly supports it. Read everything supplied — listed skills, profile summary, work experience, résumé and scorecards — not just the skills array. Cross-language equivalents count ("Ventas" = "Sales"), as do close variants of the same thing ("Outbound Sales" evidences "Outbound", "B2B sales" evidences "B2B").
+- partial: adjacent or general experience supports the area, but the named skill, tool, method or framework is not itself shown. Selling to enterprise accounts is partial evidence of "Enterprise"; running a full sales cycle is partial evidence of "E2E Sales".
+- not_evidenced: nothing in the supplied data supports it. Named methodologies and tools (MEDDICC, HubSpot, a specific CRM) are not_evidenced unless the candidate data actually names them or an unmistakable equivalent. Do not infer a tool from the fact that the role would normally use one.
+
+Evidence is mandatory for evidenced and partial: quote or closely paraphrase the candidate's own wording, in its source language, and name where it came from. If you cannot point to a specific phrase, the status is not_evidenced. Never invent or embellish a quote.
+
+These verdicts must agree with the Skills Alignment dimension's matches and gaps — they are the same judgement stated per skill.`;
 
 serve(async (req) => {
   const preflight = handlePreflight(req);
@@ -349,7 +387,17 @@ serve(async (req) => {
     // Job context
     let jobContext = `JOB: ${job.title}`;
     if (job.description) jobContext += `\nDescription: ${job.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()}`;
-    if (job.skills?.length) jobContext += `\nRequired Skills: ${job.skills.join(", ")}`;
+    // The chips adjudicate this exact list, in this exact order, with this spelling.
+    const requiredSkills: string[] = (
+      Array.isArray(job.must_have_skills) && job.must_have_skills.length
+        ? job.must_have_skills
+        : Array.isArray(job.skills) ? job.skills : []
+    )
+      .map((skill: unknown) => String(skill || "").trim())
+      .filter((skill: string) => skill.length > 0);
+    if (requiredSkills.length) {
+      jobContext += `\nREQUIRED SKILLS (adjudicate each one, in this order, using this spelling): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill}`).join(" | ")}`;
+    }
     if (job.salary_min || job.salary_max) {
       jobContext += `\nSalary Range: ${job.currency || "USD"} ${job.salary_min || "?"} - ${job.salary_max || "?"}`;
     }
@@ -388,7 +436,9 @@ serve(async (req) => {
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
-        reasoning_effort: "medium",
+        // Higher effort than the translation pass: this call now makes one
+        // judgement per required skill on top of the overall assessment.
+        reasoning_effort: "high",
       }),
     }, 'analyze-candidate-fit');
 
@@ -406,6 +456,44 @@ serve(async (req) => {
 
     const canonicalAnalysis = JSON.parse(toolCall.function.arguments);
     let analysis = canonicalAnalysis;
+
+    // Skill adjudication: keep the job's list authoritative. Every required
+    // skill gets exactly one entry, in the job's order and spelling. A model
+    // entry that is malformed, unmatched, or claims evidence without quoting
+    // any is dropped to not_evidenced rather than guessed at.
+    const VALID_SKILL_STATUS = new Set(["evidenced", "partial", "not_evidenced"]);
+    const returnedEvidence: any[] = Array.isArray(canonicalAnalysis.skill_evidence)
+      ? canonicalAnalysis.skill_evidence
+      : [];
+    const byNormalizedSkill = new Map<string, any>();
+    for (const entry of returnedEvidence) {
+      const skill = typeof entry?.skill === "string" ? entry.skill.trim() : "";
+      if (!skill) continue;
+      const key = skill.toLowerCase();
+      if (!byNormalizedSkill.has(key)) byNormalizedSkill.set(key, entry);
+    }
+    canonicalAnalysis.skill_evidence = requiredSkills.map((skill) => {
+      const entry = byNormalizedSkill.get(skill.toLowerCase());
+      const status = VALID_SKILL_STATUS.has(entry?.status) ? entry.status : "not_evidenced";
+      const evidence = typeof entry?.evidence === "string" && entry.evidence.trim().length > 0
+        ? entry.evidence.trim()
+        : null;
+      const source = typeof entry?.source === "string" && entry.source.trim().length > 0
+        ? entry.source.trim()
+        : null;
+      if (status !== "not_evidenced" && !evidence) {
+        return { skill, status: "not_evidenced", evidence: null, source: null };
+      }
+      if (status === "not_evidenced") {
+        return { skill, status, evidence: null, source: null };
+      }
+      return { skill, status, evidence, source };
+    });
+    const droppedEvidence = returnedEvidence.length - canonicalAnalysis.skill_evidence.length;
+    if (droppedEvidence !== 0) {
+      console.log(`[analyze-candidate-fit] skill_evidence reconciled: model returned ${returnedEvidence.length}, job requires ${requiredSkills.length}.`);
+    }
+    canonicalAnalysis.skill_evidence_version = 3;
 
     // Override data_sources with our tracked ones
     canonicalAnalysis.data_sources_used = dataSources;

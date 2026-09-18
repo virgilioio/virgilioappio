@@ -19,6 +19,12 @@ export function mergeTranslatedProse(canonical: FitAnalysisRecord, translated: F
       reason: translated.validation_points?.[index]?.reason ?? point.reason,
       suggested_stage: translated.validation_points?.[index]?.suggested_stage ?? point.suggested_stage,
     })),
+    // Only the quoted evidence is prose. `skill` keeps the job's spelling and
+    // `status` / `source` are machine values, so they are never translated.
+    skill_evidence: (canonical.skill_evidence || []).map((entry: FitAnalysisRecord, index: number) => ({
+      ...entry,
+      evidence: translated.skill_evidence?.[index]?.evidence ?? entry.evidence,
+    })),
   }
 }
 
@@ -35,5 +41,10 @@ export function invariantSnapshot(analysis: FitAnalysisRecord) {
     data_sources_missing: analysis.data_sources_missing,
     detected_languages: analysis.detected_languages,
     priorities: (analysis.validation_points || []).map((point: FitAnalysisRecord) => point.priority),
+    skill_evidence: (analysis.skill_evidence || []).map((entry: FitAnalysisRecord) => ({
+      skill: entry.skill,
+      status: entry.status,
+      source: entry.source,
+    })),
   })
 }

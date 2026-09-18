@@ -10,6 +10,7 @@ import {
   formatDate,
   formatDuration,
   getScoreBand,
+  readSkillEvidence,
   splitExecutiveSummary,
   stripHtml,
 } from './dossierData'
@@ -196,7 +197,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
   const blocks: Block[] = []
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
   const stats = computeExperienceStats(workExperience)
-  const skills = buildSkillGroups(requiredSkills, candidateSkills)
+  const skills = buildSkillGroups(requiredSkills, candidateSkills, readSkillEvidence(analysis))
   const dimensions = analysis.dimensions || []
   const visibleDimensions = clientReady ? dimensions.filter((dimension) => !/salary|compensation/i.test(dimension.name)) : dimensions
   const scored = dimensions.filter((dimension) => dimension.score !== null)
@@ -280,11 +281,11 @@ function buildBlocks(data: DossierPrintProps): Block[] {
 
   const skillRows = [
     { label: 'Required and evidenced', items: skills.evidenced, chip: 'evidenced' },
+    { label: 'Required, partly evidenced', items: skills.partly, chip: 'partial' },
     { label: 'Required, not evidenced', items: skills.notEvidenced, chip: 'gap' },
-    { label: 'Additional — beyond the job spec', items: skills.additional, chip: '' },
   ].filter((row) => row.items.length > 0)
 
-  if (skillRows.length > 0) {
+  if (skillRows.length > 0 || skills.additional.length > 0) {
     blocks.push({ key: 'skills-heading', node: <Heading spaced>Identified skills</Heading>, keepWithNext: true })
     skillRows.forEach((row, index) => {
       blocks.push({
@@ -293,9 +294,14 @@ function buildBlocks(data: DossierPrintProps): Block[] {
           <div className="gio-block gio-skill-row">
             <span className="gio-skill-label">{row.label}</span>
             <span className="gio-skill-chips">
-              {row.items.map((skill) => (
-                <span className={`gio-chip ${row.chip}`.trim()} key={`${row.label}-${skill}`}>
-                  {skill}
+              {row.items.map((entry) => (
+                <span className="gio-skill-verdict" key={`${row.label}-${entry.skill}`}>
+                  <span className={`gio-chip ${row.chip}`.trim()}>{entry.skill}</span>
+                  {entry.evidence && (
+                    <span className="gio-skill-evidence">
+                      “{entry.evidence}”{entry.source ? ` — ${entry.source}` : ''}
+                    </span>
+                  )}
                 </span>
               ))}
             </span>
@@ -303,6 +309,21 @@ function buildBlocks(data: DossierPrintProps): Block[] {
         ),
       })
     })
+    if (skills.additional.length > 0) {
+      blocks.push({
+        key: 'skills-additional',
+        node: (
+          <div className="gio-block gio-skill-row">
+            <span className="gio-skill-label">Additional — beyond the job spec</span>
+            <span className="gio-skill-chips">
+              {skills.additional.map((skill) => (
+                <span className="gio-chip" key={`additional-${skill}`}>{skill}</span>
+              ))}
+            </span>
+          </div>
+        ),
+      })
+    }
   }
 
   if (workExperience.length > 0) {
