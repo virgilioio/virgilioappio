@@ -1,0 +1,685 @@
+/* Gio Fit dossier — print document (US Letter). Loaded as a string and injected
+   into the print frame, so it must be self-contained (no Tailwind, no tokens). */
+
+@page {
+  size: letter;
+  margin: 0;
+}
+
+.gio-print-root {
+  margin: 0;
+  background: #fff;
+  color: #1f2230;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  font-size: 11px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.gio-page {
+  position: relative;
+  box-sizing: border-box;
+  width: 816px;
+  height: 1056px;
+  padding: 48px 52px 40px;
+  background: #fff;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+}
+
+.gio-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.gio-measure {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 712px;
+  visibility: hidden;
+}
+
+.gio-runhead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 9px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #efeee8;
+}
+
+.gio-runhead-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #0d0d09;
+}
+
+.gio-runhead-meta {
+  font-size: 10.5px;
+  color: #8b8f9e;
+}
+
+.gio-runhead-score {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8b8f9e;
+}
+
+.gio-runhead-score b {
+  margin-left: 6px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #6f3ff5;
+}
+
+.gio-foot {
+  position: absolute;
+  left: 52px;
+  right: 52px;
+  bottom: 26px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f0ec;
+  font-size: 9.5px;
+  color: #8b8f9e;
+}
+
+.gio-foot-pages {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ---- masthead ---- */
+
+.gio-masthead {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1.5px solid #0d0d09;
+}
+
+.gio-eyebrow {
+  margin: 0 0 6px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6f3ff5;
+}
+
+.gio-name {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: #0d0d09;
+}
+
+.gio-name span {
+  color: #d7c5fb;
+}
+
+.gio-role {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #1f2230;
+}
+
+.gio-meta {
+  margin: 5px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #5a6072;
+}
+
+.gio-seal {
+  margin-left: auto;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.gio-seal-label {
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #8b8f9e;
+}
+
+.gio-seal-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.gio-seal-score {
+  font-family: 'Poppins', sans-serif;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #6f3ff5;
+}
+
+.gio-seal-band {
+  text-align: left;
+  padding-bottom: 3px;
+}
+
+.gio-seal-band b {
+  display: block;
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #0d0d09;
+}
+
+.gio-seal-band i {
+  display: block;
+  margin-top: 1px;
+  font-style: normal;
+  font-size: 10.5px;
+  color: #8b8f9e;
+}
+
+/* ---- sections ---- */
+
+.gio-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.gio-heading {
+  margin: 0 0 10px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8b8f9e;
+}
+
+.gio-section-gap {
+  margin-top: 18px;
+}
+
+.gio-summary {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.gio-summary-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gio-prose {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #1f2230;
+  white-space: pre-line;
+}
+
+.gio-callouts {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.gio-callout {
+  flex: 1 1 0;
+  padding: 9px 10px;
+  border-radius: 3px;
+}
+
+.gio-callout-title {
+  margin: 0 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gio-callout p {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.gio-callout.signal {
+  background: #f6fcf9;
+  border: 1px solid #cbeedd;
+}
+
+.gio-callout.signal .gio-callout-title,
+.gio-callout.signal p {
+  color: #065f46;
+}
+
+.gio-callout.risk {
+  background: #fffbeb;
+  border: 1px solid #fde9b5;
+}
+
+.gio-callout.risk .gio-callout-title,
+.gio-callout.risk p {
+  color: #b45309;
+}
+
+.gio-stats {
+  width: 208px;
+  flex: 0 0 208px;
+}
+
+.gio-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f0ec;
+}
+
+.gio-stat:last-child {
+  border-bottom: 0;
+}
+
+.gio-stat-value {
+  font-family: 'Poppins', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0d0d09;
+}
+
+.gio-stat-label {
+  font-size: 10.5px;
+  color: #1f2230;
+}
+
+.gio-stat-label i {
+  display: block;
+  font-style: normal;
+  font-size: 9.5px;
+  color: #8b8f9e;
+}
+
+.gio-provenance {
+  display: inline-flex;
+  gap: 5px;
+  margin-bottom: 8px;
+  padding: 2px 7px;
+  border: 1px solid #e6dafb;
+  border-radius: 6px;
+  background: #f4effe;
+  font-size: 10px;
+  color: #5a6072;
+}
+
+/* skills */
+
+.gio-skill-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.gio-skill-label {
+  flex: 0 0 148px;
+  padding-top: 3px;
+  font-size: 10.5px;
+  color: #5a6072;
+}
+
+.gio-skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
+
+.gio-chip {
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #e7e8ee;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  color: #5a6072;
+}
+
+.gio-chip.evidenced {
+  border-color: #e0d5fb;
+  background: #f4effe;
+  color: #4a2ea8;
+}
+
+.gio-chip.gap {
+  border-color: #fde9b5;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+/* experience */
+
+.gio-exp {
+  display: flex;
+  gap: 20px;
+  padding: 10px 0;
+  border-top: 1px solid #f1f0ec;
+}
+
+.gio-exp:first-of-type {
+  border-top: 0;
+}
+
+.gio-exp-dates {
+  flex: 0 0 136px;
+}
+
+.gio-exp-dates b {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0d0d09;
+}
+
+.gio-exp-dates i {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 10px;
+  color: #8b8f9e;
+}
+
+.gio-exp-body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.gio-exp-title {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0d0d09;
+}
+
+.gio-exp-title span {
+  font-weight: 500;
+  color: #8b8f9e;
+}
+
+.gio-exp-desc {
+  margin: 4px 0 0;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #5a6072;
+}
+
+.gio-supports {
+  margin-top: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 9.5px;
+  color: #5a6072;
+}
+
+.gio-supports span::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 5px;
+  border-radius: 1.5px;
+  background: #6f3ff5;
+  vertical-align: middle;
+}
+
+/* dimension table */
+
+.gio-dim-head,
+.gio-dim-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f1f0ec;
+}
+
+.gio-dim-head {
+  border-bottom: 1.2px solid #0d0d09;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8b8f9e;
+}
+
+.gio-dim-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1f2230;
+}
+
+.gio-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: #6f3ff5;
+  flex: 0 0 6px;
+}
+
+.gio-dim-weight {
+  flex: 0 0 54px;
+  text-align: right;
+  font-size: 10.5px;
+  color: #5a6072;
+  font-variant-numeric: tabular-nums;
+}
+
+.gio-dim-score {
+  flex: 0 0 46px;
+  text-align: right;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0d0d09;
+  font-variant-numeric: tabular-nums;
+}
+
+.gio-dim-points {
+  flex: 0 0 74px;
+  text-align: right;
+  font-size: 10.5px;
+  color: #5a6072;
+  font-variant-numeric: tabular-nums;
+}
+
+.gio-dim-points.excluded {
+  color: #b45309;
+}
+
+.gio-bar {
+  flex: 0 0 108px;
+  height: 5px;
+  border-radius: 3px;
+  background: #f1f0ec;
+  overflow: hidden;
+}
+
+.gio-bar div {
+  height: 100%;
+  border-radius: 3px;
+  background: #6f3ff5;
+}
+
+.gio-dim-total {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1.2px solid #0d0d09;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #0d0d09;
+}
+
+.gio-note {
+  margin: 8px 0 0;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: #8b8f9e;
+}
+
+/* evidence */
+
+.gio-ev-group {
+  margin-bottom: 11px;
+}
+
+.gio-ev-head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.gio-ev-head b {
+  font-family: 'Poppins', sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #0d0d09;
+}
+
+.gio-ev-head i {
+  font-style: normal;
+  font-size: 10px;
+  color: #8b8f9e;
+  font-variant-numeric: tabular-nums;
+}
+
+.gio-ev-verdict {
+  margin-left: auto;
+  text-align: right;
+  font-size: 10px;
+  color: #5a6072;
+}
+
+.gio-ev-item {
+  margin-top: 4px;
+  padding: 1px 0 1px 8px;
+  border-left: 2px solid #12b886;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #1f2230;
+}
+
+.gio-ev-item.gap {
+  border-left-color: #fa5252;
+}
+
+.gio-ev-item.neutral {
+  border-left-color: #b9b7ac;
+}
+
+/* validation */
+
+.gio-val {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f0ec;
+}
+
+.gio-val:last-child {
+  border-bottom: 0;
+}
+
+.gio-val-ring {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+  border: 1px solid #d5d3ca;
+  border-radius: 999px;
+}
+
+.gio-val-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gio-val-q {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #0d0d09;
+}
+
+.gio-val-r {
+  margin: 2px 0 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #8b8f9e;
+}
+
+.gio-val-side {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 1px;
+  font-size: 10px;
+  color: #8b8f9e;
+  white-space: nowrap;
+}
+
+.gio-prio {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.gio-prio.high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.gio-prio.medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.gio-prio.low {
+  background: #f1f0ec;
+  color: #5a6072;
+}
