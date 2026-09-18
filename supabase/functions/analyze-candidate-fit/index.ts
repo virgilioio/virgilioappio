@@ -3,7 +3,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
-import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { openaiFetch, OpenAiTimeoutError } from '../_shared/openaiFetch.ts';
+
+// Reasoning + per-skill adjudication needs far more than the shared 60s default.
+const FIT_CALL_TIMEOUT_MS = 150_000;
+const TRANSLATION_CALL_TIMEOUT_MS = 120_000;
 import { AI_MODELS } from '../_shared/aiModels.ts';
 import { mergeTranslatedProse } from './language-utils.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -555,7 +559,7 @@ serve(async (req) => {
           tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
           reasoning_effort: "medium",
         }),
-      }, "analyze-candidate-fit-translation");
+      }, "analyze-candidate-fit-translation", { timeoutMs: TRANSLATION_CALL_TIMEOUT_MS });
       if (!translationResponse.ok) {
         const message = await translationResponse.text();
         console.error("Translation error:", translationResponse.status, message);
@@ -592,6 +596,15 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("analyze-candidate-fit error:", err);
+    // A timeout is reported distinctly so the UI can say the assessment ran long
+    // rather than implying the candidate data is at fault. Stored ai_fit_*
+    // columns are untouched on any failure path.
+    if (err instanceof OpenAiTimeoutError) {
+      return new Response(JSON.stringify({ error: "timeout", message: err.message }), {
+        status: 504,
+        headers: { ...headers, "Content-Type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify({ error: err.message || "Internal error" }), {
       status: 500,
       headers: { ...headers, "Content-Type": "application/json" },
