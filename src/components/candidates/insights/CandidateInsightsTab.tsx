@@ -410,12 +410,12 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
 
       <div className="grid items-start gap-3.5 xl:grid-cols-[minmax(0,1fr)_400px]">
         <section className={cardClass}>
-          {(asString(candidate?.profile_summary) || analysis.executive_summary || experienceStats.length > 0) && (
+          {(asString(analysis.profile_summary) || asString(candidate?.profile_summary) || analysis.executive_summary || experienceStats.length > 0) && (
             <div className="p-5 sm:p-6">
               <h3 className={sectionHeadingClass}><UserRound className="h-3 w-3" /> Summary</h3>
               <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-7">
                 <div className="min-w-0">
-                  {asString(candidate?.profile_summary) && <p className="whitespace-pre-line text-[13.5px] leading-[1.65] text-fit-ink">{asString(candidate?.profile_summary)}</p>}
+                  {(asString(analysis.profile_summary) || asString(candidate?.profile_summary)) && <p className="whitespace-pre-line text-[13.5px] leading-[1.65] text-fit-ink">{asString(analysis.profile_summary) || asString(candidate?.profile_summary)}</p>}
                   <div className="mt-4">
                     {executiveSplit ? (
                       <div className="grid gap-2.5 sm:grid-cols-2">

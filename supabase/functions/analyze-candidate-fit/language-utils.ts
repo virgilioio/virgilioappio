@@ -4,9 +4,11 @@ export function mergeTranslatedProse(canonical: FitAnalysisRecord, translated: F
   return {
     ...canonical,
     confidence_reason: translated.confidence_reason ?? canonical.confidence_reason,
+    profile_summary: translated.profile_summary ?? canonical.profile_summary,
     executive_summary: translated.executive_summary ?? canonical.executive_summary,
     dimensions: (canonical.dimensions || []).map((dimension: FitAnalysisRecord, index: number) => ({
       ...dimension,
+      verdict: translated.dimensions?.[index]?.verdict ?? dimension.verdict,
       insight: translated.dimensions?.[index]?.insight ?? dimension.insight,
       matches: translated.dimensions?.[index]?.matches ?? dimension.matches,
       gaps: translated.dimensions?.[index]?.gaps ?? dimension.gaps,

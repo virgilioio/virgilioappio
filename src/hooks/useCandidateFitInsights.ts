@@ -10,6 +10,7 @@ export interface FitDimension {
   matches?: string[]
   gaps?: string[]
   insight: string | null
+  verdict?: string | null
 }
 
 export interface ValidationPoint {
@@ -24,6 +25,7 @@ export interface FitAnalysis {
   overall_score: number
   confidence: 'low' | 'medium' | 'high'
   confidence_reason: string
+  profile_summary?: string
   executive_summary: string
   dimensions: FitDimension[]
   validation_points: ValidationPoint[]
