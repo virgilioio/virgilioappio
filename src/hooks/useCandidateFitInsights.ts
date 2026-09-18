@@ -59,6 +59,10 @@ export interface FitInsightsData {
 export function useCandidateFitInsights(candidateId: string | null, jobId: string | null) {
   const queryClient = useQueryClient()
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
+  const [isBlocked, setIsBlocked] = useState(false)
+  const [isDeferred, setIsDeferred] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
 
   const queryKey = ['candidate-fit-insights', candidateId, jobId]
 
@@ -212,8 +216,12 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
     insights: data ?? null,
     isLoading,
     isRefreshing,
+    isDeferred,
+    isBlocked,
+    generationError,
     error,
     refreshInsights,
+    cancelRefresh,
     updateLanguagePreferences,
     invalidate,
   }
