@@ -332,7 +332,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           <div className="flex shrink-0 items-center gap-2">
             <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
-            <Button variant="secondary" size="sm" icon={Download} onClick={onExportPdf}>Export PDF</Button>
+            <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
           </div>
         </div>
       </section>
@@ -435,6 +435,15 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           <ValidationPoints points={visibleValidationPoints} clientReady={clientReady} />
         </aside>
       </div>
+
+      <GioFitExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        defaultClientReady={clientReady}
+        hasContactDetails={contactItems.length > 0}
+        buildData={buildExportData}
+        fileName={`${candidateName} — Gio dossier${jobTitle ? ` · ${jobTitle}` : ''}`}
+      />
     </div>
   )
 }
