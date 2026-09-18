@@ -24,6 +24,7 @@ import { SetupTab } from '@/components/settings/tabs/SetupTab'
 import { NotificationsTab } from '@/components/settings/tabs/NotificationsTab'
 import { EmailCalendarTab } from '@/components/settings/tabs/EmailCalendarTab'
 import { BookingTab } from '@/components/settings/tabs/BookingTab'
+import { GioRecruitingSettings } from '@/components/settings/GioRecruitingSettings'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -128,6 +129,8 @@ export default function Settings() {
         return <Billing />
       case 'pipeline-stages':
         return <JobStagesManager context="organization" />
+      case 'gio':
+        return <GioRecruitingSettings />
       case 'application-form':
         return <ApplicationFieldsManager context="organization" />
       case 'templates':

@@ -11,6 +11,7 @@ export async function triggerFitAnalysis(candidateId: string, jobId: string): Pr
     })
     if (error) {
       console.error('[triggerFitAnalysis] Edge function error:', error)
+      throw error
     } else if (data?.error === 'no_job_description') {
       console.log('[triggerFitAnalysis] Skipped: no job description')
     } else {
@@ -18,5 +19,6 @@ export async function triggerFitAnalysis(candidateId: string, jobId: string): Pr
     }
   } catch (e) {
     console.error('[triggerFitAnalysis] Unexpected error:', e)
+    throw e
   }
 }
