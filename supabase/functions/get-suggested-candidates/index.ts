@@ -771,9 +771,24 @@ serve(async (req) => {
 
     // 6. Cache ALL scored results (not just passing ones)
     if (scoredCandidates.length > 0) {
-      // Delete old cache for this job first
-      await sb.from("job_suggested_candidates_cache").delete().eq("job_id", job_id);
-      
+      const scoredIds = new Set(scoredCandidates.map((sc: any) => sc.candidate.id));
+
+      // Rows written against DIFFERENT requirements are dropped outright — their
+      // stored dossier was written against a job that no longer exists as such.
+      // Rows for people no longer on the shortlist go too. Everything else is
+      // updated in place so a re-score never destroys a dossier we paid for.
+      const { data: existingRows } = await sb
+        .from("job_suggested_candidates_cache")
+        .select("id, candidate_id, job_skills_hash")
+        .eq("job_id", job_id);
+
+      const staleIds = (existingRows || [])
+        .filter((r: any) => r.job_skills_hash !== skillsHash || !scoredIds.has(r.candidate_id))
+        .map((r: any) => r.id);
+      if (staleIds.length > 0) {
+        await sb.from("job_suggested_candidates_cache").delete().in("id", staleIds);
+      }
+
       const cacheRows = scoredCandidates.map((sc: any) => ({
         job_id,
         candidate_id: sc.candidate.id,
@@ -781,6 +796,7 @@ serve(async (req) => {
         ai_fit_confidence: sc.ai_fit_confidence,
         ai_fit_rationale: sc.ai_fit_rationale,
         job_skills_hash: skillsHash,
+        scored_at: new Date().toISOString(),
       }));
 
       const { error: cacheErr } = await sb
@@ -791,6 +807,7 @@ serve(async (req) => {
         console.error("Cache write error:", cacheErr);
       } else {
         console.log(`📦 Cached ${cacheRows.length} scores for job ${job_id}`);
+        queueTopDossiers(sb, job_id);
       }
     }
 
