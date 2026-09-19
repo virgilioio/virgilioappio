@@ -120,6 +120,7 @@ export function ProfileHeroCard({
               />
             </>
           )}
+          {actionMenu}
         </div>
       </div>
 
