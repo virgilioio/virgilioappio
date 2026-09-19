@@ -2301,6 +2301,15 @@ const stageHasAutomation = useMemo(() => {
             isLoading={editLoading}
           />
 
+          {candidate && (
+            <CandidateProfileDownloadDialog
+              open={downloadOpen}
+              onOpenChange={setDownloadOpen}
+              pdfOptions={{ candidate: candidate as any, job, workExperience, education, certifications }}
+            />
+          )}
+
+
           {scoreStageInstId && associationId && (
             <ScorecardSheet
               open={scoreOpen}
