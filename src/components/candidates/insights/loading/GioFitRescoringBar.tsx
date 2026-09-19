@@ -8,6 +8,8 @@ interface GioFitRescoringBarProps {
   progress: number
   previousGeneratedAt: string | null
   onCancel: () => void
+  /** Overrides the sub-line wording; receives the formatted date of the dossier on screen. */
+  noteForDate?: (date: string) => string
 }
 
 function formatPreviousDate(value: string | null) {
