@@ -22,6 +22,7 @@ import {
   PenLine,
   DollarSign,
   CalendarCheck,
+  Calendar,
 } from 'lucide-react'
 import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/ProfileSidebar'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
@@ -158,7 +159,7 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
           })()}
           <MetaRow icon={DollarSign} label="Salary expectation" value={comp} />
           <MetaRow icon={Inbox} label="Source" value={p.source ?? '—'} />
-          <MetaRow icon={Clock} label="Applied" value={appliedValue} />
+          <MetaRow icon={Calendar} label="Applied" value={appliedValue} />
           <MetaRow icon={Clock} label="Notice period" value={p.candidate?.notice_period ?? null} />
           <MetaRow icon={CalendarCheck} label="Available from" value={fmtDate(p.candidate?.available_from)} />
         </SidebarBlock>
