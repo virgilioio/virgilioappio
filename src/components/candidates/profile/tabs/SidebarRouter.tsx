@@ -107,7 +107,34 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
         <SidebarBlock label="Details">
           <MetaRow icon={MapPin} label="Location" value={p.location ?? null} />
           <MetaRow icon={Mail} label="Email" value={p.email ?? p.candidate?.email ?? null} />
-          <MetaRow icon={Phone} label="Phone" value={p.phone ?? p.candidate?.phone ?? null} />
+          {(() => {
+            const phone = p.phone ?? p.candidate?.phone ?? null
+            const waUrl = phone ? buildWhatsAppUrl(phone) : null
+            return (
+              <MetaRow
+                icon={Phone}
+                label="Phone"
+                value={phone ? formatE164Display(phone) || phone : null}
+                action={
+                  p.whatsAppEnabled && waUrl ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (p.onWhatsAppClick) p.onWhatsAppClick(phone)
+                        else window.open(waUrl, '_blank')
+                      }}
+                      className="shrink-0 p-1 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#25D366]"
+                      aria-label="Start WhatsApp conversation"
+                      title="Start WhatsApp conversation"
+                    >
+                      <WhatsAppIcon size={14} />
+                    </button>
+                  ) : undefined
+                }
+              />
+            )
+          })()}
           <MetaRow icon={Inbox} label="Source" value={p.source ?? '—'} />
           <MetaRow icon={Clock} label="Applied" value={fmtDate(p.appliedAt)} />
         </SidebarBlock>
