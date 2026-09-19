@@ -42,19 +42,30 @@ function SkillRow({ count }: { count: number }) {
   )
 }
 
-export function GioFitColdSkeleton({ candidateName, roleLine, outputLanguageName, stepIndex, progress }: GioFitColdSkeletonProps) {
-  const steps = buildNarrationSteps(outputLanguageName)
+export function GioFitColdSkeleton({
+  candidateName, roleLine, outputLanguageName, stepIndex, progress,
+  steps: stepsProp, identity = true,
+  eyebrow = 'Gio is assessing this candidate',
+  eta = `Usually takes about ${GIO_FIT_P50_SECONDS} seconds`,
+}: GioFitColdSkeletonProps) {
+  const steps = stepsProp ?? buildNarrationSteps(outputLanguageName)
+  // With explicit steps the track reads from that array, not the module pacing.
+  const trackProgress = stepsProp ? stepProgress(stepIndex, stepsProp.length) : progress
 
   return (
     <div className="space-y-3.5">
       <section className={`${cardClass} p-[22px]`}>
         <div className="flex flex-col items-start gap-6 sm:flex-row">
           <div className="min-w-0">
-            <p className="gf-eyebrow font-inter"><Sparkles className="h-3 w-3" /> Gio is assessing this candidate</p>
-            <h2 className="mt-1.5 font-poppins text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] text-fit-ink">
-              {candidateName}<span className="text-fit-lilac">.</span>
-            </h2>
-            {roleLine && <p className="mt-1.5 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
+            <p className="gf-eyebrow font-inter"><Sparkles className="h-3 w-3" /> {eyebrow}</p>
+            {identity && (
+              <>
+                <h2 className="mt-1.5 font-poppins text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] text-fit-ink">
+                  {candidateName}<span className="text-fit-lilac">.</span>
+                </h2>
+                {roleLine && <p className="mt-1.5 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
+              </>
+            )}
             <div className="mt-2.5 flex items-center gap-2">
               <Sk w={92} h={11} />
               <Sk w={120} h={11} />
