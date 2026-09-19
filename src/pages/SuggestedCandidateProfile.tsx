@@ -320,6 +320,7 @@ function SuggestedCandidateProfileInner() {
         favoriteMuted
         identityBadges={identityBadges}
         fitScore={matchScore}
+        fitPillState={activeTab === 'fit' ? fitState : 'ready'}
         onFitClick={() => setTab('fit')}
         linkedinUrl={(candidate as any)?.linkedin_url || null}
         onOpenFullProfile={() => navigate(`/candidates/${candidateId}`)}
