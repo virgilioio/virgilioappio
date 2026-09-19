@@ -770,6 +770,12 @@ export default function IndependentCandidateProfile() {
             candidate={candidate as any}
           />
 
+          <CandidateProfileDownloadDialog
+            open={downloadOpen}
+            onOpenChange={setDownloadOpen}
+            pdfOptions={{ candidate: candidate as any, workExperience, education }}
+          />
+
           {addToPipelineOpen && (
             <PipelineDialogPortal
               candidateId={candidate.id}
