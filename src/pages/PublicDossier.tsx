@@ -124,6 +124,9 @@ export default function PublicDossier() {
   const [decision, setDecision] = useState<string | null>(null)
   const [decisionOn, setDecisionOn] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
+  const [dialogKind, setDialogKind] = useState<DecisionKind | null>(null)
+  const [pending, setPending] = useState<{ decision: string; created_at: string } | null>(null)
+
 
   useNoIndexNoReferrer()
 
