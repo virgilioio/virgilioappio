@@ -1,13 +1,11 @@
-import { ArrowLeft, ArrowRight, Calendar, ChevronLeft, ChevronRight, Copy, Heart, Mail, Phone, UserRound } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { Button } from '@/components/ui/button'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import { ApplicationSwitcher } from '@/components/candidates/profile/ApplicationSwitcher'
-import { copyToClipboard } from '@/utils/clipboard'
-import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
+
 
 import { ClientVerdictPill } from '@/components/candidates/profile/ClientVerdictPill'
 import type { ClientVerdictState } from '@/hooks/useClientVerdict'
@@ -39,39 +37,18 @@ interface ProfileHeroCardProps {
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
   tabs?: ReactNode
-  nextStageLabel?: string | null
-  onAdvance?: () => void
-  onSchedule?: () => void
-  onEmail?: () => void
-  isRejected?: boolean
-  isHired?: boolean
-  email?: string | null
-  phone?: string | null
-  whatsAppEnabled?: boolean
-  onWhatsAppClick?: (phone: string) => void
-}
-
-function relativeTime(iso?: string | null) {
-  if (!iso) return null
-  const ms = Date.now() - new Date(iso).getTime()
-  if (Number.isNaN(ms) || ms < 0) return null
-  const days = Math.floor(ms / 86_400_000)
-  if (days < 1) return 'today'
-  return `${days}d ago`
+  /** Overflow menu — last element of the hero action row, after prev/next. */
+  actionMenu?: ReactNode
 }
 
 export function ProfileHeroCard({
-  candidateName, candidateFirstName, candidateId, jobId, jobTitle, source, appliedAt,
+  candidateName, candidateFirstName, candidateId, jobId, jobTitle,
   currentStageName, daysInStage, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
   fitScore, onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
-  tabs,
-  nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
-  email, phone, whatsAppEnabled, onWhatsAppClick,
+  tabs, actionMenu,
 }: ProfileHeroCardProps) {
-  const applied = relativeTime(appliedAt)
-  const phoneDisplay = phone ? (formatE164Display(phone) || phone) : null
-  const waUrl = phone ? buildWhatsAppUrl(phone) : null
+
 
   return (
     <section className="bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] pt-3.5 px-6 pb-0">
@@ -121,21 +98,6 @@ export function ProfileHeroCard({
               </span>
             </Button>
           )}
-          {nextStageLabel && !isRejected && !isHired && onAdvance && (
-            <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
-              Advance to {nextStageLabel}
-            </Button>
-          )}
-          {onSchedule && (
-            <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule}>
-              Schedule
-            </Button>
-          )}
-          {onEmail && (
-            <Button variant="secondary" size="md" icon={Mail} onClick={onEmail}>
-              Email
-            </Button>
-          )}
           {(onNavigatePrev || onNavigateNext) && (
             <>
               <Button
@@ -158,6 +120,7 @@ export function ProfileHeroCard({
               />
             </>
           )}
+          {actionMenu}
         </div>
       </div>
 
@@ -210,68 +173,6 @@ export function ProfileHeroCard({
                 currentJobId={jobId}
                 currentJobTitle={jobTitle || null}
               />
-            </>
-          )}
-          {source && (
-            <>
-              <span className="text-[#D1D5DB]">·</span>
-              <span>Source: <span className="text-[#1F2230] font-medium">{source}</span></span>
-            </>
-          )}
-          {applied && (
-            <>
-              <span className="text-[#D1D5DB]">·</span>
-              <span>Applied {applied}</span>
-            </>
-          )}
-          {email && (
-            <>
-              <span className="text-[#D1D5DB]">·</span>
-              <span className="inline-flex items-center gap-1.5 min-w-0">
-                <Mail className="h-3.5 w-3.5 text-[#8B8F9E]" />
-                <a href={`mailto:${email}`} className="text-[#1F2230] hover:text-virgilio-purple transition-colors truncate max-w-[220px]">{email}</a>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(email, 'Email copied')}
-                  className="p-0.5 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]"
-                  aria-label="Copy email"
-                  title="Copy email"
-                >
-                  <Copy className="h-3 w-3" />
-                </button>
-              </span>
-            </>
-          )}
-          {phone && (
-            <>
-              <span className="text-[#D1D5DB]">·</span>
-              <span className="inline-flex items-center gap-1.5 min-w-0">
-                <Phone className="h-3.5 w-3.5 text-[#8B8F9E]" />
-                <a href={`tel:${phone}`} className="text-[#1F2230] hover:text-virgilio-purple transition-colors">{phoneDisplay}</a>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(phone, 'Phone copied')}
-                  className="p-0.5 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]"
-                  aria-label="Copy phone"
-                  title="Copy phone"
-                >
-                  <Copy className="h-3 w-3" />
-                </button>
-                {whatsAppEnabled && waUrl && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onWhatsAppClick) onWhatsAppClick(phone)
-                      else window.open(waUrl, '_blank')
-                    }}
-                    className="p-0.5 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#25D366]"
-                    aria-label="Start WhatsApp conversation"
-                    title="Start WhatsApp conversation"
-                  >
-                    <WhatsAppIcon size={13} />
-                  </button>
-                )}
-              </span>
             </>
           )}
           {onOpenFullProfile && (

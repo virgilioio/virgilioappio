@@ -4,8 +4,10 @@ import {
   ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
   Heart, Briefcase, MapPin, Mail, Phone, DollarSign, Calendar, Sparkles,
   FileText, File as FileIcon, GraduationCap, Info, MessageSquare, UserPlus,
-  Upload, Globe, Download, Clock, User as UserIcon, Plus,
+  Upload, Globe, Download, Clock, User as UserIcon, Plus, PenLine,
 } from 'lucide-react'
+import { ProfileActionMenu } from '@/components/candidates/profile/ProfileActionMenu'
+import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
 import { ExperienceTimeline, EducationTimeline } from '@/components/candidates/profile/tabs/ExperienceTimeline'
 
 import { AuthGate } from '@/components/auth/AuthGate'
@@ -121,6 +123,7 @@ export default function IndependentCandidateProfile() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
+  const [downloadOpen, setDownloadOpen] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
 
   // Email composer state — shared for Compose / Reply / Forward
@@ -346,26 +349,15 @@ export default function IndependentCandidateProfile() {
   // ───── Persistent sidebar ─────
   const sidebar = (
     <ProfileSidebar>
-      <SidebarBlock label="Quick actions">
-        <div className="space-y-2">
-          <Button variant="primary" size="md" icon={UserPlus} onClick={onAddToPipeline} className="w-full justify-center">
-            Add to job pipeline
-          </Button>
-          <Button variant="secondary" size="md" icon={Mail} onClick={onSendEmail} className="w-full justify-center">
-            Send email
-          </Button>
-          <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule} className="w-full justify-center">
-            Schedule meeting
-          </Button>
-        </div>
-      </SidebarBlock>
-
       <SidebarBlock label="Details">
         <div>
-          <MetaRow icon={Calendar} label="Added" value={addedDate} />
+          <MetaRow icon={MapPin} label="Location" value={location || null} />
+          <MetaRow icon={DollarSign} label="Open to" value={salary || null} />
+          <MetaRow icon={Mail} label="Email" value={candidate.email || null} />
+          <MetaRow icon={Phone} label="Phone" value={candidate.phone || null} />
           <MetaRow icon={Info} label="Source" value={candidate.source || null} />
-          <MetaRow icon={Briefcase} label="Last role" value={currentRole || null} />
-          <MetaRow icon={Clock} label="Years exp" value={yearsExp != null ? `${yearsExp}y` : null} />
+          <MetaRow icon={Calendar} label="Added" value={addedDate} />
+          <MetaRow icon={UserIcon} label="Added by" value={createdByName || null} />
         </div>
       </SidebarBlock>
 
@@ -445,11 +437,6 @@ export default function IndependentCandidateProfile() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="primary" size="md" icon={UserPlus} onClick={onAddToPipeline}>
-                    Add to job pipeline
-                  </Button>
-                  <Button variant="secondary" size="md" icon={Mail} onClick={onSendEmail}>Send email</Button>
-                  <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule}>Schedule</Button>
                   {total > 0 && idx >= 0 && (
                     <span className="font-inter text-[11.5px] text-[#8B8F9E] tabular-nums ml-1">
                       {idx + 1} of {total}
@@ -457,6 +444,24 @@ export default function IndependentCandidateProfile() {
                   )}
                   <Button variant="secondary" size="md" iconOnly aria-label="Previous candidate" icon={ChevronLeft} onClick={goPrev} disabled={!hasPrev} />
                   <Button variant="secondary" size="md" iconOnly aria-label="Next candidate" icon={ChevronRight} onClick={goNext} disabled={!hasNext} />
+                  <ProfileActionMenu
+                    sections={[
+                      { items: [{ id: 'pipeline', label: 'Add to job pipeline', icon: UserPlus, onClick: onAddToPipeline }] },
+                      {
+                        label: 'Reach out',
+                        items: [
+                          { id: 'email', label: 'Send email', icon: Mail, onClick: onSendEmail },
+                          { id: 'schedule', label: 'Schedule meeting', icon: Calendar, onClick: onSchedule },
+                        ],
+                      },
+                      {
+                        items: [
+                          { id: 'edit', label: 'Edit profile', icon: PenLine, onClick: () => setIsFormOpen(true) },
+                          { id: 'download', label: 'Download profile', icon: Download, onClick: () => setDownloadOpen(true) },
+                        ],
+                      },
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -499,27 +504,6 @@ export default function IndependentCandidateProfile() {
                         {yearsExp != null && <> · {yearsExp}y exp</>}
                       </span>
                     </span>
-                  )}
-                  {location && (
-                    <>
-                      <span className="text-[#D1D5DB]">·</span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5 text-[#8B8F9E]" />
-                        <span>{location}</span>
-                      </span>
-                    </>
-                  )}
-                  {candidate.source && (
-                    <>
-                      <span className="text-[#D1D5DB]">·</span>
-                      <span>Source: <span className="text-[#1F2230] font-medium">{candidate.source}</span></span>
-                    </>
-                  )}
-                  {addedDate && (
-                    <>
-                      <span className="text-[#D1D5DB]">·</span>
-                      <span>Added {addedDate}</span>
-                    </>
                   )}
                 </div>
               </div>
@@ -785,6 +769,12 @@ export default function IndependentCandidateProfile() {
             }}
             isLoading={candidateLoading}
             candidate={candidate as any}
+          />
+
+          <CandidateProfileDownloadDialog
+            open={downloadOpen}
+            onOpenChange={setDownloadOpen}
+            pdfOptions={{ candidate: candidate as any, workExperience, education }}
           />
 
           {addToPipelineOpen && (

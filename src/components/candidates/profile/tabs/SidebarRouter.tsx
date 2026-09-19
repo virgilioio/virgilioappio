@@ -22,7 +22,6 @@ import {
   PenLine,
 } from 'lucide-react'
 import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/ProfileSidebar'
-import { ProfileQuickActionsCard } from '../ProfileQuickActionsCard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
@@ -90,38 +89,24 @@ export interface JobOverviewSidebarProps {
   filesCount: number
   fileSlots?: ReactNode
   onUploadFile?: () => void
-  // QuickActions
-  nextStageLabel: string | null
-  onAdvance: () => void
-  onSubmitScorecard: () => void
-  onRequestReferences?: () => void
-  onAddTransfer: () => void
-  onCreateOffer: () => void
-  onReject: () => void
-  isOfferStatus: boolean
-  isRejected: boolean
-  isHired: boolean
+  /** Location for the Details block — the hero no longer carries filing metadata. */
+  location?: string | null
+  email?: string | null
+  phone?: string | null
 }
 export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
   const comp = formatSalaryExpectation(p.candidate as any)
   return (
     <div className="space-y-4">
-      <ProfileQuickActionsCard
-        nextStageLabel={p.nextStageLabel}
-        onAdvance={p.onAdvance}
-        onSubmitScorecard={p.onSubmitScorecard}
-        onRequestReferences={p.onRequestReferences}
-        onAddTransfer={p.onAddTransfer}
-        onCreateOffer={p.onCreateOffer}
-        onReject={p.onReject}
-        isOfferStatus={p.isOfferStatus}
-        isRejected={p.isRejected}
-        isHired={p.isHired}
-      />
       <ProfileSidebar>
-        <SidebarBlock label="Application">
-          <MetaRow icon={Clock} label="Applied" value={fmtDate(p.appliedAt)} />
+        <SidebarBlock label="Details">
+          <MetaRow icon={MapPin} label="Location" value={p.location ?? null} />
+          <MetaRow icon={Mail} label="Email" value={p.email ?? p.candidate?.email ?? null} />
+          <MetaRow icon={Phone} label="Phone" value={p.phone ?? p.candidate?.phone ?? null} />
           <MetaRow icon={Inbox} label="Source" value={p.source ?? '—'} />
+          <MetaRow icon={Clock} label="Applied" value={fmtDate(p.appliedAt)} />
+        </SidebarBlock>
+        <SidebarBlock label="Application">
           <MetaRow icon={Briefcase} label="Comp ask" value={comp} />
           <MetaRow icon={MapPin} label="Open to" value={p.candidate?.location ?? null} />
           <MetaRow icon={CheckCircle2} label="Work auth" value={p.candidate?.work_authorization ?? null} />
