@@ -105,10 +105,25 @@ export interface JobOverviewSidebarProps {
 }
 export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
   const comp = formatSalaryExpectation(p.candidate as any)
+  const appliedValue = (() => {
+    const base = fmtDate(p.appliedAt)
+    if (!base || !p.appliedAt) return base
+    const days = Math.floor((Date.now() - new Date(p.appliedAt).getTime()) / 86400000)
+    return days >= 1 ? `${base} · ${days}d ago` : base
+  })()
   return (
     <div className="space-y-4">
       <ProfileSidebar>
-        <SidebarBlock label="Details">
+        <SidebarBlock
+          label="Details"
+          action={
+            p.onEdit && (
+              <Button variant="ghost" size="xs" icon={PenLine} onClick={p.onEdit}>
+                Edit
+              </Button>
+            )
+          }
+        >
           <MetaRow icon={MapPin} label="Location" value={p.location ?? null} />
           <MetaRow icon={Mail} label="Email" value={p.email ?? p.candidate?.email ?? null} />
           {(() => {
