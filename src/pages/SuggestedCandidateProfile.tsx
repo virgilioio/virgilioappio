@@ -235,6 +235,28 @@ function SuggestedCandidateProfileInner() {
     />
   )
 
+  /**
+   * The slim decision strip. It carries the only decision on this page, so it stays
+   * live while Gio is scoring, while it re-scores, and when scoring fails.
+   */
+  const decisionStrip = (text: string, size: 'sm' | 'lg') => (
+    <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-[#E7E8EE] bg-white px-3.5 py-2.5">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F4EFFE] text-virgilio-purple">
+        <Sparkles className="h-3.5 w-3.5" />
+      </span>
+      <span className="font-inter text-[12.5px] text-[#5A6072]">{text}</span>
+      <span className="hidden flex-wrap items-center gap-1.5 sm:flex">
+        {reasons.slice(0, 3).map((reason) => (
+          <span key={reason} className="inline-flex h-[22px] items-center rounded-[7px] border border-[#E6DAFB] bg-[#F4EFFE] px-2 font-inter text-[11.5px] text-[#4B1FA8]">
+            {reason}
+          </span>
+        ))}
+      </span>
+      <span className="flex-1" />
+      {addGroup(size)}
+    </div>
+  )
+
   const menuSections: ActionMenuSection[] = [
     {
       items: [
