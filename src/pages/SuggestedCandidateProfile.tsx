@@ -297,6 +297,7 @@ function SuggestedCandidateProfileInner() {
         identityBadges={identityBadges}
         fitScore={matchScore}
         onFitClick={() => setTab('fit')}
+        linkedinUrl={(candidate as any)?.linkedin_url || null}
         onOpenFullProfile={() => navigate(`/candidates/${candidateId}`)}
         onClose={goBack}
         hasPrev={index > 0}
