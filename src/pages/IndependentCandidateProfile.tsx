@@ -502,27 +502,6 @@ export default function IndependentCandidateProfile() {
                       </span>
                     </span>
                   )}
-                  {location && (
-                    <>
-                      <span className="text-[#D1D5DB]">·</span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5 text-[#8B8F9E]" />
-                        <span>{location}</span>
-                      </span>
-                    </>
-                  )}
-                  {candidate.source && (
-                    <>
-                      <span className="text-[#D1D5DB]">·</span>
-                      <span>Source: <span className="text-[#1F2230] font-medium">{candidate.source}</span></span>
-                    </>
-                  )}
-                  {addedDate && (
-                    <>
-                      <span className="text-[#D1D5DB]">·</span>
-                      <span>Added {addedDate}</span>
-                    </>
-                  )}
                 </div>
               </div>
 
