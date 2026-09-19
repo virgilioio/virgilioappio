@@ -14,6 +14,8 @@ import { EmptyAction, EmptyState } from '@/components/ui/empty-state'
 import { SoftArchive } from '@/components/ui/EmptyIllustrations'
 import { PublicPageShell } from '@/components/public/PublicPageShell'
 import { PublicDossierBanner, PublicDossierBody } from '@/components/public/PublicDossierBody'
+import { DecisionDialog, type DecisionKind } from '@/components/public/DecisionDialog'
+
 import { printDossier } from '@/components/candidates/insights/dossier/printDossier'
 import type { FitAnalysis } from '@/hooks/useCandidateFitInsights'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
