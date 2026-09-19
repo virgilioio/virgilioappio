@@ -208,6 +208,12 @@ function SuggestedCandidateProfileInner() {
 
   const handleDismiss = () => {
     dismissSuggestion(jobId, candidateId)
+    // Not a fit for this job: the suggestion and any dossier written for it go together.
+    void supabase
+      .from('job_suggested_candidates_cache')
+      .delete()
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
     toast({ title: 'Suggestion dismissed', description: `${firstName} will not be suggested for this job again.` })
     goBack()
   }
