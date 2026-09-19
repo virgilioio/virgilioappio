@@ -165,15 +165,12 @@ export function ProfileHeroCard({
         {/* Row 3 — meta */}
         <div className="mt-2 flex items-center gap-1.5 flex-wrap font-inter text-[12.5px] text-[#5A6072]">
           {candidateId && (
-            <>
-              <span>Applying for</span>
-              <ApplicationSwitcher
-                candidateId={candidateId}
-                candidateFirstName={candidateFirstName || candidateName?.split(' ')[0] || null}
-                currentJobId={jobId}
-                currentJobTitle={jobTitle || null}
-              />
-            </>
+            <ApplicationSwitcher
+              candidateId={candidateId}
+              candidateFirstName={candidateFirstName || candidateName?.split(' ')[0] || null}
+              currentJobId={jobId}
+              currentJobTitle={jobTitle || null}
+            />
           )}
           {onOpenFullProfile && (
             <>
