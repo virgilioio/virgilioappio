@@ -392,6 +392,17 @@ function SuggestedCandidateProfileInner() {
               note: (suggestion as any)?.ai_fit_rationale || null,
               actions: addGroup('sm'),
             }}
+            onStateChange={setFitState}
+            renderWaitStrip={({ state, generatedAt }) =>
+              decisionStrip(
+                state === 'rescoring'
+                  ? `Re-scoring · the dossier below is from ${fmtDate(generatedAt) || 'an earlier run'}`
+                  : state === 'failed'
+                    ? `Scoring did not finish · you can still add ${firstName} now`
+                    : `Gio is scoring ${firstName} against this job · you can add them now`,
+                'sm',
+              )
+            }
           />
         )}
 
