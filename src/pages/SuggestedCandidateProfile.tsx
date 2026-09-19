@@ -199,7 +199,7 @@ function SuggestedCandidateProfileInner() {
         ? `In pipeline · ${otherStatus.note || 'another job'}`
         : 'Not in this pipeline yet'
 
-  const goBack = () => navigate(`/jobs/${jobId}`)
+  const goBack = () => navigate(`/jobs/${jobId}?tab=pipeline&section=suggested`)
   const goToSuggestion = (offset: number) => {
     const next = ordered[index + offset]
     const id = next ? suggestedCandidateId(next) : null
