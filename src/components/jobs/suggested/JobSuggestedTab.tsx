@@ -183,6 +183,12 @@ export function JobSuggestedTab({
   const handleDismiss = (candidate: any) => {
     const id = suggestedCandidateId(candidate)
     persistDismissed([...dismissed, id])
+    // The suggestion row hosts any dossier written for this match — both go.
+    void supabase
+      .from('job_suggested_candidates_cache')
+      .delete()
+      .eq('job_id', jobId)
+      .eq('candidate_id', id)
     setSelected((prev) => {
       const next = new Set(prev)
       next.delete(id)
