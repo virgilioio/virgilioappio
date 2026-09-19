@@ -20,18 +20,8 @@ import {
   type SuggestedFilter,
 } from './suggestedFilters'
 import type { SuggestedSortKey } from './suggestedGrid'
+import { readDismissedSuggestions as readDismissed, writeDismissedSuggestions } from './suggestedDismissed'
 
-const dismissKey = (jobId: string) => `gio.suggested.dismissed.${jobId}`
-
-function readDismissed(jobId: string): string[] {
-  try {
-    const raw = localStorage.getItem(dismissKey(jobId))
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : []
-  } catch {
-    return []
-  }
-}
 
 export interface JobSuggestedTabProps {
   jobId: string
@@ -77,11 +67,7 @@ export function JobSuggestedTab({
 
   const persistDismissed = (next: string[]) => {
     setDismissed(next)
-    try {
-      localStorage.setItem(dismissKey(jobId), JSON.stringify(next))
-    } catch {
-      /* a full storage quota must not break the tab */
-    }
+    writeDismissedSuggestions(jobId, next)
   }
 
   const visible = React.useMemo(

@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BarChart3,
@@ -14,6 +15,7 @@ import {
   RefreshCw,
   Share2,
   Sparkles,
+  StickyNote,
   UserRound,
   X,
 } from 'lucide-react'
@@ -62,6 +64,20 @@ interface CandidateInsightsTabProps {
   candidate?: Record<string, unknown> | null
   workExperience: CandidateWorkExperience[]
   education: CandidateEducation[]
+  /** False for people nobody has interviewed — an empty scorecards section would be a lie. */
+  showScorecards?: boolean
+  /**
+   * Present when the dossier is read before an application exists. It drops the
+   * identity repeat and the client-ready toggle, and puts the pipeline decision
+   * where "Share with client" normally sits.
+   */
+  suggested?: {
+    statusText: string
+    chips?: string[]
+    overflow?: number
+    note?: string | null
+    actions?: React.ReactNode
+  } | null
 }
 
 const cardClass = 'rounded-[14px] border border-virgilio-border bg-surface-primary'
@@ -205,7 +221,7 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
   )
 }
 
-export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education }: CandidateInsightsTabProps) {
+export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, showScorecards = true, suggested = null }: CandidateInsightsTabProps) {
   const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences } = useCandidateFitInsights(candidateId, jobId)
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
@@ -392,11 +408,40 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             <p className="flex items-center gap-1.5 font-inter text-[10px] font-semibold uppercase tracking-[0.1em] text-virgilio-purple">
               <Sparkles className="h-3 w-3" /> Gio dossier · prepared for {asString(job?.title)}
             </p>
-            <h2 className="font-poppins text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] text-fit-ink">
-              {asString(candidate?.candidate_name)}<span className="text-fit-lilac">.</span>
-            </h2>
-            {roleLine && <p className="mt-1.5 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
+            {!suggested && (
+              <>
+                <h2 className="font-poppins text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] text-fit-ink">
+                  {asString(candidate?.candidate_name)}<span className="text-fit-lilac">.</span>
+                </h2>
+                {roleLine && <p className="mt-1.5 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
+              </>
+            )}
             {location && <p className="mt-2 flex items-center gap-1.5 text-[12px] text-fit-muted"><MapPin className="h-3 w-3 text-fit-subtle" />{location}</p>}
+            {suggested && (
+              <div className="mt-3">
+                <p className="flex flex-wrap items-center gap-1.5 font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-fit-subtle">
+                  Why Gio suggested them
+                  <span className="text-fit-null">·</span>
+                  <span className="normal-case tracking-normal font-medium">{suggested.statusText}</span>
+                </p>
+                {(suggested.chips?.length || suggested.overflow) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {(suggested.chips || []).map((chip) => (
+                      <span key={chip} className="inline-flex h-[22px] items-center rounded-[7px] border border-fit-skill-evidenced-border bg-fit-skill-evidenced-bg px-2 font-inter text-[11.5px] text-fit-skill-evidenced-text">{chip}</span>
+                    ))}
+                    {!!suggested.overflow && suggested.overflow > 0 && (
+                      <span className="inline-flex h-[22px] items-center rounded-[7px] border border-fit-row-border bg-fit-paper px-2 font-inter text-[11.5px] text-fit-subtle">+{suggested.overflow} more</span>
+                    )}
+                  </div>
+                )}
+                {suggested.note && (
+                  <p className="mt-2 flex items-center gap-1.5 font-inter text-[11px] text-fit-subtle">
+                    <StickyNote className="h-[11px] w-[11px] text-fit-null" />
+                    <span className="min-w-0 truncate">{suggested.note}</span>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <div className="ml-auto shrink-0 text-right">
             <p className="font-inter text-[10px] font-semibold uppercase tracking-[0.1em] text-fit-subtle">Gio fit</p>
@@ -410,16 +455,19 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           </div>
         </div>
         <div className="mt-[18px] flex flex-wrap items-center gap-2.5 overflow-visible border-t border-fit-hairline pt-4">
-          <div className="flex shrink-0 rounded-lg bg-fit-chip p-[3px]" role="group" aria-label="Dossier view">
+          {!suggested && <div className="flex shrink-0 rounded-lg bg-fit-chip p-[3px]" role="group" aria-label="Dossier view">
             {(['internal', 'client'] as const).map((mode) => (
               <Button key={mode} type="button" variant="ghost" size="xs" aria-pressed={viewMode === mode} onClick={() => setViewMode(mode)} className={cn('h-[26px] rounded-md px-3 text-[12px]', viewMode === mode ? 'border border-fit-row-border bg-surface-primary font-semibold text-fit-ink shadow-[0_1px_2px_rgba(13,13,9,0.08)] hover:bg-surface-primary' : 'font-medium text-fit-subtle')}>
                 {mode === 'internal' ? 'Internal' : 'Client-ready'}
               </Button>
             ))}
-          </div>
-          <p className="min-w-0 flex-1 truncate text-[11.5px] text-fit-subtle">
-            {clientReady ? 'Scoring mechanics and salary are hidden. This is what the client sees.' : 'Full view with weights, nulls, and validation priorities.'}
-          </p>
+          </div>}
+          {!suggested && (
+            <p className="min-w-0 flex-1 truncate text-[11.5px] text-fit-subtle">
+              {clientReady ? 'Scoring mechanics and salary are hidden. This is what the client sees.' : 'Full view with weights, nulls, and validation priorities.'}
+            </p>
+          )}
+          {suggested && <span className="min-w-0 flex-1" />}
           <div className="flex shrink-0 items-center gap-2">
             {needsSkillVerdicts && !isRefreshing && (
               <span className="text-[11.5px] text-fit-subtle">Refresh to update the skill read</span>
@@ -427,7 +475,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
             <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
             <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
-            {/* Share is the terminal action of this row, and the only primary. */}
+            {suggested ? suggested.actions : (
+            /* Share is the terminal action of this row, and the only primary. */
             <div ref={shareWrapperRef} className="relative shrink-0">
               <Button ref={shareButtonRef} variant="primary" size="sm" icon={Share2} onClick={() => setShareOpen((open) => !open)}>Share with client</Button>
               <ShareDossierMenu
@@ -446,6 +495,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 triggerRef={shareButtonRef}
               />
             </div>
+            )}
           </div>
         </div>
       </section>
@@ -535,7 +585,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             </div>
           )}
 
-          <InterviewScorecardsSection scorecards={dossierScorecards} pending={pendingScorecards} clientReady={clientReady} />
+          {showScorecards && <InterviewScorecardsSection scorecards={dossierScorecards} pending={pendingScorecards} clientReady={clientReady} />}
 
           {workExperience.length > 0 && (
             <div className="border-t border-fit-hairline p-5 sm:p-6">
