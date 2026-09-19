@@ -515,12 +515,12 @@ function SuggestedCandidateProfileInner() {
 }
 
 /**
- * Before an association exists there is no stored dossier to render — the full
- * assessment is written against the application. This says so plainly and keeps
- * the decision available, rather than showing an empty dossier shell.
+ * Shown when no dossier has been produced for this suggestion yet. Gio's strongest
+ * matches are assessed automatically; everyone else is assessed on request, so the
+ * assessment is offered here rather than started unasked.
  */
 function PreAssociationDossier({
-  jobTitle, score, rationale, reasons, statusText, location, actions,
+  jobTitle, score, rationale, reasons, statusText, location, actions, onGenerate, isGenerating,
 }: {
   jobTitle: string | null
   score: number | null
@@ -529,6 +529,8 @@ function PreAssociationDossier({
   statusText: string
   location: string | null
   actions: React.ReactNode
+  onGenerate?: () => void
+  isGenerating?: boolean
 }) {
   return (
     <ProfileCard title="Gio Fit" subtitle={`Match against ${jobTitle || 'this job'}`}>
