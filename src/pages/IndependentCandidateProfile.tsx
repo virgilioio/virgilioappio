@@ -123,6 +123,7 @@ export default function IndependentCandidateProfile() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [addToPipelineOpen, setAddToPipelineOpen] = useState(false)
+  const [downloadOpen, setDownloadOpen] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
 
   // Email composer state — shared for Compose / Reply / Forward
