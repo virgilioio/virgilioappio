@@ -263,7 +263,7 @@ serve(async (req) => {
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Fetch all data in parallel
-    const [candidateRes, jobRes, workExpRes, educationRes, attachmentsRes, scorecardsRes, associationRes] = await Promise.all([
+    const [candidateRes, jobRes, workExpRes, educationRes, attachmentsRes, scorecardsRes, associationRes, suggestionRes] = await Promise.all([
       sb.from("candidates").select("*").eq("id", candidate_id).maybeSingle(),
       sb.from("jobs").select("*").eq("id", job_id).maybeSingle(),
       sb.from("candidate_work_experience").select("*").eq("candidate_id", candidate_id).order("start_date", { ascending: false }),
