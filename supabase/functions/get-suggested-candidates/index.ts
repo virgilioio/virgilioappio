@@ -779,7 +779,7 @@ serve(async (req) => {
       // updated in place so a re-score never destroys a dossier we paid for.
       const { data: existingRows } = await sb
         .from("job_suggested_candidates_cache")
-        .select("id, candidate_id, job_skills_hash")
+        .select("id, candidate_id, job_skills_hash, ai_fit_analysis")
         .eq("job_id", job_id);
 
       const staleIds = (existingRows || [])
@@ -789,19 +789,39 @@ serve(async (req) => {
         await sb.from("job_suggested_candidates_cache").delete().in("id", staleIds);
       }
 
-      const cacheRows = scoredCandidates.map((sc: any) => ({
-        job_id,
-        candidate_id: sc.candidate.id,
-        ai_fit_score: sc.ai_fit_score,
-        ai_fit_confidence: sc.ai_fit_confidence,
-        ai_fit_rationale: sc.ai_fit_rationale,
-        job_skills_hash: skillsHash,
-        scored_at: new Date().toISOString(),
-      }));
+      // A row that already holds a dossier keeps its score: the dossier's own score
+      // is the one shown in the masthead and the dimension footer, and the two must
+      // never disagree. Only the one-line rationale and freshness are refreshed.
+      const withDossier = new Set(
+        (existingRows || [])
+          .filter((r: any) => r.ai_fit_analysis && !staleIds.includes(r.id))
+          .map((r: any) => r.candidate_id),
+      );
 
-      const { error: cacheErr } = await sb
-        .from("job_suggested_candidates_cache")
-        .upsert(cacheRows, { onConflict: "job_id,candidate_id" });
+      const scoredAt = new Date().toISOString();
+      const cacheRows = scoredCandidates
+        .filter((sc: any) => !withDossier.has(sc.candidate.id))
+        .map((sc: any) => ({
+          job_id,
+          candidate_id: sc.candidate.id,
+          ai_fit_score: sc.ai_fit_score,
+          ai_fit_confidence: sc.ai_fit_confidence,
+          ai_fit_rationale: sc.ai_fit_rationale,
+          job_skills_hash: skillsHash,
+          scored_at: scoredAt,
+        }));
+
+      const { error: cacheErr } = cacheRows.length > 0
+        ? await sb.from("job_suggested_candidates_cache").upsert(cacheRows, { onConflict: "job_id,candidate_id" })
+        : { error: null };
+
+      for (const sc of scoredCandidates.filter((s: any) => withDossier.has(s.candidate.id))) {
+        await sb
+          .from("job_suggested_candidates_cache")
+          .update({ ai_fit_rationale: sc.ai_fit_rationale, scored_at: scoredAt })
+          .eq("job_id", job_id)
+          .eq("candidate_id", sc.candidate.id);
+      }
 
       if (cacheErr) {
         console.error("Cache write error:", cacheErr);
