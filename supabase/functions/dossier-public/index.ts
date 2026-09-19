@@ -248,12 +248,17 @@ Deno.serve(async (req) => {
               html:
                 `<p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#1F2230">` +
                 `<strong>${headline}</strong><br/>${job.title ?? ""}</p>` +
+                (reasons.length
+                  ? `<p style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#1F2230">${
+                    reasons.map((r: string) => r.replace(/[<>]/g, "")).join(" · ")
+                  }</p>`
+                  : "") +
                 (note
                   ? `<p style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#5A6072">“${
                     note.replace(/[<>]/g, "")
                   }”</p>`
                   : "") +
-                `<p style="font-family:Inter,Arial,sans-serif;font-size:12px;color:#8B8F9E">Recorded from the dossier you shared.</p>`,
+                `<p style="font-family:Inter,Arial,sans-serif;font-size:12px;color:#8B8F9E">Recorded on the link we shared. We do not know which person at the client answered.</p>`,
             } as never);
           } catch (mailError) {
             console.error("[dossier-public] email", mailError);
@@ -261,7 +266,14 @@ Deno.serve(async (req) => {
         }
       }
 
-      return json(200, { state: "recorded", decision: row.decision, created_at: row.created_at });
+      return json(200, {
+        state: "recorded",
+        decision: row.decision,
+        created_at: row.created_at,
+        reasons,
+        note,
+      });
+
     }
 
     /* --------------------------------------------------------------- RESOLVE */
