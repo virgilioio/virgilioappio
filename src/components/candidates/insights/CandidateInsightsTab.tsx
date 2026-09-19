@@ -27,7 +27,7 @@ import { GioFitLanguageControl, GioFitLanguageProvenance } from './GioFitLanguag
 import { GioFitColdSkeleton } from './loading/GioFitColdSkeleton'
 import { GioFitBlockedCard, GioFitErrorCard } from './loading/GioFitFailureCard'
 import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
-import { buildNarrationSteps, useGioFitNarration } from './loading/GioFitNarration'
+import { buildNarrationSteps, stepProgress, useGioFitNarration } from './loading/GioFitNarration'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
 import { usePermissions } from '@/hooks/usePermissions'
