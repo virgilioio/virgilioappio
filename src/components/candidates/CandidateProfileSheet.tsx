@@ -104,7 +104,8 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import { ProfileHeroCard } from '@/components/candidates/profile/ProfileHeroCard'
 import { ProfileStageStrip } from '@/components/candidates/profile/ProfileStageStrip'
 
-import { ProfileQuickActionsCard } from '@/components/candidates/profile/ProfileQuickActionsCard'
+import { ProfileActionMenu, type ActionMenuItem } from '@/components/candidates/profile/ProfileActionMenu'
+import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
 import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileApplicationCard'
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
