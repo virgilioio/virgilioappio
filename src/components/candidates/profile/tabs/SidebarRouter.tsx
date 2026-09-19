@@ -98,6 +98,10 @@ export interface JobOverviewSidebarProps {
   /** WhatsApp integration state + first-click template handler for the Phone row. */
   whatsAppEnabled?: boolean
   onWhatsAppClick?: (phone: string) => void
+  /** Opens the existing Edit candidate sheet from the Details header. */
+  onEdit?: () => void
+  /** Tags block (rescued from the removed Overview tab), rendered after Details. */
+  tagsSlot?: ReactNode
 }
 export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
   const comp = formatSalaryExpectation(p.candidate as any)
