@@ -153,27 +153,47 @@ export default function PublicDossier() {
     return () => { active = false }
   }, [token])
 
-  const sendDecision = useCallback(async (value: 'interview_requested' | 'not_a_fit') => {
-    const previousDecision = decision
-    const previousDecisionOn = decisionOn
-    const optimisticDate = new Date().toISOString()
-    setDecision(value)
-    setDecisionOn(optimisticDate)
+  /**
+   * Called only from inside the dialog. The page stays on its awaiting state until
+   * the client dismisses the recorded panel — then it re-renders into the new stage.
+   */
+  const submitDecision = useCallback(async (
+    value: DecisionKind,
+    input: { reasons: string[]; note: string },
+  ) => {
     setIsSending(true)
     setError(null)
     try {
-      const result = await callEndpoint({ action: 'feedback', token, decision: value })
+      const result = await callEndpoint({
+        action: 'feedback',
+        token,
+        decision: value,
+        reasons: input.reasons,
+        note: input.note || null,
+      })
       if (result.notFound) throw new Error('This dossier is no longer accepting responses.')
-      setDecision(value)
-      setDecisionOn((result.data as { created_at?: string })?.created_at ?? new Date().toISOString())
+      setPending({
+        decision: value,
+        created_at: (result.data as { created_at?: string })?.created_at ?? new Date().toISOString(),
+      })
+      return true
     } catch (err) {
-      setDecision(previousDecision)
-      setDecisionOn(previousDecisionOn)
       setError(err instanceof Error ? err.message : 'Your response could not be recorded.')
+      return false
     } finally {
       setIsSending(false)
     }
-  }, [decision, decisionOn, token])
+  }, [token])
+
+  const closeDialog = useCallback(() => {
+    setDialogKind(null)
+    if (pending) {
+      setDecision(pending.decision)
+      setDecisionOn(pending.created_at)
+      setPending(null)
+    }
+  }, [pending])
+
 
   const live = resolved?.state === 'live' ? resolved : null
 
