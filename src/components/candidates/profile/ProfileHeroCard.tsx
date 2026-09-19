@@ -39,6 +39,18 @@ interface ProfileHeroCardProps {
   tabs?: ReactNode
   /** Overflow menu — last element of the hero action row, after prev/next. */
   actionMenu?: ReactNode
+  /** Back link label. Defaults to "Back to job". */
+  backLabel?: string
+  /** Last breadcrumb segment. Defaults to "Candidates". */
+  breadcrumbLast?: string
+  /** Replaces the application switcher on row 3 — used by match-scoped records. */
+  contextLine?: ReactNode
+  /** Extra status badges after the name (suggested-by-Gio, rank, added-to-stage). */
+  identityBadges?: ReactNode
+  /** Quieter, unfilled heart — for people who are not in a pipeline yet. */
+  favoriteMuted?: boolean
+  prevLabel?: string
+  nextLabel?: string
 }
 
 export function ProfileHeroCard({
@@ -47,6 +59,8 @@ export function ProfileHeroCard({
   fitScore, onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs, actionMenu,
+  backLabel = 'Back to job', breadcrumbLast = 'Candidates', contextLine,
+  identityBadges, favoriteMuted, prevLabel = 'Previous candidate', nextLabel = 'Next candidate',
 }: ProfileHeroCardProps) {
 
 
@@ -62,7 +76,7 @@ export function ProfileHeroCard({
               className="inline-flex items-center gap-1.5 font-poppins font-medium text-[12.5px] text-[#5A6072] hover:text-[#1F2230] transition-colors shrink-0"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Back to job
+              {backLabel}
             </button>
           )}
           <span className="text-[#D1D5DB]">·</span>
@@ -77,7 +91,7 @@ export function ProfileHeroCard({
               </>
             )}
             <span className="text-[#D1D5DB]">›</span>
-            <span className="text-[#1F2230] font-medium">Candidates</span>
+            <span className="text-[#1F2230] font-medium">{breadcrumbLast}</span>
           </nav>
         </div>
 
@@ -119,7 +133,8 @@ export function ProfileHeroCard({
                 variant="secondary"
                 size="md"
                 iconOnly
-                aria-label="Previous candidate"
+                aria-label={prevLabel}
+                title={prevLabel}
                 icon={ChevronLeft}
                 onClick={onNavigatePrev}
                 disabled={!hasPrev}
@@ -128,7 +143,8 @@ export function ProfileHeroCard({
                 variant="secondary"
                 size="md"
                 iconOnly
-                aria-label="Next candidate"
+                aria-label={nextLabel}
+                title={nextLabel}
                 icon={ChevronRight}
                 onClick={onNavigateNext}
                 disabled={!hasNext}
@@ -153,9 +169,10 @@ export function ProfileHeroCard({
               className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[#F1F0EC] transition-colors"
               aria-label={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
             >
-              <Heart className={cn('h-5 w-5', isFavorite ? 'fill-red-500 text-red-500' : 'text-[#8B8F9E] hover:text-red-400')} />
+              <Heart className={cn('h-5 w-5', isFavorite ? 'fill-red-500 text-red-500' : favoriteMuted ? 'text-[#C2C6D2] hover:text-red-400' : 'text-[#8B8F9E] hover:text-red-400')} />
             </button>
           )}
+          {identityBadges}
           {currentStageName && (
             <span className="inline-flex items-center gap-1.5 h-[24px] px-2.5 rounded-full bg-[#EDE4FF] text-virgilio-purple font-inter font-semibold text-[11.5px]">
               <span className="h-1.5 w-1.5 rounded-full bg-virgilio-purple" />
@@ -179,7 +196,8 @@ export function ProfileHeroCard({
 
         {/* Row 3 — meta */}
         <div className="mt-2 flex items-center gap-1.5 flex-wrap font-inter text-[12.5px] text-[#5A6072]">
-          {candidateId && (
+          {contextLine}
+          {!contextLine && candidateId && (
             <ApplicationSwitcher
               candidateId={candidateId}
               candidateFirstName={candidateFirstName || candidateName?.split(' ')[0] || null}

@@ -1298,9 +1298,12 @@ export default function JobDetail() {
                           jobId={id!}
                           jobSkills={(job as any)?.skills || null}
                           jobLocation={job?.location || null}
-                          onOpenCandidate={(c: any) =>
-                            openSuggestedProfile(c?.candidate_id || c?.id)
-                          }
+                          onOpenCandidate={(c: any) => {
+                            const cid = c?.candidate_id || c?.id
+                            // A suggestion is not an application — it gets its own screen.
+                            if (cid && c?.source !== 'apollo') navigate(`/jobs/${id}/suggested/${cid}`)
+                            else openSuggestedProfile(cid)
+                          }}
                           onEditRequirements={() => setActiveTab('job-setup')}
                         />
                       </div>
