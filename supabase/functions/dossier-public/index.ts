@@ -217,7 +217,6 @@ Deno.serve(async (req) => {
       if (result.error) return NOT_FOUND();
       const row = result as { id: string; decision: string; created_at: string };
 
-
       const { data: candidate } = await supabase
         .from("candidates")
         .select("candidate_name")
@@ -227,28 +226,11 @@ Deno.serve(async (req) => {
       const headline = decision === "interview_requested"
         ? `Interview requested for ${candidateName}`
         : `${candidateName} marked not a fit`;
-      const actionUrl = `/jobs/${assoc.job_id}/candidates/${assoc.candidate_id}?tab=fit`;
 
+      // In-app notification and the activity entry are already written by the
+      // routine above; the email is the one thing it cannot send.
       const recipients = await recruiterRecipients(supabase, assoc.job_id, job.created_by);
-      for (const userId of recipients) {
-        await supabase.rpc("emit_notification", {
-          _user_id: userId,
-          _tenant_id: job.tenant_id,
-          _category: "mention",
-          _actor_user_id: null,
-          _actor_name: "Client",
-          _actor_avatar_url: null,
-          _title: headline,
-          _subtitle: job.title ?? null,
-          _preview: note || "Decision recorded from the shared dossier.",
-          _entity_kind: "candidate",
-          _entity_id: assoc.candidate_id,
-          _job_id: assoc.job_id,
-          _candidate_id: assoc.candidate_id,
-          _action_url: actionUrl,
-          _metadata: { dossier_share_id: share.id, decision },
-        });
-      }
+
 
       const key = Deno.env.get("RESEND_API_KEY");
       if (key && recipients.length > 0) {
