@@ -51,6 +51,8 @@ interface MetaRowProps {
   value?: ReactNode
   /** Override the muted em-dash empty placeholder. */
   emptyText?: string
+  /** Optional trailing action rendered after the value (e.g. WhatsApp shortcut). */
+  action?: ReactNode
 }
 /** Meta row: icon · label (min-w 90) · value right-aligned. Hairline below. */
 export function MetaRow({ icon: Icon, label, value, emptyText = '—', action }: MetaRowProps) {
@@ -68,6 +70,7 @@ export function MetaRow({ icon: Icon, label, value, emptyText = '—', action }:
       >
         {hasValue ? value : emptyText}
       </span>
+      {action}
     </div>
   )
 }
