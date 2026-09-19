@@ -408,6 +408,16 @@ export default function JobDetail() {
   // Inner tabs for Pipeline section
   const [pipelineSectionTab, setPipelineSectionTab] = useState<'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
 
+  // Deep link: /jobs/:id?tab=pipeline&section=suggested lands on Pipeline > Suggested.
+  useEffect(() => {
+    if (searchParams.get('tab') === 'pipeline') setActiveTab('pipeline')
+    const section = searchParams.get('section')
+    if (section === 'suggested' || section === 'application' || section === 'recruiting' || section === 'offers' || section === 'hired' || section === 'rejected') {
+      setPipelineSectionTab(section)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   // Force restricted viewers (HM/Interviewer) to 'recruiting' tab only
   useEffect(() => {
     if (isRestrictedViewer && pipelineSectionTab !== 'recruiting') {
