@@ -108,6 +108,8 @@ import { ProfileQuickActionsCard } from '@/components/candidates/profile/Profile
 import { ProfileApplicationCard } from '@/components/candidates/profile/ProfileApplicationCard'
 import { ProfileTabs } from '@/components/candidates/profile/ProfileTabs'
 import { CurrentStageCard } from '@/components/candidates/profile/CurrentStageCard'
+import { ClientVerdictBanner } from '@/components/candidates/profile/ClientVerdictBanner'
+import { useClientVerdict } from '@/hooks/useClientVerdict'
 import { InterviewHistoryCard } from '@/components/candidates/profile/InterviewHistoryCard'
 import { StageScorecardsCard, type ScorecardStageGroup } from '@/components/candidates/profile/StageScorecardsCard'
 import { useApplicationScorecardRequirements } from '@/hooks/useApplicationScorecardRequirements'
@@ -324,6 +326,9 @@ const [pendingFocusMyScorecard, setPendingFocusMyScorecard] = useState(false)
 const [scorecardsRefreshNonce, setScorecardsRefreshNonce] = useState(0)
 const bumpScorecardsRefresh = () => setScorecardsRefreshNonce((n) => n + 1)
 const scorecardSummary = useAssociationScorecardSummary(associationId, scorecardsRefreshNonce)
+
+// The client's answer on a shared dossier — pill on every tab, banner in Job Overview.
+const { verdict: clientVerdict, resolve: resolveClientVerdict } = useClientVerdict(associationId)
 
 // Active stage for the Scorecards tab + sidebar (real data wiring)
 const activeStageOption = useMemo(() => {
@@ -1448,6 +1453,7 @@ const stageHasAutomation = useMemo(() => {
                       onOpenFullProfile={() => navigate(`/candidates?openCandidate=${candidate.id}`)}
                       linkedinUrl={candidate.linkedin_url || null}
                       fitScore={fitInsights?.score ?? null}
+                      clientVerdictState={clientVerdict.state}
                       onFitClick={() => setActiveTab('fit')}
                       onClose={() => onOpenChange(false)}
                       index={currentIndex ?? null}
@@ -1595,6 +1601,13 @@ const stageHasAutomation = useMemo(() => {
                       const stageSupportsScorecard = currentStage ? supportsScorecard(currentStage.stage.stage_type) : false
                       return (
                         <>
+                          <ClientVerdictBanner
+                            verdict={clientVerdict}
+                            onFollowUp={() => setEmailComposerOpen(true)}
+                            onSchedule={() => { setOldBookingId(null); setScheduleOpen(true) }}
+                            onTalentPool={handleReject}
+                            onDismiss={() => { void resolveClientVerdict() }}
+                          />
                           {currentStage && associationId ? (
                             <CurrentStageCard
                               stageName={currentStage.stage.stage_name}
