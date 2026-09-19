@@ -313,7 +313,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     return [...new Map(people.map((person) => [person.userId, { userId: person.userId, name: person.name }])).values()]
   }, [scorecardRequirements.byStage])
   // Narration is driven while a request is open; step 5 never completes early.
-  const { stepIndex, progress } = useGioFitNarration(isRefreshing)
+  const { stepIndex, progress } = useGioFitNarration(isRefreshing || suggestionPending)
 
   const candidateName = asString(candidate?.candidate_name) || 'Candidate'
   const currentRole = asString(candidate?.role_current) || asString(candidate?.current_job_title)
