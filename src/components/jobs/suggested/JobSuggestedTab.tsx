@@ -21,6 +21,7 @@ import {
 } from './suggestedFilters'
 import type { SuggestedSortKey } from './suggestedGrid'
 import { readDismissedSuggestions as readDismissed, writeDismissedSuggestions } from './suggestedDismissed'
+import { supabase } from '@/lib/supabaseClient'
 
 
 export interface JobSuggestedTabProps {
