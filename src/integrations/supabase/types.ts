@@ -3163,27 +3163,36 @@ export type Database = {
           decision: string
           id: string
           note: string | null
+          reasons: string[]
+          sent_to: string | null
           share_id: string
+          user_agent: string | null
         }
         Insert: {
           created_at?: string
           decision: string
           id?: string
           note?: string | null
+          reasons?: string[]
+          sent_to?: string | null
           share_id: string
+          user_agent?: string | null
         }
         Update: {
           created_at?: string
           decision?: string
           id?: string
           note?: string | null
+          reasons?: string[]
+          sent_to?: string | null
           share_id?: string
+          user_agent?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "dossier_feedback_share_id_fkey"
             columns: ["share_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "dossier_shares"
             referencedColumns: ["id"]
           },
@@ -3199,6 +3208,7 @@ export type Database = {
           id: string
           is_public: boolean
           last_viewed_at: string | null
+          sent_to: string | null
           token: string
           updated_at: string
           view_count: number
@@ -3212,6 +3222,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           last_viewed_at?: string | null
+          sent_to?: string | null
           token?: string
           updated_at?: string
           view_count?: number
@@ -3225,6 +3236,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           last_viewed_at?: string | null
+          sent_to?: string | null
           token?: string
           updated_at?: string
           view_count?: number
@@ -3744,6 +3756,8 @@ export type Database = {
           ai_fit_version: number | null
           booking_link_sent_at: string | null
           candidate_id: string
+          client_verdict_resolved_at: string | null
+          client_verdict_resolved_by: string | null
           created_at: string
           current_stage_id: string | null
           email_ingest_address: string | null
@@ -3780,6 +3794,8 @@ export type Database = {
           ai_fit_version?: number | null
           booking_link_sent_at?: string | null
           candidate_id: string
+          client_verdict_resolved_at?: string | null
+          client_verdict_resolved_by?: string | null
           created_at?: string
           current_stage_id?: string | null
           email_ingest_address?: string | null
@@ -3816,6 +3832,8 @@ export type Database = {
           ai_fit_version?: number | null
           booking_link_sent_at?: string | null
           candidate_id?: string
+          client_verdict_resolved_at?: string | null
+          client_verdict_resolved_by?: string | null
           created_at?: string
           current_stage_id?: string | null
           email_ingest_address?: string | null
@@ -9062,9 +9080,23 @@ export type Database = {
           success: boolean
         }[]
       }
+      record_dossier_decision: {
+        Args: {
+          _decision: string
+          _note?: string
+          _reasons?: string[]
+          _token: string
+          _user_agent?: string
+        }
+        Returns: Json
+      }
       record_dossier_view: { Args: { _token: string }; Returns: undefined }
       resequence_posting_fields_for_library_order: {
         Args: { p_posting_id: string }
+        Returns: undefined
+      }
+      resolve_client_verdict: {
+        Args: { _association_id: string; _by?: string }
         Returns: undefined
       }
       resolve_org_context: {
@@ -9206,6 +9238,8 @@ export type Database = {
         | "automation_skipped"
         | "sequence_enrolled"
         | "sequence_completed"
+        | "client_dossier_viewed"
+        | "client_dossier_decision"
       application_field_source: "library" | "custom"
       automation_action:
         | "email"
@@ -9577,6 +9611,8 @@ export const Constants = {
         "automation_skipped",
         "sequence_enrolled",
         "sequence_completed",
+        "client_dossier_viewed",
+        "client_dossier_decision",
       ],
       application_field_source: ["library", "custom"],
       automation_action: [
