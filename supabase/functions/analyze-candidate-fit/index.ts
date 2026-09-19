@@ -271,11 +271,15 @@ serve(async (req) => {
       sb.from("candidate_attachments").select("*").eq("candidate_id", candidate_id).eq("is_resume", true).limit(1),
       sb.from("job_stage_scorecards").select("*").eq("job_id", job_id).eq("candidate_id", candidate_id),
       sb.from("job_candidate_associations").select("id, ai_fit_version, output_language, ai_fit_keep_proper_nouns").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
+      sb.from("job_suggested_candidates_cache").select("id").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
     ]);
 
     const candidate = candidateRes.data;
     const job = jobRes.data;
     const association = associationRes.data;
+    // Suggestion-scoped run: the person is not on this pipeline, so the dossier is
+    // hosted on the job's disposable suggestion row instead of an application.
+    const suggestion = association ? null : suggestionRes.data;
 
     if (!candidate || !job) {
       return new Response(JSON.stringify({ error: "Candidate or job not found" }), {
@@ -284,11 +288,18 @@ serve(async (req) => {
       });
     }
 
-    if (!association) {
+    if (!association && !suggestion) {
       return new Response(JSON.stringify({ error: "No association found between candidate and job" }), {
         status: 404,
         headers: { ...headers, "Content-Type": "application/json" },
       });
+    }
+
+    if (suggestion) {
+      await sb
+        .from("job_suggested_candidates_cache")
+        .update({ dossier_status: "pending", dossier_error: null })
+        .eq("id", suggestion.id);
     }
 
     const { data: organization } = await sb
@@ -296,9 +307,9 @@ serve(async (req) => {
       .select("default_output_language")
       .eq("id", job.organization_id)
       .maybeSingle();
-    const requestedLanguage = association.output_language || job.output_language || organization?.default_output_language || "en";
+    const requestedLanguage = association?.output_language || job.output_language || organization?.default_output_language || "en";
     const outputLanguage = SUPPORTED_LANGUAGES[requestedLanguage] ? requestedLanguage : "en";
-    const keepProperNouns = association.ai_fit_keep_proper_nouns !== false;
+    const keepProperNouns = association ? association.ai_fit_keep_proper_nouns !== false : true;
 
     // Check if job has a meaningful description
     const jobDescription = job.description || "";
