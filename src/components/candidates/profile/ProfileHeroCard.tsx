@@ -127,7 +127,7 @@ export function ProfileHeroCard({
       {/* Row 2 — identity */}
       <div className="mt-3.5 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="font-poppins font-semibold tracking-[-0.04em] text-[#1F2230] text-[28px] sm:text-[32px] leading-tight truncate">
+          <h1 className="font-poppins font-semibold tracking-[-0.04em] text-[#1F2230] text-[28px] sm:text-[32px] leading-none truncate">
             {candidateName}
             <span className="text-[#D7C5FB]">.</span>
           </h1>
@@ -135,7 +135,7 @@ export function ProfileHeroCard({
             <button
               type="button"
               onClick={onToggleFavorite}
-              className="p-1 rounded-md hover:bg-[#F1F0EC] transition-colors"
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[#F1F0EC] transition-colors"
               aria-label={isFavorite ? 'Remove from favorites' : 'Mark as favorite'}
             >
               <Heart className={cn('h-5 w-5', isFavorite ? 'fill-red-500 text-red-500' : 'text-[#8B8F9E] hover:text-red-400')} />
@@ -154,7 +154,7 @@ export function ProfileHeroCard({
             <button
               type="button"
               onClick={() => window.open(ensureAbsoluteUrl(linkedinUrl), '_blank')}
-              className="p-1 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]"
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-[#F1F0EC] transition-colors text-[#8B8F9E] hover:text-[#5A6072]"
               aria-label="Open LinkedIn profile"
             >
               <LinkedInFilled className="h-4 w-4" />
