@@ -56,7 +56,7 @@ export function InterviewScorecardsSection({
                       {scorecard.interviewerRole && <span className="text-[11.5px] text-fit-subtle">{scorecard.interviewerRole}</span>}
                     </div>
                     <p className="mt-0.5 text-[11px] text-fit-subtle">{scorecard.stage} · {shortDossierDate(scorecard.submittedAt)}</p>
-                    {takeaway && <p className={cn('mt-2 text-[12.5px] leading-[1.55] text-fit-muted', !open && 'line-clamp-2')}>{takeaway}</p>}
+                    {takeaway && !open && <p className="mt-2 line-clamp-2 text-[12.5px] leading-[1.55] text-fit-muted">{takeaway}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge tone={toneMap[ratingTone(scorecard.rating)]} size="xs" shape="square">{ratingLabel(scorecard.rating)}</Badge>
