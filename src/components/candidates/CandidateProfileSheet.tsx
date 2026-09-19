@@ -17,7 +17,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus,
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus, ArrowRight, ArrowRightLeft,
   ListChecks,
 
 } from 'lucide-react'
