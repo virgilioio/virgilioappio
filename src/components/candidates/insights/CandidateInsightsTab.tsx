@@ -78,6 +78,13 @@ interface CandidateInsightsTabProps {
     note?: string | null
     actions?: React.ReactNode
   } | null
+  /**
+   * False where an assessment must be asked for rather than assumed — a suggestion
+   * below the automatic threshold. Opening the tab then spends nothing.
+   */
+  autoGenerate?: boolean
+  /** Rendered instead of the cold skeleton when nothing is stored and nothing is running. */
+  renderEmpty?: (options: { generate: () => void; isGenerating: boolean }) => React.ReactNode
 }
 
 const cardClass = 'rounded-[14px] border border-virgilio-border bg-surface-primary'
