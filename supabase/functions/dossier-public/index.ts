@@ -196,23 +196,27 @@ Deno.serve(async (req) => {
       const decision = String(body?.decision ?? "");
       if (decision !== "interview_requested" && decision !== "not_a_fit") return NOT_FOUND();
       const note = typeof body?.note === "string" ? body.note.slice(0, 2000) : null;
+      const reasons = Array.isArray(body?.reasons)
+        ? body.reasons.filter((r: unknown) => typeof r === "string").slice(0, 12).map((r: string) => r.slice(0, 80))
+        : [];
+      const userAgent = req.headers.get("user-agent") ?? null;
 
-      const { data: existing } = await supabase
-        .from("dossier_feedback")
-        .select("decision, created_at")
-        .eq("share_id", share.id)
-        .maybeSingle();
-      if (existing) return json(409, { error: "decision_already_recorded" });
+      // The write itself happens inside a security definer routine: it re-checks the
+      // token, refuses a second answer, writes the activity entry and notifies the
+      // recruiters. Anonymous callers never touch the table directly.
+      const { data: recorded, error } = await supabase.rpc("record_dossier_decision", {
+        _token: token,
+        _decision: decision,
+        _reasons: reasons,
+        _note: note,
+        _user_agent: userAgent,
+      });
+      if (error) throw error;
+      const result = (recorded ?? {}) as Record<string, unknown>;
+      if (result.error === "decision_already_recorded") return json(409, { error: "decision_already_recorded" });
+      if (result.error) return NOT_FOUND();
+      const row = result as { id: string; decision: string; created_at: string };
 
-      const { data: row, error } = await supabase
-        .from("dossier_feedback")
-        .insert({ share_id: share.id, decision, note })
-        .select("id, decision, created_at")
-        .single();
-      if (error) {
-        if (error.code === "23505") return json(409, { error: "decision_already_recorded" });
-        throw error;
-      }
 
       const { data: candidate } = await supabase
         .from("candidates")
