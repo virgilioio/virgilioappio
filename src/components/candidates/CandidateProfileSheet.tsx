@@ -211,6 +211,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [certifications, setCertifications] = useState<CandidateCertification[]>([])
   const [editOpen, setEditOpen] = useState(false)
+  const [downloadOpen, setDownloadOpen] = useState(false)
   const [addTransferOpen, setAddTransferOpen] = useState(false)
   const jobClient = useJobClient(jobId)
   const [refSheetOpen, setRefSheetOpen] = useState(false)
