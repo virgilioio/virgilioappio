@@ -11,8 +11,9 @@ This plan gives Gio's strongest suggestions a real dossier before anyone is adde
 
 1. **Top suggestions get assessed automatically.** After the Suggested list is scored, the highest scorers are sent for the full assessment in the background — people scoring **80 or above, up to 10 per job per scoring run**. By the time you open one of those profiles, the complete dossier is usually already there (and if it is still running, you see the existing "Gio is thinking" state, not an empty page).
 2. **Everyone else gets it on request.** A suggestion below that bar shows the match score, the reasons and a **Generate full dossier** button. One click, same assessment.
-3. **Adding carries it over.** When a suggested person is added to a pipeline, the dossier already produced moves onto their new pipeline record — nothing is re-run, and the score does not shift.
-4. **Re-running requirements resets it.** If you change the job's description or must-have skills, existing suggestion dossiers are cleared with the scores, because they were written against the old requirements.
+3. **It lives on the job, temporarily.** The dossier is stored against this job's suggestion record — not on the person. While they sit in the Suggested list it stays there; it is never visible on the candidate elsewhere in the database.
+4. **Adding makes it permanent.** When a suggested person is added to a pipeline, the dossier moves onto their new pipeline record and stays — nothing is re-run, and the score does not shift.
+5. **Dismissing throws it away.** Thumbs-down (not a fit for this job) deletes the suggestion record and its dossier. Same when they drop off the list or the job is re-scored against changed requirements — those dossiers were written against the old requirements, so they go with them.
 
 Cost note: each dossier is one deep assessment, the same spend as a dossier on a pipeline candidate. The automatic pass is capped at 10 per scoring run so a large database cannot quietly run up hundreds.
 
