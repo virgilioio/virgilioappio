@@ -268,6 +268,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   // changed after the stored analysis. Opening the tab alone never spends credits.
   useEffect(() => {
     if (isLoading || hasTriggered.current || jdText.length < 30 || !insights) return
+    if (!autoGenerate) return
     if (!insights.analysis || isStale) {
       hasTriggered.current = true
       refreshInsights()
