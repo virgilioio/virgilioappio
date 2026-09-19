@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     const workspaceName = tenant?.name || "This agency";
 
     const terminalAssociation = ["rejected", "withdrawn"].includes(String(assoc.status ?? "").toLowerCase());
-    const progressedAssociation = ["offer", "hired"].includes(String(assoc.status ?? "").toLowerCase());
+    const progressedAssociation = ["offer", "offered", "hired"].includes(String(assoc.status ?? "").toLowerCase());
     const live = share.is_public &&
       !share.deactivated_at &&
       !assoc.rejected_at &&
@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
           .maybeSingle(),
         supabase
           .from("scheduled_bookings")
-          .select("scheduled_start, status, job_hiring_stage_id, booking_event_types(title)")
+          .select("scheduled_start, status, job_hiring_stage_id")
           .eq("job_candidate_association_id", assoc.id)
           .eq("status", "confirmed")
           .gte("scheduled_start", new Date().toISOString())
@@ -336,7 +336,7 @@ Deno.serve(async (req) => {
     if (assoc.status === "hired" || assoc.hired_at) {
       clientStage = "hired";
       occurredAt = assoc.hired_at;
-    } else if (assoc.status === "offer" || stageType === "offer" || assoc.offered_at) {
+    } else if (["offer", "offered"].includes(String(assoc.status)) || stageType === "offer" || assoc.offered_at) {
       clientStage = "offer";
       occurredAt = (offer as any)?.sent_at || assoc.offered_at || (offer as any)?.updated_at || assoc.entered_stage_at;
     } else if (stageType === "interview") {
@@ -491,7 +491,7 @@ Deno.serve(async (req) => {
         key: clientStage,
         occurred_at: occurredAt,
         next_interview_at: nextBooking?.scheduled_start ?? null,
-        next_interview_label: nextBooking?.booking_event_types?.title || (currentStage as any)?.custom_stage_name || (currentStage as any)?.job_stages?.stage_name || null,
+        next_interview_label: (currentStage as any)?.custom_stage_name || (currentStage as any)?.job_stages?.stage_name || null,
         start_date: startDate,
       },
     });

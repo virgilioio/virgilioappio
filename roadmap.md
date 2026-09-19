@@ -6,4 +6,4 @@
 - [x] Add dossier language provenance and names/titles controls.
 - [x] Verify the edge function, settings, and responsive dossier UI.
 - [x] Replace the Gio Fit export dialog and generate the shared, searchable dossier PDF.
-- [ ] Add stage-aware client actions, notes, banners, and idempotent feedback to public dossiers.
+- [x] Add stage-aware client actions, notes, banners, and idempotent feedback to public dossiers.

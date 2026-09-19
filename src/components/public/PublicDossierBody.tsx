@@ -142,11 +142,13 @@ export function PublicDossierBody({
       .map((source) => source.name),
   )]
 
-  const clientStage = decision === 'interview_requested'
-    ? 'requested'
-    : decision === 'not_a_fit'
-      ? 'declined'
-      : payload.client_stage.key
+  const clientStage = payload.client_stage.key === 'awaiting'
+    ? decision === 'interview_requested'
+      ? 'requested'
+      : decision === 'not_a_fit'
+        ? 'declined'
+        : 'awaiting'
+    : payload.client_stage.key
   const recruiter = payload.prepared_by || payload.workspace_name
   const stageDate = decisionOn || payload.client_stage.occurred_at
   const note = clientStage === 'requested'
