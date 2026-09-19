@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine } from 'lucide-react'
+import { BarChart3, Plus, Sparkles, ClipboardCheck, Send, Check, PenLine, ChevronDown } from 'lucide-react'
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,8 @@ import { RATING_META } from '@/lib/scorecardRatings'
 import type { ScoreRating } from '@/hooks/useScorecards'
 import type { RequiredPanelist, ScorecardReminderCadence } from '@/hooks/useStageScorecardRequirement'
 import { cadenceLabel, timeAgoShort } from '@/hooks/useStageScorecardRequirement'
+import { SafeHtml } from '@/components/ui/safe-html'
+import { normalizeScorecardRichText, richTextSummary } from '@/components/candidates/insights/dossier/dossierScorecards'
 
 export type SubmittedVerdict =
   | { label: 'Strong yes'; tone: 'green' }
@@ -126,9 +128,9 @@ function ScoreQuestionCard({ score }: { score: SubmittedQuestionScore }) {
 }
 
 function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean }) {
-  const cleanFeedback = p.feedback
-    ? p.feedback.replace(/<[^>]+>/g, '').trim()
-    : ''
+  const [takeawaysOpen, setTakeawaysOpen] = useState(false)
+  const takeawayHtml = normalizeScorecardRichText(p.feedback)
+  const takeawaySummary = richTextSummary(p.feedback)
   const scores = p.scores ?? []
   return (
     <div className={cn('px-5 py-4', !isLast && 'border-b border-[#F1F0EC]')}>
@@ -183,14 +185,34 @@ function PanelistRow({ p, isLast }: { p: SubmittedScorecardRow; isLast: boolean 
         </div>
       )}
 
-      {cleanFeedback && (
-        <div className="mt-3 bg-white border border-[#E7E8EE] rounded-[10px] p-3">
-          <div className="font-inter font-medium text-[10.5px] tracking-[0.06em] uppercase text-[#8B8F9E]">
-            Key takeaways
-          </div>
-          <p className="mt-1 font-inter text-[12.5px] leading-[1.6] text-[#1F2230]">
-            “{cleanFeedback}”
-          </p>
+      {takeawayHtml && (
+        <div className="mt-3 overflow-hidden rounded-[10px] border border-[#E7E8EE] bg-white">
+          <button
+            type="button"
+            className="flex w-full items-start gap-3 p-3 text-left hover:bg-[#FAFAF7]"
+            aria-expanded={takeawaysOpen}
+            onClick={() => setTakeawaysOpen((open) => !open)}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="font-inter text-[10.5px] font-medium uppercase tracking-[0.06em] text-[#8B8F9E]">
+                Key takeaways
+              </div>
+              {!takeawaysOpen && takeawaySummary && (
+                <p className="mt-1 line-clamp-2 font-inter text-[12.5px] leading-[1.6] text-[#5A6072]">
+                  {takeawaySummary}
+                </p>
+              )}
+            </div>
+            <ChevronDown className={cn('mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8B8F9E] transition-transform', takeawaysOpen && 'rotate-180')} />
+          </button>
+          {takeawaysOpen && (
+            <div className="border-t border-[#F1F0EC] px-3 pb-3 pt-1">
+              <SafeHtml
+                content={takeawayHtml}
+                className="font-inter text-[12.5px] leading-[1.65] text-[#1F2230] [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_h1]:my-3 [&_h1]:font-poppins [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:my-3 [&_h2]:font-poppins [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:my-2 [&_h3]:font-poppins [&_h3]:text-[13px] [&_h3]:font-semibold [&_h4]:my-2 [&_h4]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_li]:pl-0.5 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-[#E7E8EE] [&_blockquote]:pl-3 [&_blockquote]:text-[#5A6072] [&_strong]:font-semibold [&_a]:underline"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
