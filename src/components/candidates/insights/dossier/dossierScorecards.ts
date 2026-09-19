@@ -1,4 +1,6 @@
 import type { ScoreRating } from '@/hooks/useScorecards'
+import { markdownToHtml } from '@/utils/markdown'
+import { sanitizeHtml } from '@/utils/htmlSanitizer'
 
 export interface DossierScorecardArea {
   label: string
@@ -24,6 +26,12 @@ export interface DossierPendingScorecard {
 
 const BLOCK_BREAK = /<\/(?:p|div|li|blockquote|h[1-6])>|<br\s*\/?>/gi
 
+/** Converts legacy Markdown and current editor HTML into one safe rich-text shape. */
+export function normalizeScorecardRichText(value?: string | null): string {
+  if (!value?.trim()) return ''
+  return sanitizeHtml(markdownToHtml(value))
+}
+
 function decodeHtml(value: string) {
   if (typeof document === 'undefined') {
     return value
@@ -42,7 +50,7 @@ function decodeHtml(value: string) {
 /** Preserves authored paragraph boundaries while removing editor markup. */
 export function richTextParagraphs(value?: string | null): string[] {
   if (!value) return []
-  return decodeHtml(value.replace(BLOCK_BREAK, '\n').replace(/<[^>]*>/g, ''))
+  return decodeHtml(normalizeScorecardRichText(value).replace(BLOCK_BREAK, '\n').replace(/<[^>]*>/g, ''))
     .split(/\n+/)
     .map((paragraph) => paragraph.replace(/\s+/g, ' ').trim())
     .filter(Boolean)

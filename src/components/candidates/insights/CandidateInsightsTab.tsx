@@ -35,7 +35,7 @@ import { ShareDossierMenu } from '@/components/candidates/insights/ShareDossierM
 import { InterviewScorecardsSection } from './dossier/InterviewScorecardsSection'
 import { GioFitExportDialog, type DossierExportOptions } from './dossier/GioFitExportDialog'
 import type { DossierPrintProps } from './dossier/DossierPrintDocument'
-import { richTextParagraphs, type DossierScorecard } from './dossier/dossierScorecards'
+import { normalizeScorecardRichText, richTextParagraphs, type DossierScorecard } from './dossier/dossierScorecards'
 import {
   asString,
   asStringArray,
@@ -257,7 +257,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const experienceStats = useMemo(() => computeExperienceStats(workExperience, salaryExpectation), [workExperience, salaryExpectation])
   const dossierScorecards = useMemo<DossierScorecard[]>(() => rawScorecards.flatMap((scorecard) => {
     const rating = coerceRating(scorecard.rating)
-    const takeawayParagraphs = richTextParagraphs(scorecard.general_overview)
+    const takeawayHtml = normalizeScorecardRichText(scorecard.general_overview)
+    const takeawayParagraphs = richTextParagraphs(takeawayHtml)
     if (scorecard.is_ai_draft || !rating || takeawayParagraphs.length === 0) return []
     return [{
       id: scorecard.id,
@@ -266,7 +267,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
       submittedAt: scorecard.updated_at || scorecard.created_at,
       stage: scorecard.stage_name || 'Interview',
       rating,
-      takeawayHtml: scorecard.general_overview || '',
+      takeawayHtml,
       takeawayParagraphs,
       areas: (scorecard.criterion_scores || []).flatMap((area) => {
         const areaRating = coerceRating(area.rating)
