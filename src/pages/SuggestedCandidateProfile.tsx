@@ -208,6 +208,12 @@ function SuggestedCandidateProfileInner() {
 
   const handleDismiss = () => {
     dismissSuggestion(jobId, candidateId)
+    // Not a fit for this job: the suggestion and any dossier written for it go together.
+    void supabase
+      .from('job_suggested_candidates_cache')
+      .delete()
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
     toast({ title: 'Suggestion dismissed', description: `${firstName} will not be suggested for this job again.` })
     goBack()
   }
@@ -328,35 +334,39 @@ function SuggestedCandidateProfileInner() {
 
       <div className="mt-3.5">
         {activeTab === 'fit' && (
-          association ? (
-            <CandidateInsightsTab
-              candidateId={candidateId}
-              jobId={jobId}
-              jobDescription={job?.description}
-              job={job}
-              candidate={candidate as any}
-              workExperience={workExperience}
-              education={education}
-              showScorecards={false}
-              suggested={{
-                statusText,
-                chips: reasons.slice(0, 3),
-                overflow: Math.max(reasons.length - 3, 0),
-                note: (suggestion as any)?.ai_fit_rationale || null,
-                actions: addGroup('sm'),
-              }}
-            />
-          ) : (
-            <PreAssociationDossier
-              jobTitle={job?.title || null}
-              score={matchScore}
-              rationale={(suggestion as any)?.ai_fit_rationale || (candidate as any)?.profile_summary || null}
-              reasons={reasons}
-              statusText={statusText}
-              location={location}
-              actions={addGroup('sm')}
-            />
-          )
+          <CandidateInsightsTab
+            candidateId={candidateId}
+            jobId={jobId}
+            jobDescription={job?.description}
+            job={job}
+            candidate={candidate as any}
+            workExperience={workExperience}
+            education={education}
+            showScorecards={false}
+            // Before an application exists an assessment is offered, never assumed:
+            // the top scorers are already assessed by the background pass.
+            autoGenerate={Boolean(association)}
+            renderEmpty={association ? undefined : ({ generate, isGenerating }) => (
+              <PreAssociationDossier
+                jobTitle={job?.title || null}
+                score={matchScore}
+                rationale={(suggestion as any)?.ai_fit_rationale || (candidate as any)?.profile_summary || null}
+                reasons={reasons}
+                statusText={statusText}
+                location={location}
+                actions={addGroup('sm')}
+                onGenerate={generate}
+                isGenerating={isGenerating}
+              />
+            )}
+            suggested={{
+              statusText,
+              chips: reasons.slice(0, 3),
+              overflow: Math.max(reasons.length - 3, 0),
+              note: (suggestion as any)?.ai_fit_rationale || null,
+              actions: addGroup('sm'),
+            }}
+          />
         )}
 
         {activeTab === 'resume' && (
@@ -511,12 +521,12 @@ function SuggestedCandidateProfileInner() {
 }
 
 /**
- * Before an association exists there is no stored dossier to render — the full
- * assessment is written against the application. This says so plainly and keeps
- * the decision available, rather than showing an empty dossier shell.
+ * Shown when no dossier has been produced for this suggestion yet. Gio's strongest
+ * matches are assessed automatically; everyone else is assessed on request, so the
+ * assessment is offered here rather than started unasked.
  */
 function PreAssociationDossier({
-  jobTitle, score, rationale, reasons, statusText, location, actions,
+  jobTitle, score, rationale, reasons, statusText, location, actions, onGenerate, isGenerating,
 }: {
   jobTitle: string | null
   score: number | null
@@ -525,6 +535,8 @@ function PreAssociationDossier({
   statusText: string
   location: string | null
   actions: React.ReactNode
+  onGenerate?: () => void
+  isGenerating?: boolean
 }) {
   return (
     <ProfileCard title="Gio Fit" subtitle={`Match against ${jobTitle || 'this job'}`}>
@@ -550,9 +562,21 @@ function PreAssociationDossier({
           )}
           {rationale && <p className="mt-3 font-inter text-[13px] leading-[1.6] text-[#1F2230]">{rationale}</p>}
           <p className="mt-3 font-inter text-[12px] leading-[1.55] text-[#8B8F9E]">
-            The full dossier — dimension breakdown, evidenced skills and validation points — is written the moment
-            they enter the pipeline for this job.
+            The full dossier — dimension breakdown, evidenced skills and validation points — has not been written for
+            this match yet. Gio writes it automatically for its strongest matches on this job.
           </p>
+          {onGenerate && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="mt-3"
+              icon={Sparkles}
+              loading={isGenerating}
+              onClick={onGenerate}
+            >
+              Generate full dossier
+            </Button>
+          )}
         </div>
         <div className="shrink-0 text-right">
           <p className="font-inter text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8B8F9E]">Gio fit</p>

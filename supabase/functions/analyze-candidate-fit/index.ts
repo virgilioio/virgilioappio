@@ -251,6 +251,10 @@ serve(async (req) => {
     });
   }
 
+  // Kept outside the try so a failure can mark the suggestion row, not just log.
+  let failureClient: ReturnType<typeof createClient> | null = null;
+  let suggestionRowId: string | null = null;
+
   try {
     const { candidate_id, job_id } = await req.json();
     if (!candidate_id || !job_id) {
@@ -263,7 +267,7 @@ serve(async (req) => {
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Fetch all data in parallel
-    const [candidateRes, jobRes, workExpRes, educationRes, attachmentsRes, scorecardsRes, associationRes] = await Promise.all([
+    const [candidateRes, jobRes, workExpRes, educationRes, attachmentsRes, scorecardsRes, associationRes, suggestionRes] = await Promise.all([
       sb.from("candidates").select("*").eq("id", candidate_id).maybeSingle(),
       sb.from("jobs").select("*").eq("id", job_id).maybeSingle(),
       sb.from("candidate_work_experience").select("*").eq("candidate_id", candidate_id).order("start_date", { ascending: false }),
@@ -271,11 +275,15 @@ serve(async (req) => {
       sb.from("candidate_attachments").select("*").eq("candidate_id", candidate_id).eq("is_resume", true).limit(1),
       sb.from("job_stage_scorecards").select("*").eq("job_id", job_id).eq("candidate_id", candidate_id),
       sb.from("job_candidate_associations").select("id, ai_fit_version, output_language, ai_fit_keep_proper_nouns").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
+      sb.from("job_suggested_candidates_cache").select("id").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
     ]);
 
     const candidate = candidateRes.data;
     const job = jobRes.data;
     const association = associationRes.data;
+    // Suggestion-scoped run: the person is not on this pipeline, so the dossier is
+    // hosted on the job's disposable suggestion row instead of an application.
+    const suggestion = association ? null : suggestionRes.data;
 
     if (!candidate || !job) {
       return new Response(JSON.stringify({ error: "Candidate or job not found" }), {
@@ -284,11 +292,20 @@ serve(async (req) => {
       });
     }
 
-    if (!association) {
+    if (!association && !suggestion) {
       return new Response(JSON.stringify({ error: "No association found between candidate and job" }), {
         status: 404,
         headers: { ...headers, "Content-Type": "application/json" },
       });
+    }
+
+    if (suggestion) {
+      failureClient = sb;
+      suggestionRowId = suggestion.id;
+      await sb
+        .from("job_suggested_candidates_cache")
+        .update({ dossier_status: "pending", dossier_error: null })
+        .eq("id", suggestion.id);
     }
 
     const { data: organization } = await sb
@@ -296,9 +313,9 @@ serve(async (req) => {
       .select("default_output_language")
       .eq("id", job.organization_id)
       .maybeSingle();
-    const requestedLanguage = association.output_language || job.output_language || organization?.default_output_language || "en";
+    const requestedLanguage = association?.output_language || job.output_language || organization?.default_output_language || "en";
     const outputLanguage = SUPPORTED_LANGUAGES[requestedLanguage] ? requestedLanguage : "en";
-    const keepProperNouns = association.ai_fit_keep_proper_nouns !== false;
+    const keepProperNouns = association ? association.ai_fit_keep_proper_nouns !== false : true;
 
     // Check if job has a meaningful description
     const jobDescription = job.description || "";
@@ -572,19 +589,33 @@ serve(async (req) => {
       analysis = mergeTranslatedProse(canonicalAnalysis, translated);
     }
 
-    // Store in database
-    const currentVersion = association.ai_fit_version || 0;
-    const { error: updateError } = await sb
-      .from("job_candidate_associations")
-      .update({
-        ai_fit_score: analysis.overall_score,
-        ai_fit_analysis: analysis,
-        ai_fit_confidence: analysis.confidence,
-        ai_fit_generated_at: new Date().toISOString(),
-        ai_fit_version: currentVersion + 1,
-        ai_fit_output_language: outputLanguage,
-      })
-      .eq("id", association.id);
+    // Store in database — on the application when there is one, otherwise on the
+    // job's suggestion row, which is copied onto the application if they are added.
+    const currentVersion = association?.ai_fit_version || 0;
+    const { error: updateError } = association
+      ? await sb
+          .from("job_candidate_associations")
+          .update({
+            ai_fit_score: analysis.overall_score,
+            ai_fit_analysis: analysis,
+            ai_fit_confidence: analysis.confidence,
+            ai_fit_generated_at: new Date().toISOString(),
+            ai_fit_version: currentVersion + 1,
+            ai_fit_output_language: outputLanguage,
+          })
+          .eq("id", association.id)
+      : await sb
+          .from("job_suggested_candidates_cache")
+          .update({
+            ai_fit_score: analysis.overall_score,
+            ai_fit_analysis: analysis,
+            ai_fit_confidence: analysis.confidence,
+            ai_fit_generated_at: new Date().toISOString(),
+            ai_fit_output_language: outputLanguage,
+            dossier_status: "ready",
+            dossier_error: null,
+          })
+          .eq("id", suggestion!.id);
 
     if (updateError) {
       console.error("DB update error:", updateError);
@@ -596,6 +627,12 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("analyze-candidate-fit error:", err);
+    if (failureClient && suggestionRowId) {
+      await failureClient
+        .from("job_suggested_candidates_cache")
+        .update({ dossier_status: "failed", dossier_error: (err as Error)?.message || "Assessment failed" })
+        .eq("id", suggestionRowId);
+    }
     // A timeout is reported distinctly so the UI can say the assessment ran long
     // rather than implying the candidate data is at fault. Stored ai_fit_*
     // columns are untouched on any failure path.

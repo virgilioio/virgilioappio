@@ -9,6 +9,11 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Automatic full-dossier pass over the strongest suggestions. Tune here.
+const DOSSIER_SCORE_THRESHOLD = 80;
+const DOSSIER_BATCH_LIMIT = 10;
+const DOSSIER_CONCURRENCY = 2;
+
 const SCORING_PROMPT = `You are a rigorous recruiting AI. Given a job description and a candidate profile, produce a fit score from 0-100.
 
 SCORING BANDS:
@@ -582,6 +587,9 @@ serve(async (req) => {
         : 0;
 
       console.log(`✅ Cache hit for job ${job_id}: ${results.length} candidates`);
+      // Picks up top scorers that were cached before this pass existed. Each row is
+      // claimed once in the database, so this cannot fire twice for the same person.
+      queueTopDossiers(sb, job_id);
       return new Response(JSON.stringify({
         candidates: results,
         total_count: results.length,
@@ -771,26 +779,63 @@ serve(async (req) => {
 
     // 6. Cache ALL scored results (not just passing ones)
     if (scoredCandidates.length > 0) {
-      // Delete old cache for this job first
-      await sb.from("job_suggested_candidates_cache").delete().eq("job_id", job_id);
-      
-      const cacheRows = scoredCandidates.map((sc: any) => ({
-        job_id,
-        candidate_id: sc.candidate.id,
-        ai_fit_score: sc.ai_fit_score,
-        ai_fit_confidence: sc.ai_fit_confidence,
-        ai_fit_rationale: sc.ai_fit_rationale,
-        job_skills_hash: skillsHash,
-      }));
+      const scoredIds = new Set(scoredCandidates.map((sc: any) => sc.candidate.id));
 
-      const { error: cacheErr } = await sb
+      // Rows written against DIFFERENT requirements are dropped outright — their
+      // stored dossier was written against a job that no longer exists as such.
+      // Rows for people no longer on the shortlist go too. Everything else is
+      // updated in place so a re-score never destroys a dossier we paid for.
+      const { data: existingRows } = await sb
         .from("job_suggested_candidates_cache")
-        .upsert(cacheRows, { onConflict: "job_id,candidate_id" });
+        .select("id, candidate_id, job_skills_hash, ai_fit_analysis")
+        .eq("job_id", job_id);
+
+      const staleIds = (existingRows || [])
+        .filter((r: any) => r.job_skills_hash !== skillsHash || !scoredIds.has(r.candidate_id))
+        .map((r: any) => r.id);
+      if (staleIds.length > 0) {
+        await sb.from("job_suggested_candidates_cache").delete().in("id", staleIds);
+      }
+
+      // A row that already holds a dossier keeps its score: the dossier's own score
+      // is the one shown in the masthead and the dimension footer, and the two must
+      // never disagree. Only the one-line rationale and freshness are refreshed.
+      const withDossier = new Set(
+        (existingRows || [])
+          .filter((r: any) => r.ai_fit_analysis && !staleIds.includes(r.id))
+          .map((r: any) => r.candidate_id),
+      );
+
+      const scoredAt = new Date().toISOString();
+      const cacheRows = scoredCandidates
+        .filter((sc: any) => !withDossier.has(sc.candidate.id))
+        .map((sc: any) => ({
+          job_id,
+          candidate_id: sc.candidate.id,
+          ai_fit_score: sc.ai_fit_score,
+          ai_fit_confidence: sc.ai_fit_confidence,
+          ai_fit_rationale: sc.ai_fit_rationale,
+          job_skills_hash: skillsHash,
+          scored_at: scoredAt,
+        }));
+
+      const { error: cacheErr } = cacheRows.length > 0
+        ? await sb.from("job_suggested_candidates_cache").upsert(cacheRows, { onConflict: "job_id,candidate_id" })
+        : { error: null };
+
+      for (const sc of scoredCandidates.filter((s: any) => withDossier.has(s.candidate.id))) {
+        await sb
+          .from("job_suggested_candidates_cache")
+          .update({ ai_fit_rationale: sc.ai_fit_rationale, scored_at: scoredAt })
+          .eq("job_id", job_id)
+          .eq("candidate_id", sc.candidate.id);
+      }
 
       if (cacheErr) {
         console.error("Cache write error:", cacheErr);
       } else {
         console.log(`📦 Cached ${cacheRows.length} scores for job ${job_id}`);
+        queueTopDossiers(sb, job_id);
       }
     }
 
@@ -831,6 +876,98 @@ serve(async (req) => {
     });
   }
 });
+
+/**
+ * Gio's strongest suggestions get the full dossier up front, so opening one of
+ * those profiles shows a real assessment instead of a score and a sentence.
+ *
+ * Bounded by design: only rows scoring at or above DOSSIER_SCORE_THRESHOLD, at
+ * most DOSSIER_BATCH_LIMIT per run, and each row is claimed in the database
+ * (dossier_status) before it is sent — so a second concurrent run, a reload, or
+ * a retry never assesses the same person twice. Failures stay marked 'failed'
+ * and are only retried when a recruiter asks for one explicitly.
+ */
+function queueTopDossiers(sb: any, job_id: string) {
+  const run = async () => {
+    try {
+      const { data: candidates, error } = await sb
+        .from("job_suggested_candidates_cache")
+        .select("id, candidate_id, ai_fit_score")
+        .eq("job_id", job_id)
+        .is("ai_fit_analysis", null)
+        .is("dossier_status", null)
+        .gte("ai_fit_score", DOSSIER_SCORE_THRESHOLD)
+        .order("ai_fit_score", { ascending: false })
+        .limit(DOSSIER_BATCH_LIMIT);
+
+      if (error) {
+        console.error("Dossier queue read error:", error);
+        return;
+      }
+      if (!candidates || candidates.length === 0) return;
+
+      // Claim the rows first: nothing else can pick them up after this point.
+      const claimIds = candidates.map((r: any) => r.id);
+      const { error: claimErr } = await sb
+        .from("job_suggested_candidates_cache")
+        .update({ dossier_status: "pending", dossier_error: null })
+        .in("id", claimIds)
+        .is("dossier_status", null);
+      if (claimErr) {
+        console.error("Dossier claim error:", claimErr);
+        return;
+      }
+
+      console.log(`🧠 Queueing ${candidates.length} suggestion dossiers for job ${job_id}`);
+
+      for (let i = 0; i < candidates.length; i += DOSSIER_CONCURRENCY) {
+        const slice = candidates.slice(i, i + DOSSIER_CONCURRENCY);
+        const results = await Promise.all(slice.map(async (row: any) => {
+          try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/analyze-candidate-fit`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+              body: JSON.stringify({ candidate_id: row.candidate_id, job_id }),
+            });
+            if (!res.ok) {
+              const body = await res.text();
+              console.error(`Suggestion dossier failed (${res.status}) for ${row.candidate_id}:`, body.slice(0, 300));
+              await sb
+                .from("job_suggested_candidates_cache")
+                .update({ dossier_status: "failed", dossier_error: `Assessment failed (${res.status})` })
+                .eq("id", row.id);
+              // Credit, policy and provider blocks stop the whole pass — retrying
+              // the next person would fail identically and bill nothing useful.
+              return res.status === 402 || res.status === 403 ? "halt" : "failed";
+            }
+            return "ok";
+          } catch (err) {
+            console.error(`Suggestion dossier error for ${row.candidate_id}:`, err);
+            await sb
+              .from("job_suggested_candidates_cache")
+              .update({ dossier_status: "failed", dossier_error: (err as Error)?.message || "Assessment failed" })
+              .eq("id", row.id);
+            return "failed";
+          }
+        }));
+        if (results.includes("halt")) {
+          console.error("Halting suggestion dossier pass: AI access is blocked");
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("queueTopDossiers error:", err);
+    }
+  };
+
+  // Never block the list response on the background pass.
+  const runtime = (globalThis as any).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(run());
+  else void run();
+}
 
 function buildResponseCandidate(c: any, score: number, confidence: string, rationale: string) {
   return {

@@ -78,6 +78,13 @@ interface CandidateInsightsTabProps {
     note?: string | null
     actions?: React.ReactNode
   } | null
+  /**
+   * False where an assessment must be asked for rather than assumed — a suggestion
+   * below the automatic threshold. Opening the tab then spends nothing.
+   */
+  autoGenerate?: boolean
+  /** Rendered instead of the cold skeleton when nothing is stored and nothing is running. */
+  renderEmpty?: (options: { generate: () => void; isGenerating: boolean }) => React.ReactNode
 }
 
 const cardClass = 'rounded-[14px] border border-virgilio-border bg-surface-primary'
@@ -221,8 +228,8 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
   )
 }
 
-export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, showScorecards = true, suggested = null }: CandidateInsightsTabProps) {
-  const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences } = useCandidateFitInsights(candidateId, jobId)
+export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, showScorecards = true, suggested = null, autoGenerate = true, renderEmpty }: CandidateInsightsTabProps) {
+  const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences, invalidate } = useCandidateFitInsights(candidateId, jobId)
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
@@ -261,11 +268,21 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   // changed after the stored analysis. Opening the tab alone never spends credits.
   useEffect(() => {
     if (isLoading || hasTriggered.current || jdText.length < 30 || !insights) return
+    if (!autoGenerate) return
     if (!insights.analysis || isStale) {
       hasTriggered.current = true
       refreshInsights()
     }
   }, [isLoading, insights?.analysis, isStale, jdText])
+  // A suggestion dossier may be produced by the background pass, not by this tab.
+  // Poll while it is running so the page flips to the real dossier on its own.
+  const suggestionPending = insights?.dossierStatus === 'pending' && !insights?.analysis
+  useEffect(() => {
+    if (!suggestionPending) return
+    const timer = setInterval(() => invalidate(), 6000)
+    return () => clearInterval(timer)
+  }, [suggestionPending])
+
   const salaryExpectation = useMemo(
     () => formatSalaryExpectation(candidate as Parameters<typeof formatSalaryExpectation>[0]),
     [candidate],
@@ -296,7 +313,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     return [...new Map(people.map((person) => [person.userId, { userId: person.userId, name: person.name }])).values()]
   }, [scorecardRequirements.byStage])
   // Narration is driven while a request is open; step 5 never completes early.
-  const { stepIndex, progress } = useGioFitNarration(isRefreshing)
+  const { stepIndex, progress } = useGioFitNarration(isRefreshing || suggestionPending)
 
   const candidateName = asString(candidate?.candidate_name) || 'Candidate'
   const currentRole = asString(candidate?.role_current) || asString(candidate?.current_job_title)
@@ -316,6 +333,12 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   }
   if (generationError && !hasStoredAnalysis) {
     return <GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} />
+  }
+  // Nothing stored and nothing running: the caller decides what stands in its place
+  // (a suggestion offers the assessment rather than starting it unasked).
+  const isGenerating = isRefreshing || insights?.dossierStatus === 'pending'
+  if (!isLoading && !hasStoredAnalysis && !isGenerating && renderEmpty) {
+    return <>{renderEmpty({ generate: () => { void refreshInsights() }, isGenerating: false })}</>
   }
   // Cold: nothing on file, so show the shape of what is coming plus the narration.
   if (isLoading || !hasStoredAnalysis) {

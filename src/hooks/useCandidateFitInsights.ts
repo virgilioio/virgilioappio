@@ -44,7 +44,11 @@ export interface FitInsightsData {
   confidence: string | null
   generatedAt: string | null
   version: number
-  associationId: string
+  /** Null before the candidate is on this pipeline — the dossier then lives on the job's suggestion row. */
+  associationId: string | null
+  /** Only set for suggestion-hosted dossiers: null (never requested) | pending | ready | failed. */
+  dossierStatus: 'pending' | 'ready' | 'failed' | null
+  dossierError: string | null
   outputLanguage: string | null
   appliedOutputLanguage: string | null
   keepProperNouns: boolean
@@ -82,7 +86,46 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         .maybeSingle()
 
       if (error) throw error
-      if (!assoc) return null
+
+      // Not on this pipeline: the dossier, when one exists, is hosted on the job's
+      // own suggestion row and moves onto the application the moment they are added.
+      if (!assoc) {
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('job_suggested_candidates_cache')
+          .select('id, ai_fit_score, ai_fit_analysis, ai_fit_confidence, ai_fit_generated_at, ai_fit_output_language, dossier_status, dossier_error, job:jobs!inner(output_language, organization:organizations!inner(default_output_language))')
+          .eq('candidate_id', candidateId)
+          .eq('job_id', jobId)
+          .maybeSingle()
+
+        if (suggestionError) throw suggestionError
+        if (!suggestion) return null
+
+        const relation = (suggestion as any).job as { output_language?: string | null; organization?: { default_output_language?: string | null } | null }
+        const workspaceLanguage = relation?.organization?.default_output_language || 'en'
+        const jobLanguage = relation?.output_language || null
+
+        return {
+          score: (suggestion as any).ai_fit_analysis ? (suggestion as any).ai_fit_score : null,
+          analysis: (suggestion as any).ai_fit_analysis as unknown as FitAnalysis | null,
+          confidence: (suggestion as any).ai_fit_confidence,
+          generatedAt: (suggestion as any).ai_fit_generated_at,
+          version: (suggestion as any).ai_fit_analysis ? 1 : 0,
+          associationId: null,
+          dossierStatus: ((suggestion as any).dossier_status as FitInsightsData['dossierStatus']) ?? null,
+          dossierError: (suggestion as any).dossier_error ?? null,
+          outputLanguage: null,
+          appliedOutputLanguage: (suggestion as any).ai_fit_output_language || null,
+          keepProperNouns: true,
+          jobOutputLanguage: jobLanguage,
+          workspaceOutputLanguage: workspaceLanguage,
+          resolvedOutputLanguage: jobLanguage || workspaceLanguage || 'en',
+          isStale: false,
+          staleReason: null,
+          isRejected: false,
+          rejectedAt: null,
+        }
+      }
+
 
       const jobRelation = assoc.job as unknown as { output_language?: string | null; organization?: { default_output_language?: string | null } | null }
       const workspaceOutputLanguage = jobRelation?.organization?.default_output_language || 'en'
@@ -137,6 +180,8 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         generatedAt: assoc.ai_fit_generated_at,
         version: assoc.ai_fit_version || 0,
         associationId: assoc.id,
+        dossierStatus: null,
+        dossierError: null,
         outputLanguage,
         appliedOutputLanguage: assoc.ai_fit_output_language || null,
         keepProperNouns: assoc.ai_fit_keep_proper_nouns !== false,
