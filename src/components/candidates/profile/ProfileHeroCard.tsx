@@ -98,6 +98,21 @@ export function ProfileHeroCard({
               </span>
             </Button>
           )}
+          {onOpenFullProfile && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              iconOnly
+              aria-label="Open full profile"
+              title="Open full profile"
+              icon={UserRound}
+              onClick={onOpenFullProfile}
+            />
+          )}
+          {onOpenFullProfile && (onNavigatePrev || onNavigateNext) && (
+            <span aria-hidden="true" className="mx-[2px] h-[18px] w-px bg-[#E7E8EE] shrink-0" />
+          )}
           {(onNavigatePrev || onNavigateNext) && (
             <>
               <Button
@@ -171,18 +186,6 @@ export function ProfileHeroCard({
               currentJobId={jobId}
               currentJobTitle={jobTitle || null}
             />
-          )}
-          {onOpenFullProfile && (
-            <>
-              <span className="text-[#D1D5DB]">·</span>
-              <button
-                type="button"
-                onClick={onOpenFullProfile}
-                className="inline-flex items-center gap-1 text-[#5A6072] hover:text-[#1F2230] transition-colors"
-              >
-                <UserRound className="h-3.5 w-3.5" /> Full profile
-              </button>
-            </>
           )}
         </div>
       </div>
