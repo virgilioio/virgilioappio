@@ -171,7 +171,17 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
         <SidebarBlock label="Job information">
           <MetaRow icon={Briefcase} label="Position" value={p.job?.title ?? null} />
           <MetaRow icon={Building2} label="Department" value={p.job?.department ?? null} />
-          <MetaRow icon={MapPin} label="Location" value={p.job?.location ?? null} />
+          <MetaRow
+            icon={MapPin}
+            label="Location"
+            value={(() => {
+              const locations = [
+                ...(p.job?.location ? [p.job.location] : []),
+                ...(Array.isArray(p.job?.additional_locations) ? p.job.additional_locations : []),
+              ].filter(Boolean)
+              return locations.length ? locations.join(' · ') : null
+            })()}
+          />
           <MetaRow
             icon={Activity}
             label="Status"
