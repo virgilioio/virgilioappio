@@ -21,6 +21,12 @@ interface GioFitColdSkeletonProps {
   outputLanguageName: string
   stepIndex: number
   progress: number
+  /** Narration stages to show. Progress and the step count derive from this array. */
+  steps?: NarrationStep[]
+  /** False where the hero above already carries the name and role — don't repeat them. */
+  identity?: boolean
+  eyebrow?: string
+  eta?: string
 }
 
 function SkillRow({ count }: { count: number }) {
