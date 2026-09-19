@@ -354,7 +354,28 @@ export default function IndependentCandidateProfile() {
           <MetaRow icon={MapPin} label="Location" value={location || null} />
           <MetaRow icon={DollarSign} label="Open to" value={salary || null} />
           <MetaRow icon={Mail} label="Email" value={candidate.email || null} />
-          <MetaRow icon={Phone} label="Phone" value={candidate.phone || null} />
+          <MetaRow
+            icon={Phone}
+            label="Phone"
+            value={candidate.phone || null}
+            action={
+              whatsAppEnabled && candidate.phone && buildWhatsAppUrl(candidate.phone) ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const waUrl = buildWhatsAppUrl(candidate.phone)
+                    if (waUrl) window.open(waUrl, '_blank')
+                  }}
+                  className="shrink-0 p-1 rounded-md hover:bg-[#F1F0EC] transition-colors text-[#25D366]"
+                  aria-label="Start WhatsApp conversation"
+                  title="Start WhatsApp conversation"
+                >
+                  <WhatsAppIcon size={14} />
+                </button>
+              ) : undefined
+            }
+          />
           <MetaRow icon={Info} label="Source" value={candidate.source || null} />
           <MetaRow icon={Calendar} label="Added" value={addedDate} />
           <MetaRow icon={UserIcon} label="Added by" value={createdByName || null} />
