@@ -121,21 +121,6 @@ export function ProfileHeroCard({
               </span>
             </Button>
           )}
-          {nextStageLabel && !isRejected && !isHired && onAdvance && (
-            <Button variant="primary" size="md" iconRight={ArrowRight} onClick={onAdvance}>
-              Advance to {nextStageLabel}
-            </Button>
-          )}
-          {onSchedule && (
-            <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule}>
-              Schedule
-            </Button>
-          )}
-          {onEmail && (
-            <Button variant="secondary" size="md" icon={Mail} onClick={onEmail}>
-              Email
-            </Button>
-          )}
           {(onNavigatePrev || onNavigateNext) && (
             <>
               <Button
