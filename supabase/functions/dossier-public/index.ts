@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     const workspaceName = tenant?.name || "This agency";
 
     const terminalAssociation = ["rejected", "withdrawn"].includes(String(assoc.status ?? "").toLowerCase());
-    const progressedAssociation = ["offer", "hired"].includes(String(assoc.status ?? "").toLowerCase());
+    const progressedAssociation = ["offer", "offered", "hired"].includes(String(assoc.status ?? "").toLowerCase());
     const live = share.is_public &&
       !share.deactivated_at &&
       !assoc.rejected_at &&
@@ -336,7 +336,7 @@ Deno.serve(async (req) => {
     if (assoc.status === "hired" || assoc.hired_at) {
       clientStage = "hired";
       occurredAt = assoc.hired_at;
-    } else if (assoc.status === "offer" || stageType === "offer" || assoc.offered_at) {
+    } else if (["offer", "offered"].includes(String(assoc.status)) || stageType === "offer" || assoc.offered_at) {
       clientStage = "offer";
       occurredAt = (offer as any)?.sent_at || assoc.offered_at || (offer as any)?.updated_at || assoc.entered_stage_at;
     } else if (stageType === "interview") {
