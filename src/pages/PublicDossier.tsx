@@ -292,23 +292,36 @@ export default function PublicDossier() {
   }
 
   return (
-    <PublicPageShell
-      agencyName={resolved.brand.agency_name}
-      logoUrl={resolved.brand.logo_url}
-      pageKind="Candidate dossier"
-      width={1080}
-      footnote={`Confidential — shared with you by ${resolved.workspace_name}`}
-      beforeCard={<PublicDossierBanner payload={resolved} />}
-    >
-      <PublicDossierBody
-        payload={resolved}
-        decision={decision}
-        decisionOn={decisionOn}
-        isSending={isSending}
-        error={error}
-        onDownload={handleDownload}
-        onDecision={sendDecision}
-      />
-    </PublicPageShell>
+    <>
+      <PublicPageShell
+        agencyName={resolved.brand.agency_name}
+        logoUrl={resolved.brand.logo_url}
+        pageKind="Candidate dossier"
+        width={1080}
+        footnote={`Confidential — shared with you by ${resolved.workspace_name}`}
+        beforeCard={<PublicDossierBanner payload={resolved} />}
+      >
+        <PublicDossierBody
+          payload={resolved}
+          decision={decision}
+          decisionOn={decisionOn}
+          isSending={isSending}
+          error={error}
+          onDownload={handleDownload}
+          onDecision={setDialogKind}
+        />
+      </PublicPageShell>
+      {dialogKind && (
+        <DecisionDialog
+          kind={dialogKind}
+          candidateFirstName={resolved.candidate.name.split(' ')[0] || resolved.candidate.name}
+          recruiterName={resolved.prepared_by || resolved.workspace_name}
+          workspaceName={resolved.workspace_name}
+          onClose={closeDialog}
+          onSubmit={(input) => submitDecision(dialogKind, input)}
+        />
+      )}
+    </>
   )
+
 }
