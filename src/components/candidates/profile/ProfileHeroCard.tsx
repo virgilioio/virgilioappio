@@ -58,7 +58,7 @@ interface ProfileHeroCardProps {
 export function ProfileHeroCard({
   candidateName, candidateFirstName, candidateId, jobId, jobTitle,
   currentStageName, daysInStage, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
-  fitScore, onFitClick, clientVerdictState = 'none',
+  fitScore, fitPillState = 'ready', onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs, actionMenu,
   backLabel = 'Back to job', breadcrumbLast = 'Candidates', contextLine,
