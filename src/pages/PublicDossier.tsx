@@ -14,6 +14,8 @@ import { EmptyAction, EmptyState } from '@/components/ui/empty-state'
 import { SoftArchive } from '@/components/ui/EmptyIllustrations'
 import { PublicPageShell } from '@/components/public/PublicPageShell'
 import { PublicDossierBanner, PublicDossierBody } from '@/components/public/PublicDossierBody'
+import { DecisionDialog, type DecisionKind } from '@/components/public/DecisionDialog'
+
 import { printDossier } from '@/components/candidates/insights/dossier/printDossier'
 import type { FitAnalysis } from '@/hooks/useCandidateFitInsights'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
@@ -124,6 +126,9 @@ export default function PublicDossier() {
   const [decision, setDecision] = useState<string | null>(null)
   const [decisionOn, setDecisionOn] = useState<string | null>(null)
   const [isSending, setIsSending] = useState(false)
+  const [dialogKind, setDialogKind] = useState<DecisionKind | null>(null)
+  const [pending, setPending] = useState<{ decision: string; created_at: string } | null>(null)
+
 
   useNoIndexNoReferrer()
 
@@ -153,27 +158,47 @@ export default function PublicDossier() {
     return () => { active = false }
   }, [token])
 
-  const sendDecision = useCallback(async (value: 'interview_requested' | 'not_a_fit') => {
-    const previousDecision = decision
-    const previousDecisionOn = decisionOn
-    const optimisticDate = new Date().toISOString()
-    setDecision(value)
-    setDecisionOn(optimisticDate)
+  /**
+   * Called only from inside the dialog. The page stays on its awaiting state until
+   * the client dismisses the recorded panel — then it re-renders into the new stage.
+   */
+  const submitDecision = useCallback(async (
+    value: DecisionKind,
+    input: { reasons: string[]; note: string },
+  ) => {
     setIsSending(true)
     setError(null)
     try {
-      const result = await callEndpoint({ action: 'feedback', token, decision: value })
+      const result = await callEndpoint({
+        action: 'feedback',
+        token,
+        decision: value,
+        reasons: input.reasons,
+        note: input.note || null,
+      })
       if (result.notFound) throw new Error('This dossier is no longer accepting responses.')
-      setDecision(value)
-      setDecisionOn((result.data as { created_at?: string })?.created_at ?? new Date().toISOString())
+      setPending({
+        decision: value,
+        created_at: (result.data as { created_at?: string })?.created_at ?? new Date().toISOString(),
+      })
+      return true
     } catch (err) {
-      setDecision(previousDecision)
-      setDecisionOn(previousDecisionOn)
       setError(err instanceof Error ? err.message : 'Your response could not be recorded.')
+      return false
     } finally {
       setIsSending(false)
     }
-  }, [decision, decisionOn, token])
+  }, [token])
+
+  const closeDialog = useCallback(() => {
+    setDialogKind(null)
+    if (pending) {
+      setDecision(pending.decision)
+      setDecisionOn(pending.created_at)
+      setPending(null)
+    }
+  }, [pending])
+
 
   const live = resolved?.state === 'live' ? resolved : null
 
@@ -267,23 +292,36 @@ export default function PublicDossier() {
   }
 
   return (
-    <PublicPageShell
-      agencyName={resolved.brand.agency_name}
-      logoUrl={resolved.brand.logo_url}
-      pageKind="Candidate dossier"
-      width={1080}
-      footnote={`Confidential — shared with you by ${resolved.workspace_name}`}
-      beforeCard={<PublicDossierBanner payload={resolved} />}
-    >
-      <PublicDossierBody
-        payload={resolved}
-        decision={decision}
-        decisionOn={decisionOn}
-        isSending={isSending}
-        error={error}
-        onDownload={handleDownload}
-        onDecision={sendDecision}
-      />
-    </PublicPageShell>
+    <>
+      <PublicPageShell
+        agencyName={resolved.brand.agency_name}
+        logoUrl={resolved.brand.logo_url}
+        pageKind="Candidate dossier"
+        width={1080}
+        footnote={`Confidential — shared with you by ${resolved.workspace_name}`}
+        beforeCard={<PublicDossierBanner payload={resolved} />}
+      >
+        <PublicDossierBody
+          payload={resolved}
+          decision={decision}
+          decisionOn={decisionOn}
+          isSending={isSending}
+          error={error}
+          onDownload={handleDownload}
+          onDecision={setDialogKind}
+        />
+      </PublicPageShell>
+      {dialogKind && (
+        <DecisionDialog
+          kind={dialogKind}
+          candidateFirstName={resolved.candidate.name.split(' ')[0] || resolved.candidate.name}
+          recruiterName={resolved.prepared_by || resolved.workspace_name}
+          workspaceName={resolved.workspace_name}
+          onClose={closeDialog}
+          onSubmit={(input) => submitDecision(dialogKind, input)}
+        />
+      )}
+    </>
   )
+
 }

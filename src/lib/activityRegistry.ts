@@ -23,6 +23,8 @@ import {
   CalendarX,
   FilePen,
   FileCheck,
+  Eye,
+  MessageSquareQuote,
   Zap,
   ZapOff,
   type LucideIcon,
@@ -103,6 +105,10 @@ export const ACTIVITY_TYPES: Record<string, ActivityMeta> = {
   offer_updated: { category: 'other', icon: FilePen, tone: 'purple' },
   offer_sent: { category: 'other', icon: Send, tone: 'green' },
   offer_document_generated: { category: 'other', icon: FileCheck, tone: 'neutral' },
+
+  // Shared dossier — the client is anonymous by design; the copy never names a person.
+  client_dossier_viewed: { category: 'other', icon: Eye, tone: 'yellow' },
+  client_dossier_decision: { category: 'other', icon: MessageSquareQuote, tone: 'green' },
 }
 
 export const ACTIVITY_FALLBACK: ActivityMeta = {

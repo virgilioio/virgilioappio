@@ -196,23 +196,26 @@ Deno.serve(async (req) => {
       const decision = String(body?.decision ?? "");
       if (decision !== "interview_requested" && decision !== "not_a_fit") return NOT_FOUND();
       const note = typeof body?.note === "string" ? body.note.slice(0, 2000) : null;
+      const reasons = Array.isArray(body?.reasons)
+        ? body.reasons.filter((r: unknown) => typeof r === "string").slice(0, 12).map((r: string) => r.slice(0, 80))
+        : [];
+      const userAgent = req.headers.get("user-agent") ?? null;
 
-      const { data: existing } = await supabase
-        .from("dossier_feedback")
-        .select("decision, created_at")
-        .eq("share_id", share.id)
-        .maybeSingle();
-      if (existing) return json(409, { error: "decision_already_recorded" });
-
-      const { data: row, error } = await supabase
-        .from("dossier_feedback")
-        .insert({ share_id: share.id, decision, note })
-        .select("id, decision, created_at")
-        .single();
-      if (error) {
-        if (error.code === "23505") return json(409, { error: "decision_already_recorded" });
-        throw error;
-      }
+      // The write itself happens inside a security definer routine: it re-checks the
+      // token, refuses a second answer, writes the activity entry and notifies the
+      // recruiters. Anonymous callers never touch the table directly.
+      const { data: recorded, error } = await supabase.rpc("record_dossier_decision", {
+        _token: token,
+        _decision: decision,
+        _reasons: reasons,
+        _note: note,
+        _user_agent: userAgent,
+      });
+      if (error) throw error;
+      const result = (recorded ?? {}) as Record<string, unknown>;
+      if (result.error === "decision_already_recorded") return json(409, { error: "decision_already_recorded" });
+      if (result.error) return NOT_FOUND();
+      const row = result as { id: string; decision: string; created_at: string };
 
       const { data: candidate } = await supabase
         .from("candidates")
@@ -223,28 +226,11 @@ Deno.serve(async (req) => {
       const headline = decision === "interview_requested"
         ? `Interview requested for ${candidateName}`
         : `${candidateName} marked not a fit`;
-      const actionUrl = `/jobs/${assoc.job_id}/candidates/${assoc.candidate_id}?tab=fit`;
 
+      // In-app notification and the activity entry are already written by the
+      // routine above; the email is the one thing it cannot send.
       const recipients = await recruiterRecipients(supabase, assoc.job_id, job.created_by);
-      for (const userId of recipients) {
-        await supabase.rpc("emit_notification", {
-          _user_id: userId,
-          _tenant_id: job.tenant_id,
-          _category: "mention",
-          _actor_user_id: null,
-          _actor_name: "Client",
-          _actor_avatar_url: null,
-          _title: headline,
-          _subtitle: job.title ?? null,
-          _preview: note || "Decision recorded from the shared dossier.",
-          _entity_kind: "candidate",
-          _entity_id: assoc.candidate_id,
-          _job_id: assoc.job_id,
-          _candidate_id: assoc.candidate_id,
-          _action_url: actionUrl,
-          _metadata: { dossier_share_id: share.id, decision },
-        });
-      }
+
 
       const key = Deno.env.get("RESEND_API_KEY");
       if (key && recipients.length > 0) {
@@ -262,12 +248,17 @@ Deno.serve(async (req) => {
               html:
                 `<p style="font-family:Inter,Arial,sans-serif;font-size:14px;color:#1F2230">` +
                 `<strong>${headline}</strong><br/>${job.title ?? ""}</p>` +
+                (reasons.length
+                  ? `<p style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#1F2230">${
+                    reasons.map((r: string) => r.replace(/[<>]/g, "")).join(" · ")
+                  }</p>`
+                  : "") +
                 (note
                   ? `<p style="font-family:Inter,Arial,sans-serif;font-size:13px;color:#5A6072">“${
                     note.replace(/[<>]/g, "")
                   }”</p>`
                   : "") +
-                `<p style="font-family:Inter,Arial,sans-serif;font-size:12px;color:#8B8F9E">Recorded from the dossier you shared.</p>`,
+                `<p style="font-family:Inter,Arial,sans-serif;font-size:12px;color:#8B8F9E">Recorded on the link we shared. We do not know which person at the client answered.</p>`,
             } as never);
           } catch (mailError) {
             console.error("[dossier-public] email", mailError);
@@ -275,7 +266,14 @@ Deno.serve(async (req) => {
         }
       }
 
-      return json(200, { state: "recorded", decision: row.decision, created_at: row.created_at });
+      return json(200, {
+        state: "recorded",
+        decision: row.decision,
+        created_at: row.created_at,
+        reasons,
+        note,
+      });
+
     }
 
     /* --------------------------------------------------------------- RESOLVE */
@@ -299,7 +297,7 @@ Deno.serve(async (req) => {
           .order("end_date", { ascending: false }),
         supabase
           .from("dossier_feedback")
-          .select("decision, created_at")
+          .select("decision, created_at, reasons, note")
           .eq("share_id", share.id)
           .order("created_at", { ascending: false })
           .limit(1)

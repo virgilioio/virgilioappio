@@ -221,9 +221,11 @@ export function PublicDossierBody({
         {clientStage === 'awaiting' ? (
           <>
             {onDownload && <Button variant="secondary" size="sm" icon={FileText} onClick={onDownload}>Download PDF</Button>}
-            <Button variant="secondary" size="sm" icon={X} loading={isSending} onClick={() => onDecision('not_a_fit')}>Not a fit</Button>
-            <Button variant="primary" size="sm" icon={Calendar} loading={isSending} onClick={() => onDecision('interview_requested')}>Request interview</Button>
+            {/* Nothing is written on click — the dialog captures the reason first. */}
+            <Button variant="secondary" size="sm" icon={X} disabled={isSending} onClick={() => onDecision('not_a_fit')}>Not a fit</Button>
+            <Button variant="primary" size="sm" icon={Calendar} disabled={isSending} onClick={() => onDecision('interview_requested')}>Request interview</Button>
           </>
+
         ) : (
           <>
             <Badge size="md" dot tone={stagePresentation[clientStage].tone}>{stagePresentation[clientStage].label}</Badge>

@@ -9,6 +9,9 @@ import { ApplicationSwitcher } from '@/components/candidates/profile/Application
 import { copyToClipboard } from '@/utils/clipboard'
 import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 
+import { ClientVerdictPill } from '@/components/candidates/profile/ClientVerdictPill'
+import type { ClientVerdictState } from '@/hooks/useClientVerdict'
+
 interface ProfileHeroCardProps {
   candidateName: string
   candidateFirstName?: string | null
@@ -25,6 +28,8 @@ interface ProfileHeroCardProps {
   onOpenFullProfile?: () => void
   linkedinUrl?: string | null
   fitScore?: number | null
+  /** The client's answer on a shared dossier. Sits beside the Gio Fit pill as its pair. */
+  clientVerdictState?: ClientVerdictState
   onFitClick?: () => void
   onClose?: () => void
   index?: number | null
@@ -58,7 +63,7 @@ function relativeTime(iso?: string | null) {
 export function ProfileHeroCard({
   candidateName, candidateFirstName, candidateId, jobId, jobTitle, source, appliedAt,
   currentStageName, daysInStage, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
-  fitScore, onFitClick,
+  fitScore, onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs,
   nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
@@ -100,6 +105,7 @@ export function ProfileHeroCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <ClientVerdictPill state={clientVerdictState} />
           {typeof fitScore === 'number' && fitScore > 0 && (
             <Button
               type="button"
