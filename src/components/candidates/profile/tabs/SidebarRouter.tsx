@@ -22,6 +22,8 @@ import {
   PenLine,
 } from 'lucide-react'
 import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/ProfileSidebar'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
@@ -93,6 +95,9 @@ export interface JobOverviewSidebarProps {
   location?: string | null
   email?: string | null
   phone?: string | null
+  /** WhatsApp integration state + first-click template handler for the Phone row. */
+  whatsAppEnabled?: boolean
+  onWhatsAppClick?: (phone: string) => void
 }
 export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
   const comp = formatSalaryExpectation(p.candidate as any)
