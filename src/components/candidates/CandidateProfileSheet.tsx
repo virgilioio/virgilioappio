@@ -813,12 +813,12 @@ const stageHasAutomation = useMemo(() => {
         .maybeSingle()
       // If the denormalized department text is missing, resolve the name from departments
       if (jobData && !jobData.department && jobData.department_id) {
-        const { data: dept } = await supabase
-          .from('departments' as any)
+        const { data: dept } = await (supabase as any)
+          .from('departments')
           .select('name')
           .eq('id', jobData.department_id)
           .maybeSingle()
-        if (dept?.name) jobData.department = dept.name
+        if (dept?.name) (jobData as any).department = dept.name
       }
       setJob(jobData || null)
 
