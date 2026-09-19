@@ -300,6 +300,8 @@ serve(async (req) => {
     }
 
     if (suggestion) {
+      failureClient = sb;
+      suggestionRowId = suggestion.id;
       await sb
         .from("job_suggested_candidates_cache")
         .update({ dossier_status: "pending", dossier_error: null })
