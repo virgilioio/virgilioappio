@@ -328,35 +328,39 @@ function SuggestedCandidateProfileInner() {
 
       <div className="mt-3.5">
         {activeTab === 'fit' && (
-          association ? (
-            <CandidateInsightsTab
-              candidateId={candidateId}
-              jobId={jobId}
-              jobDescription={job?.description}
-              job={job}
-              candidate={candidate as any}
-              workExperience={workExperience}
-              education={education}
-              showScorecards={false}
-              suggested={{
-                statusText,
-                chips: reasons.slice(0, 3),
-                overflow: Math.max(reasons.length - 3, 0),
-                note: (suggestion as any)?.ai_fit_rationale || null,
-                actions: addGroup('sm'),
-              }}
-            />
-          ) : (
-            <PreAssociationDossier
-              jobTitle={job?.title || null}
-              score={matchScore}
-              rationale={(suggestion as any)?.ai_fit_rationale || (candidate as any)?.profile_summary || null}
-              reasons={reasons}
-              statusText={statusText}
-              location={location}
-              actions={addGroup('sm')}
-            />
-          )
+          <CandidateInsightsTab
+            candidateId={candidateId}
+            jobId={jobId}
+            jobDescription={job?.description}
+            job={job}
+            candidate={candidate as any}
+            workExperience={workExperience}
+            education={education}
+            showScorecards={false}
+            // Before an application exists an assessment is offered, never assumed:
+            // the top scorers are already assessed by the background pass.
+            autoGenerate={Boolean(association)}
+            renderEmpty={association ? undefined : ({ generate, isGenerating }) => (
+              <PreAssociationDossier
+                jobTitle={job?.title || null}
+                score={matchScore}
+                rationale={(suggestion as any)?.ai_fit_rationale || (candidate as any)?.profile_summary || null}
+                reasons={reasons}
+                statusText={statusText}
+                location={location}
+                actions={addGroup('sm')}
+                onGenerate={generate}
+                isGenerating={isGenerating}
+              />
+            )}
+            suggested={{
+              statusText,
+              chips: reasons.slice(0, 3),
+              overflow: Math.max(reasons.length - 3, 0),
+              note: (suggestion as any)?.ai_fit_rationale || null,
+              actions: addGroup('sm'),
+            }}
+          />
         )}
 
         {activeTab === 'resume' && (
