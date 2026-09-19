@@ -21,7 +21,7 @@ Cost note: each dossier is one deep assessment, the same spend as a dossier on a
 
 ### Storage (migration)
 
-Extend `job_suggested_candidates_cache` — the dossier lives beside the score it belongs to, no new table:
+Extend `job_suggested_candidates_cache` — the job-scoped, disposable suggestion row is exactly the right host: it already keys on `(job_id, candidate_id)`, is cleared when requirements change, and holds nothing on the candidate record itself. No new table.
 
 - `ai_fit_analysis jsonb`, `ai_fit_confidence` already present, `ai_fit_generated_at timestamptz`, `ai_fit_output_language text`
 - `dossier_status text` (`pending` | `ready` | `failed`, null = never requested) and `dossier_error text`
