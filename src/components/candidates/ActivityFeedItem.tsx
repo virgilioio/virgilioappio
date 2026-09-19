@@ -40,7 +40,15 @@ export function ActivityFeedItem({ activity, isLast, onOpenInEmails }: ActivityF
   const automated = isAutomated(activity);
   const automation = activity.automation || null;
 
-  const authorName = automated
+  /**
+   * The public dossier is an anonymous token link: we know the address we sent it
+   * to, not the human who clicked. The actor string never pretends otherwise.
+   */
+  const sharedDossier = activity.activity_type.startsWith('client_dossier_');
+
+  const authorName = sharedDossier
+    ? 'via the shared dossier'
+    : automated
     ? 'Gio'
     : (activity.author_first_name || activity.author_last_name)
       ? `${activity.author_first_name || ''} ${activity.author_last_name || ''}`.trim()
@@ -80,6 +88,8 @@ export function ActivityFeedItem({ activity, isLast, onOpenInEmails }: ActivityF
       ? (md.note || md.content || activity.description || null)
       : activity.activity_type === 'candidate_stage_changed'
         ? (md.note || null)
+        : sharedDossier
+          ? (md.note || null)
         : activity.activity_type === 'scorecard_submitted'
           ? (md.feedback || md.summary || null)
           : null;
@@ -128,6 +138,19 @@ export function ActivityFeedItem({ activity, isLast, onOpenInEmails }: ActivityF
         )}
 
         <DetailLines lines={detailLines} />
+
+        {sharedDossier && Array.isArray(md.reasons) && md.reasons.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {(md.reasons as string[]).map((reason) => (
+              <span
+                key={reason}
+                className="inline-flex items-center rounded-[5px] bg-[#F1F0EC] px-[7px] py-[2px] font-inter text-[10.5px] font-medium text-[#5A6072]"
+              >
+                {reason}
+              </span>
+            ))}
+          </div>
+        )}
 
         {quoted && <BodyBlock>{quoted}</BodyBlock>}
 
