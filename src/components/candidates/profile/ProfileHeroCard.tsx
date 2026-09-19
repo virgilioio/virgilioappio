@@ -142,7 +142,7 @@ export function ProfileHeroCard({
       {/* Row 2 — identity */}
       <div className="mt-3.5 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="font-poppins font-semibold tracking-[-0.04em] text-[#1F2230] text-[28px] sm:text-[32px] leading-none truncate">
+          <h1 className="font-poppins font-semibold tracking-[-0.04em] text-[#1F2230] text-[28px] sm:text-[32px] leading-none -translate-y-0.5 truncate">
             {candidateName}
             <span className="text-[#D7C5FB]">.</span>
           </h1>
