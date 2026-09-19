@@ -587,6 +587,9 @@ serve(async (req) => {
         : 0;
 
       console.log(`✅ Cache hit for job ${job_id}: ${results.length} candidates`);
+      // Picks up top scorers that were cached before this pass existed. Each row is
+      // claimed once in the database, so this cannot fire twice for the same person.
+      queueTopDossiers(sb, job_id);
       return new Response(JSON.stringify({
         candidates: results,
         total_count: results.length,
