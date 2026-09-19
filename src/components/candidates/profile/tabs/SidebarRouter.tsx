@@ -154,12 +154,15 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
               />
             )
           })()}
+          <MetaRow icon={DollarSign} label="Salary expectation" value={comp} />
           <MetaRow icon={Inbox} label="Source" value={p.source ?? '—'} />
-          <MetaRow icon={Clock} label="Applied" value={fmtDate(p.appliedAt)} />
+          <MetaRow icon={Clock} label="Applied" value={appliedValue} />
+          <MetaRow icon={Clock} label="Notice period" value={p.candidate?.notice_period ?? null} />
+          <MetaRow icon={CalendarCheck} label="Available from" value={fmtDate(p.candidate?.available_from)} />
         </SidebarBlock>
+        {p.tagsSlot}
         <SidebarBlock label="Application">
-          <MetaRow icon={Briefcase} label="Comp ask" value={comp} />
-          <MetaRow icon={MapPin} label="Open to" value={p.candidate?.location ?? null} />
+          <MetaRow icon={Globe} label="Open to" value={p.candidate?.location ?? null} />
           <MetaRow icon={CheckCircle2} label="Work auth" value={p.candidate?.work_authorization ?? null} />
         </SidebarBlock>
         <SidebarBlock label="Job information">
