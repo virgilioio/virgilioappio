@@ -8,12 +8,12 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { CheckCircle2, Download, Mail, ThumbsDown } from 'lucide-react'
+import { Mail } from 'lucide-react'
 
 import { EmptyAction, EmptyState } from '@/components/ui/empty-state'
 import { SoftArchive } from '@/components/ui/EmptyIllustrations'
 import { PublicPageShell } from '@/components/public/PublicPageShell'
-import { PublicDossierBody } from '@/components/public/PublicDossierBody'
+import { PublicDossierBanner, PublicDossierBody } from '@/components/public/PublicDossierBody'
 import { printDossier } from '@/components/candidates/insights/dossier/printDossier'
 import type { FitAnalysis } from '@/hooks/useCandidateFitInsights'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
@@ -64,6 +64,13 @@ export interface PublicDossierPayload {
   education: CandidateEducation[]
   scorecards: DossierScorecard[]
   feedback: { decision: string; created_at: string } | null
+  client_stage: {
+    key: 'awaiting' | 'requested' | 'declined' | 'interviewing' | 'offer' | 'hired'
+    occurred_at: string | null
+    next_interview_at: string | null
+    next_interview_label: string | null
+    start_date: string | null
+  }
 }
 
 interface DeactivatedPayload {
@@ -147,6 +154,11 @@ export default function PublicDossier() {
   }, [token])
 
   const sendDecision = useCallback(async (value: 'interview_requested' | 'not_a_fit') => {
+    const previousDecision = decision
+    const previousDecisionOn = decisionOn
+    const optimisticDate = new Date().toISOString()
+    setDecision(value)
+    setDecisionOn(optimisticDate)
     setIsSending(true)
     setError(null)
     try {
@@ -155,11 +167,13 @@ export default function PublicDossier() {
       setDecision(value)
       setDecisionOn((result.data as { created_at?: string })?.created_at ?? new Date().toISOString())
     } catch (err) {
+      setDecision(previousDecision)
+      setDecisionOn(previousDecisionOn)
       setError(err instanceof Error ? err.message : 'Your response could not be recorded.')
     } finally {
       setIsSending(false)
     }
-  }, [token])
+  }, [decision, decisionOn, token])
 
   const live = resolved?.state === 'live' ? resolved : null
 
@@ -259,6 +273,7 @@ export default function PublicDossier() {
       pageKind="Candidate dossier"
       width={1080}
       footnote={`Confidential — shared with you by ${resolved.workspace_name}`}
+      beforeCard={<PublicDossierBanner payload={resolved} />}
     >
       <PublicDossierBody
         payload={resolved}
@@ -268,7 +283,6 @@ export default function PublicDossier() {
         error={error}
         onDownload={handleDownload}
         onDecision={sendDecision}
-        icons={{ download: Download, notAFit: ThumbsDown, requested: CheckCircle2 }}
       />
     </PublicPageShell>
   )

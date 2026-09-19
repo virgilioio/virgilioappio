@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
 
     const { data: assoc } = await supabase
       .from("job_candidate_associations")
-      .select("id, job_id, candidate_id, status, rejected_at")
+      .select("id, job_id, candidate_id, status, current_stage_id, entered_stage_at, rejected_at, offered_at, hired_at")
       .eq("id", share.association_id)
       .maybeSingle();
     if (!assoc) return NOT_FOUND();
@@ -171,11 +171,13 @@ Deno.serve(async (req) => {
 
     const workspaceName = tenant?.name || "This agency";
 
+    const terminalAssociation = ["rejected", "withdrawn"].includes(String(assoc.status ?? "").toLowerCase());
+    const progressedAssociation = ["offer", "hired"].includes(String(assoc.status ?? "").toLowerCase());
     const live = share.is_public &&
       !share.deactivated_at &&
       !assoc.rejected_at &&
-      (assoc.status ?? "active") !== "rejected" &&
-      job.status === "open";
+      !terminalAssociation &&
+      (job.status === "open" || progressedAssociation);
 
     if (!live) {
       const { data: owner } = job.created_by
@@ -195,12 +197,22 @@ Deno.serve(async (req) => {
       if (decision !== "interview_requested" && decision !== "not_a_fit") return NOT_FOUND();
       const note = typeof body?.note === "string" ? body.note.slice(0, 2000) : null;
 
+      const { data: existing } = await supabase
+        .from("dossier_feedback")
+        .select("decision, created_at")
+        .eq("share_id", share.id)
+        .maybeSingle();
+      if (existing) return json(409, { error: "decision_already_recorded" });
+
       const { data: row, error } = await supabase
         .from("dossier_feedback")
         .insert({ share_id: share.id, decision, note })
         .select("id, decision, created_at")
         .single();
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23505") return json(409, { error: "decision_already_recorded" });
+        throw error;
+      }
 
       const { data: candidate } = await supabase
         .from("candidates")
@@ -267,7 +279,7 @@ Deno.serve(async (req) => {
     }
 
     /* --------------------------------------------------------------- RESOLVE */
-    const [{ data: candidate }, { data: experience }, { data: education }, { data: feedback }] =
+    const [{ data: candidate }, { data: experience }, { data: education }, { data: feedback }, { data: currentStage }, { data: offer }, { data: bookings }] =
       await Promise.all([
         supabase
           .from("candidates")
@@ -292,7 +304,55 @@ Deno.serve(async (req) => {
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        assoc.current_stage_id
+          ? supabase
+            .from("job_hiring_stages")
+            .select("custom_stage_name, job_stages(stage_name, stage_type)")
+            .eq("id", assoc.current_stage_id)
+            .maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase
+          .from("offer_letters")
+          .select("sent_at, updated_at, field_values")
+          .eq("candidate_id", assoc.candidate_id)
+          .eq("job_id", assoc.job_id)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("scheduled_bookings")
+          .select("scheduled_start, status, job_hiring_stage_id, booking_event_types(title)")
+          .eq("job_candidate_association_id", assoc.id)
+          .eq("status", "confirmed")
+          .gte("scheduled_start", new Date().toISOString())
+          .order("scheduled_start", { ascending: true })
+          .limit(1),
       ]);
+
+    const stageType = String((currentStage as any)?.job_stages?.stage_type ?? "");
+    const latestFeedback = feedback as { decision?: string; created_at?: string } | null;
+    let clientStage: "awaiting" | "requested" | "declined" | "interviewing" | "offer" | "hired" = "awaiting";
+    let occurredAt: string | null = null;
+    if (assoc.status === "hired" || assoc.hired_at) {
+      clientStage = "hired";
+      occurredAt = assoc.hired_at;
+    } else if (assoc.status === "offer" || stageType === "offer" || assoc.offered_at) {
+      clientStage = "offer";
+      occurredAt = (offer as any)?.sent_at || assoc.offered_at || (offer as any)?.updated_at || assoc.entered_stage_at;
+    } else if (stageType === "interview") {
+      clientStage = "interviewing";
+      occurredAt = assoc.entered_stage_at;
+    } else if (latestFeedback?.decision === "interview_requested") {
+      clientStage = "requested";
+      occurredAt = latestFeedback.created_at ?? null;
+    } else if (latestFeedback?.decision === "not_a_fit") {
+      clientStage = "declined";
+      occurredAt = latestFeedback.created_at ?? null;
+    }
+    const nextBooking = (bookings ?? [])[0] as any;
+    const startDate = typeof (offer as any)?.field_values?.start_date === "string"
+      ? (offer as any).field_values.start_date
+      : null;
 
     const { data: assocFit } = await supabase
       .from("job_candidate_associations")
@@ -427,6 +487,13 @@ Deno.serve(async (req) => {
       education: education ?? [],
       scorecards,
       feedback: feedback ?? null,
+      client_stage: {
+        key: clientStage,
+        occurred_at: occurredAt,
+        next_interview_at: nextBooking?.scheduled_start ?? null,
+        next_interview_label: nextBooking?.booking_event_types?.title || (currentStage as any)?.custom_stage_name || (currentStage as any)?.job_stages?.stage_name || null,
+        start_date: startDate,
+      },
     });
   } catch (error) {
     console.error("[dossier-public]", error);

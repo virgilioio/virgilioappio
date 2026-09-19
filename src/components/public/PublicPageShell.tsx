@@ -18,6 +18,7 @@ interface PublicPageShellProps {
   pageKind: string
   width?: number
   footnote?: string
+  beforeCard?: ReactNode
   children: ReactNode
 }
 
@@ -27,6 +28,7 @@ export function PublicPageShell({
   pageKind,
   width = 760,
   footnote,
+  beforeCard,
   children,
 }: PublicPageShellProps) {
   // Safety net: a public page must never be trapped behind the cold-load
@@ -68,6 +70,7 @@ export function PublicPageShell({
       </header>
 
       <main style={{ maxWidth: width, margin: '0 auto', padding: '26px 16px 56px' }}>
+        {beforeCard && <div style={{ marginBottom: 14 }}>{beforeCard}</div>}
         <div
           className="public-card"
           style={{
