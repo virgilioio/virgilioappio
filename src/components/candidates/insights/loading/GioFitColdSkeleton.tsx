@@ -1,5 +1,5 @@
 import { Sparkles } from 'lucide-react'
-import { GIO_FIT_P50_SECONDS, GioFitNarration, GioFitProgressBar, buildNarrationSteps } from './GioFitNarration'
+import { GIO_FIT_P50_SECONDS, GioFitNarration, GioFitProgressBar, buildNarrationSteps, stepProgress, type NarrationStep } from './GioFitNarration'
 import './gioFitLoading.css'
 
 const cardClass = 'rounded-[14px] border border-virgilio-border bg-surface-primary'
