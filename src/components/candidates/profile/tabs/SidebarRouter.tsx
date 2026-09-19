@@ -20,6 +20,8 @@ import {
   Inbox,
   XCircle,
   PenLine,
+  DollarSign,
+  CalendarCheck,
 } from 'lucide-react'
 import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/ProfileSidebar'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
