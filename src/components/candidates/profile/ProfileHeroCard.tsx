@@ -37,39 +37,18 @@ interface ProfileHeroCardProps {
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
   tabs?: ReactNode
-  nextStageLabel?: string | null
-  onAdvance?: () => void
-  onSchedule?: () => void
-  onEmail?: () => void
-  isRejected?: boolean
-  isHired?: boolean
-  email?: string | null
-  phone?: string | null
-  whatsAppEnabled?: boolean
-  onWhatsAppClick?: (phone: string) => void
-}
-
-function relativeTime(iso?: string | null) {
-  if (!iso) return null
-  const ms = Date.now() - new Date(iso).getTime()
-  if (Number.isNaN(ms) || ms < 0) return null
-  const days = Math.floor(ms / 86_400_000)
-  if (days < 1) return 'today'
-  return `${days}d ago`
+  /** Overflow menu — last element of the hero action row, after prev/next. */
+  actionMenu?: ReactNode
 }
 
 export function ProfileHeroCard({
-  candidateName, candidateFirstName, candidateId, jobId, jobTitle, source, appliedAt,
+  candidateName, candidateFirstName, candidateId, jobId, jobTitle,
   currentStageName, daysInStage, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
   fitScore, onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
-  tabs,
-  nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
-  email, phone, whatsAppEnabled, onWhatsAppClick,
+  tabs, actionMenu,
 }: ProfileHeroCardProps) {
-  const applied = relativeTime(appliedAt)
-  const phoneDisplay = phone ? (formatE164Display(phone) || phone) : null
-  const waUrl = phone ? buildWhatsAppUrl(phone) : null
+
 
   return (
     <section className="bg-white border border-[#E7E8EE] rounded-[16px] shadow-[0_1px_2px_rgba(13,13,9,0.04)] pt-3.5 px-6 pb-0">
