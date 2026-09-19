@@ -6,11 +6,14 @@
  * in-app dossier: one sheet at 1080 with a 360 rail that stacks below 900px.
  */
 import { useState } from 'react'
-import type { LucideIcon } from 'lucide-react'
-import { CheckCircle2, ChevronDown, GraduationCap, Languages, MapPin } from 'lucide-react'
+import { Calendar, ChevronDown, FileSignature, FileText, GraduationCap, Info, Languages, MapPin, PartyPopper, X } from 'lucide-react'
+import { differenceInDays, format } from 'date-fns'
 
 import type { PublicDossierPayload } from '@/pages/PublicDossier'
 import { InterviewScorecardsSection } from '@/components/candidates/insights/dossier/InterviewScorecardsSection'
+import { StatusBanner } from '@/components/candidates/status/StatusBanner'
+import { Badge, type BadgeTone } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import {
   buildSkillGroups,
@@ -33,7 +36,6 @@ interface PublicDossierBodyProps {
   error: string | null
   onDownload?: () => void
   onDecision: (decision: 'interview_requested' | 'not_a_fit') => void
-  icons: { download: LucideIcon; notAFit: LucideIcon; requested: LucideIcon }
 }
 
 const HEADING: React.CSSProperties = {
@@ -44,51 +46,6 @@ const HEADING: React.CSSProperties = {
   letterSpacing: '0.1em',
   color: '#8B8F9E',
   margin: 0,
-}
-
-function HeroButton({
-  children,
-  icon: Icon,
-  tone,
-  disabled,
-  onClick,
-}: {
-  children: React.ReactNode
-  icon: LucideIcon
-  tone: 'primary' | 'secondary'
-  disabled?: boolean
-  onClick?: () => void
-}) {
-  const skin = tone === 'primary'
-    ? { background: '#6F3FF5', color: '#fff', border: '1px solid #6F3FF5' }
-    : { background: '#fff', color: '#1F2230', border: '1px solid #E0DDD3' }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="public-dossier-action"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 7,
-        height: 34,
-        padding: '0 13px',
-        borderRadius: 8,
-        fontFamily: 'Poppins, sans-serif',
-        fontSize: 13,
-        fontWeight: 500,
-        letterSpacing: '-0.005em',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.55 : 1,
-        ...skin,
-      }}
-    >
-      <Icon size={14} />
-      {children}
-    </button>
-  )
 }
 
 function Bar({ value }: { value: number }) {
@@ -102,6 +59,51 @@ function Bar({ value }: { value: number }) {
 const longDate = (value: string) =>
   new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
+const stagePresentation: Record<Exclude<PublicDossierPayload['client_stage']['key'], 'awaiting'>, { label: string; tone: BadgeTone }> = {
+  requested: { label: 'Interview requested', tone: 'green' },
+  declined: { label: 'Marked not a fit', tone: 'neutral' },
+  interviewing: { label: 'In interviews', tone: 'purple' },
+  offer: { label: 'Offer out', tone: 'lilac' },
+  hired: { label: 'Hired', tone: 'green' },
+}
+
+function daysAgo(value: string) {
+  const days = Math.max(0, differenceInDays(new Date(), new Date(value)))
+  if (days === 0) return 'today'
+  return `${days} ${days === 1 ? 'day' : 'days'} ago`
+}
+
+export function PublicDossierBanner({ payload }: { payload: PublicDossierPayload }) {
+  const { client_stage: stage, candidate } = payload
+  const firstName = candidate.name.trim().split(/\s+/)[0] || 'Candidate'
+  if (stage.key === 'offer' && stage.occurred_at) {
+    return (
+      <StatusBanner
+        tone="offer"
+        icon={FileSignature}
+        eyebrow="Offer"
+        meta={`Sent ${daysAgo(stage.occurred_at)}`}
+        title={`${firstName} has your offer`}
+        sub={`${payload.job_title} · sent ${longDate(stage.occurred_at)} · awaiting their response`}
+      />
+    )
+  }
+  if (stage.key === 'hired' && stage.occurred_at) {
+    const start = stage.start_date ? format(new Date(stage.start_date), 'MMM d') : 'date to be confirmed'
+    return (
+      <StatusBanner
+        tone="hired"
+        icon={PartyPopper}
+        eyebrow="Hired"
+        meta={`Accepted ${daysAgo(stage.occurred_at)}`}
+        title={`${firstName} is hired — starts ${start}`}
+        sub={`${payload.job_title} · signed ${longDate(stage.occurred_at)} · this dossier is now their placement record`}
+      />
+    )
+  }
+  return null
+}
+
 export function PublicDossierBody({
   payload,
   decision,
@@ -110,7 +112,6 @@ export function PublicDossierBody({
   error,
   onDownload,
   onDecision,
-  icons,
 }: PublicDossierBodyProps) {
   const { analysis, candidate, score } = payload
   // One dimension open at a time — the rail is a reading order, not a dashboard.
@@ -141,11 +142,26 @@ export function PublicDossierBody({
       .map((source) => source.name),
   )]
 
-  const confirmation = decision === 'interview_requested'
-    ? `Interview requested on ${longDate(decisionOn ?? new Date().toISOString())}. ${payload.prepared_by || payload.workspace_name} has been notified and will be in touch.`
-    : decision
-      ? `Marked as not a fit on ${longDate(decisionOn ?? new Date().toISOString())}. ${payload.prepared_by || payload.workspace_name} has been notified.`
-      : null
+  const clientStage = decision === 'interview_requested'
+    ? 'requested'
+    : decision === 'not_a_fit'
+      ? 'declined'
+      : payload.client_stage.key
+  const recruiter = payload.prepared_by || payload.workspace_name
+  const stageDate = decisionOn || payload.client_stage.occurred_at
+  const note = clientStage === 'requested'
+    ? `You requested an interview on ${longDate(stageDate ?? new Date().toISOString())}. ${recruiter} has been notified and will be in touch to schedule.`
+    : clientStage === 'declined'
+      ? `You marked this candidate as not a fit on ${longDate(stageDate ?? new Date().toISOString())}. ${recruiter} has been notified.`
+      : clientStage === 'interviewing'
+        ? payload.client_stage.next_interview_at
+          ? `${payload.client_stage.next_interview_label || 'The next interview'} is booked for ${longDate(payload.client_stage.next_interview_at)}. We will share the panel's feedback here as it lands.`
+          : 'Interviews are in progress. We will share the panel’s feedback here as it lands.'
+        : clientStage === 'offer'
+          ? 'Nothing is needed from you while the candidate considers it. We will update this page the moment they respond.'
+          : clientStage === 'hired'
+            ? 'Keep this link for your records. It stays available to you and stops accepting decisions.'
+            : null
 
   return (
     <div>
@@ -200,41 +216,32 @@ export function PublicDossierBody({
           Prepared by {payload.prepared_by || payload.workspace_name} at {payload.workspace_name} ·{' '}
           {longDate(payload.prepared_on)} · Assessed against your brief for {payload.job_title}
         </p>
-        {onDownload && (
-          <HeroButton icon={icons.download} tone="secondary" onClick={onDownload}>Download PDF</HeroButton>
-        )}
-        {confirmation
-          ? (
-            <p
-              className="font-inter"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                fontSize: 12.5,
-                lineHeight: 1.5,
-                color: decision === 'interview_requested' ? '#1F7A45' : '#5A6072',
-                margin: 0,
-              }}
-            >
-              {decision === 'interview_requested' && <CheckCircle2 size={14} style={{ flexShrink: 0 }} />}
-              {confirmation}
-            </p>
-          )
-          : (
-            <>
-              <HeroButton icon={icons.notAFit} tone="secondary" disabled={isSending} onClick={() => onDecision('not_a_fit')}>
-                Not a fit
-              </HeroButton>
-              <HeroButton icon={icons.requested} tone="primary" disabled={isSending} onClick={() => onDecision('interview_requested')}>
-                Request interview
-              </HeroButton>
-            </>
-          )}
-        {error && (
-          <p role="alert" className="font-inter" style={{ fontSize: 12, color: '#B42318', margin: 0 }}>{error}</p>
+        {clientStage === 'awaiting' ? (
+          <>
+            {onDownload && <Button variant="secondary" size="sm" icon={FileText} onClick={onDownload}>Download PDF</Button>}
+            <Button variant="secondary" size="sm" icon={X} loading={isSending} onClick={() => onDecision('not_a_fit')}>Not a fit</Button>
+            <Button variant="primary" size="sm" icon={Calendar} loading={isSending} onClick={() => onDecision('interview_requested')}>Request interview</Button>
+          </>
+        ) : (
+          <>
+            <Badge size="md" dot tone={stagePresentation[clientStage].tone}>{stagePresentation[clientStage].label}</Badge>
+            {onDownload && <Button variant="secondary" size="sm" icon={FileText} onClick={onDownload}>Download PDF</Button>}
+          </>
         )}
       </div>
+
+      {error && (
+        <p role="alert" className="font-inter" style={{ margin: '10px 0 0', fontSize: 11.5, lineHeight: 1.5, color: '#B42318' }}>{error}</p>
+      )}
+      {note && (
+        <div
+          className="font-inter"
+          style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12, padding: '10px 12px', background: '#FBFAF7', border: '1px solid #EFEEE8', borderRadius: 10, color: '#5A6072', fontSize: 11.5, lineHeight: 1.5 }}
+        >
+          <Info size={13} color="#8B8F9E" style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>{note}</span>
+        </div>
+      )}
 
       {/* Body */}
       <div
@@ -465,7 +472,7 @@ export function PublicDossierBody({
           .public-dossier-hero { flex-direction: column; }
           .public-dossier-seal { text-align: left !important; width: 100%; }
           .public-dossier-seal-row { justify-content: flex-start !important; }
-          .public-dossier-actions .public-dossier-action { width: 100%; }
+          .public-dossier-actions button { width: 100%; }
         }
         @media print {
           .public-dossier-actions { display: none !important; }
