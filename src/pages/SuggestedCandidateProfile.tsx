@@ -96,6 +96,8 @@ function SuggestedCandidateProfileInner() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [addedStage, setAddedStage] = useState<string | null>(null)
+  // The hero mirrors the Gio Fit tab's wait: pulsing dots cold, previous score while re-scoring.
+  const [fitState, setFitState] = useState<'ready' | 'loading' | 'rescoring'>('ready')
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
 
   const { data: job } = useQuery({
