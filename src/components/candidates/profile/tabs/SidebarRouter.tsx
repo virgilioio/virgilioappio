@@ -248,44 +248,6 @@ export function ResumeSidebar(p: ResumeSidebarProps) {
   )
 }
 
-export interface OverviewSidebarProps {
-  tags: string[]
-  onAddTag?: () => void
-  urls: { label: string; url: string }[]
-  filesCount: number
-  onUploadFile?: () => void
-  fileSlots?: ReactNode
-}
-export function OverviewSidebar(p: OverviewSidebarProps) {
-  return (
-    <ProfileSidebar>
-      <SidebarBlock
-        label="Tags"
-        action={
-          p.onAddTag && (
-            <Button variant="ghost" size="xs" icon={Plus} onClick={p.onAddTag}>
-              Add
-            </Button>
-          )
-        }
-      >
-        {p.tags.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {p.tags.map((t) => (
-              <Badge key={t} tone="neutral" size="xs">
-                {t}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <div className="font-inter text-[12px] text-[#8B8F9E]">No tags</div>
-        )}
-      </SidebarBlock>
-      <LinksBlock urls={p.urls} />
-      <FilesBlock count={p.filesCount} onUpload={p.onUploadFile}>{p.fileSlots}</FilesBlock>
-    </ProfileSidebar>
-  )
-}
 
 export type ScorecardVerdictTone = 'green' | 'yellow' | 'orange' | 'red' | 'neutral'
 
