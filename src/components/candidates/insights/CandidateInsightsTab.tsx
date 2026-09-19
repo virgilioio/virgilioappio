@@ -431,14 +431,17 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
 
   return (
     <TooltipProvider delayDuration={200}>
+    {isRescoring && waitStrip('rescoring')}
+    {generationError && !isRescoring && waitStrip('failed')}
     <div className="relative">
       {/* Re-scoring: the previous dossier stays mounted and readable underneath. */}
       {isRescoring && (
         <GioFitRescoringBar
           stepLabel={narrationSteps[stepIndex]?.label || 'working'}
-          progress={progress}
+          progress={stepProgress(stepIndex, narrationSteps.length)}
           previousGeneratedAt={insights.generatedAt}
           onCancel={cancelRefresh}
+          noteForDate={suggested ? (date) => `Showing the dossier scored on ${date} until the new one lands` : undefined}
         />
       )}
       {generationError && !isRescoring && (
