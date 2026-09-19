@@ -8,3 +8,4 @@
 - [x] Replace the Gio Fit export dialog and generate the shared, searchable dossier PDF.
 - [x] Add stage-aware client actions, notes, banners, and idempotent feedback to public dossiers.
 - [x] Capture the client decision in a dialog and surface the verdict in the candidate profile.
+- [x] Candidate profiles: hero consolidation (shared overflow menu, sidebar Details, Quick actions removed)
