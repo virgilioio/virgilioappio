@@ -4,8 +4,10 @@ import {
   ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
   Heart, Briefcase, MapPin, Mail, Phone, DollarSign, Calendar, Sparkles,
   FileText, File as FileIcon, GraduationCap, Info, MessageSquare, UserPlus,
-  Upload, Globe, Download, Clock, User as UserIcon, Plus,
+  Upload, Globe, Download, Clock, User as UserIcon, Plus, PenLine,
 } from 'lucide-react'
+import { ProfileActionMenu } from '@/components/candidates/profile/ProfileActionMenu'
+import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
 import { ExperienceTimeline, EducationTimeline } from '@/components/candidates/profile/tabs/ExperienceTimeline'
 
 import { AuthGate } from '@/components/auth/AuthGate'
