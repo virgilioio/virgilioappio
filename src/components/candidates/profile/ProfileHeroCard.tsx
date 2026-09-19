@@ -1,4 +1,5 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart, UserRound } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, RefreshCw, UserRound } from 'lucide-react'
+import '@/components/candidates/insights/loading/gioFitLoading.css'
 import type { ReactNode } from 'react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,8 @@ interface ProfileHeroCardProps {
   onOpenFullProfile?: () => void
   linkedinUrl?: string | null
   fitScore?: number | null
+  /** 'loading' shows pulsing dots instead of a number; 'rescoring' keeps the previous score. */
+  fitPillState?: 'ready' | 'loading' | 'rescoring'
   /** The client's answer on a shared dossier. Sits beside the Gio Fit pill as its pair. */
   clientVerdictState?: ClientVerdictState
   onFitClick?: () => void
@@ -56,7 +59,7 @@ interface ProfileHeroCardProps {
 export function ProfileHeroCard({
   candidateName, candidateFirstName, candidateId, jobId, jobTitle,
   currentStageName, daysInStage, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
-  fitScore, onFitClick, clientVerdictState = 'none',
+  fitScore, fitPillState = 'ready', onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs, actionMenu,
   backLabel = 'Back to job', breadcrumbLast = 'Candidates', contextLine,
@@ -97,19 +100,37 @@ export function ProfileHeroCard({
 
         <div className="flex items-center gap-2 shrink-0">
           <ClientVerdictPill state={clientVerdictState} />
-          {typeof fitScore === 'number' && fitScore > 0 && (
+          {((typeof fitScore === 'number' && fitScore > 0) || fitPillState === 'loading') && (
             <Button
               type="button"
               variant="ghost"
               size="md"
               onClick={onFitClick}
               className="hidden sm:inline-flex items-center gap-1.5 px-2.5 h-[34px] rounded-full bg-[#F4EFFE] border border-[#E6DAFB] hover:bg-[#EDE4FF]"
-              aria-label={`Open Gio Fit analysis, score ${Math.round(fitScore)}`}
+              title={fitPillState === 'loading' ? 'Gio is scoring this candidate' : undefined}
+              aria-label={
+                fitPillState === 'loading'
+                  ? 'Gio is scoring this candidate'
+                  : `Open Gio Fit analysis, score ${Math.round(fitScore || 0)}`
+              }
             >
               <span className="font-inter font-bold text-[10px] tracking-[0.08em] text-virgilio-purple uppercase">GIO FIT</span>
-              <span className="font-poppins font-semibold text-virgilio-purple text-[14px] leading-none tabular-nums">
-                {Math.round(fitScore)}
-              </span>
+              {fitPillState === 'loading' ? (
+                <span className="flex items-center gap-1" aria-hidden>
+                  {[0, 0.18, 0.36].map((delay) => (
+                    <span key={delay} className="gf-pill-dot" style={{ animationDelay: `${delay}s` }} />
+                  ))}
+                </span>
+              ) : (
+                <>
+                  <span className="font-poppins font-semibold text-virgilio-purple text-[14px] leading-none tabular-nums">
+                    {Math.round(fitScore || 0)}
+                  </span>
+                  {fitPillState === 'rescoring' && (
+                    <RefreshCw className="gf-pill-pulse h-[11px] w-[11px] text-virgilio-purple" strokeWidth={2} aria-hidden />
+                  )}
+                </>
+              )}
             </Button>
           )}
           {onOpenFullProfile && (

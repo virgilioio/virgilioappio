@@ -25,11 +25,25 @@
   border-radius: 6px;
 }
 
+/* The score pill while Gio is still scoring — never a placeholder digit or a zero. */
+.gf-pill-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #6F3FF5;
+  display: block;
+  animation: gf-pulse 1.4s ease-in-out infinite;
+}
+
+.gf-pill-pulse { animation: gf-pulse 1.4s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .gf-sk,
   .gf-sk-dark { animation: none; background: #F1F0EC; }
   .gf-step-marker--active { animation: none; }
   .gf-rescore-chip { animation: none; }
+  .gf-pill-dot,
+  .gf-pill-pulse { animation: none; }
 }
 
 /* ---------- narration ---------- */

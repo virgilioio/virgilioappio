@@ -7,15 +7,35 @@ export interface NarrationStep {
   detail: string
 }
 
-/** The function's real stages, in order. */
-export function buildNarrationSteps(outputLanguageName: string): NarrationStep[] {
+/**
+ * The function's real stages, in order. The suggestion variant never claims
+ * scorecards or panel validation — nobody has interviewed this person.
+ */
+export function buildNarrationSteps(outputLanguageName: string, variant: 'association' | 'suggestion' = 'association'): NarrationStep[] {
+  const suggestion = variant === 'suggestion'
   return [
-    { label: 'Gathering the candidate file', detail: 'Résumé, work history, education, scorecards' },
+    {
+      label: 'Gathering the candidate file',
+      detail: suggestion
+        ? 'Résumé, work history, education, your notes from the last placement'
+        : 'Résumé, work history, education, scorecards',
+    },
     { label: 'Reading the job', detail: 'Required skills, band, location, description' },
     { label: 'Comparing across seven dimensions', detail: 'Skills, experience, role, location, salary, language, pedigree' },
     { label: 'Scoring what the evidence supports', detail: 'Weighted mean of the dimensions that could be assessed' },
-    { label: 'Writing the dossier', detail: `Summary, insights, and validation points in ${outputLanguageName}` },
+    {
+      label: 'Writing the dossier',
+      detail: suggestion
+        ? `Summary, insights, and what to ask on first contact, in ${outputLanguageName}`
+        : `Summary, insights, and validation points in ${outputLanguageName}`,
+    },
   ]
+}
+
+/** Progress derived from the steps actually passed in — never from a module default. */
+export function stepProgress(stepIndex: number, stepCount: number) {
+  if (stepCount <= 0) return 0
+  return Math.min(1, (stepIndex + 0.5) / stepCount)
 }
 
 /** Observed p50 for the scoring call. Quoted to the user, and used to pace the steps. */

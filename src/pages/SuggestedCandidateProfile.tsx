@@ -96,6 +96,8 @@ function SuggestedCandidateProfileInner() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [addedStage, setAddedStage] = useState<string | null>(null)
+  // The hero mirrors the Gio Fit tab's wait: pulsing dots cold, previous score while re-scoring.
+  const [fitState, setFitState] = useState<'ready' | 'loading' | 'rescoring'>('ready')
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
 
   const { data: job } = useQuery({
@@ -233,6 +235,28 @@ function SuggestedCandidateProfileInner() {
     />
   )
 
+  /**
+   * The slim decision strip. It carries the only decision on this page, so it stays
+   * live while Gio is scoring, while it re-scores, and when scoring fails.
+   */
+  const decisionStrip = (text: string, size: 'sm' | 'lg') => (
+    <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-[#E7E8EE] bg-white px-3.5 py-2.5">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F4EFFE] text-virgilio-purple">
+        <Sparkles className="h-3.5 w-3.5" />
+      </span>
+      <span className="font-inter text-[12.5px] text-[#5A6072]">{text}</span>
+      <span className="hidden flex-wrap items-center gap-1.5 sm:flex">
+        {reasons.slice(0, 3).map((reason) => (
+          <span key={reason} className="inline-flex h-[22px] items-center rounded-[7px] border border-[#E6DAFB] bg-[#F4EFFE] px-2 font-inter text-[11.5px] text-[#4B1FA8]">
+            {reason}
+          </span>
+        ))}
+      </span>
+      <span className="flex-1" />
+      {addGroup(size)}
+    </div>
+  )
+
   const menuSections: ActionMenuSection[] = [
     {
       items: [
@@ -296,6 +320,7 @@ function SuggestedCandidateProfileInner() {
         favoriteMuted
         identityBadges={identityBadges}
         fitScore={matchScore}
+        fitPillState={activeTab === 'fit' ? fitState : 'ready'}
         onFitClick={() => setTab('fit')}
         linkedinUrl={(candidate as any)?.linkedin_url || null}
         onOpenFullProfile={() => navigate(`/candidates/${candidateId}`)}
@@ -367,27 +392,27 @@ function SuggestedCandidateProfileInner() {
               note: (suggestion as any)?.ai_fit_rationale || null,
               actions: addGroup('sm'),
             }}
+            onStateChange={setFitState}
+            renderWaitStrip={({ state, generatedAt }) =>
+              decisionStrip(
+                state === 'rescoring'
+                  ? `Re-scoring · the dossier below is from ${fmtDate(generatedAt) || 'an earlier run'}`
+                  : state === 'failed'
+                    ? `Scoring did not finish · you can still add ${firstName} now`
+                    : `Gio is scoring ${firstName} against this job · you can add them now`,
+                'sm',
+              )
+            }
           />
         )}
 
         {activeTab === 'resume' && (
           <>
-            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-[#E7E8EE] bg-white px-3.5 py-2.5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F4EFFE] text-virgilio-purple">
-                <Sparkles className="h-3.5 w-3.5" />
-              </span>
-              <span className="font-inter text-[12.5px] text-[#5A6072]">
-                {isInPipeline ? `${firstName} is on this pipeline` : 'Suggested by Gio · not in this pipeline yet'}
-              </span>
-              <span className="hidden flex-wrap items-center gap-1.5 sm:flex">
-                {reasons.slice(0, 3).map((reason) => (
-                  <span key={reason} className="inline-flex h-[22px] items-center rounded-[7px] border border-[#E6DAFB] bg-[#F4EFFE] px-2 font-inter text-[11.5px] text-[#4B1FA8]">
-                    {reason}
-                  </span>
-                ))}
-              </span>
-              <span className="flex-1" />
-              {addGroup('lg')}
+            <div className="mb-4">
+              {decisionStrip(
+                isInPipeline ? `${firstName} is on this pipeline` : 'Suggested by Gio · not in this pipeline yet',
+                'lg',
+              )}
             </div>
 
             <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">

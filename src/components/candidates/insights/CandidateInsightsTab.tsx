@@ -27,7 +27,7 @@ import { GioFitLanguageControl, GioFitLanguageProvenance } from './GioFitLanguag
 import { GioFitColdSkeleton } from './loading/GioFitColdSkeleton'
 import { GioFitBlockedCard, GioFitErrorCard } from './loading/GioFitFailureCard'
 import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
-import { buildNarrationSteps, useGioFitNarration } from './loading/GioFitNarration'
+import { buildNarrationSteps, stepProgress, useGioFitNarration } from './loading/GioFitNarration'
 import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -85,6 +85,13 @@ interface CandidateInsightsTabProps {
   autoGenerate?: boolean
   /** Rendered instead of the cold skeleton when nothing is stored and nothing is running. */
   renderEmpty?: (options: { generate: () => void; isGenerating: boolean }) => React.ReactNode
+  /**
+   * A strip pinned above the body while a score is being produced or re-produced,
+   * and while it has failed — the decision it carries must stay available throughout.
+   */
+  renderWaitStrip?: (context: { state: 'loading' | 'rescoring' | 'failed'; generatedAt: string | null }) => React.ReactNode
+  /** Lets the screen mirror the wait in its own chrome (the hero score pill). */
+  onStateChange?: (state: 'ready' | 'loading' | 'rescoring') => void
 }
 
 const cardClass = 'rounded-[14px] border border-virgilio-border bg-surface-primary'
@@ -228,7 +235,7 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
   )
 }
 
-export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, showScorecards = true, suggested = null, autoGenerate = true, renderEmpty }: CandidateInsightsTabProps) {
+export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, showScorecards = true, suggested = null, autoGenerate = true, renderEmpty, renderWaitStrip, onStateChange }: CandidateInsightsTabProps) {
   const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences, invalidate } = useCandidateFitInsights(candidateId, jobId)
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
@@ -322,17 +329,24 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const location = [candidate?.location_city, candidate?.location_state, candidate?.location_country].map(asString).filter(Boolean).join(', ')
   const appliedLanguage = insights?.appliedOutputLanguage || insights?.resolvedOutputLanguage || 'en'
   const outputLanguageName = getGioFitLanguage(appliedLanguage).name
-  const narrationSteps = buildNarrationSteps(outputLanguageName)
+  const narrationSteps = buildNarrationSteps(outputLanguageName, suggested ? 'suggestion' : 'association')
   const hasStoredAnalysis = Boolean(insights?.analysis) && insights?.score !== null
+  // The screen chrome mirrors the wait: dots while cold, previous score while re-scoring.
+  const chromeState: 'ready' | 'loading' | 'rescoring' = (isRefreshing || suggestionPending)
+    ? (hasStoredAnalysis ? 'rescoring' : 'loading')
+    : (isLoading && !hasStoredAnalysis ? 'loading' : 'ready')
+  useEffect(() => { onStateChange?.(chromeState) }, [chromeState, onStateChange])
+  const waitStrip = (state: 'loading' | 'rescoring' | 'failed') =>
+    renderWaitStrip ? <div className="mb-3.5">{renderWaitStrip({ state, generatedAt: insights?.generatedAt ?? null })}</div> : null
 
   // Under 30 characters of job description there is nothing to assess against, so
   // no call is made. Once the description passes 30 characters the effect above
   // generates on the next visit without being asked.
   if (jdText.length < 30 || isBlocked) {
-    return <GioFitBlockedCard jobId={jobId} onRetry={refreshInsights} isRetrying={isRefreshing} />
+    return <>{waitStrip('failed')}<GioFitBlockedCard jobId={jobId} onRetry={refreshInsights} isRetrying={isRefreshing} /></>
   }
   if (generationError && !hasStoredAnalysis) {
-    return <GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} />
+    return <>{waitStrip('failed')}<GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} /></>
   }
   // Nothing stored and nothing running: the caller decides what stands in its place
   // (a suggestion offers the assessment rather than starting it unasked).
@@ -343,13 +357,19 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   // Cold: nothing on file, so show the shape of what is coming plus the narration.
   if (isLoading || !hasStoredAnalysis) {
     return (
-      <GioFitColdSkeleton
-        candidateName={candidateName}
-        roleLine={roleLine || null}
-        outputLanguageName={outputLanguageName}
-        stepIndex={stepIndex}
-        progress={progress}
-      />
+      <>
+        {waitStrip('loading')}
+        <GioFitColdSkeleton
+          candidateName={candidateName}
+          roleLine={roleLine || null}
+          outputLanguageName={outputLanguageName}
+          stepIndex={stepIndex}
+          progress={progress}
+          steps={suggested ? narrationSteps : undefined}
+          identity={!suggested}
+          eyebrow={suggested ? 'Gio is scoring this suggestion' : undefined}
+        />
+      </>
     )
   }
 
@@ -411,14 +431,17 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
 
   return (
     <TooltipProvider delayDuration={200}>
+    {isRescoring && waitStrip('rescoring')}
+    {generationError && !isRescoring && waitStrip('failed')}
     <div className="relative">
       {/* Re-scoring: the previous dossier stays mounted and readable underneath. */}
       {isRescoring && (
         <GioFitRescoringBar
           stepLabel={narrationSteps[stepIndex]?.label || 'working'}
-          progress={progress}
+          progress={stepProgress(stepIndex, narrationSteps.length)}
           previousGeneratedAt={insights.generatedAt}
           onCancel={cancelRefresh}
+          noteForDate={suggested ? (date) => `Showing the dossier scored on ${date} until the new one lands` : undefined}
         />
       )}
       {generationError && !isRescoring && (
