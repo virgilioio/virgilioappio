@@ -346,26 +346,15 @@ export default function IndependentCandidateProfile() {
   // ───── Persistent sidebar ─────
   const sidebar = (
     <ProfileSidebar>
-      <SidebarBlock label="Quick actions">
-        <div className="space-y-2">
-          <Button variant="primary" size="md" icon={UserPlus} onClick={onAddToPipeline} className="w-full justify-center">
-            Add to job pipeline
-          </Button>
-          <Button variant="secondary" size="md" icon={Mail} onClick={onSendEmail} className="w-full justify-center">
-            Send email
-          </Button>
-          <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule} className="w-full justify-center">
-            Schedule meeting
-          </Button>
-        </div>
-      </SidebarBlock>
-
       <SidebarBlock label="Details">
         <div>
-          <MetaRow icon={Calendar} label="Added" value={addedDate} />
+          <MetaRow icon={MapPin} label="Location" value={location || null} />
+          <MetaRow icon={DollarSign} label="Open to" value={salary || null} />
+          <MetaRow icon={Mail} label="Email" value={candidate.email || null} />
+          <MetaRow icon={Phone} label="Phone" value={candidate.phone || null} />
           <MetaRow icon={Info} label="Source" value={candidate.source || null} />
-          <MetaRow icon={Briefcase} label="Last role" value={currentRole || null} />
-          <MetaRow icon={Clock} label="Years exp" value={yearsExp != null ? `${yearsExp}y` : null} />
+          <MetaRow icon={Calendar} label="Added" value={addedDate} />
+          <MetaRow icon={UserIcon} label="Added by" value={createdByName || null} />
         </div>
       </SidebarBlock>
 
