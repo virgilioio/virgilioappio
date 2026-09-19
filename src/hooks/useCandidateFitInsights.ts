@@ -44,7 +44,11 @@ export interface FitInsightsData {
   confidence: string | null
   generatedAt: string | null
   version: number
-  associationId: string
+  /** Null before the candidate is on this pipeline — the dossier then lives on the job's suggestion row. */
+  associationId: string | null
+  /** Only set for suggestion-hosted dossiers: null (never requested) | pending | ready | failed. */
+  dossierStatus: 'pending' | 'ready' | 'failed' | null
+  dossierError: string | null
   outputLanguage: string | null
   appliedOutputLanguage: string | null
   keepProperNouns: boolean
