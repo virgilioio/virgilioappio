@@ -325,6 +325,12 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   if (generationError && !hasStoredAnalysis) {
     return <GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} />
   }
+  // Nothing stored and nothing running: the caller decides what stands in its place
+  // (a suggestion offers the assessment rather than starting it unasked).
+  const isGenerating = isRefreshing || insights?.dossierStatus === 'pending'
+  if (!isLoading && !hasStoredAnalysis && !isGenerating && renderEmpty) {
+    return <>{renderEmpty({ generate: () => { void refreshInsights() }, isGenerating: false })}</>
+  }
   // Cold: nothing on file, so show the shape of what is coming plus the narration.
   if (isLoading || !hasStoredAnalysis) {
     return (
