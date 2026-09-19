@@ -808,9 +808,18 @@ const stageHasAutomation = useMemo(() => {
       // Load job info
       const { data: jobData } = await supabase
         .from('jobs')
-        .select('id, title, description, skills, must_have_skills')
+        .select('id, title, description, skills, must_have_skills, department, department_id, location, status')
         .eq('id', jobId)
         .maybeSingle()
+      // If the denormalized department text is missing, resolve the name from departments
+      if (jobData && !jobData.department && jobData.department_id) {
+        const { data: dept } = await (supabase as any)
+          .from('departments')
+          .select('name')
+          .eq('id', jobData.department_id)
+          .maybeSingle()
+        if (dept?.name) (jobData as any).department = dept.name
+      }
       setJob(jobData || null)
 
       // Job candidate data is now merged with the global candidate data
