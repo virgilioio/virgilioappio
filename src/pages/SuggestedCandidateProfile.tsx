@@ -556,9 +556,21 @@ function PreAssociationDossier({
           )}
           {rationale && <p className="mt-3 font-inter text-[13px] leading-[1.6] text-[#1F2230]">{rationale}</p>}
           <p className="mt-3 font-inter text-[12px] leading-[1.55] text-[#8B8F9E]">
-            The full dossier — dimension breakdown, evidenced skills and validation points — is written the moment
-            they enter the pipeline for this job.
+            The full dossier — dimension breakdown, evidenced skills and validation points — has not been written for
+            this match yet. Gio writes it automatically for its strongest matches on this job.
           </p>
+          {onGenerate && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="mt-3"
+              icon={Sparkles}
+              loading={isGenerating}
+              onClick={onGenerate}
+            >
+              Generate full dossier
+            </Button>
+          )}
         </div>
         <div className="shrink-0 text-right">
           <p className="font-inter text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8B8F9E]">Gio fit</p>
