@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.copy_suggestion_dossier_to_association() FROM PUBLIC, anon, authenticated;
