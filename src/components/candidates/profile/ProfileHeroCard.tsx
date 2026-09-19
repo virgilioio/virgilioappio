@@ -63,7 +63,7 @@ function relativeTime(iso?: string | null) {
 export function ProfileHeroCard({
   candidateName, candidateFirstName, candidateId, jobId, jobTitle, source, appliedAt,
   currentStageName, daysInStage, isFavorite, onToggleFavorite, onOpenFullProfile, linkedinUrl,
-  fitScore, onFitClick,
+  fitScore, onFitClick, clientVerdictState = 'none',
   onClose, hasPrev, hasNext, onNavigatePrev, onNavigateNext,
   tabs,
   nextStageLabel, onAdvance, onSchedule, onEmail, isRejected, isHired,
@@ -105,6 +105,7 @@ export function ProfileHeroCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <ClientVerdictPill state={clientVerdictState} />
           {typeof fitScore === 'number' && fitScore > 0 && (
             <Button
               type="button"
