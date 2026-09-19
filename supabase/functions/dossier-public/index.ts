@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
           .order("end_date", { ascending: false }),
         supabase
           .from("dossier_feedback")
-          .select("decision, created_at")
+          .select("decision, created_at, reasons, note")
           .eq("share_id", share.id)
           .order("created_at", { ascending: false })
           .limit(1)
