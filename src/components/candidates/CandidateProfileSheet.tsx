@@ -2281,6 +2281,8 @@ const stageHasAutomation = useMemo(() => {
                                 location={[(candidate as any)?.location_city, (candidate as any)?.location_state, (candidate as any)?.location_country].filter(Boolean).join(', ') || (candidate as any)?.location || null}
                                 email={candidate?.email || null}
                                 phone={candidate?.phone || null}
+                                whatsAppEnabled={whatsAppEnabled}
+                                onWhatsAppClick={handleWhatsAppClick}
                               />
                             )
                         }
