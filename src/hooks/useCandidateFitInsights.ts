@@ -180,6 +180,8 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         generatedAt: assoc.ai_fit_generated_at,
         version: assoc.ai_fit_version || 0,
         associationId: assoc.id,
+        dossierStatus: null,
+        dossierError: null,
         outputLanguage,
         appliedOutputLanguage: assoc.ai_fit_output_language || null,
         keepProperNouns: assoc.ai_fit_keep_proper_nouns !== false,
