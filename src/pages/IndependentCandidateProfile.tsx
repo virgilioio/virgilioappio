@@ -28,6 +28,8 @@ import {
 import { ProfileCard } from '@/components/candidates/profile/primitives/ProfileCard'
 import { ContactPair, PhoneContactPair } from '@/components/candidates/profile/primitives/ContactPair'
 import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
+import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
+import { buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
