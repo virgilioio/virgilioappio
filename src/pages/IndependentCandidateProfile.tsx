@@ -434,11 +434,6 @@ export default function IndependentCandidateProfile() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="primary" size="md" icon={UserPlus} onClick={onAddToPipeline}>
-                    Add to job pipeline
-                  </Button>
-                  <Button variant="secondary" size="md" icon={Mail} onClick={onSendEmail}>Send email</Button>
-                  <Button variant="secondary" size="md" icon={Calendar} onClick={onSchedule}>Schedule</Button>
                   {total > 0 && idx >= 0 && (
                     <span className="font-inter text-[11.5px] text-[#8B8F9E] tabular-nums ml-1">
                       {idx + 1} of {total}
@@ -446,6 +441,24 @@ export default function IndependentCandidateProfile() {
                   )}
                   <Button variant="secondary" size="md" iconOnly aria-label="Previous candidate" icon={ChevronLeft} onClick={goPrev} disabled={!hasPrev} />
                   <Button variant="secondary" size="md" iconOnly aria-label="Next candidate" icon={ChevronRight} onClick={goNext} disabled={!hasNext} />
+                  <ProfileActionMenu
+                    sections={[
+                      { items: [{ id: 'pipeline', label: 'Add to job pipeline', icon: UserPlus, onClick: onAddToPipeline }] },
+                      {
+                        label: 'Reach out',
+                        items: [
+                          { id: 'email', label: 'Send email', icon: Mail, onClick: onSendEmail },
+                          { id: 'schedule', label: 'Schedule meeting', icon: Calendar, onClick: onSchedule },
+                        ],
+                      },
+                      {
+                        items: [
+                          { id: 'edit', label: 'Edit profile', icon: PenLine, onClick: () => setIsFormOpen(true) },
+                          { id: 'download', label: 'Download profile', icon: Download, onClick: () => setDownloadOpen(true) },
+                        ],
+                      },
+                    ]}
+                  />
                 </div>
               </div>
 
