@@ -86,7 +86,46 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         .maybeSingle()
 
       if (error) throw error
-      if (!assoc) return null
+
+      // Not on this pipeline: the dossier, when one exists, is hosted on the job's
+      // own suggestion row and moves onto the application the moment they are added.
+      if (!assoc) {
+        const { data: suggestion, error: suggestionError } = await supabase
+          .from('job_suggested_candidates_cache')
+          .select('id, ai_fit_score, ai_fit_analysis, ai_fit_confidence, ai_fit_generated_at, ai_fit_output_language, dossier_status, dossier_error, job:jobs!inner(output_language, organization:organizations!inner(default_output_language))')
+          .eq('candidate_id', candidateId)
+          .eq('job_id', jobId)
+          .maybeSingle()
+
+        if (suggestionError) throw suggestionError
+        if (!suggestion) return null
+
+        const relation = (suggestion as any).job as { output_language?: string | null; organization?: { default_output_language?: string | null } | null }
+        const workspaceLanguage = relation?.organization?.default_output_language || 'en'
+        const jobLanguage = relation?.output_language || null
+
+        return {
+          score: (suggestion as any).ai_fit_analysis ? (suggestion as any).ai_fit_score : null,
+          analysis: (suggestion as any).ai_fit_analysis as unknown as FitAnalysis | null,
+          confidence: (suggestion as any).ai_fit_confidence,
+          generatedAt: (suggestion as any).ai_fit_generated_at,
+          version: (suggestion as any).ai_fit_analysis ? 1 : 0,
+          associationId: null,
+          dossierStatus: ((suggestion as any).dossier_status as FitInsightsData['dossierStatus']) ?? null,
+          dossierError: (suggestion as any).dossier_error ?? null,
+          outputLanguage: null,
+          appliedOutputLanguage: (suggestion as any).ai_fit_output_language || null,
+          keepProperNouns: true,
+          jobOutputLanguage: jobLanguage,
+          workspaceOutputLanguage: workspaceLanguage,
+          resolvedOutputLanguage: jobLanguage || workspaceLanguage || 'en',
+          isStale: false,
+          staleReason: null,
+          isRejected: false,
+          rejectedAt: null,
+        }
+      }
+
 
       const jobRelation = assoc.job as unknown as { output_language?: string | null; organization?: { default_output_language?: string | null } | null }
       const workspaceOutputLanguage = jobRelation?.organization?.default_output_language || 'en'
