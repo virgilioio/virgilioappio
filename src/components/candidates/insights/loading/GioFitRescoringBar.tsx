@@ -19,7 +19,7 @@ function formatPreviousDate(value: string | null) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export function GioFitRescoringBar({ stepLabel, progress, previousGeneratedAt, onCancel }: GioFitRescoringBarProps) {
+export function GioFitRescoringBar({ stepLabel, progress, previousGeneratedAt, onCancel, noteForDate }: GioFitRescoringBarProps) {
   const previousDate = formatPreviousDate(previousGeneratedAt)
   return (
     <div className="gf-rescore-bar">
