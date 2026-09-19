@@ -1,4 +1,5 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart, UserRound } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, RefreshCw, UserRound } from 'lucide-react'
+import '@/components/candidates/insights/loading/gioFitLoading.css'
 import type { ReactNode } from 'react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Button } from '@/components/ui/button'
