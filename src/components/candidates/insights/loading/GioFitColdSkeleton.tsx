@@ -83,8 +83,8 @@ export function GioFitColdSkeleton({
         <div className="gf-hairline mt-[18px] grid gap-6 pt-4 sm:grid-cols-[minmax(0,1fr)_200px]">
           <GioFitNarration steps={steps} stepIndex={stepIndex} />
           <div className="w-[200px] max-w-full self-end">
-            <GioFitProgressBar progress={progress} />
-            <p className="gf-progress-note">Usually takes about {GIO_FIT_P50_SECONDS} seconds</p>
+            <GioFitProgressBar progress={trackProgress} />
+            <p className="gf-progress-note">{eta}</p>
           </div>
         </div>
       </section>
