@@ -20,6 +20,9 @@ import {
   Inbox,
   XCircle,
   PenLine,
+  DollarSign,
+  CalendarCheck,
+  Calendar,
 } from 'lucide-react'
 import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/ProfileSidebar'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
@@ -98,13 +101,32 @@ export interface JobOverviewSidebarProps {
   /** WhatsApp integration state + first-click template handler for the Phone row. */
   whatsAppEnabled?: boolean
   onWhatsAppClick?: (phone: string) => void
+  /** Opens the existing Edit candidate sheet from the Details header. */
+  onEdit?: () => void
+  /** Tags block (rescued from the removed Overview tab), rendered after Details. */
+  tagsSlot?: ReactNode
 }
 export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
   const comp = formatSalaryExpectation(p.candidate as any)
+  const appliedValue = (() => {
+    const base = fmtDate(p.appliedAt)
+    if (!base || !p.appliedAt) return base
+    const days = Math.floor((Date.now() - new Date(p.appliedAt).getTime()) / 86400000)
+    return days >= 1 ? `${base} · ${days}d ago` : base
+  })()
   return (
     <div className="space-y-4">
       <ProfileSidebar>
-        <SidebarBlock label="Details">
+        <SidebarBlock
+          label="Details"
+          action={
+            p.onEdit && (
+              <Button variant="ghost" size="xs" icon={PenLine} onClick={p.onEdit}>
+                Edit
+              </Button>
+            )
+          }
+        >
           <MetaRow icon={MapPin} label="Location" value={p.location ?? null} />
           <MetaRow icon={Mail} label="Email" value={p.email ?? p.candidate?.email ?? null} />
           {(() => {
@@ -135,12 +157,15 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
               />
             )
           })()}
+          <MetaRow icon={DollarSign} label="Salary expectation" value={comp} />
           <MetaRow icon={Inbox} label="Source" value={p.source ?? '—'} />
-          <MetaRow icon={Clock} label="Applied" value={fmtDate(p.appliedAt)} />
+          <MetaRow icon={Calendar} label="Applied" value={appliedValue} />
+          <MetaRow icon={Clock} label="Notice period" value={p.candidate?.notice_period ?? null} />
+          <MetaRow icon={CalendarCheck} label="Available from" value={fmtDate(p.candidate?.available_from)} />
         </SidebarBlock>
+        {p.tagsSlot}
         <SidebarBlock label="Application">
-          <MetaRow icon={Briefcase} label="Comp ask" value={comp} />
-          <MetaRow icon={MapPin} label="Open to" value={p.candidate?.location ?? null} />
+          <MetaRow icon={Globe} label="Open to" value={p.candidate?.location ?? null} />
           <MetaRow icon={CheckCircle2} label="Work auth" value={p.candidate?.work_authorization ?? null} />
         </SidebarBlock>
         <SidebarBlock label="Job information">
@@ -224,44 +249,6 @@ export function ResumeSidebar(p: ResumeSidebarProps) {
   )
 }
 
-export interface OverviewSidebarProps {
-  tags: string[]
-  onAddTag?: () => void
-  urls: { label: string; url: string }[]
-  filesCount: number
-  onUploadFile?: () => void
-  fileSlots?: ReactNode
-}
-export function OverviewSidebar(p: OverviewSidebarProps) {
-  return (
-    <ProfileSidebar>
-      <SidebarBlock
-        label="Tags"
-        action={
-          p.onAddTag && (
-            <Button variant="ghost" size="xs" icon={Plus} onClick={p.onAddTag}>
-              Add
-            </Button>
-          )
-        }
-      >
-        {p.tags.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {p.tags.map((t) => (
-              <Badge key={t} tone="neutral" size="xs">
-                {t}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <div className="font-inter text-[12px] text-[#8B8F9E]">No tags</div>
-        )}
-      </SidebarBlock>
-      <LinksBlock urls={p.urls} />
-      <FilesBlock count={p.filesCount} onUpload={p.onUploadFile}>{p.fileSlots}</FilesBlock>
-    </ProfileSidebar>
-  )
-}
 
 export type ScorecardVerdictTone = 'green' | 'yellow' | 'orange' | 'red' | 'neutral'
 

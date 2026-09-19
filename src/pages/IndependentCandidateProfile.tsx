@@ -351,10 +351,17 @@ export default function IndependentCandidateProfile() {
   // ───── Persistent sidebar ─────
   const sidebar = (
     <ProfileSidebar>
-      <SidebarBlock label="Details">
+      <SidebarBlock
+        label="Details"
+        action={
+          <Button variant="ghost" size="xs" icon={PenLine} onClick={() => setIsFormOpen(true)}>
+            Edit
+          </Button>
+        }
+      >
         <div>
           <MetaRow icon={MapPin} label="Location" value={location || null} />
-          <MetaRow icon={DollarSign} label="Open to" value={salary || null} />
+          <MetaRow icon={Globe} label="Open to" value={(candidate as any).location || null} />
           <MetaRow icon={Mail} label="Email" value={candidate.email || null} />
           <MetaRow
             icon={Phone}
@@ -378,6 +385,7 @@ export default function IndependentCandidateProfile() {
               ) : undefined
             }
           />
+          <MetaRow icon={DollarSign} label="Salary expectation" value={salary || null} />
           <MetaRow icon={Info} label="Source" value={candidate.source || null} />
           <MetaRow icon={Calendar} label="Added" value={addedDate} />
           <MetaRow icon={UserIcon} label="Added by" value={createdByName || null} />
@@ -559,24 +567,6 @@ export default function IndependentCandidateProfile() {
                     />
 
 
-                    <ProfileCard
-                      title="Contact information"
-                      action={<Button variant="ghost" size="sm" onClick={() => setIsFormOpen(true)}>Edit</Button>}
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                        <ContactPair
-                          icon={Mail}
-                          label="Email"
-                          value={candidate.email ? (
-                            <a href={`mailto:${candidate.email}`} className="text-virgilio-purple hover:underline">{candidate.email}</a>
-                          ) : null}
-                        />
-                        <PhoneContactPair icon={Phone} phone={candidate.phone} whatsAppEnabled={whatsAppEnabled} />
-
-                        <ContactPair icon={MapPin} label="Location" value={location || null} />
-                        <ContactPair icon={DollarSign} label="Salary expectations" value={salary} />
-                      </div>
-                    </ProfileCard>
 
                     <ProfileCard
                       title="Pipeline history"

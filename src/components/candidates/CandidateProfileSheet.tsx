@@ -121,12 +121,12 @@ import { requestScorecard } from '@/utils/requestScorecard'
 import {
   JobOverviewSidebar,
   ResumeSidebar,
-  OverviewSidebar,
   ScorecardsSidebar,
   ActivitySidebar,
   EmailsSidebar,
   CommentsSidebar,
 } from '@/components/candidates/profile/tabs/SidebarRouter'
+import { CandidateTagsBlock } from '@/components/candidates/profile/CandidateTagsBlock'
 import { Upload } from 'lucide-react'
 import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
@@ -204,7 +204,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { name: createdByName } = useUserDisplayName(createdByUserId)
 
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
@@ -667,7 +667,8 @@ const stageHasAutomation = useMemo(() => {
         else if (tabParam === 'activity') initialTab = 'activity'
         else if (tabParam === 'scorecards') initialTab = 'scorecards'
         else if (tabParam === 'fit') initialTab = 'fit'
-        else if (tabParam === 'overview') initialTab = 'overview'
+        // The Overview tab was removed — its old link resolves to Job overview.
+        else if (tabParam === 'overview') initialTab = 'job'
         else if (tabParam === 'comments') initialTab = 'comments'
         else if (tabParam === 'offer') initialTab = 'offer'
         focusMine = params.get('focus') === 'my-scorecard'
@@ -1479,7 +1480,6 @@ const stageHasAutomation = useMemo(() => {
                               : []),
                             { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
                             { value: 'resume', label: 'Resume', Icon: FileText },
-                            ...(!isRestrictedViewer ? [{ value: 'overview', label: 'Overview', Icon: UserRound }] : []),
                             ...(!isRestrictedViewer ? [{ value: 'fit', label: 'Gio Fit', Icon: Sparkles }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
                             { value: 'activity', label: 'Activity', Icon: Activity, count: activityDerived.events.length },
@@ -1813,95 +1813,6 @@ const stageHasAutomation = useMemo(() => {
                     )}
 
 
-                    {/* Overview Tab — Profile summary, skills, URLs, attachments */}
-                    {activeTab === 'overview' && (
-                      <>
-                        {(() => {
-                          const c: any = candidate
-                          const locStr = [c?.location_city, c?.location_state, c?.location_country].filter(Boolean).join(', ')
-                          const salaryStr = c?.salary_amount
-                            ? `${c.salary_currency || 'USD'} ${Number(c.salary_amount).toLocaleString()} ${c.salary_period || 'annually'}`
-                            : null
-                          return (
-                            <ProfileCard
-                              title="Contact information"
-                              action={canEditCandidates ? <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button> : undefined}
-                            >
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                                <ContactPair
-                                  icon={Mail}
-                                  label="Email"
-                                  value={candidate.email ? (
-                                    <a href={`mailto:${candidate.email}`} className="text-virgilio-purple hover:underline">{candidate.email}</a>
-                                  ) : null}
-                                />
-                                <PhoneContactPair
-                                  icon={Phone}
-                                  phone={candidate.phone}
-                                  whatsAppEnabled={whatsAppEnabled}
-                                  onWhatsAppClick={handleWhatsAppClick}
-                                />
-                                <ContactPair icon={MapPin} label="Location" value={locStr || null} />
-                                <ContactPair icon={DollarSign} label="Salary expectations" value={salaryStr} />
-                              </div>
-                            </ProfileCard>
-                          )
-                        })()}
-
-                        <ProfileSummaryCard
-                          candidateId={independentCandidateId || candidateId}
-                          candidateName={(candidate as any)?.candidate_name}
-                          summary={candidate.profile_summary}
-                          canRegenerate={canEditCandidates}
-                          onRegenerated={() => {
-                            summaryQueryClient.invalidateQueries({ queryKey: ['candidates'] })
-                            summaryQueryClient.invalidateQueries({ queryKey: ['candidate', candidateId] })
-                          }}
-                        />
-
-
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle>Skills</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {(() => {
-                              const manualSkills = candidate?.skills || []
-                              const autoGenerated = Array.isArray((candidate as any)?.auto_generated_skills)
-                                ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
-                                : []
-                              const displaySkills = manualSkills.length > 0 ? manualSkills : autoGenerated
-                              return displaySkills && displaySkills.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {displaySkills.map((s: string, i: number) => (
-                                    <EnhancedSkillBadge 
-                                      key={`${s}-${i}`} 
-                                      skill={s}
-                                      analysis={{
-                                        matchRelevance: candidate?.match_score ? Math.round(candidate.match_score) : undefined
-                                      }}
-                                      variant="compact"
-                                      showTooltip={true}
-                                      interactive={false}
-                                    />
-                                  ))}
-                                </div>
-                              ) : (
-                                <InlineEmpty text="No skills specified." />
-                              )
-                            })()}
-                          </CardContent>
-                        </Card>
-
-                        {(independentCandidateId || candidateId) && (
-                          <CandidateUrls candidateId={independentCandidateId || candidateId!} />
-                        )}
-                        {(independentCandidateId || candidateId) && (
-                          <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
-                        )}
-
-                      </>
-                    )}
 
                     {activeTab === 'fit' && candidateId && (
                       <CandidateInsightsTab
@@ -2201,15 +2112,6 @@ const stageHasAutomation = useMemo(() => {
                                 onDelete={resumeAttachment ? handleDeleteResume : undefined}
                               />
                             )
-                          case 'overview':
-                            return (
-                              <OverviewSidebar
-                                tags={Array.isArray((candidate as any)?.tags) ? (candidate as any).tags : []}
-                                urls={urls}
-                                filesCount={attachments.length}
-                                onUploadFile={() => setEditOpen(true)}
-                              />
-                            )
                           case 'scorecards':
                             return (
                               <ScorecardsSidebar
@@ -2281,9 +2183,18 @@ const stageHasAutomation = useMemo(() => {
                                 location={[(candidate as any)?.location_city, (candidate as any)?.location_state, (candidate as any)?.location_country].filter(Boolean).join(', ') || (candidate as any)?.location || null}
                                 email={candidate?.email || null}
                                 phone={candidate?.phone || null}
-                                whatsAppEnabled={whatsAppEnabled}
-                                onWhatsAppClick={handleWhatsAppClick}
-                              />
+                                 whatsAppEnabled={whatsAppEnabled}
+                                 onWhatsAppClick={handleWhatsAppClick}
+                                 onEdit={canEditCandidates ? () => setEditOpen(true) : undefined}
+                                 tagsSlot={
+                                   (independentCandidateId || candidateId) ? (
+                                     <CandidateTagsBlock
+                                       candidateId={(independentCandidateId || candidateId)!}
+                                       candidateName={(candidate as any)?.candidate_name ?? null}
+                                     />
+                                   ) : undefined
+                                 }
+                               />
                             )
                         }
                       })()}
