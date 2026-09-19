@@ -251,6 +251,10 @@ serve(async (req) => {
     });
   }
 
+  // Kept outside the try so a failure can mark the suggestion row, not just log.
+  let failureClient: ReturnType<typeof createClient> | null = null;
+  let suggestionRowId: string | null = null;
+
   try {
     const { candidate_id, job_id } = await req.json();
     if (!candidate_id || !job_id) {
