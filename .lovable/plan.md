@@ -29,6 +29,8 @@ Extend `job_suggested_candidates_cache` — the job-scoped, disposable suggestio
 
 `get-suggested-candidates` currently deletes every cache row for a job before upserting. Change it to upsert score fields only, preserving `ai_fit_analysis` when `job_skills_hash` is unchanged, and clearing the analysis columns when the hash changes.
 
+Disposal: the thumbs-down path deletes the `(job_id, candidate_id)` cache row along with recording the dismissal, so the dossier goes with the suggestion. Rejection for the job and removal from the list are covered by the same delete plus the hash-change clear.
+
 ### `analyze-candidate-fit`
 
 - Accept a request with no association instead of returning 404: when `job_candidate_associations` has no row for the pair, resolve the output language from the job then the organization, run the identical prompt pipeline, and write the result to the matching `job_suggested_candidates_cache` row (`ai_fit_analysis`, `ai_fit_score`, `ai_fit_confidence`, `ai_fit_generated_at`, `ai_fit_output_language`, `dossier_status='ready'`). Set `dossier_status='pending'` on entry and `failed` + `dossier_error` on the failure paths.
