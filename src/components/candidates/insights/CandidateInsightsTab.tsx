@@ -229,7 +229,7 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
 }
 
 export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, showScorecards = true, suggested = null, autoGenerate = true, renderEmpty }: CandidateInsightsTabProps) {
-  const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences } = useCandidateFitInsights(candidateId, jobId)
+  const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences, invalidate } = useCandidateFitInsights(candidateId, jobId)
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
