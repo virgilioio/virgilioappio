@@ -26,6 +26,8 @@ interface ProfileHeroCardProps {
   onOpenFullProfile?: () => void
   linkedinUrl?: string | null
   fitScore?: number | null
+  /** 'loading' shows pulsing dots instead of a number; 'rescoring' keeps the previous score. */
+  fitPillState?: 'ready' | 'loading' | 'rescoring'
   /** The client's answer on a shared dossier. Sits beside the Gio Fit pill as its pair. */
   clientVerdictState?: ClientVerdictState
   onFitClick?: () => void
