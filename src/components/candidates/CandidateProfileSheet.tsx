@@ -2152,32 +2152,6 @@ const stageHasAutomation = useMemo(() => {
                         if (associationStatus === 'offer' && candidateId) {
                           return (
                             <>
-                              <ProfileQuickActionsCard
-                                nextStageLabel={nextStageLabel}
-                                onAdvance={handleAdvance}
-                                onSubmitScorecard={handleSubmitScorecard}
-                                onRequestReferences={() => {
-                                  setRefStageName(currentStage?.stage.stage_name || null)
-                                  setRefSheetOpen(true)
-                                }}
-                                onAddTransfer={() => setAddTransferOpen(true)}
-                                onCreateOffer={() => setOfferFormOpen(true)}
-                                onReject={handleReject}
-                                isOfferStatus
-                                isRejected={false}
-                                isHired={false}
-                                onMarkHired={() => handleSetStatus('hired')}
-                                canMarkHired={offerApproval.canMarkHired}
-                                markHiredHelper={
-                                  offerApproval.gated
-                                    ? `Hiring unlocks once ${offerApproval.waitingOnName || 'the approver'} approves.`
-                                    : offerApproval.chainConfigured
-                                      ? 'Amending re-runs the approval chain.'
-                                      : `No approval chain on this job — amendments go straight to ${candidate?.first_name || 'the candidate'}.`
-                                }
-                                canOverride={offerApproval.gated && offerApproval.rules.adminOverride}
-                                onOverrideRelease={() => handleSetStatus('hired')}
-                              />
                               <OfferTimelineCard
                                 candidateId={candidateId}
                                 jobId={jobId}
