@@ -1486,42 +1486,106 @@ const stageHasAutomation = useMemo(() => {
                           ]}
                         />
                       }
-                      nextStageLabel={nextStage?.stage.stage_name ?? (currentIdx >= 0 && associationStatus === 'active' ? 'Offer' : null)}
-                      onAdvance={async () => {
-                        const gate = await checkScorecardGate(currentStageId, associationId)
-                        if (gate.blocked) {
-                          toast({
-                            title: 'Scorecard required',
-                            description: gate.reason,
-                            variant: 'destructive',
+                      actionMenu={(() => {
+                        const isRejectedNow = associationStatus === 'rejected'
+                        const isHiredNow = associationStatus === 'hired'
+                        const nextStageLabel = nextStage?.stage.stage_name ?? (currentIdx >= 0 && associationStatus === 'active' ? 'Offer' : null)
+                        const advance = async () => {
+                          const gate = await checkScorecardGate(currentStageId, associationId)
+                          if (gate.blocked) {
+                            toast({ title: 'Scorecard required', description: gate.reason, variant: 'destructive' })
+                            return
+                          }
+                          if (nextStage) {
+                            if (!associationId) return
+                            await moveAssociationToStage(associationId, nextStage.jhsId)
+                            setCurrentStageId(nextStage.jhsId)
+                            onStageChanged?.()
+                          } else if (currentIdx >= 0 && associationStatus === 'active') {
+                            await handleMoveToOffer()
+                          }
+                        }
+                        const move: ActionMenuItem[] = []
+                        if (nextStageLabel && !isRejectedNow && !isHiredNow) {
+                          move.push({ id: 'advance', label: `Advance to ${nextStageLabel}`, icon: ArrowRight, hint: 'or use the stages', onClick: advance })
+                        }
+                        if (associationStatus === 'offer' && offerApproval.canMarkHired) {
+                          move.push({ id: 'mark-hired', label: 'Mark hired', icon: CheckCircle2, onClick: () => handleSetStatus('hired') })
+                        }
+                        move.push({ id: 'add-transfer', label: 'Add or transfer to job', icon: ArrowRightLeft, onClick: () => setAddTransferOpen(true) })
+
+                        const evaluate: ActionMenuItem[] = []
+                        if (!isRejectedNow) {
+                          evaluate.push({
+                            id: 'scorecard',
+                            label: 'Submit scorecard',
+                            icon: Star,
+                            hint: 'or the card below',
+                            onClick: () => {
+                              if (!currentStage) return
+                              setScoreStageInstId(currentStage.jhsId)
+                              setScoreStageName(currentStage.stage.stage_name)
+                              setScoreOpen(true)
+                            },
                           })
-                          return
+                          evaluate.push({
+                            id: 'references',
+                            label: 'Request references',
+                            icon: Send,
+                            onClick: () => {
+                              setRefStageName(currentStage?.stage.stage_name || null)
+                              setRefSheetOpen(true)
+                            },
+                          })
                         }
-                        if (nextStage) {
-                          if (!associationId) return
-                          await moveAssociationToStage(associationId, nextStage.jhsId)
-                          setCurrentStageId(nextStage.jhsId)
-                          onStageChanged?.()
-                        } else if (currentIdx >= 0 && associationStatus === 'active') {
-                          await handleMoveToOffer()
+
+                        const reachOut: ActionMenuItem[] = [
+                          {
+                            id: 'email',
+                            label: 'Send email',
+                            icon: Mail,
+                            onClick: () => {
+                              resetEmailComposer()
+                              setEmailComposerOpen(true)
+                            },
+                          },
+                          {
+                            id: 'schedule',
+                            label: 'Schedule',
+                            icon: Calendar,
+                            onClick: () => {
+                              if (currentStage && associationId) {
+                                setOldBookingId(null)
+                                setScheduleStageId(currentStage.jhsId)
+                                setScheduleStageName(currentStage.stage.stage_name)
+                                setScheduleOpen(true)
+                              } else {
+                                setSimpleScheduleOpen(true)
+                              }
+                            },
+                          },
+                        ]
+
+                        const other: ActionMenuItem[] = []
+                        if (!isRejectedNow && !isHiredNow) {
+                          other.push({ id: 'offer', label: 'Create offer', icon: FileText, onClick: () => setOfferFormOpen(true) })
                         }
-                      }}
-                      onSchedule={() => {
-                        if (currentStage && associationId) {
-                          setOldBookingId(null)
-                          setScheduleStageId(currentStage.jhsId)
-                          setScheduleStageName(currentStage.stage.stage_name)
-                          setScheduleOpen(true)
-                        } else {
-                          setSimpleScheduleOpen(true)
-                        }
-                      }}
-                      onEmail={() => {
-                        resetEmailComposer()
-                        setEmailComposerOpen(true)
-                      }}
-                      isRejected={associationStatus === 'rejected'}
-                      isHired={associationStatus === 'hired'}
+                        other.push({ id: 'download', label: 'Download profile', icon: Download, onClick: () => setDownloadOpen(true) })
+
+                        return (
+                          <ProfileActionMenu
+                            sections={[
+                              { label: 'Move', items: move },
+                              { label: 'Evaluate', items: evaluate },
+                              { label: 'Reach out', items: reachOut },
+                              { items: other },
+                              ...(!isRejectedNow && !isHiredNow
+                                ? [{ items: [{ id: 'reject', label: 'Reject candidate', icon: XCircle, danger: true, onClick: handleReject }] as ActionMenuItem[] }]
+                                : []),
+                            ]}
+                          />
+                        )
+                      })()}
                     />
                     {/* Card 2 — stages OR status banner (active = stages, otherwise banner replaces it) */}
                     {associationStatus === 'active' ? (
