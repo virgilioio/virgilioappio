@@ -85,6 +85,13 @@ interface CandidateInsightsTabProps {
   autoGenerate?: boolean
   /** Rendered instead of the cold skeleton when nothing is stored and nothing is running. */
   renderEmpty?: (options: { generate: () => void; isGenerating: boolean }) => React.ReactNode
+  /**
+   * A strip pinned above the body while a score is being produced or re-produced,
+   * and while it has failed — the decision it carries must stay available throughout.
+   */
+  renderWaitStrip?: (context: { state: 'loading' | 'rescoring' | 'failed'; generatedAt: string | null }) => React.ReactNode
+  /** Lets the screen mirror the wait in its own chrome (the hero score pill). */
+  onStateChange?: (state: 'ready' | 'loading' | 'rescoring') => void
 }
 
 const cardClass = 'rounded-[14px] border border-virgilio-border bg-surface-primary'
