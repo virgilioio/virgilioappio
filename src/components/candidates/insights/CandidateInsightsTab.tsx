@@ -331,6 +331,13 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const outputLanguageName = getGioFitLanguage(appliedLanguage).name
   const narrationSteps = buildNarrationSteps(outputLanguageName, suggested ? 'suggestion' : 'association')
   const hasStoredAnalysis = Boolean(insights?.analysis) && insights?.score !== null
+  // The screen chrome mirrors the wait: dots while cold, previous score while re-scoring.
+  const chromeState: 'ready' | 'loading' | 'rescoring' = isRefreshing && hasStoredAnalysis
+    ? 'rescoring'
+    : (isRefreshing || suggestionPending || isLoading || !hasStoredAnalysis) && !hasStoredAnalysis
+      ? 'loading'
+      : 'ready'
+  useEffect(() => { onStateChange?.(chromeState) }, [chromeState, onStateChange])
   const waitStrip = (state: 'loading' | 'rescoring' | 'failed') =>
     renderWaitStrip ? <div className="mb-3.5">{renderWaitStrip({ state, generatedAt: insights?.generatedAt ?? null })}</div> : null
 
