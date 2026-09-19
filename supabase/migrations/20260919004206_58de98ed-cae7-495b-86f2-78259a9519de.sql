@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX dossier_feedback_one_decision_per_share_idx
+ON public.dossier_feedback (share_id);
