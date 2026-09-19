@@ -9,6 +9,11 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Automatic full-dossier pass over the strongest suggestions. Tune here.
+const DOSSIER_SCORE_THRESHOLD = 80;
+const DOSSIER_BATCH_LIMIT = 10;
+const DOSSIER_CONCURRENCY = 2;
+
 const SCORING_PROMPT = `You are a rigorous recruiting AI. Given a job description and a candidate profile, produce a fit score from 0-100.
 
 SCORING BANDS:
