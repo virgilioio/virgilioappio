@@ -27,7 +27,7 @@ import { CandidateTagsBlock } from '@/components/candidates/profile/CandidateTag
 import { CandidateInsightsTab } from '@/components/candidates/insights/CandidateInsightsTab'
 import { AddToPipelineGroup } from '@/components/candidates/suggested/AddToPipelineGroup'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
-import AddOrTransferCandidateDialog from '@/components/candidates/AddOrTransferCandidateDialog'
+import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { SimpleScheduleInterviewSheet } from '@/components/candidates/SimpleScheduleInterviewSheet'
 import { CandidateProfileDownloadDialog } from '@/components/candidates/CandidateProfileDownloadDialog'
@@ -86,7 +86,7 @@ function SuggestedCandidateProfileInner() {
     setSearchParams(next, { replace: true })
   }
 
-  const { candidate } = useIndependentCandidate(candidateId)
+  const { candidate, updateCandidate } = useIndependentCandidate(candidateId)
   const { isEnabled: whatsAppEnabled } = useWhatsAppEnabled()
   const { loadHiringPlanInstances } = useJobHiringPlan()
 
@@ -463,10 +463,14 @@ function SuggestedCandidateProfileInner() {
       </div>
 
       <CandidateFormSheet
-        open={editOpen}
-        onOpenChange={setEditOpen}
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSubmit={async (data: any) => {
+          await updateCandidate(candidateId, data)
+          setEditOpen(false)
+        }}
+        isLoading={false}
         candidate={candidate as any}
-        mode="edit"
       />
       {candidate.id && job?.title && (
         <AddOrTransferCandidateDialog
