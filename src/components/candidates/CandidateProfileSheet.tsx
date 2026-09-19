@@ -2277,19 +2277,9 @@ const stageHasAutomation = useMemo(() => {
                                 urls={urls}
                                 filesCount={attachments.length}
                                 onUploadFile={() => setEditOpen(true)}
-                                nextStageLabel={nextStageLabel}
-                                onAdvance={handleAdvance}
-                                onSubmitScorecard={handleSubmitScorecard}
-                                onRequestReferences={() => {
-                                  setRefStageName(currentStage?.stage.stage_name || null)
-                                  setRefSheetOpen(true)
-                                }}
-                                onAddTransfer={() => setAddTransferOpen(true)}
-                                onCreateOffer={() => setOfferFormOpen(true)}
-                                onReject={handleReject}
-                                isOfferStatus={false}
-                                isRejected={false}
-                                isHired={false}
+                                location={[(candidate as any)?.location_city, (candidate as any)?.location_state, (candidate as any)?.location_country].filter(Boolean).join(', ') || (candidate as any)?.location || null}
+                                email={candidate?.email || null}
+                                phone={candidate?.phone || null}
                               />
                             )
                         }
