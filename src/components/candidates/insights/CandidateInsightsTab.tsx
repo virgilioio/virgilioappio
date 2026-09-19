@@ -274,6 +274,15 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
       refreshInsights()
     }
   }, [isLoading, insights?.analysis, isStale, jdText])
+  // A suggestion dossier may be produced by the background pass, not by this tab.
+  // Poll while it is running so the page flips to the real dossier on its own.
+  const suggestionPending = insights?.dossierStatus === 'pending' && !insights?.analysis
+  useEffect(() => {
+    if (!suggestionPending) return
+    const timer = setInterval(() => invalidate(), 6000)
+    return () => clearInterval(timer)
+  }, [suggestionPending])
+
   const salaryExpectation = useMemo(
     () => formatSalaryExpectation(candidate as Parameters<typeof formatSalaryExpectation>[0]),
     [candidate],
