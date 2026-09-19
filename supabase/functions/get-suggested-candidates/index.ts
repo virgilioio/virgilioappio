@@ -869,6 +869,98 @@ serve(async (req) => {
   }
 });
 
+/**
+ * Gio's strongest suggestions get the full dossier up front, so opening one of
+ * those profiles shows a real assessment instead of a score and a sentence.
+ *
+ * Bounded by design: only rows scoring at or above DOSSIER_SCORE_THRESHOLD, at
+ * most DOSSIER_BATCH_LIMIT per run, and each row is claimed in the database
+ * (dossier_status) before it is sent — so a second concurrent run, a reload, or
+ * a retry never assesses the same person twice. Failures stay marked 'failed'
+ * and are only retried when a recruiter asks for one explicitly.
+ */
+function queueTopDossiers(sb: any, job_id: string) {
+  const run = async () => {
+    try {
+      const { data: candidates, error } = await sb
+        .from("job_suggested_candidates_cache")
+        .select("id, candidate_id, ai_fit_score")
+        .eq("job_id", job_id)
+        .is("ai_fit_analysis", null)
+        .is("dossier_status", null)
+        .gte("ai_fit_score", DOSSIER_SCORE_THRESHOLD)
+        .order("ai_fit_score", { ascending: false })
+        .limit(DOSSIER_BATCH_LIMIT);
+
+      if (error) {
+        console.error("Dossier queue read error:", error);
+        return;
+      }
+      if (!candidates || candidates.length === 0) return;
+
+      // Claim the rows first: nothing else can pick them up after this point.
+      const claimIds = candidates.map((r: any) => r.id);
+      const { error: claimErr } = await sb
+        .from("job_suggested_candidates_cache")
+        .update({ dossier_status: "pending", dossier_error: null })
+        .in("id", claimIds)
+        .is("dossier_status", null);
+      if (claimErr) {
+        console.error("Dossier claim error:", claimErr);
+        return;
+      }
+
+      console.log(`🧠 Queueing ${candidates.length} suggestion dossiers for job ${job_id}`);
+
+      for (let i = 0; i < candidates.length; i += DOSSIER_CONCURRENCY) {
+        const slice = candidates.slice(i, i + DOSSIER_CONCURRENCY);
+        const results = await Promise.all(slice.map(async (row: any) => {
+          try {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/analyze-candidate-fit`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              },
+              body: JSON.stringify({ candidate_id: row.candidate_id, job_id }),
+            });
+            if (!res.ok) {
+              const body = await res.text();
+              console.error(`Suggestion dossier failed (${res.status}) for ${row.candidate_id}:`, body.slice(0, 300));
+              await sb
+                .from("job_suggested_candidates_cache")
+                .update({ dossier_status: "failed", dossier_error: `Assessment failed (${res.status})` })
+                .eq("id", row.id);
+              // Credit, policy and provider blocks stop the whole pass — retrying
+              // the next person would fail identically and bill nothing useful.
+              return res.status === 402 || res.status === 403 ? "halt" : "failed";
+            }
+            return "ok";
+          } catch (err) {
+            console.error(`Suggestion dossier error for ${row.candidate_id}:`, err);
+            await sb
+              .from("job_suggested_candidates_cache")
+              .update({ dossier_status: "failed", dossier_error: (err as Error)?.message || "Assessment failed" })
+              .eq("id", row.id);
+            return "failed";
+          }
+        }));
+        if (results.includes("halt")) {
+          console.error("Halting suggestion dossier pass: AI access is blocked");
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("queueTopDossiers error:", err);
+    }
+  };
+
+  // Never block the list response on the background pass.
+  const runtime = (globalThis as any).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(run());
+  else void run();
+}
+
 function buildResponseCandidate(c: any, score: number, confidence: string, rationale: string) {
   return {
     id: c.id,
