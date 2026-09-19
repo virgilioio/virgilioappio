@@ -627,6 +627,12 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("analyze-candidate-fit error:", err);
+    if (failureClient && suggestionRowId) {
+      await failureClient
+        .from("job_suggested_candidates_cache")
+        .update({ dossier_status: "failed", dossier_error: (err as Error)?.message || "Assessment failed" })
+        .eq("id", suggestionRowId);
+    }
     // A timeout is reported distinctly so the UI can say the assessment ran long
     // rather than implying the candidate data is at fault. Stored ai_fit_*
     // columns are untouched on any failure path.
