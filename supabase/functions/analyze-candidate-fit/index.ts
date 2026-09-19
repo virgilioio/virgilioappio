@@ -583,19 +583,33 @@ serve(async (req) => {
       analysis = mergeTranslatedProse(canonicalAnalysis, translated);
     }
 
-    // Store in database
-    const currentVersion = association.ai_fit_version || 0;
-    const { error: updateError } = await sb
-      .from("job_candidate_associations")
-      .update({
-        ai_fit_score: analysis.overall_score,
-        ai_fit_analysis: analysis,
-        ai_fit_confidence: analysis.confidence,
-        ai_fit_generated_at: new Date().toISOString(),
-        ai_fit_version: currentVersion + 1,
-        ai_fit_output_language: outputLanguage,
-      })
-      .eq("id", association.id);
+    // Store in database — on the application when there is one, otherwise on the
+    // job's suggestion row, which is copied onto the application if they are added.
+    const currentVersion = association?.ai_fit_version || 0;
+    const { error: updateError } = association
+      ? await sb
+          .from("job_candidate_associations")
+          .update({
+            ai_fit_score: analysis.overall_score,
+            ai_fit_analysis: analysis,
+            ai_fit_confidence: analysis.confidence,
+            ai_fit_generated_at: new Date().toISOString(),
+            ai_fit_version: currentVersion + 1,
+            ai_fit_output_language: outputLanguage,
+          })
+          .eq("id", association.id)
+      : await sb
+          .from("job_suggested_candidates_cache")
+          .update({
+            ai_fit_score: analysis.overall_score,
+            ai_fit_analysis: analysis,
+            ai_fit_confidence: analysis.confidence,
+            ai_fit_generated_at: new Date().toISOString(),
+            ai_fit_output_language: outputLanguage,
+            dossier_status: "ready",
+            dossier_error: null,
+          })
+          .eq("id", suggestion!.id);
 
     if (updateError) {
       console.error("DB update error:", updateError);
