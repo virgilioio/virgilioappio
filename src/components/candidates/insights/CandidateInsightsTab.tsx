@@ -329,17 +329,19 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const location = [candidate?.location_city, candidate?.location_state, candidate?.location_country].map(asString).filter(Boolean).join(', ')
   const appliedLanguage = insights?.appliedOutputLanguage || insights?.resolvedOutputLanguage || 'en'
   const outputLanguageName = getGioFitLanguage(appliedLanguage).name
-  const narrationSteps = buildNarrationSteps(outputLanguageName)
+  const narrationSteps = buildNarrationSteps(outputLanguageName, suggested ? 'suggestion' : 'association')
   const hasStoredAnalysis = Boolean(insights?.analysis) && insights?.score !== null
+  const waitStrip = (state: 'loading' | 'rescoring' | 'failed') =>
+    renderWaitStrip ? <div className="mb-3.5">{renderWaitStrip({ state, generatedAt: insights?.generatedAt ?? null })}</div> : null
 
   // Under 30 characters of job description there is nothing to assess against, so
   // no call is made. Once the description passes 30 characters the effect above
   // generates on the next visit without being asked.
   if (jdText.length < 30 || isBlocked) {
-    return <GioFitBlockedCard jobId={jobId} onRetry={refreshInsights} isRetrying={isRefreshing} />
+    return <>{waitStrip('failed')}<GioFitBlockedCard jobId={jobId} onRetry={refreshInsights} isRetrying={isRefreshing} /></>
   }
   if (generationError && !hasStoredAnalysis) {
-    return <GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} />
+    return <>{waitStrip('failed')}<GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} /></>
   }
   // Nothing stored and nothing running: the caller decides what stands in its place
   // (a suggestion offers the assessment rather than starting it unasked).
@@ -350,13 +352,19 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   // Cold: nothing on file, so show the shape of what is coming plus the narration.
   if (isLoading || !hasStoredAnalysis) {
     return (
-      <GioFitColdSkeleton
-        candidateName={candidateName}
-        roleLine={roleLine || null}
-        outputLanguageName={outputLanguageName}
-        stepIndex={stepIndex}
-        progress={progress}
-      />
+      <>
+        {waitStrip('loading')}
+        <GioFitColdSkeleton
+          candidateName={candidateName}
+          roleLine={roleLine || null}
+          outputLanguageName={outputLanguageName}
+          stepIndex={stepIndex}
+          progress={progress}
+          steps={suggested ? narrationSteps : undefined}
+          identity={!suggested}
+          eyebrow={suggested ? 'Gio is scoring this suggestion' : undefined}
+        />
+      </>
     )
   }
 
