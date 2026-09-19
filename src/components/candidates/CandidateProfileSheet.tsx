@@ -126,6 +126,7 @@ import {
   EmailsSidebar,
   CommentsSidebar,
 } from '@/components/candidates/profile/tabs/SidebarRouter'
+import { CandidateTagsBlock } from '@/components/candidates/profile/CandidateTagsBlock'
 import { Upload } from 'lucide-react'
 import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
 import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
