@@ -567,7 +567,9 @@ export default function CalendarPage() {
                       {/* Day columns */}
                       {days.map((d, di) => {
                         const today = isToday(d)
-                        const dayEvents = weekEvents.filter(e => isSameDay(e.start, d))
+                        const dayEvents = layoutDayEvents(
+                          weekEvents.filter(e => isSameDay(e.start, d)),
+                        )
                         return (
                           <div
                             key={di}
@@ -601,7 +603,7 @@ export default function CalendarPage() {
                               </div>
                             )}
                             {/* Events */}
-                            {dayEvents.map(renderEvent)}
+                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes))}
                           </div>
                         )
                       })}
