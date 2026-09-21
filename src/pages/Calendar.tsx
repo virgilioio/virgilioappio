@@ -267,14 +267,21 @@ export default function CalendarPage() {
           }
           setSelectedEventId(e.id)
         }}
-        className="absolute left-[3px] right-[3px] text-left overflow-hidden focus:outline-none focus:ring-2"
+        title={`${e.title} · ${format(e.start, 'H:mm')}–${format(e.end, 'H:mm')}${
+          e.jobTitle ? ` · ${e.jobTitle}` : ''
+        }`}
+        className="absolute text-left overflow-hidden focus:outline-none focus:ring-2"
         style={{
           top,
           height,
+          left: `calc(${leftPct}% + 3px)`,
+          width: `calc(${widthPct}% - 6px)`,
+          zIndex: 1 + lane,
           background: meta.bg,
           color: meta.text,
           borderRadius: 7,
-          padding: short ? '3px 8px' : '5px 8px',
+          padding: short ? '3px 6px' : '5px 8px',
+          boxShadow: lanes > 1 ? '0 1px 3px -1px rgba(13,13,9,0.18)' : undefined,
           ...(isHold
             ? { border: `1.5px dashed ${C.holdBorder}` }
             : { borderLeft: `3px solid ${meta.edge}` }),
