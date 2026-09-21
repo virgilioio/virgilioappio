@@ -8,6 +8,10 @@ import { MergePane } from './MergePane'
 import { useDuplicateContext } from './useDuplicateContext'
 import type { DupStatus, Resolution } from './types'
 
+const PRETTY = { textWrap: 'pretty' as never }
+
+const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`
+
 interface DuplicateCandidateDialogProps {
   isOpen: boolean
   existingCandidateId: string | null
@@ -53,6 +57,13 @@ export function DuplicateCandidateDialog({
     return () => window.removeEventListener('keydown', onKey)
   }, [isOpen, onCancel])
 
+  // recede whatever sheet or dialog sits behind us
+  useEffect(() => {
+    if (!isOpen) return
+    document.body.setAttribute('data-dup-open', 'true')
+    return () => document.body.removeAttribute('data-dup-open')
+  }, [isOpen])
+
   const conflicts = useMemo(
     () => (context?.fields ?? []).filter((f) => f.classification === 'conflict'),
     [context],
@@ -61,17 +72,18 @@ export function DuplicateCandidateDialog({
 
   const summary = useMemo(() => {
     const n = conflicts.length
-    const noun = n === 1 ? 'conflict' : 'conflicts'
-    if (n === 0) return 'Nothing to decide · every value on file is kept'
-    if (taking === 0) return `${n} ${noun} · keeping every value on file`
-    return `${n} ${noun} · ${taking} of ${n} taking the incoming value`
+    return taking === 0
+      ? `${plural(n, 'conflict')} · keeping every value on file`
+      : `${plural(n, 'conflict')} · ${taking} of ${n} taking the incoming value`
   }, [conflicts.length, taking])
 
   const canWrite = context?.permissions.can_merge !== false
 
   const headerStatuses = useMemo(() => {
     if (!context) return [] as DupStatus[]
-    const live = context.applications.filter((a) => a.status === 'active' || a.status === 'offered' || a.status === 'hired')
+    const live = context.applications.filter(
+      (a) => a.status === 'active' || a.status === 'offered' || a.status === 'hired',
+    )
     return [...new Set(live.map((a) => a.status))]
   }, [context])
 
@@ -84,7 +96,7 @@ export function DuplicateCandidateDialog({
     if (!context) return ''
     const clauses: string[] = []
     const n = context.counts.applications
-    if (n) clauses.push(`${n} application${n === 1 ? '' : 's'}`)
+    if (n) clauses.push(plural(n, 'application'))
     if (context.applications.some((a) => a.status === 'offered')) clauses.push('a live offer')
     if (context.applications.some((a) => a.status === 'hired')) clauses.push('a placement')
     if (context.applications.some((a) => a.status === 'rejected')) clauses.push('a rejection on file')
@@ -107,24 +119,29 @@ export function DuplicateCandidateDialog({
       <div
         role="dialog"
         aria-modal="true"
+        data-dup-dialog="true"
         aria-label="Duplicate candidate detected"
-        className="flex min-w-0 flex-col overflow-hidden rounded-[18px] bg-dup-paper"
+        className="flex min-w-0 flex-col overflow-hidden bg-dup-paper"
         style={{
           width: 1040,
           maxWidth: '100%',
           height: 'calc(100% - 16px)',
           maxHeight: 840,
+          borderRadius: 18,
           boxShadow: '0 28px 90px -14px rgba(13,13,9,.42), 0 0 0 1px rgba(13,13,9,.04)',
         }}
       >
         {/* header */}
-        <div className="shrink-0 border-b border-dup-hairline bg-dup-paper" style={{ padding: '14px 18px 12px' }}>
-          <div className="flex min-w-0 items-start gap-2.5">
+        <div
+          className="relative shrink-0 border-b border-dup-hairline bg-dup-paper"
+          style={{ padding: '18px 22px 16px' }}
+        >
+          <div className="flex min-w-0 items-center" style={{ gap: 12, paddingRight: 40 }}>
             <span
-              className="flex shrink-0 items-center justify-center rounded-[11px] bg-dup-purple-soft"
-              style={{ width: 38, height: 38 }}
+              className="flex shrink-0 items-center justify-center bg-dup-purple-soft"
+              style={{ width: 38, height: 38, borderRadius: 11 }}
             >
-              <Copy size={16} className="text-dup-purple" />
+              <Copy size={17} className="text-dup-purple" />
             </span>
             <div className="min-w-0 flex-1">
               <div
@@ -135,33 +152,44 @@ export function DuplicateCandidateDialog({
               </div>
               <h2
                 className="font-poppins text-dup-ink"
-                style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.035em' }}
+                style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.15 }}
               >
                 Duplicate candidate detected<span className="text-dup-purple-period">.</span>
               </h2>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
-              {headerStatuses.map((s) => <StatusPill key={s} status={s} />)}
-              {openJobCount > 0 && (
-                <span className="font-inter text-dup-subtle" style={{ fontSize: 11.5 }}>
-                  in {openJobCount === 1 ? 'one open job' : openJobCount === 2 ? 'two open jobs' : `${openJobCount} open jobs`}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={onCancel}
-                aria-label="Close"
-                className="flex items-center justify-center rounded-lg text-dup-muted hover:bg-dup-canvas"
-                style={{ width: 28, height: 28 }}
-              >
-                <X size={15} />
-              </button>
-            </div>
+            {(headerStatuses.length > 0 || openJobCount > 0) && (
+              <div className="flex shrink-0 items-center gap-2">
+                {headerStatuses.map((s) => <StatusPill key={s} status={s} />)}
+                {openJobCount > 0 && (
+                  <span className="font-inter text-dup-subtle" style={{ fontSize: 11 }}>
+                    {openJobCount === 1
+                      ? 'in one open job'
+                      : openJobCount === 2
+                      ? 'in two open jobs'
+                      : `in ${openJobCount} open jobs`}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close"
+            title="Close"
+            className="absolute flex items-center justify-center border-0 bg-transparent text-dup-subtle hover:bg-dup-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dup-purple"
+            style={{ top: 15, right: 15, width: 30, height: 30, borderRadius: 8 }}
+          >
+            <X size={17} />
+          </button>
+
           {context && (
-            <p className="mt-2 font-inter text-dup-muted" style={{ fontSize: 12.5, maxWidth: '94ch' }}>
+            <p
+              className="font-inter text-dup-muted"
+              style={{ margin: '11px 0 0', fontSize: 12.5, lineHeight: 1.5, maxWidth: '94ch', ...PRETTY }}
+            >
               <span className="text-dup-text" style={{ fontWeight: 600 }}>
                 {context.candidate.candidate_name}
               </span>{' '}
@@ -173,7 +201,10 @@ export function DuplicateCandidateDialog({
         {/* body */}
         <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: 'minmax(0,400px) minmax(0,1fr)' }}>
           {isLoading && (
-            <div className="col-span-2 flex items-center justify-center gap-2 font-inter text-dup-muted" style={{ fontSize: 12.5 }}>
+            <div
+              className="col-span-2 flex items-center justify-center gap-2 font-inter text-dup-muted"
+              style={{ fontSize: 12.5 }}
+            >
               <Loader2 size={15} className="animate-spin" />
               Reading the record on file…
             </div>
@@ -204,24 +235,30 @@ export function DuplicateCandidateDialog({
 
         {/* footer */}
         <div
-          className="flex shrink-0 items-center gap-4 border-t border-dup-hairline bg-dup-canvas-alt"
-          style={{ padding: '12px 22px' }}
+          className="flex shrink-0 items-center border-t border-dup-hairline bg-dup-canvas-alt"
+          style={{ padding: '12px 22px', gap: 14 }}
         >
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            <GitMerge size={13} className="mt-0.5 shrink-0 text-dup-subtle" />
-            <div className="min-w-0">
-              <div className="font-inter text-dup-text break-words" style={{ fontSize: 11.5, fontWeight: 500 }}>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center" style={{ gap: 7 }}>
+              <GitMerge size={12} className="shrink-0 text-dup-subtle" />
+              <span
+                className="min-w-0 font-inter text-dup-text break-words"
+                style={{ fontSize: 11.5, fontWeight: 500 }}
+              >
                 {summary}
-              </div>
-              <div className="font-inter text-dup-subtle break-words" style={{ fontSize: 10.5 }}>
-                {canWrite
-                  ? 'Applications, interviews, notes and files are never dropped. The change is written to the audit log.'
-                  : `Your role cannot merge candidate records. Ask ${context?.permissions.ask ?? 'a workspace admin'} to do it.`}
-              </div>
+              </span>
+            </div>
+            <div
+              className="font-inter text-dup-subtle break-words"
+              style={{ marginTop: 2, fontSize: 10.5, ...PRETTY }}
+            >
+              {canWrite
+                ? 'Applications, interviews, notes and files are never dropped. The change is written to the audit log.'
+                : `Your role cannot merge candidate records. Ask ${context?.permissions.ask ?? 'a workspace admin'} to do it.`}
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center" style={{ gap: 10 }}>
             <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={isSubmitting}>
               Cancel
             </Button>
