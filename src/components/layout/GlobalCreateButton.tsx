@@ -121,72 +121,11 @@ export function GlobalCreateButton() {
     }
   }
 
-  // Handle merge confirmation
-  const handleMergeConfirm = async () => {
-    if (!duplicateInfo) return
-    
-    try {
-      // Update the existing candidate with merged data
-      await updateCandidate(duplicateInfo.existing.id, duplicateInfo.merged)
-      
-      // If job assignment was requested, create the association
-      if (duplicateInfo.assignedJobId) {
-        // Check if association already exists
-        const { data: existingAssoc } = await supabase
-          .from('job_candidate_associations')
-          .select('id')
-          .eq('job_id', duplicateInfo.assignedJobId)
-          .eq('candidate_id', duplicateInfo.existing.id)
-          .maybeSingle()
-        
-        if (!existingAssoc) {
-          const { error: associationError } = await supabase
-            .from('job_candidate_associations')
-            .insert({
-              job_id: duplicateInfo.assignedJobId,
-              candidate_id: duplicateInfo.existing.id,
-              current_stage_id: duplicateInfo.assignedStageId || null,
-              status: 'active',
-              added_by: (await supabase.auth.getUser()).data.user?.id
-            })
-
-          if (associationError) {
-            console.error('Error creating job association:', associationError)
-            toast({
-              title: 'Warning',
-              description: 'Candidate merged but could not be assigned to job.',
-              variant: 'destructive'
-            })
-          } else {
-            toast({
-              title: 'Success',
-              description: 'Candidate merged and assigned to job successfully!'
-            })
-          }
-        } else {
-          toast({
-            title: 'Success',
-            description: 'Candidate merged successfully!'
-          })
-        }
-      } else {
-        toast({
-          title: 'Success',
-          description: 'Candidate merged successfully!'
-        })
-      }
-      
-      setShowMergeDialog(false)
-      setCandidateSheetOpen(false)
-      navigate('/candidates')
-    } catch (error) {
-      console.error('Error merging candidate:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to merge candidate',
-        variant: 'destructive'
-      })
-    }
+  const handleDuplicateResolved = (candidateId: string) => {
+    setShowMergeDialog(false)
+    setDuplicateInfo(null)
+    setCandidateSheetOpen(false)
+    navigate(`/candidates?openCandidate=${candidateId}`)
   }
 
   // Handle keyboard shortcuts
