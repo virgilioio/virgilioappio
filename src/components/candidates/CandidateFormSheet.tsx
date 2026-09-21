@@ -36,7 +36,7 @@ import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateSources } from '@/hooks/useCandidateSources'
 import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { CandidateMergeDialog } from './CandidateMergeDialog'
+import { DuplicateFlowDialog } from './duplicate/DuplicateFlowDialog'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { CandidateSheetHeader } from './form/CandidateSheetHeader'
 import { CandidateSheetSection } from './form/CandidateSheetSection'
@@ -1125,14 +1125,16 @@ export function CandidateFormSheet({
 
       </SheetContent>
 
-      {mergeData && (
-        <CandidateMergeDialog
+      {mergeData?.existing?.id && (
+        <DuplicateFlowDialog
           isOpen={mergeDialogOpen}
-          onConfirm={handleMergeConfirm}
-          onCancel={handleMergeCancel}
           existingCandidate={mergeData.existing}
-          newCandidate={mergeData.incoming}
-          mergedCandidate={mergeData.merged}
+          incoming={mergeData.incoming}
+          jobId={jobId || mergeData.incoming?.assignedJobId || null}
+          stageId={mergeData.incoming?.assignedStageId ?? null}
+          notes={mergeData.incoming?.notes ?? null}
+          onCancel={handleMergeCancel}
+          onResolved={() => handleMergeConfirm()}
         />
       )}
     </Sheet>
