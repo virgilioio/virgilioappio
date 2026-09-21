@@ -11,7 +11,7 @@ import { Plus, Briefcase, Users, Building2 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
-import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
+import { DuplicateFlowDialog } from '@/components/candidates/duplicate/DuplicateFlowDialog'
 import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations, type CreateOrganizationData } from '@/hooks/useOrganizations'
 import { useIndependentCandidates, CreateIndependentCandidateData, IndependentCandidate } from '@/hooks/useIndependentCandidates'
@@ -247,16 +247,17 @@ export function GlobalCreateButton() {
 
       {/* Merge Dialog */}
       {duplicateInfo && (
-        <CandidateMergeDialog
+        <DuplicateFlowDialog
           isOpen={showMergeDialog}
-          onConfirm={handleMergeConfirm}
+          existingCandidate={duplicateInfo.existing}
+          incoming={duplicateInfo.incoming}
+          jobId={duplicateInfo.assignedJobId ?? null}
+          stageId={duplicateInfo.assignedStageId ?? null}
           onCancel={() => {
             setShowMergeDialog(false)
             setDuplicateInfo(null)
           }}
-          existingCandidate={duplicateInfo.existing}
-          newCandidate={duplicateInfo.incoming}
-          mergedCandidate={duplicateInfo.merged}
+          onResolved={handleDuplicateResolved}
         />
       )}
     </>
