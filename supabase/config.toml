@@ -273,3 +273,9 @@ verify_jwt = false
 
 [functions.reference-report]
 verify_jwt = false
+
+[functions.get-duplicate-context]
+verify_jwt = true
+
+[functions.merge-candidates]
+verify_jwt = true
