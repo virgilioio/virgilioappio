@@ -191,7 +191,7 @@ export function DossierPane({
 
   return (
     <div
-      className="flex min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r border-dup-hairline bg-dup-canvas"
+      className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-contain border-r border-dup-hairline bg-dup-canvas"
       style={{ padding: '16px 18px 20px' }}
     >
       <PaneLabel icon={<Database size={12.5} className="shrink-0 text-dup-subtle" />}>

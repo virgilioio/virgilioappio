@@ -64,6 +64,21 @@ export function DuplicateCandidateDialog({
     return () => document.body.removeAttribute('data-dup-open')
   }, [isOpen])
 
+  // the sheet behind us locks page scrolling; let our own panes scroll again
+  useEffect(() => {
+    if (!isOpen) return
+    const allow = (e: Event) => {
+      const t = e.target as HTMLElement | null
+      if (t && t.closest?.('[data-dup-dialog]')) e.stopPropagation()
+    }
+    window.addEventListener('wheel', allow, { capture: true })
+    window.addEventListener('touchmove', allow, { capture: true })
+    return () => {
+      window.removeEventListener('wheel', allow, { capture: true })
+      window.removeEventListener('touchmove', allow, { capture: true })
+    }
+  }, [isOpen])
+
   const conflicts = useMemo(
     () => (context?.fields ?? []).filter((f) => f.classification === 'conflict'),
     [context],
@@ -199,7 +214,13 @@ export function DuplicateCandidateDialog({
         </div>
 
         {/* body */}
-        <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: 'minmax(0,400px) minmax(0,1fr)' }}>
+        <div
+          className="grid min-h-0 flex-1 overflow-hidden"
+          style={{
+            gridTemplateColumns: 'minmax(0,400px) minmax(0,1fr)',
+            gridTemplateRows: 'minmax(0,1fr)',
+          }}
+        >
           {isLoading && (
             <div
               className="col-span-2 flex items-center justify-center gap-2 font-inter text-dup-muted"

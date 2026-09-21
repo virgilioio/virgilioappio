@@ -211,7 +211,7 @@ export function MergePane({
 
   return (
     <div
-      className="flex min-w-0 flex-col gap-5 overflow-y-auto overflow-x-hidden bg-dup-paper"
+      className="flex h-full min-h-0 min-w-0 flex-col gap-5 overflow-y-auto overflow-x-hidden overscroll-contain bg-dup-paper"
       style={{ padding: '16px 20px 22px' }}
     >
       <PaneLabel icon={<GitMerge size={12.5} className="shrink-0 text-dup-subtle" />}>The merge</PaneLabel>
