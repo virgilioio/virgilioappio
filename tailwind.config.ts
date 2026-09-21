@@ -142,6 +142,8 @@ export default {
 				'dup-flag-border': 'hsl(var(--dup-flag-border))',
 				'dup-amber': 'hsl(var(--dup-amber))',
 				'dup-email': 'hsl(var(--dup-email))',
+				'dup-chip-fg': 'hsl(var(--dup-chip-fg))',
+				'dup-legend-divider': 'hsl(var(--dup-legend-divider))',
 				// Virgilio Calendly-style brand colors
 				'virgilio-purple': '#6F3FF5',
 				'virgilio-text': '#0F1222',
