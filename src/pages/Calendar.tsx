@@ -234,13 +234,19 @@ export default function CalendarPage() {
   const nowLineTop = (minutesSinceDayStart / 60) * HOUR_PX
 
   // ─── Render helpers ───
-  function renderEvent(e: CalEvent) {
+  function renderEvent(e: CalEvent, lane = 0, lanes = 1) {
     const startMin = e.start.getHours() * 60 + e.start.getMinutes()
     const endMin = e.end.getHours() * 60 + e.end.getMinutes()
     const top = ((startMin - DAY_START * 60) / 60) * HOUR_PX
     const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_PX - 3)
     const meta = TYPE_META[e.type]
-    const short = height < 34
+    // Concurrent events share the column: each lane gets an equal slice, with a
+    // small bleed to the right so the card behind stays visible and clickable.
+    const laneWidthPct = 100 / lanes
+    const leftPct = lane * laneWidthPct
+    const widthPct = lanes > 1 ? laneWidthPct + laneWidthPct * 0.18 : laneWidthPct
+    const narrow = lanes > 1
+    const short = height < 34 || lanes > 2
     const isHold = e.type === 'hold'
 
     return (
