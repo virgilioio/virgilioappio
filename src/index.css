@@ -50,6 +50,48 @@
     
     /* Page title period color */
     --purple-period: 267 84% 87%; /* #d7c5fb */
+
+    /* Duplicate candidate dialog */
+    --dup-ink: 60 18.2% 4.3%;
+    --dup-cream: 30 100.0% 98.8%;
+    --dup-paper: 0 0.0% 100.0%;
+    --dup-canvas: 45 33.3% 97.6%;
+    --dup-canvas-alt: 60 23.1% 97.5%;
+    --dup-hairline: 48 15.2% 93.5%;
+    --dup-rule: 48 18.5% 94.7%;
+    --dup-border: 231.4 17.1% 92.0%;
+    --dup-text: 229.4 21.5% 15.5%;
+    --dup-muted: 225 11.8% 40.0%;
+    --dup-subtle: 227.4 8.9% 58.2%;
+    --dup-faint: 224 11.3% 73.9%;
+    --dup-faint-warm: 50.8 8.5% 70.0%;
+    --dup-radio: 48 10.6% 81.6%;
+    --dup-purple: 255.8 90.1% 60.4%;
+    --dup-purple-soft: 260 100.0% 94.7%;
+    --dup-purple-deep: 263.4 69.3% 42.2%;
+    --dup-purple-period: 260 87.1% 87.8%;
+    --dup-blue-bg: 205.4 86.7% 94.1%;
+    --dup-blue-fg: 212.7 77.8% 37.1%;
+    --dup-blue-dot: 198.6 88.7% 48.4%;
+    --dup-info-bg: 204 83.3% 97.6%;
+    --dup-info-border: 205.7 81.4% 91.6%;
+    --dup-red-bg: 0 93.3% 94.1%;
+    --dup-red-fg: 0 65.4% 47.6%;
+    --dup-red-dot: 0 73.8% 53.5%;
+    --dup-reject-bg: 0 80.0% 98.0%;
+    --dup-reject-border: 0 68.2% 91.4%;
+    --dup-green-bg: 152 38.5% 92.4%;
+    --dup-green-fg: 158.4 83.5% 26.1%;
+    --dup-green-dot: 161.9 82.2% 39.6%;
+    --dup-warn-bg: 42 83.3% 97.6%;
+    --dup-warn-border: 41.1 76.0% 85.3%;
+    --dup-warn-icon: 26 90.5% 37.1%;
+    --dup-warn-title: 22.7 82.5% 31.4%;
+    --dup-flag-border: 51.4 16.3% 91.6%;
+    --dup-amber: 37.7 92.1% 50.2%;
+    --dup-email: 221.2 83.2% 53.3%;
+
+    
     
     /* Virgilio brand colors for UI consistency */
     --virgilio-purple: 267 89% 60%; /* #6F3FF5 */

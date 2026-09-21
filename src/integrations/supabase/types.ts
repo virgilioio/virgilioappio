@@ -853,8 +853,10 @@ export type Database = {
           file_url: string
           id: string
           is_resume: boolean
+          superseded_by: string | null
           updated_at: string | null
           uploaded_by: string | null
+          version: number
         }
         Insert: {
           candidate_id: string
@@ -869,8 +871,10 @@ export type Database = {
           file_url: string
           id?: string
           is_resume?: boolean
+          superseded_by?: string | null
           updated_at?: string | null
           uploaded_by?: string | null
+          version?: number
         }
         Update: {
           candidate_id?: string
@@ -885,8 +889,10 @@ export type Database = {
           file_url?: string
           id?: string
           is_resume?: boolean
+          superseded_by?: string | null
           updated_at?: string | null
           uploaded_by?: string | null
+          version?: number
         }
         Relationships: [
           {
@@ -894,6 +900,13 @@ export type Database = {
             columns: ["candidate_id"]
             isOneToOne: false
             referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_attachments_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "candidate_attachments"
             referencedColumns: ["id"]
           },
         ]
@@ -986,6 +999,63 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_duplicate_decisions: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          decided_by: string | null
+          decision: string
+          id: string
+          match_email: string | null
+          match_name: string | null
+          match_phone: string | null
+          other_candidate_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          match_email?: string | null
+          match_name?: string | null
+          match_phone?: string | null
+          other_candidate_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          match_email?: string | null
+          match_name?: string | null
+          match_phone?: string | null
+          other_candidate_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_duplicate_decisions_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_duplicate_decisions_other_candidate_id_fkey"
+            columns: ["other_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
             referencedColumns: ["id"]
           },
         ]
@@ -1564,6 +1634,9 @@ export type Database = {
           location_city: string | null
           location_country: string | null
           location_state: string | null
+          merged_at: string | null
+          merged_by: string | null
+          merged_into: string | null
           organization_id: string | null
           phone: string | null
           profile_summary: string | null
@@ -1624,6 +1697,9 @@ export type Database = {
           location_city?: string | null
           location_country?: string | null
           location_state?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into?: string | null
           organization_id?: string | null
           phone?: string | null
           profile_summary?: string | null
@@ -1684,6 +1760,9 @@ export type Database = {
           location_city?: string | null
           location_country?: string | null
           location_state?: string | null
+          merged_at?: string | null
+          merged_by?: string | null
+          merged_into?: string | null
           organization_id?: string | null
           phone?: string | null
           profile_summary?: string | null
@@ -1709,6 +1788,13 @@ export type Database = {
           years_in_specialization?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "candidates_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "candidates_organization_id_fkey"
             columns: ["organization_id"]
@@ -9056,6 +9142,17 @@ export type Database = {
           p_user_id?: string
         }
         Returns: string
+      }
+      merge_candidate_payload: {
+        Args: {
+          p_actor?: string
+          p_incoming: Json
+          p_merged?: string
+          p_resolutions?: Json
+          p_resume?: Json
+          p_surviving: string
+        }
+        Returns: Json
       }
       nightly_storage_cleanup: { Args: never; Returns: undefined }
       normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
