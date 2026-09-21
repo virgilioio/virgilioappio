@@ -73,7 +73,7 @@ import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCan
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 import { BulkRejectionDialog } from '@/components/candidates/BulkRejectionDialog'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
-import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
+import { DuplicateFlowDialog } from '@/components/candidates/duplicate/DuplicateFlowDialog'
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useJobSuggestedCandidates, useJobSuggestedCandidatesCount } from '@/hooks/useJobSuggestedCandidates'
@@ -1536,14 +1536,22 @@ export default function JobDetail() {
           }}
         />
 
-        {/* Candidate Merge Dialog */}
-        <CandidateMergeDialog
+        {/* Duplicate candidate dialog */}
+        <DuplicateFlowDialog
           isOpen={showMergeDialog}
-          onConfirm={handleMergeConfirm}
+          existingCandidate={duplicateInfo?.existing ?? null}
+          incoming={duplicateInfo?.incoming ?? null}
+          jobId={id}
+          stageId={duplicateInfo?.incoming?.assignedStageId ?? null}
+          notes={duplicateInfo?.incoming?.notes ?? null}
           onCancel={handleMergeCancel}
-          existingCandidate={duplicateInfo?.existing}
-          newCandidate={duplicateInfo?.incoming}
-          mergedCandidate={duplicateInfo?.merged}
+          onResolved={(candidateId) => {
+            setPipelineRefresh((v) => v + 1)
+            setShowMergeDialog(false)
+            setDuplicateInfo(null)
+            setShowAddCandidate(false)
+            updateCandidateUrl(candidateId)
+          }}
         />
 
         {/* Application Review Sheet */}

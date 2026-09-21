@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils'
 
 
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
-import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
+import { DuplicateFlowDialog } from '@/components/candidates/duplicate/DuplicateFlowDialog'
 import { MinimizableBulkUploadDialog } from '@/components/candidates/MinimizableBulkUploadDialog'
 import { CSVImportDialog } from '@/components/candidates/CSVImportDialog'
 
@@ -674,17 +674,16 @@ function CandidatesInner() {
       />
 
       {duplicateInfo && (
-        <CandidateMergeDialog
+        <DuplicateFlowDialog
           isOpen={showMergeDialog}
-          onConfirm={async () => {
-            await updateCandidate(duplicateInfo.existing.id, duplicateInfo.merged)
-            setShowMergeDialog(false); setDuplicateInfo(null); setIsFormOpen(false); setSelectedCandidate(null)
-            toast({ title: 'Candidate merged' })
-          }}
-          onCancel={() => { setShowMergeDialog(false); setDuplicateInfo(null) }}
           existingCandidate={duplicateInfo.existing}
-          newCandidate={duplicateInfo.incoming}
-          mergedCandidate={duplicateInfo.merged}
+          incoming={duplicateInfo.incoming}
+          onCancel={() => { setShowMergeDialog(false); setDuplicateInfo(null) }}
+          onResolved={(candidateId) => {
+            setShowMergeDialog(false); setDuplicateInfo(null); setIsFormOpen(false); setSelectedCandidate(null)
+            getCandidates()
+            setSearchParams({ openCandidate: candidateId }, { replace: true })
+          }}
         />
       )}
 
