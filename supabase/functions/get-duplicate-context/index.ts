@@ -86,7 +86,7 @@ serve(async (req) => {
     // ── tenant + permission, resolved server-side ──
     const { data: member } = await admin
       .from('members')
-      .select('id, tenant_id, system_role, is_active')
+      .select('id, tenant_id, system_role, user_status, user_type')
       .eq('user_id', user.id)
       .eq('tenant_id', candidate.tenant_id)
       .maybeSingle()
@@ -99,15 +99,19 @@ serve(async (req) => {
 
     const { data: tenantRow } = await admin
       .from('tenants')
-      .select('id, owner_user_id')
+      .select('id, owner_id')
       .eq('id', candidate.tenant_id)
       .maybeSingle()
 
-    const isOwner = tenantRow?.owner_user_id === user.id
-    if (!isOwner && (!member || member.is_active === false)) {
+    const isOwner = tenantRow?.owner_id === user.id
+    if (!isOwner && (!member || member.user_status !== 'active')) {
       return json({ error: 'Forbidden' }, 403)
     }
-    const canMerge = isOwner || ['admin', 'member'].includes(String(member?.system_role ?? ''))
+    const canMerge =
+      isOwner ||
+      member?.user_type === 'platform_admin' ||
+      member?.user_type === 'workspace_owner' ||
+      ['admin', 'member'].includes(String(member?.system_role ?? ''))
 
     // ── owner of the record ──
     let ownerName: string | null = null
@@ -170,18 +174,16 @@ serve(async (req) => {
 
     // scheduled interviews (upcoming, per association)
     const nowIso = new Date().toISOString()
-    const { data: bookings } = assocIds.length
-      ? await admin
-          .from('scheduled_bookings')
-          .select('id, association_id, scheduled_start, status, title')
-          .in('association_id', assocIds)
-          .in('status', ['confirmed', 'rescheduled'])
-          .gte('scheduled_end', nowIso)
-          .order('scheduled_start', { ascending: true })
-      : { data: [] as any[] }
+    const { data: bookings } = await admin
+      .from('scheduled_bookings')
+      .select('id, job_id, scheduled_start, status')
+      .eq('candidate_id', existingId)
+      .in('status', ['confirmed', 'rescheduled'])
+      .gte('scheduled_end', nowIso)
+      .order('scheduled_start', { ascending: true })
 
     const bookingMap = new Map<string, any>()
-    for (const b of bookings ?? []) if (!bookingMap.has(b.association_id)) bookingMap.set(b.association_id, b)
+    for (const b of bookings ?? []) if (!bookingMap.has(b.job_id)) bookingMap.set(b.job_id, b)
 
     // open offers
     const { data: offers } = await admin
@@ -200,7 +202,7 @@ serve(async (req) => {
         a.job_hiring_stages?.custom_stage_name ||
         a.job_hiring_stages?.job_stages?.stage_name ||
         null
-      const booking = bookingMap.get(a.id)
+      const booking = bookingMap.get(a.job_id)
       const offer = offerByJob.get(a.job_id)
       const status = a.hired_at
         ? 'hired'
@@ -225,7 +227,7 @@ serve(async (req) => {
         owner_initials: initials(actorMap.get(a.added_by) ?? null),
         owner_name: actorMap.get(a.added_by) ?? null,
         scheduled_interview: booking
-          ? { at: booking.scheduled_start, title: booking.title ?? 'Interview' }
+          ? { at: booking.scheduled_start, title: 'Interview' }
           : null,
         open_offer: status === 'offered'
           ? { expires_at: offer?.expires_at ?? null, sent_at: offer?.sent_at ?? a.offered_at }
@@ -245,12 +247,10 @@ serve(async (req) => {
         .eq(column, existingId)
       return count ?? 0
     }
-    const interviewsCount = assocIds.length
-      ? (await admin
-          .from('scheduled_bookings')
-          .select('id', { count: 'exact', head: true })
-          .in('association_id', assocIds)).count ?? 0
-      : 0
+    const interviewsCount = (await admin
+      .from('scheduled_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('candidate_id', existingId)).count ?? 0
     const scorecardsCount = assocIds.length
       ? (await admin
           .from('job_stage_scorecards')
@@ -315,8 +315,9 @@ serve(async (req) => {
     // ── recent activity ──
     const { data: activityRows } = await admin
       .from('activities')
-      .select('id, activity_type, description, created_at, user_id')
-      .eq('candidate_id', existingId)
+      .select('id, activity_type, title, description, created_at, user_id')
+      .eq('entity_type', 'candidate')
+      .eq('entity_id', existingId)
       .order('created_at', { ascending: false })
       .limit(4)
 
@@ -341,7 +342,7 @@ serve(async (req) => {
 
     const activity = (activityRows ?? []).map((a: any) => ({
       kind: kindOf(String(a.activity_type ?? '')),
-      text: a.description ?? String(a.activity_type ?? '').replace(/_/g, ' '),
+      text: a.title ?? a.description ?? String(a.activity_type ?? '').replace(/_/g, ' '),
       actor: a.user_id ? activityActors.get(a.user_id) ?? 'Someone' : 'Gio',
       at: a.created_at,
     }))
