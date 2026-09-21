@@ -1,7 +1,10 @@
-import { Database, Briefcase, CalendarDays, ClipboardList, StickyNote, Paperclip, Mail, GitCommit, Radio, XCircle, AlertTriangle, Info, FileText, Award } from 'lucide-react'
+import { Database, Briefcase, CalendarDays, Star, MessageSquare, Paperclip, Mail, GitCommit, Radio, XCircle, AlertTriangle, Info, FileText, Award } from 'lucide-react'
 import { format } from 'date-fns'
 import { StatusPill } from './StatusPill'
+import { PaneLabel, SectionHeading } from './SectionHeading'
 import type { DuplicateContext, DupActivity, DupApplication, DupStatus } from './types'
+
+const PRETTY = { textWrap: 'pretty' as never }
 
 const initials = (name?: string | null) =>
   (name || '')
@@ -27,17 +30,6 @@ const relative = (iso?: string | null) => {
   return `${Math.floor(m / 12)}y ago`
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h3
-      className="font-poppins uppercase text-dup-muted"
-      style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em' }}
-    >
-      {children}
-    </h3>
-  )
-}
-
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
@@ -54,7 +46,7 @@ function MetaCell({ label, value }: { label: string; value: string | null }) {
     <div className="min-w-0">
       <div
         className="font-inter uppercase text-dup-subtle"
-        style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.06em' }}
+        style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.04em' }}
       >
         {label}
       </div>
@@ -72,41 +64,66 @@ const ACTIVITY_ICON: Record<DupActivity['kind'], { Icon: typeof Mail; cls: strin
   scorecard: { Icon: Award, cls: 'text-dup-amber' },
 }
 
-function ApplicationRow({ app, last }: { app: DupApplication; last: boolean }) {
+function Callout({ tone, children }: { tone: 'live' | 'reject'; children: React.ReactNode }) {
+  const live = tone === 'live'
+  const Icon = live ? Radio : XCircle
   return (
     <div
-      className="min-w-0 px-3 py-2.5"
-      style={{ borderBottom: last ? undefined : '1px solid hsl(var(--dup-rule))' }}
+      className={`mt-2 flex min-w-0 items-start gap-2 border ${live ? 'border-dup-info-border bg-dup-info-bg' : 'border-dup-reject-border bg-dup-reject-bg'}`}
+      style={{ padding: '7px 9px', borderRadius: 7 }}
     >
-      <div className="flex min-w-0 items-start gap-2">
+      <Icon size={12} className={`mt-0.5 shrink-0 ${live ? 'text-dup-blue-fg' : 'text-dup-red-fg'}`} />
+      <span
+        className={`min-w-0 font-inter break-words ${live ? 'text-dup-blue-fg' : 'text-dup-red-fg'}`}
+        style={{ fontSize: 11, ...PRETTY }}
+      >
+        {children}
+      </span>
+    </div>
+  )
+}
+
+function ApplicationRow({ app, last }: { app: DupApplication; last: boolean }) {
+  const sub = [app.department, app.location, `Req ${app.req_id}`].filter(Boolean).join(' · ')
+  return (
+    <div
+      className="min-w-0"
+      style={{ padding: '11px 13px', borderBottom: last ? undefined : '1px solid hsl(var(--dup-rule))' }}
+    >
+      <div className="flex min-w-0 items-start" style={{ gap: 9 }}>
         <div className="min-w-0 flex-1">
-          <div className="font-poppins text-dup-text break-words" style={{ fontSize: 12.5, fontWeight: 600 }}>
+          <div
+            className="font-poppins text-dup-text break-words"
+            style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: '-0.015em', ...PRETTY }}
+          >
             {app.job_title}
           </div>
-          <div className="font-inter text-dup-subtle break-words" style={{ fontSize: 10.5 }}>
-            {[app.department, app.location, `Req ${app.req_id}`].filter(Boolean).join(' · ')}
-          </div>
+          {sub && (
+            <div className="font-inter text-dup-subtle break-words" style={{ fontSize: 10.5, ...PRETTY }}>
+              {sub}
+            </div>
+          )}
         </div>
         <StatusPill status={app.status} />
       </div>
 
-      <div className="mt-2 flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center" style={{ marginTop: 9, gap: 8 }}>
         {app.stage_name && (
           <span
-            className="inline-flex shrink-0 items-center gap-1 rounded-md bg-dup-hairline font-inter text-dup-muted"
-            style={{ padding: '3px 7px', fontSize: 10.5 }}
+            className="inline-flex shrink-0 items-center gap-1 bg-dup-hairline font-inter text-dup-chip-fg"
+            style={{ height: 21, padding: '0 8px', borderRadius: 6, fontSize: 11, fontWeight: 500 }}
           >
-            <GitCommit size={11} />
+            <GitCommit size={10.5} className="text-dup-subtle" />
             {app.stage_name}
           </span>
         )}
         {app.last_moved_at && (
-          <span className="min-w-0 truncate font-inter text-dup-subtle" style={{ fontSize: 11 }}>
+          <span className="min-w-0 font-inter text-dup-subtle" style={{ fontSize: 11 }}>
             moved {relative(app.last_moved_at)}
           </span>
         )}
         <span
-          className="ml-auto inline-flex shrink-0 items-center justify-center rounded-full bg-dup-hairline font-poppins text-dup-muted"
+          className="ml-auto inline-flex shrink-0 items-center justify-center rounded-full bg-dup-ink font-poppins text-dup-cream"
           style={{ width: 20, height: 20, fontSize: 9, fontWeight: 600 }}
           title={app.owner_name ?? undefined}
         >
@@ -115,43 +132,23 @@ function ApplicationRow({ app, last }: { app: DupApplication; last: boolean }) {
       </div>
 
       {app.scheduled_interview && (
-        <div
-          className="mt-2 flex min-w-0 items-start gap-2 rounded-lg border border-dup-info-border bg-dup-info-bg"
-          style={{ padding: '7px 9px' }}
-        >
-          <Radio size={12} className="mt-0.5 shrink-0 text-dup-blue-fg" />
-          <span className="min-w-0 font-inter text-dup-blue-fg break-words" style={{ fontSize: 11 }}>
-            Interview scheduled for {shortDate(app.scheduled_interview.at)}
-          </span>
-        </div>
+        <Callout tone="live">Interview scheduled for {shortDate(app.scheduled_interview.at)}</Callout>
       )}
 
       {app.open_offer && (
-        <div
-          className="mt-2 flex min-w-0 items-start gap-2 rounded-lg border border-dup-info-border bg-dup-info-bg"
-          style={{ padding: '7px 9px' }}
-        >
-          <Radio size={12} className="mt-0.5 shrink-0 text-dup-blue-fg" />
-          <span className="min-w-0 font-inter text-dup-blue-fg break-words" style={{ fontSize: 11 }}>
-            {app.open_offer.expires_at
-              ? `Offer open, expires ${shortDate(app.open_offer.expires_at)}`
-              : 'Offer open, no expiry recorded'}
-          </span>
-        </div>
+        <Callout tone="live">
+          {app.open_offer.expires_at
+            ? `Offer open, expires ${shortDate(app.open_offer.expires_at)}`
+            : 'Offer open, no expiry recorded'}
+        </Callout>
       )}
 
       {app.status === 'rejected' && (
-        <div
-          className="mt-2 flex min-w-0 items-start gap-2 rounded-lg border border-dup-reject-border bg-dup-reject-bg"
-          style={{ padding: '7px 9px' }}
-        >
-          <XCircle size={12} className="mt-0.5 shrink-0 text-dup-red-fg" />
-          <span className="min-w-0 font-inter text-dup-red-fg break-words" style={{ fontSize: 11 }}>
-            {app.rejection_reason || app.rejection_notes || 'Rejected, no reason recorded'}
-            {app.rejected_at ? ` · ${shortDate(app.rejected_at)}` : ''}
-            {app.rejected_by_name ? ` · by ${app.rejected_by_name}` : ''}
-          </span>
-        </div>
+        <Callout tone="reject">
+          {app.rejection_reason || app.rejection_notes || 'Rejected, no reason recorded'}
+          {app.rejected_at ? ` · ${shortDate(app.rejected_at)}` : ''}
+          {app.rejected_by_name ? ` · by ${app.rejected_by_name}` : ''}
+        </Callout>
       )}
     </div>
   )
@@ -179,8 +176,8 @@ export function DossierPane({
   const footprint: Array<{ Icon: typeof Briefcase; label: string; value: number }> = [
     { Icon: Briefcase, label: 'Applications', value: context.counts.applications },
     { Icon: CalendarDays, label: 'Interviews', value: context.counts.interviews },
-    { Icon: ClipboardList, label: 'Scorecards', value: context.counts.scorecards },
-    { Icon: StickyNote, label: 'Notes', value: context.counts.notes },
+    { Icon: Star, label: 'Scorecards', value: context.counts.scorecards },
+    { Icon: MessageSquare, label: 'Notes', value: context.counts.notes },
     { Icon: Paperclip, label: 'Files', value: context.counts.files },
     { Icon: Mail, label: 'Emails', value: context.counts.emails },
   ]
@@ -197,15 +194,14 @@ export function DossierPane({
       className="flex min-w-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r border-dup-hairline bg-dup-canvas"
       style={{ padding: '16px 18px 20px' }}
     >
-      <div className="flex min-w-0 items-center gap-1.5">
-        <Database size={13} className="shrink-0 text-dup-muted" />
-        <SectionLabel>Already in your database</SectionLabel>
-      </div>
+      <PaneLabel icon={<Database size={12.5} className="shrink-0 text-dup-subtle" />}>
+        Already in your database
+      </PaneLabel>
 
       {/* identity */}
       <Card>
-        <div className="min-w-0 p-3">
-          <div className="flex min-w-0 items-start gap-2.5">
+        <div className="min-w-0" style={{ padding: 14 }}>
+          <div className="flex min-w-0 items-start" style={{ gap: 11 }}>
             <span
               className="flex shrink-0 items-center justify-center rounded-full bg-dup-ink font-poppins text-dup-cream"
               style={{ width: 42, height: 42, fontSize: 14, fontWeight: 600 }}
@@ -213,11 +209,17 @@ export function DossierPane({
               {initials(name)}
             </span>
             <div className="min-w-0 flex-1">
-              <div className="font-poppins text-dup-text break-words" style={{ fontSize: 14.5, fontWeight: 600 }}>
+              <div
+                className="font-poppins text-dup-text break-words"
+                style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-0.025em' }}
+              >
                 {name}
               </div>
               {subtitle && (
-                <div className="font-inter text-dup-muted break-words" style={{ fontSize: 11.5 }}>
+                <div
+                  className="font-inter text-dup-muted break-words"
+                  style={{ fontSize: 11.5, lineHeight: 1.4, ...PRETTY }}
+                >
                   {subtitle}
                 </div>
               )}
@@ -225,8 +227,14 @@ export function DossierPane({
           </div>
 
           <div
-            className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 pt-3"
-            style={{ borderTop: '1px solid hsl(var(--dup-rule))' }}
+            className="grid"
+            style={{
+              marginTop: 13,
+              paddingTop: 13,
+              borderTop: '1px solid hsl(var(--dup-rule))',
+              gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)',
+              gap: '9px 12px',
+            }}
           >
             <MetaCell label="Owner" value={context.owner} />
             <MetaCell label="Source" value={context.source} />
@@ -237,20 +245,24 @@ export function DossierPane({
       </Card>
 
       {/* footprint */}
-      <Card>
-        <div className="grid min-w-0 grid-cols-3">
+      <Card className="overflow-hidden">
+        <div className="grid min-w-0" style={{ gridTemplateColumns: 'repeat(3, minmax(0,1fr))' }}>
           {footprint.map((f, i) => (
             <div
               key={f.label}
-              className="min-w-0 px-3 py-2.5"
+              className="min-w-0"
               style={{
-                borderRight: i % 3 === 2 ? undefined : '1px solid hsl(var(--dup-rule))',
-                borderBottom: i < 3 ? '1px solid hsl(var(--dup-rule))' : undefined,
+                padding: '11px 12px',
+                borderLeft: i % 3 === 0 ? undefined : '1px solid hsl(var(--dup-rule))',
+                borderTop: i >= 3 ? '1px solid hsl(var(--dup-rule))' : undefined,
               }}
             >
               <div className="flex min-w-0 items-center gap-1.5">
                 <f.Icon size={11.5} className="shrink-0 text-dup-subtle" />
-                <span className="font-poppins text-dup-text" style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.03em' }}>
+                <span
+                  className="font-poppins text-dup-text"
+                  style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.03em' }}
+                >
                   {f.value}
                 </span>
               </div>
@@ -263,16 +275,17 @@ export function DossierPane({
       {/* applications */}
       {context.applications.length > 0 && (
         <section className="min-w-0">
-          <div className="mb-2 flex min-w-0 flex-col gap-1">
-            <SectionLabel>Applications · {context.applications.length}</SectionLabel>
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              {legend.map(({ s, n }) => (
-                <span key={s} className="inline-flex items-center gap-1 font-inter text-dup-subtle" style={{ fontSize: 10.5 }}>
+          <SectionHeading title="Applications" count={context.applications.length} />
+          <div className="flex min-w-0 flex-wrap items-center" style={{ marginTop: 6, marginBottom: 9, gap: 7 }}>
+            {legend.map(({ s, n }, i) => (
+              <span key={s} className="inline-flex items-center gap-2" style={{ fontSize: 11 }}>
+                {i > 0 && <span className="text-dup-legend-divider">·</span>}
+                <span className="inline-flex items-center gap-1 font-inter text-dup-muted">
                   <span className={`inline-block rounded-full ${dotFor(s)}`} style={{ width: 5, height: 5 }} />
-                  {n} {s}
+                  {`${n} ${s}`}
                 </span>
-              ))}
-            </div>
+              </span>
+            ))}
           </div>
           <Card>
             {context.applications.map((app, i) => (
@@ -285,21 +298,20 @@ export function DossierPane({
       {/* flags */}
       {context.flags.length > 0 && (
         <section className="min-w-0">
-          <div className="mb-2">
-            <SectionLabel>Before you merge · {context.flags.length}</SectionLabel>
-          </div>
-          <div className="flex min-w-0 flex-col gap-2">
-            {context.flags.map((flag) => {
-              const warn = flag.tone === 'warning'
-              const Icon = warn ? AlertTriangle : Info
-              return (
-                <div
-                  key={flag.id}
-                  className={`min-w-0 rounded-xl border ${warn ? 'border-dup-warn-border bg-dup-warn-bg' : 'border-dup-flag-border bg-dup-canvas'}`}
-                  style={{ padding: '9px 11px' }}
-                >
-                  <div className="flex min-w-0 items-start gap-2">
-                    <Icon size={13} className={`mt-0.5 shrink-0 ${warn ? 'text-dup-warn-icon' : 'text-dup-subtle'}`} />
+          <SectionHeading title="Before you merge" count={context.flags.length} />
+          <div className="flex min-w-0 flex-col" style={{ marginTop: 8, gap: 8 }}>
+            {[...context.flags]
+              .sort((a, b) => (a.tone === b.tone ? 0 : a.tone === 'warning' ? -1 : 1))
+              .map((flag) => {
+                const warn = flag.tone === 'warning'
+                const Icon = warn ? AlertTriangle : Info
+                return (
+                  <div
+                    key={flag.id}
+                    className={`flex min-w-0 border ${warn ? 'border-dup-warn-border bg-dup-warn-bg' : 'border-dup-flag-border bg-dup-canvas'}`}
+                    style={{ padding: '10px 12px', borderRadius: 10, gap: 9 }}
+                  >
+                    <Icon size={13} className={`shrink-0 ${warn ? 'text-dup-warn-icon' : 'text-dup-subtle'}`} style={{ marginTop: 1 }} />
                     <div className="min-w-0">
                       <div
                         className={`font-inter break-words ${warn ? 'text-dup-warn-title' : 'text-dup-text'}`}
@@ -310,16 +322,15 @@ export function DossierPane({
                       {flag.body && (
                         <div
                           className="font-inter text-dup-muted break-words"
-                          style={{ fontSize: 11, lineHeight: 1.5 }}
+                          style={{ fontSize: 11, lineHeight: 1.5, ...PRETTY }}
                         >
                           {flag.body}
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
           </div>
         </section>
       )}
@@ -327,38 +338,53 @@ export function DossierPane({
       {/* activity */}
       {context.activity.length > 0 && (
         <section className="min-w-0">
-          <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
-            <SectionLabel>Recent activity</SectionLabel>
-            {onOpenProfile && (
-              <button
-                type="button"
-                onClick={onOpenProfile}
-                className="shrink-0 font-inter text-dup-purple hover:underline"
-                style={{ fontSize: 11, fontWeight: 600 }}
-              >
-                Open full profile
-              </button>
-            )}
-          </div>
-          <Card>
-            {context.activity.map((ev, i) => {
-              const { Icon, cls } = ACTIVITY_ICON[ev.kind] ?? ACTIVITY_ICON.file
-              return (
-                <div
-                  key={`${ev.at}-${i}`}
-                  className="flex min-w-0 items-start gap-2 px-3 py-2.5"
-                  style={{ borderBottom: i === context.activity.length - 1 ? undefined : '1px solid hsl(var(--dup-rule))' }}
+          <SectionHeading
+            title="Recent activity"
+            action={
+              onOpenProfile ? (
+                <button
+                  type="button"
+                  onClick={onOpenProfile}
+                  title="Open full profile"
+                  aria-label="Open full profile"
+                  className="shrink-0 border-0 bg-transparent p-0 font-inter text-dup-purple hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dup-purple"
+                  style={{ fontSize: 11, fontWeight: 600 }}
                 >
-                  <Icon size={12.5} className={`mt-0.5 shrink-0 ${cls}`} />
-                  <div className="min-w-0">
-                    <div className="font-inter text-dup-text break-words" style={{ fontSize: 11.5 }}>{ev.text}</div>
-                    <div className="font-inter text-dup-subtle break-words" style={{ fontSize: 10.5 }}>
-                      {ev.actor} · {relative(ev.at)}
+                  Open full profile
+                </button>
+              ) : undefined
+            }
+          />
+          <Card className="mt-2">
+            <div style={{ padding: '4px 13px' }}>
+              {context.activity.slice(0, 4).map((ev, i) => {
+                const { Icon, cls } = ACTIVITY_ICON[ev.kind] ?? ACTIVITY_ICON.file
+                return (
+                  <div
+                    key={`${ev.at}-${i}`}
+                    className="flex min-w-0 items-start"
+                    style={{
+                      padding: '10px 0',
+                      gap: 9,
+                      borderTop: i === 0 ? undefined : '1px solid hsl(var(--dup-rule))',
+                    }}
+                  >
+                    <Icon size={12.5} className={`shrink-0 ${cls}`} style={{ marginTop: 1 }} />
+                    <div className="min-w-0">
+                      <div
+                        className="font-inter text-dup-text break-words"
+                        style={{ fontSize: 11.5, lineHeight: 1.45, ...PRETTY }}
+                      >
+                        {ev.text}
+                      </div>
+                      <div className="font-inter text-dup-subtle break-words" style={{ fontSize: 10.5 }}>
+                        {`${ev.actor} · ${relative(ev.at)}`}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </Card>
         </section>
       )}
