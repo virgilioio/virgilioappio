@@ -123,6 +123,57 @@ const TYPE_META: Record<EventType, { label: string; swatch: string; bg: string; 
   busy: { label: 'Busy', swatch: C.busyBorder, bg: C.busyBg, edge: C.busyBorder, text: C.tertiary },
 }
 
+interface PlacedEvent {
+  event: CalEvent
+  lane: number
+  lanes: number
+}
+
+/**
+ * Side-by-side layout for a single day column.
+ * Events are grouped into clusters of mutually overlapping meetings; every
+ * member of a cluster gets its own lane so nothing is drawn on top of
+ * (and therefore hidden by) another meeting at the same time.
+ */
+function layoutDayEvents(dayEvents: CalEvent[]): PlacedEvent[] {
+  const sorted = [...dayEvents].sort(
+    (a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime(),
+  )
+
+  const placed: PlacedEvent[] = []
+  let cluster: PlacedEvent[] = []
+  let clusterEnd = -Infinity
+
+  const flush = () => {
+    const lanes = cluster.reduce((max, p) => Math.max(max, p.lane + 1), 0)
+    cluster.forEach(p => {
+      p.lanes = lanes
+      placed.push(p)
+    })
+    cluster = []
+    clusterEnd = -Infinity
+  }
+
+  for (const event of sorted) {
+    // A new cluster starts as soon as an event begins after everything before it ends.
+    if (cluster.length > 0 && event.start.getTime() >= clusterEnd) flush()
+
+    // First free lane: one whose last event has already finished.
+    const laneEnds: number[] = []
+    for (const p of cluster) {
+      laneEnds[p.lane] = Math.max(laneEnds[p.lane] ?? -Infinity, p.event.end.getTime())
+    }
+    let lane = 0
+    while (lane < laneEnds.length && (laneEnds[lane] ?? -Infinity) > event.start.getTime()) lane++
+
+    cluster.push({ event, lane, lanes: 1 })
+    clusterEnd = Math.max(clusterEnd, event.end.getTime())
+  }
+  if (cluster.length > 0) flush()
+
+  return placed
+}
+
 function initials(name: string) {
   return name
     .split(/\s+/)
