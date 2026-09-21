@@ -797,3 +797,12 @@
   }
   .gio-skeleton { background: #EFEAFB; }
 }
+
+/* Duplicate candidate dialog — recede the add-candidate sheet behind the modal */
+body[data-dup-open] [role="dialog"]:not([data-dup-dialog]),
+body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
+  filter: blur(6px) saturate(0.92);
+  transform: scale(1.02);
+  opacity: 0.9;
+  pointer-events: none;
+}
