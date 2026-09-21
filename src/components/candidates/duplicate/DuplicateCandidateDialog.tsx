@@ -99,7 +99,11 @@ export function DuplicateCandidateDialog({
   if (!isOpen) return null
 
   const body = (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center" style={{ backgroundColor: 'rgba(13,13,9,0.34)' }}>
+    <div
+      className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(13,13,9,0.34)' }}
+      onPointerDownCapture={(e) => e.stopPropagation()}
+    >
       <div
         role="dialog"
         aria-modal="true"
