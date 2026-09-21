@@ -123,6 +123,57 @@ const TYPE_META: Record<EventType, { label: string; swatch: string; bg: string; 
   busy: { label: 'Busy', swatch: C.busyBorder, bg: C.busyBg, edge: C.busyBorder, text: C.tertiary },
 }
 
+interface PlacedEvent {
+  event: CalEvent
+  lane: number
+  lanes: number
+}
+
+/**
+ * Side-by-side layout for a single day column.
+ * Events are grouped into clusters of mutually overlapping meetings; every
+ * member of a cluster gets its own lane so nothing is drawn on top of
+ * (and therefore hidden by) another meeting at the same time.
+ */
+function layoutDayEvents(dayEvents: CalEvent[]): PlacedEvent[] {
+  const sorted = [...dayEvents].sort(
+    (a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime(),
+  )
+
+  const placed: PlacedEvent[] = []
+  let cluster: PlacedEvent[] = []
+  let clusterEnd = -Infinity
+
+  const flush = () => {
+    const lanes = cluster.reduce((max, p) => Math.max(max, p.lane + 1), 0)
+    cluster.forEach(p => {
+      p.lanes = lanes
+      placed.push(p)
+    })
+    cluster = []
+    clusterEnd = -Infinity
+  }
+
+  for (const event of sorted) {
+    // A new cluster starts as soon as an event begins after everything before it ends.
+    if (cluster.length > 0 && event.start.getTime() >= clusterEnd) flush()
+
+    // First free lane: one whose last event has already finished.
+    const laneEnds: number[] = []
+    for (const p of cluster) {
+      laneEnds[p.lane] = Math.max(laneEnds[p.lane] ?? -Infinity, p.event.end.getTime())
+    }
+    let lane = 0
+    while (lane < laneEnds.length && (laneEnds[lane] ?? -Infinity) > event.start.getTime()) lane++
+
+    cluster.push({ event, lane, lanes: 1 })
+    clusterEnd = Math.max(clusterEnd, event.end.getTime())
+  }
+  if (cluster.length > 0) flush()
+
+  return placed
+}
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -234,13 +285,19 @@ export default function CalendarPage() {
   const nowLineTop = (minutesSinceDayStart / 60) * HOUR_PX
 
   // ─── Render helpers ───
-  function renderEvent(e: CalEvent) {
+  function renderEvent(e: CalEvent, lane = 0, lanes = 1) {
     const startMin = e.start.getHours() * 60 + e.start.getMinutes()
     const endMin = e.end.getHours() * 60 + e.end.getMinutes()
     const top = ((startMin - DAY_START * 60) / 60) * HOUR_PX
     const height = Math.max(20, ((endMin - startMin) / 60) * HOUR_PX - 3)
     const meta = TYPE_META[e.type]
-    const short = height < 34
+    // Concurrent events share the column: each lane gets an equal slice, with a
+    // small bleed to the right so the card behind stays visible and clickable.
+    const laneWidthPct = 100 / lanes
+    const leftPct = lane * laneWidthPct
+    const widthPct = lanes > 1 ? laneWidthPct + laneWidthPct * 0.18 : laneWidthPct
+    const narrow = lanes > 1
+    const short = height < 34 || lanes > 2
     const isHold = e.type === 'hold'
 
     return (
@@ -261,14 +318,21 @@ export default function CalendarPage() {
           }
           setSelectedEventId(e.id)
         }}
-        className="absolute left-[3px] right-[3px] text-left overflow-hidden focus:outline-none focus:ring-2"
+        title={`${e.title} · ${format(e.start, 'H:mm')}–${format(e.end, 'H:mm')}${
+          e.jobTitle ? ` · ${e.jobTitle}` : ''
+        }`}
+        className="absolute text-left overflow-hidden focus:outline-none focus:ring-2"
         style={{
           top,
           height,
+          left: `calc(${leftPct}% + 3px)`,
+          width: `calc(${widthPct}% - 6px)`,
+          zIndex: 1 + lane,
           background: meta.bg,
           color: meta.text,
           borderRadius: 7,
-          padding: short ? '3px 8px' : '5px 8px',
+          padding: short ? '3px 6px' : '5px 8px',
+          boxShadow: lanes > 1 ? '0 1px 3px -1px rgba(13,13,9,0.18)' : undefined,
           ...(isHold
             ? { border: `1.5px dashed ${C.holdBorder}` }
             : { borderLeft: `3px solid ${meta.edge}` }),
@@ -554,7 +618,9 @@ export default function CalendarPage() {
                       {/* Day columns */}
                       {days.map((d, di) => {
                         const today = isToday(d)
-                        const dayEvents = weekEvents.filter(e => isSameDay(e.start, d))
+                        const dayEvents = layoutDayEvents(
+                          weekEvents.filter(e => isSameDay(e.start, d)),
+                        )
                         return (
                           <div
                             key={di}
@@ -588,7 +654,7 @@ export default function CalendarPage() {
                               </div>
                             )}
                             {/* Events */}
-                            {dayEvents.map(renderEvent)}
+                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes))}
                           </div>
                         )
                       })}
