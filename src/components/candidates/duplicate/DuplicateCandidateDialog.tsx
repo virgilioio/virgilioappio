@@ -199,7 +199,13 @@ export function DuplicateCandidateDialog({
         </div>
 
         {/* body */}
-        <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: 'minmax(0,400px) minmax(0,1fr)' }}>
+        <div
+          className="grid min-h-0 flex-1 overflow-hidden"
+          style={{
+            gridTemplateColumns: 'minmax(0,400px) minmax(0,1fr)',
+            gridTemplateRows: 'minmax(0,1fr)',
+          }}
+        >
           {isLoading && (
             <div
               className="col-span-2 flex items-center justify-center gap-2 font-inter text-dup-muted"
