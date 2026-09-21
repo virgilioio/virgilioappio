@@ -9143,6 +9143,17 @@ export type Database = {
         }
         Returns: string
       }
+      merge_candidate_payload: {
+        Args: {
+          p_actor?: string
+          p_incoming: Json
+          p_merged?: string
+          p_resolutions?: Json
+          p_resume?: Json
+          p_surviving: string
+        }
+        Returns: Json
+      }
       nightly_storage_cleanup: { Args: never; Returns: undefined }
       normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
       organization_has_active_public_posting: {
