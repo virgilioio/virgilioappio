@@ -345,9 +345,44 @@ serve(async (req) => {
       candidateContext += `\nLocation: ${[candidate.location_city, candidate.location_state, candidate.location_country].filter(Boolean).join(", ")}`;
       dataSources.push("location");
     }
+    // --- Salary: reconcile currency and period before any comparison --------
+    // The posted band (salary_min/max, in jobs.currency) is entered as a yearly
+    // figure; the budget fields carry their own explicit period.
+    const bandMin = job.salary_min ?? job.budget_salary_min ?? null;
+    const bandMax = job.salary_max ?? job.budget_salary_max ?? null;
+    const usesPostedBand = job.salary_min != null || job.salary_max != null;
+    const bandCurrency = String(
+      (usesPostedBand ? job.currency : job.budget_currency) || job.currency || "USD",
+    ).toUpperCase();
+    const bandPeriod = usesPostedBand ? "annually" : String(job.budget_period || "monthly");
+
     if (candidate.salary_amount) {
-      candidateContext += `\nSalary: ${candidate.salary_currency || "USD"} ${candidate.salary_amount} ${candidate.salary_period || "yearly"}`;
-      dataSources.push("salary");
+      const rawSalary = `${candidate.salary_currency || "USD"} ${Number(candidate.salary_amount).toLocaleString("en-US")} ${candidate.salary_period || "annually"}`;
+      const rates = await loadCurrencyRates(sb, job.tenant_id ?? candidate.tenant_id ?? null);
+      const normalised = normaliseSalary(
+        candidate.salary_amount,
+        candidate.salary_currency,
+        candidate.salary_period,
+        bandCurrency,
+        bandPeriod,
+        rates,
+      );
+      // Guard against a pay-period assumption error on the job side: an order of
+      // magnitude apart means the two figures are not on the same basis, and a
+      // "mismatch" would be an artefact rather than a finding.
+      const reference = Number(bandMin ?? bandMax ?? 0);
+      const offScale = !!normalised && reference > 0 &&
+        (normalised.amount / reference > 10 || reference / normalised.amount > 10);
+
+      if (!normalised || offScale) {
+        candidateContext += `\nSalary expectation: ${rawSalary} — NOT COMPARABLE with this job's band (${bandCurrency} ${bandPeriod} basis). Do not score or discuss salary alignment.`;
+        dataMissing.push("salary_uncomparable");
+      } else {
+        candidateContext += normalised.converted
+          ? `\nSalary expectation: ${formatMoney(normalised.amount, normalised.currency)} ${normalised.period} (converted from ${rawSalary} at today's rate — use the converted figure for every comparison and state it as approximate)`
+          : `\nSalary expectation: ${rawSalary}`;
+        dataSources.push("salary");
+      }
     } else {
       dataMissing.push("salary");
     }
