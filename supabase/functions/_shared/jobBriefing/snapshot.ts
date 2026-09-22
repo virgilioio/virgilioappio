@@ -221,66 +221,7 @@ function norm(v: unknown): string {
 }
 
 // --- salary normalisation ---------------------------------------------------
-// Every period expressed as payments per month, so any pair can be converted.
-const PERIODS_PER_MONTH: Record<string, number> = {
-  annual: 1 / 12,
-  yearly: 1 / 12,
-  monthly: 1,
-  semimonthly: 2,
-  biweekly: 26 / 12,
-  weekly: 52 / 12,
-  daily: 260 / 12,
-  hourly: 2080 / 12,
-};
-
-function toPeriod(amount: number, from: string, to: string): number | null {
-  if (!Number.isFinite(amount)) return null;
-  const f = PERIODS_PER_MONTH[from];
-  const t = PERIODS_PER_MONTH[to];
-  if (!f || !t) return from === to ? amount : null;
-  const monthly = amount * f;
-  return monthly / t;
-}
-
-type RateMap = Map<string, number>;
-
-// Latest rate per currency pair for the tenant (falls back to global rows).
-async function loadCurrencyRates(client: SupabaseClient, tenantId: string | null): Promise<RateMap> {
-  const map: RateMap = new Map();
-  const seen = new Set<string>();
-  const { data } = await client
-    .from('currency_rates')
-    .select('tenant_id, base_currency, quote_currency, rate, rate_date')
-    .or(tenantId ? `tenant_id.eq.${tenantId},tenant_id.is.null` : 'tenant_id.is.null')
-    .order('rate_date', { ascending: false })
-    .limit(2000);
-  for (const row of data ?? []) {
-    const base = String(row.base_currency ?? '').toUpperCase();
-    const quote = String(row.quote_currency ?? '').toUpperCase();
-    const rate = Number(row.rate);
-    if (!base || !quote || !Number.isFinite(rate) || rate <= 0) continue;
-    const key = `${base}:${quote}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    map.set(key, rate);
-    if (!map.has(`${quote}:${base}`)) map.set(`${quote}:${base}`, 1 / rate);
-  }
-  return map;
-}
-
-function convertCurrency(amount: number, from: string, to: string, rates: RateMap): number | null {
-  if (from === to) return amount;
-  const direct = rates.get(`${from}:${to}`);
-  if (direct) return amount * direct;
-  // Cross through any shared pivot currency we have both legs for.
-  for (const key of rates.keys()) {
-    const [base, quote] = key.split(':');
-    if (base !== from) continue;
-    const second = rates.get(`${quote}:${to}`);
-    if (second) return amount * rates.get(key)! * second;
-  }
-  return null;
-}
+// Shared with the fit analysis: see ../salary.ts (imported at the top of this file).
 
 // --- skill matching ---------------------------------------------------------
 function skillKey(value: string): string {
