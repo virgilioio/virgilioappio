@@ -10,6 +10,7 @@ const FIT_CALL_TIMEOUT_MS = 150_000;
 const TRANSLATION_CALL_TIMEOUT_MS = 120_000;
 import { AI_MODELS } from '../_shared/aiModels.ts';
 import { mergeTranslatedProse } from './language-utils.ts';
+import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
