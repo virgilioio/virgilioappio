@@ -455,8 +455,8 @@ serve(async (req) => {
     if (requiredSkills.length) {
       jobContext += `\nREQUIRED SKILLS (adjudicate each one, in this order, using this spelling): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill}`).join(" | ")}`;
     }
-    if (job.salary_min || job.salary_max) {
-      jobContext += `\nSalary Range: ${job.currency || "USD"} ${job.salary_min || "?"} - ${job.salary_max || "?"}`;
+    if (bandMin != null || bandMax != null) {
+      jobContext += `\nSalary Band (${bandCurrency}, ${bandPeriod}): min ${bandMin ?? "?"} - max ${bandMax ?? "?"}`;
     }
     if (job.location) jobContext += `\nLocation: ${job.location}`;
     if (job.department) jobContext += `\nDepartment: ${job.department}`;
