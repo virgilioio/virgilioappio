@@ -4629,6 +4629,7 @@ export type Database = {
       }
       members: {
         Row: {
+          accepted_invite_token: string | null
           created_at: string | null
           id: string
           invitation_email_error: string | null
@@ -4646,6 +4647,7 @@ export type Database = {
           user_type: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Insert: {
+          accepted_invite_token?: string | null
           created_at?: string | null
           id?: string
           invitation_email_error?: string | null
@@ -4663,6 +4665,7 @@ export type Database = {
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Update: {
+          accepted_invite_token?: string | null
           created_at?: string | null
           id?: string
           invitation_email_error?: string | null
@@ -9098,6 +9101,14 @@ export type Database = {
       increment_term_usage: {
         Args: { table_name: string; term_name: string }
         Returns: undefined
+      }
+      invite_token_status: {
+        Args: { token_input: string }
+        Returns: {
+          invite_email: string
+          organization_name: string
+          state: string
+        }[]
       }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_in_quiet_hours: { Args: { _user_id: string }; Returns: boolean }
