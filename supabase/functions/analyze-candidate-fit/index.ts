@@ -10,6 +10,7 @@ const FIT_CALL_TIMEOUT_MS = 150_000;
 const TRANSLATION_CALL_TIMEOUT_MS = 120_000;
 import { AI_MODELS } from '../_shared/aiModels.ts';
 import { mergeTranslatedProse } from './language-utils.ts';
+import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -23,7 +24,8 @@ const SOURCE_LABELS: Record<string, string> = {
   current_role: "Candidate profile", current_company: "Candidate profile",
   profile_summary: "Candidate profile", skills: "Candidate profile",
   years_experience: "Candidate profile", location: "Candidate profile",
-  salary: "Candidate profile", work_experience: "Work experience",
+  salary: "Candidate profile", salary_uncomparable: "Candidate profile",
+  work_experience: "Work experience",
   education: "Education", resume: "Résumé", scorecards: "Scorecards",
 };
 
@@ -186,7 +188,7 @@ ANTI-HALLUCINATION RULES
 3. If information is missing on either side, describe it as "unknown" or "not provided." Do not convert missing information into a penalty, deficiency, or mismatch unless there is explicit contradictory evidence.
 4. For education: only penalize if the job explicitly requires a specific degree and the candidate data confirms they do not have it. If the job does not explicitly require a degree, do not penalize education.
 5. NEVER misstate salary figures. Use exact numeric values from the input. Do not paraphrase, round, or distort the comparison.
-6. For salary alignment: if the candidate expectation is within the posted range or within ±25% of the job maximum, treat it as negotiable and do not penalize. Only flag a salary mismatch when the candidate expectation is more than 25% above the job maximum. If salary data is missing on either side, return null for this dimension.
+6. For salary alignment, judge the expectation against the band symmetrically, using the figures exactly as given (both sides are already on the same currency and period): inside the band = aligned; up to 25% above the maximum = negotiable, no penalty; more than 25% above the maximum = mismatch, above budget; up to 25% below the minimum = a POSITIVE signal (the candidate comes in under budget, leaving headroom on the offer) — never describe it as a concern, a risk, or a red flag; more than 25% below the minimum = a negative signal worth understanding, phrased as a question to ask (it may point to a different market or industry, or to someone who does not yet know what this role pays), never as a disqualification. If salary data is missing on either side, or the candidate figure is marked NOT COMPARABLE, return null for this dimension and do not mention salary anywhere in the analysis.
 7. Every gap, mismatch, or concern must explicitly reference: (a) the exact job requirement or job datum, and (b) the exact candidate datum, or explicitly state that the data is unavailable.
 8. When evidence is ambiguous, incomplete, or missing, prefer a neutral assessment over a negative inference.
 7. The executive_summary must be 1-2 sentences ONLY, and must mention the candidate's strongest fit signal AND biggest hiring risk.
@@ -216,7 +218,7 @@ DIMENSIONS TO EVALUATE (use these exact names):
 - Experience Level (weight ~20): Years of experience, seniority level, career trajectory.
 - Role & Title Fit (weight ~15): How well current/past titles align with the target role.
 - Location Compatibility (weight ~10): Remote/onsite/hybrid alignment, timezone, relocation.
-- Salary Alignment (weight ~10): Compare using exact numeric values only. Do not approximate or paraphrase salary figures. If candidate expected salary is within ±25% of the job max or within the posted range, treat it as negotiable and do not penalize. Only flag a mismatch when the candidate expectation is more than 25% above the job maximum. If salary data is missing on either side, return null for this dimension and do not infer a mismatch.
+- Salary Alignment (weight ~10): Compare using the exact numeric values given; both sides are already expressed in the same currency and period, so never re-convert, approximate or paraphrase them. Score the band symmetrically: inside the band = aligned (high score); up to 25% above the maximum = negotiable, no penalty; more than 25% above the maximum = mismatch above budget (low score); up to 25% below the minimum = a positive signal, under budget with offer headroom (high score, stated as good news); more than 25% below the minimum = negative signal (lower score) raised as a question to explore, not a disqualification. If salary data is missing on either side, or the candidate figure is marked NOT COMPARABLE, return null for this dimension and do not infer a mismatch.
 - Company Pedigree (weight ~5): Quality and relevance of past employers.
 - Language & Communication (weight ~10): Language proficiency vs job requirements.
 
@@ -344,9 +346,44 @@ serve(async (req) => {
       candidateContext += `\nLocation: ${[candidate.location_city, candidate.location_state, candidate.location_country].filter(Boolean).join(", ")}`;
       dataSources.push("location");
     }
+    // --- Salary: reconcile currency and period before any comparison --------
+    // The posted band (salary_min/max, in jobs.currency) is entered as a yearly
+    // figure; the budget fields carry their own explicit period.
+    const bandMin = job.salary_min ?? job.budget_salary_min ?? null;
+    const bandMax = job.salary_max ?? job.budget_salary_max ?? null;
+    const usesPostedBand = job.salary_min != null || job.salary_max != null;
+    const bandCurrency = String(
+      (usesPostedBand ? job.currency : job.budget_currency) || job.currency || "USD",
+    ).toUpperCase();
+    const bandPeriod = usesPostedBand ? "annually" : String(job.budget_period || "monthly");
+
     if (candidate.salary_amount) {
-      candidateContext += `\nSalary: ${candidate.salary_currency || "USD"} ${candidate.salary_amount} ${candidate.salary_period || "yearly"}`;
-      dataSources.push("salary");
+      const rawSalary = `${candidate.salary_currency || "USD"} ${Number(candidate.salary_amount).toLocaleString("en-US")} ${candidate.salary_period || "annually"}`;
+      const rates = await loadCurrencyRates(sb, job.tenant_id ?? candidate.tenant_id ?? null);
+      const normalised = normaliseSalary(
+        candidate.salary_amount,
+        candidate.salary_currency,
+        candidate.salary_period,
+        bandCurrency,
+        bandPeriod,
+        rates,
+      );
+      // Guard against a pay-period assumption error on the job side: an order of
+      // magnitude apart means the two figures are not on the same basis, and a
+      // "mismatch" would be an artefact rather than a finding.
+      const reference = Number(bandMin ?? bandMax ?? 0);
+      const offScale = !!normalised && reference > 0 &&
+        (normalised.amount / reference > 10 || reference / normalised.amount > 10);
+
+      if (!normalised || offScale) {
+        candidateContext += `\nSalary expectation: ${rawSalary} — NOT COMPARABLE with this job's band (${bandCurrency} ${bandPeriod} basis). Do not score or discuss salary alignment.`;
+        dataMissing.push("salary_uncomparable");
+      } else {
+        candidateContext += normalised.converted
+          ? `\nSalary expectation: ${formatMoney(normalised.amount, normalised.currency)} ${normalised.period} (converted from ${rawSalary} at today's rate — use the converted figure for every comparison and state it as approximate)`
+          : `\nSalary expectation: ${rawSalary}`;
+        dataSources.push("salary");
+      }
     } else {
       dataMissing.push("salary");
     }
@@ -419,8 +456,8 @@ serve(async (req) => {
     if (requiredSkills.length) {
       jobContext += `\nREQUIRED SKILLS (adjudicate each one, in this order, using this spelling): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill}`).join(" | ")}`;
     }
-    if (job.salary_min || job.salary_max) {
-      jobContext += `\nSalary Range: ${job.currency || "USD"} ${job.salary_min || "?"} - ${job.salary_max || "?"}`;
+    if (bandMin != null || bandMax != null) {
+      jobContext += `\nSalary Band (${bandCurrency}, ${bandPeriod}): min ${bandMin ?? "?"} - max ${bandMax ?? "?"}`;
     }
     if (job.location) jobContext += `\nLocation: ${job.location}`;
     if (job.department) jobContext += `\nDepartment: ${job.department}`;
@@ -530,13 +567,16 @@ serve(async (req) => {
     };
 
     // Enforce null scores for dimensions where data is deterministically missing
-    if (dataMissing.includes('salary') && canonicalAnalysis.dimensions) {
+    const salaryUncomparable = dataMissing.includes('salary_uncomparable');
+    if ((dataMissing.includes('salary') || salaryUncomparable) && canonicalAnalysis.dimensions) {
       const salaryDim = canonicalAnalysis.dimensions.find(
         (d: any) => d.name?.toLowerCase().includes('salary')
       );
       if (salaryDim && salaryDim.score !== null) {
         salaryDim.score = null;
-        salaryDim.insight = 'No salary data available for this candidate.';
+        salaryDim.insight = salaryUncomparable
+          ? 'The salary expectation on file cannot be compared with this job\'s band (different currency or pay period, with no exchange rate available).'
+          : 'No salary data available for this candidate.';
         salaryDim.matches = [];
         salaryDim.gaps = [];
       }
