@@ -24,7 +24,8 @@ const SOURCE_LABELS: Record<string, string> = {
   current_role: "Candidate profile", current_company: "Candidate profile",
   profile_summary: "Candidate profile", skills: "Candidate profile",
   years_experience: "Candidate profile", location: "Candidate profile",
-  salary: "Candidate profile", work_experience: "Work experience",
+  salary: "Candidate profile", salary_uncomparable: "Candidate profile",
+  work_experience: "Work experience",
   education: "Education", resume: "Résumé", scorecards: "Scorecards",
 };
 
@@ -566,13 +567,16 @@ serve(async (req) => {
     };
 
     // Enforce null scores for dimensions where data is deterministically missing
-    if (dataMissing.includes('salary') && canonicalAnalysis.dimensions) {
+    const salaryUncomparable = dataMissing.includes('salary_uncomparable');
+    if ((dataMissing.includes('salary') || salaryUncomparable) && canonicalAnalysis.dimensions) {
       const salaryDim = canonicalAnalysis.dimensions.find(
         (d: any) => d.name?.toLowerCase().includes('salary')
       );
       if (salaryDim && salaryDim.score !== null) {
         salaryDim.score = null;
-        salaryDim.insight = 'No salary data available for this candidate.';
+        salaryDim.insight = salaryUncomparable
+          ? 'The salary expectation on file cannot be compared with this job\'s band (different currency or pay period, with no exchange rate available).'
+          : 'No salary data available for this candidate.';
         salaryDim.matches = [];
         salaryDim.gaps = [];
       }
