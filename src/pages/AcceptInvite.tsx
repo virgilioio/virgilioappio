@@ -50,6 +50,28 @@ export default function AcceptInvite() {
     validateInvitation()
   }, [token])
 
+  const resolveTokenState = async (): Promise<{
+    state: InviteState
+    invite_email: string
+    organization_name: string
+  }> => {
+    try {
+      const { data, error } = await (supabase as any).rpc('invite_token_status', {
+        token_input: token
+      })
+      if (error) throw error
+      const row = Array.isArray(data) ? data[0] : data
+      return {
+        state: (row?.state as InviteState) || 'unknown',
+        invite_email: row?.invite_email || '',
+        organization_name: row?.organization_name || '',
+      }
+    } catch (error) {
+      console.error('Error resolving invitation token state:', error)
+      return { state: 'unknown', invite_email: '', organization_name: '' }
+    }
+  }
+
   const validateInvitation = async () => {
     try {
       console.log('Validating invitation token:', token)
@@ -63,24 +85,30 @@ export default function AcceptInvite() {
         throw error
       }
 
-      if (data && data.length > 0) {
+      if (data && data.length > 0 && data[0].is_valid) {
         const invitation = data[0]
         console.log('Invitation validation result:', invitation)
         setInvitationData({
           ...invitation,
           system_role: (invitation as any).system_role || invitation.member_role || 'member',
+          state: 'valid',
         })
-      } else {
-        setInvitationData({
-          member_id: '',
-          organization_id: '',
-          system_role: '',
-          organization_name: '',
-          invite_email: '',
-          is_valid: false,
-          error_message: 'Invalid invitation token'
-        })
+        return
       }
+
+      // Not usable — figure out why so we can say something truthful.
+      const resolved = await resolveTokenState()
+      const fallback = data && data.length > 0 ? data[0] : null
+      setInvitationData({
+        member_id: '',
+        organization_id: '',
+        system_role: '',
+        organization_name: resolved.organization_name || fallback?.organization_name || '',
+        invite_email: resolved.invite_email || fallback?.invite_email || '',
+        is_valid: false,
+        error_message: fallback?.error_message || 'Invalid invitation token',
+        state: resolved.state === 'valid' ? 'unknown' : resolved.state,
+      })
     } catch (error) {
       console.error('Error validating invitation:', error)
       setInvitationData({
@@ -90,7 +118,8 @@ export default function AcceptInvite() {
         organization_name: '',
         invite_email: '',
         is_valid: false,
-        error_message: 'Failed to validate invitation'
+        error_message: 'Failed to validate invitation',
+        state: 'unknown'
       })
     } finally {
       setIsValidating(false)
