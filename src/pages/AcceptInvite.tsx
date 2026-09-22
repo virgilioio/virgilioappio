@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { GoGioLogo } from '@/components/GoGioLogo'
 
+type InviteState = 'valid' | 'accepted' | 'expired' | 'unknown'
+
 interface InvitationData {
   member_id: string
   organization_id: string
@@ -19,6 +21,7 @@ interface InvitationData {
   invite_email: string
   is_valid: boolean
   error_message: string
+  state?: InviteState
 }
 
 export default function AcceptInvite() {
@@ -47,6 +50,28 @@ export default function AcceptInvite() {
     validateInvitation()
   }, [token])
 
+  const resolveTokenState = async (): Promise<{
+    state: InviteState
+    invite_email: string
+    organization_name: string
+  }> => {
+    try {
+      const { data, error } = await (supabase as any).rpc('invite_token_status', {
+        token_input: token
+      })
+      if (error) throw error
+      const row = Array.isArray(data) ? data[0] : data
+      return {
+        state: (row?.state as InviteState) || 'unknown',
+        invite_email: row?.invite_email || '',
+        organization_name: row?.organization_name || '',
+      }
+    } catch (error) {
+      console.error('Error resolving invitation token state:', error)
+      return { state: 'unknown', invite_email: '', organization_name: '' }
+    }
+  }
+
   const validateInvitation = async () => {
     try {
       console.log('Validating invitation token:', token)
@@ -60,24 +85,30 @@ export default function AcceptInvite() {
         throw error
       }
 
-      if (data && data.length > 0) {
+      if (data && data.length > 0 && data[0].is_valid) {
         const invitation = data[0]
         console.log('Invitation validation result:', invitation)
         setInvitationData({
           ...invitation,
           system_role: (invitation as any).system_role || invitation.member_role || 'member',
+          state: 'valid',
         })
-      } else {
-        setInvitationData({
-          member_id: '',
-          organization_id: '',
-          system_role: '',
-          organization_name: '',
-          invite_email: '',
-          is_valid: false,
-          error_message: 'Invalid invitation token'
-        })
+        return
       }
+
+      // Not usable — figure out why so we can say something truthful.
+      const resolved = await resolveTokenState()
+      const fallback = data && data.length > 0 ? data[0] : null
+      setInvitationData({
+        member_id: '',
+        organization_id: '',
+        system_role: '',
+        organization_name: resolved.organization_name || fallback?.organization_name || '',
+        invite_email: resolved.invite_email || fallback?.invite_email || '',
+        is_valid: false,
+        error_message: fallback?.error_message || 'Invalid invitation token',
+        state: resolved.state === 'valid' ? 'unknown' : resolved.state,
+      })
     } catch (error) {
       console.error('Error validating invitation:', error)
       setInvitationData({
@@ -87,7 +118,8 @@ export default function AcceptInvite() {
         organization_name: '',
         invite_email: '',
         is_valid: false,
-        error_message: 'Failed to validate invitation'
+        error_message: 'Failed to validate invitation',
+        state: 'unknown'
       })
     } finally {
       setIsValidating(false)
@@ -322,8 +354,43 @@ export default function AcceptInvite() {
     )
   }
 
+  if (!invitationData?.is_valid && invitationData?.state === 'accepted') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
+        <Card className="w-full max-w-md card-brand">
+          <CardHeader className="text-center">
+            <GoGioLogo size="lg" className="justify-center mb-6" />
+            <div className="mx-auto mb-4 w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-success" />
+            </div>
+            <CardTitle className="text-text-primary font-poppins">You're already set up</CardTitle>
+            <CardDescription className="text-text-secondary">
+              This invitation has already been accepted and your account is active
+              {invitationData.organization_name ? ` in ${invitationData.organization_name}` : ''}.
+              Just sign in to continue.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {invitationData.invite_email && (
+              <Alert className="bg-muted/50 border-border">
+                <AlertDescription className="text-sm text-text-secondary">
+                  Sign in with <strong className="text-text-primary">{invitationData.invite_email}</strong>
+                </AlertDescription>
+              </Alert>
+            )}
+            <Button onClick={() => navigate('/auth')} className="w-full">
+              Sign in
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!invitationData?.is_valid) {
-    const isExpired = invitationData?.error_message?.toLowerCase().includes('expired')
+    const isExpired =
+      invitationData?.state === 'expired' ||
+      invitationData?.error_message?.toLowerCase().includes('expired')
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
@@ -334,12 +401,12 @@ export default function AcceptInvite() {
               <XCircle className="h-6 w-6 text-destructive" />
             </div>
             <CardTitle className="text-text-primary font-poppins">
-              {isExpired ? 'Invitation Expired' : 'Invalid Invitation'}
+              {isExpired ? 'Invitation Expired' : 'This link is no longer active'}
             </CardTitle>
             <CardDescription className="text-text-secondary">
               {isExpired 
                 ? 'This invitation link has expired. Please contact your workspace administrator for a new invitation.'
-                : (invitationData?.error_message || 'This invitation link is invalid or has already been used.')
+                : 'This invitation link can no longer be used. If you already created your account, sign in below — otherwise ask your workspace administrator to send a new invitation.'
               }
             </CardDescription>
           </CardHeader>
