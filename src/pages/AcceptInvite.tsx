@@ -354,8 +354,43 @@ export default function AcceptInvite() {
     )
   }
 
+  if (!invitationData?.is_valid && invitationData?.state === 'accepted') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
+        <Card className="w-full max-w-md card-brand">
+          <CardHeader className="text-center">
+            <GoGioLogo size="lg" className="justify-center mb-6" />
+            <div className="mx-auto mb-4 w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-success" />
+            </div>
+            <CardTitle className="text-text-primary font-poppins">You're already set up</CardTitle>
+            <CardDescription className="text-text-secondary">
+              This invitation has already been accepted and your account is active
+              {invitationData.organization_name ? ` in ${invitationData.organization_name}` : ''}.
+              Just sign in to continue.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {invitationData.invite_email && (
+              <Alert className="bg-muted/50 border-border">
+                <AlertDescription className="text-sm text-text-secondary">
+                  Sign in with <strong className="text-text-primary">{invitationData.invite_email}</strong>
+                </AlertDescription>
+              </Alert>
+            )}
+            <Button onClick={() => navigate('/auth')} className="w-full">
+              Sign in
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!invitationData?.is_valid) {
-    const isExpired = invitationData?.error_message?.toLowerCase().includes('expired')
+    const isExpired =
+      invitationData?.state === 'expired' ||
+      invitationData?.error_message?.toLowerCase().includes('expired')
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
@@ -366,12 +401,12 @@ export default function AcceptInvite() {
               <XCircle className="h-6 w-6 text-destructive" />
             </div>
             <CardTitle className="text-text-primary font-poppins">
-              {isExpired ? 'Invitation Expired' : 'Invalid Invitation'}
+              {isExpired ? 'Invitation Expired' : 'This link is no longer active'}
             </CardTitle>
             <CardDescription className="text-text-secondary">
               {isExpired 
                 ? 'This invitation link has expired. Please contact your workspace administrator for a new invitation.'
-                : (invitationData?.error_message || 'This invitation link is invalid or has already been used.')
+                : 'This invitation link can no longer be used. If you already created your account, sign in below — otherwise ask your workspace administrator to send a new invitation.'
               }
             </CardDescription>
           </CardHeader>
