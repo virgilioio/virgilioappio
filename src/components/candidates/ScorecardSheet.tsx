@@ -761,58 +761,10 @@ export function ScorecardSheet({
             .insert(responsesToInsert);
         }
 
-        // Sync salary expectations to candidate profile if applicable
-        const salaryQuestion = questions.find(q => q.answer_type === 'salary_expectations');
-        if (salaryQuestion) {
-          const salaryResponse = responses[salaryQuestion.id];
-          if (salaryResponse?.answerText) {
-            const salaryAmount = parseFloat(salaryResponse.answerText);
-            if (!isNaN(salaryAmount)) {
-              // Get candidate_id from association
-              const { data: association } = await supabase
-                .from('job_candidate_associations')
-                .select('candidate_id')
-                .eq('id', associationId)
-                .single();
-
-              if (association) {
-                await supabase
-                  .from('candidates')
-                  .update({
-                    salary_amount: salaryAmount,
-                    salary_currency: salaryQuestion.salary_config?.currency || 'USD',
-                    salary_period: salaryQuestion.salary_config?.period || 'annually'
-                  })
-                  .eq('id', association.candidate_id);
-              }
-            }
-          }
-        }
-
-        // Sync smart-field answers (phone / linkedin / location) to candidate profile.
-        const syncMap: Partial<Record<string, Record<string, any>>> = {};
-        for (const q of questions) {
-          const r = responses[q.id];
-          const val = r?.answerText?.trim();
-          if (!val) continue;
-          if (q.answer_type === 'phone') syncMap['phone'] = { phone: val };
-          else if (q.answer_type === 'linkedin') syncMap['linkedin'] = { linkedin_url: val };
-          else if (q.answer_type === 'location') syncMap['location'] = { location_city: val };
-        }
-        const profilePatch = Object.assign({}, ...Object.values(syncMap));
-        if (Object.keys(profilePatch).length > 0) {
-          const { data: assoc } = await supabase
-            .from('job_candidate_associations')
-            .select('candidate_id')
-            .eq('id', associationId)
-            .single();
-          if (assoc) {
-            await supabase
-              .from('candidates')
-              .update(profilePatch)
-              .eq('id', assoc.candidate_id);
-          }
-        }
+        // Smart-field answers belong on the candidate's profile, not only on this
+        // scorecard. One awaited, error-checked pass — a silent failure here used
+        // to leave the salary expectation off the profile with nobody the wiser.
+        await syncSmartFieldsToProfile();
       }
 
 
