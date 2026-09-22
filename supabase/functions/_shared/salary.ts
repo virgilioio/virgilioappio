@@ -1,7 +1,7 @@
 // Salary normalisation shared by the job briefing snapshot and the fit analysis.
 // Two axes: pay period and currency. Both must be reconciled before any
 // candidate expectation can be compared with a job's posted band.
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 // Every period expressed as payments per month, so any pair can be converted.
 const PERIODS_PER_MONTH: Record<string, number> = {

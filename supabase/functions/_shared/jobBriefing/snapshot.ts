@@ -7,6 +7,7 @@ import {
   TERMINAL_STATUSES,
 } from './constants.ts';
 import { classifyCandidateSource, incrementSourceBreakdown, type SourceKind } from './sourceClassifier.ts';
+import { convertCurrency, loadCurrencyRates, toPeriod, type RateMap } from '../salary.ts';
 
 export type JobSnapshot = {
   job: {
