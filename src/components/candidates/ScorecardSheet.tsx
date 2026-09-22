@@ -698,6 +698,84 @@ export function ScorecardSheet({
     return true;
   };
 
+  /**
+   * Push answered smart fields (salary expectation, phone, LinkedIn, location)
+   * onto the candidate's profile. Salary is stored with the currency and period
+   * the question was configured for — no conversion happens at capture time.
+   * Only genuinely different values are written, and a failure is reported
+   * rather than swallowed (one retry first, in case of a transient error).
+   */
+  const syncSmartFieldsToProfile = async () => {
+    const patch: Record<string, any> = {};
+
+    const salaryQuestion = questions.find(q => q.answer_type === 'salary_expectations');
+    if (salaryQuestion) {
+      const raw = responses[salaryQuestion.id]?.answerText?.replace(/[,\s]/g, '');
+      const amount = raw ? parseFloat(raw) : NaN;
+      if (Number.isFinite(amount) && amount > 0) {
+        patch.salary_amount = amount;
+        patch.salary_currency = salaryQuestion.salary_config?.currency || 'USD';
+        patch.salary_period = salaryQuestion.salary_config?.period || 'annually';
+      }
+    }
+
+    for (const q of questions) {
+      const val = responses[q.id]?.answerText?.trim();
+      if (!val) continue;
+      if (q.answer_type === 'phone') patch.phone = val;
+      else if (q.answer_type === 'linkedin') patch.linkedin_url = val;
+      else if (q.answer_type === 'location') patch.location_city = val;
+    }
+
+    if (Object.keys(patch).length === 0) return;
+
+    const { data: assoc, error: assocError } = await supabase
+      .from('job_candidate_associations')
+      .select('candidate_id')
+      .eq('id', associationId)
+      .maybeSingle();
+
+    if (assocError || !assoc?.candidate_id) {
+      console.error('Smart-field profile sync: candidate not resolved', assocError);
+      toast({
+        title: 'Answers saved on the scorecard only',
+        description: "We couldn't reach this candidate's profile, so the salary expectation and contact details were not copied there.",
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const { data: current } = await supabase
+      .from('candidates')
+      .select('salary_amount, salary_currency, salary_period, phone, linkedin_url, location_city')
+      .eq('id', assoc.candidate_id)
+      .maybeSingle();
+
+    if (current) {
+      const unchanged = Object.keys(patch).every(key => {
+        const existing = (current as Record<string, any>)[key];
+        if (key === 'salary_amount') return Number(existing) === Number(patch[key]);
+        return String(existing ?? '') === String(patch[key]);
+      });
+      if (unchanged) return;
+    }
+
+    const write = () => supabase.from('candidates').update(patch).eq('id', assoc.candidate_id);
+    let { error } = await write();
+    if (error) ({ error } = await write());
+
+    if (error) {
+      console.error('Smart-field profile sync failed', error);
+      toast({
+        title: 'Saved on the scorecard, not on the profile',
+        description: patch.salary_amount != null
+          ? "The salary expectation was recorded on this scorecard but couldn't be copied to the candidate's profile, so Gio Fit won't see it yet."
+          : "The contact details were recorded on this scorecard but couldn't be copied to the candidate's profile.",
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleSave = async () => {
     if (!validateRequiredQuestions()) {
       toast({ 
