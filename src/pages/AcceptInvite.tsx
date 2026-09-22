@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { GoGioLogo } from '@/components/GoGioLogo'
 
+type InviteState = 'valid' | 'accepted' | 'expired' | 'unknown'
+
 interface InvitationData {
   member_id: string
   organization_id: string
@@ -19,6 +21,7 @@ interface InvitationData {
   invite_email: string
   is_valid: boolean
   error_message: string
+  state?: InviteState
 }
 
 export default function AcceptInvite() {
