@@ -786,7 +786,7 @@ export default function CalendarPage() {
   }
 
   // ─── Render helpers ───
-  function renderEvent(e: CalEvent, lane = 0, lanes = 1) {
+  function renderEvent(e: CalEvent, lane = 0, lanes = 1, dayIndex = 0) {
     const startMin = e.start.getHours() * 60 + e.start.getMinutes()
     const endMin = e.end.getHours() * 60 + e.end.getMinutes()
     const top = ((startMin - DAY_START * 60) / 60) * HOUR_PX
