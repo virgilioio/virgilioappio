@@ -31,9 +31,10 @@ export function DossierExperienceGroup({ group, bordered = false }: { group: Exp
       </div>
       <div className="dossier-experience-body min-w-0">
         <p className="break-words font-poppins text-[14.5px] font-semibold text-fit-ink">{group.company}{multi && <span className="font-medium text-fit-subtle"> · {group.entries.length} roles</span>}</p>
-        <div className="mt-2.5 min-w-0 space-y-2.5">
-          {group.entries.map((entry) => (
-            <div key={entry.id} className="dossier-experience-role min-w-0">
+        <div className={`mt-2.5 min-w-0 ${multi ? 'border-l border-fit-row-border pl-3.5' : ''}`}>
+          {group.entries.map((entry, roleIndex) => (
+            <div key={entry.id} className={`dossier-experience-role relative min-w-0 ${roleIndex ? 'mt-3' : ''}`}>
+              {multi && <span aria-hidden className={`absolute -left-[17px] top-[7px] h-[5px] w-[5px] rounded-full ${entry.is_current || !entry.end_date ? 'bg-primary' : 'bg-fit-separator'}`} />}
               <p className="break-words font-inter text-[12.5px] font-semibold text-fit-ink">{getExperienceTitle(entry)}{multi && <span className="font-normal text-fit-subtle"> · {formatRoleDates(entry)}</span>}</p>
               {entry.description && <p className="mt-[7px] whitespace-pre-line text-pretty break-words font-inter text-[12.5px] leading-[1.6] text-fit-muted">{stripHtml(entry.description)}</p>}
               {entry.supports && entry.supports.length > 0 && <div className="dossier-experience-supports mt-1.5 flex flex-wrap gap-x-3 gap-y-1">{entry.supports.map((support) => <span key={support.label} className="inline-flex items-center gap-1.5 font-inter text-[10.5px] text-fit-muted"><span className={`h-1.5 w-1.5 shrink-0 ${support.colorClass ?? 'bg-fit-violet-deep'}`} />supports {support.label}</span>)}</div>}
