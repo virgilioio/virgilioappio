@@ -13,10 +13,18 @@ import {
   CalendarPlus,
   Briefcase,
   Users,
+  Clock,
   CalendarClock,
+  CalendarCheck,
   CheckCircle2,
+  Check,
+  FileText,
+  Send,
+  Link as LinkIcon,
+  User,
+  ExternalLink,
   Video,
-  MoreHorizontal,
+  Ellipsis,
   RefreshCw,
   X,
 } from 'lucide-react'
@@ -246,7 +254,8 @@ export default function CalendarPage() {
   const [popoverAnchor, setPopoverAnchor] = useState<{ top: number; left: number; right: number } | null>(null)
   const [menu, setMenu] = useState<{
     eventId: string
-    anchor: { top: number; bottom: number; left: number; right: number }
+    dayIndex: number
+    eventTop: number
   } | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dialog, setDialog] = useState<{
@@ -550,50 +559,60 @@ export default function CalendarPage() {
   function menuItemsFor(e: CalEvent): { items: EventMenuItem[]; note?: string } {
     if (e.type === 'busy') {
       return {
-        items: [{ action: 'open-google', label: 'Open in Google Calendar' }],
+        items: [{ action: 'open-google', label: 'Open in Google Calendar', Icon: ExternalLink }],
         note: 'External event — edit it in Google Calendar.',
       }
     }
     if (!canActOn(e)) {
       return {
-        items: [{ action: 'view-candidate', label: 'View candidate' }],
+        items: [{ action: 'view-candidate', label: 'View candidate', Icon: User }],
         note: `${e.interviewerName || 'Another teammate'} owns this event.`,
       }
     }
     if (isPast(e)) {
       return {
         items: [
-          { action: 'rebook', label: 'Rebook…' },
-          ...(e.candidateId ? [{ action: 'view-candidate' as const, label: 'View candidate' }] : []),
+          { action: 'rebook', label: 'Rebook…', Icon: CalendarClock },
+          ...(e.candidateId
+            ? [{ action: 'view-candidate' as const, label: 'View candidate', Icon: User }]
+            : []),
         ],
       }
     }
     if (e.type === 'hold') {
       return {
         items: [
-          { action: 'confirm', label: 'Confirm slot…' },
-          { action: 'resend', label: 'Resend slot options…' },
-          { action: 'reschedule', label: 'Reschedule…' },
-          { action: 'release', label: 'Release hold…', danger: true, dividerBefore: true },
+          { action: 'confirm', label: 'Confirm slot…', Icon: CalendarCheck },
+          { action: 'resend', label: 'Resend slot options…', Icon: Send },
+          { action: 'reschedule', label: 'Reschedule…', Icon: CalendarClock },
+          { action: 'release', label: 'Release hold…', Icon: X, danger: true, separatorBefore: true },
         ],
       }
     }
     const link = (e.raw as any).google_meet_link || e.raw.meeting_location
     return {
       items: [
-        { action: 'reschedule', label: 'Reschedule…' },
-        { action: 'resend', label: 'Resend invite…' },
+        { action: 'reschedule', label: 'Reschedule…', Icon: CalendarClock },
+        { action: 'resend', label: 'Resend invite…', Icon: Send },
         ...(link && /^https?:\/\//.test(link)
-          ? [{ action: 'copy-link' as const, label: 'Copy meeting link' }]
+          ? [{ action: 'copy-link' as const, label: 'Copy meeting link', Icon: LinkIcon }]
           : []),
         ...(e.type === 'interview' && e.candidateId
-          ? [{ action: 'view-candidate' as const, label: 'View candidate', dividerBefore: true }]
+          ? [
+              {
+                action: 'view-candidate' as const,
+                label: 'View candidate',
+                Icon: User,
+                separatorBefore: true,
+              },
+            ]
           : []),
         {
-          action: 'cancel',
+          action: 'cancel' as const,
           label: e.type === 'debrief' ? 'Cancel debrief…' : 'Cancel interview…',
+          Icon: X,
           danger: true,
-          dividerBefore: true,
+          separatorBefore: true,
         },
       ],
     }
@@ -760,14 +779,14 @@ export default function CalendarPage() {
         (other.interviewerId === e.interviewerId || other.interviewerId === user?.id),
     )
     if (!clash) return null
-    return `Overlaps ${clash.title} (${format(clash.start, 'HH:mm')}–${format(
+    return `Overlaps ${clash.title} (${format(clash.start, 'H:mm')}–${format(
       clash.end,
-      'HH:mm',
+      'H:mm',
     )}). You can still move it.`
   }
 
   // ─── Render helpers ───
-  function renderEvent(e: CalEvent, lane = 0, lanes = 1) {
+  function renderEvent(e: CalEvent, lane = 0, lanes = 1, dayIndex = 0) {
     const startMin = e.start.getHours() * 60 + e.start.getMinutes()
     const endMin = e.end.getHours() * 60 + e.end.getMinutes()
     const top = ((startMin - DAY_START * 60) / 60) * HOUR_PX
@@ -789,35 +808,29 @@ export default function CalendarPage() {
         onPointerDown={ev => onEventPointerDown(e, ev)}
         onClick={ev => {
           if (drag?.active) return
-          const btn = ev.currentTarget.getBoundingClientRect()
-          const container = gridBodyRef.current?.getBoundingClientRect()
-          if (container) {
-            setPopoverAnchor({
-              top: btn.top - container.top,
-              left: btn.left - container.left,
-              right: btn.right - container.left,
-            })
-          } else {
-            setPopoverAnchor(null)
-          }
-          setSelectedEventId(e.id)
+          ev.stopPropagation()
+          setMenu(null)
+          setPopoverAnchor(null)
+          setSelectedEventId(prev => (prev === e.id ? null : e.id))
         }}
         title={`${e.title} · ${format(e.start, 'H:mm')}–${format(e.end, 'H:mm')}${
           e.jobTitle ? ` · ${e.jobTitle}` : ''
         }`}
-        className="group absolute text-left overflow-hidden focus:outline-none focus:ring-2"
+        className="group absolute text-left overflow-hidden focus:outline-none"
         style={{
           top,
           height,
           left: `calc(${leftPct}% + 3px)`,
           width: `calc(${laneWidthPct}% - 6px)`,
-          zIndex: 1 + lane,
+          zIndex: menuOpen || selected ? 5 : 1 + lane,
           background: isHold ? '#FFFFFF' : t.bg,
           color: t.text,
           borderRadius: 7,
-          padding: short ? '3px 6px' : '5px 8px',
+          padding: short ? '3px 22px 3px 8px' : '5px 22px 5px 8px',
           opacity: isDragging ? 0.35 : 1,
           touchAction: 'none',
+          outline: menuOpen || selected ? `2px solid ${t.edge}` : undefined,
+          outlineOffset: menuOpen || selected ? 1 : undefined,
           boxShadow: lanes > 1 ? '0 1px 3px -1px rgba(13,13,9,0.18)' : undefined,
           ...(isHold
             ? { border: `1.5px dashed ${t.edge}` }
@@ -830,7 +843,6 @@ export default function CalendarPage() {
             fontSize: 10.5,
             fontWeight: 600,
             lineHeight: 1.2,
-            paddingRight: 22,
             display: '-webkit-box',
             WebkitLineClamp: short ? 1 : 2,
             WebkitBoxOrient: 'vertical',
@@ -864,45 +876,41 @@ export default function CalendarPage() {
           role="button"
           tabIndex={-1}
           aria-label="Event actions"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
           onPointerDown={ev => {
             ev.stopPropagation()
           }}
           onClick={ev => {
             ev.stopPropagation()
-            const btn = (ev.currentTarget as HTMLElement).getBoundingClientRect()
-            const container = gridBodyRef.current?.getBoundingClientRect()
-            if (!container) return
-            setMenu({
-              eventId: e.id,
-              anchor: {
-                top: btn.top - container.top,
-                bottom: btn.bottom - container.top,
-                left: btn.left - container.left,
-                right: btn.right - container.left + 8,
-              },
-            })
             setSelectedEventId(null)
             setPopoverAnchor(null)
+            setMenu(prev =>
+              prev?.eventId === e.id ? null : { eventId: e.id, dayIndex, eventTop: top },
+            )
           }}
           className={cn(
-            'absolute grid place-items-center transition-opacity',
-            menuOpen || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 sm:opacity-0',
+            'absolute grid place-items-center transition-opacity duration-[120ms] [@media(hover:none)]:opacity-100',
+            menuOpen || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
           )}
           style={{
-            top: 3,
+            top: height < 34 ? 1 : 3,
             right: 3,
             width: 18,
             height: 18,
             borderRadius: 5,
-            background: 'rgba(255,255,255,0.7)',
+            padding: 0,
+            border: 'none',
+            background: menuOpen ? 'rgba(13,13,9,0.12)' : 'rgba(255,255,255,0.7)',
             color: t.text,
           }}
         >
-          <MoreHorizontal size={12} strokeWidth={2} />
+          <Ellipsis size={12} strokeWidth={2.5} />
         </span>
       </button>
     )
   }
+
 
   // ─── UI ───
   const weekRangeLabel = `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'd, yyyy')}`
@@ -928,7 +936,7 @@ export default function CalendarPage() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div className="min-h-[100dvh] w-full" style={{ background: C.pageBg }}>
+        <div className="relative min-h-[100dvh] w-full" style={{ background: C.pageBg }}>
           <div style={{ padding: '24px 28px' }} className="mx-auto max-w-[1500px]">
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1345,7 +1353,22 @@ export default function CalendarPage() {
                               </div>
                             )}
                             {/* Events */}
-                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes))}
+                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes, di))}
+
+                            {/* Event menu — lives in the day column so it scrolls with the grid */}
+                            {menu && menuEvent && menu.dayIndex === di && (
+                              <EventMenu
+                                placement={
+                                  menu.eventTop > (DAY_END - DAY_START) * HOUR_PX - 230
+                                    ? { bottom: (DAY_END - DAY_START) * HOUR_PX - menu.eventTop + 4 }
+                                    : { top: menu.eventTop + 24 }
+                                }
+                                items={menuItemsFor(menuEvent).items}
+                                note={menuItemsFor(menuEvent).note}
+                                onSelect={action => handleMenuAction(menuEvent, action)}
+                                onClose={() => setMenu(null)}
+                              />
+                            )}
 
                             {/* Drag ghost */}
                             {dragGhost && drag?.dayIndex === di && (
@@ -1381,27 +1404,13 @@ export default function CalendarPage() {
                         )
                       })}
 
-                      {/* Event menu */}
-                      {menu && menuEvent && (
-                        <EventMenu
-                          anchor={menu.anchor}
-                          containerEl={gridBodyRef.current}
-                          items={menuItemsFor(menuEvent).items}
-                          note={menuItemsFor(menuEvent).note}
-                          onSelect={action => handleMenuAction(menuEvent, action)}
-                          onClose={() => setMenu(null)}
-                        />
-                      )}
-
-                      {/* Event detail popover */}
+                      {/* Event detail popover — docked top-right of the grid card */}
                       {selectedEvent && (
                         <EventPopover
                           event={selectedEvent}
                           tone={tone(selectedEvent)}
                           isMine={selectedEvent.interviewerId === user?.id}
                           scheduledByMe={selectedEvent.scheduledById === user?.id}
-                          anchor={popoverAnchor}
-                          containerEl={gridBodyRef.current}
                           onClose={closePopover}
                           onJoin={() => {
                             const loc =
@@ -1411,10 +1420,22 @@ export default function CalendarPage() {
                               showToast({ title: 'Opening the meeting' })
                             }
                           }}
-                          onReschedule={() => setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })}
-                          onConfirmSlot={() => setDialog({ eventId: selectedEvent.id, mode: 'confirm' })}
-                          onRelease={() => setDialog({ eventId: selectedEvent.id, mode: 'cancel' })}
-                          onOpenNotes={() => handleMenuAction(selectedEvent, 'open-notes')}
+                          onReschedule={() => {
+                            closePopover()
+                            setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
+                          }}
+                          onConfirmSlot={() => {
+                            closePopover()
+                            setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
+                          }}
+                          onRelease={() => {
+                            closePopover()
+                            setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
+                          }}
+                          onOpenNotes={() => {
+                            closePopover()
+                            handleMenuAction(selectedEvent, 'open-notes')
+                          }}
                           canAct={canActOn(selectedEvent)}
                         />
                       )}
@@ -1466,6 +1487,7 @@ export default function CalendarPage() {
                   : []
               }
               overlapNotice={overlapNoticeFor(dialogEvent, dialog.newStart, dialog.newEnd)}
+              weekDays={days}
               submitting={isSubmitting}
               onCancel={() => {
                 setDialog(null)
@@ -1509,13 +1531,12 @@ export default function CalendarPage() {
 }
 
 // ─── Event detail popover ────────────────────────────────────
+/** Docked at the top-right of the week-grid card. Opens on click, never on hover. */
 function EventPopover({
   event,
   tone,
   isMine,
   scheduledByMe,
-  anchor,
-  containerEl,
   canAct,
   onClose,
   onJoin,
@@ -1528,8 +1549,6 @@ function EventPopover({
   tone: CalendarTone
   isMine: boolean
   scheduledByMe: boolean
-  anchor: { top: number; left: number; right: number } | null
-  containerEl: HTMLDivElement | null
   canAct: boolean
   onClose: () => void
   onJoin: () => void
@@ -1539,29 +1558,21 @@ function EventPopover({
   onOpenNotes: () => void
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
-  const WIDTH = 280
-  const GAP = 8
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
   useEffect(() => {
-    if (!anchor || !containerEl) {
-      setPos(null)
-      return
+    const onPointerDown = (ev: PointerEvent) => {
+      if (cardRef.current && !cardRef.current.contains(ev.target as Node)) onClose()
     }
-    const containerW = containerEl.clientWidth
-    const containerH = containerEl.clientHeight
-    const cardH = cardRef.current?.offsetHeight ?? 260
-
-    let left = anchor.right + GAP
-    if (left + WIDTH > containerW) left = anchor.left - GAP - WIDTH
-    left = Math.max(GAP, Math.min(left, Math.max(GAP, containerW - WIDTH - GAP)))
-
-    let top = anchor.top
-    if (top + cardH > containerH) top = containerH - cardH - GAP
-    top = Math.max(GAP, top)
-
-    setPos({ top, left })
-  }, [anchor, containerEl, event.id])
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') onClose()
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
 
   const candidatePath =
     event.candidateId && event.jobId
@@ -1570,183 +1581,258 @@ function EventPopover({
       ? `/candidates/${event.candidateId}`
       : null
 
-  // Title with the candidate's name as a link to their in-job profile
-  const kind = event.title.includes(' · ') ? event.title.split(' · ')[0] : event.title
   const typeLabel = TYPE_LABEL[event.type].replace(/s$/, '')
+  const kind = event.candidateName && event.title.includes(' · ') ? event.title.split(' · ')[0] : null
+  const link = (event.raw as any).google_meet_link || event.raw.meeting_location
+  const hasLink = !!link && /^https?:\/\//.test(link)
+  const notEnded = event.end.getTime() > Date.now()
 
   const ownerLine = (() => {
-    if (event.type === 'busy') return null
-    if (isMine) return null
+    if (event.type === 'busy' || isMine) return null
     const who = event.interviewerName || 'a teammate'
-    return scheduledByMe ? `Scheduled by you for ${who}` : `${who}'s ${typeLabel.toLowerCase()}`
+    return scheduledByMe
+      ? `Scheduled by you for ${who}`
+      : `${who}'s ${typeLabel.toLowerCase()}`
   })()
 
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontFamily: 'Inter, sans-serif',
+    fontWeight: 400,
+    fontSize: 11.5,
+    color: '#5A6072',
+  }
+
+  const btnBase: React.CSSProperties = {
+    height: 28,
+    padding: '0 10px',
+    borderRadius: 8,
+    fontFamily: 'Poppins, sans-serif',
+    fontWeight: 500,
+    fontSize: 12,
+    letterSpacing: '-0.005em',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    whiteSpace: 'nowrap',
+    cursor: 'pointer',
+  }
+  const primaryBtn: React.CSSProperties = {
+    ...btnBase,
+    background: '#0d0d09',
+    color: '#fffcf9',
+    border: '1px solid transparent',
+    boxShadow: '0 1px 2px rgba(13,13,9,0.08)',
+  }
+  const secondaryBtn: React.CSSProperties = {
+    ...btnBase,
+    background: '#fff',
+    color: '#1F2230',
+    border: '1px solid #E0DDD3',
+  }
+
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
+    <div
+      ref={cardRef}
+      onPointerDown={ev => ev.stopPropagation()}
+      onClick={ev => ev.stopPropagation()}
+      style={{
+        position: 'absolute',
+        top: 70,
+        right: 16,
+        width: 290,
+        background: '#fff',
+        border: '1px solid #E7E8EE',
+        borderRadius: 12,
+        overflow: 'hidden',
+        boxShadow: '0 16px 40px -12px rgba(13,13,9,0.25)',
+        zIndex: 30,
+      }}
+    >
+      {/* Header */}
       <div
-        ref={cardRef}
-        className="absolute z-50 bg-white"
         style={{
-          top: pos?.top ?? anchor?.top ?? 12,
-          left: pos?.left ?? anchor?.right ?? 12,
-          width: WIDTH,
-          visibility: pos ? 'visible' : 'hidden',
-          borderRadius: 12,
-          border: `1px solid ${C.border}`,
-          boxShadow: '0 16px 40px -12px rgba(13,13,9,0.25)',
+          padding: '12px 14px',
+          borderBottom: '1px solid #F1F0EC',
+          display: 'flex',
+          gap: 8,
+          alignItems: 'flex-start',
         }}
       >
-        {ownerLine && (
+        <span
+          style={{ width: 8, height: 8, borderRadius: 3, background: tone.edge, marginTop: 4, flexShrink: 0 }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div
-            className="flex items-center gap-2 px-3.5 pt-3 font-inter"
-            style={{ fontSize: 11, color: C.muted }}
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600,
+              fontSize: 12.5,
+              color: '#1F2230',
+              lineHeight: 1.4,
+            }}
           >
-            <span style={{ width: 8, height: 8, borderRadius: 3, background: tone.edge }} />
+            {event.candidateName && candidatePath ? (
+              <>
+                {kind ? `${kind} · ` : ''}
+                <Link
+                  to={candidatePath}
+                  title={`Open ${event.candidateName}'s profile for ${event.jobTitle || 'this job'}`}
+                  style={{
+                    color: '#5B21B6',
+                    textDecoration: 'underline',
+                    textDecorationColor: '#D7C5FB',
+                    textUnderlineOffset: 2,
+                  }}
+                  onMouseEnter={ev => {
+                    ev.currentTarget.style.color = '#6F3FF5'
+                    ev.currentTarget.style.textDecorationColor = 'currentColor'
+                  }}
+                  onMouseLeave={ev => {
+                    ev.currentTarget.style.color = '#5B21B6'
+                    ev.currentTarget.style.textDecorationColor = '#D7C5FB'
+                  }}
+                >
+                  {event.candidateName}
+                </Link>
+              </>
+            ) : (
+              event.title
+            )}
+          </div>
+          <div
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 400,
+              fontSize: 11,
+              color: '#8B8F9E',
+              marginTop: 2,
+            }}
+          >
+            {format(event.start, 'EEE MMM d')} · {format(event.start, 'H:mm')}–
+            {format(event.end, 'H:mm')} · {typeLabel}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', lineHeight: 0 }}
+        >
+          <X size={13} strokeWidth={2.25} color="#8B8F9E" />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {ownerLine && (
+          <div style={rowStyle}>
+            <span style={{ width: 12, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 3, background: tone.edge }} />
+            </span>
             {ownerLine}
           </div>
         )}
-
-        <div className="flex items-start justify-between gap-2 px-3.5 pt-3.5">
-          <div className="flex min-w-0 items-start gap-2">
-            <span
-              className="mt-[5px] flex-shrink-0"
-              style={{ width: 8, height: 8, borderRadius: 3, background: tone.edge }}
-            />
-            <div className="min-w-0">
-              <div className="font-inter" style={{ fontSize: 12.5, fontWeight: 600, color: C.ink }}>
-                {event.candidateName && candidatePath ? (
-                  <>
-                    {kind} ·{' '}
-                    <Link
-                      to={candidatePath}
-                      onClick={ev => ev.stopPropagation()}
-                      className="hover:!decoration-solid"
-                      style={{
-                        color: C.purpleText,
-                        textDecoration: 'underline',
-                        textDecorationColor: '#D7C5FB',
-                        textUnderlineOffset: 2,
-                      }}
-                      onMouseEnter={ev => {
-                        ev.currentTarget.style.textDecorationColor = C.purple
-                      }}
-                      onMouseLeave={ev => {
-                        ev.currentTarget.style.textDecorationColor = '#D7C5FB'
-                      }}
-                    >
-                      {event.candidateName}
-                    </Link>
-                  </>
-                ) : (
-                  <span className="block truncate">{event.title}</span>
-                )}
-              </div>
-              <div className="font-inter mt-0.5" style={{ fontSize: 11, color: C.tertiary }}>
-                {format(event.start, 'EEE')} · {format(event.start, 'H:mm')}–
-                {format(event.end, 'H:mm')} · {typeLabel}
-              </div>
-            </div>
+        {event.jobTitle && (
+          <div style={rowStyle}>
+            <Briefcase size={12} strokeWidth={2} color="#8B8F9E" style={{ flexShrink: 0 }} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {event.jobTitle}
+            </span>
           </div>
-          <button onClick={onClose} className="text-[#8B8F9E] hover:text-[#0d0d09]" aria-label="Close">
-            <X size={14} strokeWidth={2} />
-          </button>
-        </div>
-
-        <div className="px-3.5 py-3 space-y-1.5">
-          {event.jobTitle && (
-            <div className="flex items-center gap-2 font-inter" style={{ fontSize: 11.5, color: C.muted }}>
-              <Briefcase size={12} strokeWidth={2} />
-              <span className="truncate">{event.jobTitle}</span>
-            </div>
-          )}
-          {event.interviewerName && (
-            <div className="flex items-center gap-2 font-inter" style={{ fontSize: 11.5, color: C.muted }}>
-              <Users size={12} strokeWidth={2} />
-              <span className="truncate">{event.interviewerName}</span>
-            </div>
-          )}
-          {event.type === 'hold' && (
-            <div
-              className="mt-2 font-inter"
+        )}
+        {event.interviewerName && (
+          <div style={rowStyle}>
+            <Users size={12} strokeWidth={2} color="#8B8F9E" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {event.interviewerName}
+            </span>
+            <span
               style={{
-                background: C.amberBg,
-                color: C.amberText,
-                borderRadius: 7,
-                fontSize: 11,
-                padding: '6px 8px',
+                width: 18,
+                height: 18,
+                borderRadius: 999,
+                background: tone.edge,
+                boxShadow: '0 0 0 2px #fff',
+                display: 'grid',
+                placeItems: 'center',
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight: 600,
+                fontSize: 10,
+                color: '#fff',
+                flexShrink: 0,
               }}
             >
-              Tentative slot — awaiting candidate pick.
-            </div>
-          )}
-          {event.type === 'busy' && (
-            <div className="font-inter" style={{ fontSize: 10.5, color: C.tertiary, fontStyle: 'italic' }}>
-              Synced from Google Calendar
-            </div>
-          )}
-        </div>
+              {event.interviewerName.slice(0, 1).toUpperCase()}
+            </span>
+          </div>
+        )}
+        {event.type === 'hold' && (
+          <div
+            style={{
+              ...rowStyle,
+              alignItems: 'flex-start',
+              background: '#FEF3C7',
+              color: '#92400E',
+              borderRadius: 7,
+              padding: '6px 9px',
+            }}
+          >
+            <Clock size={12} strokeWidth={2} style={{ marginTop: 1, flexShrink: 0 }} />
+            Tentative slot — awaiting candidate pick.
+          </div>
+        )}
 
-        {event.type !== 'busy' && (
-          <div className="flex items-center justify-end gap-2 border-t px-3.5 py-2.5" style={{ borderColor: C.hairline }}>
-            {event.type === 'interview' && (
+        {/* Actions */}
+        {event.type === 'busy' ? (
+          <div
+            style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 11, color: '#8B8F9E' }}
+          >
+            Synced from Google Calendar
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+            {event.type === 'interview' && hasLink && (
               <>
-                {canAct && event.start.getTime() > Date.now() && (
-                  <button
-                    type="button"
-                    onClick={onReschedule}
-                    className="h-7 rounded-lg border bg-white px-2.5 font-inter text-[11.5px] font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
-                    style={{ borderColor: C.border }}
-                  >
-                    Reschedule
+                <button type="button" onClick={onJoin} style={primaryBtn}>
+                  <Video size={14} strokeWidth={2} /> Join
+                </button>
+                {canAct && notEnded && (
+                  <button type="button" onClick={onReschedule} style={secondaryBtn}>
+                    <CalendarClock size={14} strokeWidth={2} /> Reschedule
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={onJoin}
-                  className="inline-flex h-7 items-center gap-1 rounded-lg px-2.5 font-inter text-[11.5px] font-medium text-white"
-                  style={{ background: C.purple }}
-                >
-                  <Video size={11} strokeWidth={2} /> Join
-                </button>
               </>
+            )}
+            {event.type === 'interview' && !hasLink && canAct && notEnded && (
+              <button type="button" onClick={onReschedule} style={secondaryBtn}>
+                <CalendarClock size={14} strokeWidth={2} /> Reschedule
+              </button>
             )}
             {event.type === 'hold' && canAct && (
               <>
-                <button
-                  type="button"
-                  onClick={onRelease}
-                  className="h-7 rounded-lg border bg-white px-2.5 font-inter text-[11.5px] font-medium text-[#0d0d09]"
-                  style={{ borderColor: C.border }}
-                >
-                  Release
+                <button type="button" onClick={onConfirmSlot} style={primaryBtn}>
+                  <Check size={14} strokeWidth={2} /> Confirm slot
                 </button>
-                <button
-                  type="button"
-                  onClick={onConfirmSlot}
-                  className="h-7 rounded-lg px-2.5 font-inter text-[11.5px] font-medium text-white"
-                  style={{ background: C.purple }}
-                >
-                  Confirm slot
+                <button type="button" onClick={onRelease} style={secondaryBtn}>
+                  <X size={14} strokeWidth={2} /> Release
                 </button>
               </>
             )}
             {event.type === 'debrief' && (
-              <button
-                type="button"
-                onClick={onOpenNotes}
-                className="h-7 rounded-lg px-2.5 font-inter text-[11.5px] font-medium text-white"
-                style={{ background: C.purple }}
-              >
-                Open notes
+              <button type="button" onClick={onOpenNotes} style={secondaryBtn}>
+                <FileText size={14} strokeWidth={2} /> Open notes
               </button>
             )}
           </div>
         )}
       </div>
-    </>
+    </div>
   )
 }
+
 
 // ─── Right rail ──────────────────────────────────────────────
 function RailNeedsScheduling({
