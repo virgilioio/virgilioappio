@@ -190,8 +190,8 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         resolvedOutputLanguage: outputLanguage || jobOutputLanguage || workspaceOutputLanguage || 'en',
         isStale,
         staleReason,
-        isRejected: Boolean(assoc.rejected_at) || assoc.status === 'rejected',
-        rejectedAt: assoc.rejected_at,
+        isRejected: assoc.status === 'rejected',
+        rejectedAt: assoc.status === 'rejected' ? assoc.rejected_at : null,
       }
     },
     enabled: !!candidateId && !!jobId,
