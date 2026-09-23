@@ -292,6 +292,7 @@ interface DragState {
   startMinutes: number
   targetDateKey?: string
   sourceDateKey?: string
+  frozen?: boolean
 }
 
 // ─── Page ────────────────────────────────────────────────────
@@ -299,14 +300,50 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const { user, organizationId } = useAuth()
   const permissions = usePermissions()
-  const { bookings, isLoading } = useScheduledBookings(undefined, permissions)
+  const [view, setViewState] = useState<ViewMode>(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY)
+      return saved === 'day' || saved === 'week' || saved === 'month' ? saved : 'week'
+    } catch {
+      return 'week'
+    }
+  })
+  const [anchorDate, setAnchorDate] = useState<Date>(() => localDay(new Date()))
+
+  const weekStart = useMemo(() => startOfWeek(anchorDate, { weekStartsOn: 1 }), [anchorDate])
+  const weekEnd = useMemo(() => addDays(weekStart, 4), [weekStart])
+  const timeColumns = useMemo(
+    () => (view === 'day' ? [localDay(anchorDate)] : Array.from({ length: 5 }, (_, i) => addDays(weekStart, i))),
+    [anchorDate, view, weekStart],
+  )
+  const monthStart = useMemo(() => startOfMonth(anchorDate), [anchorDate])
+  const monthEnd = useMemo(() => endOfMonth(anchorDate), [anchorDate])
+  const monthGridStart = useMemo(() => startOfWeek(monthStart, { weekStartsOn: 1 }), [monthStart])
+  const monthGridEnd = useMemo(() => endOfWeek(monthEnd, { weekStartsOn: 1 }), [monthEnd])
+  const monthDays = useMemo(() => {
+    const total = Math.round((monthGridEnd.getTime() - monthGridStart.getTime()) / 86400000) + 1
+    return Array.from({ length: total }, (_, i) => addDays(monthGridStart, i))
+  }, [monthGridStart, monthGridEnd])
+  const visibleStart = useMemo(
+    () => (view === 'month' ? localDay(monthGridStart) : view === 'week' ? localDay(weekStart) : localDay(anchorDate)),
+    [anchorDate, monthGridStart, view, weekStart],
+  )
+  const visibleEndExclusive = useMemo(
+    () =>
+      view === 'month'
+        ? addDays(localDay(monthGridEnd), 1)
+        : view === 'week'
+        ? addDays(localDay(weekEnd), 1)
+        : addDays(localDay(anchorDate), 1),
+    [anchorDate, monthGridEnd, view, weekEnd],
+  )
+
+  const { bookings, isLoading } = useScheduledBookings(undefined, permissions, visibleStart, visibleEndExclusive)
   const { jobs } = useJobs()
   const { data: needsScheduling = [] } = useNeedsSchedulingQueue()
   const { members, colorIndexByUser, nameByUser } = useWorkspaceCalendarMembers()
   const { run: runAction, syncingEventId, isSubmitting } = useCalendarEventAction()
 
-  const [view, setView] = useState<ViewMode>('week')
-  const [weekAnchor, setWeekAnchor] = useState<Date>(new Date())
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [jobFilter, setJobFilter] = useState<string | 'all'>('all')
   const [peopleFilter, setPeopleFilter] = useState<PeopleFilter>(() => {
@@ -333,6 +370,7 @@ export default function CalendarPage() {
   } | null>(null)
   const [toast, setToast] = useState<CalendarToastState | null>(null)
   const gridBodyRef = useRef<HTMLDivElement>(null)
+  const calendarCardRef = useRef<HTMLDivElement>(null)
   const [openSimpleSheet, setOpenSimpleSheet] = useState(false)
   const [scheduleTarget, setScheduleTarget] = useState<NeedsSchedulingItem | null>(null)
 
