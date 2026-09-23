@@ -5,24 +5,25 @@ interface Props {
   groups?: ExperienceGroup[]
   scale?: 0.85 | 1
   showAside?: boolean
+  showTopBorder?: boolean
 }
 
-export function DossierExperienceGroups({ items, groups: suppliedGroups, scale = 1, showAside = true }: Props) {
+export function DossierExperienceGroups({ items, groups: suppliedGroups, scale = 1, showAside = true, showTopBorder = false }: Props) {
   const groups = suppliedGroups ?? groupExperience(items)
   const companies = new Set(groupExperience(items).map((group) => group.companyKey)).size
   if (!groups.length) return null
   return (
     <div className={scale === 0.85 ? 'dossier-experience-list dossier-experience-list--compact' : 'dossier-experience-list'}>
       {showAside && <p className="dossier-experience-aside mb-1 font-inter text-[10.5px] text-fit-subtle">Digested from {items.length} {items.length === 1 ? 'role' : 'roles'} at {companies} {companies === 1 ? 'company' : 'companies'} · newest first</p>}
-      {groups.map((group) => <DossierExperienceGroup key={`${group.companyKey}-${group.stint}`} group={group} />)}
+      {groups.map((group, index) => <DossierExperienceGroup key={`${group.companyKey}-${group.stint}`} group={group} bordered={showTopBorder || index > 0} />)}
     </div>
   )
 }
 
-export function DossierExperienceGroup({ group }: { group: ExperienceGroup }) {
+export function DossierExperienceGroup({ group, bordered = false }: { group: ExperienceGroup; bordered?: boolean }) {
   const multi = group.entries.length > 1
   return (
-    <div className="dossier-experience-group grid min-w-0 gap-2 border-t border-fit-hairline py-4 first:border-t-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5">
+    <div className={`dossier-experience-group grid min-w-0 gap-2 py-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5 ${bordered ? 'border-t border-fit-hairline' : ''}`}>
       <div className="dossier-experience-meta min-w-0">
         <p className="break-words font-inter text-[12.5px] font-semibold text-fit-ink">{group.spanText}</p>
         {group.locations.length > 0 && <p className="mt-1 break-words font-inter text-[11.5px] text-fit-subtle">{group.locations.join(', ')}</p>}

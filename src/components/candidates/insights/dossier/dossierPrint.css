@@ -581,14 +581,11 @@
   grid-template-columns: 153px minmax(0, 1fr);
   gap: 17px;
   padding: 13.6px 0;
-  border-top: 1px solid #f5f4f0;
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
-.dossier-experience-list .dossier-experience-group:first-child {
-  border-top: 0;
-}
+.dossier-experience-group.border-t { border-top: 1px solid #f5f4f0; }
 
 .dossier-experience-group p { margin: 0; overflow-wrap: anywhere; }
 .dossier-experience-meta > p:first-child { font-size: 10.6px; font-weight: 600; color: #1f2230; }

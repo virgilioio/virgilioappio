@@ -380,7 +380,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
         key: `exp-${group.companyKey}-${group.stint}-${index}`,
         node: (
           <div className="gio-block">
-            <DossierExperienceGroups items={workExperience} groups={[group]} scale={0.85} showAside={false} />
+            <DossierExperienceGroups items={workExperience} groups={[group]} scale={0.85} showAside={false} showTopBorder={index > 0} />
           </div>
         ),
       })

@@ -24,6 +24,7 @@ import {
   getScoreBand,
   readSkillEvidence,
   splitExecutiveSummary,
+  stripHtml,
 } from '@/components/candidates/insights/dossier/dossierData'
 
 interface PublicDossierBodyProps {
