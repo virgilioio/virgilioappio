@@ -1147,7 +1147,7 @@ export default function CalendarPage() {
     setAnchorDate(localDay(new Date()))
     closePopover()
     setMenu(null)
-  }, [todayVisible])
+  }, [closePopover, todayVisible])
 
   const goPrevious = useCallback(() => {
     setAnchorDate(d => {
@@ -1157,7 +1157,7 @@ export default function CalendarPage() {
     })
     closePopover()
     setMenu(null)
-  }, [view])
+  }, [closePopover, view])
 
   const goNext = useCallback(() => {
     setAnchorDate(d => {
@@ -1167,7 +1167,7 @@ export default function CalendarPage() {
     })
     closePopover()
     setMenu(null)
-  }, [view])
+  }, [closePopover, view])
 
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
@@ -1565,7 +1565,7 @@ export default function CalendarPage() {
               <div className="ml-auto flex items-center gap-2">
                 <select
                   value={jobFilter}
-                  onChange={e => setJobFilter(e.target.value as any)}
+                  onChange={e => setJobFilter(e.target.value)}
                   className="h-7 rounded-lg bg-transparent px-2 font-inter text-[12px] text-[#5A6072] hover:bg-[#FAFAF7]"
                   aria-label="Filter by job"
                 >
