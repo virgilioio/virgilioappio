@@ -779,9 +779,9 @@ export default function CalendarPage() {
         (other.interviewerId === e.interviewerId || other.interviewerId === user?.id),
     )
     if (!clash) return null
-    return `Overlaps ${clash.title} (${format(clash.start, 'HH:mm')}–${format(
+    return `Overlaps ${clash.title} (${format(clash.start, 'H:mm')}–${format(
       clash.end,
-      'HH:mm',
+      'H:mm',
     )}). You can still move it.`
   }
 
