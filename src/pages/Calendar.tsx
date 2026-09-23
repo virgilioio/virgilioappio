@@ -1434,7 +1434,7 @@ export default function CalendarPage() {
                   className="mt-1.5 flex flex-wrap items-center font-inter"
                   style={{ fontSize: 12, color: C.tertiary, gap: 8 }}
                 >
-                  <span>{weekRangeLabel}</span>
+                  <span>{headerRangeLabel}</span>
                   <span>·</span>
                   <span>{counts.interview} interviews · {counts.debrief} debriefs · {counts.hold} holds</span>
                 </div>
@@ -1492,7 +1492,7 @@ export default function CalendarPage() {
               {/* Nav cluster */}
               <button
                 type="button"
-                onClick={() => setWeekAnchor(d => subWeeks(d, 1))}
+                onClick={goPrevious}
                 className="grid place-items-center rounded-lg border bg-white text-[#5A6072] hover:bg-[#FAFAF7]"
                 style={{ width: 28, height: 28, borderColor: C.border }}
                 aria-label="Previous"
@@ -1501,15 +1501,16 @@ export default function CalendarPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setWeekAnchor(new Date())}
+                onClick={goToday}
                 className="h-7 rounded-lg border bg-white px-3 font-inter text-[12px] font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
-                style={{ borderColor: C.border }}
+                style={{ borderColor: C.border, opacity: todayVisible ? 0.5 : 1 }}
+                disabled={todayVisible}
               >
                 Today
               </button>
               <button
                 type="button"
-                onClick={() => setWeekAnchor(d => addWeeks(d, 1))}
+                onClick={goNext}
                 className="grid place-items-center rounded-lg border bg-white text-[#5A6072] hover:bg-[#FAFAF7]"
                 style={{ width: 28, height: 28, borderColor: C.border }}
                 aria-label="Next"
