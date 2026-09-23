@@ -379,10 +379,10 @@ export default function CalendarPage() {
     setToast({ ...t, id: Date.now() })
   }, [])
 
-  const closePopover = () => {
+  const closePopover = useCallback(() => {
     setSelectedEventId(null)
     setPopoverAnchor(null)
-  }
+  }, [])
 
   useEffect(() => {
     setSelectedEventId(null)
@@ -545,7 +545,7 @@ export default function CalendarPage() {
   const isPast = (e: CalEvent) => e.start.getTime() <= Date.now()
 
   const openMoveDialogForDrop = useCallback(
-    (event: CalEvent, newStart: Date, durationMin: number, keepDragGhost = false) => {
+    (event: CalEvent, newStart: Date, durationMin: number) => {
       const newEnd = new Date(newStart.getTime() + durationMin * 60000)
       if (isWeekend(newStart)) {
         setDrag(null)
@@ -561,8 +561,7 @@ export default function CalendarPage() {
         setDrag(null)
         return
       }
-      if (keepDragGhost) setDrag(d => (d ? { ...d, active: true, frozen: true } : d))
-      else setDrag(null)
+      setDrag(null)
       setDialog({ eventId: event.id, mode: 'move', newStart, newEnd })
     },
     [showToast],
@@ -710,7 +709,7 @@ export default function CalendarPage() {
         }
         const targetDay = dateFromKey(drag.targetDateKey)
         const newStart = combineDateAndMinutes(targetDay, drag.startMinutes)
-        openMoveDialogForDrop(current, newStart, durationMin, true)
+        openMoveDialogForDrop(current, newStart, durationMin)
         return
       }
 
@@ -1759,7 +1758,7 @@ export default function CalendarPage() {
                         gap: 1,
                       }}
                     >
-                      {monthDays.map((day, index) => {
+                      {monthDays.map(day => {
                         const key = dateKey(day)
                         const inMonth = isSameMonth(day, monthStart)
                         const today = isToday(day)
