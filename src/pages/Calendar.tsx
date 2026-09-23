@@ -1125,7 +1125,6 @@ export default function CalendarPage() {
 
 
   // ─── UI ───
-  const weekRangeLabel = `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'd, yyyy')}`
   const peopleLabel =
     peopleFilter === 'all'
       ? 'All'
