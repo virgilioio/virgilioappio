@@ -4630,6 +4630,7 @@ export type Database = {
       members: {
         Row: {
           accepted_invite_token: string | null
+          calendar_color_index: number | null
           created_at: string | null
           id: string
           invitation_email_error: string | null
@@ -4648,6 +4649,7 @@ export type Database = {
         }
         Insert: {
           accepted_invite_token?: string | null
+          calendar_color_index?: number | null
           created_at?: string | null
           id?: string
           invitation_email_error?: string | null
@@ -4666,6 +4668,7 @@ export type Database = {
         }
         Update: {
           accepted_invite_token?: string | null
+          calendar_color_index?: number | null
           created_at?: string | null
           id?: string
           invitation_email_error?: string | null
