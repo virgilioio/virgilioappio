@@ -360,6 +360,7 @@ export default function CalendarPage() {
     eventId: string
     dayIndex: number
     eventTop: number
+    dayKey?: string
   } | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dialog, setDialog] = useState<{
