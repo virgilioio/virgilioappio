@@ -387,7 +387,19 @@ export default function CalendarPage() {
     setSelectedEventId(null)
     setPopoverAnchor(null)
     setMenu(null)
-  }, [weekAnchor])
+  }, [anchorDate, view])
+
+  const setView = useCallback((next: ViewMode) => {
+    setViewState(next)
+    setSelectedEventId(null)
+    setPopoverAnchor(null)
+    setMenu(null)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   useEffect(() => {
     try {
@@ -396,10 +408,6 @@ export default function CalendarPage() {
       /* ignore */
     }
   }, [peopleFilter])
-
-  const weekStart = useMemo(() => startOfWeek(weekAnchor, { weekStartsOn: 1 }), [weekAnchor])
-  const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart])
-  const weekEnd = useMemo(() => addDays(weekStart, 4), [weekStart])
 
   // Build events
   const allEvents: CalEvent[] = useMemo(() => {
