@@ -1195,6 +1195,227 @@ export default function CalendarPage() {
     return { start, end, past, tone: t, durationMin }
   })()
 
+  const renderTimeGrid = () => {
+    const columnCount = timeColumns.length
+    const gridColumns = `${GUTTER_PX}px repeat(${columnCount}, 1fr)`
+    return (
+      <>
+        {/* Day header row */}
+        <div className="grid" style={{ gridTemplateColumns: gridColumns, borderBottom: `1px solid ${C.border}` }}>
+          <div />
+          {timeColumns.map((d, i) => {
+            const today = isToday(d)
+            const isDropDay = drag?.kind === 'time' && drag.active && drag.dayIndex === i
+            const dayEvents = visibleEvents.filter(e => isSameDay(e.start, d) && e.type !== 'busy')
+            return view === 'day' ? (
+              <div
+                key={dateKey(d)}
+                className="flex items-center"
+                style={{
+                  padding: '9px 10px',
+                  justifyContent: 'flex-start',
+                  gap: 8,
+                  borderLeft: `1px solid ${C.hairline}`,
+                  background: today ? C.purpleTint : '#fff',
+                }}
+              >
+                <span className="font-inter" style={{ fontSize: 11, fontWeight: 600, color: today ? C.purple : C.muted }}>
+                  {format(d, 'EEEE, MMM d')}
+                </span>
+                {today && (
+                  <span
+                    className="font-inter"
+                    style={{ fontSize: 10, fontWeight: 600, color: C.purpleText, background: C.purpleLight, borderRadius: 999, padding: '2px 7px' }}
+                  >
+                    Today
+                  </span>
+                )}
+                <span className="ml-auto font-inter" style={{ fontSize: 11, color: C.tertiary }}>
+                  {dayEvents.length === 0 ? 'Nothing scheduled' : `${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}`}
+                </span>
+              </div>
+            ) : (
+              <div
+                key={dateKey(d)}
+                className="flex flex-col items-center justify-center py-2"
+                style={{
+                  borderLeft: `1px solid ${C.hairline}`,
+                  background: isDropDay ? C.dropTint : today ? C.purpleTint : 'transparent',
+                }}
+              >
+                <button
+                  type="button"
+                  title={`Open ${format(d, 'EEEE, MMM d')}`}
+                  onClick={() => {
+                    setAnchorDate(localDay(d))
+                    setView('day')
+                  }}
+                  className="font-inter"
+                  style={{ fontSize: 11, fontWeight: 600, color: today ? C.purple : C.muted, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                >
+                  {format(d, 'EEE')}
+                </button>
+                <div className="font-inter" style={{ fontSize: 11, color: today ? C.purple : C.disabled }}>
+                  {format(d, 'MMM d')}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Grid body */}
+        <div
+          ref={gridBodyRef}
+          className="relative grid"
+          style={{
+            gridTemplateColumns: gridColumns,
+            height: (DAY_END - DAY_START) * HOUR_PX,
+          }}
+        >
+          {/* Hour gutter */}
+          <div className="relative">
+            {Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => {
+              const hour = DAY_START + i
+              if (i === 0) return null
+              return (
+                <div
+                  key={i}
+                  className="absolute right-1.5 -translate-y-1/2 font-inter"
+                  style={{ top: i * HOUR_PX, fontSize: 9.5, color: C.disabled }}
+                >
+                  {hour}:00
+                </div>
+              )
+            })}
+          </div>
+          {/* Day columns */}
+          {timeColumns.map((d, di) => {
+            const today = isToday(d)
+            const isDropDay = drag?.kind === 'time' && drag.active && drag.dayIndex === di
+            const dayEvents = layoutDayEvents(visibleEvents.filter(e => isSameDay(e.start, d)))
+            const dayStart = new Date(d)
+            dayStart.setHours(DAY_START, 0, 0, 0)
+            const pastMin = Math.min(
+              Math.max(0, (Date.now() - dayStart.getTime()) / 60000),
+              (DAY_END - DAY_START) * 60,
+            )
+            return (
+              <div
+                key={dateKey(d)}
+                className="relative"
+                style={{
+                  borderLeft: `1px solid ${C.hairline}`,
+                  background: isDropDay ? C.purpleTint : today ? C.purpleTint : 'transparent',
+                }}
+              >
+                {drag?.active && pastMin > 0 && (
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 top-0"
+                    style={{
+                      height: (pastMin / 60) * HOUR_PX,
+                      backgroundImage: 'repeating-linear-gradient(45deg, rgba(13,13,9,0.05) 0 2px, transparent 2px 6px)',
+                    }}
+                  />
+                )}
+                {Array.from({ length: DAY_END - DAY_START }, (_, i) => (
+                  <div
+                    key={i}
+                    className="absolute left-0 right-0"
+                    style={{ top: (i + 1) * HOUR_PX, borderBottom: `1px solid ${C.pageBg}` }}
+                  />
+                ))}
+                {today && todayInColumns && nowLineTop >= 0 && nowLineTop <= (DAY_END - DAY_START) * HOUR_PX && (
+                  <div className="pointer-events-none absolute left-0 right-0" style={{ top: nowLineTop, height: 2, background: C.red, zIndex: 5 }}>
+                    <div className="absolute -left-1 -top-[3px] rounded-full" style={{ width: 8, height: 8, background: C.red }} />
+                  </div>
+                )}
+                {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes, di, view === 'day'))}
+
+                {menu && menuEvent && menu.dayIndex === di && (
+                  <EventMenu
+                    placement={
+                      menu.eventTop > (DAY_END - DAY_START) * HOUR_PX - 230
+                        ? { bottom: (DAY_END - DAY_START) * HOUR_PX - menu.eventTop + 4 }
+                        : { top: menu.eventTop + 24 }
+                    }
+                    items={menuItemsFor(menuEvent).items}
+                    note={menuItemsFor(menuEvent).note}
+                    onSelect={action => handleMenuAction(menuEvent, action)}
+                    onClose={() => setMenu(null)}
+                  />
+                )}
+
+                {dragGhost && drag?.kind === 'time' && drag.dayIndex === di && (
+                  <div
+                    className="pointer-events-none absolute"
+                    style={{
+                      top: (drag.startMinutes / 60) * HOUR_PX,
+                      height: Math.max(20, (dragGhost.durationMin / 60) * HOUR_PX - 3),
+                      left: 3,
+                      right: 3,
+                      zIndex: 20,
+                      borderRadius: 7,
+                      border: `1.5px dashed ${dragGhost.past ? C.red : dragGhost.tone.edge}`,
+                      background: dragGhost.past ? '#FFF1F1' : dragGhost.tone.bg,
+                      color: dragGhost.past ? '#B02020' : dragGhost.tone.text,
+                      boxShadow: '0 8px 20px -8px rgba(13,13,9,0.28)',
+                      padding: '4px 7px',
+                    }}
+                  >
+                    <div className="font-inter" style={{ fontSize: 10.5, fontWeight: 700 }}>
+                      {format(dragGhost.start, 'H:mm')}–{format(dragGhost.end, 'H:mm')}
+                      {dragGhost.past ? ' · in the past' : ''}
+                    </div>
+                    <div className="font-inter truncate" style={{ fontSize: 9.5, opacity: 0.8 }}>
+                      {dragEvent?.title}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {selectedEvent && popoverAnchor && view !== 'month' && (
+            <EventPopover
+              event={selectedEvent}
+              anchor={popoverAnchor}
+              containerWidth={gridBodyRef.current?.clientWidth ?? 0}
+              containerHeight={gridBodyRef.current?.clientHeight ?? 0}
+              tone={tone(selectedEvent)}
+              isMine={selectedEvent.interviewerId === user?.id}
+              scheduledByMe={selectedEvent.scheduledById === user?.id}
+              onClose={closePopover}
+              onJoin={() => {
+                const loc = (selectedEvent.raw as any).google_meet_link || selectedEvent.raw.meeting_location
+                if (loc && /^https?:\/\//.test(loc)) {
+                  window.open(loc, '_blank', 'noopener')
+                  showToast({ title: 'Opening the meeting' })
+                }
+              }}
+              onReschedule={() => {
+                closePopover()
+                setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
+              }}
+              onConfirmSlot={() => {
+                closePopover()
+                setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
+              }}
+              onRelease={() => {
+                closePopover()
+                setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
+              }}
+              onOpenNotes={() => {
+                closePopover()
+                handleMenuAction(selectedEvent, 'open-notes')
+              }}
+              canAct={canActOn(selectedEvent)}
+            />
+          )}
+        </div>
+      </>
+    )
+  }
+
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
