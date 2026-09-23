@@ -169,6 +169,8 @@ const TYPE_LABEL: Record<EventType, string> = {
   busy: 'Busy',
 }
 
+const calendarLocation = (booking: ScheduledBooking) => booking.google_meet_link || booking.meeting_location
+
 interface PlacedEvent {
   event: CalEvent
   lane: number
@@ -429,7 +431,7 @@ export default function CalendarPage() {
           ? `${b.interviewer_profile.first_name ?? ''} ${b.interviewer_profile.last_name ?? ''}`.trim() ||
             b.interviewer_profile.email
           : null,
-        scheduledById: (b as any).booked_by ?? null,
+        scheduledById: b.booked_by ?? null,
         raw: b,
       }
     })
@@ -763,7 +765,7 @@ export default function CalendarPage() {
         ],
       }
     }
-    const link = (e.raw as any).google_meet_link || e.raw.meeting_location
+    const link = calendarLocation(e.raw)
     return {
       items: [
         { action: 'reschedule', label: 'Reschedule…', Icon: CalendarClock },
@@ -823,7 +825,7 @@ export default function CalendarPage() {
         openCandidate(e)
         break
       case 'copy-link': {
-        const link = (e.raw as any).google_meet_link || e.raw.meeting_location
+        const link = calendarLocation(e.raw)
         if (link) {
           navigator.clipboard?.writeText(link)
           showToast({ title: 'Meeting link copied' })
@@ -1385,7 +1387,7 @@ export default function CalendarPage() {
               scheduledByMe={selectedEvent.scheduledById === user?.id}
               onClose={closePopover}
               onJoin={() => {
-                const loc = (selectedEvent.raw as any).google_meet_link || selectedEvent.raw.meeting_location
+                const loc = calendarLocation(selectedEvent.raw)
                 if (loc && /^https?:\/\//.test(loc)) {
                   window.open(loc, '_blank', 'noopener')
                   showToast({ title: 'Opening the meeting' })
@@ -1952,7 +1954,7 @@ export default function CalendarPage() {
                         scheduledByMe={selectedEvent.scheduledById === user?.id}
                         onClose={closePopover}
                         onJoin={() => {
-                          const loc = (selectedEvent.raw as any).google_meet_link || selectedEvent.raw.meeting_location
+                          const loc = calendarLocation(selectedEvent.raw)
                           if (loc && /^https?:\/\//.test(loc)) {
                             window.open(loc, '_blank', 'noopener')
                             showToast({ title: 'Opening the meeting' })
@@ -2133,7 +2135,7 @@ function EventPopover({
 
   const typeLabel = TYPE_LABEL[event.type].replace(/s$/, '')
   const kind = event.candidateName && event.title.includes(' · ') ? event.title.split(' · ')[0] : null
-  const link = (event.raw as any).google_meet_link || event.raw.meeting_location
+  const link = calendarLocation(event.raw)
   const hasLink = !!link && /^https?:\/\//.test(link)
   const notEnded = event.end.getTime() > Date.now()
   const cardWidth = 290
