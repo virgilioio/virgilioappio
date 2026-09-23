@@ -808,35 +808,29 @@ export default function CalendarPage() {
         onPointerDown={ev => onEventPointerDown(e, ev)}
         onClick={ev => {
           if (drag?.active) return
-          const btn = ev.currentTarget.getBoundingClientRect()
-          const container = gridBodyRef.current?.getBoundingClientRect()
-          if (container) {
-            setPopoverAnchor({
-              top: btn.top - container.top,
-              left: btn.left - container.left,
-              right: btn.right - container.left,
-            })
-          } else {
-            setPopoverAnchor(null)
-          }
-          setSelectedEventId(e.id)
+          ev.stopPropagation()
+          setMenu(null)
+          setPopoverAnchor(null)
+          setSelectedEventId(prev => (prev === e.id ? null : e.id))
         }}
         title={`${e.title} · ${format(e.start, 'H:mm')}–${format(e.end, 'H:mm')}${
           e.jobTitle ? ` · ${e.jobTitle}` : ''
         }`}
-        className="group absolute text-left overflow-hidden focus:outline-none focus:ring-2"
+        className="group absolute text-left overflow-hidden focus:outline-none"
         style={{
           top,
           height,
           left: `calc(${leftPct}% + 3px)`,
           width: `calc(${laneWidthPct}% - 6px)`,
-          zIndex: 1 + lane,
+          zIndex: menuOpen || selected ? 5 : 1 + lane,
           background: isHold ? '#FFFFFF' : t.bg,
           color: t.text,
           borderRadius: 7,
-          padding: short ? '3px 6px' : '5px 8px',
+          padding: short ? '3px 22px 3px 8px' : '5px 22px 5px 8px',
           opacity: isDragging ? 0.35 : 1,
           touchAction: 'none',
+          outline: menuOpen || selected ? `2px solid ${t.edge}` : undefined,
+          outlineOffset: menuOpen || selected ? 1 : undefined,
           boxShadow: lanes > 1 ? '0 1px 3px -1px rgba(13,13,9,0.18)' : undefined,
           ...(isHold
             ? { border: `1.5px dashed ${t.edge}` }
@@ -849,7 +843,6 @@ export default function CalendarPage() {
             fontSize: 10.5,
             fontWeight: 600,
             lineHeight: 1.2,
-            paddingRight: 22,
             display: '-webkit-box',
             WebkitLineClamp: short ? 1 : 2,
             WebkitBoxOrient: 'vertical',
@@ -883,45 +876,41 @@ export default function CalendarPage() {
           role="button"
           tabIndex={-1}
           aria-label="Event actions"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
           onPointerDown={ev => {
             ev.stopPropagation()
           }}
           onClick={ev => {
             ev.stopPropagation()
-            const btn = (ev.currentTarget as HTMLElement).getBoundingClientRect()
-            const container = gridBodyRef.current?.getBoundingClientRect()
-            if (!container) return
-            setMenu({
-              eventId: e.id,
-              anchor: {
-                top: btn.top - container.top,
-                bottom: btn.bottom - container.top,
-                left: btn.left - container.left,
-                right: btn.right - container.left + 8,
-              },
-            })
             setSelectedEventId(null)
             setPopoverAnchor(null)
+            setMenu(prev =>
+              prev?.eventId === e.id ? null : { eventId: e.id, dayIndex, eventTop: top },
+            )
           }}
           className={cn(
-            'absolute grid place-items-center transition-opacity',
-            menuOpen || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 sm:opacity-0',
+            'absolute grid place-items-center transition-opacity duration-[120ms] [@media(hover:none)]:opacity-100',
+            menuOpen || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
           )}
           style={{
-            top: 3,
+            top: height < 34 ? 1 : 3,
             right: 3,
             width: 18,
             height: 18,
             borderRadius: 5,
-            background: 'rgba(255,255,255,0.7)',
+            padding: 0,
+            border: 'none',
+            background: menuOpen ? 'rgba(13,13,9,0.12)' : 'rgba(255,255,255,0.7)',
             color: t.text,
           }}
         >
-          <MoreHorizontal size={12} strokeWidth={2} />
+          <Ellipsis size={12} strokeWidth={2.5} />
         </span>
       </button>
     )
   }
+
 
   // ─── UI ───
   const weekRangeLabel = `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'd, yyyy')}`
