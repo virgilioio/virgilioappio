@@ -936,7 +936,7 @@ export default function CalendarPage() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div className="min-h-[100dvh] w-full" style={{ background: C.pageBg }}>
+        <div className="relative min-h-[100dvh] w-full" style={{ background: C.pageBg }}>
           <div style={{ padding: '24px 28px' }} className="mx-auto max-w-[1500px]">
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-4">
