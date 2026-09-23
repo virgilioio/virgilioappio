@@ -1,13 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
-import { addDays, addMinutes, format, isBefore, startOfDay } from 'date-fns'
-import { AlertTriangle, CalendarClock, RefreshCw, Send, Trash2, CheckCircle2 } from 'lucide-react'
+/**
+ * Calendar action dialog — move · reschedule · rebook · resend · confirm · cancel.
+ * Pixel spec: 460px panel, radius 16, no border, overlay scoped to the page area.
+ */
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ArrowRight,
+  CalendarCheck,
+  CalendarClock,
+  CalendarX,
+  Check,
+  CircleAlert,
+  RefreshCw,
+  Send,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
+import { addDays, format, isSameDay, startOfDay, startOfWeek } from 'date-fns'
 
 export type CalendarActionMode = 'move' | 'reschedule' | 'rebook' | 'resend' | 'confirm' | 'cancel'
-
-export interface CalendarActionPerson {
-  name: string
-  email: string | null
-}
 
 export interface CalendarActionPayload {
   newStart?: Date
@@ -19,26 +29,53 @@ export interface CalendarActionPayload {
   requeue?: boolean
 }
 
-interface Props {
-  open: boolean
-  mode: CalendarActionMode
-  eventTitle: string
-  jobTitle?: string | null
-  start: Date
-  end: Date
-  /** Slot proposed by a drag, for mode="move". */
-  proposedStart?: Date | null
-  proposedEnd?: Date | null
-  isHold?: boolean
-  isDebrief?: boolean
-  candidate?: CalendarActionPerson | null
-  interviewers?: CalendarActionPerson[]
-  /** Non-blocking amber notice, e.g. "Overlaps HM interview · Diego Luna (11:00–12:00)." */
-  overlapNotice?: string | null
-  submitting?: boolean
-  onCancel: () => void
-  onConfirm: (payload: CalendarActionPayload) => void
+const T = {
+  ink: '#0d0d09',
+  text: '#1F2230',
+  text2: '#5A6072',
+  muted: '#8B8F9E',
+  hairline: '#E7E8EE',
+  divider: '#F1F0EC',
+  surface2: '#F6F5F1',
+  footerBg: '#FAFAF7',
+  purple: '#6F3FF5',
+  purpleTint: '#F3EEFF',
+  selBorder: '#D7C5FB',
+  selBg: '#FBFAFF',
+  danger: '#E03131',
+  dangerTint: '#FFF1F1',
+  amberBg: '#FEF3C7',
+  amberFg: '#92400E',
+  redFg: '#C92A2A',
+} as const
+
+const INTER = 'Inter, sans-serif'
+const POPPINS = 'Poppins, sans-serif'
+
+const selectStyle: React.CSSProperties = {
+  height: 34,
+  borderRadius: 8,
+  border: `1px solid ${T.hairline}`,
+  background: '#fff',
+  padding: '0 10px',
+  fontFamily: INTER,
+  fontWeight: 400,
+  fontSize: 12.5,
+  color: T.text,
+  width: '100%',
 }
+
+const fieldLabel: React.CSSProperties = {
+  fontFamily: INTER,
+  fontWeight: 600,
+  fontSize: 11,
+  color: T.text2,
+  marginBottom: 6,
+  display: 'block',
+}
+
+const hhmm = (d: Date) => format(d, 'H:mm')
+const slotText = (s: Date, e: Date) => `${format(s, 'EEE MMM d')} · ${hhmm(s)}–${hhmm(e)}`
 
 const CANCEL_REASONS = [
   'Candidate withdrew',
@@ -48,31 +85,122 @@ const CANCEL_REASONS = [
   'Other',
 ]
 
-const T = {
-  border: '#E7E8EE',
-  hairline: '#F1F0EC',
-  strip: '#F6F5F1',
-  ink: '#0d0d09',
-  ink2: '#1F2230',
-  muted: '#5A6072',
-  tertiary: '#8B8F9E',
-  purple: '#6F3FF5',
-  purpleTint: '#F3EEFF',
-  red: '#E03131',
-  redTint: '#FFF1F1',
-  amber: '#92400E',
-  amberTint: '#FEF3C7',
+function SmallButton({
+  variant,
+  label,
+  disabled,
+  onClick,
+}: {
+  variant: 'primary' | 'secondary' | 'danger'
+  label: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  const skin =
+    variant === 'primary'
+      ? { background: T.ink, color: '#fffcf9', border: '1px solid transparent', boxShadow: '0 1px 2px rgba(13,13,9,0.08)' }
+      : variant === 'danger'
+      ? { background: '#fff', color: '#FA5252', border: '1px solid #FECACA' }
+      : { background: '#fff', color: T.text, border: '1px solid #E0DDD3' }
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        height: 28,
+        padding: '0 10px',
+        borderRadius: 8,
+        fontFamily: POPPINS,
+        fontWeight: 500,
+        fontSize: 12,
+        letterSpacing: '-0.005em',
+        whiteSpace: 'nowrap',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+        ...skin,
+      }}
+    >
+      {label}
+    </button>
+  )
 }
 
-function slotOptions() {
-  const out: { value: string; label: string }[] = []
-  for (let h = 8; h <= 17; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-      out.push({ value, label: value })
-    }
-  }
-  return out
+function CheckboxCard({
+  checked,
+  onChange,
+  title,
+  sub,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  title: string
+  sub?: string | null
+}) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: '9px 11px',
+        borderRadius: 9,
+        cursor: 'pointer',
+        border: `1px solid ${checked ? T.selBorder : T.hairline}`,
+        background: checked ? T.selBg : '#fff',
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+      />
+      <span
+        aria-hidden
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 4,
+          marginTop: 1,
+          flexShrink: 0,
+          display: 'grid',
+          placeItems: 'center',
+          border: checked ? `1.5px solid ${T.purple}` : '1.5px solid #C2C6D2',
+          background: checked ? T.purple : '#fff',
+        }}
+      >
+        {checked && <Check size={11} strokeWidth={3} color="#fff" />}
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span
+          style={{ display: 'block', fontFamily: INTER, fontWeight: 600, fontSize: 12.5, color: T.text }}
+        >
+          {title}
+        </span>
+        {sub && (
+          <span
+            style={{
+              display: 'block',
+              fontFamily: INTER,
+              fontWeight: 400,
+              fontSize: 11,
+              color: T.muted,
+              marginTop: 1,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {sub}
+          </span>
+        )}
+      </span>
+    </label>
+  )
 }
 
 export function CalendarActionDialog({
@@ -87,446 +215,512 @@ export function CalendarActionDialog({
   isHold,
   isDebrief,
   candidate,
-  interviewers = [],
+  interviewers,
   overlapNotice,
   submitting,
+  weekDays,
   onCancel,
   onConfirm,
-}: Props) {
+}: {
+  open: boolean
+  mode: CalendarActionMode
+  eventTitle: string
+  jobTitle: string | null
+  start: Date
+  end: Date
+  proposedStart?: Date
+  proposedEnd?: Date
+  isHold?: boolean
+  isDebrief?: boolean
+  candidate: { name: string; email: string | null } | null
+  interviewers: { name: string; email: string | null }[]
+  overlapNotice?: string | null
+  submitting?: boolean
+  weekDays?: Date[]
+  onCancel: () => void
+  onConfirm: (payload: CalendarActionPayload) => void
+}) {
+  const isMove = mode === 'move'
+  const isReschedule = mode === 'reschedule' || mode === 'rebook'
+  const isCancel = mode === 'cancel'
   const durationMin = Math.max(15, Math.round((end.getTime() - start.getTime()) / 60000))
-  const isTimeMode = mode === 'move' || mode === 'reschedule' || mode === 'rebook'
 
-  const [day, setDay] = useState(() => format(proposedStart ?? start, 'yyyy-MM-dd'))
-  const [time, setTime] = useState(() => format(proposedStart ?? start, 'HH:mm'))
-  const [notifyCandidate, setNotifyCandidate] = useState(true)
+  const days = useMemo(() => {
+    if (weekDays?.length) return weekDays
+    const ws = startOfWeek(start, { weekStartsOn: 1 })
+    return Array.from({ length: 5 }, (_, i) => addDays(ws, i))
+  }, [weekDays, start])
+
+  const [dayIdx, setDayIdx] = useState(() => {
+    const i = days.findIndex(d => isSameDay(d, start))
+    return i >= 0 ? i : 0
+  })
+  const [startMin, setStartMin] = useState(() => start.getHours() * 60 + start.getMinutes())
+  const [notifyCandidate, setNotifyCandidate] = useState(!(isCancel && isDebrief))
   const [notifyInterviewers, setNotifyInterviewers] = useState(true)
   const [message, setMessage] = useState('')
   const [reason, setReason] = useState(CANCEL_REASONS[0])
   const [requeue, setRequeue] = useState(true)
+  const primaryRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
-    setDay(format(proposedStart ?? start, 'yyyy-MM-dd'))
-    setTime(format(proposedStart ?? start, 'HH:mm'))
-    setNotifyCandidate(!(mode === 'cancel' && isDebrief) && !!candidate)
-    setNotifyInterviewers(true)
-    setMessage('')
-    setReason(CANCEL_REASONS[0])
-    setRequeue(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, start.getTime(), proposedStart?.getTime()])
+    const btn = primaryRef.current?.querySelector('button:last-of-type') as HTMLButtonElement | null
+    btn?.focus()
+  }, [open])
 
   useEffect(() => {
-    if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onCancel])
-
-  const newStart = useMemo(() => {
-    if (mode === 'move' && proposedStart) return proposedStart
-    const [h, m] = time.split(':').map(Number)
-    const d = new Date(`${day}T00:00:00`)
-    d.setHours(h, m, 0, 0)
-    return d
-  }, [mode, proposedStart, day, time])
-
-  const newEnd = useMemo(
-    () => (mode === 'move' && proposedEnd ? proposedEnd : addMinutes(newStart, durationMin)),
-    [mode, proposedEnd, newStart, durationMin],
-  )
-
-  const dayChoices = useMemo(() => {
-    const today = startOfDay(new Date())
-    return Array.from({ length: 45 }, (_, i) => addDays(today, i))
-  }, [])
+  }, [onCancel])
 
   if (!open) return null
 
-  const inPast = isTimeMode && isBefore(newStart, new Date())
-  const unchanged = isTimeMode && newStart.getTime() === start.getTime()
-  const noRecipients = !notifyCandidate && !notifyInterviewers
-  const danger = mode === 'cancel'
+  const newStart = isMove
+    ? proposedStart ?? start
+    : isReschedule
+    ? (() => {
+        const d = startOfDay(days[dayIdx] ?? start)
+        return new Date(d.getTime() + startMin * 60000)
+      })()
+    : start
+  const newEnd = isMove ? proposedEnd ?? end : new Date(newStart.getTime() + durationMin * 60000)
 
-  const heading =
-    mode === 'move'
-      ? 'Move interview'
-      : mode === 'reschedule'
-      ? 'Reschedule'
-      : mode === 'rebook'
-      ? 'Rebook'
-      : mode === 'resend'
-      ? isHold
-        ? 'Resend slot options'
-        : 'Resend invite'
-      : mode === 'confirm'
-      ? 'Confirm slot'
-      : isHold
-      ? 'Release hold'
+  const inPast = (isMove || isReschedule) && newStart.getTime() < Date.now()
+  const unchanged = (isMove || isReschedule) && newStart.getTime() === start.getTime()
+
+  const showCandidateCard = !!candidate
+  const showInterviewerCard = interviewers.length > 0
+  const anyChecked =
+    (showCandidateCard && notifyCandidate) || (showInterviewerCard && notifyInterviewers)
+
+  const title = isMove
+    ? isHold
+      ? 'Move hold?'
       : isDebrief
-      ? 'Cancel debrief'
-      : 'Cancel interview'
+      ? 'Move debrief?'
+      : 'Move interview?'
+    : isReschedule
+    ? isHold
+      ? 'Reschedule hold'
+      : isDebrief
+      ? 'Reschedule debrief'
+      : 'Reschedule interview'
+    : mode === 'resend'
+    ? isHold
+      ? 'Resend slot options'
+      : 'Resend invite'
+    : mode === 'confirm'
+    ? 'Confirm slot'
+    : isHold
+    ? 'Release hold'
+    : isDebrief
+    ? 'Cancel debrief'
+    : 'Cancel interview'
 
-  const Icon = danger
-    ? Trash2
+  const TileIcon = isCancel
+    ? CalendarX
     : mode === 'resend'
     ? Send
     : mode === 'confirm'
-    ? CheckCircle2
+    ? CalendarCheck
     : CalendarClock
 
-  const recipientsLabel =
-    mode === 'cancel'
-      ? 'Send cancellation to'
-      : mode === 'resend' || mode === 'confirm'
-      ? 'Resend to'
-      : 'Send updated invite to'
+  const recipientLabel =
+    mode === 'resend' ? 'Resend to' : isCancel ? 'Send cancellation to' : 'Send updated invite to'
 
-  let primaryLabel: string
-  if (mode === 'move') primaryLabel = noRecipients ? 'Move without notifying' : 'Move & send update'
-  else if (mode === 'reschedule' || mode === 'rebook')
-    primaryLabel = noRecipients ? 'Reschedule without notifying' : 'Reschedule & send update'
-  else if (mode === 'resend') primaryLabel = 'Resend'
-  else if (mode === 'confirm') primaryLabel = 'Confirm & send invite'
-  else primaryLabel = isHold ? 'Release hold' : isDebrief ? 'Cancel debrief' : 'Cancel interview'
+  const secondaryLabel = isMove
+    ? 'Undo move'
+    : isCancel
+    ? isHold
+      ? 'Keep hold'
+      : isDebrief
+      ? 'Keep debrief'
+      : 'Keep interview'
+    : 'Cancel'
 
-  const secondaryLabel =
-    mode === 'move'
-      ? 'Undo move'
-      : mode === 'cancel'
-      ? isHold
-        ? 'Keep hold'
-        : isDebrief
-        ? 'Keep debrief'
-        : 'Keep interview'
-      : 'Cancel'
+  const primaryLabel = isMove
+    ? anyChecked
+      ? 'Move & send update'
+      : 'Move without notifying'
+    : isReschedule
+    ? anyChecked
+      ? 'Reschedule & send update'
+      : 'Reschedule without notifying'
+    : mode === 'resend'
+    ? 'Resend'
+    : mode === 'confirm'
+    ? anyChecked
+      ? 'Confirm & send invite'
+      : 'Confirm without notifying'
+    : isHold
+    ? 'Release hold'
+    : isDebrief
+    ? 'Cancel debrief'
+    : 'Cancel interview'
 
   const primaryDisabled =
     submitting ||
-    (isTimeMode && (inPast || unchanged)) ||
-    (mode === 'resend' && noRecipients)
+    ((isMove || isReschedule) && (inPast || unchanged)) ||
+    (mode === 'resend' && !anyChecked)
 
-  const strip = (children: React.ReactNode) => (
-    <div className="font-inter" style={{ background: T.strip, borderRadius: 10, padding: '10px 12px' }}>
-      {children}
-    </div>
-  )
-
-  const checkboxCard = (
-    key: string,
-    label: string,
-    sub: string,
-    checked: boolean,
-    onChange: (v: boolean) => void,
-  ) => (
-    <label
-      key={key}
-      className="flex cursor-pointer items-start gap-2.5"
-      style={{ border: `1px solid ${T.border}`, borderRadius: 10, padding: '9px 11px' }}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={e => onChange(e.target.checked)}
-        className="mt-[2px] h-3.5 w-3.5 accent-[#0d0d09]"
-      />
-      <span className="min-w-0">
-        <span
-          className="block font-inter truncate"
-          style={{ fontSize: 12, fontWeight: 600, color: T.ink2 }}
-        >
-          {label}
-        </span>
-        <span className="block font-inter truncate" style={{ fontSize: 11, color: T.tertiary }}>
-          {sub}
-        </span>
-      </span>
-    </label>
-  )
+  const interviewerNames = interviewers.map(i => i.name).join(', ')
+  const interviewerEmails = interviewers.map(i => i.email).filter(Boolean).join(', ')
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0" style={{ background: 'rgba(13,13,9,0.32)' }} onClick={onCancel} />
+    <div
+      onPointerDown={e => {
+        if (e.target === e.currentTarget) onCancel()
+      }}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(13,13,9,0.32)',
+        zIndex: 60,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}
+    >
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={heading}
-        className="relative bg-white"
         style={{
           width: 460,
           maxWidth: '100%',
-          maxHeight: '88vh',
-          overflowY: 'auto',
+          background: '#fff',
           borderRadius: 16,
-          boxShadow: '0 30px 70px -24px rgba(13,13,9,0.45)',
+          overflow: 'hidden',
+          boxShadow: '0 30px 70px -20px rgba(13,13,9,0.45)',
         }}
       >
         {/* Header */}
-        <div className="flex items-start gap-3 px-5 pt-5">
-          <span
-            className="grid flex-shrink-0 place-items-center"
+        <div style={{ padding: '18px 20px 14px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div
             style={{
               width: 34,
               height: 34,
               borderRadius: 10,
-              background: danger ? T.redTint : T.purpleTint,
-              color: danger ? T.red : T.purple,
+              flexShrink: 0,
+              display: 'grid',
+              placeItems: 'center',
+              background: isCancel ? T.dangerTint : T.purpleTint,
             }}
           >
-            <Icon size={16} strokeWidth={2} />
-          </span>
-          <div className="min-w-0">
+            <TileIcon size={16} strokeWidth={2} color={isCancel ? T.danger : T.purple} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div
-              className="font-poppins"
-              style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.02em', color: T.ink }}
+              style={{
+                fontFamily: POPPINS,
+                fontWeight: 600,
+                fontSize: 16,
+                color: T.ink,
+                letterSpacing: '-0.01em',
+              }}
             >
-              {heading}
+              {title}
             </div>
-            <div className="font-inter truncate" style={{ fontSize: 11.5, color: T.tertiary }}>
+            <div
+              style={{
+                fontFamily: INTER,
+                fontWeight: 400,
+                fontSize: 12,
+                color: T.text2,
+                lineHeight: 1.45,
+                marginTop: 2,
+              }}
+            >
               {eventTitle}
               {jobTitle ? ` · ${jobTitle}` : ''}
             </div>
           </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onCancel}
+            style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', lineHeight: 0 }}
+          >
+            <X size={15} strokeWidth={2.25} color={T.muted} />
+          </button>
         </div>
 
         {/* Body */}
-        <div className="space-y-3 px-5 py-4">
-          {mode === 'move' &&
-            strip(
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div style={{ fontSize: 10.5, color: T.tertiary, fontWeight: 600 }}>FROM</div>
-                  <div
-                    style={{
-                      fontSize: 12.5,
-                      color: T.muted,
-                      textDecoration: 'line-through',
-                      marginTop: 2,
-                    }}
-                  >
-                    {format(start, 'EEE MMM d')} · {format(start, 'HH:mm')}–{format(end, 'HH:mm')}
-                  </div>
+        <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {isMove && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)',
+                alignItems: 'center',
+                gap: 10,
+                background: T.surface2,
+                borderRadius: 10,
+                padding: '10px 12px',
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: INTER,
+                    fontWeight: 600,
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: T.muted,
+                  }}
+                >
+                  From
                 </div>
-                <div className="text-right">
-                  <div style={{ fontSize: 10.5, color: T.purple, fontWeight: 700 }}>TO</div>
-                  <div style={{ fontSize: 12.5, color: T.ink, fontWeight: 700, marginTop: 2 }}>
-                    {format(newStart, 'EEE MMM d')} · {format(newStart, 'HH:mm')}–
-                    {format(newEnd, 'HH:mm')}
-                  </div>
+                <div
+                  style={{
+                    fontFamily: INTER,
+                    fontWeight: 400,
+                    fontSize: 12.5,
+                    color: T.muted,
+                    textDecoration: 'line-through',
+                    marginTop: 2,
+                  }}
+                >
+                  {slotText(start, end)}
                 </div>
-              </div>,
-            )}
-
-          {(mode === 'reschedule' || mode === 'rebook') && (
-            <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <label className="block">
-                <span
-                  className="mb-1 block font-inter"
-                  style={{ fontSize: 10.5, fontWeight: 600, color: T.tertiary }}
+              </div>
+              <ArrowRight size={14} strokeWidth={2} color={T.muted} />
+              <div>
+                <div
+                  style={{
+                    fontFamily: INTER,
+                    fontWeight: 600,
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: T.purple,
+                  }}
                 >
-                  DAY
-                </span>
-                <select
-                  value={day}
-                  onChange={e => setDay(e.target.value)}
-                  className="w-full font-inter"
-                  style={{ height: 34, borderRadius: 9, border: `1px solid ${T.border}`, fontSize: 12.5, padding: '0 8px' }}
+                  To
+                </div>
+                <div
+                  style={{ fontFamily: INTER, fontWeight: 600, fontSize: 12.5, color: T.text, marginTop: 2 }}
                 >
-                  {dayChoices.map(d => (
-                    <option key={d.toISOString()} value={format(d, 'yyyy-MM-dd')}>
-                      {format(d, 'EEE MMM d')}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span
-                  className="mb-1 block font-inter"
-                  style={{ fontSize: 10.5, fontWeight: 600, color: T.tertiary }}
-                >
-                  START
-                </span>
-                <select
-                  value={time}
-                  onChange={e => setTime(e.target.value)}
-                  className="w-full font-inter"
-                  style={{ height: 34, borderRadius: 9, border: `1px solid ${T.border}`, fontSize: 12.5, padding: '0 8px' }}
-                >
-                  {slotOptions().map(s => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="col-span-2 font-inter" style={{ fontSize: 11.5, color: T.muted }}>
-                Ends {format(newEnd, 'HH:mm')} · {durationMin} min
+                  {slotText(newStart, newEnd)}
+                </div>
               </div>
             </div>
           )}
 
-          {(mode === 'resend' || mode === 'confirm') &&
-            strip(
-              <div style={{ fontSize: 12.5, color: T.ink2, fontWeight: 600 }}>
-                {format(start, 'EEE MMM d')} · {format(start, 'HH:mm')}–{format(end, 'HH:mm')}
-              </div>,
-            )}
-
-          {mode === 'cancel' && (
-            <div className="space-y-2">
-              <label className="block">
-                <span
-                  className="mb-1 block font-inter"
-                  style={{ fontSize: 10.5, fontWeight: 600, color: T.tertiary }}
-                >
-                  REASON
-                </span>
+          {isReschedule && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr)',
+                gap: 10,
+              }}
+            >
+              <div>
+                <label style={fieldLabel}>Day</label>
                 <select
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                  className="w-full font-inter"
-                  style={{ height: 34, borderRadius: 9, border: `1px solid ${T.border}`, fontSize: 12.5, padding: '0 8px' }}
+                  value={dayIdx}
+                  onChange={e => setDayIdx(Number(e.target.value))}
+                  style={selectStyle}
                 >
-                  {CANCEL_REASONS.map(r => (
-                    <option key={r} value={r}>
-                      {r}
+                  {days.map((d, i) => (
+                    <option key={i} value={i} disabled={startOfDay(d) < startOfDay(new Date())}>
+                      {format(d, 'EEEE, MMM d')}
                     </option>
                   ))}
                 </select>
-              </label>
-              {candidate && !isDebrief && (
-                <label className="flex cursor-pointer items-center gap-2 font-inter" style={{ fontSize: 12, color: T.ink2 }}>
-                  <input
-                    type="checkbox"
-                    checked={requeue}
-                    onChange={e => setRequeue(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#0d0d09]"
-                  />
-                  Return candidate to Needs scheduling
-                </label>
-              )}
+              </div>
+              <div>
+                <label style={fieldLabel}>Start</label>
+                <select
+                  value={startMin}
+                  onChange={e => setStartMin(Number(e.target.value))}
+                  style={selectStyle}
+                >
+                  {Array.from({ length: ((17 * 60 + 45) - 8 * 60) / 15 + 1 }, (_, i) => 8 * 60 + i * 15).map(
+                    m => (
+                      <option key={m} value={m}>
+                        {`${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+              <div>
+                <label style={fieldLabel}>Ends</label>
+                <div style={{ ...selectStyle, background: T.footerBg, color: T.text2, display: 'flex', alignItems: 'center' }}>
+                  {hhmm(newEnd)} · {durationMin} min
+                </div>
+              </div>
             </div>
           )}
 
-          {isTimeMode && inPast && (
+          {(mode === 'resend' || mode === 'confirm') && (
             <div
-              className="flex items-start gap-2 font-inter"
-              style={{ background: T.redTint, color: T.red, borderRadius: 9, fontSize: 11.5, padding: '8px 10px' }}
+              style={{
+                background: T.surface2,
+                borderRadius: 10,
+                padding: '10px 12px',
+                fontFamily: INTER,
+                fontWeight: 400,
+                fontSize: 12.5,
+                color: T.text,
+              }}
             >
-              <AlertTriangle size={13} strokeWidth={2} className="mt-[1px] flex-shrink-0" />
-              That time is in the past. Pick a later slot.
+              {slotText(start, end)}
             </div>
           )}
 
-          {isTimeMode && !inPast && overlapNotice && (
+          {isCancel && !isHold && (
+            <div>
+              <label style={fieldLabel}>Reason</label>
+              <select value={reason} onChange={e => setReason(e.target.value)} style={selectStyle}>
+                {CANCEL_REASONS.map(r => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(isMove || isReschedule) && inPast && (
             <div
-              className="flex items-start gap-2 font-inter"
-              style={{ background: T.amberTint, color: T.amber, borderRadius: 9, fontSize: 11.5, padding: '8px 10px' }}
+              style={{
+                display: 'flex',
+                gap: 8,
+                background: T.dangerTint,
+                color: T.redFg,
+                borderRadius: 8,
+                padding: '8px 10px',
+                fontFamily: INTER,
+                fontWeight: 400,
+                fontSize: 11.5,
+              }}
             >
-              <AlertTriangle size={13} strokeWidth={2} className="mt-[1px] flex-shrink-0" />
+              <CircleAlert size={13} strokeWidth={2} style={{ marginTop: 1, flexShrink: 0 }} />
+              That time has already passed. Pick a later slot.
+            </div>
+          )}
+          {(isMove || isReschedule) && !inPast && overlapNotice && (
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                background: T.amberBg,
+                color: T.amberFg,
+                borderRadius: 8,
+                padding: '8px 10px',
+                fontFamily: INTER,
+                fontWeight: 400,
+                fontSize: 11.5,
+                lineHeight: 1.45,
+              }}
+            >
+              <TriangleAlert size={13} strokeWidth={2} style={{ marginTop: 1, flexShrink: 0 }} />
               {overlapNotice}
             </div>
           )}
 
-          {/* Recipients */}
-          <div className="space-y-2">
-            <div className="font-inter" style={{ fontSize: 10.5, fontWeight: 600, color: T.tertiary }}>
-              {recipientsLabel.toUpperCase()}
+          {(showCandidateCard || showInterviewerCard) && (
+            <div>
+              <div style={fieldLabel}>{recipientLabel}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {showCandidateCard && (
+                  <CheckboxCard
+                    checked={notifyCandidate}
+                    onChange={setNotifyCandidate}
+                    title={`Candidate · ${candidate!.name}`}
+                    sub={candidate!.email}
+                  />
+                )}
+                {showInterviewerCard && (
+                  <CheckboxCard
+                    checked={notifyInterviewers}
+                    onChange={setNotifyInterviewers}
+                    title={`${interviewers.length > 1 ? 'Interviewers' : 'Interviewer'} · ${interviewerNames}`}
+                    sub={interviewerEmails || null}
+                  />
+                )}
+              </div>
             </div>
-            {candidate &&
-              checkboxCard(
-                'cand',
-                `Candidate · ${candidate.name}`,
-                candidate.email || 'No email on file',
-                notifyCandidate,
-                setNotifyCandidate,
-              )}
-            {interviewers.length > 0 &&
-              checkboxCard(
-                'ints',
-                `Interviewer${interviewers.length > 1 ? 's' : ''} · ${interviewers
-                  .map(i => i.name)
-                  .join(', ')}`,
-                interviewers.map(i => i.email).filter(Boolean).join(', ') || 'No email on file',
-                notifyInterviewers,
-                setNotifyInterviewers,
-              )}
-            {!noRecipients && (
+          )}
+
+          {isCancel && !isHold && candidate && (
+            <CheckboxCard
+              checked={requeue}
+              onChange={setRequeue}
+              title="Return candidate to Needs scheduling"
+              sub="Keeps them in the stage so they aren't forgotten"
+            />
+          )}
+
+          {anyChecked && (
+            <div>
+              <div style={fieldLabel}>
+                Message
+                <span style={{ fontWeight: 400, color: T.muted }}> · optional, added to the email</span>
+              </div>
               <textarea
+                rows={2}
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="Add a message (optional)"
-                rows={3}
-                className="w-full font-inter"
+                placeholder={
+                  isCancel
+                    ? 'Sorry for the late notice…'
+                    : 'Something came up on our side, hope this time works.'
+                }
                 style={{
-                  borderRadius: 10,
-                  border: `1px solid ${T.border}`,
-                  fontSize: 12.5,
+                  ...selectStyle,
+                  height: 'auto',
                   padding: '8px 10px',
+                  lineHeight: 1.45,
                   resize: 'vertical',
                 }}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div
-          className="flex flex-wrap items-center gap-2 px-5 py-3"
-          style={{ background: '#FAFAF7', borderTop: `1px solid ${T.hairline}` }}
+          style={{
+            padding: '12px 20px',
+            borderTop: `1px solid ${T.divider}`,
+            background: T.footerBg,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
         >
-          <div className="flex items-center gap-1.5 font-inter" style={{ fontSize: 10.5, color: T.tertiary }}>
-            <RefreshCw size={12} strokeWidth={2} />
-            Updates Google Calendar for everyone on the event
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={12} strokeWidth={2} color={T.muted} />
+            <span style={{ fontFamily: INTER, fontWeight: 400, fontSize: 11, color: T.muted }}>
+              Updates Google Calendar for everyone on the event
+            </span>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="font-poppins"
-              style={{
-                height: 34,
-                padding: '0 12px',
-                borderRadius: 9,
-                border: `1px solid ${T.border}`,
-                background: '#fff',
-                fontSize: 12.5,
-                fontWeight: 500,
-                color: T.ink,
-              }}
-            >
-              {secondaryLabel}
-            </button>
-            <button
-              type="button"
+          <div ref={primaryRef} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <SmallButton variant="secondary" label={secondaryLabel} onClick={onCancel} />
+            <SmallButton
+              variant={isCancel ? 'danger' : 'primary'}
+              label={primaryLabel}
               disabled={primaryDisabled}
               onClick={() =>
                 onConfirm({
-                  newStart: isTimeMode ? newStart : undefined,
-                  newEnd: isTimeMode ? newEnd : undefined,
-                  notifyCandidate,
-                  notifyInterviewers,
+                  newStart: isMove || isReschedule ? newStart : undefined,
+                  newEnd: isMove || isReschedule ? newEnd : undefined,
+                  notifyCandidate: showCandidateCard ? notifyCandidate : false,
+                  notifyInterviewers: showInterviewerCard ? notifyInterviewers : false,
                   message: message.trim() || undefined,
-                  reason: mode === 'cancel' ? reason : undefined,
-                  requeue: mode === 'cancel' ? requeue : undefined,
+                  reason: isCancel ? reason : undefined,
+                  requeue: isCancel && !isHold && candidate ? requeue : undefined,
                 })
               }
-              className="font-poppins"
-              style={{
-                height: 34,
-                padding: '0 14px',
-                borderRadius: 9,
-                background: danger ? T.red : T.ink,
-                color: '#fffcf9',
-                fontSize: 12.5,
-                fontWeight: 600,
-                opacity: primaryDisabled ? 0.5 : 1,
-              }}
-            >
-              {submitting ? 'Working…' : primaryLabel}
-            </button>
+            />
           </div>
         </div>
       </div>
