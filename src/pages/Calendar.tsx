@@ -1132,12 +1132,63 @@ export default function CalendarPage() {
       ? 'Mine'
       : nameByUser.get(peopleFilter) || 'Teammate'
 
+  const headerRangeLabel =
+    view === 'day'
+      ? format(anchorDate, 'EEEE, MMM d, yyyy')
+      : view === 'month'
+      ? format(monthStart, 'MMMM yyyy')
+      : weekRangeLabel(weekStart, weekEnd)
+
+  const todayVisible = rangeContainsDate(visibleStart, visibleEndExclusive, new Date())
+
+  const goToday = useCallback(() => {
+    if (todayVisible) return
+    setAnchorDate(localDay(new Date()))
+    closePopover()
+    setMenu(null)
+  }, [todayVisible])
+
+  const goPrevious = useCallback(() => {
+    setAnchorDate(d => {
+      if (view === 'day') return previousWeekday(d)
+      if (view === 'month') return firstBookableDayOfMonth(subMonths(d, 1))
+      return subWeeks(d, 1)
+    })
+    closePopover()
+    setMenu(null)
+  }, [view])
+
+  const goNext = useCallback(() => {
+    setAnchorDate(d => {
+      if (view === 'day') return nextWeekday(d)
+      if (view === 'month') return firstBookableDayOfMonth(addMonths(d, 1))
+      return addWeeks(d, 1)
+    })
+    closePopover()
+    setMenu(null)
+  }, [view])
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const target = ev.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      if (dialog || ev.metaKey || ev.ctrlKey || ev.altKey || tag === 'input' || tag === 'textarea' || tag === 'select') return
+      if (ev.key.toLowerCase() === 'd') setView('day')
+      if (ev.key.toLowerCase() === 'w') setView('week')
+      if (ev.key.toLowerCase() === 'm') setView('month')
+      if (ev.key.toLowerCase() === 't') goToday()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dialog, goToday, setView])
+
   const dragGhost = (() => {
     if (!drag?.active || !dragEvent) return null
     const durationMin = Math.max(15, differenceInMinutes(dragEvent.end, dragEvent.start))
-    const target = new Date(days[drag.dayIndex])
-    target.setHours(DAY_START, 0, 0, 0)
-    const start = new Date(target.getTime() + drag.startMinutes * 60000)
+    const target = drag.kind === 'month' && drag.targetDateKey ? dateFromKey(drag.targetDateKey) : new Date(timeColumns[drag.dayIndex])
+    const start = drag.kind === 'month'
+      ? combineDateAndMinutes(target, drag.startMinutes)
+      : new Date(combineDateAndMinutes(target, DAY_START * 60).getTime() + drag.startMinutes * 60000)
     const end = new Date(start.getTime() + durationMin * 60000)
     const past = start.getTime() < Date.now()
     const t = tone(dragEvent)
