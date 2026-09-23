@@ -255,6 +255,17 @@ export function CalendarActionDialog({
   }, [weekDays, start])
 
   const todayStart = startOfDay(new Date())
+  const dayOptionDisabled = useMemo(
+    () =>
+      days.map((d, i) => {
+        const dayStart = startOfDay(d)
+        const outsideDefaultWindow = dayStart.getTime() > addDays(todayStart, 28).getTime()
+        const prependedCurrentDate =
+          !weekDays?.length && i === 0 && !days.slice(1).some(other => isSameDay(other, d))
+        return dayStart.getTime() < todayStart.getTime() || (prependedCurrentDate && outsideDefaultWindow)
+      }),
+    [days, todayStart, weekDays?.length],
+  )
 
   const [dayIdx, setDayIdx] = useState(() => {
     const i = days.findIndex(d => isSameDay(d, start))
@@ -536,7 +547,7 @@ export function CalendarActionDialog({
                     <option
                       key={i}
                       value={i}
-                      disabled={startOfDay(d).getTime() < todayStart.getTime() || (i === 0 && !days.slice(1).some(day => isSameDay(day, d)) && !weekDays?.length)}
+                      disabled={dayOptionDisabled[i]}
                     >
                       {format(d, 'EEEE, MMM d')}
                     </option>
