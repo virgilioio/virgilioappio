@@ -1712,221 +1712,274 @@ export default function CalendarPage() {
             >
               {/* Calendar card */}
               <div
+                ref={calendarCardRef}
                 className="relative rounded-xl bg-white overflow-hidden"
                 style={{ border: `1px solid ${C.border}` }}
               >
-                {view !== 'week' ? (
+                {isLoading ? (
                   <div className="grid place-items-center font-inter text-[12px]" style={{ color: C.tertiary, height: 420 }}>
-                    {view === 'day' ? 'Day view' : 'Month view'} coming soon — switch to Week.
+                    Loading calendar…
                   </div>
-                ) : (
-                  <>
-                    {/* Day header row */}
+                ) : view === 'month' ? (
+                  <div ref={gridBodyRef} className="relative">
                     <div
                       className="grid"
-                      style={{ gridTemplateColumns: `${GUTTER_PX}px repeat(5, 1fr)`, borderBottom: `1px solid ${C.border}` }}
-                    >
-                      <div />
-                      {days.map((d, i) => {
-                        const today = isToday(d)
-                        const isDropDay = drag?.active && drag.dayIndex === i
-                        return (
-                          <div
-                            key={i}
-                            className="flex flex-col items-center justify-center py-2"
-                            style={{
-                              borderLeft: `1px solid ${C.hairline}`,
-                              background: isDropDay ? C.dropTint : today ? C.purpleTint : 'transparent',
-                            }}
-                          >
-                            <div
-                              className="font-inter"
-                              style={{ fontSize: 11, fontWeight: 600, color: today ? C.purple : C.muted }}
-                            >
-                              {format(d, 'EEE')}
-                            </div>
-                            <div
-                              className="font-inter"
-                              style={{ fontSize: 11, color: today ? C.purple : C.disabled }}
-                            >
-                              {format(d, 'MMM d')}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Grid body */}
-                    <div
-                      ref={gridBodyRef}
-                      className="relative grid"
                       style={{
-                        gridTemplateColumns: `${GUTTER_PX}px repeat(5, 1fr)`,
-                        height: (DAY_END - DAY_START) * HOUR_PX,
+                        gridTemplateColumns: MONTH_GRID_COLUMNS,
+                        borderBottom: `1px solid ${C.border}`,
+                        background: '#fff',
                       }}
                     >
-                      {/* Hour gutter */}
-                      <div className="relative">
-                        {Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => {
-                          const hour = DAY_START + i
-                          if (i === 0) return null
-                          return (
-                            <div
-                              key={i}
-                              className="absolute right-1.5 -translate-y-1/2 font-inter"
-                              style={{ top: i * HOUR_PX, fontSize: 9.5, color: C.disabled }}
-                            >
-                              {hour}:00
-                            </div>
-                          )
-                        })}
-                      </div>
-                      {/* Day columns */}
-                      {days.map((d, di) => {
-                        const today = isToday(d)
-                        const isDropDay = drag?.active && drag.dayIndex === di
-                        const dayEvents = layoutDayEvents(
-                          weekEvents.filter(e => isSameDay(e.start, d)),
-                        )
-                        // Faint hatch over time that has already passed
-                        const dayStart = new Date(d)
-                        dayStart.setHours(DAY_START, 0, 0, 0)
-                        const pastMin = Math.min(
-                          Math.max(0, (Date.now() - dayStart.getTime()) / 60000),
-                          (DAY_END - DAY_START) * 60,
-                        )
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(label => (
+                        <div
+                          key={label}
+                          className="font-inter"
+                          style={{
+                            height: 31,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10.5,
+                            fontWeight: 600,
+                            color: C.tertiary,
+                            borderLeft: label === 'Mon' ? 'none' : `1px solid ${C.hairline}`,
+                          }}
+                        >
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      className="grid"
+                      style={{
+                        gridTemplateColumns: MONTH_GRID_COLUMNS,
+                        gridAutoRows: 126,
+                        background: C.hairline,
+                        gap: 1,
+                      }}
+                    >
+                      {monthDays.map((day, index) => {
+                        const key = dateKey(day)
+                        const inMonth = isSameMonth(day, monthStart)
+                        const today = isToday(day)
+                        const weekend = isWeekend(day)
+                        const isTarget = drag?.kind === 'month' && drag.active && drag.targetDateKey === key
+                        const dayEvents = visibleEvents
+                          .filter(e => isSameDay(e.start, day))
+                          .sort((a, b) => a.start.getTime() - b.start.getTime())
+                        const shown = dayEvents.slice(0, 3)
+                        const hiddenCount = Math.max(0, dayEvents.length - shown.length)
                         return (
                           <div
-                            key={di}
-                            className="relative"
+                            key={key}
+                            data-cal-day={key}
+                            className="relative min-w-0"
                             style={{
-                              borderLeft: `1px solid ${C.hairline}`,
-                              background: isDropDay ? C.purpleTint : today ? C.purpleTint : 'transparent',
+                              background: weekend ? '#FAFAF7' : '#fff',
+                              opacity: inMonth ? 1 : 0.54,
+                              outline: isTarget ? `2px solid ${isWeekend(day) ? C.red : C.purple}` : 'none',
+                              outlineOffset: -2,
+                              padding: '7px 6px 6px',
                             }}
                           >
-                            {/* Past hatch */}
-                            {drag?.active && pastMin > 0 && (
+                            <button
+                              type="button"
+                              aria-label={`Open ${format(day, 'EEEE, MMM d')}`}
+                              onClick={() => {
+                                setAnchorDate(localDay(day))
+                                setView('day')
+                              }}
+                              className="font-inter"
+                              style={{
+                                width: 24,
+                                height: 20,
+                                borderRadius: 999,
+                                border: 'none',
+                                padding: 0,
+                                background: today ? C.ink : 'transparent',
+                                color: today ? '#fffcf9' : inMonth ? C.ink2 : C.tertiary,
+                                fontSize: 11,
+                                fontWeight: today ? 700 : 600,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {format(day, 'd')}
+                            </button>
+                            <div className="mt-1.5 flex flex-col gap-1">
+                              {shown.map(event => {
+                                const t = tone(event)
+                                const menuOpen = menu?.eventId === event.id
+                                const selected = selectedEventId === event.id
+                                const isDragging = drag?.active && drag.eventId === event.id
+                                return (
+                                  <button
+                                    key={event.id}
+                                    type="button"
+                                    title={`${event.title} · ${format(event.start, 'H:mm')}–${format(event.end, 'H:mm')}`}
+                                    onPointerDown={ev => onMonthEventPointerDown(event, ev)}
+                                    onClick={ev => {
+                                      if (drag?.active) return
+                                      ev.stopPropagation()
+                                      setMenu(null)
+                                      if (selectedEventId === event.id) {
+                                        closePopover()
+                                        return
+                                      }
+                                      const gridRect = gridBodyRef.current?.getBoundingClientRect()
+                                      const eventRect = ev.currentTarget.getBoundingClientRect()
+                                      if (!gridRect) return
+                                      setPopoverAnchor({
+                                        top: eventRect.top - gridRect.top,
+                                        left: eventRect.left - gridRect.left,
+                                        right: eventRect.right - gridRect.left,
+                                      })
+                                      setSelectedEventId(event.id)
+                                    }}
+                                    className="group relative flex w-full min-w-0 items-center gap-1 overflow-hidden text-left font-inter focus:outline-none"
+                                    style={{
+                                      height: 22,
+                                      borderRadius: 6,
+                                      border: event.type === 'hold' ? `1.25px dashed ${t.edge}` : `1px solid ${t.edge}`,
+                                      borderLeft: event.type === 'hold' ? `1.25px dashed ${t.edge}` : `3px solid ${t.edge}`,
+                                      background: event.type === 'hold' ? '#fff' : t.bg,
+                                      color: t.text,
+                                      padding: '0 23px 0 6px',
+                                      opacity: isDragging ? 0.35 : 1,
+                                      outline: menuOpen || selected ? `2px solid ${t.edge}` : undefined,
+                                      outlineOffset: menuOpen || selected ? 1 : undefined,
+                                      touchAction: 'none',
+                                    }}
+                                  >
+                                    <span style={{ fontSize: 9.5, fontWeight: 700, flexShrink: 0 }}>
+                                      {format(event.start, 'H:mm')}
+                                    </span>
+                                    <span className="truncate" style={{ fontSize: 10.5, fontWeight: 600 }}>
+                                      {event.title}
+                                    </span>
+                                    {syncingEventId === event.id && (
+                                      <RefreshCw size={9} strokeWidth={2} className="animate-spin" style={{ flexShrink: 0 }} />
+                                    )}
+                                    <span
+                                      role="button"
+                                      tabIndex={-1}
+                                      aria-label="Event actions"
+                                      aria-haspopup="menu"
+                                      aria-expanded={menuOpen}
+                                      onPointerDown={ev => ev.stopPropagation()}
+                                      onClick={ev => {
+                                        ev.stopPropagation()
+                                        setSelectedEventId(null)
+                                        setPopoverAnchor(null)
+                                        setMenu(prev =>
+                                          prev?.eventId === event.id
+                                            ? null
+                                            : { eventId: event.id, dayIndex: 0, eventTop: 28, dayKey: key },
+                                        )
+                                      }}
+                                      className={cn(
+                                        'absolute grid place-items-center transition-opacity duration-[120ms] [@media(hover:none)]:opacity-100',
+                                        menuOpen || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                                      )}
+                                      style={{
+                                        top: 2,
+                                        right: 2,
+                                        width: 18,
+                                        height: 18,
+                                        borderRadius: 5,
+                                        background: menuOpen ? 'rgba(13,13,9,0.12)' : 'rgba(255,255,255,0.7)',
+                                        color: t.text,
+                                      }}
+                                    >
+                                      <Ellipsis size={12} strokeWidth={2.5} />
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                              {hiddenCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAnchorDate(localDay(day))
+                                    setView('day')
+                                  }}
+                                  className="h-[20px] rounded-md px-1 text-left font-inter"
+                                  style={{ fontSize: 10.5, fontWeight: 600, color: C.tertiary, background: C.hairline, border: 'none' }}
+                                >
+                                  +{hiddenCount} more
+                                </button>
+                              )}
+                            </div>
+                            {dragGhost && drag?.kind === 'month' && drag.targetDateKey === key && (
                               <div
-                                className="pointer-events-none absolute left-0 right-0 top-0"
+                                className="pointer-events-none absolute left-1.5 right-1.5"
                                 style={{
-                                  height: (pastMin / 60) * HOUR_PX,
-                                  backgroundImage:
-                                    'repeating-linear-gradient(45deg, rgba(13,13,9,0.05) 0 2px, transparent 2px 6px)',
+                                  top: 35 + Math.min(shown.length, 3) * 26,
+                                  height: 22,
+                                  borderRadius: 6,
+                                  border: `1.5px dashed ${isWeekend(day) || dragGhost.past ? C.red : dragGhost.tone.edge}`,
+                                  background: dragGhost.past || isWeekend(day) ? '#FFF1F1' : dragGhost.tone.bg,
+                                  color: dragGhost.past || isWeekend(day) ? '#B02020' : dragGhost.tone.text,
+                                  zIndex: 20,
+                                  padding: '3px 6px',
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
                                 }}
-                              />
-                            )}
-                            {/* Hour lines */}
-                            {Array.from({ length: DAY_END - DAY_START }, (_, i) => (
-                              <div
-                                key={i}
-                                className="absolute left-0 right-0"
-                                style={{ top: (i + 1) * HOUR_PX, borderBottom: `1px solid ${C.pageBg}` }}
-                              />
-                            ))}
-                            {/* Now line */}
-                            {today && todayInWeek && nowLineTop >= 0 && nowLineTop <= (DAY_END - DAY_START) * HOUR_PX && (
-                              <div
-                                className="pointer-events-none absolute left-0 right-0"
-                                style={{ top: nowLineTop, height: 2, background: C.red, zIndex: 5 }}
                               >
-                                <div
-                                  className="absolute -left-1 -top-[3px] rounded-full"
-                                  style={{ width: 8, height: 8, background: C.red }}
-                                />
+                                {format(dragGhost.start, 'H:mm')} · {dragEvent?.title}
                               </div>
                             )}
-                            {/* Events */}
-                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes, di))}
-
-                            {/* Event menu — lives in the day column so it scrolls with the grid */}
-                            {menu && menuEvent && menu.dayIndex === di && (
+                            {menu && menuEvent && menu.dayKey === key && (
                               <EventMenu
-                                placement={
-                                  menu.eventTop > (DAY_END - DAY_START) * HOUR_PX - 230
-                                    ? { bottom: (DAY_END - DAY_START) * HOUR_PX - menu.eventTop + 4 }
-                                    : { top: menu.eventTop + 24 }
-                                }
+                                placement={{ top: Math.min(menu.eventTop + 2, 92) }}
                                 items={menuItemsFor(menuEvent).items}
                                 note={menuItemsFor(menuEvent).note}
                                 onSelect={action => handleMenuAction(menuEvent, action)}
                                 onClose={() => setMenu(null)}
                               />
                             )}
-
-                            {/* Drag ghost */}
-                            {dragGhost && drag?.dayIndex === di && (
-                              <div
-                                className="pointer-events-none absolute"
-                                style={{
-                                  top: (drag.startMinutes / 60) * HOUR_PX,
-                                  height: Math.max(20, (dragGhost.durationMin / 60) * HOUR_PX - 3),
-                                  left: 3,
-                                  right: 3,
-                                  zIndex: 20,
-                                  borderRadius: 7,
-                                  border: `1.5px dashed ${dragGhost.past ? C.red : dragGhost.tone.edge}`,
-                                  background: dragGhost.past ? '#FFF1F1' : dragGhost.tone.bg,
-                                  color: dragGhost.past ? '#B02020' : dragGhost.tone.text,
-                                  boxShadow: '0 8px 20px -8px rgba(13,13,9,0.28)',
-                                  padding: '4px 7px',
-                                }}
-                              >
-                                <div className="font-inter" style={{ fontSize: 10.5, fontWeight: 700 }}>
-                                  {format(dragGhost.start, 'HH:mm')}–{format(dragGhost.end, 'HH:mm')}
-                                  {dragGhost.past ? ' · in the past' : ''}
-                                </div>
-                                <div
-                                  className="font-inter truncate"
-                                  style={{ fontSize: 9.5, opacity: 0.8 }}
-                                >
-                                  {dragEvent?.title}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         )
                       })}
-
-                      {/* Event detail popover — anchored beside the selected event */}
-                      {selectedEvent && popoverAnchor && (
-                        <EventPopover
-                          event={selectedEvent}
-                          anchor={popoverAnchor}
-                          containerWidth={gridBodyRef.current?.clientWidth ?? 0}
-                          containerHeight={gridBodyRef.current?.clientHeight ?? 0}
-                          tone={tone(selectedEvent)}
-                          isMine={selectedEvent.interviewerId === user?.id}
-                          scheduledByMe={selectedEvent.scheduledById === user?.id}
-                          onClose={closePopover}
-                          onJoin={() => {
-                            const loc =
-                              (selectedEvent.raw as any).google_meet_link || selectedEvent.raw.meeting_location
-                            if (loc && /^https?:\/\//.test(loc)) {
-                              window.open(loc, '_blank', 'noopener')
-                              showToast({ title: 'Opening the meeting' })
-                            }
-                          }}
-                          onReschedule={() => {
-                            closePopover()
-                            setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
-                          }}
-                          onConfirmSlot={() => {
-                            closePopover()
-                            setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
-                          }}
-                          onRelease={() => {
-                            closePopover()
-                            setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
-                          }}
-                          onOpenNotes={() => {
-                            closePopover()
-                            handleMenuAction(selectedEvent, 'open-notes')
-                          }}
-                          canAct={canActOn(selectedEvent)}
-                        />
-                      )}
                     </div>
-                  </>
+                    {selectedEvent && popoverAnchor && (
+                      <EventPopover
+                        event={selectedEvent}
+                        anchor={popoverAnchor}
+                        containerWidth={gridBodyRef.current?.clientWidth ?? 0}
+                        containerHeight={gridBodyRef.current?.clientHeight ?? 0}
+                        tone={tone(selectedEvent)}
+                        isMine={selectedEvent.interviewerId === user?.id}
+                        scheduledByMe={selectedEvent.scheduledById === user?.id}
+                        onClose={closePopover}
+                        onJoin={() => {
+                          const loc = (selectedEvent.raw as any).google_meet_link || selectedEvent.raw.meeting_location
+                          if (loc && /^https?:\/\//.test(loc)) {
+                            window.open(loc, '_blank', 'noopener')
+                            showToast({ title: 'Opening the meeting' })
+                          }
+                        }}
+                        onReschedule={() => {
+                          closePopover()
+                          setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
+                        }}
+                        onConfirmSlot={() => {
+                          closePopover()
+                          setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
+                        }}
+                        onRelease={() => {
+                          closePopover()
+                          setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
+                        }}
+                        onOpenNotes={() => {
+                          closePopover()
+                          handleMenuAction(selectedEvent, 'open-notes')
+                        }}
+                        canAct={canActOn(selectedEvent)}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  renderTimeGrid()
                 )}
 
                 <CalendarToast toast={toast} onDismiss={() => setToast(null)} />
