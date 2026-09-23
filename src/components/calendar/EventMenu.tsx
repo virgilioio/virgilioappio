@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
+import type { LucideIcon } from 'lucide-react'
 
 export type EventMenuAction =
   | 'reschedule'
@@ -15,113 +16,124 @@ export type EventMenuAction =
 export interface EventMenuItem {
   action: EventMenuAction
   label: string
+  Icon: LucideIcon
   danger?: boolean
-  dividerBefore?: boolean
+  separatorBefore?: boolean
 }
 
 /**
- * Small anchored menu for a calendar event. Flips above the anchor when it
- * would overflow the bottom of the grid.
+ * Event action menu. Rendered inside the day column so it scrolls with the
+ * grid; vertical placement is supplied by the caller (flips above for events
+ * late in the day).
  */
 export function EventMenu({
-  anchor,
-  containerEl,
+  placement,
   items,
   note,
   onSelect,
   onClose,
 }: {
-  anchor: { top: number; bottom: number; left: number; right: number }
-  containerEl: HTMLElement | null
+  placement: { top: number } | { bottom: number }
   items: EventMenuItem[]
   note?: string
   onSelect: (action: EventMenuAction) => void
   onClose: () => void
 }) {
-  const WIDTH = 208
-  const GAP = 6
   const ref = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-
-  useLayoutEffect(() => {
-    const containerW = containerEl?.clientWidth ?? 800
-    const containerH = containerEl?.clientHeight ?? 600
-    const h = ref.current?.offsetHeight ?? 200
-
-    let left = Math.min(anchor.right - WIDTH, containerW - WIDTH - GAP)
-    left = Math.max(GAP, left)
-
-    let top = anchor.bottom + GAP
-    if (top + h > containerH - GAP) top = Math.max(GAP, anchor.top - GAP - h)
-
-    setPos({ top, left })
-  }, [anchor, containerEl, items.length])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+    const onPointerDown = (ev: PointerEvent) => {
+      if (ref.current && !ref.current.contains(ev.target as Node)) onClose()
     }
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') onClose()
+    }
+    window.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [onClose])
 
+  // Never render two separators in a row, or one first / last.
+  const rendered = items.filter(Boolean)
+
   return (
-    <>
-      <div className="fixed inset-0 z-[55]" onMouseDown={onClose} />
-      <div
-        ref={ref}
-        role="menu"
-        className="absolute z-[60] bg-white"
-        style={{
-          top: pos?.top ?? anchor.bottom,
-          left: pos?.left ?? anchor.left,
-          width: WIDTH,
-          visibility: pos ? 'visible' : 'hidden',
-          borderRadius: 10,
-          border: '1px solid #E7E8EE',
-          boxShadow: '0 12px 32px -8px rgba(13,13,9,0.18)',
-          padding: 4,
-        }}
-        onMouseDown={e => e.stopPropagation()}
-      >
-        {items.map(item => (
-          <div key={item.action + item.label}>
-            {item.dividerBefore && (
-              <div style={{ height: 1, background: '#F1F0EC', margin: '4px 6px' }} />
+    <div
+      ref={ref}
+      role="menu"
+      style={{
+        position: 'absolute',
+        right: 3,
+        width: 208,
+        background: '#fff',
+        border: '1px solid #E7E8EE',
+        borderRadius: 10,
+        padding: 4,
+        boxShadow: '0 14px 32px -10px rgba(13,13,9,0.28)',
+        zIndex: 40,
+        ...placement,
+      }}
+    >
+      {rendered.map((item, i) => {
+        const showSeparator = !!item.separatorBefore && i > 0
+        return (
+          <div key={`${item.action}-${item.label}`}>
+            {showSeparator && (
+              <div style={{ height: 1, background: '#F1F0EC', margin: '4px 2px' }} />
             )}
             <button
               type="button"
               role="menuitem"
               onClick={() => {
-                onSelect(item.action)
                 onClose()
+                onSelect(item.action)
               }}
-              className="flex w-full items-center rounded-md px-2.5 font-inter text-left transition-colors"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 9,
+                width: '100%',
                 height: 30,
-                fontSize: 12.5,
+                padding: '0 9px',
+                border: 'none',
+                borderRadius: 7,
+                background: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                fontSize: 12,
                 color: item.danger ? '#E03131' : '#1F2230',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = item.danger ? '#FFF1F1' : '#F1F0EC'
+                e.currentTarget.style.background = item.danger ? '#FFF1F1' : '#F6F5F1'
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = 'transparent'
               }}
             >
+              <item.Icon size={13} strokeWidth={2} color={item.danger ? '#E03131' : '#8B8F9E'} />
               {item.label}
             </button>
           </div>
-        ))}
-        {note && (
-          <div
-            className="font-inter"
-            style={{ fontSize: 10.5, color: '#8B8F9E', padding: '6px 8px 4px', lineHeight: 1.35 }}
-          >
-            {note}
-          </div>
-        )}
-      </div>
-    </>
+        )
+      })}
+      {note && (
+        <div
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 400,
+            fontSize: 10.5,
+            lineHeight: 1.45,
+            color: '#8B8F9E',
+            padding: '4px 9px 6px',
+          }}
+        >
+          {note}
+        </div>
+      )}
+    </div>
   )
 }
