@@ -583,7 +583,7 @@ export default function CalendarPage() {
       const clamped = Math.min(Math.max(0, snapped), Math.max(0, maxStart))
       return { dayIndex, startMinutes: clamped }
     },
-    [],
+    [timeColumns.length, view],
   )
 
   const onEventPointerDown = (e: CalEvent, ev: React.PointerEvent<HTMLButtonElement>) => {
@@ -960,7 +960,7 @@ export default function CalendarPage() {
   }
 
   // ─── Render helpers ───
-  function renderEvent(e: CalEvent, lane = 0, lanes = 1, dayIndex = 0) {
+  function renderEvent(e: CalEvent, lane = 0, lanes = 1, dayIndex = 0, wide = false) {
     const startMin = e.start.getHours() * 60 + e.start.getMinutes()
     const endMin = e.end.getHours() * 60 + e.end.getMinutes()
     const top = ((startMin - DAY_START * 60) / 60) * HOUR_PX
@@ -974,6 +974,8 @@ export default function CalendarPage() {
     const isSyncing = syncingEventId === e.id
     const menuOpen = menu?.eventId === e.id
     const selected = selectedEventId === e.id
+    const hostName = e.interviewerId === user?.id ? 'You' : e.interviewerName || 'Teammate'
+    const showWideExtras = wide && lanes === 1
 
     return (
       <button
@@ -1053,8 +1055,30 @@ export default function CalendarPage() {
               <>
                 {format(e.start, 'H:mm')}–{format(e.end, 'H:mm')}
                 {e.jobTitle ? ` · ${e.jobTitle}` : ''}
+                {showWideExtras && e.interviewerName ? ` · ${hostName}` : ''}
               </>
             )}
+          </div>
+        )}
+
+        {showWideExtras && height >= 50 && e.interviewerName && (
+          <div className="pointer-events-none absolute bottom-1.5 right-2 flex flex-row-reverse">
+            <span
+              className="grid place-items-center font-poppins"
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 999,
+                background: t.edge,
+                boxShadow: '0 0 0 2px #fff',
+                color: '#fff',
+                fontSize: 8.5,
+                fontWeight: 600,
+                marginLeft: -8,
+              }}
+            >
+              {initials(hostName).slice(0, 2)}
+            </span>
           </div>
         )}
 
