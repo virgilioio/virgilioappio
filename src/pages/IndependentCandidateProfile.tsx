@@ -568,7 +568,11 @@ export default function IndependentCandidateProfile() {
                       }}
                     />
 
-
+                    {workExperience.length > 0 && (
+                      <ProfileCard title="Experience" subtitle={experienceSummary(workExperience)}>
+                        <ExperienceTimeline experiences={workExperience} />
+                      </ProfileCard>
+                    )}
 
                     <ProfileCard
                       title="Pipeline history"

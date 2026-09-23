@@ -1664,7 +1664,7 @@ const stageHasAutomation = useMemo(() => {
 
                 {/* Tabs moved into ProfileHeroCard */}
 
-                <div className={cn('grid grid-cols-1 gap-4', activeTab !== 'fit' && 'lg:grid-cols-[minmax(0,1fr)_320px]')}>
+                <div className={cn('grid grid-cols-1 gap-4', activeTab !== 'fit' && activeTab !== 'experience' && 'lg:grid-cols-[minmax(0,1fr)_320px]')}>
                   {/* Left column — tab content */}
                   <div className="space-y-4 min-w-0">
                     {/* Job Overview Tab */}
