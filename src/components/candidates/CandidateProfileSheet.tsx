@@ -1682,6 +1682,11 @@ const stageHasAutomation = useMemo(() => {
                             onTalentPool={handleReject}
                             onDismiss={() => { void resolveClientVerdict() }}
                           />
+                          {workExperience.length > 0 && (
+                            <ProfileCard title="Experience" subtitle={experienceSummary(workExperience)}>
+                              <ExperienceTimeline items={workExperience} />
+                            </ProfileCard>
+                          )}
                           {currentStage && associationId ? (
                             <CurrentStageCard
                               stageName={currentStage.stage.stage_name}

@@ -1,6 +1,3 @@
-import { Building2 } from "lucide-react";
-import { InlineEmpty } from "@/components/ui/empty-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExperienceTimeline } from '@/components/candidates/experience/ExperienceTimeline'
 
 export interface CandidateWorkExperience {
@@ -27,31 +24,5 @@ interface CandidateWorkExperienceProps {
 }
 
 export const CandidateWorkExperienceComponent = ({ experiences }: CandidateWorkExperienceProps) => {
-  if (experiences.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Work Experience
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <InlineEmpty text="No work experience data available." />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building2 className="h-5 w-5" />
-          Work Experience
-        </CardTitle>
-      </CardHeader>
-      <CardContent><ExperienceTimeline items={experiences} /></CardContent>
-    </Card>
-  );
+  return <ExperienceTimeline items={experiences} />;
 };
