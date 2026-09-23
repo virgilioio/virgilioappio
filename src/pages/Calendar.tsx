@@ -1487,6 +1487,7 @@ export default function CalendarPage() {
                   : []
               }
               overlapNotice={overlapNoticeFor(dialogEvent, dialog.newStart, dialog.newEnd)}
+              weekDays={days}
               submitting={isSubmitting}
               onCancel={() => {
                 setDialog(null)
