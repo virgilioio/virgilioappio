@@ -33,6 +33,7 @@ import { buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import { CandidateWorkExperienceComponent, type CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import { experienceSummary, unionExperienceMonths } from '@/lib/experience/groupExperience'
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { ResumeTabCard, NoResumeFileSlot } from '@/components/candidates/profile/ResumeTabCard'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
@@ -309,7 +310,8 @@ export default function IndependentCandidateProfile() {
   const resumeFileName = resumeAttachment?.file_name || 'Resume.pdf'
   const resumeUploadedDate = formatDate(resumeAttachment?.created_at) || formatDate(candidate.created_at)
 
-  const yearsExp = candidate.years_experience ?? null
+  const unionMonths = unionExperienceMonths(workExperience)
+  const yearsExp = unionMonths > 0 ? Math.round((unionMonths / 12) * 10) / 10 : candidate.years_experience ?? null
   const currentRole = candidate.current_job_title || candidate.standardized_title
   const currentCompany = candidate.company_current
   const addedDate = formatDate(candidate.created_at)
@@ -678,25 +680,15 @@ export default function IndependentCandidateProfile() {
 
 
 
-                {activeTab === 'experience' && (() => {
-                  const totalMonths = workExperience.reduce((sum, e) => {
-                    if (!e.start_date) return sum
-                    const s = new Date(e.start_date).getTime()
-                    const end = (e.is_current || !e.end_date) ? Date.now() : new Date(e.end_date).getTime()
-                    if (isNaN(s) || isNaN(end)) return sum
-                    return sum + Math.max(0, Math.round((end - s) / (1000 * 60 * 60 * 24 * 30.4375)))
-                  }, 0)
-                  const totalYears = Math.round((totalMonths / 12) * 10) / 10
-                  return (
+                {activeTab === 'experience' && (
                     <ProfileCard
                       title="Experience"
-                      subtitle={`${workExperience.length} role${workExperience.length === 1 ? '' : 's'}${totalMonths > 0 ? ` · ${totalYears}y total` : ''}`}
+                      subtitle={experienceSummary(workExperience)}
                       action={<Button variant="secondary" size="sm" icon={Plus} onClick={() => setIsFormOpen(true)}>Add role</Button>}
                     >
                       <ExperienceTimeline experiences={workExperience} />
                     </ProfileCard>
-                  )
-                })()}
+                )}
 
                 {activeTab === 'education' && (
                   <ProfileCard
