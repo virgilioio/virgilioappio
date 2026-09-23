@@ -218,6 +218,8 @@ function initials(name: string) {
 
 interface DragState {
   eventId: string
+  /** Set once dropped and the confirm dialog is open — ignore pointer input. */
+  frozen?: boolean
   pointerId: number
   originX: number
   originY: number
@@ -482,7 +484,7 @@ export default function CalendarPage() {
   }
 
   useEffect(() => {
-    if (!drag) return
+    if (!drag || drag.frozen) return
     const current = weekEvents.find(e => e.id === drag.eventId)
     if (!current) {
       setDrag(null)
@@ -542,6 +544,7 @@ export default function CalendarPage() {
         return
       }
 
+      setDrag(d => (d ? { ...d, frozen: true } : d))
       setDialog({ eventId: current.id, mode: 'move', newStart, newEnd })
     }
 
