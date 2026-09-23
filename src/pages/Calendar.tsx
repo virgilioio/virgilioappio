@@ -543,14 +543,39 @@ export default function CalendarPage() {
 
   const isPast = (e: CalEvent) => e.start.getTime() <= Date.now()
 
+  const openMoveDialogForDrop = useCallback(
+    (event: CalEvent, newStart: Date, durationMin: number, keepDragGhost = false) => {
+      const newEnd = new Date(newStart.getTime() + durationMin * 60000)
+      if (isWeekend(newStart)) {
+        setDrag(null)
+        showToast({ title: "Weekends aren't bookable", detail: 'Drop it on a weekday', tone: 'error' })
+        return
+      }
+      if (newStart.getTime() < Date.now()) {
+        setDrag(null)
+        showToast({ title: "Can't move into the past", detail: 'Drop it on a later slot', tone: 'error' })
+        return
+      }
+      if (newStart.getTime() === event.start.getTime()) {
+        setDrag(null)
+        return
+      }
+      if (keepDragGhost) setDrag(d => (d ? { ...d, active: true, frozen: true } : d))
+      else setDrag(null)
+      setDialog({ eventId: event.id, mode: 'move', newStart, newEnd })
+    },
+    [showToast],
+  )
+
   // ─── Drag & drop ───
   const slotFromPointer = useCallback(
     (clientX: number, clientY: number, grabOffsetMin: number, durationMin: number) => {
       const rect = gridBodyRef.current?.getBoundingClientRect()
       if (!rect) return null
-      const colWidth = (rect.width - GUTTER_PX) / 5
+      const columnCount = Math.max(1, timeColumns.length)
+      const colWidth = (rect.width - GUTTER_PX) / columnCount
       const rawCol = Math.floor((clientX - rect.left - GUTTER_PX) / colWidth)
-      const dayIndex = Math.min(4, Math.max(0, rawCol))
+      const dayIndex = view === 'day' ? 0 : Math.min(columnCount - 1, Math.max(0, rawCol))
 
       const minutesFromTop = ((clientY - rect.top) / HOUR_PX) * 60 - grabOffsetMin
       const snapped = Math.round(minutesFromTop / SNAP_MIN) * SNAP_MIN
@@ -570,6 +595,7 @@ export default function CalendarPage() {
     if (!draggable) {
       // still allow selection; refusal toasts fire on an actual drag attempt
       setDrag({
+        kind: 'time',
         eventId: e.id,
         pointerId: ev.pointerId,
         originX: ev.clientX,
@@ -583,20 +609,47 @@ export default function CalendarPage() {
     }
 
     setDrag({
+      kind: 'time',
       eventId: e.id,
       pointerId: ev.pointerId,
       originX: ev.clientX,
       originY: ev.clientY,
       grabOffsetMin,
       active: false,
-      dayIndex: days.findIndex(d => isSameDay(d, e.start)),
+      dayIndex: timeColumns.findIndex(d => isSameDay(d, e.start)),
       startMinutes: e.start.getHours() * 60 + e.start.getMinutes() - DAY_START * 60,
     })
   }
 
+  const onMonthEventPointerDown = (e: CalEvent, ev: React.PointerEvent<HTMLButtonElement>) => {
+    if (ev.button !== 0 || dialog) return
+    const draggable = canActOn(e) && !isPast(e)
+    const startMinutes = e.start.getHours() * 60 + e.start.getMinutes()
+    const base = {
+      kind: 'month' as const,
+      eventId: e.id,
+      pointerId: ev.pointerId,
+      originX: ev.clientX,
+      originY: ev.clientY,
+      grabOffsetMin: 0,
+      active: false,
+      dayIndex: 0,
+      startMinutes,
+      sourceDateKey: dateKey(e.start),
+      targetDateKey: dateKey(e.start),
+    }
+
+    if (!draggable) {
+      setDrag(base)
+      return
+    }
+    setDrag(base)
+  }
+
   useEffect(() => {
     if (!drag) return
-    const current = weekEvents.find(e => e.id === drag.eventId)
+    if (drag.frozen) return
+    const current = visibleEvents.find(e => e.id === drag.eventId)
     if (!current) {
       setDrag(null)
       return
@@ -610,6 +663,15 @@ export default function CalendarPage() {
         Math.abs(ev.clientY - drag.originY) > DRAG_THRESHOLD
       if (!moved) return
       if (!draggable) return
+      if (drag.kind === 'month') {
+        const target = document
+          .elementFromPoint(ev.clientX, ev.clientY)
+          ?.closest('[data-cal-day]') as HTMLElement | null
+        const key = target?.dataset.calDay
+        if (!key) return
+        setDrag(d => (d ? { ...d, active: true, targetDateKey: key } : d))
+        return
+      }
       const slot = slotFromPointer(ev.clientX, ev.clientY, drag.grabOffsetMin, durationMin)
       if (!slot) return
       setDrag(d => (d ? { ...d, active: true, ...slot } : d))
@@ -640,26 +702,21 @@ export default function CalendarPage() {
         return
       }
 
-      const target = new Date(days[drag.dayIndex])
+      if (drag.kind === 'month') {
+        if (!drag.targetDateKey || drag.targetDateKey === drag.sourceDateKey) {
+          setDrag(null)
+          return
+        }
+        const targetDay = dateFromKey(drag.targetDateKey)
+        const newStart = combineDateAndMinutes(targetDay, drag.startMinutes)
+        openMoveDialogForDrop(current, newStart, durationMin, true)
+        return
+      }
+
+      const target = new Date(timeColumns[drag.dayIndex])
       target.setHours(DAY_START, 0, 0, 0)
       const newStart = new Date(target.getTime() + drag.startMinutes * 60000)
-      const newEnd = new Date(newStart.getTime() + durationMin * 60000)
-
-      if (newStart.getTime() < Date.now()) {
-        setDrag(null)
-        showToast({ title: "That slot is in the past", detail: 'Pick a later time', tone: 'error' })
-        return
-      }
-      if (newStart.getTime() === current.start.getTime()) {
-        setDrag(null)
-        return
-      }
-
-      // End the drag session completely before mounting the dialog. Keeping an
-      // active drag object here leaves its ghost rendered beneath the scrim and
-      // can also let the closing pointer event continue the gesture.
-      setDrag(null)
-      setDialog({ eventId: current.id, mode: 'move', newStart, newEnd })
+      openMoveDialogForDrop(current, newStart, durationMin)
     }
 
     window.addEventListener('pointermove', onMove)
@@ -670,7 +727,7 @@ export default function CalendarPage() {
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
     }
-  }, [drag, weekEvents, canActOn, slotFromPointer, days, showToast])
+  }, [drag, visibleEvents, canActOn, slotFromPointer, timeColumns, openMoveDialogForDrop, showToast])
 
   // ─── Menus ───
   function menuItemsFor(e: CalEvent): { items: EventMenuItem[]; note?: string } {
