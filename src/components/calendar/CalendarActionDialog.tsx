@@ -15,7 +15,7 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react'
-import { addDays, format, isSameDay, startOfDay, startOfWeek } from 'date-fns'
+import { addDays, format, isSameDay, isWeekend, startOfDay } from 'date-fns'
 
 export type CalendarActionMode = 'move' | 'reschedule' | 'rebook' | 'resend' | 'confirm' | 'cancel'
 
@@ -247,9 +247,14 @@ export function CalendarActionDialog({
 
   const days = useMemo(() => {
     if (weekDays?.length) return weekDays
-    const ws = startOfWeek(start, { weekStartsOn: 1 })
-    return Array.from({ length: 5 }, (_, i) => addDays(ws, i))
+    const today = startOfDay(new Date())
+    const windowDays = Array.from({ length: 29 }, (_, i) => addDays(today, i)).filter(d => !isWeekend(d))
+    const eventDay = startOfDay(start)
+    const inWindow = windowDays.some(d => isSameDay(d, eventDay))
+    return inWindow ? windowDays : [eventDay, ...windowDays]
   }, [weekDays, start])
+
+  const todayStart = startOfDay(new Date())
 
   const [dayIdx, setDayIdx] = useState(() => {
     const i = days.findIndex(d => isSameDay(d, start))
@@ -528,7 +533,11 @@ export function CalendarActionDialog({
                   style={selectStyle}
                 >
                   {days.map((d, i) => (
-                    <option key={i} value={i} disabled={startOfDay(d) < startOfDay(new Date())}>
+                    <option
+                      key={i}
+                      value={i}
+                      disabled={startOfDay(d).getTime() < todayStart.getTime() || (i === 0 && !days.slice(1).some(day => isSameDay(day, d)) && !weekDays?.length)}
+                    >
                       {format(d, 'EEEE, MMM d')}
                     </option>
                   ))}
