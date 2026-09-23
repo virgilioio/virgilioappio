@@ -55,8 +55,6 @@ import { CalendarToast, type CalendarToastState } from '@/components/calendar/Ca
 import {
   BUSY_TONE,
   DEBRIEF_TONE,
-  YOU_TONE,
-  CALENDAR_PALETTE,
   toneForHost,
   type CalendarTone,
 } from '@/lib/calendar/colors'
