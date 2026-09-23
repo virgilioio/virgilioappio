@@ -95,12 +95,24 @@ interface BookingFromDB {
   } | null
 }
 
-export function useScheduledBookings(status?: BookingStatus, permissions?: PermissionsState) {
+export function useScheduledBookings(
+  status?: BookingStatus,
+  permissions?: PermissionsState,
+  rangeStart?: Date,
+  rangeEnd?: Date,
+) {
   const { user, organizationId } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ['scheduled-bookings', user?.id, status, organizationId],
+    queryKey: [
+      'scheduled-bookings',
+      user?.id,
+      status,
+      organizationId,
+      rangeStart?.toISOString() ?? null,
+      rangeEnd?.toISOString() ?? null,
+    ],
     queryFn: async () => {
       if (!user) return []
 
@@ -184,6 +196,12 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
           .order('scheduled_start', { ascending: false })
       } else {
         query = query.order('scheduled_start', { ascending: false })
+      }
+
+      if (rangeStart && rangeEnd) {
+        query = query
+          .lt('scheduled_start', rangeEnd.toISOString())
+          .gt('scheduled_end', rangeStart.toISOString())
       }
 
       const { data, error } = await query
