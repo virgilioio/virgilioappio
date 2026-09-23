@@ -218,8 +218,6 @@ function initials(name: string) {
 
 interface DragState {
   eventId: string
-  /** Set once dropped and the confirm dialog is open — ignore pointer input. */
-  frozen?: boolean
   pointerId: number
   originX: number
   originY: number
@@ -451,7 +449,7 @@ export default function CalendarPage() {
   )
 
   const onEventPointerDown = (e: CalEvent, ev: React.PointerEvent<HTMLButtonElement>) => {
-    if (ev.button !== 0) return
+    if (ev.button !== 0 || dialog) return
     const draggable = canActOn(e) && !isPast(e)
     const rect = ev.currentTarget.getBoundingClientRect()
     const grabOffsetMin = ((ev.clientY - rect.top) / HOUR_PX) * 60
@@ -484,7 +482,7 @@ export default function CalendarPage() {
   }
 
   useEffect(() => {
-    if (!drag || drag.frozen) return
+    if (!drag) return
     const current = weekEvents.find(e => e.id === drag.eventId)
     if (!current) {
       setDrag(null)
@@ -544,7 +542,10 @@ export default function CalendarPage() {
         return
       }
 
-      setDrag(d => (d ? { ...d, frozen: true } : d))
+      // End the drag session completely before mounting the dialog. Keeping an
+      // active drag object here leaves its ghost rendered beneath the scrim and
+      // can also let the closing pointer event continue the gesture.
+      setDrag(null)
       setDialog({ eventId: current.id, mode: 'move', newStart, newEnd })
     }
 
