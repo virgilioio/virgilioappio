@@ -1,5 +1,6 @@
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import { companyKey, unionExperienceMonths } from '@/lib/experience/groupExperience'
 
 export function asString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : null
@@ -160,12 +161,12 @@ export function computeExperienceStats(
     })
     .filter((row): row is { entry: CandidateWorkExperience; start: Date; end: Date } => !!row)
 
-  const totalMonths = validRows.reduce((sum, row) => sum + Math.max(1, Math.round((row.end.getTime() - row.start.getTime()) / 2_629_746_000)), 0)
+  const totalMonths = unionExperienceMonths(experience)
   const seniorPattern = /\b(senior|sr\.?|lead|head|director|vp|vice president|chief|principal|manager)\b/i
   const seniorMonths = validRows
     .filter(({ entry }) => seniorPattern.test(`${entry.job_title} ${entry.standardized_title || ''}`))
     .reduce((sum, row) => sum + Math.max(1, Math.round((row.end.getTime() - row.start.getTime()) / 2_629_746_000)), 0)
-  const companies = new Set(experience.map((entry) => entry.company_name?.trim().toLocaleLowerCase()).filter(Boolean)).size
+  const companies = new Set(experience.map(companyKey)).size
   const teamSizes = experience.flatMap((entry) => {
     const description = stripHtml(entry.description)
     const matches = [...description.matchAll(/(?:team(?: of)?|managed|led|supervised)\s+(?:a\s+)?(?:team\s+of\s+)?(\d{1,4})\b/gi)]

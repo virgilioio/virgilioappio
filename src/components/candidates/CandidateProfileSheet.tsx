@@ -14,7 +14,9 @@ import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { ResumeTabCard } from '@/components/candidates/profile/ResumeTabCard'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
-import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import { ExperienceTimeline } from '@/components/candidates/experience/ExperienceTimeline'
+import { experienceSummary } from '@/lib/experience/groupExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import type { CandidateCertification } from '@/components/candidates/CandidateCertifications'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, RotateCw, Activity, StickyNote, Sparkles, Calendar, Globe, Zap, Bell, MapPin, DollarSign, MessageSquare, UserRound, Heart, XCircle, PartyPopper, Hourglass, Plus, ArrowRight, ArrowRightLeft,
@@ -204,7 +206,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { name: createdByName } = useUserDisplayName(createdByUserId)
 
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'experience' | 'fit' | 'scorecards' | 'activity' | 'emails' | 'comments' | 'offer' | 'rejection-details' | 'onboarding'>('job')
   const [rightActiveTab, setRightActiveTab] = useState<'chat' | 'feed' | 'notes' | 'emails' | 'reminders' | 'insights'>('insights')
   
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
@@ -1489,6 +1491,7 @@ const stageHasAutomation = useMemo(() => {
                               : []),
                             { value: 'job', label: 'Job overview', Icon: ClipboardCheckIconAlias },
                             { value: 'resume', label: 'Resume', Icon: FileText },
+                            { value: 'experience', label: 'Experience', Icon: Clock, count: workExperience.length || null },
                             ...(!isRestrictedViewer ? [{ value: 'fit', label: 'Gio Fit', Icon: Sparkles }] : []),
                             { value: 'scorecards', label: 'Scorecards', Icon: Star },
                             { value: 'activity', label: 'Activity', Icon: Activity, count: activityDerived.events.length },
@@ -1661,7 +1664,7 @@ const stageHasAutomation = useMemo(() => {
 
                 {/* Tabs moved into ProfileHeroCard */}
 
-                <div className={cn('grid grid-cols-1 gap-4', activeTab !== 'fit' && 'lg:grid-cols-[minmax(0,1fr)_320px]')}>
+                <div className={cn('grid grid-cols-1 gap-4', activeTab !== 'fit' && activeTab !== 'experience' && 'lg:grid-cols-[minmax(0,1fr)_320px]')}>
                   {/* Left column — tab content */}
                   <div className="space-y-4 min-w-0">
                     {/* Job Overview Tab */}
@@ -1679,6 +1682,11 @@ const stageHasAutomation = useMemo(() => {
                             onTalentPool={handleReject}
                             onDismiss={() => { void resolveClientVerdict() }}
                           />
+                          {workExperience.length > 0 && (
+                            <ProfileCard title="Experience" subtitle={experienceSummary(workExperience)}>
+                              <ExperienceTimeline items={workExperience} />
+                            </ProfileCard>
+                          )}
                           {currentStage && associationId ? (
                             <CurrentStageCard
                               stageName={currentStage.stage.stage_name}
@@ -1819,6 +1827,16 @@ const stageHasAutomation = useMemo(() => {
                       ) : (
                         <InlineEmpty text="No job candidate record linked." />
                       )
+                    )}
+
+                    {activeTab === 'experience' && (
+                      <ProfileCard
+                        title="Experience"
+                        subtitle={experienceSummary(workExperience)}
+                        action={!isRestrictedViewer ? <Button variant="secondary" size="sm" icon={Plus} onClick={() => setEditOpen(true)}>Add role</Button> : undefined}
+                      >
+                        <ExperienceTimeline items={workExperience} />
+                      </ProfileCard>
                     )}
 
 
@@ -2033,7 +2051,7 @@ const stageHasAutomation = useMemo(() => {
                   </div>
 
                   {/* Right column — per-tab sidebar */}
-                  <div className={cn('hidden lg:block', activeTab === 'fit' && 'lg:hidden')}>
+                  <div className={cn('hidden lg:block', (activeTab === 'fit' || activeTab === 'experience') && 'lg:hidden')}>
                     <div className={cn("sticky space-y-4", asPage ? "top-0" : "top-4")}>
                       {(() => {
                         const sortedStages = [...planStages].sort((a, b) => a.position - b.position)

@@ -35,6 +35,7 @@ import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
 import { useApplicationScorecardRequirements } from '@/hooks/useApplicationScorecardRequirements'
 import { ShareDossierMenu } from '@/components/candidates/insights/ShareDossierMenu'
 import { InterviewScorecardsSection } from './dossier/InterviewScorecardsSection'
+import { DossierExperienceGroups } from '@/components/candidates/experience/DossierExperienceGroups'
 import { GioFitExportDialog, type DossierExportOptions } from './dossier/GioFitExportDialog'
 import type { DossierPrintProps } from './dossier/DossierPrintDocument'
 import { normalizeScorecardRichText, richTextParagraphs, type DossierScorecard } from './dossier/dossierScorecards'
@@ -43,8 +44,6 @@ import {
   asStringArray,
   buildSkillGroups,
   computeExperienceStats,
-  formatDate,
-  formatDuration,
   getScoreBand,
   readSkillEvidence,
   splitExecutiveSummary,
@@ -106,41 +105,6 @@ const dimensionColors = [
   { dot: 'bg-fit-lilac', fill: 'bg-fit-lilac' },
 ]
 
-
-function ExperienceRow({ entry }: { entry: CandidateWorkExperience }) {
-  const [expanded, setExpanded] = useState(false)
-  const description = stripHtml(entry.description)
-  const start = formatDate(entry.start_date)
-  const end = entry.is_current ? 'Present' : formatDate(entry.end_date)
-  const dates = [start, end].filter(Boolean).join(' – ')
-  const duration = formatDuration(entry.start_date, entry.is_current ? undefined : entry.end_date)
-  const canExpand = description.length > 230
-
-  return (
-    <div className="grid gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5">
-      <div>
-        {(dates || duration) && <p className="font-inter text-[12.5px] font-semibold text-fit-ink">{[dates, duration].filter(Boolean).join(' · ')}</p>}
-        {entry.location && <p className="mt-1 text-[11.5px] text-fit-subtle">{entry.location}</p>}
-      </div>
-      <div className="min-w-0">
-        <p className="font-poppins text-[14.5px] font-semibold text-fit-ink">
-          {entry.job_title}
-          {entry.company_name && <span className="font-medium text-fit-subtle"> · {entry.company_name}</span>}
-        </p>
-        {description && (
-          <div className="mt-2">
-            <p className={cn('text-[12.5px] leading-[1.6] text-fit-muted', !expanded && canExpand && 'line-clamp-3')}>{description}</p>
-            {canExpand && (
-              <Button variant="link" size="xs" className="mt-1 h-auto px-0" onClick={() => setExpanded((value) => !value)}>
-                {expanded ? 'Show less' : 'Show more'}
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 function EvidenceItem({ kind, children }: { kind: 'match' | 'gap'; children: string }) {
   const config = kind === 'match'
@@ -636,7 +600,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
           {workExperience.length > 0 && (
             <div className="border-t border-fit-hairline p-5 sm:p-6">
               <h3 className={sectionHeadingClass}><BriefcaseBusiness className="h-3 w-3" /> Experience</h3>
-              <div className="mt-4 divide-y divide-fit-chip">{workExperience.map((entry) => <ExperienceRow key={entry.id} entry={entry} />)}</div>
+              <div className="mt-3"><DossierExperienceGroups items={workExperience} /></div>
             </div>
           )}
 

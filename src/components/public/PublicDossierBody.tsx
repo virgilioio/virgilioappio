@@ -11,6 +11,7 @@ import { differenceInDays, format } from 'date-fns'
 
 import type { PublicDossierPayload } from '@/pages/PublicDossier'
 import { InterviewScorecardsSection } from '@/components/candidates/insights/dossier/InterviewScorecardsSection'
+import { DossierExperienceGroups } from '@/components/candidates/experience/DossierExperienceGroups'
 import { StatusBanner } from '@/components/candidates/status/StatusBanner'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,8 +21,6 @@ import {
   computeExperienceStats,
   dropScoreClause,
   educationYear,
-  formatDate,
-  formatDuration,
   getScoreBand,
   readSkillEvidence,
   splitExecutiveSummary,
@@ -319,21 +318,7 @@ export function PublicDossierBody({
           {payload.work_experience.length > 0 && (
             <section style={{ marginTop: 22, paddingTop: 20, borderTop: '1px solid #F1F0EC' }}>
               <p style={HEADING}>Experience</p>
-              {payload.work_experience.map((role) => (
-                <div key={role.id ?? `${role.company_name}-${role.start_date}`} style={{ marginTop: 14 }}>
-                  <p className="font-poppins" style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2230', margin: 0 }}>{role.job_title}</p>
-                  <p className="font-inter" style={{ fontSize: 12, color: '#5A6072', margin: '3px 0 0' }}>
-                    {[role.company_name, role.location].filter(Boolean).join(' · ')}
-                  </p>
-                  <p className="font-inter" style={{ fontSize: 11, color: '#8B8F9E', margin: '3px 0 0' }}>
-                    {formatDate(role.start_date)} — {role.is_current ? 'Present' : formatDate(role.end_date)}
-                    {` · ${formatDuration(role.start_date, role.is_current ? null : role.end_date)}`}
-                  </p>
-                  {role.description && (
-                    <p className="font-inter" style={{ fontSize: 12, lineHeight: 1.6, color: '#1F2230', margin: '7px 0 0' }}>{stripHtml(role.description)}</p>
-                  )}
-                </div>
-              ))}
+              <DossierExperienceGroups items={payload.work_experience} />
             </section>
           )}
 
