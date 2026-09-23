@@ -375,6 +375,12 @@ function buildBlocks(data: DossierPrintProps): Block[] {
 
   if (workExperience.length > 0) {
     blocks.push({ key: 'exp-heading', breakBefore: scorecards.length > 0, node: <Heading spaced>Experience</Heading>, keepWithNext: true })
+    const companyCount = new Set(groupExperience(workExperience).map((group) => group.companyKey)).size
+    blocks.push({
+      key: 'exp-aside',
+      node: <p className="gio-block gio-exp-aside">Digested from {workExperience.length} {workExperience.length === 1 ? 'role' : 'roles'} at {companyCount} {companyCount === 1 ? 'company' : 'companies'} · newest first</p>,
+      keepWithNext: true,
+    })
     groupExperience(workExperience).forEach((group, index) => {
       blocks.push({
         key: `exp-${group.companyKey}-${group.stint}-${index}`,

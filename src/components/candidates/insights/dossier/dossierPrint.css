@@ -567,6 +567,12 @@
 
 /* experience — shared component, scaled to 85% for print */
 
+.gio-exp-aside {
+  margin: -5px 0 2px;
+  font-size: 9px;
+  color: #8b8f9e;
+}
+
 .dossier-experience-list,
 .dossier-experience-group,
 .dossier-experience-meta,
