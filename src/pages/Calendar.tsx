@@ -254,7 +254,8 @@ export default function CalendarPage() {
   const [popoverAnchor, setPopoverAnchor] = useState<{ top: number; left: number; right: number } | null>(null)
   const [menu, setMenu] = useState<{
     eventId: string
-    anchor: { top: number; bottom: number; left: number; right: number }
+    dayIndex: number
+    eventTop: number
   } | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dialog, setDialog] = useState<{
