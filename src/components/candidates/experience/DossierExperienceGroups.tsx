@@ -2,13 +2,14 @@ import { groupExperience, formatRoleDates, getExperienceTitle, type ExperienceGr
 
 interface Props {
   items: ExperienceItem[]
+  groups?: ExperienceGroup[]
   scale?: 0.85 | 1
   showAside?: boolean
 }
 
-export function DossierExperienceGroups({ items, scale = 1, showAside = true }: Props) {
-  const groups = groupExperience(items)
-  const companies = new Set(groups.map((group) => group.companyKey)).size
+export function DossierExperienceGroups({ items, groups: suppliedGroups, scale = 1, showAside = true }: Props) {
+  const groups = suppliedGroups ?? groupExperience(items)
+  const companies = new Set(groupExperience(items).map((group) => group.companyKey)).size
   if (!groups.length) return null
   return (
     <div className={scale === 0.85 ? 'dossier-experience-list dossier-experience-list--compact' : 'dossier-experience-list'}>

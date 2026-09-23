@@ -19,6 +19,8 @@ import type { DossierScorecard } from './dossierScorecards'
 import { shortDossierDate } from './dossierScorecards'
 import { ratingLabel } from '@/lib/scorecardRatings'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { DossierExperienceGroups } from '@/components/candidates/experience/DossierExperienceGroups'
+import { groupExperience } from '@/lib/experience/groupExperience'
 
 export interface DossierPrintProps {
   analysis: FitAnalysis
@@ -373,26 +375,12 @@ function buildBlocks(data: DossierPrintProps): Block[] {
 
   if (workExperience.length > 0) {
     blocks.push({ key: 'exp-heading', breakBefore: scorecards.length > 0, node: <Heading spaced>Experience</Heading>, keepWithNext: true })
-    workExperience.forEach((entry, index) => {
-      const start = formatDate(entry.start_date)
-      const end = entry.is_current ? 'present' : formatDate(entry.end_date)
-      const duration = formatDuration(entry.start_date, entry.is_current ? undefined : entry.end_date)
-      const description = stripHtml(entry.description)
+    groupExperience(workExperience).forEach((group, index) => {
       blocks.push({
-        key: `exp-${entry.id ?? index}`,
+        key: `exp-${group.companyKey}-${group.stint}-${index}`,
         node: (
-          <div className="gio-block gio-exp">
-            <div className="gio-exp-dates">
-              <b>{[[start, end].filter(Boolean).join(' — '), duration].filter(Boolean).join(' · ')}</b>
-              {entry.location && <i>{entry.location}</i>}
-            </div>
-            <div className="gio-exp-body">
-              <p className="gio-exp-title">
-                {entry.job_title}
-                {entry.company_name && <span> · {entry.company_name}</span>}
-              </p>
-              {description && <p className="gio-exp-desc">{description}</p>}
-            </div>
+          <div className="gio-block">
+            <DossierExperienceGroups items={workExperience} groups={[group]} scale={0.85} showAside={false} />
           </div>
         ),
       })
