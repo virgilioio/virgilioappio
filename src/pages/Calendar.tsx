@@ -448,34 +448,34 @@ export default function CalendarPage() {
     })
   }, [allEvents, typeFilter, jobFilter, peopleFilter, user?.id])
 
-  const weekEvents = useMemo(
+  const visibleEvents = useMemo(
     () =>
       events.filter(e =>
         isWithinInterval(e.start, {
-          start: startOfDay(weekStart),
-          end: addDays(startOfDay(weekEnd), 1),
+          start: visibleStart,
+          end: visibleEndExclusive,
         }),
       ),
-    [events, weekStart, weekEnd],
+    [events, visibleStart, visibleEndExclusive],
   )
 
   const counts = useMemo(() => {
     const c = { interview: 0, debrief: 0, hold: 0, busy: 0 }
-    weekEvents.forEach(e => {
+    visibleEvents.forEach(e => {
       c[e.type]++
     })
     return c
-  }, [weekEvents])
+  }, [visibleEvents])
 
-  // Non-busy event count per member across the visible week (for the People menu)
+  // Non-busy event count per member across the visible range (for the People menu)
   const countsByHost = useMemo(() => {
     const map = new Map<string, number>()
     allEvents.forEach(e => {
       if (e.type === 'busy' || e.raw.status === 'cancelled') return
       if (
         !isWithinInterval(e.start, {
-          start: startOfDay(weekStart),
-          end: addDays(startOfDay(weekEnd), 1),
+          start: visibleStart,
+          end: visibleEndExclusive,
         })
       )
         return
@@ -483,7 +483,7 @@ export default function CalendarPage() {
       map.set(e.interviewerId, (map.get(e.interviewerId) ?? 0) + 1)
     })
     return map
-  }, [allEvents, weekStart, weekEnd])
+  }, [allEvents, visibleStart, visibleEndExclusive])
 
   const tone = useCallback(
     (e: CalEvent): CalendarTone => {
@@ -496,7 +496,7 @@ export default function CalendarPage() {
 
   const visibleHosts = useMemo(() => {
     const seen = new Map<string, { id: string; name: string; tone: CalendarTone }>()
-    weekEvents.forEach(e => {
+    visibleEvents.forEach(e => {
       if (e.type === 'busy' || e.type === 'debrief' || !e.interviewerId) return
       if (seen.has(e.interviewerId)) return
       seen.set(e.interviewerId, {
@@ -509,26 +509,26 @@ export default function CalendarPage() {
       })
     })
     return [...seen.values()]
-  }, [weekEvents, user?.id, nameByUser, colorIndexByUser])
+  }, [visibleEvents, user?.id, nameByUser, colorIndexByUser])
 
   const selectedEvent = useMemo(
-    () => weekEvents.find(e => e.id === selectedEventId) ?? null,
-    [weekEvents, selectedEventId],
+    () => visibleEvents.find(e => e.id === selectedEventId) ?? null,
+    [visibleEvents, selectedEventId],
   )
   const menuEvent = useMemo(
-    () => (menu ? weekEvents.find(e => e.id === menu.eventId) ?? null : null),
-    [menu, weekEvents],
+    () => (menu ? visibleEvents.find(e => e.id === menu.eventId) ?? null : null),
+    [menu, visibleEvents],
   )
   const dialogEvent = useMemo(
     () => (dialog ? allEvents.find(e => e.id === dialog.eventId) ?? null : null),
     [dialog, allEvents],
   )
   const dragEvent = useMemo(
-    () => (drag ? weekEvents.find(e => e.id === drag.eventId) ?? null : null),
-    [drag, weekEvents],
+    () => (drag ? visibleEvents.find(e => e.id === drag.eventId) ?? null : null),
+    [drag, visibleEvents],
   )
 
-  const todayInWeek = days.find(d => isToday(d))
+  const todayInColumns = timeColumns.find(d => isToday(d))
   const now = new Date()
   const minutesSinceDayStart = now.getHours() * 60 + now.getMinutes() - DAY_START * 60
   const nowLineTop = (minutesSinceDayStart / 60) * HOUR_PX
