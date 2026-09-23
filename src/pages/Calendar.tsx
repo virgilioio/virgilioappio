@@ -31,11 +31,19 @@ import {
 import {
   format,
   startOfWeek,
+  endOfWeek,
   addDays,
   addWeeks,
   subWeeks,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
   isToday,
   isSameDay,
+  isSameMonth,
+  isSameYear,
+  isWeekend,
   parseISO,
   startOfDay,
   isWithinInterval,
@@ -127,6 +135,8 @@ const GUTTER_PX = 52
 const SNAP_MIN = 15
 const DRAG_THRESHOLD = 5
 const PEOPLE_KEY = 'gio.calendar.people'
+const VIEW_KEY = 'gio.calendar.view'
+const MONTH_GRID_COLUMNS = 'repeat(5, minmax(0,1fr)) repeat(2, minmax(0,0.55fr))'
 
 function classifyEvent(b: ScheduledBooking): EventType {
   const source = (b.sync_source ?? '').toLowerCase()
@@ -216,7 +226,62 @@ function initials(name: string) {
     .join('')
 }
 
+function localDay(d: Date) {
+  return startOfDay(d)
+}
+
+function dateKey(d: Date) {
+  return format(d, 'yyyy-MM-dd')
+}
+
+function dateFromKey(key: string) {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function nextWeekday(d: Date) {
+  const next = localDay(d)
+  do {
+    next.setDate(next.getDate() + 1)
+  } while (isWeekend(next))
+  return next
+}
+
+function previousWeekday(d: Date) {
+  const prev = localDay(d)
+  do {
+    prev.setDate(prev.getDate() - 1)
+  } while (isWeekend(prev))
+  return prev
+}
+
+function firstBookableDayOfMonth(d: Date) {
+  const first = startOfMonth(d)
+  if (!isWeekend(first)) return first
+  const next = localDay(first)
+  while (isWeekend(next)) next.setDate(next.getDate() + 1)
+  return next
+}
+
+function combineDateAndMinutes(day: Date, minutes: number) {
+  const next = localDay(day)
+  next.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
+  return next
+}
+
+function rangeContainsDate(start: Date, endExclusive: Date, day: Date) {
+  const d = localDay(day).getTime()
+  return d >= start.getTime() && d < endExclusive.getTime()
+}
+
+function weekRangeLabel(start: Date, end: Date) {
+  if (isSameMonth(start, end)) return `${format(start, 'MMM d')} – ${format(end, 'd, yyyy')}`
+  if (isSameYear(start, end)) return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`
+  return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`
+}
+
 interface DragState {
+  kind: 'time' | 'month'
   eventId: string
   pointerId: number
   originX: number
@@ -225,6 +290,8 @@ interface DragState {
   active: boolean
   dayIndex: number
   startMinutes: number
+  targetDateKey?: string
+  sourceDateKey?: string
 }
 
 // ─── Page ────────────────────────────────────────────────────
