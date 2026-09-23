@@ -578,7 +578,7 @@ export default function CalendarPage() {
         ],
       }
     }
-    const link = e.raw.google_meet_link || e.raw.meeting_location
+    const link = (e.raw as any).google_meet_link || e.raw.meeting_location
     return {
       items: [
         { action: 'reschedule', label: 'Reschedule…' },
@@ -630,7 +630,7 @@ export default function CalendarPage() {
         openCandidate(e)
         break
       case 'copy-link': {
-        const link = e.raw.google_meet_link || e.raw.meeting_location
+        const link = (e.raw as any).google_meet_link || e.raw.meeting_location
         if (link) {
           navigator.clipboard?.writeText(link)
           showToast({ title: 'Meeting link copied' })
@@ -1405,7 +1405,7 @@ export default function CalendarPage() {
                           onClose={closePopover}
                           onJoin={() => {
                             const loc =
-                              selectedEvent.raw.google_meet_link || selectedEvent.raw.meeting_location
+                              (selectedEvent.raw as any).google_meet_link || selectedEvent.raw.meeting_location
                             if (loc && /^https?:\/\//.test(loc)) {
                               window.open(loc, '_blank', 'noopener')
                               showToast({ title: 'Opening the meeting' })
