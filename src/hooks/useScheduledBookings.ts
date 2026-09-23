@@ -24,6 +24,8 @@ export interface ScheduledBooking {
   updated_at: string
   job_id: string | null
   job_hiring_stage_id: string | null
+  booked_by?: string | null
+  google_meet_link?: string | null
   last_synced_at?: string | null
   sync_source?: string | null
   sync_errors?: Array<{
@@ -76,6 +78,8 @@ interface BookingFromDB {
   updated_at: string
   job_id: string | null
   job_hiring_stage_id: string | null
+  booked_by?: string | null
+  google_meet_link?: string | null
   candidates?: {
     id: string
     candidate_name: string
@@ -95,12 +99,24 @@ interface BookingFromDB {
   } | null
 }
 
-export function useScheduledBookings(status?: BookingStatus, permissions?: PermissionsState) {
+export function useScheduledBookings(
+  status?: BookingStatus,
+  permissions?: PermissionsState,
+  rangeStart?: Date,
+  rangeEnd?: Date,
+) {
   const { user, organizationId } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ['scheduled-bookings', user?.id, status, organizationId],
+    queryKey: [
+      'scheduled-bookings',
+      user?.id,
+      status,
+      organizationId,
+      rangeStart?.toISOString() ?? null,
+      rangeEnd?.toISOString() ?? null,
+    ],
     queryFn: async () => {
       if (!user) return []
 
@@ -186,13 +202,19 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
         query = query.order('scheduled_start', { ascending: false })
       }
 
+      if (rangeStart && rangeEnd) {
+        query = query
+          .lt('scheduled_start', rangeEnd.toISOString())
+          .gt('scheduled_end', rangeStart.toISOString())
+      }
+
       const { data, error } = await query
 
       if (error) throw error
       if (!data) return []
 
       // Fetch interviewer profiles separately
-      const interviewerIds = [...new Set(data.map((b: any) => b.interviewer_id))]
+      const interviewerIds = [...new Set(data.map((b: BookingFromDB) => b.interviewer_id))]
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email, avatar_url')

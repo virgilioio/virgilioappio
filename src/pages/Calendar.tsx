@@ -31,11 +31,19 @@ import {
 import {
   format,
   startOfWeek,
+  endOfWeek,
   addDays,
   addWeeks,
   subWeeks,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
   isToday,
   isSameDay,
+  isSameMonth,
+  isSameYear,
+  isWeekend,
   parseISO,
   startOfDay,
   isWithinInterval,
@@ -127,6 +135,8 @@ const GUTTER_PX = 52
 const SNAP_MIN = 15
 const DRAG_THRESHOLD = 5
 const PEOPLE_KEY = 'gio.calendar.people'
+const VIEW_KEY = 'gio.calendar.view'
+const MONTH_GRID_COLUMNS = 'repeat(5, minmax(0,1fr)) repeat(2, minmax(0,0.55fr))'
 
 function classifyEvent(b: ScheduledBooking): EventType {
   const source = (b.sync_source ?? '').toLowerCase()
@@ -158,6 +168,8 @@ const TYPE_LABEL: Record<EventType, string> = {
   hold: 'Holds',
   busy: 'Busy',
 }
+
+const calendarLocation = (booking: ScheduledBooking) => booking.google_meet_link || booking.meeting_location
 
 interface PlacedEvent {
   event: CalEvent
@@ -216,7 +228,62 @@ function initials(name: string) {
     .join('')
 }
 
+function localDay(d: Date) {
+  return startOfDay(d)
+}
+
+function dateKey(d: Date) {
+  return format(d, 'yyyy-MM-dd')
+}
+
+function dateFromKey(key: string) {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function nextWeekday(d: Date) {
+  const next = localDay(d)
+  do {
+    next.setDate(next.getDate() + 1)
+  } while (isWeekend(next))
+  return next
+}
+
+function previousWeekday(d: Date) {
+  const prev = localDay(d)
+  do {
+    prev.setDate(prev.getDate() - 1)
+  } while (isWeekend(prev))
+  return prev
+}
+
+function firstBookableDayOfMonth(d: Date) {
+  const first = startOfMonth(d)
+  if (!isWeekend(first)) return first
+  const next = localDay(first)
+  while (isWeekend(next)) next.setDate(next.getDate() + 1)
+  return next
+}
+
+function combineDateAndMinutes(day: Date, minutes: number) {
+  const next = localDay(day)
+  next.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
+  return next
+}
+
+function rangeContainsDate(start: Date, endExclusive: Date, day: Date) {
+  const d = localDay(day).getTime()
+  return d >= start.getTime() && d < endExclusive.getTime()
+}
+
+function weekRangeLabel(start: Date, end: Date) {
+  if (isSameMonth(start, end)) return `${format(start, 'MMM d')} – ${format(end, 'd, yyyy')}`
+  if (isSameYear(start, end)) return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`
+  return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`
+}
+
 interface DragState {
+  kind: 'time' | 'month'
   eventId: string
   pointerId: number
   originX: number
@@ -225,6 +292,9 @@ interface DragState {
   active: boolean
   dayIndex: number
   startMinutes: number
+  targetDateKey?: string
+  sourceDateKey?: string
+  frozen?: boolean
 }
 
 // ─── Page ────────────────────────────────────────────────────
@@ -232,14 +302,50 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const { user, organizationId } = useAuth()
   const permissions = usePermissions()
-  const { bookings, isLoading } = useScheduledBookings(undefined, permissions)
+  const [view, setViewState] = useState<ViewMode>(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY)
+      return saved === 'day' || saved === 'week' || saved === 'month' ? saved : 'week'
+    } catch {
+      return 'week'
+    }
+  })
+  const [anchorDate, setAnchorDate] = useState<Date>(() => localDay(new Date()))
+
+  const weekStart = useMemo(() => startOfWeek(anchorDate, { weekStartsOn: 1 }), [anchorDate])
+  const weekEnd = useMemo(() => addDays(weekStart, 4), [weekStart])
+  const timeColumns = useMemo(
+    () => (view === 'day' ? [localDay(anchorDate)] : Array.from({ length: 5 }, (_, i) => addDays(weekStart, i))),
+    [anchorDate, view, weekStart],
+  )
+  const monthStart = useMemo(() => startOfMonth(anchorDate), [anchorDate])
+  const monthEnd = useMemo(() => endOfMonth(anchorDate), [anchorDate])
+  const monthGridStart = useMemo(() => startOfWeek(monthStart, { weekStartsOn: 1 }), [monthStart])
+  const monthGridEnd = useMemo(() => endOfWeek(monthEnd, { weekStartsOn: 1 }), [monthEnd])
+  const monthDays = useMemo(() => {
+    const total = Math.round((monthGridEnd.getTime() - monthGridStart.getTime()) / 86400000) + 1
+    return Array.from({ length: total }, (_, i) => addDays(monthGridStart, i))
+  }, [monthGridStart, monthGridEnd])
+  const visibleStart = useMemo(
+    () => (view === 'month' ? localDay(monthGridStart) : view === 'week' ? localDay(weekStart) : localDay(anchorDate)),
+    [anchorDate, monthGridStart, view, weekStart],
+  )
+  const visibleEndExclusive = useMemo(
+    () =>
+      view === 'month'
+        ? addDays(localDay(monthGridEnd), 1)
+        : view === 'week'
+        ? addDays(localDay(weekEnd), 1)
+        : addDays(localDay(anchorDate), 1),
+    [anchorDate, monthGridEnd, view, weekEnd],
+  )
+
+  const { bookings, isLoading } = useScheduledBookings(undefined, permissions, visibleStart, visibleEndExclusive)
   const { jobs } = useJobs()
   const { data: needsScheduling = [] } = useNeedsSchedulingQueue()
   const { members, colorIndexByUser, nameByUser } = useWorkspaceCalendarMembers()
   const { run: runAction, syncingEventId, isSubmitting } = useCalendarEventAction()
 
-  const [view, setView] = useState<ViewMode>('week')
-  const [weekAnchor, setWeekAnchor] = useState<Date>(new Date())
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [jobFilter, setJobFilter] = useState<string | 'all'>('all')
   const [peopleFilter, setPeopleFilter] = useState<PeopleFilter>(() => {
@@ -256,6 +362,7 @@ export default function CalendarPage() {
     eventId: string
     dayIndex: number
     eventTop: number
+    dayKey?: string
   } | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dialog, setDialog] = useState<{
@@ -266,6 +373,7 @@ export default function CalendarPage() {
   } | null>(null)
   const [toast, setToast] = useState<CalendarToastState | null>(null)
   const gridBodyRef = useRef<HTMLDivElement>(null)
+  const calendarCardRef = useRef<HTMLDivElement>(null)
   const [openSimpleSheet, setOpenSimpleSheet] = useState(false)
   const [scheduleTarget, setScheduleTarget] = useState<NeedsSchedulingItem | null>(null)
 
@@ -273,16 +381,28 @@ export default function CalendarPage() {
     setToast({ ...t, id: Date.now() })
   }, [])
 
-  const closePopover = () => {
+  const closePopover = useCallback(() => {
     setSelectedEventId(null)
     setPopoverAnchor(null)
-  }
+  }, [])
 
   useEffect(() => {
     setSelectedEventId(null)
     setPopoverAnchor(null)
     setMenu(null)
-  }, [weekAnchor])
+  }, [anchorDate, view])
+
+  const setView = useCallback((next: ViewMode) => {
+    setViewState(next)
+    setSelectedEventId(null)
+    setPopoverAnchor(null)
+    setMenu(null)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      /* ignore */
+    }
+  }, [])
 
   useEffect(() => {
     try {
@@ -291,10 +411,6 @@ export default function CalendarPage() {
       /* ignore */
     }
   }, [peopleFilter])
-
-  const weekStart = useMemo(() => startOfWeek(weekAnchor, { weekStartsOn: 1 }), [weekAnchor])
-  const days = useMemo(() => Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)), [weekStart])
-  const weekEnd = useMemo(() => addDays(weekStart, 4), [weekStart])
 
   // Build events
   const allEvents: CalEvent[] = useMemo(() => {
@@ -315,7 +431,7 @@ export default function CalendarPage() {
           ? `${b.interviewer_profile.first_name ?? ''} ${b.interviewer_profile.last_name ?? ''}`.trim() ||
             b.interviewer_profile.email
           : null,
-        scheduledById: (b as any).booked_by ?? null,
+        scheduledById: b.booked_by ?? null,
         raw: b,
       }
     })
@@ -335,34 +451,34 @@ export default function CalendarPage() {
     })
   }, [allEvents, typeFilter, jobFilter, peopleFilter, user?.id])
 
-  const weekEvents = useMemo(
+  const visibleEvents = useMemo(
     () =>
       events.filter(e =>
         isWithinInterval(e.start, {
-          start: startOfDay(weekStart),
-          end: addDays(startOfDay(weekEnd), 1),
+          start: visibleStart,
+          end: visibleEndExclusive,
         }),
       ),
-    [events, weekStart, weekEnd],
+    [events, visibleStart, visibleEndExclusive],
   )
 
   const counts = useMemo(() => {
     const c = { interview: 0, debrief: 0, hold: 0, busy: 0 }
-    weekEvents.forEach(e => {
+    visibleEvents.forEach(e => {
       c[e.type]++
     })
     return c
-  }, [weekEvents])
+  }, [visibleEvents])
 
-  // Non-busy event count per member across the visible week (for the People menu)
+  // Non-busy event count per member across the visible range (for the People menu)
   const countsByHost = useMemo(() => {
     const map = new Map<string, number>()
     allEvents.forEach(e => {
       if (e.type === 'busy' || e.raw.status === 'cancelled') return
       if (
         !isWithinInterval(e.start, {
-          start: startOfDay(weekStart),
-          end: addDays(startOfDay(weekEnd), 1),
+          start: visibleStart,
+          end: visibleEndExclusive,
         })
       )
         return
@@ -370,7 +486,7 @@ export default function CalendarPage() {
       map.set(e.interviewerId, (map.get(e.interviewerId) ?? 0) + 1)
     })
     return map
-  }, [allEvents, weekStart, weekEnd])
+  }, [allEvents, visibleStart, visibleEndExclusive])
 
   const tone = useCallback(
     (e: CalEvent): CalendarTone => {
@@ -383,7 +499,7 @@ export default function CalendarPage() {
 
   const visibleHosts = useMemo(() => {
     const seen = new Map<string, { id: string; name: string; tone: CalendarTone }>()
-    weekEvents.forEach(e => {
+    visibleEvents.forEach(e => {
       if (e.type === 'busy' || e.type === 'debrief' || !e.interviewerId) return
       if (seen.has(e.interviewerId)) return
       seen.set(e.interviewerId, {
@@ -396,26 +512,26 @@ export default function CalendarPage() {
       })
     })
     return [...seen.values()]
-  }, [weekEvents, user?.id, nameByUser, colorIndexByUser])
+  }, [visibleEvents, user?.id, nameByUser, colorIndexByUser])
 
   const selectedEvent = useMemo(
-    () => weekEvents.find(e => e.id === selectedEventId) ?? null,
-    [weekEvents, selectedEventId],
+    () => visibleEvents.find(e => e.id === selectedEventId) ?? null,
+    [visibleEvents, selectedEventId],
   )
   const menuEvent = useMemo(
-    () => (menu ? weekEvents.find(e => e.id === menu.eventId) ?? null : null),
-    [menu, weekEvents],
+    () => (menu ? visibleEvents.find(e => e.id === menu.eventId) ?? null : null),
+    [menu, visibleEvents],
   )
   const dialogEvent = useMemo(
     () => (dialog ? allEvents.find(e => e.id === dialog.eventId) ?? null : null),
     [dialog, allEvents],
   )
   const dragEvent = useMemo(
-    () => (drag ? weekEvents.find(e => e.id === drag.eventId) ?? null : null),
-    [drag, weekEvents],
+    () => (drag ? visibleEvents.find(e => e.id === drag.eventId) ?? null : null),
+    [drag, visibleEvents],
   )
 
-  const todayInWeek = days.find(d => isToday(d))
+  const todayInColumns = timeColumns.find(d => isToday(d))
   const now = new Date()
   const minutesSinceDayStart = now.getHours() * 60 + now.getMinutes() - DAY_START * 60
   const nowLineTop = (minutesSinceDayStart / 60) * HOUR_PX
@@ -430,14 +546,38 @@ export default function CalendarPage() {
 
   const isPast = (e: CalEvent) => e.start.getTime() <= Date.now()
 
+  const openMoveDialogForDrop = useCallback(
+    (event: CalEvent, newStart: Date, durationMin: number) => {
+      const newEnd = new Date(newStart.getTime() + durationMin * 60000)
+      if (isWeekend(newStart)) {
+        setDrag(null)
+        showToast({ title: "Weekends aren't bookable", detail: 'Drop it on a weekday', tone: 'error' })
+        return
+      }
+      if (newStart.getTime() < Date.now()) {
+        setDrag(null)
+        showToast({ title: "Can't move into the past", detail: 'Drop it on a later slot', tone: 'error' })
+        return
+      }
+      if (newStart.getTime() === event.start.getTime()) {
+        setDrag(null)
+        return
+      }
+      setDrag(null)
+      setDialog({ eventId: event.id, mode: 'move', newStart, newEnd })
+    },
+    [showToast],
+  )
+
   // ─── Drag & drop ───
   const slotFromPointer = useCallback(
     (clientX: number, clientY: number, grabOffsetMin: number, durationMin: number) => {
       const rect = gridBodyRef.current?.getBoundingClientRect()
       if (!rect) return null
-      const colWidth = (rect.width - GUTTER_PX) / 5
+      const columnCount = Math.max(1, timeColumns.length)
+      const colWidth = (rect.width - GUTTER_PX) / columnCount
       const rawCol = Math.floor((clientX - rect.left - GUTTER_PX) / colWidth)
-      const dayIndex = Math.min(4, Math.max(0, rawCol))
+      const dayIndex = view === 'day' ? 0 : Math.min(columnCount - 1, Math.max(0, rawCol))
 
       const minutesFromTop = ((clientY - rect.top) / HOUR_PX) * 60 - grabOffsetMin
       const snapped = Math.round(minutesFromTop / SNAP_MIN) * SNAP_MIN
@@ -445,7 +585,7 @@ export default function CalendarPage() {
       const clamped = Math.min(Math.max(0, snapped), Math.max(0, maxStart))
       return { dayIndex, startMinutes: clamped }
     },
-    [],
+    [timeColumns.length, view],
   )
 
   const onEventPointerDown = (e: CalEvent, ev: React.PointerEvent<HTMLButtonElement>) => {
@@ -457,6 +597,7 @@ export default function CalendarPage() {
     if (!draggable) {
       // still allow selection; refusal toasts fire on an actual drag attempt
       setDrag({
+        kind: 'time',
         eventId: e.id,
         pointerId: ev.pointerId,
         originX: ev.clientX,
@@ -470,20 +611,47 @@ export default function CalendarPage() {
     }
 
     setDrag({
+      kind: 'time',
       eventId: e.id,
       pointerId: ev.pointerId,
       originX: ev.clientX,
       originY: ev.clientY,
       grabOffsetMin,
       active: false,
-      dayIndex: days.findIndex(d => isSameDay(d, e.start)),
+      dayIndex: timeColumns.findIndex(d => isSameDay(d, e.start)),
       startMinutes: e.start.getHours() * 60 + e.start.getMinutes() - DAY_START * 60,
     })
   }
 
+  const onMonthEventPointerDown = (e: CalEvent, ev: React.PointerEvent<HTMLButtonElement>) => {
+    if (ev.button !== 0 || dialog) return
+    const draggable = canActOn(e) && !isPast(e)
+    const startMinutes = e.start.getHours() * 60 + e.start.getMinutes()
+    const base = {
+      kind: 'month' as const,
+      eventId: e.id,
+      pointerId: ev.pointerId,
+      originX: ev.clientX,
+      originY: ev.clientY,
+      grabOffsetMin: 0,
+      active: false,
+      dayIndex: 0,
+      startMinutes,
+      sourceDateKey: dateKey(e.start),
+      targetDateKey: dateKey(e.start),
+    }
+
+    if (!draggable) {
+      setDrag(base)
+      return
+    }
+    setDrag(base)
+  }
+
   useEffect(() => {
     if (!drag) return
-    const current = weekEvents.find(e => e.id === drag.eventId)
+    if (drag.frozen) return
+    const current = visibleEvents.find(e => e.id === drag.eventId)
     if (!current) {
       setDrag(null)
       return
@@ -497,6 +665,15 @@ export default function CalendarPage() {
         Math.abs(ev.clientY - drag.originY) > DRAG_THRESHOLD
       if (!moved) return
       if (!draggable) return
+      if (drag.kind === 'month') {
+        const target = document
+          .elementFromPoint(ev.clientX, ev.clientY)
+          ?.closest('[data-cal-day]') as HTMLElement | null
+        const key = target?.dataset.calDay
+        if (!key) return
+        setDrag(d => (d ? { ...d, active: true, targetDateKey: key } : d))
+        return
+      }
       const slot = slotFromPointer(ev.clientX, ev.clientY, drag.grabOffsetMin, durationMin)
       if (!slot) return
       setDrag(d => (d ? { ...d, active: true, ...slot } : d))
@@ -527,26 +704,21 @@ export default function CalendarPage() {
         return
       }
 
-      const target = new Date(days[drag.dayIndex])
+      if (drag.kind === 'month') {
+        if (!drag.targetDateKey || drag.targetDateKey === drag.sourceDateKey) {
+          setDrag(null)
+          return
+        }
+        const targetDay = dateFromKey(drag.targetDateKey)
+        const newStart = combineDateAndMinutes(targetDay, drag.startMinutes)
+        openMoveDialogForDrop(current, newStart, durationMin)
+        return
+      }
+
+      const target = new Date(timeColumns[drag.dayIndex])
       target.setHours(DAY_START, 0, 0, 0)
       const newStart = new Date(target.getTime() + drag.startMinutes * 60000)
-      const newEnd = new Date(newStart.getTime() + durationMin * 60000)
-
-      if (newStart.getTime() < Date.now()) {
-        setDrag(null)
-        showToast({ title: "That slot is in the past", detail: 'Pick a later time', tone: 'error' })
-        return
-      }
-      if (newStart.getTime() === current.start.getTime()) {
-        setDrag(null)
-        return
-      }
-
-      // End the drag session completely before mounting the dialog. Keeping an
-      // active drag object here leaves its ghost rendered beneath the scrim and
-      // can also let the closing pointer event continue the gesture.
-      setDrag(null)
-      setDialog({ eventId: current.id, mode: 'move', newStart, newEnd })
+      openMoveDialogForDrop(current, newStart, durationMin)
     }
 
     window.addEventListener('pointermove', onMove)
@@ -557,7 +729,7 @@ export default function CalendarPage() {
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
     }
-  }, [drag, weekEvents, canActOn, slotFromPointer, days, showToast])
+  }, [drag, visibleEvents, canActOn, slotFromPointer, timeColumns, openMoveDialogForDrop, showToast])
 
   // ─── Menus ───
   function menuItemsFor(e: CalEvent): { items: EventMenuItem[]; note?: string } {
@@ -593,7 +765,7 @@ export default function CalendarPage() {
         ],
       }
     }
-    const link = (e.raw as any).google_meet_link || e.raw.meeting_location
+    const link = calendarLocation(e.raw)
     return {
       items: [
         { action: 'reschedule', label: 'Reschedule…', Icon: CalendarClock },
@@ -653,7 +825,7 @@ export default function CalendarPage() {
         openCandidate(e)
         break
       case 'copy-link': {
-        const link = (e.raw as any).google_meet_link || e.raw.meeting_location
+        const link = calendarLocation(e.raw)
         if (link) {
           navigator.clipboard?.writeText(link)
           showToast({ title: 'Meeting link copied' })
@@ -790,7 +962,7 @@ export default function CalendarPage() {
   }
 
   // ─── Render helpers ───
-  function renderEvent(e: CalEvent, lane = 0, lanes = 1, dayIndex = 0) {
+  function renderEvent(e: CalEvent, lane = 0, lanes = 1, dayIndex = 0, wide = false) {
     const startMin = e.start.getHours() * 60 + e.start.getMinutes()
     const endMin = e.end.getHours() * 60 + e.end.getMinutes()
     const top = ((startMin - DAY_START * 60) / 60) * HOUR_PX
@@ -804,6 +976,8 @@ export default function CalendarPage() {
     const isSyncing = syncingEventId === e.id
     const menuOpen = menu?.eventId === e.id
     const selected = selectedEventId === e.id
+    const hostName = e.interviewerId === user?.id ? 'You' : e.interviewerName || 'Teammate'
+    const showWideExtras = wide && lanes === 1
 
     return (
       <button
@@ -883,8 +1057,30 @@ export default function CalendarPage() {
               <>
                 {format(e.start, 'H:mm')}–{format(e.end, 'H:mm')}
                 {e.jobTitle ? ` · ${e.jobTitle}` : ''}
+                {showWideExtras && e.interviewerName ? ` · ${hostName}` : ''}
               </>
             )}
+          </div>
+        )}
+
+        {showWideExtras && height >= 50 && e.interviewerName && (
+          <div className="pointer-events-none absolute bottom-1.5 right-2 flex flex-row-reverse">
+            <span
+              className="grid place-items-center font-poppins"
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 999,
+                background: t.edge,
+                boxShadow: '0 0 0 2px #fff',
+                color: '#fff',
+                fontSize: 8.5,
+                fontWeight: 600,
+                marginLeft: -8,
+              }}
+            >
+              {initials(hostName).slice(0, 2)}
+            </span>
           </div>
         )}
 
@@ -930,7 +1126,6 @@ export default function CalendarPage() {
 
 
   // ─── UI ───
-  const weekRangeLabel = `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'd, yyyy')}`
   const peopleLabel =
     peopleFilter === 'all'
       ? 'All'
@@ -938,17 +1133,289 @@ export default function CalendarPage() {
       ? 'Mine'
       : nameByUser.get(peopleFilter) || 'Teammate'
 
+  const headerRangeLabel =
+    view === 'day'
+      ? format(anchorDate, 'EEEE, MMM d, yyyy')
+      : view === 'month'
+      ? format(monthStart, 'MMMM yyyy')
+      : weekRangeLabel(weekStart, weekEnd)
+
+  const todayVisible = rangeContainsDate(visibleStart, visibleEndExclusive, new Date())
+
+  const goToday = useCallback(() => {
+    if (todayVisible) return
+    setAnchorDate(localDay(new Date()))
+    closePopover()
+    setMenu(null)
+  }, [closePopover, todayVisible])
+
+  const goPrevious = useCallback(() => {
+    setAnchorDate(d => {
+      if (view === 'day') return previousWeekday(d)
+      if (view === 'month') return firstBookableDayOfMonth(subMonths(d, 1))
+      return subWeeks(d, 1)
+    })
+    closePopover()
+    setMenu(null)
+  }, [closePopover, view])
+
+  const goNext = useCallback(() => {
+    setAnchorDate(d => {
+      if (view === 'day') return nextWeekday(d)
+      if (view === 'month') return firstBookableDayOfMonth(addMonths(d, 1))
+      return addWeeks(d, 1)
+    })
+    closePopover()
+    setMenu(null)
+  }, [closePopover, view])
+
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const target = ev.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      if (dialog || ev.metaKey || ev.ctrlKey || ev.altKey || tag === 'input' || tag === 'textarea' || tag === 'select') return
+      if (ev.key.toLowerCase() === 'd') setView('day')
+      if (ev.key.toLowerCase() === 'w') setView('week')
+      if (ev.key.toLowerCase() === 'm') setView('month')
+      if (ev.key.toLowerCase() === 't') goToday()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dialog, goToday, setView])
+
   const dragGhost = (() => {
     if (!drag?.active || !dragEvent) return null
     const durationMin = Math.max(15, differenceInMinutes(dragEvent.end, dragEvent.start))
-    const target = new Date(days[drag.dayIndex])
-    target.setHours(DAY_START, 0, 0, 0)
-    const start = new Date(target.getTime() + drag.startMinutes * 60000)
+    const target = drag.kind === 'month' && drag.targetDateKey ? dateFromKey(drag.targetDateKey) : new Date(timeColumns[drag.dayIndex])
+    const start = drag.kind === 'month'
+      ? combineDateAndMinutes(target, drag.startMinutes)
+      : new Date(combineDateAndMinutes(target, DAY_START * 60).getTime() + drag.startMinutes * 60000)
     const end = new Date(start.getTime() + durationMin * 60000)
     const past = start.getTime() < Date.now()
     const t = tone(dragEvent)
     return { start, end, past, tone: t, durationMin }
   })()
+
+  const renderTimeGrid = () => {
+    const columnCount = timeColumns.length
+    const gridColumns = `${GUTTER_PX}px repeat(${columnCount}, 1fr)`
+    return (
+      <>
+        {/* Day header row */}
+        <div className="grid" style={{ gridTemplateColumns: gridColumns, borderBottom: `1px solid ${C.border}` }}>
+          <div />
+          {timeColumns.map((d, i) => {
+            const today = isToday(d)
+            const isDropDay = drag?.kind === 'time' && drag.active && drag.dayIndex === i
+            const dayEvents = visibleEvents.filter(e => isSameDay(e.start, d) && e.type !== 'busy')
+            return view === 'day' ? (
+              <div
+                key={dateKey(d)}
+                className="flex items-center"
+                style={{
+                  padding: '9px 10px',
+                  justifyContent: 'flex-start',
+                  gap: 8,
+                  borderLeft: `1px solid ${C.hairline}`,
+                  background: today ? C.purpleTint : '#fff',
+                }}
+              >
+                <span className="font-inter" style={{ fontSize: 11, fontWeight: 600, color: today ? C.purple : C.muted }}>
+                  {format(d, 'EEEE, MMM d')}
+                </span>
+                {today && (
+                  <span
+                    className="font-inter"
+                    style={{ fontSize: 10, fontWeight: 600, color: C.purpleText, background: C.purpleLight, borderRadius: 999, padding: '2px 7px' }}
+                  >
+                    Today
+                  </span>
+                )}
+                <span className="ml-auto font-inter" style={{ fontSize: 11, color: C.tertiary }}>
+                  {dayEvents.length === 0 ? 'Nothing scheduled' : `${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}`}
+                </span>
+              </div>
+            ) : (
+              <div
+                key={dateKey(d)}
+                className="flex flex-col items-center justify-center py-2"
+                style={{
+                  borderLeft: `1px solid ${C.hairline}`,
+                  background: isDropDay ? C.dropTint : today ? C.purpleTint : 'transparent',
+                }}
+              >
+                <button
+                  type="button"
+                  title={`Open ${format(d, 'EEEE, MMM d')}`}
+                  onClick={() => {
+                    setAnchorDate(localDay(d))
+                    setView('day')
+                  }}
+                  className="font-inter"
+                  style={{ fontSize: 11, fontWeight: 600, color: today ? C.purple : C.muted, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                >
+                  {format(d, 'EEE')}
+                </button>
+                <div className="font-inter" style={{ fontSize: 11, color: today ? C.purple : C.disabled }}>
+                  {format(d, 'MMM d')}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Grid body */}
+        <div
+          ref={gridBodyRef}
+          className="relative grid"
+          style={{
+            gridTemplateColumns: gridColumns,
+            height: (DAY_END - DAY_START) * HOUR_PX,
+          }}
+        >
+          {/* Hour gutter */}
+          <div className="relative">
+            {Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => {
+              const hour = DAY_START + i
+              if (i === 0) return null
+              return (
+                <div
+                  key={i}
+                  className="absolute right-1.5 -translate-y-1/2 font-inter"
+                  style={{ top: i * HOUR_PX, fontSize: 9.5, color: C.disabled }}
+                >
+                  {hour}:00
+                </div>
+              )
+            })}
+          </div>
+          {/* Day columns */}
+          {timeColumns.map((d, di) => {
+            const today = isToday(d)
+            const isDropDay = drag?.kind === 'time' && drag.active && drag.dayIndex === di
+            const dayEvents = layoutDayEvents(visibleEvents.filter(e => isSameDay(e.start, d)))
+            const dayStart = new Date(d)
+            dayStart.setHours(DAY_START, 0, 0, 0)
+            const pastMin = Math.min(
+              Math.max(0, (Date.now() - dayStart.getTime()) / 60000),
+              (DAY_END - DAY_START) * 60,
+            )
+            return (
+              <div
+                key={dateKey(d)}
+                className="relative"
+                style={{
+                  borderLeft: `1px solid ${C.hairline}`,
+                  background: isDropDay ? C.purpleTint : today ? C.purpleTint : 'transparent',
+                }}
+              >
+                {drag?.active && pastMin > 0 && (
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 top-0"
+                    style={{
+                      height: (pastMin / 60) * HOUR_PX,
+                      backgroundImage: 'repeating-linear-gradient(45deg, rgba(13,13,9,0.05) 0 2px, transparent 2px 6px)',
+                    }}
+                  />
+                )}
+                {Array.from({ length: DAY_END - DAY_START }, (_, i) => (
+                  <div
+                    key={i}
+                    className="absolute left-0 right-0"
+                    style={{ top: (i + 1) * HOUR_PX, borderBottom: `1px solid ${C.pageBg}` }}
+                  />
+                ))}
+                {today && todayInColumns && nowLineTop >= 0 && nowLineTop <= (DAY_END - DAY_START) * HOUR_PX && (
+                  <div className="pointer-events-none absolute left-0 right-0" style={{ top: nowLineTop, height: 2, background: C.red, zIndex: 5 }}>
+                    <div className="absolute -left-1 -top-[3px] rounded-full" style={{ width: 8, height: 8, background: C.red }} />
+                  </div>
+                )}
+                {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes, di, view === 'day'))}
+
+                {menu && menuEvent && menu.dayIndex === di && (
+                  <EventMenu
+                    placement={
+                      menu.eventTop > (DAY_END - DAY_START) * HOUR_PX - 230
+                        ? { bottom: (DAY_END - DAY_START) * HOUR_PX - menu.eventTop + 4 }
+                        : { top: menu.eventTop + 24 }
+                    }
+                    items={menuItemsFor(menuEvent).items}
+                    note={menuItemsFor(menuEvent).note}
+                    onSelect={action => handleMenuAction(menuEvent, action)}
+                    onClose={() => setMenu(null)}
+                  />
+                )}
+
+                {dragGhost && drag?.kind === 'time' && drag.dayIndex === di && (
+                  <div
+                    className="pointer-events-none absolute"
+                    style={{
+                      top: (drag.startMinutes / 60) * HOUR_PX,
+                      height: Math.max(20, (dragGhost.durationMin / 60) * HOUR_PX - 3),
+                      left: 3,
+                      right: 3,
+                      zIndex: 20,
+                      borderRadius: 7,
+                      border: `1.5px dashed ${dragGhost.past ? C.red : dragGhost.tone.edge}`,
+                      background: dragGhost.past ? '#FFF1F1' : dragGhost.tone.bg,
+                      color: dragGhost.past ? '#B02020' : dragGhost.tone.text,
+                      boxShadow: '0 8px 20px -8px rgba(13,13,9,0.28)',
+                      padding: '4px 7px',
+                    }}
+                  >
+                    <div className="font-inter" style={{ fontSize: 10.5, fontWeight: 700 }}>
+                      {format(dragGhost.start, 'H:mm')}–{format(dragGhost.end, 'H:mm')}
+                      {dragGhost.past ? ' · in the past' : ''}
+                    </div>
+                    <div className="font-inter truncate" style={{ fontSize: 9.5, opacity: 0.8 }}>
+                      {dragEvent?.title}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {selectedEvent && popoverAnchor && view !== 'month' && (
+            <EventPopover
+              event={selectedEvent}
+              anchor={popoverAnchor}
+              containerWidth={gridBodyRef.current?.clientWidth ?? 0}
+              containerHeight={gridBodyRef.current?.clientHeight ?? 0}
+              tone={tone(selectedEvent)}
+              isMine={selectedEvent.interviewerId === user?.id}
+              scheduledByMe={selectedEvent.scheduledById === user?.id}
+              onClose={closePopover}
+              onJoin={() => {
+                const loc = calendarLocation(selectedEvent.raw)
+                if (loc && /^https?:\/\//.test(loc)) {
+                  window.open(loc, '_blank', 'noopener')
+                  showToast({ title: 'Opening the meeting' })
+                }
+              }}
+              onReschedule={() => {
+                closePopover()
+                setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
+              }}
+              onConfirmSlot={() => {
+                closePopover()
+                setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
+              }}
+              onRelease={() => {
+                closePopover()
+                setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
+              }}
+              onOpenNotes={() => {
+                closePopover()
+                handleMenuAction(selectedEvent, 'open-notes')
+              }}
+              canAct={canActOn(selectedEvent)}
+            />
+          )}
+        </div>
+      </>
+    )
+  }
 
   return (
     <AuthGate>
@@ -968,7 +1435,7 @@ export default function CalendarPage() {
                   className="mt-1.5 flex flex-wrap items-center font-inter"
                   style={{ fontSize: 12, color: C.tertiary, gap: 8 }}
                 >
-                  <span>{weekRangeLabel}</span>
+                  <span>{headerRangeLabel}</span>
                   <span>·</span>
                   <span>{counts.interview} interviews · {counts.debrief} debriefs · {counts.hold} holds</span>
                 </div>
@@ -1026,7 +1493,7 @@ export default function CalendarPage() {
               {/* Nav cluster */}
               <button
                 type="button"
-                onClick={() => setWeekAnchor(d => subWeeks(d, 1))}
+                onClick={goPrevious}
                 className="grid place-items-center rounded-lg border bg-white text-[#5A6072] hover:bg-[#FAFAF7]"
                 style={{ width: 28, height: 28, borderColor: C.border }}
                 aria-label="Previous"
@@ -1035,15 +1502,16 @@ export default function CalendarPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setWeekAnchor(new Date())}
+                onClick={goToday}
                 className="h-7 rounded-lg border bg-white px-3 font-inter text-[12px] font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
-                style={{ borderColor: C.border }}
+                style={{ borderColor: C.border, opacity: todayVisible ? 0.5 : 1 }}
+                disabled={todayVisible}
               >
                 Today
               </button>
               <button
                 type="button"
-                onClick={() => setWeekAnchor(d => addWeeks(d, 1))}
+                onClick={goNext}
                 className="grid place-items-center rounded-lg border bg-white text-[#5A6072] hover:bg-[#FAFAF7]"
                 style={{ width: 28, height: 28, borderColor: C.border }}
                 aria-label="Next"
@@ -1097,7 +1565,7 @@ export default function CalendarPage() {
               <div className="ml-auto flex items-center gap-2">
                 <select
                   value={jobFilter}
-                  onChange={e => setJobFilter(e.target.value as any)}
+                  onChange={e => setJobFilter(e.target.value)}
                   className="h-7 rounded-lg bg-transparent px-2 font-inter text-[12px] text-[#5A6072] hover:bg-[#FAFAF7]"
                   aria-label="Filter by job"
                 >
@@ -1246,221 +1714,274 @@ export default function CalendarPage() {
             >
               {/* Calendar card */}
               <div
+                ref={calendarCardRef}
                 className="relative rounded-xl bg-white overflow-hidden"
                 style={{ border: `1px solid ${C.border}` }}
               >
-                {view !== 'week' ? (
+                {isLoading ? (
                   <div className="grid place-items-center font-inter text-[12px]" style={{ color: C.tertiary, height: 420 }}>
-                    {view === 'day' ? 'Day view' : 'Month view'} coming soon — switch to Week.
+                    Loading calendar…
                   </div>
-                ) : (
-                  <>
-                    {/* Day header row */}
+                ) : view === 'month' ? (
+                  <div ref={gridBodyRef} className="relative">
                     <div
                       className="grid"
-                      style={{ gridTemplateColumns: `${GUTTER_PX}px repeat(5, 1fr)`, borderBottom: `1px solid ${C.border}` }}
-                    >
-                      <div />
-                      {days.map((d, i) => {
-                        const today = isToday(d)
-                        const isDropDay = drag?.active && drag.dayIndex === i
-                        return (
-                          <div
-                            key={i}
-                            className="flex flex-col items-center justify-center py-2"
-                            style={{
-                              borderLeft: `1px solid ${C.hairline}`,
-                              background: isDropDay ? C.dropTint : today ? C.purpleTint : 'transparent',
-                            }}
-                          >
-                            <div
-                              className="font-inter"
-                              style={{ fontSize: 11, fontWeight: 600, color: today ? C.purple : C.muted }}
-                            >
-                              {format(d, 'EEE')}
-                            </div>
-                            <div
-                              className="font-inter"
-                              style={{ fontSize: 11, color: today ? C.purple : C.disabled }}
-                            >
-                              {format(d, 'MMM d')}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Grid body */}
-                    <div
-                      ref={gridBodyRef}
-                      className="relative grid"
                       style={{
-                        gridTemplateColumns: `${GUTTER_PX}px repeat(5, 1fr)`,
-                        height: (DAY_END - DAY_START) * HOUR_PX,
+                        gridTemplateColumns: MONTH_GRID_COLUMNS,
+                        borderBottom: `1px solid ${C.border}`,
+                        background: '#fff',
                       }}
                     >
-                      {/* Hour gutter */}
-                      <div className="relative">
-                        {Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => {
-                          const hour = DAY_START + i
-                          if (i === 0) return null
-                          return (
-                            <div
-                              key={i}
-                              className="absolute right-1.5 -translate-y-1/2 font-inter"
-                              style={{ top: i * HOUR_PX, fontSize: 9.5, color: C.disabled }}
-                            >
-                              {hour}:00
-                            </div>
-                          )
-                        })}
-                      </div>
-                      {/* Day columns */}
-                      {days.map((d, di) => {
-                        const today = isToday(d)
-                        const isDropDay = drag?.active && drag.dayIndex === di
-                        const dayEvents = layoutDayEvents(
-                          weekEvents.filter(e => isSameDay(e.start, d)),
-                        )
-                        // Faint hatch over time that has already passed
-                        const dayStart = new Date(d)
-                        dayStart.setHours(DAY_START, 0, 0, 0)
-                        const pastMin = Math.min(
-                          Math.max(0, (Date.now() - dayStart.getTime()) / 60000),
-                          (DAY_END - DAY_START) * 60,
-                        )
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(label => (
+                        <div
+                          key={label}
+                          className="font-inter"
+                          style={{
+                            height: 31,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10.5,
+                            fontWeight: 600,
+                            color: C.tertiary,
+                            borderLeft: label === 'Mon' ? 'none' : `1px solid ${C.hairline}`,
+                          }}
+                        >
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      className="grid"
+                      style={{
+                        gridTemplateColumns: MONTH_GRID_COLUMNS,
+                        gridAutoRows: 126,
+                        background: C.hairline,
+                        gap: 1,
+                      }}
+                    >
+                      {monthDays.map(day => {
+                        const key = dateKey(day)
+                        const inMonth = isSameMonth(day, monthStart)
+                        const today = isToday(day)
+                        const weekend = isWeekend(day)
+                        const isTarget = drag?.kind === 'month' && drag.active && drag.targetDateKey === key
+                        const dayEvents = visibleEvents
+                          .filter(e => isSameDay(e.start, day))
+                          .sort((a, b) => a.start.getTime() - b.start.getTime())
+                        const shown = dayEvents.slice(0, 3)
+                        const hiddenCount = Math.max(0, dayEvents.length - shown.length)
                         return (
                           <div
-                            key={di}
-                            className="relative"
+                            key={key}
+                            data-cal-day={key}
+                            className="relative min-w-0"
                             style={{
-                              borderLeft: `1px solid ${C.hairline}`,
-                              background: isDropDay ? C.purpleTint : today ? C.purpleTint : 'transparent',
+                              background: weekend ? '#FAFAF7' : '#fff',
+                              opacity: inMonth ? 1 : 0.54,
+                              outline: isTarget ? `2px solid ${isWeekend(day) ? C.red : C.purple}` : 'none',
+                              outlineOffset: -2,
+                              padding: '7px 6px 6px',
                             }}
                           >
-                            {/* Past hatch */}
-                            {drag?.active && pastMin > 0 && (
+                            <button
+                              type="button"
+                              aria-label={`Open ${format(day, 'EEEE, MMM d')}`}
+                              onClick={() => {
+                                setAnchorDate(localDay(day))
+                                setView('day')
+                              }}
+                              className="font-inter"
+                              style={{
+                                width: 24,
+                                height: 20,
+                                borderRadius: 999,
+                                border: 'none',
+                                padding: 0,
+                                background: today ? C.ink : 'transparent',
+                                color: today ? '#fffcf9' : inMonth ? C.ink2 : C.tertiary,
+                                fontSize: 11,
+                                fontWeight: today ? 700 : 600,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {format(day, 'd')}
+                            </button>
+                            <div className="mt-1.5 flex flex-col gap-1">
+                              {shown.map(event => {
+                                const t = tone(event)
+                                const menuOpen = menu?.eventId === event.id
+                                const selected = selectedEventId === event.id
+                                const isDragging = drag?.active && drag.eventId === event.id
+                                return (
+                                  <button
+                                    key={event.id}
+                                    type="button"
+                                    title={`${event.title} · ${format(event.start, 'H:mm')}–${format(event.end, 'H:mm')}`}
+                                    onPointerDown={ev => onMonthEventPointerDown(event, ev)}
+                                    onClick={ev => {
+                                      if (drag?.active) return
+                                      ev.stopPropagation()
+                                      setMenu(null)
+                                      if (selectedEventId === event.id) {
+                                        closePopover()
+                                        return
+                                      }
+                                      const gridRect = gridBodyRef.current?.getBoundingClientRect()
+                                      const eventRect = ev.currentTarget.getBoundingClientRect()
+                                      if (!gridRect) return
+                                      setPopoverAnchor({
+                                        top: eventRect.top - gridRect.top,
+                                        left: eventRect.left - gridRect.left,
+                                        right: eventRect.right - gridRect.left,
+                                      })
+                                      setSelectedEventId(event.id)
+                                    }}
+                                    className="group relative flex w-full min-w-0 items-center gap-1 overflow-hidden text-left font-inter focus:outline-none"
+                                    style={{
+                                      height: 22,
+                                      borderRadius: 6,
+                                      border: event.type === 'hold' ? `1.25px dashed ${t.edge}` : `1px solid ${t.edge}`,
+                                      borderLeft: event.type === 'hold' ? `1.25px dashed ${t.edge}` : `3px solid ${t.edge}`,
+                                      background: event.type === 'hold' ? '#fff' : t.bg,
+                                      color: t.text,
+                                      padding: '0 23px 0 6px',
+                                      opacity: isDragging ? 0.35 : 1,
+                                      outline: menuOpen || selected ? `2px solid ${t.edge}` : undefined,
+                                      outlineOffset: menuOpen || selected ? 1 : undefined,
+                                      touchAction: 'none',
+                                    }}
+                                  >
+                                    <span style={{ fontSize: 9.5, fontWeight: 700, flexShrink: 0 }}>
+                                      {format(event.start, 'H:mm')}
+                                    </span>
+                                    <span className="truncate" style={{ fontSize: 10.5, fontWeight: 600 }}>
+                                      {event.title}
+                                    </span>
+                                    {syncingEventId === event.id && (
+                                      <RefreshCw size={9} strokeWidth={2} className="animate-spin" style={{ flexShrink: 0 }} />
+                                    )}
+                                    <span
+                                      role="button"
+                                      tabIndex={-1}
+                                      aria-label="Event actions"
+                                      aria-haspopup="menu"
+                                      aria-expanded={menuOpen}
+                                      onPointerDown={ev => ev.stopPropagation()}
+                                      onClick={ev => {
+                                        ev.stopPropagation()
+                                        setSelectedEventId(null)
+                                        setPopoverAnchor(null)
+                                        setMenu(prev =>
+                                          prev?.eventId === event.id
+                                            ? null
+                                            : { eventId: event.id, dayIndex: 0, eventTop: 28, dayKey: key },
+                                        )
+                                      }}
+                                      className={cn(
+                                        'absolute grid place-items-center transition-opacity duration-[120ms] [@media(hover:none)]:opacity-100',
+                                        menuOpen || selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                                      )}
+                                      style={{
+                                        top: 2,
+                                        right: 2,
+                                        width: 18,
+                                        height: 18,
+                                        borderRadius: 5,
+                                        background: menuOpen ? 'rgba(13,13,9,0.12)' : 'rgba(255,255,255,0.7)',
+                                        color: t.text,
+                                      }}
+                                    >
+                                      <Ellipsis size={12} strokeWidth={2.5} />
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                              {hiddenCount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAnchorDate(localDay(day))
+                                    setView('day')
+                                  }}
+                                  className="h-[20px] rounded-md px-1 text-left font-inter"
+                                  style={{ fontSize: 10.5, fontWeight: 600, color: C.tertiary, background: C.hairline, border: 'none' }}
+                                >
+                                  +{hiddenCount} more
+                                </button>
+                              )}
+                            </div>
+                            {dragGhost && drag?.kind === 'month' && drag.targetDateKey === key && (
                               <div
-                                className="pointer-events-none absolute left-0 right-0 top-0"
+                                className="pointer-events-none absolute left-1.5 right-1.5"
                                 style={{
-                                  height: (pastMin / 60) * HOUR_PX,
-                                  backgroundImage:
-                                    'repeating-linear-gradient(45deg, rgba(13,13,9,0.05) 0 2px, transparent 2px 6px)',
+                                  top: 35 + Math.min(shown.length, 3) * 26,
+                                  height: 22,
+                                  borderRadius: 6,
+                                  border: `1.5px dashed ${isWeekend(day) || dragGhost.past ? C.red : dragGhost.tone.edge}`,
+                                  background: dragGhost.past || isWeekend(day) ? '#FFF1F1' : dragGhost.tone.bg,
+                                  color: dragGhost.past || isWeekend(day) ? '#B02020' : dragGhost.tone.text,
+                                  zIndex: 20,
+                                  padding: '3px 6px',
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
                                 }}
-                              />
-                            )}
-                            {/* Hour lines */}
-                            {Array.from({ length: DAY_END - DAY_START }, (_, i) => (
-                              <div
-                                key={i}
-                                className="absolute left-0 right-0"
-                                style={{ top: (i + 1) * HOUR_PX, borderBottom: `1px solid ${C.pageBg}` }}
-                              />
-                            ))}
-                            {/* Now line */}
-                            {today && todayInWeek && nowLineTop >= 0 && nowLineTop <= (DAY_END - DAY_START) * HOUR_PX && (
-                              <div
-                                className="pointer-events-none absolute left-0 right-0"
-                                style={{ top: nowLineTop, height: 2, background: C.red, zIndex: 5 }}
                               >
-                                <div
-                                  className="absolute -left-1 -top-[3px] rounded-full"
-                                  style={{ width: 8, height: 8, background: C.red }}
-                                />
+                                {format(dragGhost.start, 'H:mm')} · {dragEvent?.title}
                               </div>
                             )}
-                            {/* Events */}
-                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes, di))}
-
-                            {/* Event menu — lives in the day column so it scrolls with the grid */}
-                            {menu && menuEvent && menu.dayIndex === di && (
+                            {menu && menuEvent && menu.dayKey === key && (
                               <EventMenu
-                                placement={
-                                  menu.eventTop > (DAY_END - DAY_START) * HOUR_PX - 230
-                                    ? { bottom: (DAY_END - DAY_START) * HOUR_PX - menu.eventTop + 4 }
-                                    : { top: menu.eventTop + 24 }
-                                }
+                                placement={{ top: Math.min(menu.eventTop + 2, 92) }}
                                 items={menuItemsFor(menuEvent).items}
                                 note={menuItemsFor(menuEvent).note}
                                 onSelect={action => handleMenuAction(menuEvent, action)}
                                 onClose={() => setMenu(null)}
                               />
                             )}
-
-                            {/* Drag ghost */}
-                            {dragGhost && drag?.dayIndex === di && (
-                              <div
-                                className="pointer-events-none absolute"
-                                style={{
-                                  top: (drag.startMinutes / 60) * HOUR_PX,
-                                  height: Math.max(20, (dragGhost.durationMin / 60) * HOUR_PX - 3),
-                                  left: 3,
-                                  right: 3,
-                                  zIndex: 20,
-                                  borderRadius: 7,
-                                  border: `1.5px dashed ${dragGhost.past ? C.red : dragGhost.tone.edge}`,
-                                  background: dragGhost.past ? '#FFF1F1' : dragGhost.tone.bg,
-                                  color: dragGhost.past ? '#B02020' : dragGhost.tone.text,
-                                  boxShadow: '0 8px 20px -8px rgba(13,13,9,0.28)',
-                                  padding: '4px 7px',
-                                }}
-                              >
-                                <div className="font-inter" style={{ fontSize: 10.5, fontWeight: 700 }}>
-                                  {format(dragGhost.start, 'HH:mm')}–{format(dragGhost.end, 'HH:mm')}
-                                  {dragGhost.past ? ' · in the past' : ''}
-                                </div>
-                                <div
-                                  className="font-inter truncate"
-                                  style={{ fontSize: 9.5, opacity: 0.8 }}
-                                >
-                                  {dragEvent?.title}
-                                </div>
-                              </div>
-                            )}
                           </div>
                         )
                       })}
-
-                      {/* Event detail popover — anchored beside the selected event */}
-                      {selectedEvent && popoverAnchor && (
-                        <EventPopover
-                          event={selectedEvent}
-                          anchor={popoverAnchor}
-                          containerWidth={gridBodyRef.current?.clientWidth ?? 0}
-                          containerHeight={gridBodyRef.current?.clientHeight ?? 0}
-                          tone={tone(selectedEvent)}
-                          isMine={selectedEvent.interviewerId === user?.id}
-                          scheduledByMe={selectedEvent.scheduledById === user?.id}
-                          onClose={closePopover}
-                          onJoin={() => {
-                            const loc =
-                              (selectedEvent.raw as any).google_meet_link || selectedEvent.raw.meeting_location
-                            if (loc && /^https?:\/\//.test(loc)) {
-                              window.open(loc, '_blank', 'noopener')
-                              showToast({ title: 'Opening the meeting' })
-                            }
-                          }}
-                          onReschedule={() => {
-                            closePopover()
-                            setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
-                          }}
-                          onConfirmSlot={() => {
-                            closePopover()
-                            setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
-                          }}
-                          onRelease={() => {
-                            closePopover()
-                            setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
-                          }}
-                          onOpenNotes={() => {
-                            closePopover()
-                            handleMenuAction(selectedEvent, 'open-notes')
-                          }}
-                          canAct={canActOn(selectedEvent)}
-                        />
-                      )}
                     </div>
-                  </>
+                    {selectedEvent && popoverAnchor && (
+                      <EventPopover
+                        event={selectedEvent}
+                        anchor={popoverAnchor}
+                        containerWidth={gridBodyRef.current?.clientWidth ?? 0}
+                        containerHeight={gridBodyRef.current?.clientHeight ?? 0}
+                        tone={tone(selectedEvent)}
+                        isMine={selectedEvent.interviewerId === user?.id}
+                        scheduledByMe={selectedEvent.scheduledById === user?.id}
+                        onClose={closePopover}
+                        onJoin={() => {
+                          const loc = calendarLocation(selectedEvent.raw)
+                          if (loc && /^https?:\/\//.test(loc)) {
+                            window.open(loc, '_blank', 'noopener')
+                            showToast({ title: 'Opening the meeting' })
+                          }
+                        }}
+                        onReschedule={() => {
+                          closePopover()
+                          setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
+                        }}
+                        onConfirmSlot={() => {
+                          closePopover()
+                          setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
+                        }}
+                        onRelease={() => {
+                          closePopover()
+                          setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
+                        }}
+                        onOpenNotes={() => {
+                          closePopover()
+                          handleMenuAction(selectedEvent, 'open-notes')
+                        }}
+                        canAct={canActOn(selectedEvent)}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  renderTimeGrid()
                 )}
 
                 <CalendarToast toast={toast} onDismiss={() => setToast(null)} />
@@ -1507,7 +2028,6 @@ export default function CalendarPage() {
                   : []
               }
               overlapNotice={overlapNoticeFor(dialogEvent, dialog.newStart, dialog.newEnd)}
-              weekDays={days}
               submitting={isSubmitting}
               onCancel={() => {
                 setDialog(null)
@@ -1615,7 +2135,7 @@ function EventPopover({
 
   const typeLabel = TYPE_LABEL[event.type].replace(/s$/, '')
   const kind = event.candidateName && event.title.includes(' · ') ? event.title.split(' · ')[0] : null
-  const link = (event.raw as any).google_meet_link || event.raw.meeting_location
+  const link = calendarLocation(event.raw)
   const hasLink = !!link && /^https?:\/\//.test(link)
   const notEnded = event.end.getTime() > Date.now()
   const cardWidth = 290
