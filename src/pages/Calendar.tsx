@@ -1404,27 +1404,13 @@ export default function CalendarPage() {
                         )
                       })}
 
-                      {/* Event menu */}
-                      {menu && menuEvent && (
-                        <EventMenu
-                          anchor={menu.anchor}
-                          containerEl={gridBodyRef.current}
-                          items={menuItemsFor(menuEvent).items}
-                          note={menuItemsFor(menuEvent).note}
-                          onSelect={action => handleMenuAction(menuEvent, action)}
-                          onClose={() => setMenu(null)}
-                        />
-                      )}
-
-                      {/* Event detail popover */}
+                      {/* Event detail popover — docked top-right of the grid card */}
                       {selectedEvent && (
                         <EventPopover
                           event={selectedEvent}
                           tone={tone(selectedEvent)}
                           isMine={selectedEvent.interviewerId === user?.id}
                           scheduledByMe={selectedEvent.scheduledById === user?.id}
-                          anchor={popoverAnchor}
-                          containerEl={gridBodyRef.current}
                           onClose={closePopover}
                           onJoin={() => {
                             const loc =
