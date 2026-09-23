@@ -1420,10 +1420,22 @@ export default function CalendarPage() {
                               showToast({ title: 'Opening the meeting' })
                             }
                           }}
-                          onReschedule={() => setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })}
-                          onConfirmSlot={() => setDialog({ eventId: selectedEvent.id, mode: 'confirm' })}
-                          onRelease={() => setDialog({ eventId: selectedEvent.id, mode: 'cancel' })}
-                          onOpenNotes={() => handleMenuAction(selectedEvent, 'open-notes')}
+                          onReschedule={() => {
+                            closePopover()
+                            setDialog({ eventId: selectedEvent.id, mode: 'reschedule' })
+                          }}
+                          onConfirmSlot={() => {
+                            closePopover()
+                            setDialog({ eventId: selectedEvent.id, mode: 'confirm' })
+                          }}
+                          onRelease={() => {
+                            closePopover()
+                            setDialog({ eventId: selectedEvent.id, mode: 'cancel' })
+                          }}
+                          onOpenNotes={() => {
+                            closePopover()
+                            handleMenuAction(selectedEvent, 'open-notes')
+                          }}
                           canAct={canActOn(selectedEvent)}
                         />
                       )}
