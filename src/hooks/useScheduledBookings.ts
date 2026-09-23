@@ -24,6 +24,8 @@ export interface ScheduledBooking {
   updated_at: string
   job_id: string | null
   job_hiring_stage_id: string | null
+  booked_by?: string | null
+  google_meet_link?: string | null
   last_synced_at?: string | null
   sync_source?: string | null
   sync_errors?: Array<{
@@ -76,6 +78,8 @@ interface BookingFromDB {
   updated_at: string
   job_id: string | null
   job_hiring_stage_id: string | null
+  booked_by?: string | null
+  google_meet_link?: string | null
   candidates?: {
     id: string
     candidate_name: string
@@ -210,7 +214,7 @@ export function useScheduledBookings(
       if (!data) return []
 
       // Fetch interviewer profiles separately
-      const interviewerIds = [...new Set(data.map((b: any) => b.interviewer_id))]
+      const interviewerIds = [...new Set(data.map((b: BookingFromDB) => b.interviewer_id))]
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email, avatar_url')
