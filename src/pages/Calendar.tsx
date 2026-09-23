@@ -1353,7 +1353,22 @@ export default function CalendarPage() {
                               </div>
                             )}
                             {/* Events */}
-                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes))}
+                            {dayEvents.map(p => renderEvent(p.event, p.lane, p.lanes, di))}
+
+                            {/* Event menu — lives in the day column so it scrolls with the grid */}
+                            {menu && menuEvent && menu.dayIndex === di && (
+                              <EventMenu
+                                placement={
+                                  menu.eventTop > (DAY_END - DAY_START) * HOUR_PX - 230
+                                    ? { bottom: (DAY_END - DAY_START) * HOUR_PX - menu.eventTop + 4 }
+                                    : { top: menu.eventTop + 24 }
+                                }
+                                items={menuItemsFor(menuEvent).items}
+                                note={menuItemsFor(menuEvent).note}
+                                onSelect={action => handleMenuAction(menuEvent, action)}
+                                onClose={() => setMenu(null)}
+                              />
+                            )}
 
                             {/* Drag ghost */}
                             {dragGhost && drag?.dayIndex === di && (
