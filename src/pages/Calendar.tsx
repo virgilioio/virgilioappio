@@ -559,50 +559,60 @@ export default function CalendarPage() {
   function menuItemsFor(e: CalEvent): { items: EventMenuItem[]; note?: string } {
     if (e.type === 'busy') {
       return {
-        items: [{ action: 'open-google', label: 'Open in Google Calendar' }],
+        items: [{ action: 'open-google', label: 'Open in Google Calendar', Icon: ExternalLink }],
         note: 'External event — edit it in Google Calendar.',
       }
     }
     if (!canActOn(e)) {
       return {
-        items: [{ action: 'view-candidate', label: 'View candidate' }],
+        items: [{ action: 'view-candidate', label: 'View candidate', Icon: User }],
         note: `${e.interviewerName || 'Another teammate'} owns this event.`,
       }
     }
     if (isPast(e)) {
       return {
         items: [
-          { action: 'rebook', label: 'Rebook…' },
-          ...(e.candidateId ? [{ action: 'view-candidate' as const, label: 'View candidate' }] : []),
+          { action: 'rebook', label: 'Rebook…', Icon: CalendarClock },
+          ...(e.candidateId
+            ? [{ action: 'view-candidate' as const, label: 'View candidate', Icon: User }]
+            : []),
         ],
       }
     }
     if (e.type === 'hold') {
       return {
         items: [
-          { action: 'confirm', label: 'Confirm slot…' },
-          { action: 'resend', label: 'Resend slot options…' },
-          { action: 'reschedule', label: 'Reschedule…' },
-          { action: 'release', label: 'Release hold…', danger: true, dividerBefore: true },
+          { action: 'confirm', label: 'Confirm slot…', Icon: CalendarCheck },
+          { action: 'resend', label: 'Resend slot options…', Icon: Send },
+          { action: 'reschedule', label: 'Reschedule…', Icon: CalendarClock },
+          { action: 'release', label: 'Release hold…', Icon: X, danger: true, separatorBefore: true },
         ],
       }
     }
     const link = (e.raw as any).google_meet_link || e.raw.meeting_location
     return {
       items: [
-        { action: 'reschedule', label: 'Reschedule…' },
-        { action: 'resend', label: 'Resend invite…' },
+        { action: 'reschedule', label: 'Reschedule…', Icon: CalendarClock },
+        { action: 'resend', label: 'Resend invite…', Icon: Send },
         ...(link && /^https?:\/\//.test(link)
-          ? [{ action: 'copy-link' as const, label: 'Copy meeting link' }]
+          ? [{ action: 'copy-link' as const, label: 'Copy meeting link', Icon: LinkIcon }]
           : []),
         ...(e.type === 'interview' && e.candidateId
-          ? [{ action: 'view-candidate' as const, label: 'View candidate', dividerBefore: true }]
+          ? [
+              {
+                action: 'view-candidate' as const,
+                label: 'View candidate',
+                Icon: User,
+                separatorBefore: true,
+              },
+            ]
           : []),
         {
-          action: 'cancel',
+          action: 'cancel' as const,
           label: e.type === 'debrief' ? 'Cancel debrief…' : 'Cancel interview…',
+          Icon: X,
           danger: true,
-          dividerBefore: true,
+          separatorBefore: true,
         },
       ],
     }
