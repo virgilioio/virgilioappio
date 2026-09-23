@@ -4,7 +4,7 @@
  * interviewer hosting them, plus a "Needs scheduling" rail.
  * Events can be dragged to a new slot and acted on through their own menu.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft,
@@ -814,8 +814,21 @@ export default function CalendarPage() {
           if (drag?.active) return
           ev.stopPropagation()
           setMenu(null)
-          setPopoverAnchor(null)
-          setSelectedEventId(prev => (prev === e.id ? null : e.id))
+          if (selectedEventId === e.id) {
+            closePopover()
+            return
+          }
+
+          const gridRect = gridBodyRef.current?.getBoundingClientRect()
+          const eventRect = ev.currentTarget.getBoundingClientRect()
+          if (!gridRect) return
+
+          setPopoverAnchor({
+            top: eventRect.top - gridRect.top,
+            left: eventRect.left - gridRect.left,
+            right: eventRect.right - gridRect.left,
+          })
+          setSelectedEventId(e.id)
         }}
         title={`${e.title} · ${format(e.start, 'H:mm')}–${format(e.end, 'H:mm')}${
           e.jobTitle ? ` · ${e.jobTitle}` : ''
@@ -1408,10 +1421,13 @@ export default function CalendarPage() {
                         )
                       })}
 
-                      {/* Event detail popover — docked top-right of the grid card */}
-                      {selectedEvent && (
+                      {/* Event detail popover — anchored beside the selected event */}
+                      {selectedEvent && popoverAnchor && (
                         <EventPopover
                           event={selectedEvent}
+                          anchor={popoverAnchor}
+                          containerWidth={gridBodyRef.current?.clientWidth ?? 0}
+                          containerHeight={gridBodyRef.current?.clientHeight ?? 0}
                           tone={tone(selectedEvent)}
                           isMine={selectedEvent.interviewerId === user?.id}
                           scheduledByMe={selectedEvent.scheduledById === user?.id}
@@ -1535,9 +1551,12 @@ export default function CalendarPage() {
 }
 
 // ─── Event detail popover ────────────────────────────────────
-/** Docked at the top-right of the week-grid card. Opens on click, never on hover. */
+/** Anchored beside the clicked event. Opens on click, never on hover. */
 function EventPopover({
   event,
+  anchor,
+  containerWidth,
+  containerHeight,
   tone,
   isMine,
   scheduledByMe,
@@ -1550,6 +1569,9 @@ function EventPopover({
   onOpenNotes,
 }: {
   event: CalEvent
+  anchor: { top: number; left: number; right: number }
+  containerWidth: number
+  containerHeight: number
   tone: CalendarTone
   isMine: boolean
   scheduledByMe: boolean
@@ -1562,6 +1584,12 @@ function EventPopover({
   onOpenNotes: () => void
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
+  const [cardHeight, setCardHeight] = useState(260)
+
+  useLayoutEffect(() => {
+    const nextHeight = cardRef.current?.offsetHeight
+    if (nextHeight && nextHeight !== cardHeight) setCardHeight(nextHeight)
+  }, [cardHeight, event.id])
 
   useEffect(() => {
     const onPointerDown = (ev: PointerEvent) => {
@@ -1590,6 +1618,14 @@ function EventPopover({
   const link = (event.raw as any).google_meet_link || event.raw.meeting_location
   const hasLink = !!link && /^https?:\/\//.test(link)
   const notEnded = event.end.getTime() > Date.now()
+  const cardWidth = 290
+  const edgeGap = 8
+  const roomOnRight = anchor.right + edgeGap + cardWidth <= containerWidth - edgeGap
+  const preferredLeft = roomOnRight
+    ? anchor.right + edgeGap
+    : anchor.left - cardWidth - edgeGap
+  const left = Math.max(edgeGap, Math.min(preferredLeft, containerWidth - cardWidth - edgeGap))
+  const top = Math.max(edgeGap, Math.min(anchor.top, containerHeight - cardHeight - edgeGap))
 
   const ownerLine = (() => {
     if (event.type === 'busy' || isMine) return null
@@ -1644,9 +1680,9 @@ function EventPopover({
       onClick={ev => ev.stopPropagation()}
       style={{
         position: 'absolute',
-        top: 70,
-        right: 16,
-        width: 290,
+        top,
+        left,
+        width: cardWidth,
         background: '#fff',
         border: '1px solid #E7E8EE',
         borderRadius: 12,
