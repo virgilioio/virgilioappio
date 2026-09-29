@@ -1,7 +1,5 @@
 import { ArrowRight } from 'lucide-react'
 
-interface Props { companyName: string }
-
 interface Props {
   companyName: string
   /** Optional override so individual brands can customise the copy. */
