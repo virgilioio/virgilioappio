@@ -114,6 +114,38 @@ Deno.serve(async (req) => {
 
     const candIds = [...new Set(live.map((a: any) => a.candidate_id))];
     const assocIds = live.map((a: any) => a.id);
+
+    // Booked interviews for the candidates' current stages (same filter the
+    // internal pipeline uses) — the public card shows the date when one exists.
+    const nowMs = Date.now();
+    const { data: bookingRows } = candIds.length
+      ? await supabase.from("scheduled_bookings")
+        .select("candidate_id, job_hiring_stage_id, scheduled_start, status")
+        .in("candidate_id", candIds)
+        .in("job_hiring_stage_id", sharedIds)
+        .in("status", ["confirmed", "rescheduled"])
+      : { data: [] as any[] };
+    const bookingByCandidateStage = new Map<string, number>();
+    for (const b of bookingRows ?? []) {
+      const key = `${b.candidate_id}:${b.job_hiring_stage_id}`;
+      const ms = new Date(b.scheduled_start).getTime();
+      const prev = bookingByCandidateStage.get(key);
+      // Prefer the soonest upcoming; otherwise the most recent overdue.
+      if (prev === undefined || (ms >= nowMs && (prev < nowMs || ms < prev)) || (ms < nowMs && prev < nowMs && ms > prev)) {
+        bookingByCandidateStage.set(key, ms);
+      }
+    }
+    const DAY_MS = 86400000;
+    const startOfDay = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const dayLabel = (ms: number) => {
+      const diff = Math.round((startOfDay(ms) - startOfDay(nowMs)) / DAY_MS);
+      if (diff === 0) return "Today";
+      if (diff === 1) return "Tomorrow";
+      if (diff === -1) return "Yesterday";
+      return new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    };
+    const timeLabel = (ms: number) =>
+      new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
     const [{ data: cands }, { data: shares }] = await Promise.all([
       candIds.length
         ? supabase.from("candidates").select("id, candidate_name, role_current, current_job_title, company_current, deleted_at").in("id", candIds)
