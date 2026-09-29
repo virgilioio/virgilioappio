@@ -18,6 +18,7 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
   const [newReasonName, setNewReasonName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
+  const [editingClientLabel, setEditingClientLabel] = useState('')
 
   const { 
     reasons, 
@@ -52,18 +53,21 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
   const startEdit = (reason: RejectionReason) => {
     setEditingId(reason.id)
     setEditingName(reason.name)
+    setEditingClientLabel(reason.client_label || '')
   }
 
   const cancelEdit = () => {
     setEditingId(null)
     setEditingName('')
+    setEditingClientLabel('')
   }
 
   const saveEdit = async () => {
     if (!editingId || !editingName.trim()) return
-    await updateReason({ id: editingId, name: editingName.trim() })
+    await updateReason({ id: editingId, name: editingName.trim(), client_label: editingClientLabel.trim() || null })
     setEditingId(null)
     setEditingName('')
+    setEditingClientLabel('')
   }
 
   const renderReasonsTable = (reasonsList: RejectionReason[], editable: boolean, title?: string) => (
@@ -88,6 +92,7 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
             <TableHeader>
               <TableRow>
                 <TableHead>Reason</TableHead>
+                <TableHead>Client label</TableHead>
                 <TableHead>Description</TableHead>
                 {editable && <TableHead className="text-right w-24">Actions</TableHead>}
               </TableRow>
@@ -106,6 +111,19 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
                       />
                     ) : (
                       reason.name
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {editingId === reason.id ? (
+                      <Input
+                        value={editingClientLabel}
+                        onChange={(e) => setEditingClientLabel(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                        placeholder='Shown to clients, e.g. “Skills gap”'
+                        className="h-8"
+                      />
+                    ) : (
+                      reason.client_label || 'Not progressed'
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">

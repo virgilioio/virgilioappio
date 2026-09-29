@@ -4182,10 +4182,15 @@ export type Database = {
           is_public: boolean
           job_id: string
           last_viewed_at: string | null
+          share_application: boolean
+          share_hired: boolean
+          share_offers: boolean
+          share_rejected: boolean
           show_client_status: boolean
           show_days: boolean
           show_employer: boolean
           show_fit_score: boolean
+          show_reject_reason: boolean
           show_scorecards: boolean
           token: string
           updated_at: string
@@ -4202,10 +4207,15 @@ export type Database = {
           is_public?: boolean
           job_id: string
           last_viewed_at?: string | null
+          share_application?: boolean
+          share_hired?: boolean
+          share_offers?: boolean
+          share_rejected?: boolean
           show_client_status?: boolean
           show_days?: boolean
           show_employer?: boolean
           show_fit_score?: boolean
+          show_reject_reason?: boolean
           show_scorecards?: boolean
           token?: string
           updated_at?: string
@@ -4222,10 +4232,15 @@ export type Database = {
           is_public?: boolean
           job_id?: string
           last_viewed_at?: string | null
+          share_application?: boolean
+          share_hired?: boolean
+          share_offers?: boolean
+          share_rejected?: boolean
           show_client_status?: boolean
           show_days?: boolean
           show_employer?: boolean
           show_fit_score?: boolean
+          show_reject_reason?: boolean
           show_scorecards?: boolean
           token?: string
           updated_at?: string
@@ -6464,6 +6479,7 @@ export type Database = {
       rejection_reasons: {
         Row: {
           category: Database["public"]["Enums"]["rejection_category"]
+          client_label: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -6477,6 +6493,7 @@ export type Database = {
         }
         Insert: {
           category: Database["public"]["Enums"]["rejection_category"]
+          client_label?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -6490,6 +6507,7 @@ export type Database = {
         }
         Update: {
           category?: Database["public"]["Enums"]["rejection_category"]
+          client_label?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null

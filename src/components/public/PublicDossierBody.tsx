@@ -64,6 +64,7 @@ const stagePresentation: Record<Exclude<PublicDossierPayload['client_stage']['ke
   interviewing: { label: 'In interviews', tone: 'purple' },
   offer: { label: 'Offer out', tone: 'lilac' },
   hired: { label: 'Hired', tone: 'green' },
+  closed: { label: 'Not progressing', tone: 'neutral' },
 }
 
 function daysAgo(value: string) {
@@ -117,7 +118,7 @@ export function PublicDossierBody({
   const [openDimension, setOpenDimension] = useState<string | null>(null)
 
   const summary = splitExecutiveSummary(analysis.executive_summary ?? '')
-  const stats = computeExperienceStats(payload.work_experience)
+  const stats = computeExperienceStats(payload.work_experience, payload.salary_expectation)
   const skillGroups = buildSkillGroups(
     payload.required_skills,
     candidate.skills,
@@ -162,6 +163,8 @@ export function PublicDossierBody({
           ? 'Nothing is needed from you while the candidate considers it. We will update this page the moment they respond.'
           : clientStage === 'hired'
             ? 'Keep this link for your records. It stays available to you and stops accepting decisions.'
+            : clientStage === 'closed'
+              ? 'This candidate is no longer in the process for this role. The dossier stays here for your reference.'
             : null
 
   return (

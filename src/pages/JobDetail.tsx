@@ -1226,6 +1226,7 @@ export default function JobDetail() {
               {!isRestrictedViewer && (
                 <div className="mb-3 shrink-0">
                   <PipelineSectionTabs
+                    jobId={id}
                     value={pipelineSectionTab as PipelineSection}
                     onChange={(v) => {
                       setSelectedCandidateIds([])

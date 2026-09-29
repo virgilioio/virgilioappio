@@ -133,9 +133,12 @@ Deno.serve(async (req) => {
   // Internal call from the client pipeline function: resolves the same
   // client-ready payload by association, independent of this link's switch.
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const internal = body?.action === "internal_resolve" &&
+    const internal = body?.action === "internal_resolve" &&
     typeof body?.association_id === "string" &&
     req.headers.get("x-internal-key") === serviceKey && serviceKey.length > 0;
+    const pipelineSection = internal && ["application", "recruiting", "offers", "hired", "rejected"].includes(String(body?.pipeline_section))
+      ? String(body.pipeline_section)
+      : "recruiting";
 
   const token = typeof body?.token === "string" ? body.token.trim() : "";
   const action = internal ? "resolve" : String(body?.action ?? "resolve");
@@ -182,7 +185,7 @@ Deno.serve(async (req) => {
     const terminalAssociation = ["rejected", "withdrawn"].includes(String(assoc.status ?? "").toLowerCase());
     const progressedAssociation = ["offer", "offered", "hired"].includes(String(assoc.status ?? "").toLowerCase());
     const live = internal
-      ? !terminalAssociation && job.status === "open"
+      ? job.status === "open" && (pipelineSection === "rejected" ? terminalAssociation : !terminalAssociation)
       : share.is_public &&
         !share.deactivated_at &&
         !assoc.rejected_at &&
@@ -291,7 +294,7 @@ Deno.serve(async (req) => {
       await Promise.all([
         supabase
           .from("candidates")
-          .select("candidate_name, role_current, current_job_title, company_current, location_city, location_state, location_country, profile_summary, skills")
+          .select("candidate_name, role_current, current_job_title, company_current, location_city, location_state, location_country, profile_summary, skills, salary_amount, salary_currency, salary_period")
           .eq("id", assoc.candidate_id)
           .maybeSingle(),
         supabase
@@ -339,9 +342,12 @@ Deno.serve(async (req) => {
 
     const stageType = String((currentStage as any)?.job_stages?.stage_type ?? "");
     const latestFeedback = feedback as { decision?: string; created_at?: string } | null;
-    let clientStage: "awaiting" | "requested" | "declined" | "interviewing" | "offer" | "hired" = "awaiting";
+    let clientStage: "awaiting" | "requested" | "declined" | "interviewing" | "offer" | "hired" | "closed" = "awaiting";
     let occurredAt: string | null = null;
-    if (assoc.status === "hired" || assoc.hired_at) {
+    if (pipelineSection === "rejected") {
+      clientStage = "closed";
+      occurredAt = assoc.rejected_at;
+    } else if (assoc.status === "hired" || assoc.hired_at) {
       clientStage = "hired";
       occurredAt = assoc.hired_at;
     } else if (["offer", "offered"].includes(String(assoc.status)) || stageType === "offer" || assoc.offered_at) {
@@ -479,6 +485,10 @@ Deno.serve(async (req) => {
       candidate?.role_current || candidate?.current_job_title,
       candidate?.company_current,
     ].filter(Boolean).join(" at ");
+    const salaryAmount = Number(candidate?.salary_amount);
+    const salaryExpectation = Number.isFinite(salaryAmount) && salaryAmount > 0
+      ? `${candidate?.salary_currency || "USD"} ${salaryAmount.toLocaleString("en-GB")} / ${candidate?.salary_period || "year"}`
+      : null;
 
     return json(200, {
       state: "live",
@@ -496,6 +506,7 @@ Deno.serve(async (req) => {
         skills: Array.isArray(candidate?.skills) ? candidate!.skills.map(String) : [],
       },
       required_skills: requiredSkills,
+      salary_expectation: salaryExpectation,
       score: Number(assocFit.ai_fit_score),
       output_language: assocFit.ai_fit_output_language ?? null,
       analysis: clientReadyAnalysis(assocFit.ai_fit_analysis as Record<string, unknown>),

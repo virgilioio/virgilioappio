@@ -59,6 +59,7 @@ export interface PublicDossierPayload {
     skills: string[]
   }
   required_skills: string[]
+  salary_expectation: string | null
   score: number
   output_language: string | null
   analysis: PublicFitAnalysis
@@ -67,7 +68,7 @@ export interface PublicDossierPayload {
   scorecards: DossierScorecard[]
   feedback: { decision: string; created_at: string } | null
   client_stage: {
-    key: 'awaiting' | 'requested' | 'declined' | 'interviewing' | 'offer' | 'hired'
+    key: 'awaiting' | 'requested' | 'declined' | 'interviewing' | 'offer' | 'hired' | 'closed'
     occurred_at: string | null
     next_interview_at: string | null
     next_interview_label: string | null
@@ -131,6 +132,7 @@ function useNoIndexNoReferrer() {
 export interface PipelineContext {
   token: string
   slug: string
+  section: 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'
   /** Rendered above the dossier card, receives the pipeline nav info. */
   renderTop: (nav: any) => ReactNode
   onGone: () => void
@@ -140,7 +142,7 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
   const params = useParams<{ token: string }>()
   const token = pipeline ? pipeline.token : params.token ?? ''
   const endpoint = pipeline ? PIPELINE_ENDPOINT : ENDPOINT
-  const extra = pipeline ? { slug: pipeline.slug } : {}
+  const extra = pipeline ? { slug: pipeline.slug, section: pipeline.section } : {}
   const [resolved, setResolved] = useState<Resolved | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)

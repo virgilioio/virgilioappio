@@ -11,6 +11,7 @@ export interface RejectionReason {
   name: string
   category: RejectionCategory
   description: string | null
+  client_label: string | null
   is_active: boolean
   display_order: number
   source: string
@@ -100,6 +101,7 @@ export function useRejectionReasons(context: 'platform-defaults' | 'organization
       id: string
       name?: string
       description?: string
+      client_label?: string | null
       display_order?: number
     }) => {
       const { id, ...updates } = input
