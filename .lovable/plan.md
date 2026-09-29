@@ -1,19 +1,21 @@
-# Fix: "Moved on from this stage" when opening candidates on the client board
+# Fix: client board says "moved on" and dossiers aren't ready
 
 ## What's happening
-On the client board, opening a candidate fetches their dossier. If that fetch fails for any reason, the board shows one catch-all toast — "This candidate has moved on from this stage" — and sends the client back. So the toast appears for candidates who haven't moved at all.
+When a client opens a candidate, the board fetches their Gio Fit dossier. If there isn't one, the board shows a catch-all toast, "This candidate has moved on from this stage", and sends the client back.
 
-From the code, the most likely cause is that these candidates don't have a Gio Fit analysis yet. The dossier service reports "unavailable" for anyone without one, and the board reads that as "moved on". "Awaiting your review" candidates are often newer, so they're the ones most likely to have no score yet. **This isn't confirmed yet**, so step 1 is to check it.
+Gio Fit already runs on its own for some candidates: people who apply through the careers page, arrive from a job board, or are picked from Suggested. It doesn't run on its own for everyone else, such as candidates added by hand, imported from a spreadsheet or merged as duplicates. Those candidates stay without a dossier until someone opens their Gio Fit tab. I haven't confirmed yet which candidates on your board are missing one; step 1 checks that.
 
 ## Plan
-1. **Confirm the cause.** Briefly turn the test link on, open each "Awaiting your review" candidate through the service, and record why each one fails (no Fit analysis, or something else). Then turn the link off again.
-2. **Separate the reasons.** The service will return a specific reason (not in a visible stage, no dossier yet, or role closed) so the board no longer treats every failure the same way.
-3. **Candidates without a dossier still open.** Instead of bouncing the client back, open a simple client-ready profile page with the same header, stage, days in stage, experience, skills and (if allowed) scorecards. Where the fit score would go, it will say "Assessment in progress". The client's Request interview / Not a fit buttons will still work.
-4. **Keep the "moved on" toast only for real moves**, meaning the candidate is no longer in a stage the client can see.
-5. **Verify** in a browser on the test board: every "Awaiting your review" card opens, and a candidate who really moved still shows the toast. Turn the test link off afterwards.
+1. **Confirm the gap.** List the active candidates in open jobs who are in the first recruiting stage or later and have no Gio Fit yet, and check that the failing "Awaiting your review" cards are among them.
+2. **Gio Fit runs for every candidate who enters the process.** Every time a candidate joins a job or moves into a recruiting stage without a Gio Fit, they're put in a waiting line to be assessed. A background job works through the line a few candidates at a time, so the dossier is ready before anyone opens it. This covers every way a candidate can arrive, not just applications.
+3. **Catch up on existing candidates.** Everyone found in step 1 goes into the same waiting line, so their dossiers get generated too.
+4. **A clearer screen while one is still being prepared.** If a client opens a candidate before their Gio Fit is ready, they'll see the profile, experience and skills with "Assessment in progress" in place of the score, instead of being bounced back. Their Request interview / Not a fit buttons still work.
+5. **"Moved on" only when it's true.** The toast appears only when the candidate has actually left the stages the client can see.
+6. **Verify** on the test board: every "Awaiting your review" card opens with a full dossier. Then turn the test link off.
 
 ## Technical details
-- `supabase/functions/dossier-public/index.ts` (`internal_resolve` only): when there's no `ai_fit_analysis`, return `state: "no_assessment"` with the client-ready candidate, experience and scorecard payload, and no score block. The public `/d/:token` behaviour stays the same.
-- `supabase/functions/pipeline-public/index.ts`: pass `no_assessment` through with the same pipeline display rules (initials only, employer, scorecards, responses). Return `{state:"gone"}` for a slug that isn't found, instead of a bare 404.
-- `src/pages/PublicDossier.tsx` / `PublicDossierBody.tsx`: render the no-score variant. Call `onGone` only for `gone`.
-- No database changes.
+- New `fit_analysis_queue` table: association_id unique, status, attempts, last_error, with grants and service-only RLS. A trigger on `job_candidate_associations` (insert, or `current_stage_id` change into a non-application stage) adds a row when `ai_fit_analysis` is null. The table also holds a lease lock and a paused state.
+- New scheduled edge function `process-fit-queue`, run every minute by pg_cron. It takes a single-flight lease, handles at most 5 items per run one after another, and calls the existing `analyze-candidate-fit` (GPT-5.1, no change to how it works). 202 deferrals stay in the queue for a later run. On 402/403 or repeated 429 it pauses the queue and records why. Each item is marked done as it completes.
+- Deduplication: skip associations the existing trigger paths are already assessing. The unique key plus a check for a recent analysis stop anything from being assessed twice.
+- `dossier-public` `internal_resolve`: return `state:"no_assessment"` with the client-ready payload and no score. `pipeline-public` passes it through and returns `{state:"gone"}` for a missing slug. `PublicDossier` shows the no-score version and calls `onGone` only for `gone`.
+- The public `/d/:token` behaviour stays the same. No dossier schema changes.
