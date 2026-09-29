@@ -12,7 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { supabase } from '@/integrations/supabase/client'
 import { copyToClipboardSilent } from '@/utils/clipboard'
 import { stageColor } from './pipelineVisuals'
@@ -110,12 +110,14 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
   const url = share ? pipelinePublicUrl(share.token) : ''
 
   const fixedChip = (label: string) => (
-    <Tooltip key={label}>
-      <TooltipTrigger asChild>
-        <span className="font-inter inline-flex items-center" style={{ height: 34, padding: '0 12px', borderRadius: 8, background: '#FAFAF7', border: '1px dashed #E0DDD3', fontSize: 11.5, color: '#8B8F9E' }}>{label}</span>
-      </TooltipTrigger>
-      <TooltipContent>Not part of the client view</TooltipContent>
-    </Tooltip>
+    <TooltipProvider key={label}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="font-inter inline-flex items-center" style={{ height: 34, padding: '0 12px', borderRadius: 8, background: '#FAFAF7', border: '1px dashed #E0DDD3', fontSize: 11.5, color: '#8B8F9E' }}>{label}</span>
+        </TooltipTrigger>
+        <TooltipContent>Not part of the client view</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
   const sep = <ChevronRight size={12} color="#D1D0CB" />
 
