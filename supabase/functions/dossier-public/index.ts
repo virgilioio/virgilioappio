@@ -490,6 +490,19 @@ Deno.serve(async (req) => {
       ? `${candidate?.salary_currency || "USD"} ${salaryAmount.toLocaleString("en-GB")} / ${candidate?.salary_period || "year"}`
       : null;
 
+    const { data: rawFiles } = await supabase
+      .from("candidate_attachments")
+      .select("id, file_name, file_url, file_type, file_size_bytes, created_at")
+      .eq("candidate_id", assoc.candidate_id)
+      .eq("is_resume", false)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    const files = (await Promise.all((rawFiles ?? []).map(async (f) => {
+      const { data: signed } = await supabase.storage.from("candidate-attachments").createSignedUrl(f.file_url, 3600);
+      if (!signed?.signedUrl) return null;
+      return { id: f.id, name: f.file_name, type: f.file_type, size: f.file_size_bytes, created_at: f.created_at, url: signed.signedUrl };
+    }))).filter(Boolean);
+
     return json(200, {
       state: "live",
       brand: { agency_name: workspaceName, logo_url: careers?.logo_url ?? null },
@@ -507,6 +520,7 @@ Deno.serve(async (req) => {
       },
       required_skills: requiredSkills,
       salary_expectation: salaryExpectation,
+      files,
       score: Number(assocFit.ai_fit_score),
       output_language: assocFit.ai_fit_output_language ?? null,
       analysis: clientReadyAnalysis(assocFit.ai_fit_analysis as Record<string, unknown>),
