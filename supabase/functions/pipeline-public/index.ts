@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
       const py = CLIENT_STAGE_PRIORITY[y.card.client_stage] ?? 9;
       if (px !== py) return px - py;
       // Within "scheduled", soonest interview first.
-      if (px === 2) {
+      if (px === 1) {
         const sx = x.card.scheduled_start ? Date.parse(x.card.scheduled_start) : Infinity;
         const sy = y.card.scheduled_start ? Date.parse(y.card.scheduled_start) : Infinity;
         if (sx !== sy) return sx - sy;
