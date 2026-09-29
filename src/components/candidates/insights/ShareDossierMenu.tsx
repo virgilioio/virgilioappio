@@ -13,6 +13,7 @@ import { Check, Copy, Eye, Globe, Link2, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { copyToClipboardSilent } from '@/utils/clipboard'
+import { PipelineAlsoRow } from './PipelineAlsoRow'
 import { dossierPublicUrl, type DossierShare } from '@/hooks/useDossierShare'
 
 interface ShareDossierMenuProps {
@@ -32,6 +33,8 @@ interface ShareDossierMenuProps {
   wrapperRef: React.RefObject<HTMLDivElement>
   /** Returns focus when Escape closes the menu. */
   triggerRef?: React.RefObject<HTMLElement>
+  jobId?: string
+  candidateId?: string
 }
 
 const PANEL: React.CSSProperties = {
@@ -126,6 +129,8 @@ export function ShareDossierMenu({
   onTogglePublic,
   wrapperRef,
   triggerRef,
+  jobId,
+  candidateId,
 }: ShareDossierMenuProps) {
   const urlRef = useRef<HTMLElement | null>(null)
   const internalCopy = useInlineCopy()
@@ -295,6 +300,8 @@ export function ShareDossierMenu({
           {error}
         </p>
       )}
+
+      {jobId && candidateId && <PipelineAlsoRow jobId={jobId} candidateId={candidateId} firstName={candidateFirstName} />}
 
       <p
         style={{
