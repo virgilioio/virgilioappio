@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Paperclip, FileText, FileAudio, FileVideo, FileImage, File as FileIcon, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DOCXResumeViewer } from '@/components/candidates/DOCXResumeViewer'
+import { PDFResumeViewer } from '@/components/candidates/PDFResumeViewer'
 
 /**
  * Files card for the Gio Fit dossier — non-resume attachments only.
@@ -32,59 +32,6 @@ function kindOf(f: FileRow): Kind {
   if (t.includes('wordprocessingml') || n.endsWith('.docx')) return 'docx'
   if (t.startsWith('text/')) return 'text'
   return 'other'
-}
-
-const ICONS: Record<Kind, typeof FileIcon> = {
-  pdf: FileText, docx: FileText, text: FileText, image: FileImage, audio: FileAudio, video: FileVideo, other: FileIcon,
-}
-
-function size(bytes?: number | null) {
-  if (!bytes) return null
-  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`
-}
-
-export function DossierFilesCard({ candidateId, className, headingClassName }: { candidateId: string; className: string; headingClassName: string }) {
-  const [open, setOpen] = useState<FileRow | null>(null)
-  const { data: files = [] } = useQuery({
-    queryKey: ['dossier-files', candidateId],
-    enabled: !!candidateId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('candidate_attachments')
-        .select('id, file_name, file_url, file_type, file_size_bytes, created_at')
-        .eq('candidate_id', candidateId)
-        .eq('is_resume', false)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      return (data || []) as FileRow[]
-    },
-  })
-
-  if (!files.length) return null
-
-  return (
-    <section className={className}>
-      <div className="border-b border-fit-hairline px-4 py-4">
-        <h3 className={headingClassName}><Paperclip className="h-3 w-3" /> Files</h3>
-      </div>
-      <div className="divide-y divide-fit-hairline">
-        {files.map((f) => {
-          const Icon = ICONS[kindOf(f)]
-          const meta = [size(f.file_size_bytes), new Date(f.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })].filter(Boolean).join(' · ')
-          return (
-            <button key={f.id} type="button" onClick={() => setOpen(f)} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left hover:bg-[#FAFAF7]">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F1F0EC] text-[#5A6072]"><Icon className="h-3.5 w-3.5" /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-inter text-[12.5px] font-medium text-fit-ink">{f.file_name}</span>
-                <span className="block font-inter text-[10.5px] text-fit-subtle">{meta}</span>
-              </span>
-            </button>
-          )
-        })}
-      </div>
-      <FileViewer file={open} onClose={() => setOpen(null)} />
-    </section>
-  )
 }
 
 export function FileViewer({ file, onClose }: { file: FileRow | null; onClose: () => void }) {
@@ -126,7 +73,7 @@ export function FileViewer({ file, onClose }: { file: FileRow | null; onClose: (
         ) : !url ? (
           <div className="flex h-72 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : kind === 'pdf' ? (
-          <iframe src={`${url}#toolbar=0&navpanes=0`} title={file?.file_name} className="h-[70vh] w-full rounded-md border" />
+          <div className="max-h-[70vh] overflow-auto rounded-md border"><PDFResumeViewer url={url} height={70} /></div>
         ) : kind === 'image' ? (
           <img src={url} alt={file?.file_name} className="mx-auto max-h-[70vh] rounded-md object-contain" draggable={false} />
         ) : kind === 'audio' ? (
