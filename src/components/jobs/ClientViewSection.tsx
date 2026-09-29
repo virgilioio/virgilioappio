@@ -15,6 +15,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { supabase } from '@/integrations/supabase/client'
 import { copyToClipboardSilent } from '@/utils/clipboard'
+import { toast } from '@/hooks/use-toast'
 import { stageColor } from './pipelineVisuals'
 import {
   NON_RECRUITING_STAGE_TYPES, pipelinePublicUrl, useJobPipelineShare, type PipelineShareSettings,
@@ -98,12 +99,27 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
   const [confirmReset, setConfirmReset] = useState(false)
 
   const recruiting = useMemo(() => stages.filter((s) => !NON_RECRUITING_STAGE_TYPES.has(s.type)), [stages])
-  const startIdx = Math.max(0, recruiting.findIndex((s) => s.id === share?.from_stage_id))
-  const from = recruiting[startIdx]
-  const visible = recruiting.slice(startIdx)
+  const selectedIds = useMemo(() => new Set(share?.visible_stage_ids ?? []), [share?.visible_stage_ids])
+  const visible = useMemo(() => recruiting.filter((s) => selectedIds.has(s.id)), [recruiting, selectedIds])
   const visibleCount = visible.reduce((n, s) => n + s.count, 0)
   const before = stages.filter((s) => s.type === 'application' || s.type === 'application_review')
   const after = ['Job offers', 'Hired', 'Rejected']
+
+  const toggleStage = (s: StageRow) => {
+    if (readOnly || !share) return
+    const next = new Set(selectedIds)
+    if (next.has(s.id)) {
+      if (next.size === 1) {
+        toast({ title: 'At least one stage must be visible', description: 'Turn the client view off instead if you want to hide everything.' })
+        return
+      }
+      next.delete(s.id)
+    } else {
+      next.add(s.id)
+    }
+    // Persist in pipeline order.
+    set({ visible_stage_ids: recruiting.filter((r) => next.has(r.id)).map((r) => r.id) })
+  }
 
   const set = (patch: PipelineShareSettings) => { if (!readOnly) void update(patch) }
   const on = !!share?.is_public
@@ -129,7 +145,7 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
         </h2>
         <span style={{ marginLeft: 'auto' }}>
           {on
-            ? <Badge tone="green" size="sm" dot>{`Live · from ${from?.name ?? '—'}`}</Badge>
+            ? <Badge tone="green" size="sm" dot>{`Live · ${visible.length} stage${visible.length === 1 ? '' : 's'}`}</Badge>
             : <Badge tone="neutral" size="sm">Off</Badge>}
         </span>
       </div>
@@ -148,7 +164,7 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
             </div>
           </div>
           <Switch checked={on} disabled={readOnly || !share} label="Share this pipeline with the client"
-            onChange={(v) => set({ is_public: v, ...(v && !share?.from_stage_id && recruiting[0] ? { from_stage_id: recruiting[0].id } : {}) })} />
+            onChange={(v) => set({ is_public: v, ...(v && !(share?.visible_stage_ids?.length) && recruiting.length ? { visible_stage_ids: recruiting.map((r) => r.id) } : {}) })} />
         </div>
         {on && share && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F0EC' }}>
@@ -173,22 +189,21 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
 
       {on && share && (
         <>
-          <FormSection title="Visible from" subtitle="The client sees this stage and every stage after it. Earlier stages, and the candidates in them, stay private.">
+          <FormSection title="Visible stages" subtitle="The client sees only the stages you select. Click a stage to show or hide it.">
             <div className="flex flex-wrap items-center" style={{ gap: 6 }}>
               {before.map((s) => <Fragment key={s.id}>{fixedChip(s.name)}{sep}</Fragment>)}
               {recruiting.map((s, i) => {
-                const isVisible = i >= startIdx
-                const isStart = i === startIdx
+                const isVisible = selectedIds.has(s.id)
                 return (
                   <Fragment key={s.id}>
-                    <button type="button" disabled={readOnly} onClick={() => set({ from_stage_id: s.id })}
+                    <button type="button" disabled={readOnly} onClick={() => toggleStage(s)}
+                      aria-pressed={isVisible}
                       className="font-inter inline-flex items-center"
                       style={{
                         height: 34, padding: '0 11px', gap: 7, borderRadius: 8, fontSize: 12,
                         background: isVisible ? '#F4EFFE' : '#fff',
                         color: isVisible ? '#4B1FA8' : '#5A6072', fontWeight: isVisible ? 600 : 500,
-                        border: `1px solid ${isStart ? '#6F3FF5' : isVisible ? '#E6DAFB' : '#E7E8EE'}`,
-                        boxShadow: isStart ? '0 0 0 2px rgba(111,63,245,0.12)' : undefined,
+                        border: `1px solid ${isVisible ? '#E6DAFB' : '#E7E8EE'}`,
                       }}>
                       <span style={{ width: 7, height: 7, borderRadius: 9, background: isVisible ? stageColor(s.type, i) : '#D1D0CB' }} />
                       {s.name}
@@ -201,12 +216,12 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
               })}
               {after.map((l) => fixedChip(l))}
             </div>
-            {from && (
+            {visible.length > 0 && (
               <div className="font-inter flex items-start" style={{ gap: 8, marginTop: 12, background: '#FAF8FF', border: '1px solid #EDE4FF', borderRadius: 9, padding: '9px 12px', fontSize: 12, color: '#1F2230' }}>
                 <Eye size={13} color="#6F3FF5" style={{ marginTop: 2 }} />
                 <span>
                   The client sees <strong>{visibleCount} candidate{visibleCount === 1 ? '' : 's'}</strong> across{' '}
-                  <strong>{from.name} → {visible[visible.length - 1]?.name}</strong>. Candidates appear the moment they're moved into {from.name}.
+                  <strong>{visible.map((s) => s.name).join(', ')}</strong>. Candidates appear the moment they're moved into a visible stage.
                 </span>
               </div>
             )}

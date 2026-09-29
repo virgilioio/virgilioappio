@@ -81,13 +81,25 @@ Deno.serve(async (req) => {
       .select("id, position, custom_stage_name, job_stages(stage_name, stage_type)")
       .eq("job_id", job.id).order("position", { ascending: true });
     const recruiting = (stageRows ?? []).filter((s: any) => !NON_RECRUITING.has(String(s.job_stages?.stage_type ?? "")));
-    let startIdx = recruiting.findIndex((s: any) => s.id === ps.from_stage_id);
-    if (startIdx < 0) startIdx = 0;
-    const shared = recruiting.slice(startIdx).map((s: any, i: number) => ({
+    // Per-stage selection: only stages explicitly listed are shared. Falls back to
+    // the legacy from_stage_id slice for shares not yet backfilled.
+    const selectedIds: string[] | null = Array.isArray(ps.visible_stage_ids) && ps.visible_stage_ids.length
+      ? ps.visible_stage_ids
+      : null;
+    let visibleRows = recruiting;
+    if (selectedIds) {
+      const sel = new Set(selectedIds);
+      visibleRows = recruiting.filter((s: any) => sel.has(s.id));
+    } else {
+      let startIdx = recruiting.findIndex((s: any) => s.id === ps.from_stage_id);
+      if (startIdx < 0) startIdx = 0;
+      visibleRows = recruiting.slice(startIdx);
+    }
+    const shared = visibleRows.map((s: any, i: number) => ({
       id: s.id,
       name: s.custom_stage_name || s.job_stages?.stage_name || "Stage",
       type: String(s.job_stages?.stage_type ?? ""),
-      color: STAGE_COLOR[String(s.job_stages?.stage_type ?? "")] ?? FALLBACK[(startIdx + i) % FALLBACK.length],
+      color: STAGE_COLOR[String(s.job_stages?.stage_type ?? "")] ?? FALLBACK[i % FALLBACK.length],
     }));
     const sharedIds = shared.map((s) => s.id);
 

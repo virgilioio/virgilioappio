@@ -12,6 +12,7 @@ export interface JobPipelineShare {
   token: string
   is_public: boolean
   from_stage_id: string | null
+  visible_stage_ids: string[] | null
   show_fit_score: boolean
   show_days: boolean
   show_client_status: boolean

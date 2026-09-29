@@ -759,8 +759,13 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     const m = new Map<string, boolean>()
     if (!pipelineShare?.is_public) return m
     const recruiting = stageOptions.filter((o) => !NON_RECRUITING_STAGE_TYPES.has(String(o.stage.stage_type)))
-    const start = Math.max(0, recruiting.findIndex((o) => o.jhsId === pipelineShare.from_stage_id))
-    recruiting.forEach((o, i) => m.set(o.jhsId, i >= start))
+    if (Array.isArray(pipelineShare.visible_stage_ids) && pipelineShare.visible_stage_ids.length) {
+      const sel = new Set(pipelineShare.visible_stage_ids)
+      recruiting.forEach((o) => m.set(o.jhsId, sel.has(o.jhsId)))
+    } else {
+      const start = Math.max(0, recruiting.findIndex((o) => o.jhsId === pipelineShare.from_stage_id))
+      recruiting.forEach((o, i) => m.set(o.jhsId, i >= start))
+    }
     return m
   }, [pipelineShare, stageOptions])
 
