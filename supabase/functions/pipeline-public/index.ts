@@ -195,7 +195,18 @@ Deno.serve(async (req) => {
         },
       });
     }
-    entries.sort((x, y) => x.position - y.position);
+    entries.sort((x, y) => {
+      const px = CLIENT_STAGE_PRIORITY[x.card.client_stage] ?? 9;
+      const py = CLIENT_STAGE_PRIORITY[y.card.client_stage] ?? 9;
+      if (px !== py) return px - py;
+      // Within "scheduled", soonest interview first.
+      if (px === 2) {
+        const sx = x.card.scheduled_start ? Date.parse(x.card.scheduled_start) : Infinity;
+        const sy = y.card.scheduled_start ? Date.parse(y.card.scheduled_start) : Infinity;
+        if (sx !== sy) return sx - sy;
+      }
+      return x.position - y.position;
+    });
 
     const ordered = shared.flatMap((s) => entries.filter((e) => e.stage_id === s.id));
     const meta = {
