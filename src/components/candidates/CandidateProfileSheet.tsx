@@ -55,6 +55,7 @@ import { ContactPair, PhoneContactPair } from '@/components/candidates/profile/p
 import { renderTemplate, buildPlaceholderData, stripHtmlToPlainText } from '@/utils/templateUtils'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { SidebarFileList } from '@/components/candidates/profile/tabs/SidebarFileList'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { triggerFitAnalysis } from '@/utils/triggerFitAnalysis'
 import { useJobRole } from '@/hooks/useJobRole'
@@ -255,7 +256,16 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   
   // Use the candidate resolver to get the correct ID for attachments
   const { independentCandidateId } = useCandidateResolver(candidateId)
-  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(independentCandidateId || '')
+  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment, downloadAttachment } = useCandidateAttachments(independentCandidateId || '')
+  const [uploadingFiles, setUploadingFiles] = useState<string[]>([])
+  const handleSidebarFiles = async (files: File[]) => {
+    const MAX = 25 * 1024 * 1024
+    for (const f of files) {
+      if (f.size > MAX) { toast({ title: 'File too large', description: `${f.name} is over 25 MB.`, variant: 'destructive' }); continue }
+      setUploadingFiles((u) => [...u, f.name])
+      try { await uploadResume(f, false) } catch { /* toast shown by hook */ } finally { setUploadingFiles((u) => u.filter((n) => n !== f.name)) }
+    }
+  }
   const { isEnabled: whatsAppEnabled, messageTemplate: whatsAppTemplate } = useWhatsAppEnabled()
   const [whatsAppTemplateSentAt, setWhatsAppTemplateSentAt] = useState<string | null>(null)
 
@@ -2186,7 +2196,8 @@ const stageHasAutomation = useMemo(() => {
                                 source={candidate?.job_board_source || candidate?.source || null}
                                 urls={urls}
                                 filesCount={attachments.length}
-                                onUploadFile={() => setEditOpen(true)}
+                                onFilesSelected={canEditCandidates ? handleSidebarFiles : undefined}
+                                fileSlots={<SidebarFileList attachments={attachments} uploading={uploadingFiles} canDelete={!!canEditCandidates} onDownload={downloadAttachment} onDelete={deleteAttachment} />}
                                 location={[(candidate as any)?.location_city, (candidate as any)?.location_state, (candidate as any)?.location_country].filter(Boolean).join(', ') || (candidate as any)?.location || null}
                                 email={candidate?.email || null}
                                 phone={candidate?.phone || null}
