@@ -19,3 +19,14 @@
 - `CandidateInsightsTab.tsx`: remove `<DossierFilesCard>` and its import.
 - `PublicDossierBody.tsx`: import the viewer from its new location.
 - Check it on the live client pipeline link: Katarina's dossier shows no Files card, Alexander's MP3 still plays, and a PDF test file draws its pages.
+
+## Replacing a resume removes the old copy (added)
+4. **From now on, replacing a resume keeps only the new file.** When a new resume is uploaded, the previous resume is deleted, both the file and its record. This also saves storage space.
+5. **One-time clean-up of existing candidates.** For every candidate who has a current resume, delete PDF and Word files that were uploaded **before** that resume and aren't marked as resume (Alexander Rodrigues' two old copies, Katarina's and Olivia's old copies, and so on). The newest resume stays. Audio, images and other file types are never touched. Files uploaded after the current resume are kept too.
+   - Accepted trade-off: a real document (a cover letter, for example) uploaded before the current resume would also be deleted.
+   - Before deleting, I'll report how many files and candidates are affected.
+
+### Technical details (added)
+- `useCandidateAttachments.uploadAttachment(file, true)` and the other resume-replace paths (`CandidateFormSheet`, the resume tab's replace action, the `enrich-candidate-profile` upload path): after the new resume record is saved, delete the candidate's other resume rows (`is_resume = true`, id ≠ new) and remove their storage objects.
+- Clean-up: a data-change query picks rows where `is_resume = false`, the MIME type or extension is PDF or Word, and `created_at` is earlier than the candidate's latest resume `created_at`. The storage objects on those same paths are removed with a service-key script, then the rows are deleted.
+- Add this task to the project task list (`roadmap.md`).
