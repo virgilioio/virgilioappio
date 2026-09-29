@@ -6,7 +6,7 @@
  * validation priorities and anything about compensation are removed before the
  * response is written, so there is nothing here to toggle back on.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 
