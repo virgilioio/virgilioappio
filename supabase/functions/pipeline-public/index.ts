@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     const [{ data: candidates }, { data: dossierShares }, { data: offers }, { data: history }, { data: reasons }, { data: bookings }] = await Promise.all([
       candidateIds.length ? supabase.from("candidates").select("id, candidate_name, role_current, current_job_title, company_current, deleted_at").in("id", candidateIds) : Promise.resolve({ data: [] }),
       associationIds.length ? supabase.from("dossier_shares").select("id, association_id").in("association_id", associationIds) : Promise.resolve({ data: [] }),
-      ps.share_offers && candidateIds.length ? supabase.from("offer_letters").select("candidate_id, status, sent_at, created_at, updated_at").eq("job_id", job.id).in("candidate_id", candidateIds).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+      ps.share_offers && candidateIds.length ? supabase.from("offer_letters").select("candidate_id, status, sent_at, created_at, updated_at, field_values").eq("job_id", job.id).in("candidate_id", candidateIds).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
       ps.share_rejected && associationIds.length ? supabase.from("job_candidate_stage_history").select("association_id, to_stage_id, moved_at").in("association_id", associationIds).order("moved_at") : Promise.resolve({ data: [] }),
       ps.share_rejected && ps.show_reject_reason && reasonIds.length ? supabase.from("rejection_reasons").select("id, category, client_label").in("id", reasonIds) : Promise.resolve({ data: [] }),
       candidateIds.length ? supabase.from("scheduled_bookings").select("candidate_id, job_hiring_stage_id, scheduled_start, status").in("candidate_id", candidateIds).in("status", ["confirmed", "rescheduled"]) : Promise.resolve({ data: [] }),
