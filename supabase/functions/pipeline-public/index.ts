@@ -191,8 +191,9 @@ Deno.serve(async (req) => {
           ...(ps.show_fit_score && typeof a.ai_fit_score === "number" ? { fit_score: Math.round(a.ai_fit_score) } : {}),
           ...(ps.show_days && entered ? { days_in_stage: Math.max(0, Math.floor((Date.now() - new Date(entered).getTime()) / 86400000)) } : {}),
           ...(ps.show_client_status ? { client_stage: clientStage } : {}),
+          // Raw ISO — the public page formats it in the viewer's own timezone.
           ...(ps.show_client_status && clientStage === "scheduled" && bookedMs !== undefined
-            ? { scheduled_day: dayLabel(bookedMs), scheduled_time: timeLabel(bookedMs) }
+            ? { scheduled_start: new Date(bookedMs).toISOString() }
             : {}),
           stage_name: stage.name,
           _decision: decision ?? null,
