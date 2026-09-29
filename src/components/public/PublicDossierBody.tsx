@@ -16,6 +16,8 @@ import { DossierExperienceGroups } from '@/components/candidates/experience/Doss
 import { StatusBanner } from '@/components/candidates/status/StatusBanner'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ensureAbsoluteUrl } from '@/lib/utils'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
 import {
   buildSkillGroups,
@@ -211,6 +213,17 @@ export function PublicDossierBody({
           >
             {candidate.name}
             <span style={{ color: '#D7C5FB' }}>.</span>
+            {candidate.linkedin_url && (
+              <a
+                href={ensureAbsoluteUrl(candidate.linkedin_url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open LinkedIn profile"
+                className="ml-2.5 inline-flex h-7 w-7 items-center justify-center rounded-md align-middle text-[#8B8F9E] transition-colors hover:bg-[#F1F0EC] hover:text-[#5A6072]"
+              >
+                <LinkedInFilled className="h-4 w-4" />
+              </a>
+            )}
           </h1>
           {candidate.role_line && (
             <p className="font-inter" style={{ fontSize: 13.5, fontWeight: 500, color: '#1F2230', margin: '6px 0 0' }}>

@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
       await Promise.all([
         supabase
           .from("candidates")
-          .select("candidate_name, role_current, current_job_title, company_current, location_city, location_state, location_country, profile_summary, skills, salary_amount, salary_currency, salary_period")
+          .select("candidate_name, linkedin_url, role_current, current_job_title, company_current, location_city, location_state, location_country, profile_summary, skills, salary_amount, salary_currency, salary_period")
           .eq("id", assoc.candidate_id)
           .maybeSingle(),
         supabase
@@ -518,6 +518,7 @@ Deno.serve(async (req) => {
       job_title: job.title ?? "",
       candidate: {
         name: candidate?.candidate_name ?? "Candidate",
+        linkedin_url: candidate?.linkedin_url ?? null,
         role_line: roleLine || null,
         location: [candidate?.location_city, candidate?.location_state, candidate?.location_country]
           .filter(Boolean).join(", ") || null,
