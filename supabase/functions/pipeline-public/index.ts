@@ -172,8 +172,10 @@ Deno.serve(async (req) => {
       const stage = shared.find((s) => s.id === a.current_stage_id)!;
       const name = String(c.candidate_name || "Candidate");
       const decision = decisionByAssoc.get(a.id);
+      const bookedMs = bookingByCandidateStage.get(`${a.candidate_id}:${stage.id}`);
       const clientStage = decision === "not_a_fit" ? "declined"
         : decision === "interview_requested" ? "requested"
+        : bookedMs !== undefined ? "scheduled"
         : stage.type === "interview" ? "interviewing" : "awaiting";
       const entered = a.entered_stage_at || a.created_at;
       entries.push({
