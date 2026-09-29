@@ -860,6 +860,7 @@ export default function PublicJobPosting() {
           companyName={organizationName || 'Company'}
           logoUrl={companyLogoUrl}
           websiteUrl={companyWebsiteUrl}
+          tagline={footerTagline}
         />
       </div>
     )
@@ -1450,6 +1451,7 @@ export default function PublicJobPosting() {
         companyName={organizationName || 'Company'}
         logoUrl={companyLogoUrl}
         websiteUrl={companyWebsiteUrl}
+        tagline={footerTagline}
       />
 
 
