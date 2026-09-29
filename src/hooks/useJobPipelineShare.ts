@@ -13,6 +13,11 @@ export interface JobPipelineShare {
   is_public: boolean
   from_stage_id: string | null
   visible_stage_ids: string[] | null
+  share_application: boolean
+  share_offers: boolean
+  share_hired: boolean
+  share_rejected: boolean
+  show_reject_reason: boolean
   show_fit_score: boolean
   show_days: boolean
   show_client_status: boolean
