@@ -145,7 +145,7 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
         </h2>
         <span style={{ marginLeft: 'auto' }}>
           {on
-            ? <Badge tone="green" size="sm" dot>{`Live · from ${from?.name ?? '—'}`}</Badge>
+            ? <Badge tone="green" size="sm" dot>{`Live · ${visible.length} stage${visible.length === 1 ? '' : 's'}`}</Badge>
             : <Badge tone="neutral" size="sm">Off</Badge>}
         </span>
       </div>
@@ -164,7 +164,7 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
             </div>
           </div>
           <Switch checked={on} disabled={readOnly || !share} label="Share this pipeline with the client"
-            onChange={(v) => set({ is_public: v, ...(v && !share?.from_stage_id && recruiting[0] ? { from_stage_id: recruiting[0].id } : {}) })} />
+            onChange={(v) => set({ is_public: v, ...(v && !(share?.visible_stage_ids?.length) && recruiting.length ? { visible_stage_ids: recruiting.map((r) => r.id) } : {}) })} />
         </div>
         {on && share && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F0EC' }}>
