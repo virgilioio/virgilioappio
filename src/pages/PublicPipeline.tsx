@@ -167,13 +167,6 @@ export default function PublicPipeline() {
     return () => window.clearInterval(id)
   }, [load, token])
 
-  // Back on the board after a candidate left the shared stages.
-  useEffect(() => {
-    if (slug || !board || board.state !== 'live' || !lastOpened.current) return
-    const still = board.stages.some((s) => s.candidates.some((c) => c.slug === lastOpened.current))
-    lastOpened.current = null
-  }, [slug, board])
-
   if (missing) {
     return (
       <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', background: '#FAF8F3' }}>
