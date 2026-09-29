@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useRef, useState } from 'react'
 import {
   Mail,
   Phone,
@@ -28,6 +28,7 @@ import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/Pr
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 
@@ -57,25 +58,62 @@ function LinksBlock({ urls }: { urls: { label: string; url: string }[] }) {
 function FilesBlock({
   count,
   onUpload,
+  onFilesSelected,
   children,
 }: {
   count: number
   onUpload?: () => void
+  onFilesSelected?: (files: File[]) => void
   children?: ReactNode
 }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const canUpload = !!(onFilesSelected || onUpload)
   return (
     <SidebarBlock
       label={`Files (${count})`}
       action={
-        onUpload && (
-          <Button variant="ghost" size="xs" icon={Upload} onClick={onUpload}>
+        canUpload && (
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={Upload}
+            onClick={() => (onFilesSelected ? inputRef.current?.click() : onUpload?.())}
+          >
             Upload
           </Button>
         )
       }
     >
-      <div className="space-y-2">
-        {children || <div className="font-inter text-[12px] text-[#8B8F9E]">No files</div>}
+      {onFilesSelected && (
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files || [])
+            if (files.length) onFilesSelected(files)
+            e.currentTarget.value = ''
+          }}
+        />
+      )}
+      <div
+        className={cn('space-y-1.5 rounded-lg transition-colors', dragOver && 'bg-[#FAF8FF] ring-1 ring-[#6F3FF5]/40')}
+        onDragOver={onFilesSelected ? (e) => { e.preventDefault(); setDragOver(true) } : undefined}
+        onDragLeave={onFilesSelected ? () => setDragOver(false) : undefined}
+        onDrop={onFilesSelected ? (e) => {
+          e.preventDefault()
+          setDragOver(false)
+          const files = Array.from(e.dataTransfer.files || [])
+          if (files.length) onFilesSelected(files)
+        } : undefined}
+      >
+        {children || (
+          <div className="font-inter text-[12px] text-[#8B8F9E]">
+            {onFilesSelected ? 'No files · drop any file here' : 'No files'}
+          </div>
+        )}
       </div>
     </SidebarBlock>
   )
@@ -94,6 +132,7 @@ export interface JobOverviewSidebarProps {
   filesCount: number
   fileSlots?: ReactNode
   onUploadFile?: () => void
+  onFilesSelected?: (files: File[]) => void
   /** Location for the Details block — the hero no longer carries filing metadata. */
   location?: string | null
   email?: string | null
@@ -189,7 +228,7 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
           />
         </SidebarBlock>
         <LinksBlock urls={p.urls} />
-        <FilesBlock count={p.filesCount} onUpload={p.onUploadFile}>{p.fileSlots}</FilesBlock>
+        <FilesBlock count={p.filesCount} onUpload={p.onUploadFile} onFilesSelected={p.onFilesSelected}>{p.fileSlots}</FilesBlock>
       </ProfileSidebar>
     </div>
   )
