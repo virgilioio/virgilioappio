@@ -9,6 +9,7 @@ import { openaiFetch, OpenAiTimeoutError } from '../_shared/openaiFetch.ts';
 const FIT_CALL_TIMEOUT_MS = 150_000;
 const TRANSLATION_CALL_TIMEOUT_MS = 120_000;
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { loadResumeText } from '../_shared/resumeText.ts';
 import { mergeTranslatedProse } from './language-utils.ts';
 import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -275,7 +276,7 @@ serve(async (req) => {
       sb.from("candidate_work_experience").select("*").eq("candidate_id", candidate_id).order("start_date", { ascending: false }),
       sb.from("candidate_education").select("*").eq("candidate_id", candidate_id),
       sb.from("candidate_attachments").select("*").eq("candidate_id", candidate_id).eq("is_resume", true).limit(1),
-      sb.from("job_stage_scorecards").select("*").eq("job_id", job_id).eq("candidate_id", candidate_id),
+      sb.from("job_stage_scorecards").select("id, rating, general_overview, is_ai_draft, created_at, scorecard_question_responses(answer_text, answer_options, question:scorecard_interview_questions(question_text))").eq("job_id", job_id).eq("candidate_id", candidate_id),
       sb.from("job_candidate_associations").select("id, ai_fit_version, output_language, ai_fit_keep_proper_nouns").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
       sb.from("job_suggested_candidates_cache").select("id").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
     ]);
@@ -416,28 +417,28 @@ serve(async (req) => {
     }
 
     // Resume
+    const resumeText = attachmentsRes.data?.length ? await loadResumeText(sb, candidate_id) : "";
+    if (resumeText) {
+      candidateContext += `\n\nRESUME TEXT (verbatim, primary evidence for experience and skills):\n${resumeText.slice(0, 12000)}`;
+    }
     if (candidate.resume_url || attachmentsRes.data?.length) {
       dataSources.push("resume");
     } else {
       dataMissing.push("resume");
     }
 
-    // Scorecards
-    const scorecards = scorecardsRes.data || [];
+    // Scorecards (submitted only)
+    const scorecards = (scorecardsRes.data || []).filter((sc: any) => !sc.is_ai_draft);
     if (scorecards.length > 0) {
       candidateContext += "\n\nSCORECARD EVALUATIONS:";
-      scorecards.forEach((sc: any) => {
-        if (sc.responses) {
-          const responses = typeof sc.responses === "string" ? JSON.parse(sc.responses) : sc.responses;
-          if (Array.isArray(responses)) {
-            responses.forEach((r: any) => {
-              if (r.question && r.rating) {
-                candidateContext += `\n- Q: ${r.question} → Rating: ${r.rating}/5`;
-                if (r.notes) candidateContext += ` | Notes: ${r.notes}`;
-              }
-            });
-          }
-        }
+      scorecards.forEach((sc: any, idx: number) => {
+        candidateContext += `\n- Scorecard ${idx + 1}: overall rating ${sc.rating ?? "n/a"}`;
+        if (sc.general_overview) candidateContext += `\n  Key takeaways: ${String(sc.general_overview).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000)}`;
+        (sc.scorecard_question_responses || []).forEach((r: any) => {
+          const q = r.question?.question_text;
+          const a = r.answer_text || (r.answer_options ? JSON.stringify(r.answer_options) : "");
+          if (q && a) candidateContext += `\n  Q: ${q} → ${String(a).slice(0, 500)}`;
+        });
       });
       dataSources.push("scorecards");
     }

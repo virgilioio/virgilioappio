@@ -443,8 +443,9 @@ export function CandidateFormSheet({
           setIsUploadingResume(false)
         }
       }
-      if (candidateId && capturedResumeText) {
-        triggerBackgroundEnrichment(candidateId, capturedResumeText, composeFullName(form.getValues('first_name'), form.getValues('last_name')))
+      // Always read the saved resume — even when in-browser text extraction came back empty.
+      if (candidateId && (capturedResumeText || files.length > 0)) {
+        triggerBackgroundEnrichment(candidateId, capturedResumeText || undefined, composeFullName(form.getValues('first_name'), form.getValues('last_name')), { rescoreAllJobs: true })
         setCapturedResumeText('')
       }
       clearPersistedData()
