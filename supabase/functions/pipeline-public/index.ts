@@ -8,7 +8,7 @@ const NOT_FOUND = () => json(404, { error: "not_found" });
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const URL_ = Deno.env.get("SUPABASE_URL") ?? "";
 const admin = () => createClient(URL_, SERVICE_KEY, { auth: { persistSession: false } });
-const NON_RECRUITING = new Set(["application", "application_review", "offer", "onboarding"]);
+const NON_RECRUITING = new Set(["application_review", "offer", "onboarding"]);
 const SECTION_KEYS = ["application", "recruiting", "offers", "hired", "rejected"] as const;
 type SectionKey = typeof SECTION_KEYS[number];
 const STAGE_COLOR: Record<string, string> = { screening: "#0EA5E9", assessment: "#EC4899", interview: "#6F3FF5", reference_check: "#12B886" };
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       if (status === "rejected" || status === "withdrawn") return "rejected";
       if (status === "hired") return "hired";
       if (["offer", "offered"].includes(status) || type === "offer") return "offers";
-      if (type === "application" || type === "application_review") return "application";
+      if (type === "application_review") return "application";
       if (a.current_stage_id && visibleStageIds.has(a.current_stage_id)) return "recruiting";
       return null;
     };

@@ -82,4 +82,4 @@ export function useJobPipelineShare(jobId: string | null | undefined, create = f
 export const pipelinePublicUrl = (token: string) => `${window.location.origin}/cp/${token}`
 
 /** Stage types that are never part of the client view. */
-export const NON_RECRUITING_STAGE_TYPES = new Set(['application', 'application_review', 'offer', 'onboarding'])
+export const NON_RECRUITING_STAGE_TYPES = new Set(['application_review', 'offer', 'onboarding'])
