@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useCallback, useRef, useState } from 'react'
-import { requestFitAnalysis } from '@/utils/triggerFitAnalysis'
+import { requestFitAnalysis, rereadResume } from '@/utils/triggerFitAnalysis'
 
 export interface FitDimension {
   name: string
@@ -210,6 +210,12 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
     setIsDeferred(false)
     setIsRefreshing(true)
     try {
+      // Full re-analysis: re-read the current resume first so experience,
+      // skills and education are fresh; an unreadable resume never blocks scoring.
+      await rereadResume(candidateId, controller.signal).catch((e) => {
+        if (controller.signal.aborted) throw e
+      })
+      if (controller.signal.aborted) return
       // A 202 means enrichment is still landing. Keep the loading state and poll;
       // a deferral is never surfaced as an error.
       // The server budget for one assessment is ~150s, so keep the narrated

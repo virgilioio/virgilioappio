@@ -42,3 +42,20 @@ export async function requestFitAnalysis(
 export async function triggerFitAnalysis(candidateId: string, jobId: string): Promise<void> {
   await requestFitAnalysis(candidateId, jobId)
 }
+
+/** Re-reads the candidate's current resume and waits for the result (Gio Fit Refresh). */
+export async function rereadResume(candidateId: string, signal?: AbortSignal): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const response = await fetch(`${supabaseUrl}/functions/v1/enrich-candidate-profile`, {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${session?.access_token || supabaseAnonKey}`,
+    },
+    body: JSON.stringify({ candidateId, wait: true }),
+  })
+  const payload = await response.json().catch(() => null)
+  return payload?.status || (response.ok ? 'unknown' : 'failed')
+}

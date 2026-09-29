@@ -21,6 +21,8 @@ interface EnrichRequest {
   // When true (resume replaced), re-score Gio Fit on every active job the
   // candidate is in, after the new resume has been fully re-read.
   rescoreAllJobs?: boolean;
+  // Synchronous mode: await extraction and return its outcome (used by Gio Fit Refresh).
+  wait?: boolean;
 }
 
 // ---------- OpenAI Tool-Calling Schema ----------
@@ -569,7 +571,7 @@ serve(async (req) => {
       if (!resumeText || resumeText.trim().length < 200) {
         console.warn(`[enrich] No usable resume text for ${body.candidateId} (${resumeText?.length || 0} chars) — marking not_possible`);
         await supabase.from('candidates').update({ enrichment_status: 'not_possible' }).eq('id', body.candidateId);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({ status: 'not_possible', 
           error: 'Resume text too short or unreadable for enrichment. Upload a proper resume.',
           candidateId: body.candidateId 
         }), {
@@ -580,6 +582,15 @@ serve(async (req) => {
     }
 
     console.log(`[enrich] Received request for candidate ${body.candidateId}`);
+
+    if (body.wait) {
+      await enrichCandidateProfile(body.candidateId, resumeText, body.candidateName);
+      const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const { data: row } = await sb.from('candidates').select('enrichment_status').eq('id', body.candidateId).maybeSingle();
+      return new Response(JSON.stringify({ status: row?.enrichment_status ?? 'unknown' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const response = new Response(JSON.stringify({ 
       queued: true, 
