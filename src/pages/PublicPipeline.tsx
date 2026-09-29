@@ -25,7 +25,9 @@ interface Card {
   company?: string | null
   fit_score?: number
   days_in_stage?: number
-  client_stage?: 'awaiting' | 'requested' | 'declined' | 'interviewing'
+  client_stage?: 'awaiting' | 'requested' | 'declined' | 'interviewing' | 'scheduled'
+  scheduled_day?: string
+  scheduled_time?: string
   stage_name: string
 }
 interface Board {
@@ -51,6 +53,7 @@ const CLIENT_STAGE: Record<string, { label: string; tone: 'lilac' | 'green' | 'n
   requested: { label: 'Interview requested', tone: 'green' },
   declined: { label: 'Not a fit', tone: 'neutral' },
   interviewing: { label: 'In interviews', tone: 'blue' },
+  scheduled: { label: 'Scheduled', tone: 'blue' },
 }
 
 async function call(body: Record<string, unknown>) {
@@ -126,7 +129,11 @@ function PPCard({ card, onOpen }: { card: Card; onOpen: () => void }) {
       {(card.client_stage || typeof card.days_in_stage === 'number') && (
         <div className="flex items-center" style={{ gap: 8, marginTop: 10 }}>
           {card.client_stage && (
-            <Badge size="xs" dot tone={CLIENT_STAGE[card.client_stage].tone}>{CLIENT_STAGE[card.client_stage].label}</Badge>
+            <Badge size="xs" dot tone={CLIENT_STAGE[card.client_stage].tone}>
+              {card.client_stage === 'scheduled' && card.scheduled_day
+                ? `${card.scheduled_day}${card.scheduled_time ? ` · ${card.scheduled_time}` : ''}`
+                : CLIENT_STAGE[card.client_stage].label}
+            </Badge>
           )}
           {typeof card.days_in_stage === 'number' && (
             <span style={{ marginLeft: 'auto', fontSize: 11, color: '#8B8F9E' }}>{card.days_in_stage}d</span>

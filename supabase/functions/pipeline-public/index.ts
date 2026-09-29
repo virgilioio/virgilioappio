@@ -114,6 +114,38 @@ Deno.serve(async (req) => {
 
     const candIds = [...new Set(live.map((a: any) => a.candidate_id))];
     const assocIds = live.map((a: any) => a.id);
+
+    // Booked interviews for the candidates' current stages (same filter the
+    // internal pipeline uses) — the public card shows the date when one exists.
+    const nowMs = Date.now();
+    const { data: bookingRows } = candIds.length
+      ? await supabase.from("scheduled_bookings")
+        .select("candidate_id, job_hiring_stage_id, scheduled_start, status")
+        .in("candidate_id", candIds)
+        .in("job_hiring_stage_id", sharedIds)
+        .in("status", ["confirmed", "rescheduled"])
+      : { data: [] as any[] };
+    const bookingByCandidateStage = new Map<string, number>();
+    for (const b of bookingRows ?? []) {
+      const key = `${b.candidate_id}:${b.job_hiring_stage_id}`;
+      const ms = new Date(b.scheduled_start).getTime();
+      const prev = bookingByCandidateStage.get(key);
+      // Prefer the soonest upcoming; otherwise the most recent overdue.
+      if (prev === undefined || (ms >= nowMs && (prev < nowMs || ms < prev)) || (ms < nowMs && prev < nowMs && ms > prev)) {
+        bookingByCandidateStage.set(key, ms);
+      }
+    }
+    const DAY_MS = 86400000;
+    const startOfDay = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const dayLabel = (ms: number) => {
+      const diff = Math.round((startOfDay(ms) - startOfDay(nowMs)) / DAY_MS);
+      if (diff === 0) return "Today";
+      if (diff === 1) return "Tomorrow";
+      if (diff === -1) return "Yesterday";
+      return new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    };
+    const timeLabel = (ms: number) =>
+      new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
     const [{ data: cands }, { data: shares }] = await Promise.all([
       candIds.length
         ? supabase.from("candidates").select("id, candidate_name, role_current, current_job_title, company_current, deleted_at").in("id", candIds)
@@ -140,8 +172,10 @@ Deno.serve(async (req) => {
       const stage = shared.find((s) => s.id === a.current_stage_id)!;
       const name = String(c.candidate_name || "Candidate");
       const decision = decisionByAssoc.get(a.id);
+      const bookedMs = bookingByCandidateStage.get(`${a.candidate_id}:${stage.id}`);
       const clientStage = decision === "not_a_fit" ? "declined"
         : decision === "interview_requested" ? "requested"
+        : bookedMs !== undefined ? "scheduled"
         : stage.type === "interview" ? "interviewing" : "awaiting";
       const entered = a.entered_stage_at || a.created_at;
       entries.push({
@@ -157,6 +191,9 @@ Deno.serve(async (req) => {
           ...(ps.show_fit_score && typeof a.ai_fit_score === "number" ? { fit_score: Math.round(a.ai_fit_score) } : {}),
           ...(ps.show_days && entered ? { days_in_stage: Math.max(0, Math.floor((Date.now() - new Date(entered).getTime()) / 86400000)) } : {}),
           ...(ps.show_client_status ? { client_stage: clientStage } : {}),
+          ...(ps.show_client_status && clientStage === "scheduled" && bookedMs !== undefined
+            ? { scheduled_day: dayLabel(bookedMs), scheduled_time: timeLabel(bookedMs) }
+            : {}),
           stage_name: stage.name,
           _decision: decision ?? null,
         },
