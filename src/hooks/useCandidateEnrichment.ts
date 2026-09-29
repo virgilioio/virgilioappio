@@ -8,7 +8,8 @@ import { supabase } from '@/lib/supabaseClient'
 export async function triggerBackgroundEnrichment(
   candidateId: string,
   resumeText?: string,
-  candidateName?: string
+  candidateName?: string,
+  options?: { rescoreAllJobs?: boolean }
 ): Promise<void> {
   try {
     console.log(`[Background Enrichment] Triggering for candidate ${candidateId}`)
@@ -19,6 +20,7 @@ export async function triggerBackgroundEnrichment(
         candidateId,
         ...(resumeText ? { resumeText } : {}),
         candidateName,
+        ...(options?.rescoreAllJobs ? { rescoreAllJobs: true } : {}),
       },
     }).then(({ error }) => {
       if (error) {

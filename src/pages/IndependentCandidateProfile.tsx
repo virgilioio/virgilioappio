@@ -37,7 +37,6 @@ import { experienceSummary, unionExperienceMonths } from '@/lib/experience/group
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { ResumeTabCard, NoResumeFileSlot } from '@/components/candidates/profile/ResumeTabCard'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
-import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { CandidateComments } from '@/components/candidates/CandidateComments'
@@ -202,8 +201,6 @@ export default function IndependentCandidateProfile() {
       await uploadAttachment(file, true)
       enrichBaselineRef.current = (candidate as any)?.enriched_at ?? null
       setIsEnriching(true)
-      triggerBackgroundEnrichment(candidateId, undefined, candidate?.candidate_name || undefined)
-      toast({ title: 'Resume saved', description: 'Gio is reading it now — the profile will refresh automatically.' })
     } catch {
       // uploadAttachment already surfaces the error
     }

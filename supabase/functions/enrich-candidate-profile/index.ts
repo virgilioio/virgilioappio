@@ -18,6 +18,9 @@ interface EnrichRequest {
   // writes complete, so the fit analysis reads fully-populated candidate data
   // (skills, work history, years_experience, ...) instead of racing enrichment.
   jobId?: string;
+  // When true (resume replaced), re-score Gio Fit on every active job the
+  // candidate is in, after the new resume has been fully re-read.
+  rescoreAllJobs?: boolean;
 }
 
 // ---------- OpenAI Tool-Calling Schema ----------
@@ -230,7 +233,7 @@ function calculateDurationMonths(startDate?: string | null, endDate?: string | n
 
 // ---------- Main enrichment ----------
 
-async function enrichCandidateProfile(candidateId: string, resumeText: string, candidateName?: string, jobId?: string): Promise<void> {
+async function enrichCandidateProfile(candidateId: string, resumeText: string, candidateName?: string, jobId?: string, rescoreAllJobs?: boolean): Promise<void> {
   console.log(`[enrich] Starting enrichment for candidate ${candidateId}`);
   
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -426,7 +429,27 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     // Tail-fire AI fit analysis now that skills / work_exp / education / years_experience
     // are committed. Prevents the previous race where analyze-candidate-fit ran on a
     // bare candidate row and returned null on every knowledge-based dimension.
-    if (jobId) {
+    if (rescoreAllJobs) {
+      const { data: assocs } = await supabase.from('job_candidate_associations')
+        .select('job_id, status').eq('candidate_id', candidateId);
+      const jobIds = [...new Set((assocs || [])
+        .filter((a: any) => !['rejected', 'withdrawn'].includes(String(a.status ?? '').toLowerCase()))
+        .map((a: any) => a.job_id as string))].slice(0, 10);
+      // Sequential, bounded: one assessment at a time, max 10 jobs.
+      for (const jid of jobIds) {
+        try {
+          const r = await fetch(`${SUPABASE_URL}/functions/v1/analyze-candidate-fit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+            body: JSON.stringify({ candidate_id: candidateId, job_id: jid }),
+          });
+          console.log(`[enrich] Resume-replace re-score ${candidateId}/${jid}: ${r.status}`);
+          if (r.status === 402 || r.status === 403) break;
+        } catch (e) {
+          console.error('[enrich] Resume-replace re-score failed:', e);
+        }
+      }
+    } else if (jobId) {
       try {
         const fitUrl = `${SUPABASE_URL}/functions/v1/analyze-candidate-fit`;
         fetch(fitUrl, {
@@ -569,9 +592,9 @@ serve(async (req) => {
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
       // @ts-ignore
-      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId));
+      EdgeRuntime.waitUntil(enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId, body.rescoreAllJobs));
     } else {
-      enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId).catch(console.error);
+      enrichCandidateProfile(body.candidateId, resumeText, body.candidateName, body.jobId, body.rescoreAllJobs).catch(console.error);
     }
 
     return response;
