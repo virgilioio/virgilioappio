@@ -4125,6 +4125,7 @@ export type Database = {
           token: string
           updated_at: string
           view_count: number
+          visible_stage_ids: string[] | null
         }
         Insert: {
           client_can_respond?: boolean
@@ -4144,6 +4145,7 @@ export type Database = {
           token?: string
           updated_at?: string
           view_count?: number
+          visible_stage_ids?: string[] | null
         }
         Update: {
           client_can_respond?: boolean
@@ -4163,6 +4165,7 @@ export type Database = {
           token?: string
           updated_at?: string
           view_count?: number
+          visible_stage_ids?: string[] | null
         }
         Relationships: [
           {
