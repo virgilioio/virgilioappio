@@ -82,7 +82,16 @@ interface DeactivatedPayload {
   brand: { agency_name: string; logo_url: string | null }
 }
 
-type Resolved = PublicDossierPayload | DeactivatedPayload
+/** Pipeline view only: the candidate is on the board, their assessment is being prepared. */
+interface PreparingPayload {
+  state: 'preparing'
+  workspace_name: string
+  candidate_name: string
+  brand: { agency_name: string; logo_url: string | null }
+  pipeline?: unknown
+}
+
+type Resolved = PublicDossierPayload | DeactivatedPayload | PreparingPayload
 
 const ENDPOINT = `${supabaseUrl}/functions/v1/dossier-public`
 const PIPELINE_ENDPOINT = `${supabaseUrl}/functions/v1/pipeline-public`
@@ -174,6 +183,23 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
     return () => { active = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, pipeline?.slug])
+
+  // While an assessment is being prepared, check back quietly until it's ready.
+  const isPreparing = resolved?.state === 'preparing'
+  useEffect(() => {
+    if (!isPreparing || !pipeline) return
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      callEndpoint({ action: 'dossier', token, ...extra }, endpoint)
+        .then((result) => {
+          if (result.notFound) { pipeline.onGone(); return }
+          if ((result.data as Resolved).state !== 'preparing') setResolved(result.data as Resolved)
+        })
+        .catch(() => {})
+    }, 15000)
+    return () => window.clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPreparing, token, pipeline?.slug])
 
   /**
    * Called only from inside the dialog. The page stays on its awaiting state until
@@ -275,6 +301,28 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
           {error ?? 'Opening the dossier…'}
         </p>
       </div>
+    )
+  }
+
+  if (resolved.state === 'preparing') {
+    return (
+      <PublicPageShell
+        agencyName={resolved.brand.agency_name}
+        logoUrl={resolved.brand.logo_url}
+        pageKind="Candidate dossier"
+        width={760}
+      >
+        {pipeline?.renderTop(resolved.pipeline)}
+        <div className="flex flex-col items-center text-center" style={{ padding: '72px 20px', margin: '0 auto', maxWidth: 440 }}>
+          <span aria-hidden className="animate-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: '#7C5CFF', marginBottom: 16 }} />
+          <h1 className="font-poppins" style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.025em', color: '#1F2230' }}>
+            Assessment in progress
+          </h1>
+          <p className="font-inter" style={{ fontSize: 13, color: '#5A6072', marginTop: 8, lineHeight: 1.55 }}>
+            {`${resolved.workspace_name} is preparing ${resolved.candidate_name}’s dossier. It usually takes a minute or two — this page will update on its own.`}
+          </p>
+        </div>
+      </PublicPageShell>
     )
   }
 
