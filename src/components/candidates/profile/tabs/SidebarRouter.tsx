@@ -132,6 +132,7 @@ export interface JobOverviewSidebarProps {
   filesCount: number
   fileSlots?: ReactNode
   onUploadFile?: () => void
+  onFilesSelected?: (files: File[]) => void
   /** Location for the Details block — the hero no longer carries filing metadata. */
   location?: string | null
   email?: string | null
@@ -227,7 +228,7 @@ export function JobOverviewSidebar(p: JobOverviewSidebarProps) {
           />
         </SidebarBlock>
         <LinksBlock urls={p.urls} />
-        <FilesBlock count={p.filesCount} onUpload={p.onUploadFile}>{p.fileSlots}</FilesBlock>
+        <FilesBlock count={p.filesCount} onUpload={p.onUploadFile} onFilesSelected={p.onFilesSelected}>{p.fileSlots}</FilesBlock>
       </ProfileSidebar>
     </div>
   )
