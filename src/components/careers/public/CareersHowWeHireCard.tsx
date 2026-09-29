@@ -17,7 +17,7 @@ export function CareersHowWeHireCard() {
             your time<span className="text-[hsl(var(--purple-period))]">.</span>
           </h3>
           <p className="text-[14px] text-[#3f4451] leading-relaxed max-w-md">
-            Every applicant hears back within 48 hours. Most processes run in 2–3 weeks with a tight, standardized panel. We share rubrics ahead of time, we pay for take-homes, and we never ghost.
+            Every applicant hears back within 48 hours. Most processes take 2–3 weeks, with the same small panel for everyone. We share scorecards ahead of time, we pay for take-home assignments, and we never ghost.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             {chips.map((c) => (

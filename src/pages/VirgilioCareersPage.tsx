@@ -230,7 +230,7 @@ export default function VirgilioCareersPage() {
       </div>
       <CareersHowWeHireCard />
       <CareersOpenApplicationBand companyName={companyName} />
-      <CareersFooter companyName={companyName} logoUrl={settings.logo_url} websiteUrl={settings.company_website_url} />
+      <CareersFooter companyName={companyName} logoUrl={settings.logo_url} websiteUrl={settings.company_website_url} tagline="We're building the modern way to hire: AI for speed, people for judgement." />
     </div>
   )
 }
