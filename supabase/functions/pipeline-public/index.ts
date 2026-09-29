@@ -135,11 +135,10 @@ Deno.serve(async (req) => {
         bookingByCandidateStage.set(key, ms);
       }
     }
-    // Same relevance order as the internal pipeline: action needed first
-    // (awaiting the client's review), then booked interviews soonest-first,
-    // then in-progress, and resolved decisions last.
+    // Scheduled interviews lead the board (soonest first), then candidates
+    // awaiting the client's review, then in-progress, resolved decisions last.
     const CLIENT_STAGE_PRIORITY: Record<string, number> = {
-      awaiting: 1, scheduled: 2, interviewing: 3, requested: 4, declined: 5,
+      scheduled: 1, awaiting: 2, interviewing: 3, requested: 4, declined: 5,
     };
     const [{ data: cands }, { data: shares }] = await Promise.all([
       candIds.length
