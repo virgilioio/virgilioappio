@@ -10,7 +10,8 @@ import { DOCXResumeViewer } from '@/components/candidates/DOCXResumeViewer'
  * View-only: files open in an in-app viewer, no download controls.
  */
 
-interface FileRow {
+export interface FileRow {
+  signed_url?: string | null
   id: string
   file_name: string
   file_url: string
@@ -86,7 +87,7 @@ export function DossierFilesCard({ candidateId, className, headingClassName }: {
   )
 }
 
-function FileViewer({ file, onClose }: { file: FileRow | null; onClose: () => void }) {
+export function FileViewer({ file, onClose }: { file: FileRow | null; onClose: () => void }) {
   const [url, setUrl] = useState<string | null>(null)
   const [text, setText] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -97,8 +98,15 @@ function FileViewer({ file, onClose }: { file: FileRow | null; onClose: () => vo
     setUrl(null); setText(null); setError(null)
     if (!file) return
     ;(async () => {
-      const { data, error } = await supabase.storage.from('candidate-attachments').download(file.file_url)
-      if (error || !data) { setError('This file could not be opened.'); return }
+      let data: Blob | null = null
+      if (file.signed_url) {
+        const res = await fetch(file.signed_url).catch(() => null)
+        data = res && res.ok ? await res.blob() : null
+      } else {
+        const r = await supabase.storage.from('candidate-attachments').download(file.file_url)
+        data = r.error ? null : r.data
+      }
+      if (!data) { setError('This file could not be opened.'); return }
       const typed = file.file_type ? new Blob([data], { type: file.file_type }) : data
       if (kind === 'text') setText(await typed.text())
       objectUrl = URL.createObjectURL(typed)

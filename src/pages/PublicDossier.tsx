@@ -60,6 +60,7 @@ export interface PublicDossierPayload {
   }
   required_skills: string[]
   salary_expectation: string | null
+  files?: { id: string; name: string; type: string | null; size: number | null; created_at: string; url: string }[]
   score: number
   output_language: string | null
   analysis: PublicFitAnalysis
