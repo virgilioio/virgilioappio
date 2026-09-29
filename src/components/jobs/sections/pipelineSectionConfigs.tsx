@@ -64,6 +64,7 @@ export interface PSRowData {
 }
 
 export interface PSHandlers {
+  nextStageName?: string
   onAdvance?: (row: PSRowData) => void
   onReject?: (row: PSRowData) => void
   onOpenRow?: (row: PSRowData) => void
@@ -151,7 +152,7 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
       actions: [
         {
           id: 'advance',
-          label: 'Advance to screening',
+          label: h.nextStageName ? `Advance to ${h.nextStageName}` : 'Advance',
           icon: ArrowRight,
           kind: 'outlined',
           onClick: h.onAdvance,
@@ -162,9 +163,10 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
         actions: [
           {
             id: 'move-screening',
-            label: 'Move to Screening',
+            label: h.nextStageName ? `Move to ${h.nextStageName}` : 'Add a stage to this pipeline first',
             icon: ArrowRight,
             slot: 'primary',
+            disabled: !h.nextStageName,
             onClick: h.onBulkMoveStage,
           },
           email,
