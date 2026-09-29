@@ -1,3 +1,5 @@
+import { Eye, EyeOff } from 'lucide-react'
+import { NON_RECRUITING_STAGE_TYPES, useJobPipelineShare } from '@/hooks/useJobPipelineShare'
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -751,6 +753,17 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return m
   }, [stageOptions])
 
+  const { share: pipelineShare } = useJobPipelineShare(jobId)
+  // Recruiting stages get an eye marker while the client view is live.
+  const clientVisibility = useMemo(() => {
+    const m = new Map<string, boolean>()
+    if (!pipelineShare?.is_public) return m
+    const recruiting = stageOptions.filter((o) => !NON_RECRUITING_STAGE_TYPES.has(String(o.stage.stage_type)))
+    const start = Math.max(0, recruiting.findIndex((o) => o.jhsId === pipelineShare.from_stage_id))
+    recruiting.forEach((o, i) => m.set(o.jhsId, i >= start))
+    return m
+  }, [pipelineShare, stageOptions])
+
   const ownerIds = useMemo(
     () => Array.from(new Set(allAssociations.map((a) => a.added_by).filter(Boolean))) as string[],
     [allAssociations],
@@ -949,6 +962,16 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         >
                           {rows.length}
                         </span>
+                        {clientVisibility.has(opt.jhsId) && (
+                          <span
+                            className="shrink-0 inline-flex"
+                            title={clientVisibility.get(opt.jhsId) ? 'Visible in the client view' : 'Private — not in the client view'}
+                          >
+                            {clientVisibility.get(opt.jhsId)
+                              ? <Eye size={12} color="#6F3FF5" />
+                              : <EyeOff size={12} color="#C2C6D2" />}
+                          </span>
+                        )}
                         {stageHasAutomation.get(opt.jhsId) && (
                           <Zap className="h-3 w-3 shrink-0 text-virgilio-purple fill-virgilio-purple" />
                         )}
