@@ -3252,6 +3252,7 @@ export type Database = {
           reasons: string[]
           sent_to: string | null
           share_id: string
+          source: string
           user_agent: string | null
         }
         Insert: {
@@ -3262,6 +3263,7 @@ export type Database = {
           reasons?: string[]
           sent_to?: string | null
           share_id: string
+          source?: string
           user_agent?: string | null
         }
         Update: {
@@ -3272,6 +3274,7 @@ export type Database = {
           reasons?: string[]
           sent_to?: string | null
           share_id?: string
+          source?: string
           user_agent?: string | null
         }
         Relationships: [
@@ -4099,6 +4102,81 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "job_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_pipeline_shares: {
+        Row: {
+          client_can_respond: boolean
+          created_at: string
+          created_by: string | null
+          from_stage_id: string | null
+          id: string
+          initials_only: boolean
+          is_public: boolean
+          job_id: string
+          last_viewed_at: string | null
+          show_client_status: boolean
+          show_days: boolean
+          show_employer: boolean
+          show_fit_score: boolean
+          show_scorecards: boolean
+          token: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          client_can_respond?: boolean
+          created_at?: string
+          created_by?: string | null
+          from_stage_id?: string | null
+          id?: string
+          initials_only?: boolean
+          is_public?: boolean
+          job_id: string
+          last_viewed_at?: string | null
+          show_client_status?: boolean
+          show_days?: boolean
+          show_employer?: boolean
+          show_fit_score?: boolean
+          show_scorecards?: boolean
+          token?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          client_can_respond?: boolean
+          created_at?: string
+          created_by?: string | null
+          from_stage_id?: string | null
+          id?: string
+          initials_only?: boolean
+          is_public?: boolean
+          job_id?: string
+          last_viewed_at?: string | null
+          show_client_status?: boolean
+          show_days?: boolean
+          show_employer?: boolean
+          show_fit_score?: boolean
+          show_scorecards?: boolean
+          token?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_pipeline_shares_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pipeline_shares_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -9217,9 +9295,24 @@ export type Database = {
         Returns: Json
       }
       record_dossier_view: { Args: { _token: string }; Returns: undefined }
+      record_pipeline_decision: {
+        Args: {
+          _association_id: string
+          _decision: string
+          _note?: string
+          _reasons?: string[]
+          _token: string
+          _user_agent?: string
+        }
+        Returns: Json
+      }
       resequence_posting_fields_for_library_order: {
         Args: { p_posting_id: string }
         Returns: undefined
+      }
+      reset_job_pipeline_share_token: {
+        Args: { _share_id: string }
+        Returns: string
       }
       resolve_client_verdict: {
         Args: { _association_id: string; _by?: string }

@@ -1,3 +1,4 @@
+import { ClientViewStrip } from '@/components/jobs/ClientViewStrip'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -1256,6 +1257,7 @@ export default function JobDetail() {
                         showViewToggle
                       />
                     </div>
+                    <ClientViewStrip jobId={id!} />
                     <div className="relative p-0 flex-1 min-h-0">
                       <div className="h-full min-h-0" style={{ padding: '12px 28px 24px' }}>
                         <PipelineOverview

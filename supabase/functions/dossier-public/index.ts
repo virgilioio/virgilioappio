@@ -130,16 +130,24 @@ Deno.serve(async (req) => {
     return NOT_FOUND();
   }
 
+  // Internal call from the client pipeline function: resolves the same
+  // client-ready payload by association, independent of this link's switch.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const internal = body?.action === "internal_resolve" &&
+    typeof body?.association_id === "string" &&
+    req.headers.get("x-internal-key") === serviceKey && serviceKey.length > 0;
+
   const token = typeof body?.token === "string" ? body.token.trim() : "";
-  const action = String(body?.action ?? "resolve");
-  if (!token || !/^[a-f0-9]{8,64}$/i.test(token)) return NOT_FOUND();
+  const action = internal ? "resolve" : String(body?.action ?? "resolve");
+  if (!internal && (!token || !/^[a-f0-9]{8,64}$/i.test(token))) return NOT_FOUND();
 
   try {
-    const { data: share } = await supabase
+    const shareQuery = supabase
       .from("dossier_shares")
-      .select("id, association_id, is_public, deactivated_at, deactivated_reason, view_count, last_viewed_at")
-      .eq("token", token)
-      .maybeSingle();
+      .select("id, association_id, is_public, deactivated_at, deactivated_reason, view_count, last_viewed_at");
+    const { data: share } = internal
+      ? await shareQuery.eq("association_id", body.association_id).maybeSingle()
+      : await shareQuery.eq("token", token).maybeSingle();
 
     // Never issued → a genuine 404.
     if (!share) return NOT_FOUND();
@@ -173,11 +181,13 @@ Deno.serve(async (req) => {
 
     const terminalAssociation = ["rejected", "withdrawn"].includes(String(assoc.status ?? "").toLowerCase());
     const progressedAssociation = ["offer", "offered", "hired"].includes(String(assoc.status ?? "").toLowerCase());
-    const live = share.is_public &&
-      !share.deactivated_at &&
-      !assoc.rejected_at &&
-      !terminalAssociation &&
-      (job.status === "open" || progressedAssociation);
+    const live = internal
+      ? !terminalAssociation && job.status === "open"
+      : share.is_public &&
+        !share.deactivated_at &&
+        !assoc.rejected_at &&
+        !terminalAssociation &&
+        (job.status === "open" || progressedAssociation);
 
     if (!live) {
       const { data: owner } = job.created_by

@@ -6,7 +6,7 @@
  * validation priorities and anything about compensation are removed before the
  * response is written, so there is nothing here to toggle back on.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 
@@ -85,9 +85,10 @@ interface DeactivatedPayload {
 type Resolved = PublicDossierPayload | DeactivatedPayload
 
 const ENDPOINT = `${supabaseUrl}/functions/v1/dossier-public`
+const PIPELINE_ENDPOINT = `${supabaseUrl}/functions/v1/pipeline-public`
 
-async function callEndpoint(body: Record<string, unknown>) {
-  const response = await fetch(ENDPOINT, {
+async function callEndpoint(body: Record<string, unknown>, endpoint = ENDPOINT) {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -118,8 +119,19 @@ function useNoIndexNoReferrer() {
   }, [])
 }
 
-export default function PublicDossier() {
-  const { token = '' } = useParams<{ token: string }>()
+export interface PipelineContext {
+  token: string
+  slug: string
+  /** Rendered above the dossier card, receives the pipeline nav info. */
+  renderTop: (nav: any) => ReactNode
+  onGone: () => void
+}
+
+export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext } = {}) {
+  const params = useParams<{ token: string }>()
+  const token = pipeline ? pipeline.token : params.token ?? ''
+  const endpoint = pipeline ? PIPELINE_ENDPOINT : ENDPOINT
+  const extra = pipeline ? { slug: pipeline.slug } : {}
   const [resolved, setResolved] = useState<Resolved | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -134,16 +146,20 @@ export default function PublicDossier() {
 
   useEffect(() => {
     let active = true
+    setResolved(null)
+    setDecision(null)
+    setDecisionOn(null)
     // One read receipt per browser session, not per render.
-    const sessionKey = `gio-dossier-seen-${token}`
+    const sessionKey = `gio-dossier-seen-${token}-${pipeline?.slug ?? ''}`
     const countView = !sessionStorage.getItem(sessionKey)
     if (countView) sessionStorage.setItem(sessionKey, '1')
 
-    callEndpoint({ action: 'resolve', token, count_view: countView })
+    callEndpoint({ action: pipeline ? 'dossier' : 'resolve', token, count_view: countView, ...extra }, endpoint)
       .then((result) => {
         if (!active) return
         if (result.notFound) {
-          setNotFound(true)
+          if (pipeline) pipeline.onGone()
+          else setNotFound(true)
           return
         }
         setResolved(result.data as Resolved)
@@ -156,7 +172,8 @@ export default function PublicDossier() {
       .catch((err) => { if (active) setError(err instanceof Error ? err.message : 'This dossier could not be loaded.') })
 
     return () => { active = false }
-  }, [token])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, pipeline?.slug])
 
   /**
    * Called only from inside the dialog. The page stays on its awaiting state until
@@ -175,7 +192,8 @@ export default function PublicDossier() {
         decision: value,
         reasons: input.reasons,
         note: input.note || null,
-      })
+        ...extra,
+      }, endpoint)
       if (result.notFound) throw new Error('This dossier is no longer accepting responses.')
       setPending({
         decision: value,
@@ -188,7 +206,8 @@ export default function PublicDossier() {
     } finally {
       setIsSending(false)
     }
-  }, [token])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, pipeline?.slug])
 
   const closeDialog = useCallback(() => {
     setDialogKind(null)
@@ -299,7 +318,12 @@ export default function PublicDossier() {
         pageKind="Candidate dossier"
         width={1080}
         footnote={`Confidential — shared with you by ${resolved.workspace_name}`}
-        beforeCard={<PublicDossierBanner payload={resolved} />}
+        beforeCard={
+          <>
+            {pipeline && pipeline.renderTop((resolved as any).pipeline)}
+            <PublicDossierBanner payload={resolved} />
+          </>
+        }
       >
         <PublicDossierBody
           payload={resolved}

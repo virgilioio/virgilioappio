@@ -45,6 +45,8 @@ import { SectionCard, ToggleRow } from './wizard/_parts'
 import { HiringPlanTab } from './HiringPlanTab'
 import { usePermissions } from '@/hooks/usePermissions'
 import { OfferApprovalChainConfig } from './OfferApprovalChainConfig'
+import { ClientViewSection } from './ClientViewSection'
+import { Eye } from 'lucide-react'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { useJobs } from '@/hooks/useJobs'
@@ -82,6 +84,7 @@ type SectionId =
   | 'ai-screen'
   | 'hiring-team'
   | 'offer-approval'
+  | 'client-view'
   | 'notifications'
   | 'danger'
 
@@ -89,6 +92,7 @@ const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
   { id: 'hiring-plan', label: 'Hiring plan', icon: GitBranch },
   { id: 'hiring-team', label: 'Hiring team', icon: Users },
   { id: 'offer-approval', label: 'Offer approval', icon: ListChecks },
+  { id: 'client-view', label: 'Client view', icon: Eye },
 ]
 
 const NAV_QUICK = [
@@ -671,6 +675,11 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
             {/* Offer approval */}
             <div data-section="offer-approval" className="pt-2">
               <OfferApprovalChainConfig jobId={jobId} jobTitle={jobTitle} />
+            </div>
+
+            {/* Client view */}
+            <div data-section="client-view" className="pt-2">
+              <ClientViewSection jobId={jobId} readOnly={isReadOnly} />
             </div>
 
             {/* Notifications */}

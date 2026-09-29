@@ -503,6 +503,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 onTogglePublic={(next) => void setSharePublic(next)}
                 wrapperRef={shareWrapperRef}
                 triggerRef={shareButtonRef}
+                jobId={jobId}
+                candidateId={candidateId}
               />
             </div>
             )}

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Link2, Check, Share2 } from 'lucide-react'
+import { Link2, Check, Share2, Globe } from 'lucide-react'
+import { pipelinePublicUrl, useJobPipelineShare } from '@/hooks/useJobPipelineShare'
+import { copyToClipboardSilent } from '@/utils/clipboard'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
@@ -37,6 +39,8 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
   const location = useLocation()
 
   const { assignments } = useJobAssignments(jobId)
+  const { share: pipelineShare } = useJobPipelineShare(open ? jobId : null)
+  const [pipelineCopied, setPipelineCopied] = useState(false)
   const { members } = useMembers(true)
 
   const jobUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/jobs/${jobId}`
@@ -248,6 +252,32 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
               </span>
             </span>
           </button>
+
+          {pipelineShare?.is_public && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (await copyToClipboardSilent(pipelinePublicUrl(pipelineShare.token))) {
+                  setPipelineCopied(true)
+                  setTimeout(() => setPipelineCopied(false), 1600)
+                }
+              }}
+              className="w-full flex items-center text-left rounded-lg hover:bg-[#F1F0EC]"
+              style={{ gap: 10, padding: '8px 10px', marginTop: 6, borderTop: '1px solid #F1F0EC' }}
+            >
+              <span className="inline-flex items-center justify-center shrink-0" style={{ width: 28, height: 28, borderRadius: 8, background: '#EDE4FF', color: '#5B21B6' }}>
+                {pipelineCopied ? <Check size={14} /> : <Globe size={14} />}
+              </span>
+              <span className="min-w-0">
+                <span className="block font-inter" style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>
+                  {pipelineCopied ? 'Copied to clipboard' : 'Copy client pipeline link'}
+                </span>
+                <span className="block font-inter" style={{ fontSize: 11, color: '#8B8F9E', lineHeight: 1.4 }}>
+                  Anyone with the link · shared stages onward
+                </span>
+              </span>
+            </button>
+          )}
 
           <div
             style={{
