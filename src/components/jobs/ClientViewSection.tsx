@@ -15,6 +15,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { supabase } from '@/integrations/supabase/client'
 import { copyToClipboardSilent } from '@/utils/clipboard'
+import { toast } from '@/hooks/use-toast'
 import { stageColor } from './pipelineVisuals'
 import {
   NON_RECRUITING_STAGE_TYPES, pipelinePublicUrl, useJobPipelineShare, type PipelineShareSettings,
@@ -98,12 +99,27 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
   const [confirmReset, setConfirmReset] = useState(false)
 
   const recruiting = useMemo(() => stages.filter((s) => !NON_RECRUITING_STAGE_TYPES.has(s.type)), [stages])
-  const startIdx = Math.max(0, recruiting.findIndex((s) => s.id === share?.from_stage_id))
-  const from = recruiting[startIdx]
-  const visible = recruiting.slice(startIdx)
+  const selectedIds = useMemo(() => new Set(share?.visible_stage_ids ?? []), [share?.visible_stage_ids])
+  const visible = useMemo(() => recruiting.filter((s) => selectedIds.has(s.id)), [recruiting, selectedIds])
   const visibleCount = visible.reduce((n, s) => n + s.count, 0)
   const before = stages.filter((s) => s.type === 'application' || s.type === 'application_review')
   const after = ['Job offers', 'Hired', 'Rejected']
+
+  const toggleStage = (s: StageRow) => {
+    if (readOnly || !share) return
+    const next = new Set(selectedIds)
+    if (next.has(s.id)) {
+      if (next.size === 1) {
+        toast({ title: 'At least one stage must be visible', description: 'Turn the client view off instead if you want to hide everything.' })
+        return
+      }
+      next.delete(s.id)
+    } else {
+      next.add(s.id)
+    }
+    // Persist in pipeline order.
+    set({ visible_stage_ids: recruiting.filter((r) => next.has(r.id)).map((r) => r.id) })
+  }
 
   const set = (patch: PipelineShareSettings) => { if (!readOnly) void update(patch) }
   const on = !!share?.is_public
