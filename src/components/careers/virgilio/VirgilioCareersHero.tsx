@@ -33,7 +33,7 @@ export function VirgilioCareersHero({ departmentsCount, onScrollToRoles }: Props
 
           {/* Subtext */}
           <p className="text-[16px] text-[#3f4451] leading-relaxed max-w-xl">
-            We're a people company, building the modern way to hire. If you care about doing hiring right — fast, fair, and human — there's a seat for you here.
+            We're a people company, rethinking how hiring gets done. If you care about hiring that's fast, fair and human, there's a seat for you here.
           </p>
 
           {/* CTAs */}

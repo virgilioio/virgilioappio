@@ -4,9 +4,10 @@ interface Props {
   companyName: string
   logoUrl: string | null
   websiteUrl: string | null
+  tagline?: string
 }
 
-export function CareersFooter({ companyName, logoUrl, websiteUrl }: Props) {
+export function CareersFooter({ companyName, logoUrl, websiteUrl, tagline }: Props) {
   const cols = [
     { title: 'Company', links: ['About', 'Customers', 'Press', 'Contact'] },
     { title: 'Product', links: ['ATS', 'CRM', 'Sourcing', 'Pricing'] },
@@ -27,7 +28,7 @@ export function CareersFooter({ companyName, logoUrl, websiteUrl }: Props) {
             <span className="font-poppins font-semibold text-[14px]">{companyName}</span>
           </div>
           <p className="text-[12.5px] text-white/55 max-w-sm leading-relaxed">
-            We're building the modern hiring stack — fast, fair, and AI-assisted.
+            {tagline ?? "We're building the modern hiring stack — fast, fair, and AI-assisted."}
           </p>
         </div>
 

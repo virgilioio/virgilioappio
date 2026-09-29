@@ -11,7 +11,7 @@ export function CareersOpenApplicationBand({ companyName }: Props) {
             Don't see your role<span className="text-[hsl(var(--purple-period))]">?</span>
           </h3>
           <p className="text-[13.5px] text-white/65 mt-2 leading-relaxed">
-            We're always interested in talking to thoughtful people. Send us a note about what you'd want to work on at {companyName} — a real person reads every one.
+            We're always interested in talking to thoughtful people. Send us a note about what you'd want to work on at {companyName}. A real person reads every one.
           </p>
         </div>
         <button className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-white text-[#0d0d09] text-[13px] font-poppins font-medium hover:bg-[#FAFAF7] shrink-0">
