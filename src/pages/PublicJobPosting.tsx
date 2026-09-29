@@ -796,6 +796,7 @@ export default function PublicJobPosting() {
   metaChips.push({ icon: ClockIcon, label: 'Reply in < 48h' })
 
   const careersHref = companySlug ? `/careers/${companySlug}` : null
+  const footerTagline = companySlug === 'virgilio' ? "We're building the modern way to hire: AI for speed, people for judgement." : undefined
 
   const handleShare = async () => {
     const url = window.location.href
@@ -859,6 +860,7 @@ export default function PublicJobPosting() {
           companyName={organizationName || 'Company'}
           logoUrl={companyLogoUrl}
           websiteUrl={companyWebsiteUrl}
+          tagline={footerTagline}
         />
       </div>
     )
@@ -1449,6 +1451,7 @@ export default function PublicJobPosting() {
         companyName={organizationName || 'Company'}
         logoUrl={companyLogoUrl}
         websiteUrl={companyWebsiteUrl}
+        tagline={footerTagline}
       />
 
 

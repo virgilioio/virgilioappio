@@ -228,8 +228,11 @@ export default function VirgilioCareersPage() {
           <CareersRoleList groups={groups} onOpen={handleOpen} />
         )}
       </div>
-      <CareersHowWeHireCard />
-      <CareersOpenApplicationBand companyName={companyName} />
+      <CareersHowWeHireCard paragraph="Every applicant hears back within 48 hours. Most processes take 2–3 weeks, with the same small panel for everyone. We share scorecards ahead of time, we pay for take-home assignments, and we never ghost." />
+      <CareersOpenApplicationBand
+        companyName={companyName}
+        text="Don't see the right role yet? Send us a note about the kind of work you're looking for. A real person reads every one."
+      />
       <CareersFooter companyName={companyName} logoUrl={settings.logo_url} websiteUrl={settings.company_website_url} tagline="We're building the modern way to hire: AI for speed, people for judgement." />
     </div>
   )
