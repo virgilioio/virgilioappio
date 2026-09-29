@@ -1,7 +1,8 @@
 import * as React from 'react'
-import { Sparkles } from 'lucide-react'
+import { Eye, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CREAM, HAIRLINE, INK, MUTED, PASTELS, SAND, SURFACE_HOVER, TERTIARY } from '@/lib/pastels'
+import { useJobPipelineShare } from '@/hooks/useJobPipelineShare'
 
 export type PipelineSection = 'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'
 
@@ -29,11 +30,21 @@ export interface PipelineSectionTabsProps {
   value: PipelineSection
   onChange: (v: PipelineSection) => void
   counts: Record<PipelineSection, number | undefined>
+  jobId?: string
   className?: string
 }
 
-export function PipelineSectionTabs({ value, onChange, counts, className }: PipelineSectionTabsProps) {
+export function PipelineSectionTabs({ value, onChange, counts, jobId, className }: PipelineSectionTabsProps) {
   const refs = React.useRef<(HTMLButtonElement | null)[]>([])
+  const { share } = useJobPipelineShare(jobId)
+  const isShared = (section: PipelineSection) => {
+    if (!share?.is_public || section === 'suggested') return false
+    if (section === 'recruiting') return true
+    if (section === 'application') return share.share_application
+    if (section === 'offers') return share.share_offers
+    if (section === 'hired') return share.share_hired
+    return share.share_rejected
+  }
 
   // Roving focus: only the selected tab is tabbable, arrows move and select.
   const onKeyDown = (e: React.KeyboardEvent, index: number) => {
@@ -108,6 +119,7 @@ export function PipelineSectionTabs({ value, onChange, counts, className }: Pipe
             }}
           >
             {s.value === 'suggested' && <Sparkles size={12} strokeWidth={2} style={{ flexShrink: 0 }} />}
+            {isShared(s.value) && <Eye size={12} strokeWidth={2} aria-label="Shared with client" style={{ flexShrink: 0 }} />}
             <span
               style={{
                 whiteSpace: 'nowrap',
