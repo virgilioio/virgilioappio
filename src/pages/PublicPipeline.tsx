@@ -26,8 +26,7 @@ interface Card {
   fit_score?: number
   days_in_stage?: number
   client_stage?: 'awaiting' | 'requested' | 'declined' | 'interviewing' | 'scheduled'
-  scheduled_day?: string
-  scheduled_time?: string
+  scheduled_start?: string
   stage_name: string
 }
 interface Board {
@@ -54,6 +53,20 @@ const CLIENT_STAGE: Record<string, { label: string; tone: 'lilac' | 'green' | 'n
   declined: { label: 'Not a fit', tone: 'neutral' },
   interviewing: { label: 'In interviews', tone: 'blue' },
   scheduled: { label: 'Scheduled', tone: 'blue' },
+}
+
+/** "Today" / "Tomorrow" / "Yesterday" / "Fri 18 Sept" · "16:30" — in the viewer's timezone. */
+function scheduledLabel(iso: string): string {
+  const ms = Date.parse(iso)
+  if (Number.isNaN(ms)) return 'Scheduled'
+  const startOfDay = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() }
+  const diff = Math.round((startOfDay(ms) - startOfDay(Date.now())) / 86400000)
+  const day = diff === 0 ? 'Today'
+    : diff === 1 ? 'Tomorrow'
+    : diff === -1 ? 'Yesterday'
+    : new Date(ms).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  const time = new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${day} · ${time}`
 }
 
 async function call(body: Record<string, unknown>) {
@@ -130,8 +143,8 @@ function PPCard({ card, onOpen }: { card: Card; onOpen: () => void }) {
         <div className="flex items-center" style={{ gap: 8, marginTop: 10 }}>
           {card.client_stage && (
             <Badge size="xs" dot tone={CLIENT_STAGE[card.client_stage].tone}>
-              {card.client_stage === 'scheduled' && card.scheduled_day
-                ? `${card.scheduled_day}${card.scheduled_time ? ` · ${card.scheduled_time}` : ''}`
+              {card.client_stage === 'scheduled' && card.scheduled_start
+                ? scheduledLabel(card.scheduled_start)
                 : CLIENT_STAGE[card.client_stage].label}
             </Badge>
           )}

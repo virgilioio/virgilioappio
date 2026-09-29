@@ -135,17 +135,12 @@ Deno.serve(async (req) => {
         bookingByCandidateStage.set(key, ms);
       }
     }
-    const DAY_MS = 86400000;
-    const startOfDay = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
-    const dayLabel = (ms: number) => {
-      const diff = Math.round((startOfDay(ms) - startOfDay(nowMs)) / DAY_MS);
-      if (diff === 0) return "Today";
-      if (diff === 1) return "Tomorrow";
-      if (diff === -1) return "Yesterday";
-      return new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    // Same relevance order as the internal pipeline: action needed first
+    // (awaiting the client's review), then booked interviews soonest-first,
+    // then in-progress, and resolved decisions last.
+    const CLIENT_STAGE_PRIORITY: Record<string, number> = {
+      awaiting: 1, scheduled: 2, interviewing: 3, requested: 4, declined: 5,
     };
-    const timeLabel = (ms: number) =>
-      new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
     const [{ data: cands }, { data: shares }] = await Promise.all([
       candIds.length
         ? supabase.from("candidates").select("id, candidate_name, role_current, current_job_title, company_current, deleted_at").in("id", candIds)
@@ -191,15 +186,27 @@ Deno.serve(async (req) => {
           ...(ps.show_fit_score && typeof a.ai_fit_score === "number" ? { fit_score: Math.round(a.ai_fit_score) } : {}),
           ...(ps.show_days && entered ? { days_in_stage: Math.max(0, Math.floor((Date.now() - new Date(entered).getTime()) / 86400000)) } : {}),
           ...(ps.show_client_status ? { client_stage: clientStage } : {}),
+          // Raw ISO — the public page formats it in the viewer's own timezone.
           ...(ps.show_client_status && clientStage === "scheduled" && bookedMs !== undefined
-            ? { scheduled_day: dayLabel(bookedMs), scheduled_time: timeLabel(bookedMs) }
+            ? { scheduled_start: new Date(bookedMs).toISOString() }
             : {}),
           stage_name: stage.name,
           _decision: decision ?? null,
         },
       });
     }
-    entries.sort((x, y) => x.position - y.position);
+    entries.sort((x, y) => {
+      const px = CLIENT_STAGE_PRIORITY[x.card.client_stage] ?? 9;
+      const py = CLIENT_STAGE_PRIORITY[y.card.client_stage] ?? 9;
+      if (px !== py) return px - py;
+      // Within "scheduled", soonest interview first.
+      if (px === 2) {
+        const sx = x.card.scheduled_start ? Date.parse(x.card.scheduled_start) : Infinity;
+        const sy = y.card.scheduled_start ? Date.parse(y.card.scheduled_start) : Infinity;
+        if (sx !== sy) return sx - sy;
+      }
+      return x.position - y.position;
+    });
 
     const ordered = shared.flatMap((s) => entries.filter((e) => e.stage_id === s.id));
     const meta = {
