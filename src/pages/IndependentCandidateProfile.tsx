@@ -37,7 +37,6 @@ import { experienceSummary, unionExperienceMonths } from '@/lib/experience/group
 import { CandidateEducationComponent, type CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { ResumeTabCard, NoResumeFileSlot } from '@/components/candidates/profile/ResumeTabCard'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
-import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { CandidateComments } from '@/components/candidates/CandidateComments'
