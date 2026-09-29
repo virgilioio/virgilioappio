@@ -28,6 +28,7 @@ import { ProfileSidebar, SidebarBlock, MetaRow, LinkRow } from '../primitives/Pr
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { buildWhatsAppUrl, formatE164Display } from '@/utils/phoneUtils'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 
