@@ -51,7 +51,8 @@ import {
 } from './dossier/dossierData'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getGioFitLanguage } from '@/lib/gioFitLanguages'
-import { cn } from '@/lib/utils'
+import { cn, ensureAbsoluteUrl } from '@/lib/utils'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import { coerceRating } from '@/lib/scorecardRatings'
 
@@ -420,9 +421,21 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
             </p>
             {!suggested && (
               <>
-                <h2 className="font-poppins text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] text-fit-ink">
-                  {asString(candidate?.candidate_name)}<span className="text-fit-lilac">.</span>
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-poppins text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] text-fit-ink">
+                    {asString(candidate?.candidate_name)}<span className="text-fit-lilac">.</span>
+                  </h2>
+                  {candidate?.linkedin_url ? (
+                    <button
+                      type="button"
+                      onClick={() => window.open(ensureAbsoluteUrl(String(candidate.linkedin_url)), '_blank', 'noopener,noreferrer')}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-[#8B8F9E] transition-colors hover:bg-[#F1F0EC] hover:text-[#5A6072]"
+                      aria-label="Open LinkedIn profile"
+                    >
+                      <LinkedInFilled className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
                 {roleLine && <p className="mt-1.5 text-[13.5px] font-medium text-fit-ink">{roleLine}</p>}
               </>
             )}

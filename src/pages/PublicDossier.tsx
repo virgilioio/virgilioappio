@@ -53,6 +53,7 @@ export interface PublicDossierPayload {
   job_title: string
   candidate: {
     name: string
+    linkedin_url: string | null
     role_line: string | null
     location: string | null
     profile_summary: string | null
