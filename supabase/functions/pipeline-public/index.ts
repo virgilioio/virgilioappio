@@ -263,6 +263,19 @@ Deno.serve(async (req) => {
     });
     if (!res.ok) return NOT_FOUND();
     const dossier = await res.json();
+    if (dossier?.state === "preparing") {
+      // Make sure it's queued and the processor is awake, then tell the client.
+      await supabase.from("fit_analysis_queue").upsert({ association_id: entry.association_id }, { onConflict: "association_id", ignoreDuplicates: true });
+      fetch(`${URL_}/functions/v1/process-fit-queue`, {
+        method: "POST", headers: { "Content-Type": "application/json", apikey: SERVICE_KEY }, body: JSON.stringify({ source: "client_open" }),
+      }).catch(() => {});
+      const navP = (e: any) => e ? { slug: e.card.slug, name: e.card.display_name } : null;
+      return json(200, {
+        state: "preparing", brand: dossier.brand, workspace_name: dossier.workspace_name,
+        candidate_name: entry.card.display_name,
+        pipeline: { ...meta, index: idx, total: ordered.length, prev: navP(ordered[idx - 1]), next: navP(ordered[idx + 1]), stage_name: entry.card.stage_name },
+      });
+    }
     if (dossier?.state !== "live") return NOT_FOUND();
 
     if (ps.initials_only) dossier.candidate.name = entry.card.display_name;

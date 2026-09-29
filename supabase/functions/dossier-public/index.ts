@@ -437,6 +437,14 @@ Deno.serve(async (req) => {
     });
 
     if (!assocFit?.ai_fit_analysis || assocFit.ai_fit_score === null) {
+      // Pipeline view: the candidate is valid, their assessment just isn't ready.
+      if (internal) {
+        return json(200, {
+          state: "preparing",
+          workspace_name: workspaceName,
+          brand: { agency_name: workspaceName, logo_url: careers?.logo_url ?? null },
+        });
+      }
       return json(200, {
         state: "deactivated",
         workspace_name: workspaceName,

@@ -3657,6 +3657,71 @@ export type Database = {
           },
         ]
       }
+      fit_analysis_queue: {
+        Row: {
+          association_id: string
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fit_analysis_queue_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: true
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fit_analysis_queue_control: {
+        Row: {
+          id: number
+          lease_until: string | null
+          paused_at: string | null
+          paused_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          lease_until?: string | null
+          paused_at?: string | null
+          paused_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          lease_until?: string | null
+          paused_at?: string | null
+          paused_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           created_at: string | null
@@ -8998,6 +9063,8 @@ export type Database = {
       execute_candidate_sync: { Args: never; Returns: undefined }
       extract_domain_from_email: { Args: { email: string }; Returns: string }
       extract_linkedin_slug: { Args: { raw_url: string }; Returns: string }
+      fit_queue_acquire_lease: { Args: { _seconds: number }; Returns: boolean }
+      fit_queue_wake: { Args: never; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
       get_all_feature_flags: {
         Args: never
