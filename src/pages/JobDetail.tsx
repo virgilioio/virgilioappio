@@ -429,7 +429,7 @@ export default function JobDetail() {
   // Assocations and status-based lists
   const { fetchAssociationsForJob, updateAssociationStatus, moveAssociationToStage } = usePipelineActions()
   const [associations, setAssociations] = useState<PipelineAssociation[]>([])
-  const [stageMap, setStageMap] = useState<Record<string, { type: string; name: string }>>({})
+  const [stageMap, setStageMap] = useState<Record<string, { type: string; name: string; position: number }>>({})
   const [offersCandidates, setOffersCandidates] = useState<any[]>([])
   const [hiredCandidates, setHiredCandidates] = useState<any[]>([])
   const [rejectedCandidates, setRejectedCandidates] = useState<any[]>([])
@@ -536,15 +536,15 @@ export default function JobDetail() {
 
   const sectionProfileContext = pipelineSectionTab === 'application' ? 'application' : 'pipeline'
 
+  // The first stage after Application review, in pipeline order.
   const screeningStageId = useMemo(() => {
-    const entries = Object.entries(stageMap)
-    const screening = entries.find(([, v]) => v.type === 'screening')
-    if (screening) return screening[0]
-    const other = entries.find(
+    const entries = Object.entries(stageMap).sort(([, x], [, y]) => x.position - y.position)
+    const next = entries.find(
       ([, v]) => v.type !== 'application_review' && v.type !== 'offer' && v.type !== 'onboarding',
     )
-    return other ? other[0] : null
+    return next ? next[0] : null
   }, [stageMap])
+  const nextStageName = screeningStageId ? stageMap[screeningStageId]?.name : undefined
 
   const advanceToScreening = async (candidateId: string) => {
     const assoc = associations.find((a) => a.candidate_id === candidateId)
@@ -558,6 +558,20 @@ export default function JobDetail() {
       onOpenRow: (row: any) =>
         openProfileInPlace(row.id, sectionProfileContext as any, sectionCandidateList),
       onAdvance: (row: any) => advanceToScreening(row.id),
+      nextStageName,
+      onBulkMoveStage: async () => {
+        if (!screeningStageId) return
+        const targets = associations.filter((a) => selectedCandidateIds.includes(a.candidate_id))
+        const results = await Promise.allSettled(
+          targets.map((a) => moveAssociationToStage(a.id, screeningStageId)),
+        )
+        const ok = results.filter((r) => r.status === 'fulfilled').length
+        const failed = results.length - ok
+        if (ok) toast({ title: `${ok} candidate${ok === 1 ? '' : 's'} moved to ${nextStageName}` })
+        if (failed) toast({ title: `${failed} candidate${failed === 1 ? '' : 's'} could not be moved`, variant: 'destructive' })
+        setSelectedCandidateIds([])
+        setPipelineRefresh((v) => v + 1)
+      },
       onReject: (row: any) => {
         setSelectedCandidateIds([row.id])
         setShowBulkRejectionDialog(true)
@@ -579,7 +593,7 @@ export default function JobDetail() {
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sectionCandidateList, sectionProfileContext, screeningStageId, associations, activePosting, applicationReviewCandidates],
+    [sectionCandidateList, sectionProfileContext, screeningStageId, nextStageName, selectedCandidateIds, associations, activePosting, applicationReviewCandidates],
   )
 
   // Real-time skill matching for suggested count (using existing job from query below)  
@@ -605,12 +619,16 @@ export default function JobDetail() {
     const load = async () => {
       const { data, error } = await supabase
         .from('job_hiring_stages')
-        .select('id, stage:job_stages(stage_type, stage_name)')
+        .select('id, position, custom_stage_name, stage:job_stages(stage_type, stage_name)')
         .eq('job_id', id)
       if (!error && data) {
-        const m: Record<string, { type: string; name: string }> = {}
+        const m: Record<string, { type: string; name: string; position: number }> = {}
         ;(data as any[]).forEach((row: any) => {
-          m[row.id] = { type: row.stage?.stage_type, name: row.stage?.stage_name }
+          m[row.id] = {
+            type: row.stage?.stage_type,
+            name: row.custom_stage_name || row.stage?.stage_name,
+            position: row.position ?? 0,
+          }
         })
         setStageMap(m)
       }
