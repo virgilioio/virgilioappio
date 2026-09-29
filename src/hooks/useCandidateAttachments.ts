@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { removeOldResumes, currentResumeIds } from '@/lib/removeOldResumes'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 
 export interface CandidateAttachment {
@@ -95,6 +96,8 @@ export function useCandidateAttachments(candidateId: string) {
 
       console.log('File uploaded to storage successfully')
 
+      const previousResumeIds = isResume ? await currentResumeIds(candidateId) : []
+
       // Create database record
       const { error: dbError } = await supabase
         .from('candidate_attachments')
@@ -122,6 +125,7 @@ export function useCandidateAttachments(candidateId: string) {
       // A new resume is the new truth: re-read it and re-score Gio Fit on
       // every active job this candidate is in.
       if (isResume) {
+        await removeOldResumes(candidateId, previousResumeIds)
         void triggerBackgroundEnrichment(candidateId, undefined, undefined, { rescoreAllJobs: true })
       }
 

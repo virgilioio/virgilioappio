@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { removeOldResumes, currentResumeIds } from '@/lib/removeOldResumes'
 import { useForm } from 'react-hook-form'
 import { formatDistanceToNowStrict, format } from 'date-fns'
 import { Button } from '@/components/ui/button'
@@ -384,6 +385,7 @@ export function CandidateFormSheet({
         .upload(storagePath, file)
       if (storageError) throw storageError
 
+      const previousResumeIds = markAsResume ? await currentResumeIds(jobCandidateId) : []
       if (markAsResume) {
         const { error: clearResumeFlagError } = await supabase
           .from('candidate_attachments')
@@ -406,6 +408,8 @@ export function CandidateFormSheet({
         await supabase.storage.from('candidate-attachments').remove([storagePath])
         throw dbError
       }
+
+      if (markAsResume) void removeOldResumes(jobCandidateId, previousResumeIds)
 
       if (markAsResume) {
         await supabase

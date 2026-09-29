@@ -34,7 +34,6 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
 import { useApplicationScorecardRequirements } from '@/hooks/useApplicationScorecardRequirements'
 import { ShareDossierMenu } from '@/components/candidates/insights/ShareDossierMenu'
-import { DossierFilesCard } from './dossier/DossierFilesCard'
 import { InterviewScorecardsSection } from './dossier/InterviewScorecardsSection'
 import { DossierExperienceGroups } from '@/components/candidates/experience/DossierExperienceGroups'
 import { GioFitExportDialog, type DossierExportOptions } from './dossier/GioFitExportDialog'
@@ -621,7 +620,6 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         </section>
 
         <aside className="space-y-3.5">
-          {!suggested && <DossierFilesCard candidateId={candidateId} className={cardClass} headingClassName={sectionHeadingClass} />}
           <section className={cardClass}>
             <div className="border-b border-fit-hairline px-4 py-4">
               <h3 className={sectionHeadingClass}><BarChart3 className="h-3 w-3" /> Dimension breakdown</h3>

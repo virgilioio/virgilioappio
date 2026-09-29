@@ -490,13 +490,19 @@ Deno.serve(async (req) => {
       ? `${candidate?.salary_currency || "USD"} ${salaryAmount.toLocaleString("en-GB")} / ${candidate?.salary_period || "year"}`
       : null;
 
-    const { data: rawFiles } = await supabase
+    const { data: allFiles } = await supabase
       .from("candidate_attachments")
-      .select("id, file_name, file_url, file_type, file_size_bytes, created_at")
+      .select("id, file_name, file_url, file_type, file_size_bytes, created_at, is_resume, superseded_by")
       .eq("candidate_id", assoc.candidate_id)
-      .eq("is_resume", false)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(100);
+    // Resumes are never shown to clients — current, superseded, or same-named copies.
+    const resumeNames = new Set((allFiles ?? []).filter((f) => f.is_resume).map((f) => String(f.file_name).toLowerCase()));
+    const supersededTargets = new Set((allFiles ?? []).map((f) => f.superseded_by).filter(Boolean));
+    const rawFiles = (allFiles ?? []).filter((f) =>
+      !f.is_resume && !f.superseded_by && !supersededTargets.has(f.id) &&
+      !resumeNames.has(String(f.file_name).toLowerCase())
+    ).slice(0, 50);
     const files = (await Promise.all((rawFiles ?? []).map(async (f) => {
       const { data: signed } = await supabase.storage.from("candidate-attachments").createSignedUrl(f.file_url, 3600);
       if (!signed?.signedUrl) return null;

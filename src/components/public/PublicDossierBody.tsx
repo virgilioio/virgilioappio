@@ -10,7 +10,7 @@ import { Calendar, ChevronDown, FileSignature, FileText, GraduationCap, Info, La
 import { differenceInDays, format } from 'date-fns'
 
 import type { PublicDossierPayload } from '@/pages/PublicDossier'
-import { FileViewer, type FileRow } from '@/components/candidates/insights/dossier/DossierFilesCard'
+import { FileViewer, type FileRow } from '@/components/candidates/insights/dossier/DossierFileViewer'
 import { InterviewScorecardsSection } from '@/components/candidates/insights/dossier/InterviewScorecardsSection'
 import { DossierExperienceGroups } from '@/components/candidates/experience/DossierExperienceGroups'
 import { StatusBanner } from '@/components/candidates/status/StatusBanner'

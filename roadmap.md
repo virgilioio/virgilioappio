@@ -10,3 +10,5 @@
 - [x] Capture the client decision in a dialog and surface the verdict in the candidate profile.
 - [x] Candidate profiles: hero consolidation (shared overflow menu, sidebar Details, Quick actions removed)
 - [x] Group consecutive candidate roles by company stint across profiles, dossiers, and PDF.
+- [x] Client dossier Files: hide all resumes, pdf.js viewer, remove Gio Fit Files card
+- [x] Replacing a resume deletes the old copy; one-time clean-up of 944 old copies (93 candidates)
