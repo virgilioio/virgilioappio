@@ -135,17 +135,12 @@ Deno.serve(async (req) => {
         bookingByCandidateStage.set(key, ms);
       }
     }
-    const DAY_MS = 86400000;
-    const startOfDay = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
-    const dayLabel = (ms: number) => {
-      const diff = Math.round((startOfDay(ms) - startOfDay(nowMs)) / DAY_MS);
-      if (diff === 0) return "Today";
-      if (diff === 1) return "Tomorrow";
-      if (diff === -1) return "Yesterday";
-      return new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    // Same relevance order as the internal pipeline: action needed first
+    // (awaiting the client's review), then booked interviews soonest-first,
+    // then in-progress, and resolved decisions last.
+    const CLIENT_STAGE_PRIORITY: Record<string, number> = {
+      awaiting: 1, scheduled: 2, interviewing: 3, requested: 4, declined: 5,
     };
-    const timeLabel = (ms: number) =>
-      new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
     const [{ data: cands }, { data: shares }] = await Promise.all([
       candIds.length
         ? supabase.from("candidates").select("id, candidate_name, role_current, current_job_title, company_current, deleted_at").in("id", candIds)
