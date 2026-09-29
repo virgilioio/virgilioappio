@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 
 export interface CandidateAttachment {
   id: string
@@ -118,9 +119,17 @@ export function useCandidateAttachments(candidateId: string) {
 
       console.log('Database record created successfully')
 
+      // A new resume is the new truth: re-read it and re-score Gio Fit on
+      // every active job this candidate is in.
+      if (isResume) {
+        void triggerBackgroundEnrichment(candidateId, undefined, undefined, { rescoreAllJobs: true })
+      }
+
       toast({
         title: 'Success',
-        description: 'Attachment uploaded successfully'
+        description: isResume
+          ? 'Resume saved. Gio is re-reading it and will refresh the Gio Fit score.'
+          : 'Attachment uploaded successfully'
       })
 
       await getAttachments()

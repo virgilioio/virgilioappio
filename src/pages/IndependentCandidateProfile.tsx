@@ -202,8 +202,6 @@ export default function IndependentCandidateProfile() {
       await uploadAttachment(file, true)
       enrichBaselineRef.current = (candidate as any)?.enriched_at ?? null
       setIsEnriching(true)
-      triggerBackgroundEnrichment(candidateId, undefined, candidate?.candidate_name || undefined)
-      toast({ title: 'Resume saved', description: 'Gio is reading it now — the profile will refresh automatically.' })
     } catch {
       // uploadAttachment already surfaces the error
     }
