@@ -1,6 +1,6 @@
 // Analytics widget grammar — types
 export type Tone = 'purple' | 'green' | 'blue' | 'pink' | 'amber' | 'neutral'
-export type Format = 'count' | 'days' | 'pct' | 'money'
+export type Format = 'count' | 'days' | 'pct' | 'money' | 'ratio'
 export type DeltaGood = 'up' | 'down'
 
 export type MetricId =
@@ -14,6 +14,7 @@ export type MetricId =
   | 'offers_sent'
   | 'offer_acceptance'
   | 'rejections'
+  | 'interviews_per_hire'
   // CRM / Revenue
   | 'open_pipeline'
   | 'revenue_won'
@@ -77,4 +78,6 @@ export interface NormalizedData {
   trend: { delta: number | null; sparkline: SeriesPoint[] }
   loading: boolean
   empty: boolean
+  /** Optional one-line context under a KPI (replaces the period comparison) */
+  caption?: string
 }

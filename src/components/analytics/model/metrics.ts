@@ -15,6 +15,7 @@ import {
   Wallet,
   Banknote,
   Sparkles,
+  Repeat,
   type LucideIcon,
 } from 'lucide-react'
 import type { DeltaGood, Format, MetricGroup, MetricId, Tone } from './types'
@@ -40,6 +41,7 @@ export const METRICS: Record<MetricId, MetricDef> = {
   offers_sent:          { id: 'offers_sent',          label: 'Offers sent',           tone: 'pink',    icon: Send,          format: 'count', deltaGood: 'up',   group: 'recruiting' },
   offer_acceptance:     { id: 'offer_acceptance',     label: 'Offer acceptance',      tone: 'purple',  icon: CheckCircle,   format: 'pct',   deltaGood: 'up',   group: 'recruiting' },
   rejections:           { id: 'rejections',           label: 'Rejections',            tone: 'neutral', icon: XCircle,       format: 'count', deltaGood: 'down', group: 'recruiting' },
+  interviews_per_hire:  { id: 'interviews_per_hire',  label: 'Interviews per hire',   tone: 'blue',    icon: Repeat,        format: 'ratio', deltaGood: 'down', group: 'recruiting' },
 
   // CRM / Revenue
   open_pipeline:    { id: 'open_pipeline',    label: 'Open pipeline',     tone: 'purple', icon: DollarSign,   format: 'money', deltaGood: 'up',   group: 'crm' },
