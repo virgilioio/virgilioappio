@@ -105,7 +105,7 @@ export function PipelineFlatSection({
             sortable ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="sm" icon={<ArrowUpDown />} dropdown>
+                  <Button variant="secondary" size="sm" icon={ArrowUpDown} dropdown>
                     Sort: {SORTS.find((x) => x.key === sortKey)?.label}
                   </Button>
                 </DropdownMenuTrigger>
