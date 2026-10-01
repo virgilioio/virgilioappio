@@ -1,3 +1,4 @@
+import { eventAt } from '@/lib/analyticsEventDates'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -222,6 +223,9 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
             status,
             created_at,
             updated_at,
+            hired_at,
+            offered_at,
+            rejected_at,
             current_stage_id,
             added_by,
             job_id,
@@ -307,36 +311,36 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       // same convention used by totalOffers/totalHires below.
       const rejectedCandidates = allAssociations.filter(a => {
         if (a.status !== 'rejected') return false
-        const updatedAt = new Date(a.updated_at)
+        const updatedAt = eventAt(a)
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
       }).length
 
       // Total offers (status = 'offer') within date range
       const totalOffers = allAssociations.filter(a => {
         if (a.status !== 'offer') return false
-        const updatedAt = new Date(a.updated_at)
+        const updatedAt = eventAt(a)
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
       }).length
 
       // Total hires (status = 'hired') within date range
       const hiredInRange = allAssociations.filter(a => {
         if (a.status !== 'hired') return false
-        const updatedAt = new Date(a.updated_at)
+        const updatedAt = eventAt(a)
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
       })
       const totalHires = hiredInRange.length
 
       // Avg Time to Hire: uses status-AGNOSTIC associations (ignores job status filter)
       let avgTimeToHire: number | null = null
-      const hiredForAvg = avgTimeToHireAssociations.filter(a => {
+      const hiredForAvg = hiredInRange.filter(a => {
         if (a.status !== 'hired') return false
-        const updatedAt = new Date(a.updated_at)
+        const updatedAt = eventAt(a)
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
       })
       if (hiredForAvg.length > 0) {
         const totalDays = hiredForAvg.reduce((sum, a) => {
           const created = new Date(a.created_at).getTime()
-          const hired = new Date(a.updated_at).getTime()
+          const hired = eventAt(a).getTime()
           return sum + (hired - created) / (1000 * 60 * 60 * 24)
         }, 0)
         avgTimeToHire = Math.round(totalDays / hiredForAvg.length)
@@ -409,7 +413,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
 
         const dayHires = allAssociations.filter(a => {
           if (a.status !== 'hired') return false
-          const updatedAt = new Date(a.updated_at)
+          const updatedAt = eventAt(a)
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 
@@ -424,14 +428,14 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         // Offers on this day (by updated_at)
         const dayOffers = allAssociations.filter(a => {
           if (a.status !== 'offer') return false
-          const updatedAt = new Date(a.updated_at)
+          const updatedAt = eventAt(a)
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 
         // Rejected on this day (by updated_at)
         const dayRejected = allAssociations.filter(a => {
           if (a.status !== 'rejected') return false
-          const updatedAt = new Date(a.updated_at)
+          const updatedAt = eventAt(a)
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 

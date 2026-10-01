@@ -1,3 +1,4 @@
+import { eventAt } from '@/lib/analyticsEventDates'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
@@ -26,7 +27,7 @@ export function useOfferAnalyticsMetrics(
 
       const { data: assocs, error: aErr } = await supabase
         .from('job_candidate_associations')
-        .select('id, status, offered_at, updated_at')
+        .select('id, status, created_at, offered_at, hired_at, rejected_at, updated_at')
         .in('job_id', finalJobIds)
         .not('offered_at', 'is', null)
       if (aErr) throw aErr
@@ -48,7 +49,7 @@ export function useOfferAnalyticsMetrics(
       if (converted.length > 0) {
         const totalDays = converted.reduce((sum, a) => {
           const offerDate = new Date(a.offered_at!).getTime()
-          const hireDate = new Date(a.updated_at).getTime()
+          const hireDate = eventAt(a).getTime()
           return sum + (hireDate - offerDate) / (1000 * 60 * 60 * 24)
         }, 0)
         avgOfferToHireDays = Math.round(totalDays / converted.length)

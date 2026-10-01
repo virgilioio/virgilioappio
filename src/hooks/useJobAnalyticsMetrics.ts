@@ -1,3 +1,4 @@
+import { eventAt } from '@/lib/analyticsEventDates'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -107,6 +108,9 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           status,
           created_at,
           updated_at,
+          hired_at,
+          offered_at,
+          rejected_at,
           current_stage_id,
           job_hiring_stages!inner(
             id,
@@ -217,14 +221,14 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
       // Total offers (status = 'offer') within date range
       const totalOffers = allAssociations.filter(a => {
         if (a.status !== 'offer') return false
-        const updatedAt = new Date(a.updated_at)
+        const updatedAt = eventAt(a)
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
       }).length
 
       // Total hires (status = 'hired') within date range
       const totalHires = allAssociations.filter(a => {
         if (a.status !== 'hired') return false
-        const updatedAt = new Date(a.updated_at)
+        const updatedAt = eventAt(a)
         return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
       }).length
 
@@ -405,7 +409,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
 
         const dayHires = allAssociations.filter(a => {
           if (a.status !== 'hired') return false
-          const updatedAt = new Date(a.updated_at)
+          const updatedAt = eventAt(a)
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 
@@ -419,13 +423,13 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
 
         const dayOffers = allAssociations.filter(a => {
           if (a.status !== 'offer') return false
-          const updatedAt = new Date(a.updated_at)
+          const updatedAt = eventAt(a)
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 
         const dayRejected = allAssociations.filter(a => {
           if (a.status !== 'rejected') return false
-          const updatedAt = new Date(a.updated_at)
+          const updatedAt = eventAt(a)
           return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
         }).length
 

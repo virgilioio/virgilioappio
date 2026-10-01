@@ -1,3 +1,4 @@
+import { eventAt } from '@/lib/analyticsEventDates'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
@@ -35,7 +36,7 @@ export function useJobHealthMetrics(
 
       const [jobsRes, assocsRes, bookingsRes] = await Promise.all([
         supabase.from('jobs').select('id, title, status').in('id', finalJobIds),
-        supabase.from('job_candidate_associations').select('id, status, job_id, created_at, updated_at, offered_at').in('job_id', finalJobIds),
+        supabase.from('job_candidate_associations').select('id, status, job_id, created_at, updated_at, offered_at, hired_at, rejected_at').in('job_id', finalJobIds),
         supabase.from('scheduled_bookings').select('id, job_id, status, scheduled_start').in('job_id', finalJobIds).not('status', 'eq', 'cancelled'),
       ])
 
@@ -59,7 +60,7 @@ export function useJobHealthMetrics(
         let avgTimeToHire: number | null = null
         if (hires > 0) {
           const totalDays = hired.reduce((sum, a) => {
-            return sum + (new Date(a.updated_at).getTime() - new Date(a.created_at).getTime()) / (1000 * 60 * 60 * 24)
+            return sum + (eventAt(a).getTime() - new Date(a.created_at).getTime()) / (1000 * 60 * 60 * 24)
           }, 0)
           avgTimeToHire = Math.round(totalDays / hires)
         }
