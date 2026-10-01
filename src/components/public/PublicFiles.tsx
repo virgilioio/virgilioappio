@@ -2,7 +2,7 @@
  * Public dossier Files card + modal viewer.
  * Files arrive only through the share-token payload as short-lived signed URLs.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import {
   AudioLines, ChevronLeft, ChevronRight, Clapperboard, Download, ExternalLink, File, FileSpreadsheet,
@@ -416,4 +416,3 @@ function VideoViewer({ url, onDuration }: { url: string; onDuration: (d: number)
   )
 }
 
-export const _internal = { typeOf, useMemo }
