@@ -41,7 +41,8 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
     b.source.isLoading ||
     b.recruiter.isLoading ||
     b.jobHealth.isLoading ||
-    b.crm.isLoading
+    b.crm.isLoading ||
+    b.iph.isLoading
 
   const trend = asArray(b.metrics.trendData as Array<Record<string, unknown>> | undefined)
 
@@ -167,7 +168,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
   }
 
   // Per-card scope: filter breakdown to a single category if scoped (only changes display)
-  if (cfg.scope && breakdown.length > 0) {
+  if (cfg.scope && breakdown.length > 0 && cfg.metric !== 'interviews_per_hire') {
     const filtered = breakdown.filter(p => p.label === cfg.scope!.value)
     if (filtered.length) {
       breakdown = filtered
@@ -192,6 +193,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
     trend: { delta: trendDelta, sparkline },
     loading,
     empty,
+    caption,
   }
 }
 
@@ -229,6 +231,14 @@ function resolveBreakdown(
   if (group === 'deal_owner') return crmBreakdown(metric, asArray(b.crm.breakdowns?.owner))
   if (group === 'company') return crmBreakdown(metric, asArray(b.crm.breakdowns?.company))
   if (group === 'deal_source') return crmBreakdown(metric, asArray(b.crm.breakdowns?.source))
+
+  if (metric === 'interviews_per_hire') {
+    const rows = group === 'job' ? b.iph.byJob : group === 'recruiter' ? b.iph.byRecruiter : []
+    return rows
+      .filter(r => r.hires > 0)
+      .map(r => ({ label: r.label, value: Math.round((r.screenings / r.hires) * 10) / 10 }))
+      .sort((x, y) => x.value - y.value)
+  }
 
   switch (group) {
     case 'stage':
