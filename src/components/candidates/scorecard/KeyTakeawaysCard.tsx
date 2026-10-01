@@ -1,6 +1,6 @@
 import { Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { NotesEditor } from './NotesEditor'
 import { CandidateSheetSection } from '../form/CandidateSheetSection'
 
 interface Props {
@@ -43,7 +43,7 @@ export function KeyTakeawaysCard({ value, onChange, onPolish, isPolishing, disab
 
   return (
     <CandidateSheetSection label="KEY TAKEAWAYS" action={action}>
-      <RichTextEditor
+      <NotesEditor
         value={value}
         onChange={onChange}
         placeholder="Share your key takeaways and observations…"
