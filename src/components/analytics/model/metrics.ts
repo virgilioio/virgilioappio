@@ -16,6 +16,9 @@ import {
   Banknote,
   Sparkles,
   Repeat,
+  Hourglass,
+  AlertTriangle,
+  Timer,
   type LucideIcon,
 } from 'lucide-react'
 import type { DeltaGood, Format, MetricGroup, MetricId, Tone } from './types'
@@ -43,8 +46,10 @@ export const METRICS: Record<MetricId, MetricDef> = {
   rejections:           { id: 'rejections',           label: 'Rejections',            tone: 'neutral', icon: XCircle,       format: 'count', deltaGood: 'down', group: 'recruiting' },
   interviews_per_hire:  { id: 'interviews_per_hire',  label: 'Interviews per hire',   tone: 'blue',    icon: Repeat,        format: 'ratio', deltaGood: 'down', group: 'recruiting' },
 
-  // CRM / Revenue
-  open_pipeline:    { id: 'open_pipeline',    label: 'Open pipeline',     tone: 'purple', icon: DollarSign,   format: 'money', deltaGood: 'up',   group: 'crm' },
+  avg_days_in_stage:    { id: 'avg_days_in_stage',    label: 'Avg days in stage',     tone: 'amber',   icon: Hourglass,     format: 'days',  deltaGood: 'down', group: 'hygiene' },
+  stuck_candidates:     { id: 'stuck_candidates',     label: 'Stuck candidates',      tone: 'pink',    icon: AlertTriangle, format: 'count', deltaGood: 'down', group: 'hygiene' },
+  days_in_pipeline:     { id: 'days_in_pipeline',     label: 'Avg days in pipeline',  tone: 'amber',   icon: Timer,         format: 'days',  deltaGood: 'down', group: 'hygiene' },
+  open_pipeline:  open_pipeline:    { id: 'open_pipeline',    label: 'Open pipeline',     tone: 'purple', icon: DollarSign,   format: 'money', deltaGood: 'up',   group: 'crm' },
   revenue_won:      { id: 'revenue_won',      label: 'Revenue won',       tone: 'green',  icon: Trophy,       format: 'money', deltaGood: 'up',   group: 'crm' },
   open_deals:       { id: 'open_deals',       label: 'Open deals',        tone: 'amber',  icon: Briefcase,    format: 'count', deltaGood: 'up',   group: 'crm' },
   deals_won:        { id: 'deals_won',        label: 'Deals won',         tone: 'green',  icon: CheckCircle,  format: 'count', deltaGood: 'up',   group: 'crm' },
@@ -58,4 +63,5 @@ export const METRICS: Record<MetricId, MetricDef> = {
 
 export const METRIC_LIST = Object.values(METRICS)
 export const RECRUITING_METRICS = METRIC_LIST.filter(m => m.group === 'recruiting')
+export const HYGIENE_METRICS = METRIC_LIST.filter(m => m.group === 'hygiene')
 export const CRM_METRICS = METRIC_LIST.filter(m => m.group === 'crm')

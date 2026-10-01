@@ -6,6 +6,8 @@ import {
   PieChart,
   Filter,
   Table as TableIcon,
+  AlignLeft,
+  ListOrdered,
   type LucideIcon,
 } from 'lucide-react'
 import type { DimensionId, VizId } from './types'
@@ -25,10 +27,17 @@ export const VIZ: Record<VizId, VizDef> = {
   donut:   { id: 'donut',   label: 'Donut',         icon: PieChart,    allowedSpans: [4, 6, 8] },
   funnel:  { id: 'funnel',  label: 'Funnel',        icon: Filter,      allowedSpans: [4, 6, 12] },
   table:   { id: 'table',   label: 'Table',         icon: TableIcon,   allowedSpans: [6, 8, 12] },
+  aging:   { id: 'aging',   label: 'Aging buckets', icon: AlignLeft,   allowedSpans: [6, 8, 12] },
+  list:    { id: 'list',    label: 'Stuck list',    icon: ListOrdered, allowedSpans: [6, 8, 12] },
 }
 
 // Which viz are valid for a given group-by
-export function vizFor(group: DimensionId): VizId[] {
+export function vizFor(group: DimensionId, hygiene = false): VizId[] {
+  if (hygiene) {
+    if (group === 'none') return ['kpi', 'list']
+    if (group === 'stage' || group === 'job' || group === 'recruiter') return ['aging', 'bars', 'table']
+    return ['kpi']
+  }
   switch (group) {
     case 'none':
       return ['kpi']
