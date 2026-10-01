@@ -28,6 +28,7 @@ export function PipelineToolbar({
   onViewChange,
   showViewToggle = false,
   primary,
+  sort,
 }: {
   filters: PipelineFilter[]
   onFiltersChange: (next: PipelineFilter[]) => void
@@ -38,6 +39,8 @@ export function PipelineToolbar({
   showViewToggle?: boolean
   /** Optional section primary action, rendered at the end of the right cluster. */
   primary?: React.ReactNode
+  /** Optional sort control, rendered right after the filter control. */
+  sort?: React.ReactNode
 }) {
 
   const [open, setOpen] = React.useState(false)
@@ -132,6 +135,7 @@ export function PipelineToolbar({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        {sort}
       </div>
 
       {/* Right — how you're looking at it. */}
