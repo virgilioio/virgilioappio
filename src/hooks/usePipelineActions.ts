@@ -22,6 +22,13 @@ export interface PipelineAssociation {
   added_by?: string | null
   current_role?: string | null
   current_company?: string | null
+  rejection_reason_id?: string | null
+  rejected_by?: string | null
+  rejected_at?: string | null
+  rejection_notes?: string | null
+  updated_at?: string | null
+  offered_at?: string | null
+  hired_at?: string | null
 }
 
 /**
@@ -110,6 +117,13 @@ export function usePipelineActions() {
         ai_fit_score: (a as any).ai_fit_score ?? null,
         is_favorite: (a as any).is_favorite ?? false,
         added_by: (a as any).added_by ?? null,
+        rejection_reason_id: (a as any).rejection_reason_id ?? null,
+        rejected_by: (a as any).rejected_by ?? null,
+        rejected_at: (a as any).rejected_at ?? null,
+        rejection_notes: (a as any).rejection_notes ?? null,
+        updated_at: (a as any).updated_at ?? null,
+        offered_at: (a as any).offered_at ?? null,
+        hired_at: (a as any).hired_at ?? null,
         current_role: headline.role,
         current_company: headline.company,
       }
