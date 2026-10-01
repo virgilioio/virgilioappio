@@ -28,6 +28,15 @@ export const SEED_SOURCING_QUALITY: WidgetConfig[] = [
   { id: uid(), metric: 'interviews', groupBy: 'time', viz: 'line', span: 6 },
 ]
 
+export const SEED_PIPELINE_HYGIENE: WidgetConfig[] = [
+  { id: uid(), metric: 'stuck_candidates', groupBy: 'none', viz: 'kpi', span: 4 },
+  { id: uid(), metric: 'avg_days_in_stage', groupBy: 'none', viz: 'kpi', span: 4 },
+  { id: uid(), metric: 'days_in_pipeline', groupBy: 'none', viz: 'kpi', span: 4 },
+  { id: uid(), metric: 'avg_days_in_stage', groupBy: 'stage', viz: 'aging', span: 6 },
+  { id: uid(), metric: 'avg_days_in_stage', groupBy: 'job', viz: 'aging', span: 6 },
+  { id: uid(), metric: 'stuck_candidates', groupBy: 'none', viz: 'list', span: 12 },
+]
+
 export function withFreshIds(widgets: WidgetConfig[]): WidgetConfig[] {
   return widgets.map(w => ({ ...w, id: crypto.randomUUID(), span: w.span || defaultSpan(w.viz) }))
 }
