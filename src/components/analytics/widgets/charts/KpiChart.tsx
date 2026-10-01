@@ -54,7 +54,9 @@ export function KpiChart({ metricId, data }: Props) {
         )}
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-[11.5px] font-inter">
-        {delta !== null ? (
+        {data.caption ? (
+          <span className="text-[#8B8F9E]">{data.caption}</span>
+        ) : delta !== null ? (
           <>
             <Arrow size={12} style={{ color: deltaColor }} strokeWidth={2.5} />
             <span style={{ color: deltaColor }} className="font-medium">

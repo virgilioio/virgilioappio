@@ -13,6 +13,8 @@ export const SEED_RECRUITING_OVERVIEW: WidgetConfig[] = [
   { id: uid(), metric: 'active_candidates', groupBy: 'stage', viz: 'funnel', span: 4 },
   { id: uid(), metric: 'active_candidates', groupBy: 'stage', viz: 'bars', span: 6 },
   { id: uid(), metric: 'applications', groupBy: 'source', viz: 'donut', span: 6 },
+  { id: uid(), metric: 'interviews_per_hire', groupBy: 'none', viz: 'kpi', span: 4 },
+  { id: uid(), metric: 'interviews_per_hire', groupBy: 'job', viz: 'table', span: 8 },
 ]
 
 export const SEED_SOURCING_QUALITY: WidgetConfig[] = [

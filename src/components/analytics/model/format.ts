@@ -13,6 +13,8 @@ export function fmt(
       return `${(Math.round(value * 10) / 10)}d`
     case 'pct':
       return `${Math.round(value)}%`
+    case 'ratio':
+      return `${Math.round(value * 10) / 10}:1`
     case 'money':
       return formatMoney(value, currency)
   }
