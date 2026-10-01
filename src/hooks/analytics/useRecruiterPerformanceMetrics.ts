@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
 export interface RecruiterRow {
@@ -32,15 +33,15 @@ export function useRecruiterPerformanceMetrics(
       const endISO = dateRange.endDate.toISOString()
 
       const [assocsRes, bookingsRes] = await Promise.all([
-        supabase.from('job_candidate_associations')
+        fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('job_candidate_associations')
           .select('id, added_by, status, created_at, job_id')
-          .in('job_id', finalJobIds),
-        supabase.from('scheduled_bookings')
+          .in('job_id', c)).then(data => ({ data, error: null as any })),
+        fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('scheduled_bookings')
           .select('id, booked_by, created_at, job_id')
-          .in('job_id', finalJobIds)
+          .in('job_id', c)
           .gte('created_at', startISO)
           .lte('created_at', endISO)
-          .not('status', 'eq', 'cancelled'),
+          .not('status', 'eq', 'cancelled')).then(data => ({ data, error: null as any })),
       ])
 
       if (assocsRes.error) throw assocsRes.error

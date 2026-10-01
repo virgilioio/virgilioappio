@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
 export interface SourceRow {
@@ -33,12 +34,13 @@ export function useSourcePerformanceMetrics(
       // the breakdown bounded to the selected window.
       const startISO = dateRange.startDate.toISOString()
       const endISO = dateRange.endDate.toISOString()
-      const { data: assocs, error: aErr } = await supabase
+      const aErr = null as any
+      const assocs: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
         .from('job_candidate_associations')
         .select('id, candidate_id, status')
-        .in('job_id', finalJobIds)
+        .in('job_id', c)
         .gte('created_at', startISO)
-        .lte('created_at', endISO)
+        .lte('created_at', endISO))
       if (aErr) throw aErr
 
       if (!assocs || assocs.length === 0) return { rows: [] }

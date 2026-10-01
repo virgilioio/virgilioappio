@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import { eventAt } from '@/lib/analyticsEventDates'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
@@ -29,8 +30,8 @@ export function useInterviewsPerHireMetrics(finalJobIds: string[], dateRange: Da
     queryFn: async () => {
       const [jobsRes, bRes, aRes] = await Promise.all([
         supabase.from('jobs').select('id, title').in('id', finalJobIds),
-        supabase.from('scheduled_bookings').select('candidate_id, job_id, created_at, booked_by, status').in('job_id', finalJobIds).not('status', 'eq', 'cancelled').order('created_at', { ascending: true }),
-        supabase.from('job_candidate_associations').select('job_id, status, added_by, hired_at, offered_at, rejected_at, updated_at').in('job_id', finalJobIds).eq('status', 'hired'),
+        fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('scheduled_bookings').select('candidate_id, job_id, created_at, booked_by, status').in('job_id', c).not('status', 'eq', 'cancelled').order('created_at', { ascending: true })).then(data => ({ data, error: null as any })),
+        fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('job_candidate_associations').select('job_id, status, added_by, hired_at, offered_at, rejected_at, updated_at').in('job_id', c).eq('status', 'hired')).then(data => ({ data, error: null as any })),
       ])
       if (jobsRes.error) throw jobsRes.error
       if (bRes.error) throw bRes.error

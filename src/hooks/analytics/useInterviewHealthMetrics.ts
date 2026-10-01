@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import { format, eachDayOfInterval } from 'date-fns'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
@@ -34,22 +35,24 @@ export function useInterviewHealthMetrics(
       const endISO = dateRange.endDate.toISOString()
 
       // All bookings for these jobs (non-cancelled) created in range
-      const { data: rangeBookings, error: bErr } = await supabase
+      const bErr = null as any
+      const rangeBookings: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
         .from('scheduled_bookings')
         .select('id, status, scheduled_start, created_at, job_id')
-        .in('job_id', finalJobIds)
+        .in('job_id', c)
         .gte('created_at', startISO)
         .lte('created_at', endISO)
-        .not('status', 'eq', 'cancelled')
+        .not('status', 'eq', 'cancelled'))
       if (bErr) throw bErr
 
       // All bookings (including cancelled) in range for cancellation count
-      const { data: allRangeBookings, error: aErr } = await supabase
+      const aErr = null as any
+      const allRangeBookings: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
         .from('scheduled_bookings')
         .select('id, status, scheduled_start, created_at, job_id')
-        .in('job_id', finalJobIds)
+        .in('job_id', c)
         .gte('created_at', startISO)
-        .lte('created_at', endISO)
+        .lte('created_at', endISO))
       if (aErr) throw aErr
 
       const now = new Date()

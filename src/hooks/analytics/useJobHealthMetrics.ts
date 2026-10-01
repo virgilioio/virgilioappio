@@ -1,6 +1,7 @@
 import { eventAt } from '@/lib/analyticsEventDates'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
 export interface JobHealthRow {
@@ -36,8 +37,8 @@ export function useJobHealthMetrics(
 
       const [jobsRes, assocsRes, bookingsRes] = await Promise.all([
         supabase.from('jobs').select('id, title, status').in('id', finalJobIds),
-        supabase.from('job_candidate_associations').select('id, status, job_id, created_at, updated_at, offered_at, hired_at, rejected_at').in('job_id', finalJobIds),
-        supabase.from('scheduled_bookings').select('id, job_id, status, scheduled_start').in('job_id', finalJobIds).not('status', 'eq', 'cancelled'),
+        fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('job_candidate_associations').select('id, status, job_id, created_at, updated_at, offered_at, hired_at, rejected_at').in('job_id', c)).then(data => ({ data, error: null as any })),
+        fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('scheduled_bookings').select('id, job_id, status, scheduled_start').in('job_id', c).not('status', 'eq', 'cancelled')).then(data => ({ data, error: null as any })),
       ])
 
       if (jobsRes.error) throw jobsRes.error

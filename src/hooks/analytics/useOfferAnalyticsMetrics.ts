@@ -1,6 +1,7 @@
 import { eventAt } from '@/lib/analyticsEventDates'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
 export interface OfferAnalyticsData {
@@ -25,11 +26,12 @@ export function useOfferAnalyticsMetrics(
       const startISO = dateRange.startDate.toISOString()
       const endISO = dateRange.endDate.toISOString()
 
-      const { data: assocs, error: aErr } = await supabase
+      const aErr = null as any
+      const assocs: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
         .from('job_candidate_associations')
         .select('id, status, created_at, offered_at, hired_at, rejected_at, updated_at')
-        .in('job_id', finalJobIds)
-        .not('offered_at', 'is', null)
+        .in('job_id', c)
+        .not('offered_at', 'is', null))
       if (aErr) throw aErr
 
       // Offers sent in date range
