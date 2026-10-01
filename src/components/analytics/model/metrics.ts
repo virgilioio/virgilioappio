@@ -49,7 +49,7 @@ export const METRICS: Record<MetricId, MetricDef> = {
   avg_days_in_stage:    { id: 'avg_days_in_stage',    label: 'Avg days in stage',     tone: 'amber',   icon: Hourglass,     format: 'days',  deltaGood: 'down', group: 'hygiene' },
   stuck_candidates:     { id: 'stuck_candidates',     label: 'Stuck candidates',      tone: 'pink',    icon: AlertTriangle, format: 'count', deltaGood: 'down', group: 'hygiene' },
   days_in_pipeline:     { id: 'days_in_pipeline',     label: 'Avg days in pipeline',  tone: 'amber',   icon: Timer,         format: 'days',  deltaGood: 'down', group: 'hygiene' },
-  open_pipeline:  open_pipeline:    { id: 'open_pipeline',    label: 'Open pipeline',     tone: 'purple', icon: DollarSign,   format: 'money', deltaGood: 'up',   group: 'crm' },
+  open_pipeline:    { id: 'open_pipeline',    label: 'Open pipeline',     tone: 'purple', icon: DollarSign,   format: 'money', deltaGood: 'up',   group: 'crm' },
   revenue_won:      { id: 'revenue_won',      label: 'Revenue won',       tone: 'green',  icon: Trophy,       format: 'money', deltaGood: 'up',   group: 'crm' },
   open_deals:       { id: 'open_deals',       label: 'Open deals',        tone: 'amber',  icon: Briefcase,    format: 'count', deltaGood: 'up',   group: 'crm' },
   deals_won:        { id: 'deals_won',        label: 'Deals won',         tone: 'green',  icon: CheckCircle,  format: 'count', deltaGood: 'up',   group: 'crm' },
