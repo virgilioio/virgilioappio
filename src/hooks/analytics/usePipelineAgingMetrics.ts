@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 
 export const AGING_BUCKETS = ['0–7d', '8–14d', '15–30d', '30d+'] as const
 export const bucketOf = (d: number) => (d <= 7 ? 0 : d <= 14 ? 1 : d <= 30 ? 2 : 3)
@@ -44,14 +45,12 @@ export function usePipelineAgingMetrics(finalJobIds: string[], enabled: boolean)
     queryFn: async (): Promise<AgingCandidate[]> => {
       const [jobsRes, assocs] = await Promise.all([
         supabase.from('jobs').select('id, title').in('id', finalJobIds),
-        chunked(finalJobIds, async c => {
-          const { data, error } = await supabase
+        fetchAllIn<any>(finalJobIds, 'job_id', c =>
+          supabase
             .from('job_candidate_associations')
             .select('id, candidate_id, job_id, status, current_stage_id, entered_stage_at, created_at, added_by')
-            .in('job_id', c)
-          if (error) throw error
-          return data || []
-        }),
+            .in('job_id', c),
+        ),
       ])
       if (jobsRes.error) throw jobsRes.error
       const active = assocs.filter(a => !INACTIVE.has(String(a.status || 'active')))
@@ -65,10 +64,9 @@ export function usePipelineAgingMetrics(finalJobIds: string[], enabled: boolean)
           const { data } = await (supabase as any).from('job_hiring_stages').select('id, position, custom_stage_name, job_stages(stage_name)').in('id', c)
           return data || []
         }),
-        chunked(active.map(a => a.id), async c => {
-          const { data } = await supabase.from('job_candidate_stage_history').select('association_id, moved_at').in('association_id', c)
-          return data || []
-        }),
+        fetchAllIn<any>(active.map(a => a.id), 'association_id', c =>
+          supabase.from('job_candidate_stage_history').select('association_id, moved_at').in('association_id', c),
+        ),
         chunked(candIds, async c => {
           const { data } = await (supabase as any).from('candidates').select('id, first_name, last_name').in('id', c)
           return data || []
