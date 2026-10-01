@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { GripVertical, Maximize2, Settings2, Trash2, X, Check } from 'lucide-react'
-import { METRICS, RECRUITING_METRICS, CRM_METRICS } from '../model/metrics'
+import { METRICS, RECRUITING_METRICS, CRM_METRICS, HYGIENE_METRICS } from '../model/metrics'
 import { DIMENSIONS, SPLITTABLE_DIMENSIONS } from '../model/dimensions'
 import { VIZ, vizFor, defaultSpan, nextSpan } from '../model/viz'
 import { TONE_COLOR, TONE_TINT } from '../model/tokens'
@@ -12,6 +12,8 @@ import { ColumnsChart } from './charts/ColumnsChart'
 import { DonutChart } from './charts/DonutChart'
 import { FunnelChart } from './charts/FunnelChart'
 import { TableViz } from './charts/TableViz'
+import { AgingChart } from './charts/AgingChart'
+import { StuckList } from './charts/StuckList'
 import type { WidgetConfig, DimensionId, VizId, MetricId } from '../model/types'
 import { fmt } from '../model/format'
 
@@ -102,7 +104,10 @@ export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDraggi
             {fmt(0, data.format, data.currency)}
           </div>
         ) : (
-          renderViz(cfg, data)
+          <>
+            {renderViz(cfg, data)}
+            {data.note && <div className="mt-2 text-[10.5px] font-inter text-[#8B8F9E]">{data.note}</div>}
+          </>
         )}
       </div>
 
@@ -127,6 +132,10 @@ function renderViz(cfg: WidgetConfig, data: ReturnType<typeof useWidgetData>) {
       return <DonutChart data={data.breakdown} />
     case 'funnel':
       return <FunnelChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
+    case 'aging':
+      return <AgingChart data={data.aging ?? []} />
+    case 'list':
+      return <StuckList rows={data.list ?? []} />
     case 'table':
       return <TableViz dimensionLabel={(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label} data={data.breakdown} format={data.format} currency={data.currency} />
   }
@@ -142,11 +151,22 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  const validViz = vizFor(cfg.groupBy)
+  const isHygiene = (m: MetricId) => METRICS[m]?.group === 'hygiene'
+  const hygiene = isHygiene(cfg.metric)
+  const validViz = vizFor(cfg.groupBy, hygiene)
+  const dims = hygiene
+    ? SPLITTABLE_DIMENSIONS.filter(d => d.id === 'stage' || d.id === 'job' || d.id === 'recruiter')
+    : SPLITTABLE_DIMENSIONS
 
-  const setMetric = (id: MetricId) => onChange({ ...cfg, metric: id })
+  const setMetric = (id: MetricId) => {
+    const h = isHygiene(id)
+    const groupBy = h && !['none', 'stage', 'job', 'recruiter'].includes(cfg.groupBy) ? 'none' : cfg.groupBy
+    const allowed = vizFor(groupBy, h)
+    const viz = allowed.includes(cfg.viz) ? cfg.viz : allowed[0]
+    onChange({ ...cfg, metric: id, groupBy, viz, span: viz === cfg.viz ? cfg.span : defaultSpan(viz), scope: undefined })
+  }
   const setGroup = (id: DimensionId) => {
-    const allowed = vizFor(id)
+    const allowed = vizFor(id, hygiene)
     const nextViz = allowed.includes(cfg.viz) ? cfg.viz : allowed[0]
     const nextSp = allowed.includes(cfg.viz) ? cfg.span : defaultSpan(nextViz)
     onChange({ ...cfg, groupBy: id, viz: nextViz, span: nextSp, scope: undefined, title: undefined })
@@ -170,6 +190,7 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
           value={cfg.metric}
           groups={[
             { label: 'Recruiting', options: RECRUITING_METRICS.map(m => ({ value: m.id, label: m.label })) },
+            { label: 'Pipeline hygiene · current snapshot', options: HYGIENE_METRICS.map(m => ({ value: m.id, label: m.label })) },
             { label: 'CRM / Revenue', options: CRM_METRICS.map(m => ({ value: m.id, label: m.label })) },
           ]}
           onChange={v => setMetric(v as MetricId)}
@@ -181,11 +202,21 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
           value={cfg.groupBy}
           options={[
             { value: 'none', label: 'No split' },
-            ...SPLITTABLE_DIMENSIONS.map(d => ({ value: d.id, label: `By ${d.label.toLowerCase()}` })),
+            ...dims.map(d => ({ value: d.id, label: `By ${d.label.toLowerCase()}` })),
           ]}
           onChange={v => setGroup(v as DimensionId)}
         />
       </Section>
+
+      {hygiene && (
+        <Section label="Stuck after">
+          <Dropdown
+            value={String(cfg.threshold ?? 14)}
+            options={[7, 14, 30, 60].map(n => ({ value: String(n), label: `${n} days in the same stage` }))}
+            onChange={v => onChange({ ...cfg, threshold: Number(v) })}
+          />
+        </Section>
+      )}
 
       <Section label="Visualization">
         <div className="flex flex-wrap gap-1">

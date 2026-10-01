@@ -15,6 +15,10 @@ export type MetricId =
   | 'offer_acceptance'
   | 'rejections'
   | 'interviews_per_hire'
+  // Pipeline hygiene (snapshot)
+  | 'avg_days_in_stage'
+  | 'stuck_candidates'
+  | 'days_in_pipeline'
   // CRM / Revenue
   | 'open_pipeline'
   | 'revenue_won'
@@ -27,7 +31,7 @@ export type MetricId =
   | 'outstanding'
   | 'new_deals'
 
-export type MetricGroup = 'recruiting' | 'crm'
+export type MetricGroup = 'recruiting' | 'crm' | 'hygiene'
 
 export type DimensionId =
   | 'none'
@@ -46,7 +50,7 @@ export type DimensionId =
   | 'company'
   | 'deal_source'
 
-export type VizId = 'kpi' | 'line' | 'bars' | 'columns' | 'donut' | 'funnel' | 'table'
+export type VizId = 'kpi' | 'line' | 'bars' | 'columns' | 'donut' | 'funnel' | 'table' | 'aging' | 'list'
 
 export interface WidgetScope {
   dimension: DimensionId
@@ -61,6 +65,8 @@ export interface WidgetConfig {
   span: number
   title?: string
   scope?: WidgetScope
+  /** Pipeline hygiene: days before a candidate counts as stuck (default 14) */
+  threshold?: number
 }
 
 export interface SeriesPoint {
@@ -80,4 +86,10 @@ export interface NormalizedData {
   empty: boolean
   /** Optional one-line context under a KPI (replaces the period comparison) */
   caption?: string
+  /** Aging buckets per category (0–7, 8–14, 15–30, 30+ days) */
+  aging?: { label: string; buckets: number[] }[]
+  /** Candidate rows for the stuck list */
+  list?: { id: string; href: string; name: string; job: string; stage: string; days: number; estimated: boolean }[]
+  /** Small honesty note, e.g. estimated dates */
+  note?: string
 }
