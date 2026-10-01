@@ -12,7 +12,7 @@ import { AnalyticsDataProvider, type PageFilters } from '@/components/analytics/
 import { AnalyticsViewSwitcher } from '@/components/analytics/AnalyticsViewSwitcher'
 import { AnalyticsFiltersToolbar } from '@/components/analytics/AnalyticsFiltersToolbar'
 import { WidgetGrid } from '@/components/analytics/WidgetGrid'
-import { SEED_RECRUITING_OVERVIEW, withFreshIds } from '@/components/analytics/seedDefaultViews'
+import { SEED_RECRUITING_OVERVIEW, SEED_PIPELINE_HYGIENE, withFreshIds } from '@/components/analytics/seedDefaultViews'
 import { defaultSpan, VIZ } from '@/components/analytics/model/viz'
 import { METRICS } from '@/components/analytics/model/metrics'
 import { DIMENSIONS } from '@/components/analytics/model/dimensions'
@@ -116,6 +116,31 @@ export default function Analytics() {
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, tenant?.id, views.length])
+
+  // One-time starter "Pipeline Hygiene" dashboard per workspace (never alters existing views)
+  const hygieneSeededRef = useRef(false)
+  useEffect(() => {
+    if (hygieneSeededRef.current || !user || !tenant) return
+    hygieneSeededRef.current = true
+    ;(async () => {
+      const { data: existing } = await supabase
+        .from('saved_views')
+        .select('id')
+        .eq('tenant_id', tenant.id)
+        .eq('page_context', 'analytics')
+        .eq('name', 'Pipeline Hygiene')
+        .limit(1)
+      if (existing && existing.length > 0) return
+      createView.mutate({
+        name: 'Pipeline Hygiene',
+        filters: DEFAULT_FILTERS as unknown as Record<string, unknown>,
+        extra_state: { widgets: withFreshIds(SEED_PIPELINE_HYGIENE) },
+        is_default: false,
+        visibility: 'shared',
+      })
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, tenant?.id])
 
   // Activate default view on first load
   useEffect(() => {
