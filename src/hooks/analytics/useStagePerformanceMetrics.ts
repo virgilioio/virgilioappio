@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import type { DateRange } from '@/hooks/useAnalyticsMetrics'
 
 export interface StageTimeData {
@@ -39,29 +40,32 @@ export function useStagePerformanceMetrics(
       if (finalJobIds.length === 0) return { avgTimePerStage: [], stuckCandidates: [], stageEntryVolume: [] }
 
       // Get associations for these jobs
-      const { data: associations, error: aErr } = await supabase
+      const aErr = null as any
+      const associations: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
         .from('job_candidate_associations')
         .select('id, status, entered_stage_at, current_stage_id, candidate_id, job_id')
-        .in('job_id', finalJobIds)
+        .in('job_id', c))
       if (aErr) throw aErr
 
       const assocIds = (associations || []).map(a => a.id)
       if (assocIds.length === 0) return { avgTimePerStage: [], stuckCandidates: [], stageEntryVolume: [] }
 
       // Get stage history
-      const { data: history, error: hErr } = await supabase
+      const hErr = null as any
+      const history: any[] = await fetchAllIn(assocIds, 'association_id', (c: string[]) => supabase
         .from('job_candidate_stage_history')
         .select('id, association_id, from_stage_id, to_stage_id, moved_at')
-        .in('association_id', assocIds)
-        .order('moved_at', { ascending: true })
+        .in('association_id', c)
+        .order('moved_at', { ascending: true }))
       if (hErr) throw hErr
 
       // Get hiring stages for these jobs
-      const { data: jhStages, error: sErr } = await supabase
+      const sErr = null as any
+      const jhStages: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
         .from('job_hiring_stages')
         .select('id, job_id, position, custom_stage_name, job_stages!inner(stage_name)')
-        .in('job_id', finalJobIds)
-        .order('position', { ascending: true })
+        .in('job_id', c)
+        .order('position', { ascending: true }))
       if (sErr) throw sErr
 
       // Build stage ID → name map

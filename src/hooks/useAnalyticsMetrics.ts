@@ -1,6 +1,7 @@
 import { eventAt } from '@/lib/analyticsEventDates'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { fetchAllIn } from '@/lib/fetchAllRows'
 import { useAuth } from '@/contexts/AuthContext'
 import { format, eachDayOfInterval } from 'date-fns'
 import { extractHiringTeamUserIds } from '@/utils/jobInvolvement'
@@ -250,10 +251,11 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       let avgTimeToHireAssociations: any[] = [...allAssociations]
       const extraJobIds = statusAgnosticJobIds.filter(id => !new Set(finalJobIds).has(id))
       if (extraJobIds.length > 0) {
-        const { data: extraAssocs, error: extraError } = await supabase
+        const extraError = null as any
+        const extraAssocs: any[] = await fetchAllIn(extraJobIds, 'job_id', (c: string[]) => supabase
           .from('job_candidate_associations')
           .select('id, status, created_at, updated_at, job_id')
-          .in('job_id', extraJobIds)
+          .in('job_id', c))
 
         if (extraError) throw extraError
         avgTimeToHireAssociations = [...allAssociations, ...(extraAssocs || [])]
@@ -263,21 +265,23 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       let bookings: any[] = []
       let allBookings: any[] = []
       if (finalJobIds.length > 0) {
-        const { data: b, error: bErr } = await supabase
+        const bErr = null as any
+        const b: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
           .from('scheduled_bookings')
           .select('id, status, scheduled_start, created_at, job_id, booked_by')
-          .in('job_id', finalJobIds)
+          .in('job_id', c)
           .gte('created_at', startISO)
           .lte('created_at', endISO)
-          .not('status', 'eq', 'cancelled')
+          .not('status', 'eq', 'cancelled'))
         if (bErr) throw bErr
         bookings = b || []
 
-        const { data: ab, error: abErr } = await supabase
+        const abErr = null as any
+        const ab: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
           .from('scheduled_bookings')
           .select('id, status, scheduled_start, created_at, job_id')
-          .in('job_id', finalJobIds)
-          .not('status', 'eq', 'cancelled')
+          .in('job_id', c)
+          .not('status', 'eq', 'cancelled'))
         if (abErr) throw abErr
         allBookings = ab || []
       }
