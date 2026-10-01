@@ -376,6 +376,7 @@ export function usePipelineSectionRows({
         ...base,
         reachedLabel: (a.id ? reachedByAssoc.get(a.id) : null) ?? (a.current_stage_id ? stageMap[a.current_stage_id]?.name : null) ?? null,
         rejectedLabel: shortDate(a.rejected_at || a.updated_at),
+        rejectedAt: a.rejected_at || a.updated_at || null,
         status,
         ownerName: owner?.name ?? null,
         ownerAvatar: owner?.avatar ?? null,

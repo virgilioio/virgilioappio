@@ -5,6 +5,45 @@ import { SelectionBar } from '@/components/shared/SelectionBar'
 import { PipelineSectionTable } from './PipelineSectionTable'
 import { getSectionConfig, type PSHandlers, type PSSection } from './pipelineSectionConfigs'
 import { usePipelineSectionRows } from './usePipelineSectionRows'
+import { ArrowUpDown, Check } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import type { PSRowData } from './pipelineSectionConfigs'
+
+type SortKey = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'score_desc' | 'score_asc' | 'reason' | 'owner'
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'date_desc', label: 'Newest rejected' },
+  { key: 'date_asc', label: 'Oldest rejected' },
+  { key: 'name_asc', label: 'Name A–Z' },
+  { key: 'name_desc', label: 'Name Z–A' },
+  { key: 'score_desc', label: 'Highest match' },
+  { key: 'score_asc', label: 'Lowest match' },
+  { key: 'reason', label: 'Reason A–Z' },
+  { key: 'owner', label: 'Decided by A–Z' },
+]
+const t = (v?: string | null) => (v ? new Date(v).getTime() : 0)
+const str = (a?: string | null, b?: string | null) => {
+  if (!a && !b) return 0
+  if (!a) return 1
+  if (!b) return -1
+  return a.localeCompare(b)
+}
+function sortRows(rows: PSRowData[], k: SortKey) {
+  const r = [...rows]
+  r.sort((a, b) => {
+    switch (k) {
+      case 'date_desc': return t(b.rejectedAt) - t(a.rejectedAt)
+      case 'date_asc': return t(a.rejectedAt) - t(b.rejectedAt)
+      case 'name_asc': return a.name.localeCompare(b.name)
+      case 'name_desc': return b.name.localeCompare(a.name)
+      case 'score_desc': return (b.score ?? -1) - (a.score ?? -1)
+      case 'score_asc': return (a.score ?? 999) - (b.score ?? 999)
+      case 'reason': return str(a.status?.label, b.status?.label)
+      case 'owner': return str(a.ownerName, b.ownerName)
+    }
+  })
+  return r
+}
 
 /**
  * The screen for the four flat sections — toolbar (no Board/List toggle),
@@ -39,7 +78,10 @@ export function PipelineFlatSection({
   onSelectedIdsChange: (next: string[]) => void
   handlers: PSHandlers
 }) {
-  const rows = usePipelineSectionRows({ jobId, section, candidates, associations, stageMap })
+  const baseRows = usePipelineSectionRows({ jobId, section, candidates, associations, stageMap })
+  const [sortKey, setSortKey] = React.useState<SortKey>('date_desc')
+  const sortable = section === 'rejected'
+  const rows = React.useMemo(() => (sortable ? sortRows(baseRows, sortKey) : baseRows), [baseRows, sortKey, sortable])
   const cfg = React.useMemo(() => getSectionConfig(section, handlers), [section, handlers])
 
   // Changing section drops the selection — the set is no longer what you saw.
@@ -59,6 +101,25 @@ export function PipelineFlatSection({
           search={search}
           onSearchChange={onSearchChange}
           showViewToggle={false}
+          sort={
+            sortable ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" icon={ArrowUpDown} dropdown>
+                    Sort: {SORTS.find((x) => x.key === sortKey)?.label}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" sideOffset={8} className="w-[200px]">
+                  {SORTS.map((o) => (
+                    <DropdownMenuItem key={o.key} onSelect={() => setSortKey(o.key)}>
+                      <span className="flex-1">{o.label}</span>
+                      {o.key === sortKey && <Check className="h-3.5 w-3.5" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : undefined
+          }
           primary={
             cfg.primary ? (
               <button

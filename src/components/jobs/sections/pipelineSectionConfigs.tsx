@@ -57,6 +57,7 @@ export interface PSRowData {
   startDateLabel?: string | null
   reachedLabel?: string | null
   rejectedLabel?: string | null
+  rejectedAt?: string | null
   status?: PSStatusValue | null
   ownerName?: string | null
   ownerAvatar?: string | null
@@ -286,7 +287,7 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
       nameCol,
       matchCol,
       col('reached', 'Reached', (r) => <PSText tone="muted">{r.reachedLabel}</PSText>),
-      col('rejected', 'Rejected', (r) => <PSText tone="muted">{r.rejectedLabel}</PSText>),
+      col('rejected', 'Rejected on', (r) => <PSText tone="muted">{r.rejectedLabel}</PSText>),
       col('reason', 'Reason', (r) => <PSStatus value={r.status} />),
       ownerCol('Decided by'),
     ],
