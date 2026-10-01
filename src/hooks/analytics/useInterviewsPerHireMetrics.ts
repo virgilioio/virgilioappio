@@ -52,7 +52,7 @@ export function useInterviewsPerHireMetrics(finalJobIds: string[], dateRange: Da
       hires.forEach(a => a.added_by && userIds.add(a.added_by))
       const names = new Map<string, string>()
       if (userIds.size) {
-        const { data: profs } = await supabase.from('profiles').select('id, full_name, email').in('id', [...userIds])
+        const { data: profs } = await (supabase as any).from('profiles').select('id, full_name, email').in('id', [...userIds])
         ;(profs || []).forEach((p: any) => names.set(p.id, p.full_name || p.email || 'Unknown'))
       }
 
