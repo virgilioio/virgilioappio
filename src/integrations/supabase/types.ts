@@ -2022,54 +2022,6 @@ export type Database = {
         }
         Relationships: []
       }
-      chat_messages_2026_05: {
-        Row: {
-          body: string | null
-          created_at: string
-          direction: string
-          email_opened_at: string | null
-          external_message_id: string | null
-          id: string
-          parts: Json
-          read_by_recipient_at: string | null
-          redacted_at: string | null
-          sender_type: string
-          sender_user_id: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Insert: {
-          body?: string | null
-          created_at?: string
-          direction: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type: string
-          sender_user_id?: string | null
-          tenant_id: string
-          thread_id: string
-        }
-        Update: {
-          body?: string | null
-          created_at?: string
-          direction?: string
-          email_opened_at?: string | null
-          external_message_id?: string | null
-          id?: string
-          parts?: Json
-          read_by_recipient_at?: string | null
-          redacted_at?: string | null
-          sender_type?: string
-          sender_user_id?: string | null
-          tenant_id?: string
-          thread_id?: string
-        }
-        Relationships: []
-      }
       chat_messages_2026_06: {
         Row: {
           body: string | null
@@ -2359,6 +2311,54 @@ export type Database = {
         Relationships: []
       }
       chat_messages_2026_12: {
+        Row: {
+          body: string | null
+          created_at: string
+          direction: string
+          email_opened_at: string | null
+          external_message_id: string | null
+          id: string
+          parts: Json
+          read_by_recipient_at: string | null
+          redacted_at: string | null
+          sender_type: string
+          sender_user_id: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          direction: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          direction?: string
+          email_opened_at?: string | null
+          external_message_id?: string | null
+          id?: string
+          parts?: Json
+          read_by_recipient_at?: string | null
+          redacted_at?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages_2027_01: {
         Row: {
           body: string | null
           created_at: string
