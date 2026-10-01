@@ -1,6 +1,7 @@
 import { METRICS } from './metrics'
 import type { MetricId, NormalizedData, DimensionId, SeriesPoint, WidgetConfig } from './types'
 import { useAnalyticsBundle } from './AnalyticsDataContext'
+import { bucketOf, type AgingCandidate } from '@/hooks/analytics/usePipelineAgingMetrics'
 import type { CrmAnalyticsBundle, CrmDimensionRow } from '@/hooks/analytics/useCrmAnalyticsMetrics'
 
 function asArray<T>(value: T[] | null | undefined): T[] {
@@ -42,7 +43,8 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
     b.recruiter.isLoading ||
     b.jobHealth.isLoading ||
     b.crm.isLoading ||
-    b.iph.isLoading
+    b.iph.isLoading ||
+    b.aging.isLoading
 
   const trend = asArray(b.metrics.trendData as Array<Record<string, unknown>> | undefined)
 
@@ -53,8 +55,59 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
   let sparkline: SeriesPoint[] = []
   const currency = meta.format === 'money' ? b.crm.baseCurrency : undefined
   let caption: string | undefined
+  let aging: NormalizedData['aging']
+  let list: NormalizedData['list']
+  let note: string | undefined
+  const threshold = cfg.threshold ?? 14
 
-  if (meta.group === 'recruiting') {
+  if (meta.group === 'hygiene') {
+    const all = b.aging.candidates
+    const scoped = cfg.scope ? all.filter(c => hygieneKey(c, cfg.scope!.dimension) === cfg.scope!.value) : all
+    const pool = cfg.metric === 'stuck_candidates' ? scoped.filter(c => c.daysInStage > threshold) : scoped
+    const days = (c: AgingCandidate) => (cfg.metric === 'days_in_pipeline' ? c.daysInPipeline : c.daysInStage)
+    const avg = (xs: AgingCandidate[]) => (xs.length ? Math.round(xs.reduce((s, c) => s + days(c), 0) / xs.length) : null)
+    value = cfg.metric === 'stuck_candidates' ? pool.length : avg(pool)
+    caption =
+      cfg.metric === 'stuck_candidates'
+        ? `in the same stage over ${threshold}d · of ${scoped.length} active`
+        : `${scoped.length} active candidate${scoped.length === 1 ? '' : 's'} · right now`
+    const est = pool.filter(c => c.estimated && cfg.metric !== 'days_in_pipeline').length
+    if (est) note = `Stage-entry date estimated for ${est} candidate${est === 1 ? '' : 's'}`
+    if (cfg.groupBy === 'stage' || cfg.groupBy === 'job' || cfg.groupBy === 'recruiter') {
+      const g = new Map<string, { list: AgingCandidate[]; order: number }>()
+      for (const c of pool) {
+        const k = hygieneKey(c, cfg.groupBy)
+        const e = g.get(k) || { list: [], order: cfg.groupBy === 'stage' ? c.stagePosition : 0 }
+        e.list.push(c)
+        g.set(k, e)
+      }
+      const entries = [...g.entries()]
+      breakdown = entries
+        .map(([label, e]) => ({ label, value: cfg.metric === 'stuck_candidates' ? e.list.length : avg(e.list) ?? 0, order: e.order }))
+        .sort((x, y) => (cfg.groupBy === 'stage' ? x.order - y.order : y.value - x.value))
+        .map(({ label, value }) => ({ label, value }))
+      aging = entries
+        .map(([label, e]) => {
+          const buckets = [0, 0, 0, 0]
+          e.list.forEach(c => buckets[bucketOf(days(c))]++)
+          return { label, buckets, order: e.order, total: e.list.length }
+        })
+        .sort((x, y) => (cfg.groupBy === 'stage' ? x.order - y.order : y.total - x.total))
+        .map(({ label, buckets }) => ({ label, buckets }))
+    }
+    list = [...pool]
+      .sort((x, y) => days(y) - days(x))
+      .slice(0, 50)
+      .map(c => ({
+        id: c.associationId,
+        href: `/jobs/${c.jobId}?candidate=${c.candidateId}`,
+        name: c.name,
+        job: c.job,
+        stage: c.stage,
+        days: days(c),
+        estimated: c.estimated && cfg.metric !== 'days_in_pipeline',
+      }))
+  } else if (meta.group === 'recruiting') {
     switch (cfg.metric) {
       case 'applications':
         value = b.metrics.applications
@@ -163,12 +216,12 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
   }
 
   // Categorical breakdowns
-  if (cfg.groupBy !== 'none' && cfg.groupBy !== 'time') {
+  if (meta.group !== 'hygiene' && cfg.groupBy !== 'none' && cfg.groupBy !== 'time') {
     breakdown = resolveBreakdown(cfg.metric, cfg.groupBy, b)
   }
 
   // Per-card scope: filter breakdown to a single category if scoped (only changes display)
-  if (cfg.scope && breakdown.length > 0 && cfg.metric !== 'interviews_per_hire') {
+  if (cfg.scope && breakdown.length > 0 && cfg.metric !== 'interviews_per_hire' && meta.group !== 'hygiene') {
     const filtered = breakdown.filter(p => p.label === cfg.scope!.value)
     if (filtered.length) {
       breakdown = filtered
@@ -178,7 +231,9 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
 
   const empty =
     !loading &&
-    (cfg.groupBy === 'none'
+    (meta.group === 'hygiene'
+      ? b.aging.candidates.length === 0
+      : cfg.groupBy === 'none'
       ? value === null || value === undefined
       : cfg.groupBy === 'time'
       ? false
@@ -194,7 +249,14 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
     loading,
     empty,
     caption,
+    aging,
+    list,
+    note,
   }
+}
+
+function hygieneKey(c: AgingCandidate, dim: DimensionId): string {
+  return dim === 'job' ? c.job : dim === 'recruiter' ? c.recruiter : c.stage
 }
 
 function crmRowValue(metric: MetricId, r: CrmDimensionRow): number {
