@@ -10,7 +10,7 @@ import { Calendar, ChevronDown, FileSignature, FileText, GraduationCap, Info, La
 import { differenceInDays, format } from 'date-fns'
 
 import type { PublicDossierPayload } from '@/pages/PublicDossier'
-import { FileViewer, type FileRow } from '@/components/candidates/insights/dossier/DossierFileViewer'
+import { PublicFilesCard } from '@/components/public/PublicFiles'
 import { InterviewScorecardsSection } from '@/components/candidates/insights/dossier/InterviewScorecardsSection'
 import { DossierExperienceGroups } from '@/components/candidates/experience/DossierExperienceGroups'
 import { StatusBanner } from '@/components/candidates/status/StatusBanner'
@@ -48,37 +48,6 @@ const HEADING: React.CSSProperties = {
   letterSpacing: '0.1em',
   color: '#8B8F9E',
   margin: 0,
-}
-
-function PublicFilesCard({ files }: { files: NonNullable<PublicDossierPayload['files']> }) {
-  const [open, setOpen] = useState<FileRow | null>(null)
-  if (!files.length) return null
-  return (
-    <section style={{ background: '#fff', border: '1px solid #E7E8EE', borderRadius: 14, padding: 16, marginBottom: 14 }}>
-      <p style={HEADING}>Files</p>
-      <div style={{ marginTop: 8 }}>
-        {files.map((f) => {
-          const kb = f.size ? (f.size < 1048576 ? `${Math.max(1, Math.round(f.size / 1024))} KB` : `${(f.size / 1048576).toFixed(1)} MB`) : null
-          return (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setOpen({ id: f.id, file_name: f.name, file_url: '', file_type: f.type, file_size_bytes: f.size, created_at: f.created_at, signed_url: f.url })}
-              className="font-inter"
-              style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 10, padding: '8px 0', background: 'none', border: 0, borderTop: '1px solid #F1F0EC', textAlign: 'left', cursor: 'pointer' }}
-            >
-              <FileText size={14} color="#5A6072" style={{ flexShrink: 0 }} />
-              <span style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: '#1F2230', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                {kb && <span style={{ display: 'block', fontSize: 10.5, color: '#8B8F9E' }}>{kb}</span>}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-      <FileViewer file={open} onClose={() => setOpen(null)} />
-    </section>
-  )
 }
 
 function Bar({ value }: { value: number }) {
