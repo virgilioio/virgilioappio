@@ -51,6 +51,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
   let trendDelta: number | null = null
   let sparkline: SeriesPoint[] = []
   const currency = meta.format === 'money' ? b.crm.baseCurrency : undefined
+  let caption: string | undefined
 
   if (meta.group === 'recruiting') {
     switch (cfg.metric) {
@@ -89,6 +90,14 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
       case 'rejections':
         value = b.metrics.rejectedCandidates
         series = pickTimeSeries(trend, 'rejected')
+        break
+      case 'interviews_per_hire':
+        value = b.iph.ratio
+        caption = `${b.iph.screenings} screening${b.iph.screenings === 1 ? '' : 's'} · ${b.iph.hires} hire${b.iph.hires === 1 ? '' : 's'}`
+        // Months without hires are omitted (ratio undefined)
+        series = b.iph.monthly
+          .filter(m => m.hires > 0)
+          .map(m => ({ label: m.label, value: Math.round((m.screenings / m.hires) * 10) / 10 }))
         break
     }
     sparkline = series
