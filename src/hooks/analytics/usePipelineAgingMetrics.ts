@@ -86,7 +86,7 @@ export function usePipelineAgingMetrics(finalJobIds: string[], enabled: boolean)
         const t = new Date(h.moved_at).getTime()
         if (!lastMove.has(h.association_id) || t > lastMove.get(h.association_id)!) lastMove.set(h.association_id, t)
       }
-      const candName = new Map<string, string>(cands.map((c: any) => [c.id, `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed']))
+      const candName = new Map<string, string>(cands.map((c: any) => [c.id, String(c.candidate_name || '').trim() || 'Unnamed']))
       const userName = new Map<string, string>(profs.map((p: any) => [p.id, p.full_name || p.email || 'Unknown']))
       const jobTitle = new Map((jobsRes.data || []).map(j => [j.id, j.title]))
       const now = Date.now()
