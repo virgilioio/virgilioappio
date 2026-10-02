@@ -112,10 +112,10 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           offered_at,
           rejected_at,
           current_stage_id,
-          job_hiring_stages!inner(
+          job_hiring_stages(
             id,
             custom_stage_name,
-            job_stages!inner(
+            job_stages(
               id,
               stage_name,
               stage_type
@@ -135,11 +135,11 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           scheduled_start, 
           created_at,
           job_hiring_stage_id,
-          job_hiring_stages!inner(
+          job_hiring_stages(
             id,
             custom_stage_name,
             position,
-            job_stages!inner(stage_name)
+            job_stages(stage_name)
           )
         `)
         .eq('job_id', jobId)
@@ -158,11 +158,11 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           scheduled_start, 
           created_at,
           job_hiring_stage_id,
-          job_hiring_stages!inner(
+          job_hiring_stages(
             id,
             custom_stage_name,
             position,
-            job_stages!inner(stage_name)
+            job_stages(stage_name)
           )
         `)
         .eq('job_id', jobId)
@@ -196,7 +196,7 @@ export function useJobAnalyticsMetrics(jobId: string, dateRange: DateRange): Job
           id,
           position,
           custom_stage_name,
-          job_stages!inner(stage_name)
+          job_stages(stage_name)
         `)
         .eq('job_id', jobId)
         .order('position', { ascending: true })

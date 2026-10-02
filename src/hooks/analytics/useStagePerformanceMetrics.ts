@@ -63,7 +63,7 @@ export function useStagePerformanceMetrics(
       const sErr = null as any
       const jhStages: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
         .from('job_hiring_stages')
-        .select('id, job_id, position, custom_stage_name, job_stages!inner(stage_name)')
+        .select('id, job_id, position, custom_stage_name, job_stages(stage_name)')
         .in('job_id', c)
         .order('position', { ascending: true }))
       if (sErr) throw sErr
