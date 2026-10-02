@@ -217,7 +217,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       // Step 3: Fetch job_candidate_associations for status-filtered jobs
       let allAssociations: any[] = []
       if (finalJobIds.length > 0) {
-        const { data: associations, error: assocError } = await supabase
+        const associations: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
           .from('job_candidate_associations')
           .select(`
             id,
@@ -230,20 +230,20 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
             current_stage_id,
             added_by,
             job_id,
-            job_hiring_stages!inner(
+            job_hiring_stages(
               id,
               custom_stage_name,
-              job_stages!inner(
+              job_stages(
                 id,
                 stage_name,
                 stage_type
               )
             )
           `)
-          .in('job_id', finalJobIds)
-
-        if (assocError) throw assocError
-        allAssociations = associations || []
+          .in('job_id', c))
+        allAssociations = associations
+        const hiredRows = associations.filter(a => a.status === 'hired').map(a => eventAt(a).toISOString()).sort()
+        console.info('[Analytics] counts', { assocs: associations.length, hired: hiredRows.length, hiredMin: hiredRows[0], hiredMax: hiredRows[hiredRows.length - 1] })
       }
 
       // Fetch status-agnostic associations for Avg Time to Hire
