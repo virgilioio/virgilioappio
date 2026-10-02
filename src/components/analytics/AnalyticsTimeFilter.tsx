@@ -18,7 +18,7 @@ import { format, subDays, subHours, subYears, startOfMonth, endOfMonth, startOfY
 import { DateRange } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 
-export type TimePreset = 'today' | 'last24h' | 'last7d' | 'last14d' | 'last30d' | 'last90d' | 'thisMonth' | 'ytd' | 'last12m' | 'custom'
+export type TimePreset = 'today' | 'last24h' | 'last7d' | 'last14d' | 'last30d' | 'last90d' | 'thisMonth' | 'ytd' | 'last12m' | 'allTime' | 'custom'
 
 interface AnalyticsTimeFilterProps {
   onDateRangeChange: (startDate: Date, endDate: Date) => void
@@ -53,6 +53,9 @@ export function AnalyticsTimeFilter({ onDateRangeChange, initialPreset = 'last7d
         return { start: startOfYear(new Date()), end: new Date() }
       case 'last12m':
         return { start: subYears(new Date(), 1), end: new Date() }
+      case 'allTime':
+        // Epoch start: every record falls inside the range, nothing is filtered out.
+        return { start: new Date(0), end: new Date() }
       case 'custom':
         if (customRange?.from && customRange?.to) {
           return { start: customRange.from, end: customRange.to }
@@ -97,6 +100,7 @@ export function AnalyticsTimeFilter({ onDateRangeChange, initialPreset = 'last7d
     thisMonth: 'This Month',
     ytd: 'Year to Date',
     last12m: 'Last 12 Months',
+    allTime: 'All Time',
     custom: 'Custom Range'
   }
 
