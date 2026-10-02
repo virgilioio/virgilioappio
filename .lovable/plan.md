@@ -8,6 +8,11 @@
 
 I can't sign in to your preview from here, so I can't watch the page load. The plan makes the count independent of that weak spot, and adds a short log so the next load confirms where the 10 went.
 
+## Is this the best approach?
+It's the fastest safe fix, but the exact cause isn't confirmed yet. The stronger long-term option is to have the database itself do the counting: one place returns the Hires, Offers, Rejections and Avg time to hire numbers for a period. The page would no longer download thousands of records just to count them, so nothing could be cut off or dropped along the way. It also loads faster and stays correct as the workspace grows.
+
+Recommended order: ship the fix below plus the log now, confirm 22 on your next load, then move the top cards to database-side counting as a follow-up.
+
 ## The fix
 1. **Count hires (and offers and rejections) on their own.** Instead of pulling every candidate record and counting hires afterwards, the Hires, Offers, Rejections and Avg time to hire cards get a small dedicated lookup: "hired, with a hire date in this period, on these jobs". These are far fewer records, so nothing can get cut off.
 2. **Stop silently dropping records.** The main data load only keeps candidates whose pipeline stage it can read. If it can't read the stage, the whole candidate vanishes, hires included. It will keep the candidate and label the stage "Unknown" instead, so the totals stay right.
