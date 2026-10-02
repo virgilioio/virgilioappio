@@ -50,12 +50,18 @@ export function useJobHealthMetrics(
       const bookings = bookingsRes.data || []
 
       const now = new Date()
+      const start = dateRange.startDate
+      const end = new Date(dateRange.endDate); end.setUTCHours(23, 59, 59, 999)
+      const inRange = (d: Date) => d >= start && d <= end
       const rows: JobHealthRow[] = jobs.map(job => {
         const jobAssocs = assocs.filter(a => a.job_id === job.id)
         const active = jobAssocs.filter(a => a.status === 'active').length
-        const rejected = jobAssocs.filter(a => a.status === 'rejected').length
-        const offers = jobAssocs.filter(a => a.status === 'offer').length
-        const hired = jobAssocs.filter(a => a.status === 'hired')
+        const rejected = jobAssocs.filter(a => a.status === 'rejected' && inRange(eventAt(a))).length
+        const offers = jobAssocs.filter(a => {
+          const d = a.offered_at ? new Date(a.offered_at) : a.status === 'offer' ? eventAt(a) : null
+          return !!d && inRange(d)
+        }).length
+        const hired = jobAssocs.filter(a => a.status === 'hired' && inRange(eventAt(a)))
         const hires = hired.length
 
         let avgTimeToHire: number | null = null
@@ -67,7 +73,7 @@ export function useJobHealthMetrics(
         }
 
         const jobBookings = bookings.filter(b => b.job_id === job.id)
-        const completedInterviews = jobBookings.filter(b => new Date(b.scheduled_start) <= now).length
+        const completedInterviews = jobBookings.filter(b => { const s = new Date(b.scheduled_start); return s <= now && inRange(s) }).length
 
         return {
           jobId: job.id,

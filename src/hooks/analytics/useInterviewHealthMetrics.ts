@@ -55,19 +55,29 @@ export function useInterviewHealthMetrics(
         .lte('created_at', endISO))
       if (aErr) throw aErr
 
+      // Completed = took place in the period, whenever it was booked
+      const heldBookings: any[] = await fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase
+        .from('scheduled_bookings')
+        .select('id, status, scheduled_start, created_at, job_id')
+        .in('job_id', c)
+        .gte('scheduled_start', startISO)
+        .lte('scheduled_start', endISO)
+        .not('status', 'eq', 'cancelled'))
+
       const now = new Date()
       const scheduled = (rangeBookings || []).length
-      const completed = (rangeBookings || []).filter(b => new Date(b.scheduled_start) <= now).length
+      const completed = heldBookings.filter(b => new Date(b.scheduled_start) <= now).length
       const upcoming = (rangeBookings || []).filter(b => new Date(b.scheduled_start) > now).length
       const cancelled = (allRangeBookings || []).filter(b => b.status === 'cancelled').length
-      const completionRate = scheduled > 0 ? Math.round((completed / scheduled) * 100) : null
+      const scheduledPast = (rangeBookings || []).filter(b => new Date(b.scheduled_start) <= now).length
+      const completionRate = scheduled > 0 ? Math.round((scheduledPast / scheduled) * 100) : null
 
       // Trend data
       const days = eachDayOfInterval({ start: dateRange.startDate, end: dateRange.endDate })
       const trendData: InterviewTrendPoint[] = days.map(day => {
         const dayStr = format(day, 'yyyy-MM-dd')
         const dayScheduled = (rangeBookings || []).filter(b => format(new Date(b.created_at), 'yyyy-MM-dd') === dayStr).length
-        const dayCompleted = (rangeBookings || []).filter(b => {
+        const dayCompleted = heldBookings.filter(b => {
           const ss = new Date(b.scheduled_start)
           return ss <= now && format(ss, 'yyyy-MM-dd') === dayStr
         }).length

@@ -34,7 +34,7 @@ export function useRecruiterPerformanceMetrics(
 
       const [assocsRes, bookingsRes] = await Promise.all([
         fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('job_candidate_associations')
-          .select('id, added_by, status, created_at, job_id')
+          .select('id, added_by, status, created_at, updated_at, hired_at, job_id')
           .in('job_id', c)).then(data => ({ data, error: null as any })),
         fetchAllIn(finalJobIds, 'job_id', (c: string[]) => supabase.from('scheduled_bookings')
           .select('id, booked_by, created_at, job_id')
@@ -109,7 +109,10 @@ export function useRecruiterPerformanceMetrics(
           row.candidatesAdded++
         }
         if (a.status === 'active') row.activePipeline++
-        if (a.status === 'hired') row.hires++
+        if (a.status === 'hired') {
+          const h = a.hired_at || a.updated_at
+          if (h && h >= startISO && h <= endISO) row.hires++
+        }
       })
 
       bookings.forEach(b => {
