@@ -67,10 +67,9 @@ export function usePipelineAgingMetrics(finalJobIds: string[], enabled: boolean)
         fetchAllIn<any>(active.map(a => a.id), 'association_id', c =>
           supabase.from('job_candidate_stage_history').select('association_id, moved_at').in('association_id', c),
         ),
-        chunked(candIds, async c => {
-          const { data } = await (supabase as any).from('candidates').select('id, first_name, last_name').in('id', c)
-          return data || []
-        }),
+        fetchAllIn<any>(candIds, 'id', c =>
+          (supabase as any).from('candidates').select('id, candidate_name').in('id', c),
+        ),
         userIds.length
           ? chunked(userIds, async c => {
               const { data } = await (supabase as any).from('profiles').select('id, full_name, email').in('id', c)
