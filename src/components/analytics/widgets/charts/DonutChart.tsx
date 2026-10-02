@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PALETTE } from '../../model/tokens'
+import { useHoverTip } from './ChartHoverTip'
 import type { SeriesPoint } from '../../model/types'
 
 interface Props {
@@ -21,6 +22,8 @@ export function DonutChart({ data, size = 200 }: Props) {
     return () => ro.disconnect()
   }, [])
 
+  const tip = useHoverTip()
+  const [hover, setHover] = useState<number | null>(null)
   const rows = data.slice(0, 8)
   const total = rows.reduce((s, r) => s + r.value, 0)
   const stacked = containerW > 0 && containerW < 280
@@ -68,7 +71,20 @@ export function DonutChart({ data, size = 200 }: Props) {
           const xi0 = r + inner * Math.cos(a0)
           const yi0 = r + inner * Math.sin(a0)
           const d = `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${inner} ${inner} 0 ${large} 0 ${xi0} ${yi0} Z`
-          return <path key={i} d={d} fill={PALETTE[i % PALETTE.length]} />
+          return (
+            <path
+              key={i}
+              d={d}
+              fill={PALETTE[i % PALETTE.length]}
+              opacity={hover === null || hover === i ? 1 : 0.45}
+              style={{ transition: 'opacity 120ms' }}
+              onMouseMove={e => {
+                setHover(i)
+                tip.show(e, { title: row.label, rows: [{ color: PALETTE[i % PALETTE.length], label: row.value.toLocaleString('en-US'), value: `${Math.round(frac * 100)}%` }] })
+              }}
+              onMouseLeave={() => { setHover(null); tip.hide() }}
+            />
+          )
         })}
         <text x={r} y={r - 4} textAnchor="middle" fontFamily="Poppins" fontWeight="600" fontSize="20" fill="#0d0d09">
           {total.toLocaleString('en-US')}
@@ -88,6 +104,7 @@ export function DonutChart({ data, size = 200 }: Props) {
           </div>
         ))}
       </div>
+      {tip.node}
     </div>
   )
 }

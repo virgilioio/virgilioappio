@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { TONE_COLOR, HAIRLINE_INNER } from '../../model/tokens'
 import { METRICS } from '../../model/metrics'
+import { useHoverTip } from './ChartHoverTip'
 import type { MetricId, SeriesPoint } from '../../model/types'
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
 export function LineChart({ metricId, series, height = 220 }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(0)
+  const [hi, setHi] = useState<number | null>(null)
+  const tip = useHoverTip()
   useEffect(() => {
     if (!ref.current) return
     const measure = () => {
@@ -45,7 +48,20 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
   return (
     <div ref={ref} className="w-full overflow-hidden" style={{ height }}>
       {w > 0 && (
-      <svg width={w} height={height}>
+      <svg
+        width={w}
+        height={height}
+        onMouseMove={e => {
+          if (!pts.length) return
+          const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+          const mx = e.clientX - rect.left
+          let best = pts[0]
+          for (const pt of pts) if (Math.abs(pt.x - mx) < Math.abs(best.x - mx)) best = pt
+          setHi(best.i)
+          tip.show(e, { title: best.p.label, rows: [{ color, label: METRICS[metricId].label ?? 'Value', value: best.p.value.toLocaleString('en-US') }] })
+        }}
+        onMouseLeave={() => { setHi(null); tip.hide() }}
+      >
         <defs>
           <linearGradient id={`line-${metricId}`} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.22" />
@@ -66,6 +82,12 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
         })}
         {area && <path d={area} fill={`url(#line-${metricId})`} />}
         {path && <path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
+        {hi !== null && pts[hi] && (
+          <g pointerEvents="none">
+            <line x1={pts[hi].x} x2={pts[hi].x} y1={padT} y2={padT + innerH} stroke={color} strokeOpacity={0.35} strokeDasharray="3 3" />
+            <circle cx={pts[hi].x} cy={pts[hi].y} r={4.5} fill={color} stroke="#fff" strokeWidth={2} />
+          </g>
+        )}
         {last && <circle cx={last.x} cy={last.y} r={3.5} fill={color} stroke="#fff" strokeWidth={1.5} />}
         {pts
           .filter((_, i) => i % stepLabel === 0)
@@ -76,6 +98,7 @@ export function LineChart({ metricId, series, height = 220 }: Props) {
           ))}
       </svg>
       )}
+      {tip.node}
     </div>
   )
 }

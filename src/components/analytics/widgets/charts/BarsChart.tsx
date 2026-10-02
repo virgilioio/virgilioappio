@@ -1,6 +1,7 @@
 import { METRICS } from '../../model/metrics'
 import { TONE_COLOR, TRACK } from '../../model/tokens'
 import { fmt } from '../../model/format'
+import { useHoverTip } from './ChartHoverTip'
 import type { MetricId, SeriesPoint, Format } from '../../model/types'
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 
 export function BarsChart({ metricId, data, format, currency, max }: Props) {
   const color = TONE_COLOR[METRICS[metricId].tone]
+  const tip = useHoverTip()
   const rows = data.slice(0, 10)
   const m = max ?? Math.max(1, ...rows.map(r => r.value))
   return (
@@ -27,7 +29,12 @@ export function BarsChart({ metricId, data, format, currency, max }: Props) {
           >
             {r.label}
           </div>
-          <div className="flex-1 min-w-0 h-5 rounded-[4px] relative overflow-hidden" style={{ background: TRACK }}>
+          <div
+            className="flex-1 min-w-0 h-5 rounded-[4px] relative overflow-hidden"
+            style={{ background: TRACK }}
+            onMouseMove={e => tip.show(e, { title: r.label, rows: [{ color, label: 'Value', value: fmt(r.value, format, currency) }] })}
+            onMouseLeave={tip.hide}
+          >
             <div
               className="h-full rounded-[4px] transition-[width] duration-[400ms] ease-out"
               style={{ width: `${(r.value / m) * 100}%`, background: color }}
@@ -41,6 +48,7 @@ export function BarsChart({ metricId, data, format, currency, max }: Props) {
           </div>
         </div>
       ))}
+      {tip.node}
     </div>
   )
 }

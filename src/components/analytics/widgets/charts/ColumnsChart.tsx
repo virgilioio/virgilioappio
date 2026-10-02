@@ -1,5 +1,6 @@
 import { PALETTE } from '../../model/tokens'
 import { fmt } from '../../model/format'
+import { useHoverTip } from './ChartHoverTip'
 import type { SeriesPoint, Format } from '../../model/types'
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function ColumnsChart({ data, format, currency, height = 220 }: Props) {
+  const tip = useHoverTip()
   const rows = data.slice(0, 10)
   const max = Math.max(1, ...rows.map(r => r.value))
   return (
@@ -18,7 +20,12 @@ export function ColumnsChart({ data, format, currency, height = 220 }: Props) {
       {rows.map((r, i) => {
         const h = (r.value / max) * (height - 50)
         return (
-          <div key={`${r.label}-${i}`} className="flex-1 min-w-0 flex flex-col items-center gap-1">
+          <div
+            key={`${r.label}-${i}`}
+            className="flex-1 min-w-0 flex flex-col items-center gap-1"
+            onMouseMove={e => tip.show(e, { title: r.label, rows: [{ color: PALETTE[i % PALETTE.length], label: 'Value', value: fmt(r.value, format, currency) }] })}
+            onMouseLeave={tip.hide}
+          >
             <div className="text-[11px] font-poppins font-semibold text-[#0d0d09] tabular-nums truncate max-w-full">{fmt(r.value, format, currency)}</div>
             <div
               className="w-full max-w-[40px] rounded-t-[4px] transition-[height] duration-[400ms] ease-out"
@@ -30,6 +37,7 @@ export function ColumnsChart({ data, format, currency, height = 220 }: Props) {
           </div>
         )
       })}
+      {tip.node}
     </div>
   )
 }

@@ -1,9 +1,11 @@
 import { AGING_BUCKETS } from '@/hooks/analytics/usePipelineAgingMetrics'
+import { useHoverTip } from './ChartHoverTip'
 
 // Green → red aging ramp (chart palette, matches analytics tones)
 const BUCKET_COLORS = ['#12B886', '#F5B83D', '#F08C3A', '#FA5252']
 
 export function AgingChart({ data }: { data: { label: string; buckets: number[] }[] }) {
+  const tip = useHoverTip()
   const rows = data.slice(0, 10)
   const max = Math.max(1, ...rows.map(r => r.buckets.reduce((s, n) => s + n, 0)))
   return (
@@ -28,7 +30,19 @@ export function AgingChart({ data }: { data: { label: string; buckets: number[] 
               <div className="h-full flex rounded-[4px] overflow-hidden" style={{ width: `${(total / max) * 100}%` }}>
                 {r.buckets.map((n, j) =>
                   n > 0 ? (
-                    <div key={j} title={`${AGING_BUCKETS[j]}: ${n}`} style={{ flex: n, background: BUCKET_COLORS[j] }} />
+                    <div
+                      key={j}
+                      className="h-full transition-opacity hover:opacity-80 cursor-default"
+                      style={{ flex: n, background: BUCKET_COLORS[j] }}
+                      onMouseMove={e => tip.show(e, {
+                        title: r.label,
+                        rows: [
+                          { color: BUCKET_COLORS[j], label: `${AGING_BUCKETS[j]} days`, value: `${n} (${Math.round((n / total) * 100)}%)` },
+                          { label: 'Total', value: String(total) },
+                        ],
+                      })}
+                      onMouseLeave={tip.hide}
+                    />
                   ) : null,
                 )}
               </div>
@@ -39,6 +53,7 @@ export function AgingChart({ data }: { data: { label: string; buckets: number[] 
           </div>
         )
       })}
+      {tip.node}
     </div>
   )
 }
