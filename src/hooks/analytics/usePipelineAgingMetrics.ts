@@ -67,10 +67,9 @@ export function usePipelineAgingMetrics(finalJobIds: string[], enabled: boolean)
         fetchAllIn<any>(active.map(a => a.id), 'association_id', c =>
           supabase.from('job_candidate_stage_history').select('association_id, moved_at').in('association_id', c),
         ),
-        chunked(candIds, async c => {
-          const { data } = await (supabase as any).from('candidates').select('id, first_name, last_name').in('id', c)
-          return data || []
-        }),
+        fetchAllIn<any>(candIds, 'id', c =>
+          (supabase as any).from('candidates').select('id, candidate_name').in('id', c),
+        ),
         userIds.length
           ? chunked(userIds, async c => {
               const { data } = await (supabase as any).from('profiles').select('id, full_name, email').in('id', c)
@@ -87,7 +86,7 @@ export function usePipelineAgingMetrics(finalJobIds: string[], enabled: boolean)
         const t = new Date(h.moved_at).getTime()
         if (!lastMove.has(h.association_id) || t > lastMove.get(h.association_id)!) lastMove.set(h.association_id, t)
       }
-      const candName = new Map<string, string>(cands.map((c: any) => [c.id, `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed']))
+      const candName = new Map<string, string>(cands.map((c: any) => [c.id, String(c.candidate_name || '').trim() || 'Unnamed']))
       const userName = new Map<string, string>(profs.map((p: any) => [p.id, p.full_name || p.email || 'Unknown']))
       const jobTitle = new Map((jobsRes.data || []).map(j => [j.id, j.title]))
       const now = Date.now()

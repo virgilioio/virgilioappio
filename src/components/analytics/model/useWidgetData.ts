@@ -95,9 +95,7 @@ export function useWidgetData(cfg: WidgetConfig): NormalizedData {
         .sort((x, y) => (cfg.groupBy === 'stage' ? x.order - y.order : y.total - x.total))
         .map(({ label, buckets }) => ({ label, buckets }))
     }
-    list = [...pool]
-      .sort((x, y) => days(y) - days(x))
-      .slice(0, 50)
+    list = [...pool].sort((x, y) => days(y) - days(x))
       .map(c => ({
         id: c.associationId,
         href: `/jobs/${c.jobId}?candidate=${c.candidateId}`,
