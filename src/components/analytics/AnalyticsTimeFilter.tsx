@@ -14,11 +14,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CalendarIcon } from 'lucide-react'
-import { format, subDays, subHours, startOfMonth, endOfMonth } from 'date-fns'
+import { format, subDays, subHours, subYears, startOfMonth, endOfMonth, startOfYear } from 'date-fns'
 import { DateRange } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 
-export type TimePreset = 'today' | 'last24h' | 'last7d' | 'last14d' | 'last30d' | 'last90d' | 'thisMonth' | 'custom'
+export type TimePreset = 'today' | 'last24h' | 'last7d' | 'last14d' | 'last30d' | 'last90d' | 'thisMonth' | 'ytd' | 'last12m' | 'custom'
 
 interface AnalyticsTimeFilterProps {
   onDateRangeChange: (startDate: Date, endDate: Date) => void
@@ -49,6 +49,10 @@ export function AnalyticsTimeFilter({ onDateRangeChange, initialPreset = 'last7d
         return { start: subDays(now, 90), end: new Date() }
       case 'thisMonth':
         return { start: startOfMonth(now), end: endOfMonth(now) }
+      case 'ytd':
+        return { start: startOfYear(new Date()), end: new Date() }
+      case 'last12m':
+        return { start: subYears(new Date(), 1), end: new Date() }
       case 'custom':
         if (customRange?.from && customRange?.to) {
           return { start: customRange.from, end: customRange.to }
@@ -91,6 +95,8 @@ export function AnalyticsTimeFilter({ onDateRangeChange, initialPreset = 'last7d
     last30d: 'Last 30 Days',
     last90d: 'Last 90 Days',
     thisMonth: 'This Month',
+    ytd: 'Year to Date',
+    last12m: 'Last 12 Months',
     custom: 'Custom Range'
   }
 
