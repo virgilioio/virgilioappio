@@ -243,8 +243,6 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
           `)
           .in('job_id', c))
         allAssociations = associations
-        const hiredRows = associations.filter(a => a.status === 'hired').map(a => eventAt(a).toISOString()).sort()
-        console.info('[Analytics] counts', { assocs: associations.length, hired: hiredRows.length, hiredMin: hiredRows[0], hiredMax: hiredRows[hiredRows.length - 1] })
       }
 
       // Fetch status-agnostic associations for Avg Time to Hire
@@ -295,10 +293,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       })
 
       // Applications: candidates in 'application' stage type
-      const applications = applicationsInRange.filter(a => {
-        const stageInfo = a.job_hiring_stages as any
-        return stageInfo?.job_stages?.stage_type === 'application'
-      }).length
+      // Every candidate added in the period counts, even if they have since moved on.
+      const applications = applicationsInRange.length
 
       // Active candidates — INTERPRETATION: "candidates that entered the pipeline as active
       // within the date range" (event-based, not a current-state snapshot). Associations are
@@ -321,10 +317,12 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       }).length
 
       // Total offers (status = 'offer') within date range
+      // Any candidate offered in the period, even if later hired or declined.
+      const offeredAt = (a: any): Date | null =>
+        a.offered_at ? new Date(a.offered_at) : a.status === 'offer' ? eventAt(a) : null
       const totalOffers = allAssociations.filter(a => {
-        if (a.status !== 'offer') return false
-        const updatedAt = eventAt(a)
-        return updatedAt >= dateRange.startDate && updatedAt <= rangeEnd
+        const d = offeredAt(a)
+        return !!d && d >= dateRange.startDate && d <= rangeEnd
       }).length
 
       // Total hires (status = 'hired') within date range
@@ -337,11 +335,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
 
       // Avg Time to Hire: uses status-AGNOSTIC associations (ignores job status filter)
       let avgTimeToHire: number | null = null
-      const hiredForAvg = hiredInRange.filter(a => {
-        if (a.status !== 'hired') return false
-        const updatedAt = eventAt(a)
-        return updatedAt >= dateRange.startDate && updatedAt <= rangeEnd
-      })
+      const hiredForAvg = hiredInRange
       if (hiredForAvg.length > 0) {
         const totalDays = hiredForAvg.reduce((sum, a) => {
           const created = new Date(a.created_at).getTime()
@@ -408,7 +402,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         const dayApplications = applicationsInRange.filter(a => {
           const createdAt = new Date(a.created_at)
           const stageInfo = a.job_hiring_stages as any
-          return createdAt >= dayStartUTC && createdAt <= dayEndUTC && stageInfo?.job_stages?.stage_type === 'application'
+          void stageInfo
+          return createdAt >= dayStartUTC && createdAt <= dayEndUTC
         }).length
 
         const dayActive = allAssociations.filter(a => {
@@ -432,9 +427,8 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
 
         // Offers on this day (by updated_at)
         const dayOffers = allAssociations.filter(a => {
-          if (a.status !== 'offer') return false
-          const updatedAt = eventAt(a)
-          return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
+          const d = offeredAt(a)
+          return !!d && d >= dayStartUTC && d <= dayEndUTC
         }).length
 
         // Rejected on this day (by updated_at)
