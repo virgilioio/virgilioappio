@@ -1,6 +1,7 @@
 import { METRICS } from '../../model/metrics'
 import { TONE_COLOR } from '../../model/tokens'
 import { fmt } from '../../model/format'
+import { useHoverTip } from './ChartHoverTip'
 import type { MetricId, SeriesPoint, Format } from '../../model/types'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 
 export function FunnelChart({ metricId, data, format, currency }: Props) {
   const tone = TONE_COLOR[METRICS[metricId].tone]
+  const tip = useHoverTip()
   const rows = data
   const top = rows[0]?.value ?? 0
   return (
@@ -30,7 +32,15 @@ export function FunnelChart({ metricId, data, format, currency }: Props) {
             >
               {r.label}
             </div>
-            <div className="flex-1 min-w-0 h-6 rounded-[4px] relative overflow-hidden" style={{ background: '#F4F3EF' }}>
+            <div
+              className="flex-1 min-w-0 h-6 rounded-[4px] relative overflow-hidden"
+              style={{ background: '#F4F3EF' }}
+              onMouseMove={e => tip.show(e, { title: r.label, rows: [
+                { color: tone, label: 'Value', value: fmt(r.value, format, currency) },
+                { label: 'Of first stage', value: `${conv}%` },
+              ] })}
+              onMouseLeave={tip.hide}
+            >
               <div
                 className="h-full rounded-[4px] flex items-center px-2 transition-[width] duration-[400ms]"
                 style={{ width: `${widthPct}%`, background: bg }}
@@ -47,6 +57,7 @@ export function FunnelChart({ metricId, data, format, currency }: Props) {
           </div>
         )
       })}
+      {tip.node}
     </div>
   )
 }
