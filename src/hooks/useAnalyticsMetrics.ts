@@ -83,6 +83,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       
       const startISO = startOfDayUTC(dateRange.startDate)
       const endISO = endOfDayUTC(dateRange.endDate)
+      const rangeEnd = new Date(endISO)
       
       console.log('[Analytics] Date range:', { startISO, endISO })
 
@@ -290,7 +291,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       // Filter by date range for applications (created_at)
       const applicationsInRange = allAssociations.filter(a => {
         const createdAt = new Date(a.created_at)
-        return createdAt >= dateRange.startDate && createdAt <= dateRange.endDate
+        return createdAt >= dateRange.startDate && createdAt <= rangeEnd
       })
 
       // Applications: candidates in 'application' stage type
@@ -307,7 +308,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       const activeCandidates = allAssociations.filter(a => {
         if (a.status !== 'active') return false
         const createdAt = new Date(a.created_at)
-        return createdAt >= dateRange.startDate && createdAt <= dateRange.endDate
+        return createdAt >= dateRange.startDate && createdAt <= rangeEnd
       }).length
 
       // Rejected candidates — INTERPRETATION: "candidates rejected within the date range"
@@ -316,21 +317,21 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       const rejectedCandidates = allAssociations.filter(a => {
         if (a.status !== 'rejected') return false
         const updatedAt = eventAt(a)
-        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+        return updatedAt >= dateRange.startDate && updatedAt <= rangeEnd
       }).length
 
       // Total offers (status = 'offer') within date range
       const totalOffers = allAssociations.filter(a => {
         if (a.status !== 'offer') return false
         const updatedAt = eventAt(a)
-        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+        return updatedAt >= dateRange.startDate && updatedAt <= rangeEnd
       }).length
 
       // Total hires (status = 'hired') within date range
       const hiredInRange = allAssociations.filter(a => {
         if (a.status !== 'hired') return false
         const updatedAt = eventAt(a)
-        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+        return updatedAt >= dateRange.startDate && updatedAt <= rangeEnd
       })
       const totalHires = hiredInRange.length
 
@@ -339,7 +340,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
       const hiredForAvg = hiredInRange.filter(a => {
         if (a.status !== 'hired') return false
         const updatedAt = eventAt(a)
-        return updatedAt >= dateRange.startDate && updatedAt <= dateRange.endDate
+        return updatedAt >= dateRange.startDate && updatedAt <= rangeEnd
       })
       if (hiredForAvg.length > 0) {
         const totalDays = hiredForAvg.reduce((sum, a) => {
@@ -359,7 +360,7 @@ export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics
         const scheduledStart = new Date(b.scheduled_start)
         return scheduledStart <= now && 
                scheduledStart >= dateRange.startDate && 
-               scheduledStart <= dateRange.endDate
+               scheduledStart <= rangeEnd
       }).length
 
       // Status distribution for pie chart
