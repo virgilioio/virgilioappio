@@ -438,7 +438,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
               )}
 
               {/* Short fields — 2-col icon+label+value */}
-              {shortFields.length > 0 && (
+              {(shortFields.length > 0 || offerOpening) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                   <div className="flex items-start gap-2.5">
                     <span className="text-text-tertiary mt-0.5"><FileText className="h-3.5 w-3.5" /></span>

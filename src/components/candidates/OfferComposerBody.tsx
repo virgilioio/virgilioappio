@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
