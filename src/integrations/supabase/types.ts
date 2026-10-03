@@ -3925,6 +3925,7 @@ export type Database = {
           notes: string | null
           offered_at: string | null
           offered_by: string | null
+          opening_id: string | null
           output_language: string | null
           pipeline_position: number | null
           rejected_at: string | null
@@ -3963,6 +3964,7 @@ export type Database = {
           notes?: string | null
           offered_at?: string | null
           offered_by?: string | null
+          opening_id?: string | null
           output_language?: string | null
           pipeline_position?: number | null
           rejected_at?: string | null
@@ -4001,6 +4003,7 @@ export type Database = {
           notes?: string | null
           offered_at?: string | null
           offered_by?: string | null
+          opening_id?: string | null
           output_language?: string | null
           pipeline_position?: number | null
           rejected_at?: string | null
@@ -4033,6 +4036,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_candidate_associations_opening_id_fkey"
+            columns: ["opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_candidate_associations_opening_id_fkey"
+            columns: ["opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings_with_status"
             referencedColumns: ["id"]
           },
           {
@@ -4167,6 +4184,63 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "job_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_openings: {
+        Row: {
+          created_at: string
+          filled_at: string | null
+          hired_association_id: string | null
+          id: string
+          job_id: string
+          position: number
+          req_id: string
+          target_hire_date: string
+          target_start_date: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          filled_at?: string | null
+          hired_association_id?: string | null
+          id?: string
+          job_id: string
+          position?: number
+          req_id: string
+          target_hire_date: string
+          target_start_date: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          filled_at?: string | null
+          hired_association_id?: string | null
+          id?: string
+          job_id?: string
+          position?: number
+          req_id?: string
+          target_hire_date?: string
+          target_start_date?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_openings_hired_association_id_fkey"
+            columns: ["hired_association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_openings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -5414,6 +5488,7 @@ export type Database = {
           form_id: string | null
           id: string
           job_id: string
+          opening_id: string | null
           organization_id: string
           sent_at: string | null
           status: string
@@ -5431,6 +5506,7 @@ export type Database = {
           form_id?: string | null
           id?: string
           job_id: string
+          opening_id?: string | null
           organization_id: string
           sent_at?: string | null
           status?: string
@@ -5448,6 +5524,7 @@ export type Database = {
           form_id?: string | null
           id?: string
           job_id?: string
+          opening_id?: string | null
           organization_id?: string
           sent_at?: string | null
           status?: string
@@ -5475,6 +5552,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_opening_id_fkey"
+            columns: ["opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_opening_id_fkey"
+            columns: ["opening_id"]
+            isOneToOne: false
+            referencedRelation: "job_openings_with_status"
             referencedColumns: ["id"]
           },
           {
@@ -8742,6 +8833,40 @@ export type Database = {
           },
         ]
       }
+      job_openings_with_status: {
+        Row: {
+          candidate_id: string | null
+          candidate_name: string | null
+          created_at: string | null
+          filled_at: string | null
+          hired_association_id: string | null
+          id: string | null
+          job_id: string | null
+          position: number | null
+          req_id: string | null
+          status: string | null
+          target_hire_date: string | null
+          target_start_date: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_openings_hired_association_id_fkey"
+            columns: ["hired_association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_openings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: {
@@ -9298,6 +9423,10 @@ export type Database = {
         Args: { job_id_param: string }
         Returns: boolean
       }
+      job_opening_active_offer: {
+        Args: { _opening_id: string }
+        Returns: string
+      }
       log_activity: {
         Args: {
           p_activity_type: Database["public"]["Enums"]["activity_type"]
@@ -9450,6 +9579,10 @@ export type Database = {
           skipped_count: number
           synced_count: number
         }[]
+      }
+      sync_job_target_fill_date: {
+        Args: { _job_id: string }
+        Returns: undefined
       }
       test_get_user_organization_id: { Args: never; Returns: string }
       update_feature_flag: {
