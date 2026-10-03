@@ -279,3 +279,18 @@ verify_jwt = true
 
 [functions.merge-candidates]
 verify_jwt = true
+
+[functions.sales-deal-won]
+verify_jwt = false
+
+[functions.sales-company-jobs]
+verify_jwt = false
+
+[functions.sales-reserve-req-ids]
+verify_jwt = false
+
+[functions.sales-line-updated]
+verify_jwt = false
+
+[functions.deliver-integration-outbox]
+verify_jwt = false
