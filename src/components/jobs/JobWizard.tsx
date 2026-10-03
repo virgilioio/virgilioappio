@@ -12,6 +12,8 @@ import { SummaryStep } from './wizard/SummaryStep'
 import { JobPostingStep, type JobPostingStepHandle } from './wizard/JobPostingStep'
 import { useJobSourcingProject } from '@/hooks/useJobSourcingProject'
 import { supabase } from '@/integrations/supabase/client'
+import { insertOpenings } from '@/hooks/useJobOpenings'
+import type { OpeningRow } from '@/lib/jobOpenings'
 
 interface JobWizardProps {
   isOpen: boolean
@@ -152,7 +154,17 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   }, [wizardState.currentStep])
 
 
-  const resetWizard = () =>
+  const [openings, setOpenings] = useState<OpeningRow[]>([])
+  const [openingsValid, setOpeningsValid] = useState(false)
+  const [openingsSaved, setOpeningsSaved] = useState(false)
+
+  const resetWizard = () => {
+    setOpenings([])
+    setOpeningsValid(false)
+    setOpeningsSaved(false)
+    resetWizardState()
+  }
+  const resetWizardState = () =>
     setWizardState({
       currentStep: 1,
       isComplete: false,
@@ -192,16 +204,30 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
         ...wizardState.jobData,
         status: wizardState.jobData.status ?? 'open',
       } as CreateJobData
+      delete (payload as any).target_fill_date // derived from openings
       const existingId = wizardState.createdJobId
       if (existingId && existingId !== 'created') {
         // Re-entering step 1 after the job was already created — update in place
         // instead of inserting a duplicate row.
         await updateJob(existingId, payload as any)
+        if (!openingsSaved) {
+          await insertOpenings(existingId, openings)
+          setOpeningsSaved(true)
+        }
         return { id: existingId, created: false }
       }
       const jobResult = await createJob(payload)
       const id = (jobResult as any)?.id || 'created'
       setWizardState((prev) => ({ ...prev, createdJobId: id }))
+      if (id !== 'created') {
+        try {
+          await insertOpenings(id, openings)
+          setOpeningsSaved(true)
+        } catch (e: any) {
+          toast({ title: 'Openings not saved', description: e?.message || 'Please fix the openings and try again.', variant: 'destructive' })
+          return null
+        }
+      }
       return { id, created: true }
     } catch (error) {
       console.error('Error saving job step 1:', error)
@@ -293,7 +319,8 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
   }
 
   const canProceedStep1 = () =>
-    !!wizardState.jobData.title && !!wizardState.jobData.organization_id && !!wizardState.jobData.department_id
+    !!wizardState.jobData.title && !!wizardState.jobData.organization_id && !!wizardState.jobData.department_id &&
+    (openingsSaved || openingsValid)
 
   const handlePostingContinue = async () => {
     setIsSubmitting(true)
@@ -324,7 +351,15 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
                 <span className="text-text-secondary"> — review and edit before publishing.</span>
               </div>
             )}
-            <JobInfoStep jobData={wizardState.jobData} onUpdate={updateJobData} />
+            <JobInfoStep
+              jobData={wizardState.jobData}
+              onUpdate={updateJobData}
+              openings={
+                openingsSaved && wizardState.createdJobId && wizardState.createdJobId !== 'created'
+                  ? { mode: 'edit', jobId: wizardState.createdJobId, onManage: () => {} }
+                  : { mode: 'create', value: openings, onChange: setOpenings, onValidityChange: setOpeningsValid }
+              }
+            />
           </>
         )
       case 2:
@@ -361,6 +396,7 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
       case 5:
         return (
           <SummaryStep
+            openings={openings}
             jobData={wizardState.jobData}
             jobId={wizardState.createdJobId}
             hasPosting={wizardState.hasPosting}
