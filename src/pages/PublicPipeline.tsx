@@ -1,7 +1,7 @@
 /** /cp/:token and /cp/:token/:slug — shared client pipeline. */
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, ShieldCheck, Sparkles, UserX, Slash, CircleHelp } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 
 import { supabaseAnonKey, supabaseUrl } from '@/integrations/supabase/client'
@@ -20,7 +20,9 @@ interface Row {
   public_status?: 'awaiting' | 'requested' | 'declined' | 'interviewing' | 'scheduled'; scheduled_start?: string
   stage_name?: string; days_in_stage?: number; applied_at?: string | null; offered_at?: string | null
   offer_status?: string; accepted_at?: string | null; start_date?: string | null; reached_stage?: string | null
-  closed_at?: string | null; rejection_reason?: string
+  rejected_at?: string | null; rejection_reason?: string; rejection_note?: string | null
+  rejection_kind?: 'withdrew' | 'auto_screened' | 'rejected' | 'missing'
+  decided_by?: string | null; decided_by_avatar?: string | null
 }
 interface Board {
   state: 'live'; brand: { agency_name: string; logo_url: string | null }; workspace_name: string; client_name: string | null
@@ -76,10 +78,20 @@ function PPCard({ card, onOpen }: { card: Row; onOpen: () => void }) {
 function CandidateCell({ row }: { row: Row }) { const meta = [row.title, row.company ? `@ ${row.company}` : null].filter(Boolean).join(' '); const av = row.display_name.split(/\s+/).map((p) => p[0]).join('').slice(0, 2)
   return <span className="flex items-center" style={{ gap: 10, minWidth: 0 }}><span className="font-poppins inline-flex items-center justify-center shrink-0" style={{ width: 28, height: 28, borderRadius: 999, background: '#F1F0EC', color: '#5A6072', fontSize: 10.5, fontWeight: 600 }}>{av}</span><span style={{ minWidth: 0 }}><span className="font-poppins truncate" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0d0d09' }}>{row.display_name}</span>{meta && <span className="font-inter truncate" style={{ display: 'block', fontSize: 11.5, color: '#5A6072' }}>{meta}</span>}</span></span> }
 function FitCell({ score }: { score?: number }) { return typeof score === 'number' ? <span className="font-poppins inline-flex items-center" style={{ gap: 5, fontSize: 13.5, fontWeight: 600, color: score >= 85 ? '#12B886' : score >= 70 ? '#F59E0B' : '#5A6072' }}><Sparkles size={11} />{score}</span> : <span>—</span> }
+function RejectionReasonCell({ row }: { row: Row }) {
+  const Icon = row.rejection_kind === 'withdrew' ? UserX : row.rejection_kind === 'auto_screened' ? Sparkles : row.rejection_kind === 'missing' ? CircleHelp : Slash
+  const color = row.rejection_kind === 'rejected' ? '#9A3412' : '#5A6072'
+  return <span className="flex items-start" style={{ gap: 7, minWidth: 0 }}><Icon size={13} style={{ color, marginTop: 2, flexShrink: 0 }} /><span style={{ minWidth: 0 }}><span className="font-inter truncate" style={{ display: 'block', fontSize: 12, fontWeight: 500, color }}>{row.rejection_reason || 'No reason recorded'}</span>{row.rejection_note && <span className="font-inter truncate" style={{ display: 'block', marginTop: 2, fontSize: 10.5, color: '#8B8F9E' }}>{row.rejection_note}</span>}</span></span>
+}
+function DecidedByCell({ row }: { row: Row }) {
+  if (!row.decided_by) return <span style={{ fontSize: 12, color: '#8B8F9E' }}>—</span>
+  const initials = row.decided_by.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('')
+  return <span className="flex items-center" style={{ gap: 7, minWidth: 0 }}>{row.decided_by_avatar ? <img src={row.decided_by_avatar} alt="" className="shrink-0 rounded-full object-cover" style={{ width: 24, height: 24 }} /> : <span className="font-poppins inline-flex shrink-0 items-center justify-center rounded-full" style={{ width: 24, height: 24, background: '#F1F0EC', color: '#5A6072', fontSize: 9, fontWeight: 600 }}>{initials}</span>}<span className="truncate" style={{ fontSize: 12, color: '#1F2230' }}>{row.decided_by}</span></span>
+}
 function FlatTable({ board, onOpen }: { board: Board; onOpen: (row: Row) => void }) {
   const section = board.active_section as Exclude<SectionKey, 'recruiting'>; const rows = board.rows ?? []
-  const extra = section === 'application' ? [['Applied', 'minmax(0,1fr)'], ...(board.show_client_status ? [['Status', 'minmax(0,1.2fr)']] : [])] : section === 'offers' ? [['Offer sent', 'minmax(0,1fr)'], ...(board.show_client_status ? [['Status', 'minmax(0,1.2fr)']] : [])] : section === 'hired' ? [['Accepted', 'minmax(0,1fr)'], ['Starts', 'minmax(0,1fr)']] : [['Reached', 'minmax(0,1fr)'], ['Closed', 'minmax(0,.8fr)'], ...(board.show_reject_reason ? [['Reason', 'minmax(0,1.1fr)']] : [])]
-  const columns = [['Candidate', 'minmax(0,2fr)'], ...(board.show_fit_score ? [['Gio Fit', '84px']] : []), ...extra] as string[][]
+  const extra = section === 'application' ? [['Applied', 'minmax(0,1fr)'], ...(board.show_client_status ? [['Status', 'minmax(0,1.2fr)']] : [])] : section === 'offers' ? [['Offer sent', 'minmax(0,1fr)'], ...(board.show_client_status ? [['Status', 'minmax(0,1.2fr)']] : [])] : section === 'hired' ? [['Accepted', 'minmax(0,1fr)'], ['Starts', 'minmax(0,1fr)']] : [['Reached', 'minmax(0,1fr)'], ['Rejected on', 'minmax(0,.8fr)'], ...(board.show_reject_reason ? [['Reason', 'minmax(0,1.35fr)']] : []), ['Decided by', 'minmax(0,1.1fr)']]
+  const columns = [['Candidate', 'minmax(0,2fr)'], ...(board.show_fit_score ? [[section === 'rejected' ? 'Match' : 'Gio Fit', '84px']] : []), ...extra] as string[][]
   const grid = [...columns.map((c) => c[1]), '24px'].join(' ')
   return <div className="flex flex-col" style={{ flex: 1, minHeight: 0, background: '#fff', border: '1px solid #E7E8EE', borderRadius: 12, overflow: 'hidden' }}>
     <div className="grid items-center" style={{ gridTemplateColumns: grid, padding: '10px 16px', gap: 12, background: '#FAFAF7', borderBottom: '1px solid #E7E8EE' }}>{columns.map(([label]) => <span key={label} style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.055em', textTransform: 'uppercase', color: '#8B8F9E' }}>{label}</span>)}<span /></div>
@@ -89,7 +101,7 @@ function FlatTable({ board, onOpen }: { board: Board; onOpen: (row: Row) => void
         {section === 'application' && <><span style={{ fontSize: 12, color: '#5A6072' }}>{relative(row.applied_at)}</span>{board.show_client_status && <Status row={row} application />}</>}
         {section === 'offers' && <><span style={{ fontSize: 12, color: '#5A6072' }}>{relative(row.offered_at)}</span>{board.show_client_status && <Badge tone="lilac" dot size="xs">{row.offer_status}</Badge>}</>}
         {section === 'hired' && <><span style={{ fontSize: 12, color: '#5A6072' }}>{shortDate(row.accepted_at)}</span><span className="font-poppins" style={{ fontSize: 12.5, fontWeight: 600, color: '#0d0d09' }}>{shortDate(row.start_date)}</span></>}
-        {section === 'rejected' && <><span className="truncate" style={{ fontSize: 12, color: '#5A6072' }}>{row.reached_stage || '—'}</span><span style={{ fontSize: 12, color: '#5A6072' }}>{shortDate(row.closed_at)}</span>{board.show_reject_reason && <Badge tone="neutral" size="xs">{row.rejection_reason}</Badge>}</>}
+        {section === 'rejected' && <><span className="truncate" style={{ fontSize: 12, color: '#5A6072' }}>{row.reached_stage || '—'}</span><span style={{ fontSize: 12, color: '#5A6072' }}>{shortDate(row.rejected_at)}</span>{board.show_reject_reason && <RejectionReasonCell row={row} />}<DecidedByCell row={row} /></>}
         <ChevronRight size={14} className="text-[#D1D0CB] group-hover:text-[#5A6072]" />
       </button>)}
     </div>
