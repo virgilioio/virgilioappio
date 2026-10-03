@@ -24,7 +24,11 @@ import {
   Crown,
   User as UserIcon,
   ListChecks,
+  Hash,
 } from 'lucide-react'
+import { OpeningsEditor } from './openings/OpeningsEditor'
+import { useJobOpenings } from '@/hooks/useJobOpenings'
+import { openingsSummary } from '@/lib/jobOpenings'
 
 import { formatDistanceToNowStrict } from 'date-fns'
 import { Button } from '@/components/ui/button'
@@ -79,6 +83,7 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 type SectionId =
+  | 'openings'
   | 'hiring-plan'
   | 'auto-rejection'
   | 'ai-screen'
@@ -89,6 +94,7 @@ type SectionId =
   | 'danger'
 
 const NAV_CONFIG: Array<{ id: SectionId; label: string; icon: any }> = [
+  { id: 'openings', label: 'Openings', icon: Hash },
   { id: 'hiring-plan', label: 'Hiring plan', icon: GitBranch },
   { id: 'hiring-team', label: 'Hiring team', icon: Users },
   { id: 'offer-approval', label: 'Offer approval', icon: ListChecks },
@@ -180,7 +186,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
   // Scroll spy
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [active, setActive] = useState<SectionId>('hiring-plan')
+  const [active, setActive] = useState<SectionId>('openings')
   useLayoutEffect(() => {
     const root = scrollRef.current
     if (!root) return
@@ -189,7 +195,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
         root.querySelectorAll<HTMLElement>('[data-section]')
       )
       const top = root.scrollTop + 100
-      let current: SectionId = 'hiring-plan'
+      let current: SectionId = 'openings'
       for (const h of headers) {
         if (h.offsetTop <= top) current = (h.dataset.section as SectionId) || current
       }
@@ -205,7 +211,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   useEffect(() => {
     const hash = (typeof window !== 'undefined' ? window.location.hash : '').replace('#', '')
     if (!hash) return
-    const valid: SectionId[] = ['hiring-plan', 'hiring-team', 'offer-approval']
+    const valid: SectionId[] = ['openings', 'hiring-plan', 'hiring-team', 'offer-approval']
     if (!valid.includes(hash as SectionId)) return
     const t = setTimeout(() => {
       scrollTo(hash as SectionId)
@@ -217,6 +223,17 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
       clearTimeout(clear)
     }
   }, [])
+
+  useEffect(() => {
+    const h = (e: Event) => {
+      const id = (e as CustomEvent).detail as SectionId
+      scrollTo(id)
+      setHighlightSection(id)
+      setTimeout(() => setHighlightSection(null), 2200)
+    }
+    window.addEventListener('job-setup:scroll', h)
+    return () => window.removeEventListener('job-setup:scroll', h)
+  })
 
   const scrollTo = (id: SectionId) => {
     const root = scrollRef.current
@@ -409,8 +426,13 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
           {/* Main column */}
           <main className="space-y-8 min-w-0">
+            {/* Openings */}
+            <div data-section="openings" id="openings">
+              <OpeningsSection jobId={jobId} readOnly={isReadOnly} />
+            </div>
+
             {/* Hiring plan */}
-            <div data-section="hiring-plan">
+            <div data-section="hiring-plan" style={{ marginTop: 24 }}>
               <HiringPlanTab jobId={jobId} readOnly={isReadOnly} hideHeader />
             </div>
 
@@ -1593,3 +1615,27 @@ function MenuItem({
 }
 
 export default JobSetupLayout
+
+
+function OpeningsSection({ jobId, readOnly }: { jobId: string; readOnly: boolean }) {
+  const { openings } = useJobOpenings(jobId)
+  const { n, open } = openingsSummary(openings)
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-poppins" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.03em', color: '#0d0d09' }}>
+          Openings<span style={{ color: '#D7C5FB' }}>.</span>
+        </h2>
+        <Badge tone="neutral" size="sm">
+          {n} {n === 1 ? 'opening' : 'openings'} · {open} open
+        </Badge>
+      </div>
+      <SectionCard title="Openings">
+        <p className="-mt-2 font-inter text-[12px] text-text-tertiary">
+          One opening per hire. Offers reserve an opening by Req ID; marking a candidate hired fills it.
+        </p>
+        <OpeningsEditor mode="setup" jobId={jobId} readOnly={readOnly} />
+      </SectionCard>
+    </div>
+  )
+}

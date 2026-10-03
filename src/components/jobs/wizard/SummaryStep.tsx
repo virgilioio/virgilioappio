@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import {
   Briefcase,
+  Hash,
   Building2,
   MapPin,
   DollarSign,
@@ -51,6 +52,7 @@ interface SummaryStepProps {
   onPublishImmediatelyChange?: (v: boolean) => void
   notifySlack?: boolean
   onNotifySlackChange?: (v: boolean) => void
+  openings?: Array<{ req_id: string; target_hire_date: string }>
 }
 
 const STAGE_TONES = ['blue', 'purple', 'yellow', 'pink', 'green', 'orange', 'lilac'] as const
@@ -189,6 +191,7 @@ export function SummaryStep({
   onPublishImmediatelyChange,
   notifySlack = false,
   onNotifySlackChange,
+  openings,
 }: SummaryStepProps) {
   const { organizations } = useOrganizations()
   const { departments } = useDepartments()
@@ -333,17 +336,27 @@ export function SummaryStep({
             <FieldRow icon={ClipboardList} label="Type" value={<span className="capitalize">{employmentLabel || '—'}</span>} />
             <FieldRow icon={DollarSign} label="Salary" value={formatSalary()} />
             <FieldRow
-              icon={CalendarCheck}
-              label="Target hire"
+              icon={Hash}
+              label="Openings"
               value={
-                jobData.target_fill_date
-                  ? new Date(jobData.target_fill_date).toLocaleDateString(undefined, {
+                openings && openings.length
+                  ? `${openings.length} · ${openings.map((o) => o.req_id).join(', ')}`
+                  : '—'
+              }
+            />
+            <FieldRow
+              icon={CalendarCheck}
+              label="First hire by"
+              value={(() => {
+                const first = (openings || []).map((o) => o.target_hire_date).filter(Boolean).sort()[0]
+                return first
+                  ? new Date(first + 'T00:00:00').toLocaleDateString(undefined, {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
                     })
                   : '—'
-              }
+              })()}
             />
           </div>
 

@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { X, Eye, Clock, ChevronRight, Users, GitBranch, Globe } from 'lucide-react'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { Job, CreateJobData, UpdateJobData } from '@/hooks/useJobs'
-import { JobInfoStep } from './wizard/JobInfoStep'
+import { JobInfoStep, type JobInfoOpeningsProp } from './wizard/JobInfoStep'
+import { useNavigate } from 'react-router-dom'
 import { SectionCard, ToggleRow } from './wizard/_parts'
 import { cn } from '@/lib/utils'
 
@@ -52,6 +53,7 @@ export function JobFormSheet({
   const [jobData, setJobData] = useState<Partial<CreateJobData>>({ status: 'draft', currency: 'USD' })
   const [activeSection, setActiveSection] = useState<string>('basics')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
 
   // Hydrate from job
   useEffect(() => {
@@ -124,7 +126,6 @@ export function JobFormSheet({
       include_signing_bonus: !!src.include_signing_bonus,
       status: src.status || 'draft',
       department_id: src.department_id ?? null,
-      target_fill_date: trimOrNull(src.target_fill_date),
       priority: src.priority || 'standard',
     }
     if (src.organization_id) payload.organization_id = src.organization_id
@@ -225,7 +226,19 @@ export function JobFormSheet({
             <div data-section="basics" />
             <div className="-mt-10">
               {/* Reuse the wizard's rich form. We attach anchors via offsetTop tracking */}
-              <AnchoredJobInfo jobData={jobData} onUpdate={updateJobData} />
+              <AnchoredJobInfo
+                jobData={jobData}
+                onUpdate={updateJobData}
+                openings={job?.id ? {
+                  mode: 'edit',
+                  jobId: job.id,
+                  onManage: () => {
+                    onClose()
+                    navigate(`/jobs/${job.id}/setup#openings`)
+                    setTimeout(() => window.dispatchEvent(new CustomEvent('job-setup:scroll', { detail: 'openings' })), 350)
+                  },
+                } : undefined}
+              />
             </div>
 
             {/* Compensation toggles (job-level) — extend the wizard's compensation card */}
@@ -345,9 +358,11 @@ export function JobFormSheet({
 function AnchoredJobInfo({
   jobData,
   onUpdate,
+  openings,
 }: {
   jobData: Partial<CreateJobData>
   onUpdate: (d: Partial<CreateJobData>) => void
+  openings?: JobInfoOpeningsProp
 }) {
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -366,7 +381,7 @@ function AnchoredJobInfo({
 
   return (
     <div ref={wrapRef}>
-      <JobInfoStep jobData={jobData} onUpdate={onUpdate} />
+      <JobInfoStep jobData={jobData} onUpdate={onUpdate} openings={openings} />
     </div>
   )
 }
