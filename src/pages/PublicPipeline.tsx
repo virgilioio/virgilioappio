@@ -91,7 +91,7 @@ function DecidedByCell({ row }: { row: Row }) {
 function FlatTable({ board, onOpen }: { board: Board; onOpen: (row: Row) => void }) {
   const section = board.active_section as Exclude<SectionKey, 'recruiting'>; const rows = board.rows ?? []
   const extra = section === 'application' ? [['Applied', 'minmax(0,1fr)'], ...(board.show_client_status ? [['Status', 'minmax(0,1.2fr)']] : [])] : section === 'offers' ? [['Offer sent', 'minmax(0,1fr)'], ...(board.show_client_status ? [['Status', 'minmax(0,1.2fr)']] : [])] : section === 'hired' ? [['Accepted', 'minmax(0,1fr)'], ['Starts', 'minmax(0,1fr)']] : [['Reached', 'minmax(0,1fr)'], ['Rejected on', 'minmax(0,.8fr)'], ...(board.show_reject_reason ? [['Reason', 'minmax(0,1.35fr)']] : []), ['Decided by', 'minmax(0,1.1fr)']]
-  const columns = [['Candidate', 'minmax(0,2fr)'], ...(board.show_fit_score ? [['Gio Fit', '84px']] : []), ...extra] as string[][]
+  const columns = [['Candidate', 'minmax(0,2fr)'], ...(board.show_fit_score ? [[section === 'rejected' ? 'Match' : 'Gio Fit', '84px']] : []), ...extra] as string[][]
   const grid = [...columns.map((c) => c[1]), '24px'].join(' ')
   return <div className="flex flex-col" style={{ flex: 1, minHeight: 0, background: '#fff', border: '1px solid #E7E8EE', borderRadius: 12, overflow: 'hidden' }}>
     <div className="grid items-center" style={{ gridTemplateColumns: grid, padding: '10px 16px', gap: 12, background: '#FAFAF7', borderBottom: '1px solid #E7E8EE' }}>{columns.map(([label]) => <span key={label} style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.055em', textTransform: 'uppercase', color: '#8B8F9E' }}>{label}</span>)}<span /></div>
