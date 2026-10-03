@@ -22,6 +22,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { logActivity } from '@/lib/activityLogger'
+import { useJobOpenings } from '@/hooks/useJobOpenings'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -33,6 +34,8 @@ interface OfferComposerBodyProps {
   onSelectedFormIdChange: (id: string) => void
   fieldValues: Record<string, any>
   onFieldValuesChange: (values: Record<string, any>) => void
+  openingId: string
+  onOpeningIdChange: (id: string) => void
   onSuccess: () => void
   onCancel: () => void
   draftRestored?: boolean
@@ -49,6 +52,8 @@ export function OfferComposerBody({
   onSelectedFormIdChange,
   fieldValues,
   onFieldValuesChange,
+  openingId,
+  onOpeningIdChange,
   onSuccess,
   onCancel,
   draftRestored,
@@ -59,9 +64,20 @@ export function OfferComposerBody({
   const { fields, isLoading: fieldsLoading } = useOfferFormFields(selectedFormId)
   const { offerLetters, createOfferLetter, updateOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
+  const { openings, isLoading: openingsLoading } = useJobOpenings(jobId)
 
   // Find the current offer being edited to check its status
   const currentOffer = editingOfferId ? offerLetters.find(ol => ol.id === editingOfferId) : null
+  const availableOpenings = openings.filter((opening) =>
+    opening.status === 'open'
+    || opening.id === currentOffer?.opening_id
+    || (opening.status === 'offer' && opening.candidate_id === candidateId),
+  )
+
+  useEffect(() => {
+    if (openingId || availableOpenings.length === 0) return
+    onOpeningIdChange(availableOpenings[0].id)
+  }, [openingId, availableOpenings, onOpeningIdChange])
   const shouldLoadApproval = currentOffer?.status === 'pending_approval' || currentOffer?.status === 'approved'
   const { approvalRequest, recallApproval } = useOfferApprovalRequest(
     shouldLoadApproval ? editingOfferId : undefined,
@@ -78,7 +94,7 @@ export function OfferComposerBody({
   }
 
   const canSave = () => {
-    if (!selectedFormId || !organizationId || !jobId) return false
+    if (!selectedFormId || !organizationId || !jobId || !openingId) return false
     const requiredFields = fields.filter(f => f.is_required)
     return requiredFields.every(field => {
       const val = fieldValues[field.field_name]
@@ -144,6 +160,7 @@ export function OfferComposerBody({
         await updateOfferLetter(editingOfferId, {
           form_id: selectedFormId,
           field_values: fieldValues,
+          opening_id: openingId,
         })
         // Log offer update activity
         const originalValues = currentOffer?.field_values || {}
@@ -163,6 +180,7 @@ export function OfferComposerBody({
         await createOfferLetter({
           candidate_id: candidateId,
           job_id: jobId,
+          opening_id: openingId,
           form_id: selectedFormId,
           organization_id: organizationId,
           title,
@@ -185,6 +203,18 @@ export function OfferComposerBody({
       onSuccess()
     } catch (error) {
       console.error('Failed to save offer:', error)
+    }
+  }
+
+  const handleOpeningChange = (id: string) => {
+    const previous = openings.find((opening) => opening.id === openingId)
+    const next = openings.find((opening) => opening.id === id)
+    onOpeningIdChange(id)
+    const startField = fields.find((field) => /start.*date|date.*start/i.test(field.field_name) && field.field_type === 'date')
+    if (!startField || !next?.target_start_date) return
+    const current = fieldValues[startField.field_name]
+    if (!current || current === previous?.target_start_date) {
+      onFieldValuesChange({ ...fieldValues, [startField.field_name]: next.target_start_date })
     }
   }
 
@@ -374,6 +404,33 @@ export function OfferComposerBody({
       {draftRestored && (
         <Badge variant="secondary" className="text-xs">Draft restored</Badge>
       )}
+
+      <div className="space-y-2">
+        <Label>Opening / Req ID <span className="text-destructive">*</span></Label>
+        <Select value={openingId} onValueChange={handleOpeningChange} disabled={openingsLoading || availableOpenings.length === 0}>
+          <SelectTrigger>
+            <SelectValue placeholder={openingsLoading ? 'Loading openings…' : 'Choose an opening…'} />
+          </SelectTrigger>
+          <SelectContent>
+            {openings.map((opening) => {
+              const unavailable = opening.status === 'filled'
+                || (opening.status === 'offer' && opening.candidate_id !== candidateId && opening.id !== currentOffer?.opening_id)
+              return (
+                <SelectItem key={opening.id} value={opening.id} disabled={unavailable}>
+                  <span className="font-medium">{opening.req_id}</span>
+                  <span className="ml-2 text-text-secondary">
+                    Start {format(new Date(`${opening.target_start_date}T00:00:00`), 'MMM d, yyyy')}
+                    {opening.status === 'offer' ? ` · Reserved${opening.candidate_name ? ` for ${opening.candidate_name}` : ''}` : opening.status === 'filled' ? ' · Filled' : ' · Open'}
+                  </span>
+                </SelectItem>
+              )
+            })}
+          </SelectContent>
+        </Select>
+        {!openingsLoading && availableOpenings.length === 0 && (
+          <p className="text-xs text-destructive">No available opening exists for this offer.</p>
+        )}
+      </div>
 
       {/* Offer Form Selector */}
       <div className="space-y-2">
