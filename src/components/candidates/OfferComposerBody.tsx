@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, ClipboardList, MapPin, DollarSign, Phone, RefreshCcw } from 'lucide-react'
+import { Briefcase, CalendarDays, Check, ChevronLeft, ChevronRight, Loader2, MapPin, RefreshCcw, UserRound } from 'lucide-react'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { format } from 'date-fns'
 import { useOfferForms } from '@/hooks/useOfferForms'
@@ -24,6 +24,9 @@ import { useRecruiterOptions } from '@/hooks/useRecruiterOptions'
 import { useOfferApprovalRequest } from '@/hooks/useOfferApprovalRequest'
 import { logActivity } from '@/lib/activityLogger'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
+import { useOfferApprovalChain } from '@/hooks/useOfferApprovalChain'
+import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
 
 interface OfferComposerBodyProps {
   candidateId: string
@@ -39,8 +42,32 @@ interface OfferComposerBodyProps {
   onOpeningIdChange: (id: string) => void
   onSuccess: () => void
   onCancel: () => void
+  onSaveDraft: () => void
   draftRestored?: boolean
   editingOfferId?: string
+}
+
+const fieldKey = (field: OfferFormField) => `${field.field_name} ${field.field_label}`.toLowerCase()
+const isCompField = (field: OfferFormField) => /salary|compensation|currency|pay period|bonus|equity|vesting/.test(fieldKey(field)) || field.field_type === 'salary'
+const isRoleField = (field: OfferFormField) => /title|role|reports|manager|start date|location|employment|expire/.test(fieldKey(field)) || ['date', 'recruiter', 'employment_type', 'work_location', 'location'].includes(field.field_type)
+const isBenefitField = (field: OfferFormField) => field.field_type === 'checkbox' || /benefit|pto|stipend|relocation|non-compete|background check/.test(fieldKey(field))
+
+function numericValue(value: any): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    try { const parsed = JSON.parse(value); if (parsed && typeof parsed === 'object') return Number(parsed.amount) || 0 } catch { /* plain value */ }
+    return Number(value.replace(/[^0-9.-]/g, '')) || 0
+  }
+  return Number(value?.amount) || 0
+}
+
+function shortMoney(value: number, currency = 'USD') {
+  if (!value) return '—'
+  return new Intl.NumberFormat('en', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(value)
+}
+
+function OfferSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return <section className="mb-[18px]"><div className="mb-2.5 flex items-center justify-between gap-3"><h3 className="font-poppins text-[12.5px] font-semibold uppercase tracking-[0.06em] text-dup-text">{title}</h3>{action}</div><div className="rounded-lg border border-virgilio-border bg-card p-4">{children}</div></section>
 }
 
 export function OfferComposerBody({
@@ -57,6 +84,7 @@ export function OfferComposerBody({
   onOpeningIdChange,
   onSuccess,
   onCancel,
+  onSaveDraft,
   draftRestored,
   editingOfferId,
 }: OfferComposerBodyProps) {
@@ -66,6 +94,8 @@ export function OfferComposerBody({
   const { offerLetters, createOfferLetter, updateOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidateId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId)
   const { openings, isLoading: openingsLoading } = useJobOpenings(jobId)
+  const { chain, isLoading: chainLoading } = useOfferApprovalChain(jobId)
+  const [step, setStep] = useState(1)
 
   // Find the current offer being edited to check its status
   const currentOffer = editingOfferId ? offerLetters.find(ol => ol.id === editingOfferId) : null
@@ -96,6 +126,30 @@ export function OfferComposerBody({
 
 
 
+
+  const sortedFields = useMemo(() => [...fields].sort((a, b) => a.display_order - b.display_order), [fields])
+  const groups = useMemo(() => {
+    const role = sortedFields.filter(isRoleField)
+    const compensation = sortedFields.filter((field) => !role.includes(field) && isCompField(field))
+    const benefits = sortedFields.filter((field) => !role.includes(field) && !compensation.includes(field) && isBenefitField(field))
+    const additional = sortedFields.filter((field) => !role.includes(field) && !compensation.includes(field) && !benefits.includes(field))
+    return { role, compensation, benefits, additional }
+  }, [sortedFields])
+  const comp = useMemo(() => {
+    const salary = sortedFields.find((field) => /base salary|base compensation|annual salary/.test(fieldKey(field))) || sortedFields.find((field) => field.field_type === 'salary')
+    const equity = sortedFields.find((field) => /equity.*value|equity grant|stock/.test(fieldKey(field)))
+    const bonus = sortedFields.find((field) => /sign.*bonus|signing bonus/.test(fieldKey(field)))
+    const currencyField = sortedFields.find((field) => /currency/.test(fieldKey(field)))
+    let currency = currencyField ? String(fieldValues[currencyField.field_name] || 'USD') : 'USD'
+    const salaryRaw = salary ? fieldValues[salary.field_name] : null
+    try { currency = JSON.parse(salaryRaw)?.currency || currency } catch { /* configured currency */ }
+    const base = salary ? numericValue(salaryRaw) : 0
+    const equityValue = equity ? numericValue(fieldValues[equity.field_name]) : 0
+    const bonusValue = bonus ? numericValue(fieldValues[bonus.field_name]) : 0
+    return { base, equity: equityValue, bonus: bonusValue, total: base + equityValue + bonusValue, currency }
+  }, [sortedFields, fieldValues])
+  const firstName = candidateName.trim().split(/\s+/)[0] || candidateName
+  const selectedOpening = openings.find((opening) => opening.id === openingId)
 
   const handleFieldChange = (fieldName: string, value: any) => {
     onFieldValuesChange({ ...fieldValues, [fieldName]: value })
@@ -271,16 +325,7 @@ export function OfferComposerBody({
         )
       case 'checkbox':
         return (
-          <div className="flex items-center space-x-2 h-10">
-            <input
-              type="checkbox"
-              id={field.field_name}
-              checked={!!value}
-              onChange={(e) => handleFieldChange(field.field_name, e.target.checked)}
-              className="h-4 w-4 rounded border-input"
-            />
-            <Label htmlFor={field.field_name}>{field.field_label}</Label>
-          </div>
+          <Switch checked={!!value} onCheckedChange={(checked) => handleFieldChange(field.field_name, checked)} className="h-[18px] w-8 border-0 [&>span]:h-3.5 [&>span]:w-3.5 data-[state=checked]:[&>span]:translate-x-[14px]" />
         )
       case 'salary': {
         const salaryConfig = (field as any).field_config as SalaryFieldConfig | null
@@ -407,129 +452,32 @@ export function OfferComposerBody({
     }
   }
 
+  const Field = ({ field }: { field: OfferFormField }) => {
+    const Icon = /title|role/.test(fieldKey(field)) ? Briefcase : /manager|reports/.test(fieldKey(field)) ? UserRound : /location/.test(fieldKey(field)) ? MapPin : /date/.test(fieldKey(field)) ? CalendarDays : null
+    if (field.field_type === 'checkbox') return <div className="flex items-center justify-between gap-4 border-b border-dup-rule py-2.5 last:border-0"><div><p className="font-inter text-[12.5px] font-medium text-dup-text">{field.field_label}</p>{field.help_text && <p className="mt-0.5 font-inter text-[11px] leading-[1.4] text-dup-subtle">{field.help_text}</p>}</div>{renderFieldInput(field)}</div>
+    return <div className={cn('min-w-0', field.field_type === 'location' && 'sm:col-span-2')}><Label htmlFor={field.field_name} className="mb-1.5 flex items-center gap-1 font-inter text-[11.5px] font-medium text-dup-text">{Icon && <Icon className="h-[13px] w-[13px] text-dup-subtle" />}{field.field_label}{field.is_required ? <span className="text-destructive">*</span> : <span className="text-[10.5px] text-dup-subtle">(optional)</span>}{field.triggers_approval_restart && <TooltipProvider><Tooltip><TooltipTrigger asChild><RefreshCcw className="h-3 w-3 text-warning-foreground" /></TooltipTrigger><TooltipContent>Editing this field restarts approval</TooltipContent></Tooltip></TooltipProvider>}</Label>{renderFieldInput(field)}{field.help_text && <p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">{field.help_text}</p>}</div>
+  }
+
+  const steps = ['Template', 'Terms', 'Letter & approvals']
   return (
-    <div className="space-y-6">
-      {draftRestored && (
-        <Badge variant="secondary" className="text-xs">Draft restored</Badge>
-      )}
-
-      <div className="space-y-2">
-        <Label>Opening / Req ID <span className="text-destructive">*</span></Label>
-        <Select value={openingId} onValueChange={handleOpeningChange} disabled={openingsLoading || availableOpenings.length === 0}>
-          <SelectTrigger>
-            <SelectValue placeholder={openingsLoading ? 'Loading openings…' : 'Choose an opening…'} />
-          </SelectTrigger>
-          <SelectContent>
-            {openings.map((opening) => {
-              const unavailable = opening.status === 'filled'
-                || (opening.status === 'offer' && opening.candidate_id !== candidateId && opening.id !== currentOffer?.opening_id)
-              return (
-                <SelectItem key={opening.id} value={opening.id} disabled={unavailable}>
-                  <span className="font-medium">{opening.req_id}</span>
-                  <span className="ml-2 text-text-secondary">
-                    Start {format(new Date(`${opening.target_start_date}T00:00:00`), 'MMM d, yyyy')}
-                    {opening.status === 'offer' ? ` · Reserved${opening.candidate_name ? ` for ${opening.candidate_name}` : ''}` : opening.status === 'filled' ? ' · Filled' : ' · Open'}
-                  </span>
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
-        {!openingsLoading && availableOpenings.length === 0 && (
-          <p className="text-xs text-destructive">No available opening exists for this offer.</p>
-        )}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1">
+        <aside className="hidden w-[168px] shrink-0 overflow-y-auto border-r border-dup-hairline bg-dup-canvas-alt px-3 py-5 sm:block">
+          {steps.map((label, index) => { const number = index + 1; const done = number < step; const active = number === step; return <button key={label} type="button" onClick={() => number <= step && setStep(number)} disabled={number > step} className={cn('mb-0.5 flex w-full items-center gap-2 rounded-md px-2.5 py-[7px] text-left', active && 'bg-card shadow-sm')}><span className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full font-poppins text-[10px] font-bold', done ? 'bg-virgilio-success text-primary-foreground' : active ? 'bg-primary text-primary-foreground' : 'bg-dup-hairline text-dup-muted')}>{done ? <Check className="h-2.5 w-2.5 stroke-[3]" /> : number}</span><span className={cn('font-poppins text-[12.5px]', active ? 'font-semibold text-dup-ink' : 'font-medium text-dup-muted')}>{label}</span></button> })}
+          <div className="mt-3 rounded-md bg-dup-purple-soft p-2.5"><p className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-dup-purple-deep">Comp band check</p><p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-muted">{comp.base ? `Compensation entered for ${jobTitle || 'this role'}. Gio checked automatically.` : 'Enter compensation to check it against the role band.'}</p></div>
+        </aside>
+        <main className="min-w-0 flex-1 overflow-y-auto bg-dup-canvas-alt px-4 py-5 sm:px-6 sm:pb-6">
+          {step === 1 && <OfferSection title="Offer template">{draftRestored && <Badge tone="neutral" size="xs" className="mb-3">Draft restored</Badge>}{formsLoading ? <div className="flex items-center gap-2 py-3 text-dup-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading forms…</div> : activeForms.length === 0 ? <InlineEmpty text="No offer forms available. Create one in Settings → Templates → Offer Forms." /> : <div><Label className="mb-1.5 block font-inter text-[11.5px] font-medium text-dup-text">Offer form <span className="text-destructive">*</span></Label><Select value={selectedFormId} onValueChange={onSelectedFormIdChange}><SelectTrigger><SelectValue placeholder="Choose an offer form…" /></SelectTrigger><SelectContent>{activeForms.map((form) => <SelectItem key={form.id} value={form.id}><span className="font-medium">{form.name}</span>{form.description && <span className="ml-2 text-dup-subtle">{form.description}</span>}</SelectItem>)}</SelectContent></Select></div>}</OfferSection>}
+          {step === 2 && (fieldsLoading ? <div className="flex items-center gap-2 py-8 text-dup-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading offer terms…</div> : <>
+            <OfferSection title="Role & start"><div className="mb-3"><Label className="mb-1.5 block font-inter text-[11.5px] font-medium text-dup-text">Req ID <span className="text-destructive">*</span></Label><Select value={openingId} onValueChange={handleOpeningChange} disabled={openingsLoading || availableOpenings.length === 0}><SelectTrigger><SelectValue placeholder={openingsLoading ? 'Loading openings…' : 'Choose an opening…'} /></SelectTrigger><SelectContent>{openings.map((opening) => { const unavailable = opening.status === 'filled' || (opening.status === 'offer' && opening.candidate_id !== candidateId && opening.id !== currentOffer?.opening_id); return <SelectItem key={opening.id} value={opening.id} disabled={unavailable}>{opening.req_id} · {opening.status === 'open' ? 'Open' : opening.status === 'offer' ? 'Reserved' : 'Filled'}</SelectItem> })}</SelectContent></Select><p className="mt-1 font-inter text-[11px] leading-[1.45] text-dup-subtle">The opening this offer fills. It's reserved while the offer is out and filled when {firstName} is marked hired.</p></div><div className="grid gap-3.5 sm:grid-cols-2">{groups.role.map((field) => <Field key={field.id} field={field} />)}</div></OfferSection>
+            {groups.compensation.length > 0 && <OfferSection title="Compensation" action={<Badge tone="green" size="xs" dot>Band checked</Badge>}><div className="grid gap-3.5 sm:grid-cols-2">{groups.compensation.map((field) => <Field key={field.id} field={field} />)}</div><div className="mt-3.5 rounded-lg border border-dup-hairline bg-dup-canvas-alt p-3.5"><div className="mb-2.5 flex items-center justify-between"><p className="font-inter text-[11px] font-semibold uppercase tracking-[0.06em] text-dup-subtle">Y1 total compensation</p><Badge tone="lilac" size="xs">Auto-calculated</Badge></div><div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">{[['Base', comp.base], ['Equity (annualized)', comp.equity], ['Sign-on', comp.bonus], ['Total Y1', comp.total]].map(([label, value], index) => <div key={String(label)} className={cn('rounded-md border border-virgilio-border bg-card p-2.5', index === 3 && 'border-dup-purple-soft')}><p className="font-inter text-[10px] uppercase tracking-[0.06em] text-dup-subtle">{label}</p><p className={cn('mt-0.5 font-poppins text-[18px] font-semibold text-dup-ink', index === 3 && 'text-virgilio-purple')}>{shortMoney(Number(value), comp.currency)}</p></div>)}</div></div></OfferSection>}
+            {groups.benefits.length > 0 && <OfferSection title="Benefits & conditions">{groups.benefits.map((field) => <Field key={field.id} field={field} />)}</OfferSection>}
+            {groups.additional.length > 0 && <OfferSection title="Additional terms"><div className="grid gap-3.5 sm:grid-cols-2">{groups.additional.map((field) => <Field key={field.id} field={field} />)}</div></OfferSection>}
+          </>)}
+          {step === 3 && <><OfferSection title="Letter preview"><div className="space-y-3 font-inter text-[12.5px] text-dup-muted"><div className="flex justify-between gap-4 border-b border-dup-rule pb-3"><span>Candidate</span><strong className="text-dup-text">{candidateName}</strong></div><div className="flex justify-between gap-4 border-b border-dup-rule pb-3"><span>Role</span><strong className="text-dup-text">{jobTitle || '—'}</strong></div><div className="flex justify-between gap-4"><span>Opening</span><strong className="text-dup-text">{selectedOpening?.req_id || '—'}</strong></div></div></OfferSection><OfferSection title="Approval route">{chainLoading ? <div className="flex items-center gap-2 text-dup-muted"><Loader2 className="h-4 w-4 animate-spin" /> Loading approval route…</div> : !chain?.is_enabled || chain.steps.length === 0 ? <p className="font-inter text-[12.5px] text-dup-muted">No approval chain is required for this job. The offer will remain a draft until it is sent.</p> : <div className="space-y-2">{chain.steps.map((approvalStep, index) => <div key={approvalStep.id} className="flex items-center gap-3 rounded-md border border-virgilio-border px-3 py-2.5"><span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-dup-hairline font-poppins text-[10px] font-bold text-dup-muted">{index + 1}</span><div><p className="font-inter text-[12.5px] font-medium text-dup-text">{approvalStep.approver_name}</p><p className="font-inter text-[11px] text-dup-subtle">{approvalStep.condition === 'always' ? 'Always required' : approvalStep.condition.replaceAll('_', ' ')}</p></div></div>)}</div>}</OfferSection></>}
+        </main>
       </div>
-
-      {/* Offer Form Selector */}
-      <div className="space-y-2">
-        <Label>Select Offer Form</Label>
-        {formsLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading forms...
-          </div>
-        ) : activeForms.length === 0 ? (
-          <InlineEmpty text="No offer forms available. Create one in Settings → Templates → Offer Forms." />
-        ) : (
-          <Select value={selectedFormId} onValueChange={onSelectedFormIdChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose an offer form..." />
-            </SelectTrigger>
-            <SelectContent>
-              {activeForms.map((form) => (
-                <SelectItem key={form.id} value={form.id}>
-                  <div className="flex flex-col">
-                    <span>{form.name}</span>
-                    {form.description && (
-                      <span className="text-xs text-muted-foreground">{form.description}</span>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-
-      {/* Dynamic Fields */}
-      {selectedFormId && (
-        <div className="space-y-4">
-          {fieldsLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading form fields...
-            </div>
-          ) : fields.length === 0 ? (
-            <div className="text-center py-6 border border-dashed rounded-md">
-              <p className="text-sm text-muted-foreground">
-                This form has no fields configured yet
-              </p>
-            </div>
-          ) : (
-            fields
-              .sort((a, b) => a.display_order - b.display_order)
-              .map((field) => (
-                <div key={field.id} className="space-y-2">
-                  {field.field_type !== 'checkbox' && (
-                    <Label htmlFor={field.field_name} className="flex items-center gap-1.5">
-                      {field.field_label}
-                      {field.is_required && <span className="text-destructive ml-1">*</span>}
-                      {field.triggers_approval_restart && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center text-amber-600 dark:text-amber-400 cursor-help">
-                                <RefreshCcw className="h-3 w-3" />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Editing this field will restart the approval process</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </Label>
-                  )}
-                  {renderFieldInput(field)}
-                  {field.help_text && (
-                    <p className="text-xs text-muted-foreground">{field.help_text}</p>
-                  )}
-                </div>
-              ))
-          )}
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex justify-end gap-2 pt-4 border-t">
-        <Button variant="outline" onClick={onCancel} disabled={creatingLetter}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={!canSave() || creatingLetter}>
-          {creatingLetter && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {editingOfferId ? 'Update Offer' : 'Save Offer'}
-        </Button>
-      </div>
+      <footer className="flex shrink-0 items-center gap-2.5 border-t border-dup-hairline bg-card px-4 py-3 sm:px-6">{step > 1 && <Button variant="ghost" size="md" icon={ChevronLeft} onClick={() => setStep((current) => current - 1)}>Back</Button>}<p className="min-w-0 flex-1 truncate font-inter text-[11.5px] text-dup-subtle">Auto-saved{comp.total ? ` · Y1 total ${shortMoney(comp.total, comp.currency)}` : ''}</p><Button variant="secondary" size="md" onClick={() => { onSaveDraft(); toast({ title: 'Draft saved' }) }}>Save draft</Button>{step < 3 ? <Button size="md" iconRight={ChevronRight} onClick={() => setStep((current) => current + 1)} disabled={step === 1 && !selectedFormId}>{step === 1 ? 'Continue' : 'Preview letter'}</Button> : <Button size="md" iconRight={ChevronRight} onClick={handleSave} disabled={!canSave() || creatingLetter}>{creatingLetter ? 'Saving…' : editingOfferId ? 'Update offer' : chain?.is_enabled && chain.steps.length ? 'Save for approval' : 'Save offer'}</Button>}</footer>
     </div>
   )
 }
