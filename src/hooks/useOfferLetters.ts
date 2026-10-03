@@ -6,6 +6,7 @@ export interface OfferLetter {
   id: string
   candidate_id: string
   job_id: string
+  opening_id?: string | null
   template_id?: string | null
   form_id?: string | null
   organization_id: string

@@ -13,6 +13,7 @@ interface HiredBannerSmartProps {
   hiredAt: string | null;
   startDate?: string | null;
   jobTitle?: string;
+  reqId?: string | null;
   onOpenOnboarding?: () => void;
   onMarkReqClosed?: () => void;
 }
@@ -37,6 +38,7 @@ export function HiredBannerSmart({
   hiredAt,
   startDate,
   jobTitle,
+  reqId,
   onOpenOnboarding,
   onMarkReqClosed,
 }: HiredBannerSmartProps) {
@@ -57,6 +59,7 @@ export function HiredBannerSmart({
     : null;
   const headFragments: string[] = [];
   if (jobTitle) headFragments.push(jobTitle);
+  if (reqId) headFragments.push(reqId);
   if (base) headFragments.push(`${base} base`);
   if (hiredAt) headFragments.push(`signed ${format(new Date(hiredAt), 'MMM d')}`);
   if (headFragments.length) fragments.push(headFragments.join(' · '));

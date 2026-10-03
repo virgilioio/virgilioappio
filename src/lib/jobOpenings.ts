@@ -8,6 +8,7 @@ export interface OpeningRow {
   target_start_date: string
   status: OpeningStatus
   candidate_name?: string | null
+  candidate_id?: string | null
   persisted?: boolean
 }
 

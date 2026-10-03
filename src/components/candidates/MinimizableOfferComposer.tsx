@@ -13,12 +13,13 @@ interface MinimizableOfferComposerProps {
   jobId: string
   jobTitle?: string
   organizationId: string
-  editingOffer?: { id: string; form_id: string; field_values: Record<string, any> } | null
+  editingOffer?: { id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null } | null
 }
 
 interface OfferDraft {
   selectedFormId: string
   fieldValues: Record<string, any>
+  openingId: string
   lastUpdated: number
 }
 
@@ -37,6 +38,7 @@ export function MinimizableOfferComposer({
   const [isMinimized, setIsMinimized] = useState(false)
   const [selectedFormId, setSelectedFormId] = useState('')
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
+  const [openingId, setOpeningId] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -48,6 +50,7 @@ export function MinimizableOfferComposer({
     if (editingOffer) {
       setSelectedFormId(editingOffer.form_id || '')
       setFieldValues(editingOffer.field_values || {})
+      setOpeningId(editingOffer.opening_id || '')
       setDraftRestored(false)
       return
     }
@@ -57,6 +60,7 @@ export function MinimizableOfferComposer({
         const draft: OfferDraft = JSON.parse(saved)
         setSelectedFormId(draft.selectedFormId || '')
         setFieldValues(draft.fieldValues || {})
+        setOpeningId(draft.openingId || '')
         setDraftRestored(true)
         toast({ title: 'Draft restored', description: 'Your previous offer progress has been restored.' })
       }
@@ -68,9 +72,9 @@ export function MinimizableOfferComposer({
   // Debounced auto-save
   const saveDraft = useCallback(() => {
     if (!selectedFormId && Object.keys(fieldValues).length === 0) return
-    const draft: OfferDraft = { selectedFormId, fieldValues, lastUpdated: Date.now() }
+    const draft: OfferDraft = { selectedFormId, fieldValues, openingId, lastUpdated: Date.now() }
     localStorage.setItem(draftKey, JSON.stringify(draft))
-  }, [selectedFormId, fieldValues, draftKey])
+  }, [selectedFormId, fieldValues, openingId, draftKey])
 
   useEffect(() => {
     if (!isOpen) return
@@ -92,7 +96,7 @@ export function MinimizableOfferComposer({
   const handleClose = () => {
     // Save draft synchronously on close
     if (selectedFormId || Object.keys(fieldValues).length > 0) {
-      const draft: OfferDraft = { selectedFormId, fieldValues, lastUpdated: Date.now() }
+      const draft: OfferDraft = { selectedFormId, fieldValues, openingId, lastUpdated: Date.now() }
       localStorage.setItem(draftKey, JSON.stringify(draft))
     }
     onOpenChange(false)
@@ -105,6 +109,7 @@ export function MinimizableOfferComposer({
     clearDraft()
     setSelectedFormId('')
     setFieldValues({})
+    setOpeningId('')
     setDraftRestored(false)
     onOpenChange(false)
     setIsMinimized(false)
@@ -114,6 +119,7 @@ export function MinimizableOfferComposer({
     clearDraft()
     setSelectedFormId('')
     setFieldValues({})
+    setOpeningId('')
     setDraftRestored(false)
     onOpenChange(false)
     setIsMinimized(false)
@@ -173,6 +179,8 @@ export function MinimizableOfferComposer({
             onSelectedFormIdChange={handleFormChange}
             fieldValues={fieldValues}
             onFieldValuesChange={setFieldValues}
+            openingId={openingId}
+            onOpeningIdChange={setOpeningId}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
             draftRestored={draftRestored}

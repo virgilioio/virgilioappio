@@ -96,6 +96,7 @@ import { CandidateInsightsTab } from './insights/CandidateInsightsTab'
 import { CandidateDetailsCollapsible } from './CandidateDetailsCollapsible'
 import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
+import { MarkHiredDialog } from './MarkHiredDialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
@@ -242,6 +243,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [hiredDetails, setHiredDetails] = useState<{
     hiredAt: string | null;
     hiredByName: string | null;
+    startDate: string | null;
+    reqId: string | null;
   } | null>(null)
   const [viewingScorecardId, setViewingScorecardId] = useState<string | null>(null)
   const [viewingScorecard, setViewingScorecard] = useState<any>(null)
@@ -540,7 +543,8 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
 
 // Offer Form Sheet
 const [offerFormOpen, setOfferFormOpen] = useState(false)
-const [editingOffer, setEditingOffer] = useState<{ id: string; form_id: string; field_values: Record<string, any> } | null>(null)
+const [editingOffer, setEditingOffer] = useState<{ id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null } | null>(null)
+const [markHiredOpen, setMarkHiredOpen] = useState(false)
 
 // Simple schedule interview (not stage-specific)
 const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
@@ -857,6 +861,8 @@ const stageHasAutomation = useMemo(() => {
             offered_by,
             hired_at,
             hired_by,
+            hire_start_date,
+            opening:job_openings!job_candidate_associations_opening_id_fkey(req_id),
             whatsapp_template_sent_at,
             is_favorite
           `)
@@ -934,6 +940,8 @@ const stageHasAutomation = useMemo(() => {
           setHiredDetails({
             hiredAt: (assoc as any).hired_at,
             hiredByName,
+            startDate: (assoc as any).hire_start_date,
+            reqId: (assoc as any).opening?.req_id || null,
           })
         } else {
           setHiredDetails(null)
@@ -1058,40 +1066,8 @@ const stageHasAutomation = useMemo(() => {
     setEmailComposerOpen(false)
   }
 
-  const handleSetStatus = async (s: 'active' | 'rejected' | 'hired') => {
+  const handleSetStatus = async (s: 'active' | 'rejected') => {
     if (!associationId) return
-    
-    // If marking as hired, also set hired_at and hired_by
-    if (s === 'hired') {
-      const now = new Date().toISOString()
-      await supabase
-        .from('job_candidate_associations')
-        .update({ 
-          status: s, 
-          hired_at: now, 
-          hired_by: user?.id 
-        } as any)
-        .eq('id', associationId)
-      
-      // Resolve recruiter name
-      let hiredByName = null
-      if (user?.id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('user_id', user.id)
-          .maybeSingle()
-        if (profile) {
-          hiredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
-        }
-      }
-      setHiredDetails({ hiredAt: now, hiredByName })
-      setAssociationStatus(s)
-      onStageChanged?.()
-      toast({ title: 'Status updated', description: 'Candidate marked as hired.' })
-      return
-    }
-    
     await updateAssociationStatus(associationId, s)
     setAssociationStatus(s)
     if (s === 'active') setHiredDetails(null)
@@ -1245,7 +1221,11 @@ const stageHasAutomation = useMemo(() => {
         rejection_email_scheduled_for,
         rejection_reason:rejection_reasons(id, name, category),
         offered_at,
-        offered_by
+        offered_by,
+        hired_at,
+        hired_by,
+        hire_start_date,
+        opening:job_openings!job_candidate_associations_opening_id_fkey(req_id)
       `)
       .eq('job_id', jobId)
       .eq('candidate_id', candidateId)
@@ -1300,6 +1280,26 @@ const stageHasAutomation = useMemo(() => {
       } else {
         setOfferDetails(null);
       }
+
+      if (assoc.status === 'hired') {
+        let hiredByName = null
+        if ((assoc as any).hired_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('user_id', (assoc as any).hired_by)
+            .maybeSingle()
+          if (profile) hiredByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+        }
+        setHiredDetails({
+          hiredAt: (assoc as any).hired_at,
+          hiredByName,
+          startDate: (assoc as any).hire_start_date,
+          reqId: (assoc as any).opening?.req_id || null,
+        })
+      } else {
+        setHiredDetails(null)
+      }
     }
   };
   
@@ -1317,14 +1317,11 @@ const stageHasAutomation = useMemo(() => {
       if (activeTab === 'offer') setActiveTab('job')
     })
   }
-  const handleHire = () => handleSetStatus('hired')
+  const handleHire = () => setMarkHiredOpen(true)
 
   const handleUnhire = async () => {
     if (!associationId) return
-    const { error } = await supabase
-      .from('job_candidate_associations')
-      .update({ status: 'offer', hired_at: null, hired_by: null } as any)
-      .eq('id', associationId)
+    const { error } = await (supabase as any).rpc('unmark_hired', { p_application_id: associationId })
     if (error) {
       console.error('Error unhiring candidate:', error)
       toast({ title: 'Error', description: 'Failed to return candidate to offer stage', variant: 'destructive' })
@@ -1531,7 +1528,7 @@ const stageHasAutomation = useMemo(() => {
                           move.push({ id: 'advance', label: `Advance to ${nextStageLabel}`, icon: ArrowRight, hint: 'or use the stages', onClick: advance })
                         }
                         if (associationStatus === 'offer' && offerApproval.canMarkHired) {
-                          move.push({ id: 'mark-hired', label: 'Mark hired', icon: CheckCircle2, onClick: () => handleSetStatus('hired') })
+                          move.push({ id: 'mark-hired', label: 'Mark hired', icon: CheckCircle2, onClick: handleHire })
                         }
                         move.push({ id: 'add-transfer', label: 'Add or transfer to job', icon: ArrowRightLeft, onClick: () => setAddTransferOpen(true) })
 
@@ -1630,7 +1627,7 @@ const stageHasAutomation = useMemo(() => {
                         offeredAt={offerDetails?.offeredAt || null}
                         onCreateOffer={() => setOfferFormOpen(true)}
                         onSendReminder={handleSendOfferReminder}
-                        onMarkHired={() => handleSetStatus('hired')}
+                        onMarkHired={handleHire}
                       />
                     ) : associationStatus === 'hired' && candidateId ? (
                       <HiredBannerSmart
@@ -1639,7 +1636,9 @@ const stageHasAutomation = useMemo(() => {
                         jobId={jobId}
                         candidateFirstName={candidate?.first_name}
                         hiredAt={hiredDetails?.hiredAt || null}
+                        startDate={hiredDetails?.startDate || null}
                         jobTitle={job?.title}
+                        reqId={hiredDetails?.reqId || null}
                         onOpenOnboarding={() => setActiveTab('onboarding')}
                         onMarkReqClosed={handleMarkReqClosed}
                       />
@@ -1995,7 +1994,7 @@ const stageHasAutomation = useMemo(() => {
                     {activeTab === 'onboarding' && associationId && (
                       <OnboardingTab
                         applicationId={associationId}
-                        startDate={hiredDetails?.hiredAt || null}
+                        startDate={hiredDetails?.startDate || null}
                         firstName={candidate?.first_name}
                       />
                     )}
@@ -2349,6 +2348,21 @@ const stageHasAutomation = useMemo(() => {
           jobId={jobId}
           jobTitle={job?.title}
           onSuccess={handleRejectionSuccess}
+        />
+      )}
+
+      {associationId && candidateId && candidate && (
+        <MarkHiredDialog
+          open={markHiredOpen}
+          onOpenChange={setMarkHiredOpen}
+          applicationId={associationId}
+          candidateId={candidateId}
+          candidateName={candidate.candidate_name || 'Candidate'}
+          jobId={jobId}
+          onSuccess={async () => {
+            await refetchAssociationStatus()
+            onStageChanged?.()
+          }}
         />
       )}
       

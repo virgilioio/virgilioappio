@@ -15,6 +15,7 @@ import { MinimizableEmailComposer } from './MinimizableEmailComposer'
 import { supabase } from '@/lib/supabaseClient'
 import { logActivity } from '@/lib/activityLogger'
 import { cn } from '@/lib/utils'
+import { useJobOpenings } from '@/hooks/useJobOpenings'
 
 function LongTextField({ label, value }: { label: string; value: string }) {
   const [expanded, setExpanded] = useState(false)
@@ -50,7 +51,7 @@ interface CandidateOfferDetailsProps {
   candidate?: any
   job?: any
   organization?: any
-  onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any> }) => void
+  onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null }) => void
   associationStatus?: string | null
 }
 
@@ -99,10 +100,12 @@ function getStatusLabel(status: string) {
 
 export function CandidateOfferDetails({ candidateId, jobId, organizationId, candidate, job, organization, onEdit, associationStatus }: CandidateOfferDetailsProps) {
   const { offerLetters, isLoading } = useOfferLetters(candidateId)
+  const { openings } = useJobOpenings(jobId)
   const { data: recruiterOptions = [] } = useRecruiterOptions(organizationId || null)
   
   // Find the offer letter for this job
   const offerLetter = offerLetters.find(ol => ol.job_id === jobId)
+  const offerOpening = openings.find((opening) => opening.id === offerLetter?.opening_id)
   const { fields } = useOfferFormFields(offerLetter?.form_id || undefined)
   const { approvalRequest, isActiveRequest, chainEnabled, chainHasSteps, requestApproval, isRequesting, recallApproval, isRecalling, isCurrentUserRequester, isCurrentUserActiveApprover, activeStep, approveStep, declineStep, isApproving, isDeclining } = useOfferApprovalRequest(offerLetter?.id, jobId)
 
@@ -194,6 +197,7 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
                   id: offerLetter.id,
                   form_id: offerLetter.form_id || '',
                   field_values: offerLetter.field_values || {},
+                  opening_id: offerLetter.opening_id,
                 })}
               >
                 Edit
@@ -434,15 +438,24 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
               )}
 
               {/* Short fields — 2-col icon+label+value */}
-              {shortFields.length > 0 && (
+              {(shortFields.length > 0 || offerOpening) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-text-tertiary mt-0.5"><FileText className="h-3.5 w-3.5" /></span>
+                    <span className="text-text-tertiary mt-0.5"><Briefcase className="h-3.5 w-3.5" /></span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-inter text-[11.5px] text-[#8B8F9E]">Offer title</p>
-                      <p className="font-poppins text-[13px] text-text-primary truncate">{offerLetter.title}</p>
+                      <p className="font-inter text-[11.5px] text-text-tertiary">Job title</p>
+                      <p className="font-poppins text-[13px] text-text-primary truncate">{job?.title || offerLetter.title}</p>
                     </div>
                   </div>
+                  {offerOpening && (
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-text-tertiary mt-0.5"><Briefcase className="h-3.5 w-3.5" /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-inter text-[11.5px] text-text-tertiary">Opening / Req ID</p>
+                        <p className="font-poppins text-[13px] text-text-primary truncate">{offerOpening.req_id}</p>
+                      </div>
+                    </div>
+                  )}
                   {shortFields.map(field => {
                     const Icon = iconFor(field.field_type)
                     return (

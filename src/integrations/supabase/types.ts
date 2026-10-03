@@ -3917,6 +3917,7 @@ export type Database = {
           email_ingest_address: string | null
           email_ingest_code: string | null
           entered_stage_at: string | null
+          hire_start_date: string | null
           hired_at: string | null
           hired_by: string | null
           id: string
@@ -3956,6 +3957,7 @@ export type Database = {
           email_ingest_address?: string | null
           email_ingest_code?: string | null
           entered_stage_at?: string | null
+          hire_start_date?: string | null
           hired_at?: string | null
           hired_by?: string | null
           id?: string
@@ -3995,6 +3997,7 @@ export type Database = {
           email_ingest_address?: string | null
           email_ingest_code?: string | null
           entered_stage_at?: string | null
+          hire_start_date?: string | null
           hired_at?: string | null
           hired_by?: string | null
           id?: string
@@ -9452,6 +9455,19 @@ export type Database = {
         }
         Returns: string
       }
+      mark_hired: {
+        Args: {
+          p_application_id: string
+          p_close_job?: boolean
+          p_opening_id: string
+          p_start_date: string
+        }
+        Returns: {
+          job_closed: boolean
+          openings_remaining: number
+          req_id: string
+        }[]
+      }
       merge_candidate_payload: {
         Args: {
           p_actor?: string
@@ -9585,6 +9601,7 @@ export type Database = {
         Returns: undefined
       }
       test_get_user_organization_id: { Args: never; Returns: string }
+      unmark_hired: { Args: { p_application_id: string }; Returns: undefined }
       update_feature_flag: {
         Args: { flag_name_param: string; is_active_param: boolean }
         Returns: boolean
