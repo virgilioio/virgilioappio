@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { X, ChevronDown, ChevronUp } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Sparkles, X } from 'lucide-react'
+import { Sheet, SheetContent, SheetOverlay, SheetPortal, SheetTitle } from '@/components/ui/sheet'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { OfferComposerBody } from './OfferComposerBody'
 import { toast } from '@/hooks/use-toast'
 
@@ -16,35 +17,17 @@ interface MinimizableOfferComposerProps {
   editingOffer?: { id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null } | null
 }
 
-interface OfferDraft {
-  selectedFormId: string
-  fieldValues: Record<string, any>
-  openingId: string
-  lastUpdated: number
-}
-
+interface OfferDraft { selectedFormId: string; fieldValues: Record<string, any>; openingId: string; lastUpdated: number }
 const getDraftKey = (candidateId: string) => `offer-draft-${candidateId}`
 
-export function MinimizableOfferComposer({
-  isOpen,
-  onOpenChange,
-  candidateId,
-  candidateName,
-  jobId,
-  jobTitle,
-  organizationId,
-  editingOffer,
-}: MinimizableOfferComposerProps) {
-  const [isMinimized, setIsMinimized] = useState(false)
+export function MinimizableOfferComposer({ isOpen, onOpenChange, candidateId, candidateName, jobId, jobTitle, organizationId, editingOffer }: MinimizableOfferComposerProps) {
   const [selectedFormId, setSelectedFormId] = useState('')
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
   const [openingId, setOpeningId] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const draftKey = getDraftKey(candidateId)
 
-  // Pre-fill from editingOffer or restore draft on open
   useEffect(() => {
     if (!isOpen) return
     if (editingOffer) {
@@ -64,16 +47,12 @@ export function MinimizableOfferComposer({
         setDraftRestored(true)
         toast({ title: 'Draft restored', description: 'Your previous offer progress has been restored.' })
       }
-    } catch {
-      // ignore corrupt data
-    }
+    } catch { /* ignore corrupt draft */ }
   }, [isOpen, draftKey, editingOffer])
 
-  // Debounced auto-save
   const saveDraft = useCallback(() => {
     if (!selectedFormId && Object.keys(fieldValues).length === 0) return
-    const draft: OfferDraft = { selectedFormId, fieldValues, openingId, lastUpdated: Date.now() }
-    localStorage.setItem(draftKey, JSON.stringify(draft))
+    localStorage.setItem(draftKey, JSON.stringify({ selectedFormId, fieldValues, openingId, lastUpdated: Date.now() } satisfies OfferDraft))
   }, [selectedFormId, fieldValues, openingId, draftKey])
 
   useEffect(() => {
@@ -81,113 +60,28 @@ export function MinimizableOfferComposer({
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(saveDraft, 2000)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [selectedFormId, fieldValues, isOpen, saveDraft])
+  }, [selectedFormId, fieldValues, openingId, isOpen, saveDraft])
 
-  const clearDraft = useCallback(() => {
-    localStorage.removeItem(draftKey)
-  }, [draftKey])
-
-  const handleFormChange = (id: string) => {
-    setSelectedFormId(id)
-    setFieldValues({})
-    setDraftRestored(false)
-  }
-
-  const handleClose = () => {
-    // Save draft synchronously on close
-    if (selectedFormId || Object.keys(fieldValues).length > 0) {
-      const draft: OfferDraft = { selectedFormId, fieldValues, openingId, lastUpdated: Date.now() }
-      localStorage.setItem(draftKey, JSON.stringify(draft))
-    }
-    onOpenChange(false)
-    // Reset local state
-    setIsMinimized(false)
-    setDraftRestored(false)
-  }
-
-  const handleCancel = () => {
-    clearDraft()
-    setSelectedFormId('')
-    setFieldValues({})
-    setOpeningId('')
-    setDraftRestored(false)
-    onOpenChange(false)
-    setIsMinimized(false)
-  }
-
-  const handleSuccess = () => {
-    clearDraft()
-    setSelectedFormId('')
-    setFieldValues({})
-    setOpeningId('')
-    setDraftRestored(false)
-    onOpenChange(false)
-    setIsMinimized(false)
-  }
-
-  if (!isOpen) return null
+  const reset = () => { setSelectedFormId(''); setFieldValues({}); setOpeningId(''); setDraftRestored(false) }
+  const handleClose = () => { saveDraft(); onOpenChange(false) }
+  const handleCancel = () => { localStorage.removeItem(draftKey); reset(); onOpenChange(false) }
+  const handleSuccess = () => { localStorage.removeItem(draftKey); reset(); onOpenChange(false) }
+  const firstName = candidateName.trim().split(/\s+/)[0] || candidateName
 
   return (
-    <div
-      className={cn(
-        "absolute bottom-4 right-4 z-[60] bg-background border rounded-lg shadow-2xl transition-all duration-300 pointer-events-auto",
-        isMinimized ? "w-[360px] h-[52px]" : "w-[580px] max-w-[min(95vw,580px)]"
-      )}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header Bar */}
-      <div
-        className={cn(
-          "flex items-center justify-between bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors",
-          isMinimized ? "h-full px-4 rounded-lg" : "p-4 border-b rounded-t-lg"
-        )}
-        onClick={() => setIsMinimized(!isMinimized)}
-      >
-        <h3 className="font-semibold text-sm truncate">
-          {isMinimized ? `Offer: ${candidateName}` : `${editingOffer ? 'Edit' : 'Create'} Offer — ${candidateName}`}
-        </h3>
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => setIsMinimized(!isMinimized)}
-          >
-            {isMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={handleClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Content Area */}
-      {!isMinimized && (
-        <div className="max-h-[600px] overflow-y-auto p-4">
-          <OfferComposerBody
-            candidateId={candidateId}
-            candidateName={candidateName}
-            jobId={jobId}
-            jobTitle={jobTitle}
-            organizationId={organizationId}
-            selectedFormId={selectedFormId}
-            onSelectedFormIdChange={handleFormChange}
-            fieldValues={fieldValues}
-            onFieldValuesChange={setFieldValues}
-            openingId={openingId}
-            onOpeningIdChange={setOpeningId}
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
-            draftRestored={draftRestored}
-            editingOfferId={editingOffer?.id}
-          />
-        </div>
-      )}
-    </div>
+    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) handleClose() }}>
+      <SheetPortal><SheetOverlay className="bg-primary/20" /></SheetPortal>
+      <SheetContent side="right" showOverlay={false} className="flex h-full w-full flex-col gap-0 overflow-hidden rounded-l-xl border-0 bg-card p-0 shadow-2xl sm:max-w-[820px] [&>button:last-child]:hidden">
+        <header className="flex shrink-0 items-start gap-3 border-b border-dup-hairline px-6 pb-3.5 pt-4">
+          <div className="min-w-0 flex-1">
+            <p className="mb-1.5 font-inter text-[10.5px] font-semibold uppercase tracking-[0.08em] text-virgilio-purple">Offer · 3-step builder</p>
+            <div className="flex flex-wrap items-center gap-2"><SheetTitle className="font-poppins text-[20px] font-semibold leading-[1.15] tracking-[-0.035em] text-dup-ink">Build {firstName}'s offer<span className="text-purple-period">.</span></SheetTitle>{draftRestored && <Badge tone="lilac" size="xs" icon={Sparkles}>Gio drafted</Badge>}</div>
+            <p className="mt-1.5 max-w-[480px] font-inter text-[12.5px] leading-[1.5] text-dup-muted">Compensation, terms, and the letter copy. Approvals route automatically after preview.</p>
+          </div>
+          <Button variant="ghost" size="sm" iconOnly aria-label="Close" icon={X} onClick={handleClose} />
+        </header>
+        <OfferComposerBody candidateId={candidateId} candidateName={candidateName} jobId={jobId} jobTitle={jobTitle} organizationId={organizationId} selectedFormId={selectedFormId} onSelectedFormIdChange={(id) => { setSelectedFormId(id); setFieldValues({}); setDraftRestored(false) }} fieldValues={fieldValues} onFieldValuesChange={setFieldValues} openingId={openingId} onOpeningIdChange={setOpeningId} onSuccess={handleSuccess} onCancel={handleCancel} onSaveDraft={saveDraft} draftRestored={draftRestored} editingOfferId={editingOffer?.id} />
+      </SheetContent>
+    </Sheet>
   )
 }

@@ -7,3 +7,4 @@
 - Analytics reads of potentially large tables go through fetchAll/fetchAllIn in src/lib/fetchAllRows.ts — the API caps responses at 1,000 rows, which silently undercounted widgets.
 - Job hiring slots live in job_openings (Req ID unique per workspace); status (open/offer/filled) is derived in job_openings_with_status and jobs.target_fill_date is trigger-derived from open openings — never store status or edit target_fill_date directly.
 - Offer and hire flows must select a job_openings row; hiring and unhiring go through atomic database functions so slot state, candidate status, and Req ID remain consistent under concurrent edits.
+- The candidate Create/Edit Offer experience uses one 820px three-step right sheet; configured offer-form fields stay data-driven and retain their existing bindings, validation, drafts, openings, and approval behavior.
