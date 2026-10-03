@@ -68,7 +68,7 @@ export function MarkHiredDialog({
   useEffect(() => {
     if (!open || openings.length === 0) return
     const preferred = openings.find((opening) => opening.id === offer?.opening_id && opening.status !== 'filled')
-      || eligible[0]
+      || eligible.find((opening) => opening.status === 'open' || opening.candidate_id === candidateId)
     if (!preferred) return
     setOpeningId(preferred.id)
     const startField = fields.find((field) => /start.*date|date.*start/i.test(`${field.field_name} ${field.field_label}`))
