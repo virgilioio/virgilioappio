@@ -3722,6 +3722,72 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_inbox: {
+        Row: {
+          created_at: string
+          endpoint: string | null
+          idempotency_key: string
+          response: Json | null
+          status_code: number
+        }
+        Insert: {
+          created_at?: string
+          endpoint?: string | null
+          idempotency_key: string
+          response?: Json | null
+          status_code?: number
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string | null
+          idempotency_key?: string
+          response?: Json | null
+          status_code?: number
+        }
+        Relationships: []
+      }
+      integration_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          delivered_at: string | null
+          event: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          target: string
+          tenant_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          event: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload: Json
+          target?: string
+          tenant_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          event?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          target?: string
+          tenant_id?: string | null
+        }
+        Relationships: []
+      }
       invitations: {
         Row: {
           created_at: string | null
@@ -4193,39 +4259,54 @@ export type Database = {
       }
       job_openings: {
         Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
           created_at: string
+          fee_pct: number | null
           filled_at: string | null
           hired_association_id: string | null
           id: string
           job_id: string
           position: number
           req_id: string
+          sales_deal_id: string | null
+          sales_line_id: string | null
           target_hire_date: string
           target_start_date: string
           tenant_id: string | null
           updated_at: string
         }
         Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
+          fee_pct?: number | null
           filled_at?: string | null
           hired_association_id?: string | null
           id?: string
           job_id: string
           position?: number
           req_id: string
+          sales_deal_id?: string | null
+          sales_line_id?: string | null
           target_hire_date: string
           target_start_date: string
           tenant_id?: string | null
           updated_at?: string
         }
         Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
+          fee_pct?: number | null
           filled_at?: string | null
           hired_association_id?: string | null
           id?: string
           job_id?: string
           position?: number
           req_id?: string
+          sales_deal_id?: string | null
+          sales_line_id?: string | null
           target_hire_date?: string
           target_start_date?: string
           tenant_id?: string | null
@@ -4490,6 +4571,50 @@ export type Database = {
           },
         ]
       }
+      job_sales_lines: {
+        Row: {
+          created_at: string
+          deal_id: string
+          fee_pct: number | null
+          hires: number
+          id: string
+          job_id: string
+          line_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          fee_pct?: number | null
+          hires: number
+          id?: string
+          job_id: string
+          line_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          fee_pct?: number | null
+          hires?: number
+          id?: string
+          job_id?: string
+          line_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_sales_lines_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_stage_scorecards: {
         Row: {
           ai_suggested_rating: string | null
@@ -4729,6 +4854,11 @@ export type Database = {
           reports_to_user_id: string | null
           salary_max: number | null
           salary_min: number | null
+          sales_deal_id: string | null
+          sales_deal_owner: string | null
+          sales_deal_title: string | null
+          sales_deal_url: string | null
+          sales_deal_won_at: string | null
           show_salary_public: boolean
           skills: string[] | null
           standardized_location: string | null
@@ -4779,6 +4909,11 @@ export type Database = {
           reports_to_user_id?: string | null
           salary_max?: number | null
           salary_min?: number | null
+          sales_deal_id?: string | null
+          sales_deal_owner?: string | null
+          sales_deal_title?: string | null
+          sales_deal_url?: string | null
+          sales_deal_won_at?: string | null
           show_salary_public?: boolean
           skills?: string[] | null
           standardized_location?: string | null
@@ -4829,6 +4964,11 @@ export type Database = {
           reports_to_user_id?: string | null
           salary_max?: number | null
           salary_min?: number | null
+          sales_deal_id?: string | null
+          sales_deal_owner?: string | null
+          sales_deal_title?: string | null
+          sales_deal_url?: string | null
+          sales_deal_won_at?: string | null
           show_salary_public?: boolean
           skills?: string[] | null
           standardized_location?: string | null
@@ -5863,6 +6003,7 @@ export type Database = {
           parent_organization_id: string | null
           plan_type: string | null
           renewal_date: string | null
+          sales_company_id: string | null
           signup_source: string
           status: string
           suspended_at: string | null
@@ -5899,6 +6040,7 @@ export type Database = {
           parent_organization_id?: string | null
           plan_type?: string | null
           renewal_date?: string | null
+          sales_company_id?: string | null
           signup_source?: string
           status?: string
           suspended_at?: string | null
@@ -5935,6 +6077,7 @@ export type Database = {
           parent_organization_id?: string | null
           plan_type?: string | null
           renewal_date?: string | null
+          sales_company_id?: string | null
           signup_source?: string
           status?: string
           suspended_at?: string | null
@@ -8838,15 +8981,20 @@ export type Database = {
       }
       job_openings_with_status: {
         Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
           candidate_id: string | null
           candidate_name: string | null
           created_at: string | null
+          fee_pct: number | null
           filled_at: string | null
           hired_association_id: string | null
           id: string | null
           job_id: string | null
           position: number | null
           req_id: string | null
+          sales_deal_id: string | null
+          sales_line_id: string | null
           status: string | null
           target_hire_date: string | null
           target_start_date: string | null
@@ -8872,6 +9020,7 @@ export type Database = {
       }
     }
     Functions: {
+      _tenant_id_root: { Args: { _tenant_id: string }; Returns: string }
       accept_invitation: {
         Args: { new_user_id: string; token_input: string }
         Returns: {
@@ -9197,6 +9346,10 @@ export type Database = {
         Returns: string
       }
       encrypt_refresh_token: { Args: { token: string }; Returns: string }
+      enqueue_opening_event: {
+        Args: { _event: string; _opening_id: string }
+        Returns: undefined
+      }
       enqueue_stage_automation_runs: {
         Args: {
           p_association_id: string
@@ -9479,8 +9632,13 @@ export type Database = {
         }
         Returns: Json
       }
+      next_req_ids: {
+        Args: { _count: number; _tenant_id: string }
+        Returns: string[]
+      }
       nightly_storage_cleanup: { Args: never; Returns: undefined }
       normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
+      offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean
@@ -9566,6 +9724,16 @@ export type Database = {
           message: string
           success: boolean
         }[]
+      }
+      sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
+      sales_line_updated: {
+        Args: {
+          _fee: number
+          _hires: number
+          _line_id: string
+          _tenant_id: string
+        }
+        Returns: Json
       }
       search_standard_terms: {
         Args: { p_limit?: number; p_query: string; p_table: string }
