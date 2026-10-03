@@ -861,7 +861,7 @@ const stageHasAutomation = useMemo(() => {
             offered_by,
             hired_at,
             hired_by,
-            hire_start_date,
+            start_date,
             opening:job_openings!job_candidate_associations_opening_id_fkey(req_id),
             whatsapp_template_sent_at,
             is_favorite
@@ -940,7 +940,7 @@ const stageHasAutomation = useMemo(() => {
           setHiredDetails({
             hiredAt: (assoc as any).hired_at,
             hiredByName,
-            startDate: (assoc as any).hire_start_date,
+            startDate: (assoc as any).start_date,
             reqId: (assoc as any).opening?.req_id || null,
           })
         } else {
@@ -1224,7 +1224,7 @@ const stageHasAutomation = useMemo(() => {
         offered_by,
         hired_at,
         hired_by,
-        hire_start_date,
+        start_date,
         opening:job_openings!job_candidate_associations_opening_id_fkey(req_id)
       `)
       .eq('job_id', jobId)
@@ -1294,7 +1294,7 @@ const stageHasAutomation = useMemo(() => {
         setHiredDetails({
           hiredAt: (assoc as any).hired_at,
           hiredByName,
-          startDate: (assoc as any).hire_start_date,
+          startDate: (assoc as any).start_date,
           reqId: (assoc as any).opening?.req_id || null,
         })
       } else {
@@ -1994,7 +1994,7 @@ const stageHasAutomation = useMemo(() => {
                     {activeTab === 'onboarding' && associationId && (
                       <OnboardingTab
                         applicationId={associationId}
-                        startDate={hiredDetails?.hiredAt || null}
+                        startDate={hiredDetails?.startDate || null}
                         firstName={candidate?.first_name}
                       />
                     )}

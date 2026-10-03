@@ -79,6 +79,13 @@ export function OfferComposerBody({
     if (openingId || availableOpenings.length === 0) return
     onOpeningIdChange(availableOpenings[0].id)
   }, [openingId, availableOpenings, onOpeningIdChange])
+  useEffect(() => {
+    if (!openingId) return
+    const opening = openings.find((item) => item.id === openingId)
+    const startField = fields.find((field) => /start.*date|date.*start/i.test(`${field.field_name} ${field.field_label}`) && field.field_type === 'date')
+    if (!opening?.target_start_date || !startField || fieldValues[startField.field_name]) return
+    onFieldValuesChange({ ...fieldValues, [startField.field_name]: opening.target_start_date })
+  }, [openingId, openings, fields, fieldValues, onFieldValuesChange])
   const shouldLoadApproval = currentOffer?.status === 'pending_approval' || currentOffer?.status === 'approved'
   const { approvalRequest, recallApproval } = useOfferApprovalRequest(
     shouldLoadApproval ? editingOfferId : undefined,
@@ -95,7 +102,7 @@ export function OfferComposerBody({
   }
 
   const canSave = () => {
-    if (!selectedFormId || !organizationId || !jobId || !openingId) return false
+    if (!selectedFormId || !organizationId || !jobId || !openingId || !availableOpenings.some((opening) => opening.id === openingId)) return false
     const requiredFields = fields.filter(f => f.is_required)
     return requiredFields.every(field => {
       const val = fieldValues[field.field_name]
@@ -211,7 +218,7 @@ export function OfferComposerBody({
     const previous = openings.find((opening) => opening.id === openingId)
     const next = openings.find((opening) => opening.id === id)
     onOpeningIdChange(id)
-    const startField = fields.find((field) => /start.*date|date.*start/i.test(field.field_name) && field.field_type === 'date')
+    const startField = fields.find((field) => /start.*date|date.*start/i.test(`${field.field_name} ${field.field_label}`) && field.field_type === 'date')
     if (!startField || !next?.target_start_date) return
     const current = fieldValues[startField.field_name]
     if (!current || current === previous?.target_start_date) {

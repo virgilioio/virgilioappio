@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { CalendarDays, Loader2 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
+import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -49,7 +50,9 @@ export function MarkHiredDialog({
 }: MarkHiredDialogProps) {
   const { openings, isLoading, refetch } = useJobOpenings(jobId)
   const { offerLetters } = useOfferLetters(candidateId)
-  const offer = offerLetters.find((item) => item.job_id === jobId && item.status !== 'declined')
+  const jobOffers = offerLetters.filter((item) => item.job_id === jobId && item.status !== 'declined')
+  const offer = jobOffers.find((item) => item.status === 'accepted') || jobOffers[0]
+  const { fields } = useOfferFormFields(offer?.form_id || undefined)
   const [openingId, setOpeningId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [closeJob, setCloseJob] = useState(false)
@@ -68,9 +71,13 @@ export function MarkHiredDialog({
       || eligible[0]
     if (!preferred) return
     setOpeningId(preferred.id)
-    setStartDate(offerStartDate(offer?.field_values) || preferred.target_start_date || '')
+    const startField = fields.find((field) => /start.*date|date.*start/i.test(`${field.field_name} ${field.field_label}`))
+    const confirmedStart = startField && typeof offer?.field_values?.[startField.field_name] === 'string'
+      ? offer.field_values[startField.field_name]
+      : offerStartDate(offer?.field_values)
+    setStartDate(confirmedStart || preferred.target_start_date || '')
     setCloseJob(false)
-  }, [open, openings, offer?.opening_id])
+  }, [open, openings, offer?.opening_id, fields])
 
   const chooseOpening = (id: string) => {
     const next = openings.find((opening) => opening.id === id)

@@ -441,10 +441,10 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
               {(shortFields.length > 0 || offerOpening) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                   <div className="flex items-start gap-2.5">
-                    <span className="text-text-tertiary mt-0.5"><FileText className="h-3.5 w-3.5" /></span>
+                    <span className="text-text-tertiary mt-0.5"><Briefcase className="h-3.5 w-3.5" /></span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-inter text-[11.5px] text-[#8B8F9E]">Offer title</p>
-                      <p className="font-poppins text-[13px] text-text-primary truncate">{offerLetter.title}</p>
+                      <p className="font-inter text-[11.5px] text-text-tertiary">Job title</p>
+                      <p className="font-poppins text-[13px] text-text-primary truncate">{job?.title || offerLetter.title}</p>
                     </div>
                   </div>
                   {offerOpening && (
