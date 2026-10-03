@@ -1,7 +1,8 @@
 import React from 'react'
-import { Building2, Globe, Briefcase, MapPin, TrendingUp, Sparkles, Calendar } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
-import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
+import { Building2, Globe, Briefcase, MapPin, TrendingUp, Sparkles, Calendar, Hash } from 'lucide-react'
+import { OpeningsEditor } from '@/components/jobs/openings/OpeningsEditor'
+import { useJobOpenings } from '@/hooks/useJobOpenings'
+import { OpeningRow, setupSummaryText } from '@/lib/jobOpenings'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
@@ -31,9 +32,44 @@ import { DepartmentFormDialog } from '@/components/settings/DepartmentFormDialog
 import { JobPriorityPicker } from '@/components/jobs/JobPriorityPicker'
 import { DEFAULT_JOB_PRIORITY } from '@/lib/job-priority'
 
+export type JobInfoOpeningsProp =
+  | {
+      mode: 'create'
+      value: OpeningRow[]
+      onChange: (rows: OpeningRow[]) => void
+      onValidityChange?: (valid: boolean) => void
+    }
+  | { mode: 'edit'; jobId: string; onManage: () => void }
+
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
   onUpdate: (data: Partial<CreateJobData>) => void
+  openings?: JobInfoOpeningsProp
+}
+
+function OpeningsReadOnlyField({ jobId, onManage }: { jobId: string; onManage: () => void }) {
+  const { openings } = useJobOpenings(jobId)
+  return (
+    <div>
+      <FieldLabel>Openings</FieldLabel>
+      <div
+        className="mt-2 flex items-center gap-2 font-inter"
+        style={{ height: 36, background: '#FAFAF7', border: '1px solid #EDEBE5', borderRadius: 8, padding: '0 12px', fontSize: 12.5, color: '#1F2230' }}
+      >
+        <Hash className="h-3.5 w-3.5 text-[#8B8F9E]" />
+        <span className="truncate">{setupSummaryText(openings)}</span>
+        <button
+          type="button"
+          onClick={onManage}
+          className="ml-auto underline underline-offset-2"
+          style={{ color: '#1F2230', textDecorationColor: '#B9B6AC' }}
+        >
+          Manage
+        </button>
+      </div>
+      <FieldHint>Req IDs and target dates are managed in Job setup → Openings.</FieldHint>
+    </div>
+  )
 }
 
 type JobStatus = 'draft' | 'open' | 'closed' | 'archived'
@@ -297,19 +333,6 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <FieldLabel>Target hire date</FieldLabel>
-            <div className="mt-2">
-              <DatePickerVirgilio
-                value={jobData.target_fill_date ? parseISO(jobData.target_fill_date) : undefined}
-                onChange={(d) => set('target_fill_date', format(d, 'yyyy-MM-dd'))}
-                placeholder="Pick a date"
-              />
-            </div>
-            <FieldHint>
-              Drives pacing — projected fill on the Job Dashboard is measured against this.
-            </FieldHint>
-          </div>
-          <div>
             <FieldLabel required>Priority</FieldLabel>
             <div className="mt-2">
               <JobPriorityPicker
@@ -322,6 +345,30 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
             </FieldHint>
           </div>
         </div>
+
+        {openings && (
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #F1F0EC' }}>
+            {openings.mode === 'create' ? (
+              <>
+                <FieldLabel required>Openings</FieldLabel>
+                <FieldHint>
+                  One row per hire. Req IDs come from your HRIS or headcount plan — Gio suggests the next number.
+                  Each opening's target hire date drives pacing on the Job Dashboard.
+                </FieldHint>
+                <div className="mt-3">
+                  <OpeningsEditor
+                    mode="create"
+                    value={openings.value}
+                    onChange={openings.onChange}
+                    onValidityChange={openings.onValidityChange}
+                  />
+                </div>
+              </>
+            ) : (
+              <OpeningsReadOnlyField jobId={openings.jobId} onManage={openings.onManage} />
+            )}
+          </div>
+        )}
 
       </SectionCard>
 
