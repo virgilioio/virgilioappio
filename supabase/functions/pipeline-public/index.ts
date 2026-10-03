@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const activeSection: SectionKey = sharedKeys.includes(requested) ? requested : "recruiting";
 
     const { data: assocRows } = await supabase.from("job_candidate_associations")
-      .select("id, candidate_id, status, current_stage_id, entered_stage_at, created_at, updated_at, ai_fit_score, pipeline_position, rejected_at, offered_at, hired_at, rejection_reason_id")
+      .select("id, candidate_id, status, current_stage_id, entered_stage_at, created_at, updated_at, ai_fit_score, pipeline_position, rejected_at, offered_at, hired_at, rejection_reason_id, rejection_notes, rejected_by")
       .eq("job_id", job.id);
     const assocs = assocRows ?? [];
     const sectionFor = (a: any): SectionKey | null => {
@@ -80,14 +80,16 @@ Deno.serve(async (req) => {
     const candidateIds = [...new Set(visibleAssocs.map((a: any) => a.candidate_id))];
     const associationIds = visibleAssocs.map((a: any) => a.id);
     const reasonIds = [...new Set(visibleAssocs.map((a: any) => a.rejection_reason_id).filter(Boolean))];
+    const rejectedByIds = [...new Set(visibleAssocs.map((a: any) => a.rejected_by).filter(Boolean))];
 
-    const [{ data: candidates }, { data: dossierShares }, { data: offers }, { data: history }, { data: reasons }, { data: bookings }] = await Promise.all([
+    const [{ data: candidates }, { data: dossierShares }, { data: offers }, { data: history }, { data: reasons }, { data: bookings }, { data: rejectors }] = await Promise.all([
       candidateIds.length ? supabase.from("candidates").select("id, candidate_name, role_current, current_job_title, company_current, deleted_at").in("id", candidateIds) : Promise.resolve({ data: [] }),
       associationIds.length ? supabase.from("dossier_shares").select("id, association_id").in("association_id", associationIds) : Promise.resolve({ data: [] }),
       ps.share_offers && candidateIds.length ? supabase.from("offer_letters").select("candidate_id, status, sent_at, created_at, updated_at, field_values").eq("job_id", job.id).in("candidate_id", candidateIds).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
       ps.share_rejected && associationIds.length ? supabase.from("job_candidate_stage_history").select("association_id, to_stage_id, moved_at").in("association_id", associationIds).order("moved_at") : Promise.resolve({ data: [] }),
-      ps.share_rejected && ps.show_reject_reason && reasonIds.length ? supabase.from("rejection_reasons").select("id, category, client_label").in("id", reasonIds) : Promise.resolve({ data: [] }),
+      ps.share_rejected && ps.show_reject_reason && reasonIds.length ? supabase.from("rejection_reasons").select("id, name, category").in("id", reasonIds) : Promise.resolve({ data: [] }),
       candidateIds.length ? supabase.from("scheduled_bookings").select("candidate_id, job_hiring_stage_id, scheduled_start, status").in("candidate_id", candidateIds).in("status", ["confirmed", "rescheduled"]) : Promise.resolve({ data: [] }),
+      ps.share_rejected && rejectedByIds.length ? supabase.from("profiles").select("user_id, first_name, last_name, avatar_url").in("user_id", rejectedByIds) : Promise.resolve({ data: [] }),
     ]);
     const shareIds = (dossierShares ?? []).map((s: any) => s.id);
     const { data: feedbackRows } = shareIds.length ? await supabase.from("dossier_feedback").select("share_id, decision, created_at").in("share_id", shareIds) : { data: [] };
@@ -97,6 +99,10 @@ Deno.serve(async (req) => {
     const offerByCandidate = new Map<string, any>();
     for (const offer of offers ?? []) if (!offerByCandidate.has(offer.candidate_id)) offerByCandidate.set(offer.candidate_id, offer);
     const reasonById = new Map((reasons ?? []).map((r: any) => [r.id, r]));
+    const rejectorById = new Map((rejectors ?? []).map((p: any) => {
+      const name = [p.first_name, p.last_name].filter(Boolean).join(" ").trim() || "Teammate";
+      return [p.user_id, { name, avatar_url: p.avatar_url ?? null }];
+    }));
     const reachedByAssoc = new Map<string, string>();
     for (const h of history ?? []) { const name = stageById.get(h.to_stage_id)?.name; if (name) reachedByAssoc.set(h.association_id, name); }
     const nowMs = Date.now();
@@ -141,8 +147,19 @@ Deno.serve(async (req) => {
         rowsBySection.hired.push({ ...base, accepted_at: iso(a.hired_at || a.updated_at), start_date: typeof offer?.field_values?.start_date === "string" ? offer.field_values.start_date : null });
       } else {
         const reason = reasonById.get(a.rejection_reason_id) as any;
-        const reasonLabel = reason?.category === "candidate_declined" || String(a.status).toLowerCase() === "withdrawn" ? "Withdrew" : reason?.client_label?.trim() || "Not progressed";
-        rowsBySection.rejected.push({ ...base, reached_stage: reachedByAssoc.get(a.id) || stage?.name || null, closed_at: iso(a.rejected_at || a.updated_at), ...(ps.show_reject_reason ? { rejection_reason: reasonLabel } : {}) });
+        const withdrew = reason?.category === "candidate_declined" || String(a.status).toLowerCase() === "withdrawn";
+        const autoScreened = !reason && typeof a.ai_fit_score === "number" && a.ai_fit_score < 50;
+        const reasonLabel = reason?.name?.trim() || (autoScreened ? "Auto-screened out" : "No reason recorded");
+        const reasonNote = a.rejection_notes?.trim() || (reason ? (reachedByAssoc.get(a.id) ? `Rejected after ${reachedByAssoc.get(a.id)}` : null) : autoScreened ? "Below match floor" : null);
+        const rejector = rejectorById.get(a.rejected_by) as { name: string; avatar_url: string | null } | undefined;
+        rowsBySection.rejected.push({
+          ...base,
+          reached_stage: reachedByAssoc.get(a.id) || stage?.name || null,
+          rejected_at: iso(a.rejected_at || a.updated_at),
+          ...(ps.show_reject_reason ? { rejection_reason: reasonLabel, rejection_note: reasonNote, rejection_kind: withdrew ? "withdrew" : autoScreened ? "auto_screened" : reason ? "rejected" : "missing" } : {}),
+          decided_by: rejector?.name ?? null,
+          decided_by_avatar: rejector?.avatar_url ?? null,
+        });
       }
     }
 
@@ -151,7 +168,7 @@ Deno.serve(async (req) => {
     rowsBySection.application.sort((a, b) => (b.fit_score ?? -1) - (a.fit_score ?? -1));
     rowsBySection.offers.sort((a, b) => Date.parse(b.offered_at || 0) - Date.parse(a.offered_at || 0));
     rowsBySection.hired.sort((a, b) => Date.parse(b.accepted_at || 0) - Date.parse(a.accepted_at || 0));
-    rowsBySection.rejected.sort((a, b) => Date.parse(b.closed_at || 0) - Date.parse(a.closed_at || 0));
+    rowsBySection.rejected.sort((a, b) => Date.parse(b.rejected_at || 0) - Date.parse(a.rejected_at || 0));
 
     const publicRows = (section: SectionKey) => rowsBySection[section].map(({ association_id, candidate_id, position, client_stage, ...row }) => row);
     const stagePayload = visibleRecruiting.map((s, i) => ({ name: s.name, color: STAGE_COLOR[s.type] ?? FALLBACK[i % FALLBACK.length], candidates: publicRows("recruiting").filter((r: any) => r.stage_id === s.id).map(({ stage_id, ...r }: any) => r) }));
