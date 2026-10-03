@@ -106,7 +106,7 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
   { value: 'L8 — Executive', label: 'L8 — Executive' },
 ]
 
-export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
+export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
   const [isOrgFormOpen, setIsOrgFormOpen] = React.useState(false)
   const [isDeptFormOpen, setIsDeptFormOpen] = React.useState(false)
   const { data: childOrgs = [], isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
