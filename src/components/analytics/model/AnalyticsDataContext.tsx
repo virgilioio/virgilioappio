@@ -15,10 +15,6 @@ export interface PageFilters {
   jobIds: string[]
   organizationIds: string[]
   jobStatus: string
-  // CRM filter slice (optional — defaults to empty)
-  dealOwnerIds?: string[]
-  dealCompanyIds?: string[]
-  dealStageIds?: string[]
 }
 
 interface ProviderProps {

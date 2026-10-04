@@ -40,7 +40,11 @@ function subLine(cfg: WidgetConfig): string {
   return `${v} · by ${(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label.toLowerCase()}`
 }
 
-export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
+export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
+  // Saved widgets may still reference removed CRM metrics/dimensions.
+  const cfg: WidgetConfig = METRICS[rawCfg.metric] && DIMENSIONS[rawCfg.groupBy]
+    ? rawCfg
+    : { ...rawCfg, metric: METRICS[rawCfg.metric] ? rawCfg.metric : 'applications', groupBy: DIMENSIONS[rawCfg.groupBy] ? rawCfg.groupBy : 'none', viz: 'kpi', scope: undefined, title: undefined }
   const meta = METRICS[cfg.metric] ?? METRICS.applications
   const Icon = meta.icon
   const tone = TONE_COLOR[meta.tone]
