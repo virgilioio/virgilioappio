@@ -87,6 +87,7 @@ function getDisplayName(member: EnrichedMember) {
 }
 
 const ROLE_OPTIONS = [
+  { value: 'sourcer', label: 'Sourcer' },
   { value: 'recruiter', label: 'Recruiter' },
   { value: 'hiring_manager', label: 'Hiring Manager' },
   { value: 'interviewer', label: 'Interviewer' },

@@ -25,6 +25,7 @@ interface HiringTeamManageDialogProps {
 }
 
 const ROLE_OPTIONS: { value: JobAssignmentRole; label: string }[] = [
+  { value: 'sourcer', label: 'Sourcer' },
   { value: 'recruiter', label: 'Recruiter' },
   { value: 'hiring_manager', label: 'Hiring Manager' },
   { value: 'interviewer', label: 'Interviewer' },
@@ -69,7 +70,7 @@ export function HiringTeamManageDialog({
   }, [open])
 
   const assignedIds = useMemo(
-    () => new Set(assignments.map((a) => a.user_id)),
+    () => new Set(assignments.filter((a) => a.role === role).map((a) => a.user_id)),
     [assignments]
   )
   const availableMembers = useMemo(

@@ -19,6 +19,7 @@ interface JobAssignmentsPanelProps {
 }
 
 const ROLE_OPTIONS: { value: JobAssignmentRole; label: string }[] = [
+  { value: 'sourcer', label: 'Sourcer' },
   { value: 'recruiter', label: 'Recruiter' },
   { value: 'hiring_manager', label: 'Hiring Manager' },
   { value: 'interviewer', label: 'Interviewer' },
@@ -26,6 +27,7 @@ const ROLE_OPTIONS: { value: JobAssignmentRole; label: string }[] = [
 
 const getRoleBadgeVariant = (role: JobAssignmentRole) => {
   switch (role) {
+    case 'sourcer': return 'default' as const
     case 'recruiter': return 'default' as const
     case 'hiring_manager': return 'secondary' as const
     case 'interviewer': return 'outline' as const
@@ -54,7 +56,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     )
   }
 
-  const assignedUserIds = new Set(assignments.map(a => a.user_id))
+  const assignedUserIds = new Set(assignments.filter(a => a.role === selectedRole).map(a => a.user_id))
   
   const unassignedUsers = members.filter(member => {
     return member.user_id && !assignedUserIds.has(member.user_id)
@@ -122,7 +124,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
   }
 
   const handleUnassignUser = async (userId: string) => {
-    const assignment = assignments.find(a => a.user_id === userId)
+    const assignment = assignments.find(a => a.id === userId)
     if (!assignment) return
 
     if (confirm('Are you sure you want to remove this user from the job?')) {
@@ -266,7 +268,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleUnassignUser(item.member.user_id!)}
+                      onClick={() => handleUnassignUser(item.assignment.id)}
                       disabled={assignmentsLoading}
                       className="gap-2"
                     >

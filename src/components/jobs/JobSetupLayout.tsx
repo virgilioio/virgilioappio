@@ -77,6 +77,7 @@ interface JobSetupLayoutProps {
 }
 
 const ROLE_LABEL: Record<string, string> = {
+  sourcer: 'Sourcer',
   recruiter: 'Recruiter',
   hiring_manager: 'Hiring manager',
   interviewer: 'Interviewer',
@@ -262,12 +263,12 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     try {
       // Demote the current holder rather than removing their access.
       if (existing) {
-        await updateAssignmentRole(existing.id, 'interviewer')
+        const hasInterviewer = assignments.some((a) => a.user_id === existing.user_id && a.role === 'interviewer')
+        if (hasInterviewer) await removeUserFromJob(existing.id)
+        else await updateAssignmentRole(existing.id, 'interviewer')
       }
-      const alreadyOnJob = assignments.find((a) => a.user_id === newUserId)
-      if (alreadyOnJob) {
-        await updateAssignmentRole(alreadyOnJob.id, role)
-      } else {
+      const alreadyInRole = assignments.find((a) => a.user_id === newUserId && a.role === role)
+      if (!alreadyInRole) {
         await assignUserToJob({
           job_id: jobId,
           user_id: newUserId,
@@ -317,7 +318,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
   const handleRoleChange = async (
     assignmentId: string,
-    role: 'recruiter' | 'hiring_manager' | 'interviewer'
+    role: 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer'
   ) => {
     try {
       await updateAssignmentRole(assignmentId, role)
@@ -1329,7 +1330,7 @@ interface TeamMemberRowProps {
   member: {
     assignmentId: string
     userId: string
-    role: 'recruiter' | 'hiring_manager' | 'interviewer' | string
+    role: 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer' | string
     name: string
     email?: string | null
     avatarUrl?: string | null
@@ -1338,7 +1339,7 @@ interface TeamMemberRowProps {
     last?: string
   }
   readOnly: boolean
-  onRoleChange: (role: 'recruiter' | 'hiring_manager' | 'interviewer') => void
+  onRoleChange: (role: 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer') => void
   onRemove: () => void
   onPromotePrimary: () => void
   onPromoteHM: () => void
@@ -1419,6 +1420,7 @@ function TeamMemberRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="sourcer">Sourcer</SelectItem>
             <SelectItem value="recruiter">Recruiter</SelectItem>
             <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
             <SelectItem value="interviewer">Interviewer</SelectItem>

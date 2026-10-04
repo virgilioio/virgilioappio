@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
-export type JobRole = 'recruiter' | 'hiring_manager' | 'interviewer' | null
+export type JobRole = 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer' | null
 
 /**
  * Returns the current user's role on a specific job via job_assignments.
