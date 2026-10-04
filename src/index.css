@@ -51,6 +51,24 @@
     /* Page title period color */
     --purple-period: 267 84% 87%; /* #d7c5fb */
 
+    /* Mark hired dialog */
+    --hire-ink: 231 22% 15%;
+    --hire-title: 60 18% 4%;
+    --hire-secondary: 220 13% 40%;
+    --hire-muted: 228 9% 58%;
+    --hire-hairline: 40 14% 93%;
+    --hire-border: 48 18% 85%;
+    --hire-border-cool: 225 14% 92%;
+    --hire-hover-border: 44 14% 78%;
+    --hire-focus-border: 44 8% 70%;
+    --hire-soft: 60 23% 97%;
+    --hire-toggle-off: 50 3% 82%;
+    --hire-success-bg: 150 50% 97%;
+    --hire-success-border: 151 43% 85%;
+    --hire-success-icon: 160 84% 26%;
+    --hire-success-check: 142 69% 73%;
+    --hire-cream: 30 100% 99%;
+
     /* Duplicate candidate dialog */
     --dup-ink: 60 18.2% 4.3%;
     --dup-cream: 30 100.0% 98.8%;

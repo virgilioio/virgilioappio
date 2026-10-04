@@ -13,7 +13,7 @@ export function useJobOpenings(jobId?: string | null) {
     queryFn: async () => {
       const { data, error } = await db
         .from('job_openings_with_status')
-        .select('id, req_id, target_hire_date, target_start_date, status, candidate_name, candidate_id, position')
+        .select('id, req_id, target_hire_date, target_start_date, status, candidate_name, candidate_id, position, sales_deal_id, sales_line_id, fee_pct')
         .eq('job_id', jobId)
         .order('position')
         .order('created_at')

@@ -1,4 +1,4 @@
-export type OpeningStatus = 'open' | 'offer' | 'filled'
+export type OpeningStatus = 'open' | 'offer' | 'filled' | 'cancelled'
 
 export interface OpeningRow {
   /** DB id when persisted; temp id (`tmp-…`) for unsaved rows. */
@@ -9,6 +9,9 @@ export interface OpeningRow {
   status: OpeningStatus
   candidate_name?: string | null
   candidate_id?: string | null
+  sales_deal_id?: string | null
+  sales_line_id?: string | null
+  fee_pct?: number | null
   persisted?: boolean
 }
 
