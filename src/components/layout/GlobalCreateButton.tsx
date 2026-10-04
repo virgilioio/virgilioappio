@@ -7,23 +7,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Briefcase, Users, Building2 } from 'lucide-react'
+import { Plus, Briefcase, Users } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { DuplicateFlowDialog } from '@/components/candidates/duplicate/DuplicateFlowDialog'
-import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
-import { useOrganizations, type CreateOrganizationData } from '@/hooks/useOrganizations'
 import { useIndependentCandidates, CreateIndependentCandidateData, IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 
 export function GlobalCreateButton() {
   const navigate = useNavigate()
-  const { canCreateJobs, canCreateCandidates, isPlatformAdmin } = usePermissions()
+  const { canCreateJobs, canCreateCandidates } = usePermissions()
   const [jobWizardOpen, setJobWizardOpen] = useState(false)
   const [candidateSheetOpen, setCandidateSheetOpen] = useState(false)
-  const [organizationFormOpen, setOrganizationFormOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{
     existing: any
@@ -32,7 +29,6 @@ export function GlobalCreateButton() {
     assignedJobId?: string
     assignedStageId?: string
   } | null>(null)
-  const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
   const { addCandidate, updateCandidate, isLoading: isCreatingCandidate } = useIndependentCandidates()
 
   // Handle candidate submission with job assignment logic
@@ -138,19 +134,16 @@ export function GlobalCreateButton() {
         } else if (e.key === 'k' && canCreateCandidates) {
           e.preventDefault()
           setCandidateSheetOpen(true)
-        } else if (e.key === 'o' && isPlatformAdmin) {
-          e.preventDefault()
-          setOrganizationFormOpen(true)
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canCreateJobs, canCreateCandidates, isPlatformAdmin])
+  }, [canCreateJobs, canCreateCandidates])
 
   // Don't render if user has no create permissions
-  if (!canCreateJobs && !canCreateCandidates && !isPlatformAdmin) {
+  if (!canCreateJobs && !canCreateCandidates) {
     return null
   }
 
@@ -173,16 +166,6 @@ export function GlobalCreateButton() {
       icon: Users,
       onClick: () => setCandidateSheetOpen(true),
       shortcut: '⌘K'
-    })
-  }
-
-  if (isPlatformAdmin) {
-    createOptions.push({
-      label: 'New Department',
-      description: 'Create a new department',
-      icon: Building2,
-      onClick: () => setOrganizationFormOpen(true),
-      shortcut: '⌘O'
     })
   }
 
@@ -231,19 +214,6 @@ export function GlobalCreateButton() {
         onSubmit={handleCandidateSubmit}
         isLoading={isCreatingCandidate}
       />
-
-      {/* Organization Form */}
-      {isPlatformAdmin && (
-        <OrganizationFormSheet
-          isOpen={organizationFormOpen}
-          onClose={() => setOrganizationFormOpen(false)}
-          onSubmit={async (data) => {
-            await createOrganization(data as CreateOrganizationData)
-            setOrganizationFormOpen(false)
-          }}
-          isLoading={isCreatingOrg}
-        />
-      )}
 
       {/* Merge Dialog */}
       {duplicateInfo && (
