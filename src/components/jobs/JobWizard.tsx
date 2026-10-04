@@ -300,7 +300,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
       if (existingId && existingId !== 'created') {
         // Re-entering step 1 after the job was already created — update in place
         // instead of inserting a duplicate row.
-        await updateJob(existingId, payload as any)
+        await updateJob(existingId, { ...(payload as any), draft_step: 1 }, { silent: true })
         if (!openingsSaved) {
           await insertOpenings(existingId, openings)
           setOpeningsSaved(true)
@@ -351,26 +351,49 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
     setWizardState((prev) => ({ ...prev, currentStep: Math.max(prev.currentStep - 1, 1) }))
 
   const handleSaveAndExit = async () => {
-    if (wizardState.currentStep === 1) {
-      const r = await submitStep1()
-      if (!r) return
+    const { jobData, createdJobId, currentStep } = wizardState
+    if (jobData.title?.trim() && jobData.department_id && jobData.organization_id) {
+      setIsSubmitting(true)
+      try {
+        const payload: any = { ...jobData, draft_step: currentStep }
+        delete payload.target_fill_date
+        delete payload.status
+        if (createdJobId && createdJobId !== 'created') {
+          await updateJob(createdJobId, payload, { silent: true })
+          if (!openingsSaved && openingsValid && openings.length) {
+            await insertOpenings(createdJobId, openings)
+            setOpeningsSaved(true)
+          }
+        } else if (!creatingRef.current) {
+          const created: any = await createJob({ ...payload, status: 'draft' }, { silent: true })
+          if (created?.id && openingsValid && openings.length) await insertOpenings(created.id, openings)
+        }
+      } catch {
+        return
+      } finally {
+        setIsSubmitting(false)
+      }
+      toast({ title: 'Saved as draft', description: 'You can resume from Jobs → Drafts.' })
     }
-    toast({ title: 'Saved as draft', description: 'You can resume from Jobs → Drafts.' })
     onClose()
   }
 
-  const handleComplete = async () => {
-    setWizardState((prev) => ({ ...prev, isComplete: true }))
+  const [publishError, setPublishError] = useState<string | null>(null)
 
+  const handleComplete = async () => {
+    setPublishError(null)
     // Publish the job itself (draft -> open) unless the user explicitly kept it as draft.
     const wantsOpen = (wizardState.jobData.status ?? 'open') === 'open'
     if (wantsOpen && wizardState.createdJobId && wizardState.createdJobId !== 'created') {
       try {
         await updateJob(wizardState.createdJobId, { status: 'open' } as any)
-      } catch {
-        // updateJob already shows the "Assign … before publishing." message; job stays a draft.
+      } catch (e: any) {
+        // updateJob already shows the toast; keep the wizard open with the message inline.
+        setPublishError(e?.message || 'Complete the setup before publishing.')
+        return
       }
     }
+    setWizardState((prev) => ({ ...prev, isComplete: true }))
 
     // Publish the posting if the Summary toggle is ON. The posting was created
     // as a draft (is_active=false) in Step 4 so this is the moment it goes live.
