@@ -53,6 +53,12 @@ export interface Job {
   max_years_experience?: number | null
   target_fill_date?: string | null
   priority?: JobPriority
+  draft_step?: number | null
+  last_edited_by?: string | null
+  draft_source?: 'sales' | 'wizard' | null
+  sales_deal_id?: string | null
+  sales_deal_title?: string | null
+  sales_deal_owner?: string | null
 }
 
 export interface CreateJobData {
