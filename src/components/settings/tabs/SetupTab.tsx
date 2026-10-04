@@ -111,12 +111,6 @@ function buildTiers(c: SetupChecks, isAdminOrOwner: boolean): Tier[] {
       href: '/candidates?import=1',
     },
     {
-      id: 'crm', icon: Handshake, title: 'CRM: customers & deals',
-      description: 'Track companies you hire for.',
-      estimate: '10 min', status: 'optional',
-      href: '/crm',
-    },
-    {
       id: 'job-boards', icon: Megaphone, title: 'Job board channels',
       description: 'Publish to LinkedIn and job boards.',
       estimate: '5 min', status: 'optional',

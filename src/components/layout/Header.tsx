@@ -164,27 +164,6 @@ export function Header() {
       section: 'analytics',
     },
     {
-      href: '/crm',
-      icon: PieChart,
-      label: 'Overview',
-      show: canViewOrganizations,
-      section: 'crm',
-    },
-    {
-      href: '/crm/companies',
-      icon: Building2,
-      label: 'Companies',
-      show: canViewOrganizations,
-      section: 'crm',
-    },
-    {
-      href: '/crm/deals',
-      icon: Handshake,
-      label: 'Deals',
-      show: canViewOrganizations,
-      section: 'crm',
-    },
-    {
       href: '/references',
       icon: Inbox,
       label: 'Requests',

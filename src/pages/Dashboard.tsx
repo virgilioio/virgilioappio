@@ -293,7 +293,14 @@ export default function Dashboard() {
   if (orgLoading || !hasOrganizationContext) {
     return <WorkspaceProvisioningLoader status="finalizing" />
   }
-  if (permissions.isSalesUser) return <Navigate to="/crm/deals" replace />
+  if (permissions.isSalesUser) {
+    return (
+      <div className="h-[100dvh] flex flex-col items-center justify-center gap-2 font-inter text-[13px] text-[#5C6070]">
+        <p>Companies and deals now live in Gio Sales.</p>
+        <a href="https://sales.gogio.io/companies" target="_blank" rel="noopener noreferrer" className="underline text-[#1F2230]">Open Gio Sales</a>
+      </div>
+    )
+  }
 
   // ─── Digest ────────────────────────────────────────────────
   const scorecardCount = counts.scorecard
