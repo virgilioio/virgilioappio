@@ -55,7 +55,7 @@ export interface Job {
   priority?: JobPriority
   draft_step?: number | null
   last_edited_by?: string | null
-  draft_source?: 'sales' | 'wizard' | null
+  draft_source?: string | null
   sales_deal_id?: string | null
   sales_deal_title?: string | null
   sales_deal_owner?: string | null
