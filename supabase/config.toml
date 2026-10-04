@@ -297,3 +297,6 @@ verify_jwt = false
 
 [functions.deliver-integration-outbox]
 verify_jwt = false
+
+[functions.sales-company-upsert]
+verify_jwt = false
