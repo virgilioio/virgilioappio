@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { GripVertical, Maximize2, Settings2, Trash2, X, Check } from 'lucide-react'
-import { METRICS, RECRUITING_METRICS, CRM_METRICS, HYGIENE_METRICS } from '../model/metrics'
+import { METRICS, RECRUITING_METRICS, HYGIENE_METRICS } from '../model/metrics'
 import { DIMENSIONS, SPLITTABLE_DIMENSIONS } from '../model/dimensions'
 import { VIZ, vizFor, defaultSpan, nextSpan } from '../model/viz'
 import { TONE_COLOR, TONE_TINT } from '../model/tokens'
@@ -191,7 +191,6 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
           groups={[
             { label: 'Recruiting', options: RECRUITING_METRICS.map(m => ({ value: m.id, label: m.label })) },
             { label: 'Pipeline hygiene · current snapshot', options: HYGIENE_METRICS.map(m => ({ value: m.id, label: m.label })) },
-            { label: 'CRM / Revenue', options: CRM_METRICS.map(m => ({ value: m.id, label: m.label })) },
           ]}
           onChange={v => setMetric(v as MetricId)}
         />
