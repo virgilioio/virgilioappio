@@ -352,6 +352,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     setPublishing(false)
     if (error) {
       setPublishError(error.message)
+      toast({ title: "Couldn't publish", description: error.message, variant: 'destructive' })
       if (isPublishGateError(error.message)) {
         scrollTo('hiring-team')
         setHighlightSection('hiring-team')
