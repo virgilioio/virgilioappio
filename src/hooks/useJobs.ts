@@ -204,7 +204,7 @@ export function useJobs() {
     }
   }
 
-  const createJob = async (jobData: CreateJobData) => {
+  const createJob = async (jobData: CreateJobData & { draft_step?: number | null }, opts?: { silent?: boolean }) => {
     if (!user) throw new Error('User not authenticated')
 
     try {
@@ -271,7 +271,7 @@ export function useJobs() {
 
       if (createError) throw createError
 
-      toast({ title: 'Success', description: 'Job created successfully' })
+      if (!opts?.silent) toast({ title: 'Success', description: 'Job created successfully' })
 
       await logActivity({
         activityType: 'job_created',
@@ -299,7 +299,7 @@ export function useJobs() {
     }
   }
 
-  const updateJob = async (id: string, jobData: UpdateJobData) => {
+  const updateJob = async (id: string, jobData: UpdateJobData & { draft_step?: number | null }, opts?: { silent?: boolean }) => {
     try {
       const patch: Record<string, any> = { ...jobData }
       if (jobData.department_id) {
@@ -320,6 +320,11 @@ export function useJobs() {
       )
 
       if (updateError) throw updateError
+
+      if (opts?.silent) {
+        queryClient.invalidateQueries({ queryKey: ['jobs'] })
+        return updatedJob
+      }
 
       toast({ title: 'Success', description: 'Job updated successfully' })
 

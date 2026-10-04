@@ -1,7 +1,7 @@
 export type SalesPerson = { id: string; name?: string | null; email?: string | null }
 export type SalesTeam = { sales?: SalesPerson[]; es?: SalesPerson[] } | null | undefined
 
-/** Mirrors the database publish gate (jobs_publish_gate). */
+/** Mirrors the attribution part of the database publish gate (job_setup_checks). */
 export function missingForPublish(
   job: { sales_deal_id?: string | null; sales_team?: SalesTeam } | null | undefined,
   assignments: Array<{ role: string; deleted_at?: string | null }>,
@@ -18,4 +18,6 @@ export function missingForPublish(
 }
 
 export const isPublishGateError = (message?: string | null) =>
-  !!message && /^Assign .+ before publishing\.?$/i.test(message.trim())
+  !!message &&
+  (/^Assign .+ before publishing\.?$/i.test(message.trim()) ||
+    /^Complete the setup before publishing/i.test(message.trim()))
