@@ -71,7 +71,7 @@ export function HiringTeamManageDialog({
 
   const assignedIds = useMemo(
     () => new Set(assignments.filter((a) => a.role === role).map((a) => a.user_id)),
-    [assignments]
+    [assignments, role]
   )
   const availableMembers = useMemo(
     () => members.filter((m) => m.user_id && !assignedIds.has(m.user_id!)),

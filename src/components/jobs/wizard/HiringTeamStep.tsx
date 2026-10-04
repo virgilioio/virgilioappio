@@ -35,12 +35,14 @@ interface HiringTeamStepProps {
 }
 
 const DB_ROLE_LABEL: Record<JobAssignmentRole, string> = {
+  sourcer: 'Sourcer',
   recruiter: 'Recruiter',
   hiring_manager: 'Hiring manager',
   interviewer: 'Interviewer',
 }
 
 const SCOPE_BY_ROLE: Record<JobAssignmentRole, string> = {
+  sourcer: 'Sourcer · find + add candidates',
   recruiter: 'Owner · all access',
   hiring_manager: 'HM · view + scorecards',
   interviewer: 'Interviewer · scorecards',
@@ -134,6 +136,7 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
 
   // Counts per role for the "Roles on this job" tiles
   const roleCounts = {
+    sourcer: assignments.filter((a) => a.role === 'sourcer').length,
     recruiter: assignments.filter((a) => a.role === 'recruiter').length,
     hiring_manager: assignments.filter((a) => a.role === 'hiring_manager').length,
     interviewer: assignments.filter((a) => a.role === 'interviewer').length,
@@ -343,7 +346,7 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
                         <SelectValue placeholder="Pick a role…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(['interviewer', 'recruiter', 'hiring_manager'] as JobAssignmentRole[]).map(
+                        {(['interviewer', 'sourcer', 'recruiter', 'hiring_manager'] as JobAssignmentRole[]).map(
                           (r) => (
                             <SelectItem key={r} value={r}>
                               {DB_ROLE_LABEL[r]}
@@ -376,6 +379,12 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
         trailing={<InfoLink>What can each role do?</InfoLink>}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <RoleCard
+            label="Sourcer"
+            description="Find and add candidates to the pipeline."
+            count={roleCounts.sourcer}
+            tone="lilac"
+          />
           <RoleCard
             label="Recruiter"
             description="Source, screen, schedule, send offers."
