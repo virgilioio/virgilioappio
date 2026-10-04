@@ -97,6 +97,7 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
   // Derive owner ids from assignments
   const recruiterAssignment = assignments.find((a) => a.role === 'recruiter')
   const hmAssignment = assignments.find((a) => a.role === 'hiring_manager')
+  const sourcerAssignment = assignments.find((a) => a.role === 'sourcer')
 
   // Generic owner setter — swaps the single recruiter / hiring_manager slot.
   // Handles the case where the target user already has a different role on the job
@@ -110,17 +111,15 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
     if (!m) return
 
     try {
-      const existingForUser = assignments.find((a) => a.user_id === newUserId)
+      // A person may hold several roles, so only the same (user, role) pair counts.
+      const existingForUser = assignments.find((a) => a.user_id === newUserId && a.role === role)
 
       // Free the slot only if a *different* user holds it.
       if (current && current.user_id !== newUserId) {
         await removeUserFromJob(current.id)
       }
 
-      if (existingForUser && existingForUser.role !== role) {
-        // Promote/demote in place — no insert, no collision.
-        await updateAssignmentRole(existingForUser.id, role)
-      } else if (!existingForUser) {
+      if (!existingForUser) {
         await assignUserToJob({
           job_id: jobId,
           user_id: newUserId,
@@ -209,6 +208,22 @@ export function HiringTeamStep({ jobId, onNext, onBack, ui, onUiChange }: Hiring
               />
             </div>
             <FieldHint>Owns the job — receives all candidate notifications.</FieldHint>
+          </div>
+
+          <div>
+            <FieldLabel required>Sourcer</FieldLabel>
+            <div className="mt-2">
+              <SearchableSelect
+                options={memberOptions}
+                value={sourcerAssignment?.user_id ?? ''}
+                onValueChange={(v) => setOwner('sourcer', v)}
+                placeholder="Select a sourcer…"
+                searchPlaceholder="Search members…"
+                emptyMessage="No members found."
+                disabled={loading}
+              />
+            </div>
+            <FieldHint>Needed before the job can be published. Add more Sourcers below.</FieldHint>
           </div>
 
           <div>
