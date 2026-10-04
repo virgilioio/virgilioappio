@@ -19,19 +19,8 @@ export type MetricId =
   | 'avg_days_in_stage'
   | 'stuck_candidates'
   | 'days_in_pipeline'
-  // CRM / Revenue
-  | 'open_pipeline'
-  | 'revenue_won'
-  | 'open_deals'
-  | 'deals_won'
-  | 'win_rate'
-  | 'avg_sales_cycle'
-  | 'avg_deal_size'
-  | 'collected'
-  | 'outstanding'
-  | 'new_deals'
 
-export type MetricGroup = 'recruiting' | 'crm' | 'hygiene'
+export type MetricGroup = 'recruiting' | 'hygiene'
 
 export type DimensionId =
   | 'none'
@@ -44,11 +33,6 @@ export type DimensionId =
   | 'skills'
   | 'experience'
   | 'geography'
-  // CRM
-  | 'deal_stage'
-  | 'deal_owner'
-  | 'company'
-  | 'deal_source'
 
 export type VizId = 'kpi' | 'line' | 'bars' | 'columns' | 'donut' | 'funnel' | 'table' | 'aging' | 'list'
 

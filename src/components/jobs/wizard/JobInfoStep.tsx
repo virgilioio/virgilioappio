@@ -23,8 +23,7 @@ import { CreateJobData, JobWorkMode, JobEmploymentType } from '@/hooks/useJobs'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
-import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
-import { useOrganizations } from '@/hooks/useOrganizations'
+import { ClientsManagedNote } from '@/components/organizations/ClientsManagedNote'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useDepartments } from '@/hooks/useDepartments'
@@ -107,12 +106,10 @@ const JOB_LEVEL_OPTIONS: SearchableSelectOption[] = [
 ]
 
 export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
-  const [isOrgFormOpen, setIsOrgFormOpen] = React.useState(false)
   const [isDeptFormOpen, setIsDeptFormOpen] = React.useState(false)
-  const { data: childOrgs = [], isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
+  const { data: childOrgs = [], isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation(jobData.organization_id)
   const { userType, organizationId } = useAuth()
   const permissions = usePermissions()
-  const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
   const { departments, isLoading: isLoadingDepts, getDefault, createDepartment } = useDepartments()
 
   const organizationOptions: SearchableSelectOption[] = React.useMemo(
@@ -159,19 +156,6 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
 
   const set = <K extends keyof CreateJobData>(field: K, value: CreateJobData[K]) =>
     onUpdate({ [field]: value } as Partial<CreateJobData>)
-
-  const handleCreateOrganization = async (data: any) => {
-    try {
-      const result = await createOrganization(data)
-      await refetchOrgs()
-      setIsOrgFormOpen(false)
-      if (result && typeof result === 'object' && 'id' in result) {
-        onUpdate({ organization_id: (result as { id: string }).id })
-      }
-    } catch (error) {
-      console.error('Failed to create organization:', error)
-    }
-  }
 
   const handleCreateDepartment = async (data: { name: string; description?: string | null }) => {
     try {
@@ -288,11 +272,9 @@ export function JobInfoStep({ jobData, onUpdate, openings }: JobInfoStepProps) {
                   searchPlaceholder="Search clients…"
                   emptyMessage="No clients found."
                   disabled={isLoadingOrgs}
-                  onCreateNew={() => setIsOrgFormOpen(true)}
-                  createNewLabel="Create client"
                 />
               </div>
-              <FieldHint>The company or business unit this role belongs to.</FieldHint>
+              <ClientsManagedNote />
             </div>
           )}
 
@@ -598,14 +580,6 @@ We're hiring a…
           </div>
         </div>
       </SectionCard>
-
-      {/* Client (Organization) Creation Sheet */}
-      <OrganizationFormSheet
-        isOpen={isOrgFormOpen}
-        onClose={() => setIsOrgFormOpen(false)}
-        onSubmit={handleCreateOrganization}
-        isLoading={isCreatingOrg}
-      />
 
       {/* Department Creation Dialog */}
       <DepartmentFormDialog

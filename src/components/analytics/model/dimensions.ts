@@ -4,7 +4,7 @@ export interface DimensionDef {
   id: DimensionId
   label: string
   kind: 'time' | 'categorical' | 'none'
-  group: 'recruiting' | 'crm' | 'shared'
+  group: 'recruiting' | 'shared'
   // funnel-shape: stage is a decreasing funnel
   funnel?: boolean
 }
@@ -20,11 +20,6 @@ export const DIMENSIONS: Record<DimensionId, DimensionDef> = {
   skills:      { id: 'skills',      label: 'Top skills',    kind: 'categorical', group: 'recruiting' },
   experience:  { id: 'experience',  label: 'Experience',    kind: 'categorical', group: 'recruiting' },
   geography:   { id: 'geography',   label: 'Country',       kind: 'categorical', group: 'recruiting' },
-  // CRM
-  deal_stage:  { id: 'deal_stage',  label: 'Deal stage',    kind: 'categorical', group: 'crm', funnel: true },
-  deal_owner:  { id: 'deal_owner',  label: 'Deal owner',    kind: 'categorical', group: 'crm' },
-  company:     { id: 'company',     label: 'Company',       kind: 'categorical', group: 'crm' },
-  deal_source: { id: 'deal_source', label: 'Deal source',   kind: 'categorical', group: 'crm' },
 }
 
 // Dimensions a user can choose in the config popover (NOT 'none', that is the default no-split).
@@ -38,8 +33,4 @@ export const SPLITTABLE_DIMENSIONS: DimensionDef[] = [
   DIMENSIONS.skills,
   DIMENSIONS.experience,
   DIMENSIONS.geography,
-  DIMENSIONS.deal_stage,
-  DIMENSIONS.deal_owner,
-  DIMENSIONS.company,
-  DIMENSIONS.deal_source,
 ]

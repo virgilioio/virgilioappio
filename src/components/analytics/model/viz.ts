@@ -44,11 +44,9 @@ export function vizFor(group: DimensionId, hygiene = false): VizId[] {
     case 'time':
       return ['line', 'kpi']
     case 'stage':
-    case 'deal_stage':
       return ['funnel', 'bars', 'columns', 'donut', 'table']
     case 'source':
     case 'seniority':
-    case 'deal_source':
       return ['bars', 'columns', 'donut', 'table']
     case 'experience':
       return ['columns', 'bars', 'table']
@@ -57,8 +55,6 @@ export function vizFor(group: DimensionId, hygiene = false): VizId[] {
     case 'job':
     case 'recruiter':
     case 'skills':
-    case 'deal_owner':
-    case 'company':
       return ['bars', 'table']
     default:
       return ['table']

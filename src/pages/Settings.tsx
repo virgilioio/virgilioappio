@@ -4,7 +4,6 @@ import { Menu } from 'lucide-react'
 import { ProfileTab } from '@/components/settings/ProfileTab'
 import OrganizationTab from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
-import { DealStagesManager } from '@/components/settings/DealStagesManager'
 import { DepartmentsManager } from '@/components/settings/DepartmentsManager'
 import { PlatformDashboardV2 } from '@/components/settings/platform/PlatformDashboardV2'
 import { PlatformJobDefaults } from '@/components/settings/platform/PlatformJobDefaults'
@@ -141,8 +140,6 @@ export default function Settings() {
         return <CareersPageTab />
       case 'job-boards':
         return <JobBoardsTab />
-      case 'workspace-deal-stages':
-        return <DealStagesManager />
       case 'customers':
         return <CustomersTab />
       case 'platform-dashboard':

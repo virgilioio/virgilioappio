@@ -7,42 +7,37 @@ export interface ChildOrgOption {
   name: string
 }
 
-/**
- * Hook to fetch child organizations where current user can create jobs.
- * 
- * Business Rules:
- * - Platform admins: See all client organizations
- * - Workspace owners: See their parent org + all child orgs
- * - Recruiters: See their parent org + all child orgs
- * - Other roles: No org selection (will use their default org)
- */
-export function useChildOrganizationsForJobCreation() {
-  const { user, organizationId } = useAuth()
-  
-  const query = useQuery({
-    queryKey: ['child-orgs-for-job-creation', organizationId],
-    queryFn: async () => {
-      if (!user || !organizationId) return []
+/** Gio ATS is used by Virgilio only; its clients are mirrored from Gio Sales. */
+export const VIRGILIO_TENANT_ID = '5ba7b145-f251-4b18-8900-724cb06028ab'
+export const GIO_SALES_COMPANIES_URL = 'https://sales.gogio.io/companies'
 
-      // Jobs only live under client orgs (the workspace's hiring containers).
-      // The root saas/tenant org is NOT a valid job owner — excluding it
-      // prevents the confusing duplicate (e.g. two "Virgilio" entries) in
-      // pickers.
-      const { data: children, error: childrenError } = await supabase
+/**
+ * Clients selectable for a job: active clients mirrored from Gio Sales, plus
+ * the internal client (Virgilio's own hiring). `currentId` (the job's current
+ * client) always stays selectable even if it no longer matches.
+ */
+export function useChildOrganizationsForJobCreation(currentId?: string | null) {
+  const { user } = useAuth()
+
+  return useQuery({
+    queryKey: ['child-orgs-for-job-creation', currentId ?? null],
+    queryFn: async (): Promise<ChildOrgOption[]> => {
+      if (!user) return []
+      const { data, error } = await (supabase as any)
         .from('organizations')
         .select('id, name')
-        .eq('parent_organization_id', organizationId)
+        .eq('tenant_id', VIRGILIO_TENANT_ID)
         .eq('org_kind', 'client')
-        .eq('status', 'active')
+        .or('and(sales_company_id.not.is.null,status.eq.active),is_internal.eq.true')
         .order('name')
-
-      if (childrenError) throw childrenError
-
-      return children || []
+      if (error) throw error
+      const rows: ChildOrgOption[] = data ?? []
+      if (currentId && !rows.some((r) => r.id === currentId)) {
+        const { data: cur } = await supabase.from('organizations').select('id, name').eq('id', currentId).maybeSingle()
+        if (cur) rows.push(cur as ChildOrgOption)
+      }
+      return rows
     },
-    enabled: !!user && !!organizationId
+    enabled: !!user,
   })
-
-  
-  return query
 }

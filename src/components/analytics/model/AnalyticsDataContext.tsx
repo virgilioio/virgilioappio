@@ -9,17 +9,12 @@ import { useOfferAnalyticsMetrics } from '@/hooks/analytics/useOfferAnalyticsMet
 import { useTalentInsightsMetrics } from '@/hooks/analytics/useTalentInsightsMetrics'
 import { useInterviewsPerHireMetrics } from '@/hooks/analytics/useInterviewsPerHireMetrics'
 import { usePipelineAgingMetrics } from '@/hooks/analytics/usePipelineAgingMetrics'
-import { useCrmAnalyticsMetrics, type CrmFilters } from '@/hooks/analytics/useCrmAnalyticsMetrics'
 
 export interface PageFilters {
   recruiterIds: string[]
   jobIds: string[]
   organizationIds: string[]
   jobStatus: string
-  // CRM filter slice (optional — defaults to empty)
-  dealOwnerIds?: string[]
-  dealCompanyIds?: string[]
-  dealStageIds?: string[]
 }
 
 interface ProviderProps {
@@ -38,7 +33,6 @@ export interface AnalyticsBundle {
   interview: ReturnType<typeof useInterviewHealthMetrics>
   offer: ReturnType<typeof useOfferAnalyticsMetrics>
   talent: ReturnType<typeof useTalentInsightsMetrics>
-  crm: ReturnType<typeof useCrmAnalyticsMetrics>
   iph: ReturnType<typeof useInterviewsPerHireMetrics>
   aging: ReturnType<typeof usePipelineAgingMetrics>
 }
@@ -57,16 +51,10 @@ export function AnalyticsDataProvider({ dateRange, filters, children }: Provider
   const talent = useTalentInsightsMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const iph = useInterviewsPerHireMetrics(metrics.finalJobIds, dateRange, hasJobIds)
   const aging = usePipelineAgingMetrics(metrics.finalJobIds, hasJobIds)
-  const crmFilters: CrmFilters = {
-    ownerIds: filters.dealOwnerIds,
-    companyIds: filters.dealCompanyIds,
-    stageIds: filters.dealStageIds,
-  }
-  const crm = useCrmAnalyticsMetrics(dateRange, crmFilters)
 
   const value = useMemo<AnalyticsBundle>(
-    () => ({ dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent, crm, iph, aging }),
-    [dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent, crm, iph, aging],
+    () => ({ dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent, iph, aging }),
+    [dateRange, metrics, stage, jobHealth, recruiter, source, interview, offer, talent, iph, aging],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

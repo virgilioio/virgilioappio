@@ -25,8 +25,6 @@ import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useChatWithGio } from '@/hooks/useChatWithGio'
-import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
-import { useOrganizations } from '@/hooks/useOrganizations'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -193,11 +191,7 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
   const navigate = useNavigate()
   const { user, organizationId, userType } = useAuth()
   useSourcingCreditWarnings() // Initialize credit warnings
-  const { data: childOrgs, isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
-  const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
-  
-  // State for organization creation form
-  const [isOrgFormOpen, setIsOrgFormOpen] = useState(false)
+  const { data: childOrgs, isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
   
   // Import chat hook
   const {
@@ -971,13 +965,11 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
                         placeholder={isLoadingOrgs ? "Loading organizations..." : "Select a job folder..."}
                         disabled={isLoadingOrgs}
                         searchPlaceholder="Search folders..."
-                        onCreateNew={() => setIsOrgFormOpen(true)}
-                        createNewLabel="Create Department"
                         error={orgSelectError || undefined}
                         required
                       />
                       <p className="text-xs text-muted-foreground">
-                        Select or create a job folder to organize your search.
+                        Clients are managed in Gio Sales.
                       </p>
                     </div>
 
@@ -1148,23 +1140,6 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
         </SheetContent>
       </Sheet>
 
-      {/* Organization Creation Form */}
-      <OrganizationFormSheet
-        isOpen={isOrgFormOpen}
-        onClose={() => setIsOrgFormOpen(false)}
-        onSubmit={async (data) => {
-          const result = await createOrganization({ 
-            name: data.name, 
-            status: data.status as 'active' | 'inactive' 
-          })
-          if (result && typeof result === 'object' && 'id' in result) {
-            setSelectedOrgId(result.id)
-            refetchOrgs()
-          }
-          setIsOrgFormOpen(false)
-        }}
-        isLoading={isCreatingOrg}
-      />
     </>
   )
 }

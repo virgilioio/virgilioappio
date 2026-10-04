@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { GripVertical, Maximize2, Settings2, Trash2, X, Check } from 'lucide-react'
-import { METRICS, RECRUITING_METRICS, CRM_METRICS, HYGIENE_METRICS } from '../model/metrics'
+import { METRICS, RECRUITING_METRICS, HYGIENE_METRICS } from '../model/metrics'
 import { DIMENSIONS, SPLITTABLE_DIMENSIONS } from '../model/dimensions'
 import { VIZ, vizFor, defaultSpan, nextSpan } from '../model/viz'
 import { TONE_COLOR, TONE_TINT } from '../model/tokens'
@@ -40,7 +40,11 @@ function subLine(cfg: WidgetConfig): string {
   return `${v} · by ${(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label.toLowerCase()}`
 }
 
-export function WidgetFrame({ cfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
+export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
+  // Saved widgets may still reference removed CRM metrics/dimensions.
+  const cfg: WidgetConfig = METRICS[rawCfg.metric] && DIMENSIONS[rawCfg.groupBy]
+    ? rawCfg
+    : { ...rawCfg, metric: METRICS[rawCfg.metric] ? rawCfg.metric : 'applications', groupBy: DIMENSIONS[rawCfg.groupBy] ? rawCfg.groupBy : 'none', viz: 'kpi', scope: undefined, title: undefined }
   const meta = METRICS[cfg.metric] ?? METRICS.applications
   const Icon = meta.icon
   const tone = TONE_COLOR[meta.tone]
@@ -191,7 +195,6 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
           groups={[
             { label: 'Recruiting', options: RECRUITING_METRICS.map(m => ({ value: m.id, label: m.label })) },
             { label: 'Pipeline hygiene · current snapshot', options: HYGIENE_METRICS.map(m => ({ value: m.id, label: m.label })) },
-            { label: 'CRM / Revenue', options: CRM_METRICS.map(m => ({ value: m.id, label: m.label })) },
           ]}
           onChange={v => setMetric(v as MetricId)}
         />

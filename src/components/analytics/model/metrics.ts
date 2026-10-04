@@ -49,19 +49,8 @@ export const METRICS: Record<MetricId, MetricDef> = {
   avg_days_in_stage:    { id: 'avg_days_in_stage',    label: 'Avg days in stage',     tone: 'amber',   icon: Hourglass,     format: 'days',  deltaGood: 'down', group: 'hygiene' },
   stuck_candidates:     { id: 'stuck_candidates',     label: 'Stuck candidates',      tone: 'pink',    icon: AlertTriangle, format: 'count', deltaGood: 'down', group: 'hygiene' },
   days_in_pipeline:     { id: 'days_in_pipeline',     label: 'Avg days in pipeline',  tone: 'amber',   icon: Timer,         format: 'days',  deltaGood: 'down', group: 'hygiene' },
-  open_pipeline:    { id: 'open_pipeline',    label: 'Open pipeline',     tone: 'purple', icon: DollarSign,   format: 'money', deltaGood: 'up',   group: 'crm' },
-  revenue_won:      { id: 'revenue_won',      label: 'Revenue won',       tone: 'green',  icon: Trophy,       format: 'money', deltaGood: 'up',   group: 'crm' },
-  open_deals:       { id: 'open_deals',       label: 'Open deals',        tone: 'amber',  icon: Briefcase,    format: 'count', deltaGood: 'up',   group: 'crm' },
-  deals_won:        { id: 'deals_won',        label: 'Deals won',         tone: 'green',  icon: CheckCircle,  format: 'count', deltaGood: 'up',   group: 'crm' },
-  win_rate:         { id: 'win_rate',         label: 'Win rate',          tone: 'purple', icon: Target,       format: 'pct',   deltaGood: 'up',   group: 'crm' },
-  avg_sales_cycle:  { id: 'avg_sales_cycle',  label: 'Avg sales cycle',   tone: 'blue',   icon: Clock,        format: 'days',  deltaGood: 'down', group: 'crm' },
-  avg_deal_size:    { id: 'avg_deal_size',    label: 'Avg deal size',     tone: 'blue',   icon: Wallet,       format: 'money', deltaGood: 'up',   group: 'crm' },
-  collected:        { id: 'collected',        label: 'Collected',         tone: 'green',  icon: Banknote,     format: 'money', deltaGood: 'up',   group: 'crm' },
-  outstanding:      { id: 'outstanding',      label: 'Outstanding',       tone: 'amber',  icon: Wallet,       format: 'money', deltaGood: 'down', group: 'crm' },
-  new_deals:        { id: 'new_deals',        label: 'New deals',         tone: 'pink',   icon: Sparkles,     format: 'count', deltaGood: 'up',   group: 'crm' },
 }
 
 export const METRIC_LIST = Object.values(METRICS)
 export const RECRUITING_METRICS = METRIC_LIST.filter(m => m.group === 'recruiting')
 export const HYGIENE_METRICS = METRIC_LIST.filter(m => m.group === 'hygiene')
-export const CRM_METRICS = METRIC_LIST.filter(m => m.group === 'crm')
