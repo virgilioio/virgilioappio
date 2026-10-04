@@ -19,6 +19,11 @@ export default {
 			}
 		},
 		extend: {
+			boxShadow: {
+				'hire-dialog': 'var(--shadow-hire-dialog)',
+				'hire-menu': 'var(--shadow-hire-menu)',
+				'hire-toast': 'var(--shadow-hire-toast)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
