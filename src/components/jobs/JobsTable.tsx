@@ -32,13 +32,18 @@ import { JobPriorityBadge } from '@/components/jobs/JobPriorityBadge'
 import { JOB_PRIORITIES, jobPriorityRank, type JobPriority } from '@/lib/job-priority'
 import { JobPriorityFilterChip } from '@/components/jobs/JobPriorityFilterChip'
 import { useSearchParams } from 'react-router-dom'
+import { FilePenLine } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { DraftsTable } from '@/components/jobs/drafts/DraftsTable'
+import { DraftPill } from '@/components/jobs/drafts/DraftPill'
 
-type StatusSegment = 'active' | 'all' | 'paused' | 'closed' | 'archived'
+export type StatusSegment = 'active' | 'drafts' | 'all' | 'closed' | 'archived'
 
 interface TabOption {
   value: StatusSegment
   label: string
   count: number
+  dot?: string
 }
 
 interface JobsTableProps {
@@ -52,6 +57,10 @@ interface JobsTableProps {
   statusFilter: StatusSegment
   onStatusFilterChange: (v: StatusSegment) => void
   tabs: TabOption[]
+  onResumeDraft?: (job: Job) => void
+  onSetupDraft?: (job: Job) => void
+  onAssignOwner?: (job: Job) => void
+  onDiscardDraft?: (job: Job) => void
 }
 
 type StatusTone = 'green' | 'yellow' | 'neutral' | 'ink'
@@ -59,7 +68,7 @@ type StatusTone = 'green' | 'yellow' | 'neutral' | 'ink'
 function statusBadge(status: Job['status']) {
   const map: Record<Job['status'], { tone: StatusTone; label: string }> = {
     open: { tone: 'green', label: 'Open' },
-    draft: { tone: 'yellow', label: 'Paused' },
+    draft: { tone: 'neutral', label: 'Draft' },
     closed: { tone: 'neutral', label: 'Closed' },
     archived: { tone: 'ink', label: 'Archived' },
   }
@@ -78,7 +87,14 @@ export function JobsTable({
   statusFilter,
   onStatusFilterChange,
   tabs,
+  onResumeDraft,
+  onSetupDraft,
+  onAssignOwner,
+  onDiscardDraft,
 }: JobsTableProps) {
+  const [draftSource, setDraftSource] = useState<'all' | 'wizard' | 'sales'>('all')
+  const draftJobs = useMemo(() => jobs.filter(j => j.status === 'draft'), [jobs])
+  const salesDraftCount = draftJobs.filter(j => j.sales_deal_id).length
   const permissions = usePermissions()
   const { members, isLoading: membersLoading } = useMembers()
 
@@ -167,8 +183,12 @@ export function JobsTable({
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      if (statusFilter === 'active' && !(job.status === 'open' || job.status === 'draft')) return false
-      if (statusFilter === 'paused' && job.status !== 'draft') return false
+      if (statusFilter === 'active' && job.status !== 'open') return false
+      if (statusFilter === 'drafts') {
+        if (job.status !== 'draft') return false
+        if (draftSource === 'sales' && !job.sales_deal_id) return false
+        if (draftSource === 'wizard' && job.sales_deal_id) return false
+      }
       if (statusFilter === 'closed' && job.status !== 'closed') return false
       if (statusFilter === 'archived' && job.status !== 'archived') return false
 
@@ -194,7 +214,7 @@ export function JobsTable({
       if (!jobMatchesUsers(job, selectedUsers, assignedJobIds)) return false
       return true
     })
-  }, [jobs, statusFilter, searchTerm, selectedCompanies, selectedDepartments, selectedLocations, selectedUsers, postedRange, selectedPriorities, assignedJobIds])
+  }, [jobs, statusFilter, draftSource, searchTerm, selectedCompanies, selectedDepartments, selectedLocations, selectedUsers, postedRange, selectedPriorities, assignedJobIds])
 
   const sortedJobs = useMemo(() => {
     const byRecency = (a: Job, b: Job) =>
@@ -255,6 +275,16 @@ export function JobsTable({
                 )}
               >
                 <span>{t.label}</span>
+                {t.dot && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#1F2230]" aria-label={t.dot} />
+                      </TooltipTrigger>
+                      <TooltipContent>{t.dot}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 {t.count > 0 && (
                   <span className={cn(
                     'font-poppins text-[12.5px] tabular-nums',
@@ -310,6 +340,25 @@ export function JobsTable({
                 searchable
               />
             )}
+            {statusFilter === 'drafts' && (
+              <div className="inline-flex h-8 items-center rounded-lg bg-[#F1F0EC] p-0.5" role="tablist" aria-label="Draft source">
+                {([['all', 'All sources'], ['wizard', 'Started here'], ['sales', 'From Gio Sales']] as const).map(([v, l]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="tab"
+                    aria-selected={draftSource === v}
+                    onClick={() => setDraftSource(v)}
+                    className={cn(
+                      'h-7 rounded-md px-2.5 font-inter text-[12px] transition-colors',
+                      draftSource === v ? 'bg-white text-text-primary font-medium shadow-sm' : 'text-text-tertiary hover:text-text-primary'
+                    )}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            )}
             <JobPriorityFilterChip selected={selectedPriorities} onChange={setSelectedPriorities} />
             <FilterChipPopover
               label="Sort"
@@ -332,6 +381,31 @@ export function JobsTable({
         </div>
       </div>
 
+      {statusFilter === 'active' && draftJobs.length > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-[#E7E8EE] bg-white px-3.5 py-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F1F0EC]">
+            <FilePenLine className="h-3.5 w-3.5 text-text-primary" />
+          </span>
+          <p className="flex-1 min-w-0 font-inter text-[12.5px] text-text-secondary">
+            {draftJobs.length} {draftJobs.length === 1 ? "draft isn't" : "drafts aren't"} live yet
+            {salesDraftCount > 0 && <> · {salesDraftCount} sent from Gio Sales need a team before they can publish</>}
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => onStatusFilterChange('drafts')}>Review drafts →</Button>
+        </div>
+      )}
+
+      {statusFilter === 'drafts' ? (
+        <DraftsTable
+          jobs={sortedJobs}
+          isLoading={isLoading}
+          memberById={memberById}
+          onOpen={onView}
+          onSetup={(j) => onSetupDraft?.(j)}
+          onResume={(j) => onResumeDraft?.(j)}
+          onAssignOwner={(j) => onAssignOwner?.(j)}
+          onDiscard={(j) => onDiscardDraft?.(j)}
+        />
+      ) : (<>
       {/* Desktop table */}
       <div className="hidden lg:block rounded-2xl border border-virgilio-border bg-white overflow-hidden">
         <Table density="comfortable">
@@ -436,7 +510,7 @@ export function JobsTable({
                     </TableCell>
                     <TableCell>
                       <StatusCell>
-                        <Badge tone={status.tone} dot size="sm">{status.label}</Badge>
+                        {job.status === 'draft' ? <DraftPill /> : <Badge tone={status.tone} dot size="sm">{status.label}</Badge>}
                       </StatusCell>
                     </TableCell>
                     <TableCell>
@@ -557,6 +631,7 @@ export function JobsTable({
           })
         )}
       </div>
+      </>)}
     </div>
   )
 }

@@ -102,7 +102,7 @@ export default function CompanyDetail() {
     return s?.stage_type === 'won' && new Date(d.updated_at) >= twelveMonthsAgo
   })
 
-  const activeJobs = companyJobs.filter(j => j.status === 'open' || j.status === 'draft')
+  const activeJobs = companyJobs.filter(j => j.status === 'open')
 
   // ---- candidate counts per job ----
   const { data: jobCandidateCounts = {} } = useQuery({

@@ -27,7 +27,8 @@ export function JobSelectionDialog({
   const [stageOptions, setStageOptions] = useState<Array<{ jhsId: string; label: string }>>([])
   const [isLoadingStages, setIsLoadingStages] = useState(false)
   
-  const { jobs, isLoading } = useJobsForCandidateAssignment()
+  const { jobs: allJobs, isLoading } = useJobsForCandidateAssignment()
+  const jobs = allJobs.filter(j => !j.is_draft)
   const { loadHiringPlanInstances } = useJobHiringPlan()
 
   // Initialize with linked job when dialog opens

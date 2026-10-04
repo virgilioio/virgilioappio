@@ -123,7 +123,8 @@ export function CandidateFormSheet({
   const [selectedStageId, setSelectedStageId] = useState<string>('')
 
   // Hooks for job assignment
-  const { jobs: availableJobs, isLoading: isLoadingJobs } = useJobsForCandidateAssignment()
+  const { jobs: assignableJobs, isLoading: isLoadingJobs } = useJobsForCandidateAssignment()
+  const availableJobs = assignableJobs.filter(j => !j.is_draft)
   const { loadHiringPlanInstances } = useJobHiringPlan()
   const [jobStages, setJobStages] = useState<Array<{ jhsId: string; stage: any; position: number }>>([])
 

@@ -4837,6 +4837,8 @@ export type Database = {
           department: string | null
           department_id: string | null
           description: string | null
+          draft_source: string | null
+          draft_step: number | null
           employment_type:
             | Database["public"]["Enums"]["job_employment_type"]
             | null
@@ -4846,6 +4848,7 @@ export type Database = {
           include_signing_bonus: boolean
           internal_title: string | null
           job_level: string | null
+          last_edited_by: string | null
           last_skills_generation: string | null
           location: string | null
           location_requirement: string
@@ -4893,6 +4896,8 @@ export type Database = {
           department?: string | null
           department_id?: string | null
           description?: string | null
+          draft_source?: string | null
+          draft_step?: number | null
           employment_type?:
             | Database["public"]["Enums"]["job_employment_type"]
             | null
@@ -4902,6 +4907,7 @@ export type Database = {
           include_signing_bonus?: boolean
           internal_title?: string | null
           job_level?: string | null
+          last_edited_by?: string | null
           last_skills_generation?: string | null
           location?: string | null
           location_requirement?: string
@@ -4949,6 +4955,8 @@ export type Database = {
           department?: string | null
           department_id?: string | null
           description?: string | null
+          draft_source?: string | null
+          draft_step?: number | null
           employment_type?:
             | Database["public"]["Enums"]["job_employment_type"]
             | null
@@ -4958,6 +4966,7 @@ export type Database = {
           include_signing_bonus?: boolean
           internal_title?: string | null
           job_level?: string | null
+          last_edited_by?: string | null
           last_skills_generation?: string | null
           location?: string | null
           location_requirement?: string
@@ -9593,6 +9602,7 @@ export type Database = {
         Args: { _opening_id: string }
         Returns: string
       }
+      job_setup_checks: { Args: { p_job: string }; Returns: Json }
       log_activity: {
         Args: {
           p_activity_type: Database["public"]["Enums"]["activity_type"]
