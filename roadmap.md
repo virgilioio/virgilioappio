@@ -13,4 +13,4 @@
 - [x] Client dossier Files: hide all resumes, pdf.js viewer, remove Gio Fit Files card
 - [x] Replacing a resume deletes the old copy; one-time clean-up of 944 old copies (93 candidates)
 - [x] Integrate openings and Req IDs into Create/Edit Offer, Mark hired, unhire, offer details, and the hired banner.
-- [ ] Restyle Mark hired dialog without changing hire behavior or RPC data.
+- [x] Restyle Mark hired dialog without changing hire behavior or RPC data.
