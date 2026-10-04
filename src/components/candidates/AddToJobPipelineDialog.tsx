@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useJobs } from '@/hooks/useJobs'
+import { DraftPill } from '@/components/jobs/drafts/DraftPill'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
@@ -77,7 +78,9 @@ export default function AddToJobPipelineDialog({ candidateId }: AddToJobPipeline
               </SelectTrigger>
               <SelectContent>
                 {jobOptions.map(job => (
-                  <SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>
+                  <SelectItem key={job.id} value={job.id} disabled={job.status === 'draft'} title={job.status === 'draft' ? 'Publish this job to add candidates' : undefined}>
+                    <span className="inline-flex items-center gap-2">{job.title}{job.status === 'draft' && <DraftPill />}</span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

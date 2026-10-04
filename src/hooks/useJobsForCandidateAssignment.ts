@@ -10,6 +10,8 @@ export interface JobOption {
   organization_name: string
   organization_id: string
   display_label: string // "[Job Title] – [Organization]"
+  /** Drafts are listed but can't receive candidates until published. */
+  is_draft?: boolean
 }
 
 export function useJobsForCandidateAssignment() {
@@ -34,9 +36,10 @@ export function useJobsForCandidateAssignment() {
           id,
           title,
           organization_id,
+          status,
           organizations!inner(name)
         `)
-        .eq('status', 'open') // Only show open jobs
+        .in('status', ['open', 'draft']) // drafts shown disabled
 
       // Apply permission-based filtering
       if (userType === 'platform_admin') {
