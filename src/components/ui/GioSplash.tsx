@@ -68,9 +68,8 @@ export function GioSplash({ show, minDurationMs = 800 }: GioSplashProps) {
         <div className="logo-holder">
           <svg
             viewBox="0 0 128.25 71.25"
-            width="470"
+            style={{ height: '166px', width: 'auto', overflow: 'visible' }}
             shapeRendering="geometricPrecision"
-            style={{ overflow: 'visible' }}
             aria-label="Gio ATS"
           >
             <circle
@@ -145,9 +144,10 @@ const splashCss = `
   --gio-dur-bloom:  450ms;
   --gio-dur-exit:   550ms;
 }
-/* SVG renders at 300px intrinsic, displayed at 150px → headroom for upscale
-   during the dot's scale(1.55) peak. Keeps every animated frame downsampling
-   from a higher-res raster instead of upscaling a cached bitmap. */
+/* SVG renders at 2× the final mark size (2 × 83px = 166px), displayed at 0.5 →
+   the mark lands at 83px — matching Gio Sales' splash. The 2× headroom keeps
+   every animated frame downsampling from a higher-res raster (sharp during the
+   dot's scale(1.55) peak) instead of upscaling a cached bitmap. */
 .gio-splash .logo-holder {
   transform: scale(0.5);
   transform-origin: center;
