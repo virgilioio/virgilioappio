@@ -2,10 +2,12 @@ import { z } from 'npm:zod@3'
 import { admin, inboxGet, inboxPut, json, linkCors, tenantId, verify } from '../_shared/gioLink.ts'
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}/)
+const Person = z.object({ id: z.string().max(100), name: z.string().max(300).nullish(), email: z.string().max(300).nullish() })
 const Body = z.object({
   idempotency_key: z.string().min(1).max(200),
   deal: z.object({ id: z.string().uuid(), title: z.string().max(300), owner_name: z.string().max(200).nullish(), won_at: date.nullish(), url: z.string().max(1000).nullish() }),
   company: z.object({ id: z.string().uuid(), name: z.string().min(1).max(300), ats_client_id: z.string().uuid().nullish() }),
+  attribution: z.object({ sales: z.array(Person).max(50), es: z.array(Person).max(50) }).nullish(),
   lines: z.array(z.object({
     line_id: z.string().uuid(), role: z.string().max(300).nullish(), hires: z.number().int().min(1).max(100),
     fee_pct: z.number().min(0).max(100).nullish(), est_salary: z.number().nullish(), currency: z.string().max(10).nullish(),
