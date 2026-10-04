@@ -9737,6 +9737,10 @@ export type Database = {
           success: boolean
         }[]
       }
+      sales_attribution_updated: {
+        Args: { _attribution: Json; _deal_id: string; _tenant_id: string }
+        Returns: Json
+      }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
       sales_line_updated: {
         Args: {
