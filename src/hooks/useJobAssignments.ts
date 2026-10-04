@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
-export type JobAssignmentRole = 'recruiter' | 'hiring_manager' | 'interviewer'
+export type JobAssignmentRole = 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer'
 
 export interface JobAssignment {
   id: string

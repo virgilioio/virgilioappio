@@ -5,6 +5,9 @@ import { supabase } from '@/integrations/supabase/client'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
+import { useJobAssignments } from '@/hooks/useJobAssignments'
+import { useMembers } from '@/hooks/useMembers'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
@@ -57,6 +60,26 @@ export function MarkHiredDialog({
   const [startDate, setStartDate] = useState('')
   const [closeJob, setCloseJob] = useState(false)
   const [saving, setSaving] = useState(false)
+  const { assignments } = useJobAssignments(open ? jobId : undefined)
+  const { members } = useMembers(true)
+  const [sourcerId, setSourcerId] = useState('')
+  const [recruiterId, setRecruiterId] = useState('')
+  const pool = (role: 'sourcer' | 'recruiter') =>
+    assignments
+      .filter((a: any) => a.role === role && !a.deleted_at)
+      .map((a) => {
+        const m = members.find((mm) => mm.user_id === a.user_id)
+        const name = `${m?.user_first_name || ''} ${m?.user_last_name || ''}`.trim() || m?.user_email || 'Member'
+        return { id: a.user_id, name }
+      })
+  const sourcers = pool('sourcer')
+  const recruiters = pool('recruiter')
+  useEffect(() => {
+    if (!open) return
+    setSourcerId((cur) => (sourcers.some((p) => p.id === cur) ? cur : sourcers.length === 1 ? sourcers[0].id : ''))
+    setRecruiterId((cur) => (recruiters.some((p) => p.id === cur) ? cur : recruiters.length === 1 ? recruiters[0].id : ''))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sourcers.map((p) => p.id).join(), recruiters.map((p) => p.id).join()])
 
   const eligible = useMemo(
     () => openings.filter((opening) => opening.status !== 'filled'),
@@ -87,18 +110,20 @@ export function MarkHiredDialog({
   }
 
   const confirmHire = async () => {
-    if (!openingId || !startDate) return
+    if (!openingId || !startDate || !sourcerId || !recruiterId) return
     setSaving(true)
     const { data, error } = await (supabase as any).rpc('mark_hired', {
       p_application_id: applicationId,
       p_opening_id: openingId,
       p_start_date: startDate,
       p_close_job: closeJob,
+      p_sourcer_id: sourcerId,
+      p_recruiter_id: recruiterId,
     })
     setSaving(false)
 
     if (error) {
-      const race = /just filled|opening/i.test(error.message || '')
+      const race = /just filled|that opening/i.test(error.message || '')
       toast({
         title: race ? 'Opening no longer available' : 'Could not mark candidate hired',
         description: error.message || 'Please try again.',
@@ -179,6 +204,34 @@ export function MarkHiredDialog({
             />
           </div>
 
+          {([
+            ['Sourcer', sourcers, sourcerId, setSourcerId],
+            ['Recruiter', recruiters, recruiterId, setRecruiterId],
+          ] as const).map(([label, people, value, set]) => (
+            <div key={label} className="space-y-2">
+              <Label>{label}</Label>
+              {people.length === 0 ? (
+                <p className="rounded-lg border border-virgilio-border bg-surface-secondary p-3 text-body-sm text-text-secondary">
+                  Assign a {label} to this job first.{' '}
+                  <a href={`/jobs/${jobId}/setup#hiring-team`} className="font-medium text-virgilio-purple underline-offset-2 hover:underline">
+                    Open hiring team
+                  </a>
+                </p>
+              ) : (
+                <Select value={value} onValueChange={(v) => set(v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={`Choose the ${label} for this hire`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {people.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          ))}
+
           {isLastOpening && (
             <Label htmlFor="close-filled-job" className="mb-0 flex items-start gap-3 rounded-lg border border-virgilio-border bg-surface-secondary p-3.5">
               <Checkbox
@@ -196,7 +249,7 @@ export function MarkHiredDialog({
 
         <DialogFooter className="border-t border-virgilio-border px-6 py-4">
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-          <Button icon={CalendarDays} onClick={confirmHire} disabled={!openingId || !startDate || eligible.length === 0} loading={saving}>
+          <Button icon={CalendarDays} onClick={confirmHire} disabled={!openingId || !startDate || !sourcerId || !recruiterId || eligible.length === 0} loading={saving}>
             Confirm hire
           </Button>
         </DialogFooter>

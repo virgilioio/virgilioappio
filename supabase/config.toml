@@ -292,5 +292,8 @@ verify_jwt = false
 [functions.sales-line-updated]
 verify_jwt = false
 
+[functions.sales-attribution-updated]
+verify_jwt = false
+
 [functions.deliver-integration-outbox]
 verify_jwt = false

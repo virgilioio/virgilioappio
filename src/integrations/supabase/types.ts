@@ -4268,9 +4268,11 @@ export type Database = {
           id: string
           job_id: string
           position: number
+          recruiter_user_id: string | null
           req_id: string
           sales_deal_id: string | null
           sales_line_id: string | null
+          sourcer_user_id: string | null
           target_hire_date: string
           target_start_date: string
           tenant_id: string | null
@@ -4286,9 +4288,11 @@ export type Database = {
           id?: string
           job_id: string
           position?: number
+          recruiter_user_id?: string | null
           req_id: string
           sales_deal_id?: string | null
           sales_line_id?: string | null
+          sourcer_user_id?: string | null
           target_hire_date: string
           target_start_date: string
           tenant_id?: string | null
@@ -4304,9 +4308,11 @@ export type Database = {
           id?: string
           job_id?: string
           position?: number
+          recruiter_user_id?: string | null
           req_id?: string
           sales_deal_id?: string | null
           sales_line_id?: string | null
+          sourcer_user_id?: string | null
           target_hire_date?: string
           target_start_date?: string
           tenant_id?: string | null
@@ -4859,6 +4865,7 @@ export type Database = {
           sales_deal_title: string | null
           sales_deal_url: string | null
           sales_deal_won_at: string | null
+          sales_team: Json | null
           show_salary_public: boolean
           skills: string[] | null
           standardized_location: string | null
@@ -4914,6 +4921,7 @@ export type Database = {
           sales_deal_title?: string | null
           sales_deal_url?: string | null
           sales_deal_won_at?: string | null
+          sales_team?: Json | null
           show_salary_public?: boolean
           skills?: string[] | null
           standardized_location?: string | null
@@ -4969,6 +4977,7 @@ export type Database = {
           sales_deal_title?: string | null
           sales_deal_url?: string | null
           sales_deal_won_at?: string | null
+          sales_team?: Json | null
           show_salary_public?: boolean
           skills?: string[] | null
           standardized_location?: string | null
@@ -9057,6 +9066,7 @@ export type Database = {
         Args: { record_id: string; table_name: string }
         Returns: Json
       }
+      ats_person: { Args: { p_user: string }; Returns: Json }
       audit_platform_admin_access: {
         Args: never
         Returns: {
@@ -9613,6 +9623,8 @@ export type Database = {
           p_application_id: string
           p_close_job?: boolean
           p_opening_id: string
+          p_recruiter_id?: string
+          p_sourcer_id?: string
           p_start_date: string
         }
         Returns: {
@@ -9724,6 +9736,10 @@ export type Database = {
           message: string
           success: boolean
         }[]
+      }
+      sales_attribution_updated: {
+        Args: { _attribution: Json; _deal_id: string; _tenant_id: string }
+        Returns: Json
       }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
       sales_line_updated: {
@@ -9966,7 +9982,11 @@ export type Database = {
         | "multi_select"
         | "salary_expectations"
         | "score_1_5"
-      job_assignment_role: "recruiter" | "hiring_manager" | "interviewer"
+      job_assignment_role:
+        | "recruiter"
+        | "hiring_manager"
+        | "interviewer"
+        | "sourcer"
       job_employment_type:
         | "full_time"
         | "part_time"
@@ -10354,7 +10374,12 @@ export const Constants = {
         "salary_expectations",
         "score_1_5",
       ],
-      job_assignment_role: ["recruiter", "hiring_manager", "interviewer"],
+      job_assignment_role: [
+        "recruiter",
+        "hiring_manager",
+        "interviewer",
+        "sourcer",
+      ],
       job_employment_type: [
         "full_time",
         "part_time",

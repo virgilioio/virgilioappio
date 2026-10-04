@@ -202,7 +202,9 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
       // selections from JobInfoStep are respected.
       const payload = {
         ...wizardState.jobData,
-        status: wizardState.jobData.status ?? 'open',
+        // Jobs are always created as drafts; publishing happens on Complete,
+        // after the hiring team is set (the database publish gate needs it).
+        status: wizardState.jobData.status === 'closed' ? 'closed' : 'draft',
       } as CreateJobData
       delete (payload as any).target_fill_date // derived from openings
       const existingId = wizardState.createdJobId
@@ -270,6 +272,16 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
 
   const handleComplete = async () => {
     setWizardState((prev) => ({ ...prev, isComplete: true }))
+
+    // Publish the job itself (draft -> open) unless the user explicitly kept it as draft.
+    const wantsOpen = (wizardState.jobData.status ?? 'open') === 'open'
+    if (wantsOpen && wizardState.createdJobId && wizardState.createdJobId !== 'created') {
+      try {
+        await updateJob(wizardState.createdJobId, { status: 'open' } as any)
+      } catch {
+        // updateJob already shows the "Assign … before publishing." message; job stays a draft.
+      }
+    }
 
     // Publish the posting if the Summary toggle is ON. The posting was created
     // as a draft (is_active=false) in Step 4 so this is the moment it goes live.

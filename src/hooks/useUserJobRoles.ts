@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
-export type JobAssignmentRole = 'recruiter' | 'hiring_manager' | 'interviewer'
+export type JobAssignmentRole = 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer'
 
 interface UserJobAssignment {
   job_id: string
