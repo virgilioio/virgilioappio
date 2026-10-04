@@ -20,6 +20,7 @@ import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
 import { Toaster } from '@/components/ui/toaster'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import { useReportSplashReady } from './contexts/SplashReadyContext'
@@ -256,11 +257,13 @@ function App() {
         <AppBootstrap>
           <AuthProvider>
             <OrgContextProvider>
-              <Router>
-                <ErrorBoundary>
-                  <AppContent />
-                </ErrorBoundary>
-              </Router>
+              <TooltipProvider>
+                <Router>
+                  <ErrorBoundary>
+                    <AppContent />
+                  </ErrorBoundary>
+                </Router>
+              </TooltipProvider>
             </OrgContextProvider>
           </AuthProvider>
         </AppBootstrap>
