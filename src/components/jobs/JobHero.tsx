@@ -29,6 +29,7 @@ import {
 import { formatDistanceToNowStrict } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { JobShareMenu } from './JobShareMenu'
+import { DraftPill } from './drafts/DraftPill'
 
 type HiringTeamMember = {
   user_id?: string
@@ -131,6 +132,7 @@ export function JobHero({
   const posted = createdAt ? formatDistanceToNowStrict(new Date(createdAt), { addSuffix: true }) : null
   const hasMenu = !!(onEdit || onDuplicate || onCloseJob || onArchive || onDelete)
   const isClosed = status === 'closed' || status === 'archived'
+  const isDraft = status === 'draft'
 
   return (
     <header className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 pb-4">
@@ -152,11 +154,12 @@ export function JobHero({
           'text-[28px] leading-tight sm:text-[32px]'
         )}>
           {title}<span className="text-virgilio-purple">.</span>
+          {isDraft && <DraftPill className="ml-3 align-middle" />}
         </h1>
 
         {/* Meta row */}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body-sm text-text-secondary">
-          <Badge tone={statusInfo.tone as any} dot size="sm">{statusInfo.label}</Badge>
+          {!isDraft && <Badge tone={statusInfo.tone as any} dot size="sm">{statusInfo.label}</Badge>}
           <JobPriorityBadge value={priority} />
           {location && (
             <span className="inline-flex items-center gap-1.5">
@@ -189,7 +192,7 @@ export function JobHero({
         {canEdit && (
           <>
 
-          {hasPosting && onViewPosting && (
+          {!isDraft && hasPosting && onViewPosting && (
             <Button
               variant="secondary"
               size="md"
@@ -199,7 +202,7 @@ export function JobHero({
               View posting
             </Button>
           )}
-          {!hasPosting && onCreatePosting && (
+          {!isDraft && !hasPosting && onCreatePosting && (
             <Button
               variant="secondary"
               size="md"
@@ -209,7 +212,7 @@ export function JobHero({
               Create job post
             </Button>
           )}
-          {onAddCandidate && (
+          {!isDraft && onAddCandidate && (
             <Button
               variant="primary"
               size="md"
