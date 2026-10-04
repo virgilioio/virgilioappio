@@ -662,8 +662,17 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
 
           {/* Sticky footer */}
           {showFooter && (
-            <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
+            <div className="border-t border-virgilio-border bg-[#F6F5F1]/95 backdrop-blur px-6 sm:px-10 py-4">
+              {publishError && (
+                <p role="alert" className="mb-3 text-[12px] font-inter text-destructive">{publishError}</p>
+              )}
+              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {saveStatusText && (
+                  <span className="hidden sm:inline font-inter text-[11.5px] text-[#8B8F9E] min-w-[110px]" aria-live="polite">
+                    {saveStatusText}
+                  </span>
+                )}
                 {wizardState.currentStep === 1 ? (
                   <Button variant="ghost" onClick={onClose} type="button">
                     Cancel
@@ -673,7 +682,15 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
                     Back
                   </Button>
                 )}
-                <p className="hidden sm:block text-[12px] text-text-tertiary">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={handleSaveAndExit}
+                  disabled={isSubmitting}
+                >
+                  Save &amp; exit
+                </Button>
+                <p className="hidden xl:block text-[12px] text-text-tertiary">
                   {wizardState.currentStep === 1 ? (
                     <>Required fields marked with <span className="text-destructive">*</span></>
                   ) : wizardState.currentStep === 4 ? (
@@ -692,14 +709,6 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={handleSaveAndExit}
-                  disabled={isSubmitting}
-                >
-                  Save and exit
-                </Button>
-                <Button
                   type="button"
                   onClick={primaryCta.onClick}
                   iconRight={ChevronRight}
@@ -708,6 +717,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
                 >
                   {primaryCta.label}
                 </Button>
+              </div>
               </div>
             </div>
           )}
