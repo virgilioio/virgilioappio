@@ -1,0 +1,1 @@
+alter type public.job_assignment_role add value if not exists 'sourcer';
