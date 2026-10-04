@@ -25,7 +25,10 @@ import {
   User as UserIcon,
   ListChecks,
   Hash,
+  Lock,
 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { missingForPublish, isPublishGateError, type SalesTeam } from '@/lib/jobTeam'
 import { OpeningsEditor } from './openings/OpeningsEditor'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
 import { openingsSummary } from '@/lib/jobOpenings'
@@ -327,6 +330,40 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
     }
   }
 
+  // Publish gate (mirrors jobs_publish_gate in the database)
+  const missingRoles = missingForPublish(job, assignments as any)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
+  useEffect(() => {
+    const h = (e: Event) => {
+      const msg = (e as CustomEvent).detail as string
+      setPublishError(msg)
+      scrollTo('hiring-team')
+      setHighlightSection('hiring-team')
+      setTimeout(() => setHighlightSection(null), 2200)
+    }
+    window.addEventListener('job-setup:publish-blocked', h)
+    return () => window.removeEventListener('job-setup:publish-blocked', h)
+  })
+  const doPublish = async () => {
+    setPublishing(true)
+    setPublishError(null)
+    const { error } = await supabase.from('jobs').update({ status: 'open' } as any).eq('id', jobId)
+    setPublishing(false)
+    if (error) {
+      setPublishError(error.message)
+      if (isPublishGateError(error.message)) {
+        scrollTo('hiring-team')
+        setHighlightSection('hiring-team')
+        setTimeout(() => setHighlightSection(null), 2200)
+      }
+      return
+    }
+    toast({ title: 'Job published', description: `${jobTitle} is now open.` })
+    window.dispatchEvent(new CustomEvent('job-detail:refresh'))
+  }
+  const salesTeam = (job?.sales_team ?? null) as SalesTeam
+
   // Close / Archive dialogs
   const [showClose, setShowClose] = useState(false)
   const [showArchive, setShowArchive] = useState(false)
@@ -587,6 +624,55 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                     {teamMembers.length} member{teamMembers.length === 1 ? '' : 's'}
                   </span>
                 </div>
+
+                {job?.status === 'draft' && (
+                  <div className="rounded-2xl border border-virgilio-border bg-white p-4 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-inter text-[13px] font-medium text-text-primary">This job is a draft</p>
+                      <p className="font-inter text-[12px] text-text-secondary">
+                        {publishError
+                          ? publishError
+                          : missingRoles.length > 0
+                            ? `Assign ${missingRoles.join(', ')} before publishing.`
+                            : 'The hiring team is complete — ready to publish.'}
+                      </p>
+                    </div>
+                    {!isReadOnly && (
+                      <Button size="sm" onClick={doPublish} loading={publishing} disabled={missingRoles.length > 0}>
+                        Publish job
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {job?.sales_deal_id && (
+                  <div className="space-y-2.5">
+                    <SubsectionLabel>From the deal</SubsectionLabel>
+                    <div className="rounded-2xl border border-virgilio-border bg-white p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {([['Sales', salesTeam?.sales], ['Engagement Specialist', salesTeam?.es]] as const).map(([label, people]) => (
+                        <div key={label} className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-inter text-[12px] font-medium text-text-primary">{label}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span aria-label="Locked" className="text-text-tertiary"><Lock className="h-3 w-3" /></span>
+                              </TooltipTrigger>
+                              <TooltipContent>Set on the deal in Gio Sales</TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className="mt-1.5 rounded-lg border border-virgilio-border bg-surface-secondary px-3 py-2 font-inter text-[12.5px] text-text-primary">
+                            {people && people.length > 0
+                              ? people.map((p) => p.name || p.email).join(', ')
+                              : <span className="text-text-tertiary">Not set yet</span>}
+                          </div>
+                          <p className="mt-1 font-inter text-[11px] text-text-tertiary">
+                            From Gio Sales · {job?.sales_deal_title || 'Deal'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* OWNERS block */}
                 <div className="space-y-2.5">
