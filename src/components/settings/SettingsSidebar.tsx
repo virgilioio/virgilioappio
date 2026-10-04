@@ -96,12 +96,11 @@ export function SettingsSidebar({ currentTab, onTabChange, essentialsRemaining =
       ],
     },
     {
-      id: 'crm',
-      label: 'CRM',
+      id: 'clients',
+      label: 'CLIENTS',
       show: isAdminOrOwner,
       items: [
-        { id: 'workspace-deal-stages', label: 'Deal stages', icon: Handshake, show: permissions.canViewOrganizations },
-        { id: 'customers', label: 'Customers', icon: Building, show: isAdminOrOwner },
+        { id: 'customers', label: 'Clients', icon: Building, show: isAdminOrOwner },
       ],
     },
     {
