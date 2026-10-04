@@ -6012,6 +6012,7 @@ export type Database = {
           hq_city: string | null
           id: string
           industry: string | null
+          is_internal: boolean
           logo_url: string | null
           name: string
           org_kind: Database["public"]["Enums"]["org_kind_enum"]
@@ -6049,6 +6050,7 @@ export type Database = {
           hq_city?: string | null
           id?: string
           industry?: string | null
+          is_internal?: boolean
           logo_url?: string | null
           name: string
           org_kind?: Database["public"]["Enums"]["org_kind_enum"]
@@ -6086,6 +6088,7 @@ export type Database = {
           hq_city?: string | null
           id?: string
           industry?: string | null
+          is_internal?: boolean
           logo_url?: string | null
           name?: string
           org_kind?: Database["public"]["Enums"]["org_kind_enum"]
@@ -9751,6 +9754,7 @@ export type Database = {
         Args: { _attribution: Json; _deal_id: string; _tenant_id: string }
         Returns: Json
       }
+      sales_company_upsert: { Args: { payload: Json }; Returns: Json }
       sales_deal_won: { Args: { _p: Json; _tenant_id: string }; Returns: Json }
       sales_line_updated: {
         Args: {
