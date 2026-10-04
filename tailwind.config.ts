@@ -19,6 +19,11 @@ export default {
 			}
 		},
 		extend: {
+			boxShadow: {
+				'hire-dialog': 'var(--shadow-hire-dialog)',
+				'hire-menu': 'var(--shadow-hire-menu)',
+				'hire-toast': 'var(--shadow-hire-toast)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -103,6 +108,24 @@ export default {
 					'orange-foreground': 'hsl(var(--pastel-orange-foreground))'
 				},
 				'purple-period': 'hsl(var(--purple-period))',
+				hire: {
+					ink: 'hsl(var(--hire-ink))',
+					title: 'hsl(var(--hire-title))',
+					secondary: 'hsl(var(--hire-secondary))',
+					muted: 'hsl(var(--hire-muted))',
+					hairline: 'hsl(var(--hire-hairline))',
+					border: 'hsl(var(--hire-border))',
+					'border-cool': 'hsl(var(--hire-border-cool))',
+					'hover-border': 'hsl(var(--hire-hover-border))',
+					'focus-border': 'hsl(var(--hire-focus-border))',
+					soft: 'hsl(var(--hire-soft))',
+					'toggle-off': 'hsl(var(--hire-toggle-off))',
+					'success-bg': 'hsl(var(--hire-success-bg))',
+					'success-border': 'hsl(var(--hire-success-border))',
+					'success-icon': 'hsl(var(--hire-success-icon))',
+					'success-check': 'hsl(var(--hire-success-check))',
+					cream: 'hsl(var(--hire-cream))',
+				},
 				'loading-ellipsis': '#d7c5fb',
 				'dup-ink': 'hsl(var(--dup-ink))',
 				'dup-cream': 'hsl(var(--dup-cream))',
