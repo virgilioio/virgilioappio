@@ -82,7 +82,7 @@ export function MinimizableBulkUploadDialog({
   if (!isOpen) return null;
 
   const jobOptions = jobs
-    ?.filter((job) => job.status === 'open' || job.status === 'draft')
+    ?.filter((job) => job.status === 'open')
     .map((job) => ({
       value: job.id,
       label: job.title,

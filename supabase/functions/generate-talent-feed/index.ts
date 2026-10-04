@@ -117,9 +117,10 @@ Deno.serve(async (req) => {
         created_at,
         location,
         job_type,
-        jobs!inner (id)
+        jobs!inner (id, status)
       `)
       .eq('tenant_id', tenant.id)
+      .eq('jobs.status', 'open') // drafts/closed jobs never reach job boards
       .eq('is_active', true)
       .eq('publish_to_talent', true)
       .order('created_at', { ascending: false })
