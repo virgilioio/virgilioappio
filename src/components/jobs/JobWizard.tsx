@@ -19,7 +19,17 @@ interface JobWizardProps {
   isOpen: boolean
   onClose: () => void
   initialData?: Partial<CreateJobData> & { sourceJobTitle?: string }
+  /** Reopen an existing wizard draft at its saved step. */
+  resumeJobId?: string | null
 }
+
+const JOB_DATA_KEYS = [
+  'title', 'description', 'location', 'department', 'salary_min', 'salary_max', 'currency', 'status',
+  'skills', 'auto_generated_skills', 'last_skills_generation', 'hiring_team', 'organization_id',
+  'department_id', 'internal_title', 'job_level', 'work_mode', 'employment_type', 'additional_locations',
+  'show_salary_public', 'include_equity', 'include_signing_bonus', 'min_years_experience',
+  'max_years_experience', 'priority',
+] as const
 
 export interface HiringPlanUiState {
   selectedTemplate: 'workspace_default' | 'lean_tech' | 'exec_leadership' | null
@@ -116,7 +126,7 @@ const STEP_META: Record<
   },
 }
 
-export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
+export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWizardProps) {
   const seedData = (): Partial<CreateJobData> => {
     if (!initialData) return { status: 'draft', priority: 'standard' }
     const { sourceJobTitle, ...rest } = initialData as any
@@ -182,16 +192,95 @@ export function JobWizard({ isOpen, onClose, initialData }: JobWizardProps) {
     setWizardState((prev) => ({ ...prev, hiringTeamUi: { ...prev.hiringTeamUi, ...patch } }))
 
   useEffect(() => {
-    if (!isOpen) resetWizard()
-    else if (initialData) {
+    if (!isOpen) {
+      resetWizard()
+      setSaveState('idle')
+      lastSavedRef.current = ''
+    } else if (resumeJobId) {
+      void resumeDraft(resumeJobId)
+    } else if (initialData) {
       // Re-seed when opening with new initialData
       setWizardState((prev) => ({ ...prev, jobData: seedData() }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen])
+  }, [isOpen, resumeJobId])
 
   const updateJobData = (data: Partial<CreateJobData>) =>
     setWizardState((prev) => ({ ...prev, jobData: { ...prev.jobData, ...data } }))
+
+  // ---------- Draft auto-save ----------
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [, forceTick] = useState(0)
+  const creatingRef = React.useRef(false)
+  const lastSavedRef = React.useRef('')
+
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 30_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const resumeDraft = async (id: string) => {
+    const { data, error } = await supabase.from('jobs').select('*').eq('id', id).maybeSingle()
+    if (error || !data) {
+      toast({ title: "Couldn't open this draft", description: error?.message, variant: 'destructive' })
+      return
+    }
+    const row: any = data
+    const jobData: any = {}
+    for (const k of JOB_DATA_KEYS) if (row[k] !== null && row[k] !== undefined) jobData[k] = row[k]
+    const step = Math.min(Math.max(Number(row.draft_step) || 1, 1), 5)
+    lastSavedRef.current = JSON.stringify({ jobData, step })
+    setOpeningsSaved(true)
+    setOpeningsValid(true)
+    setWizardState((prev) => ({ ...prev, createdJobId: id, jobData, currentStep: step }))
+    setSaveState('saved')
+    setSavedAt(new Date(row.updated_at))
+    toast({ title: 'Picked up where you left off' })
+  }
+
+  useEffect(() => {
+    if (!isOpen || wizardState.isComplete) return
+    const { jobData, currentStep, createdJobId } = wizardState
+    if (!jobData.title?.trim() || !jobData.department_id || !jobData.organization_id) return
+    const snapshot = JSON.stringify({ jobData, step: currentStep })
+    if (snapshot === lastSavedRef.current) return
+    const t = setTimeout(async () => {
+      const payload: any = { ...jobData, draft_step: currentStep }
+      delete payload.target_fill_date
+      delete payload.status
+      setSaveState('saving')
+      try {
+        if (createdJobId && createdJobId !== 'created') {
+          await updateJob(createdJobId, payload, { silent: true })
+        } else {
+          if (creatingRef.current) return
+          creatingRef.current = true
+          const created: any = await createJob({ ...payload, status: 'draft' }, { silent: true })
+          creatingRef.current = false
+          if (created?.id) setWizardState((prev) => ({ ...prev, createdJobId: created.id }))
+        }
+        lastSavedRef.current = snapshot
+        setSaveState('saved')
+        setSavedAt(new Date())
+      } catch {
+        creatingRef.current = false
+        setSaveState('idle')
+      }
+    }, 1000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, wizardState.jobData, wizardState.currentStep, wizardState.createdJobId, wizardState.isComplete])
+
+  const saveStatusText = (() => {
+    if (saveState === 'saving') return 'Saving…'
+    if (saveState === 'saved' && savedAt) {
+      const s = Math.round((Date.now() - savedAt.getTime()) / 1000)
+      const rel = s < 45 ? 'just now' : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`
+      return `Draft saved · ${rel}`
+    }
+    return null
+  })()
 
   const submitStep1 = async (): Promise<{ id: string; created: boolean } | null> => {
     if (isSubmitting) return null
