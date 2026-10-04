@@ -15,8 +15,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
-import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
-import { useOrganizations } from '@/hooks/useOrganizations'
+import { ClientsManagedNote } from '@/components/organizations/ClientsManagedNote'
 import type { JobSpecData } from '@/types/sourcing'
 
 interface CreateJobFromProjectDialogProps {
@@ -36,11 +35,9 @@ export function CreateJobFromProjectDialog({
 }: CreateJobFromProjectDialogProps) {
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
   const [isCreating, setIsCreating] = useState(false)
-  const [isOrgFormOpen, setIsOrgFormOpen] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
-  const { data: childOrgs, isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
-  const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
+  const { data: childOrgs, isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
 
   const orgOptions = (childOrgs || [])
     .map(org => ({
@@ -48,20 +45,6 @@ export function CreateJobFromProjectDialog({
       label: org.name
     }))
     .sort((a, b) => a.label.localeCompare(b.label))
-
-  const handleCreateOrganization = async (data: any) => {
-    try {
-      const result = await createOrganization(data)
-      await refetchOrgs()
-      setIsOrgFormOpen(false)
-      // Auto-select the newly created department
-      if (result && typeof result === 'object' && 'id' in result) {
-        setSelectedOrgId(result.id)
-      }
-    } catch (error) {
-      console.error('Failed to create department:', error)
-    }
-  }
 
   const handleCreateJob = async () => {
     if (!selectedOrgId) {
@@ -185,12 +168,11 @@ export function CreateJobFromProjectDialog({
                 searchPlaceholder="Search clients..."
                 emptyMessage="No clients found."
                 disabled={isLoadingOrgs}
-                onCreateNew={() => setIsOrgFormOpen(true)}
-                createNewLabel="Create Client"
               />
               <p className="text-xs text-muted-foreground">
                 The job will be created under this client and start as a draft.
               </p>
+              <ClientsManagedNote />
             </div>
           </div>
 
@@ -215,12 +197,6 @@ export function CreateJobFromProjectDialog({
         </DialogContent>
       </Dialog>
 
-      <OrganizationFormSheet
-        isOpen={isOrgFormOpen}
-        onClose={() => setIsOrgFormOpen(false)}
-        onSubmit={handleCreateOrganization}
-        isLoading={isCreatingOrg}
-      />
     </>
   )
 }

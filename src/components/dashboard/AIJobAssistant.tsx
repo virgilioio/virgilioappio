@@ -25,7 +25,6 @@ import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useChatWithGio } from '@/hooks/useChatWithGio'
-import { useOrganizations } from '@/hooks/useOrganizations'
 
 interface Message {
   role: 'user' | 'assistant'
