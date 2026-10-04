@@ -124,7 +124,8 @@ export function useJobsForCandidateAssignment() {
         title: job.title,
         organization_name: job.organizations.name,
         organization_id: job.organization_id,
-        display_label: `${job.title} – ${job.organizations.name}`
+        display_label: `${job.title} – ${job.organizations.name}`,
+        is_draft: job.status === 'draft',
       }))
 
       setJobs(jobOptions)

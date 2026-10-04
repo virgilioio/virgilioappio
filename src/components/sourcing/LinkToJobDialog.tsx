@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
+import { DraftPill } from '@/components/jobs/drafts/DraftPill'
 import { useJobsForCandidateAssignment, type JobOption } from '@/hooks/useJobsForCandidateAssignment'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
@@ -238,8 +239,10 @@ function JobGroup({
             <button
               key={job.id}
               type="button"
-              onClick={() => onSelect(job)}
-              className="group relative w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-[#F1F0EC] transition-colors flex items-center gap-3"
+              onClick={() => !job.is_draft && onSelect(job)}
+              disabled={job.is_draft}
+              title={job.is_draft ? 'Publish this job to add candidates' : undefined}
+              className="group relative w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-[#F1F0EC] transition-colors flex items-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-foreground/[0.04] text-text-secondary">
                 <Building2 className="h-4 w-4" />
@@ -247,6 +250,7 @@ function JobGroup({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-[13px] font-semibold font-poppins tracking-[-0.01em] text-text-primary">{job.title}</span>
+                  {job.is_draft && <DraftPill />}
                   {showMatch && (job.matchScore ?? 0) >= 70 && (
                     <Badge tone="purple" size="xs" shape="pill">
                       {job.matchScore}% match
