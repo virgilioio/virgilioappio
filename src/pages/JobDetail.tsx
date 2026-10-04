@@ -80,6 +80,7 @@ import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesC
 import { useJobSuggestedCandidates, useJobSuggestedCandidatesCount } from '@/hooks/useJobSuggestedCandidates'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
+import { isPublishGateError } from '@/lib/jobTeam'
 
 
 export default function JobDetail() {
@@ -864,10 +865,20 @@ export default function JobDetail() {
         console.log('🔄 Job updated, refreshing matching candidates...')
         refetchSuggested()
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating job:', error)
+      // updateJob already toasts the message; also point Job setup at the hiring team.
+      if (isPublishGateError(error?.message)) {
+        window.dispatchEvent(new CustomEvent('job-setup:publish-blocked', { detail: error.message }))
+      }
     }
   }
+
+  useEffect(() => {
+    const h = () => { refetch() }
+    window.addEventListener('job-detail:refresh', h)
+    return () => window.removeEventListener('job-detail:refresh', h)
+  }, [refetch])
 
   const handleArchiveJob = async () => {
     if (!id || !confirm('Are you sure you want to archive this job?')) return
