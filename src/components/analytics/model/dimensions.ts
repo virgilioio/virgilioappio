@@ -33,8 +33,4 @@ export const SPLITTABLE_DIMENSIONS: DimensionDef[] = [
   DIMENSIONS.skills,
   DIMENSIONS.experience,
   DIMENSIONS.geography,
-  DIMENSIONS.deal_stage,
-  DIMENSIONS.deal_owner,
-  DIMENSIONS.company,
-  DIMENSIONS.deal_source,
 ]
