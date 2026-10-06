@@ -15,6 +15,7 @@ import {
 } from '@/lib/timezoneFormat';
 import { Calendar, Clock, Globe, ArrowLeft } from 'lucide-react';
 import { suggestEmailFix } from '@/utils/emailTypoSuggest';
+import { ParticipantsInput } from './ParticipantsInput';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -24,15 +25,18 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+type SubmitData = FormData & { guest_emails?: string[] };
 
 interface BookingConfirmationFormProps {
   selectedSlot: { start: string; end: string } | null;
   candidateTimezone: string;
   onCancel: () => void;
-  onConfirm: (formData: FormData) => Promise<void>;
+  onConfirm: (formData: SubmitData) => Promise<unknown>;
   // Pre-fill values from contextual booking links
   defaultCandidateName?: string;
   defaultCandidateEmail?: string;
+  /** Show "Add participants" — general (non-interview) links only */
+  allowGuests?: boolean;
 }
 
 export function BookingConfirmationForm({
@@ -42,8 +46,10 @@ export function BookingConfirmationForm({
   onConfirm,
   defaultCandidateName,
   defaultCandidateEmail,
+  allowGuests,
 }: BookingConfirmationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [guests, setGuests] = useState<string[]>([]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -58,7 +64,8 @@ export function BookingConfirmationForm({
   const handleSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      await onConfirm(data);
+      const own = data.candidate_email.trim().toLowerCase();
+      await onConfirm(allowGuests ? { ...data, guest_emails: guests.filter((g) => g !== own) } : data);
     } finally {
       setIsSubmitting(false);
     }
@@ -164,6 +171,10 @@ export function BookingConfirmationForm({
                 }}
               />
 
+
+              {allowGuests && (
+                <ParticipantsInput emails={guests} onChange={setGuests} ownEmail={form.watch('candidate_email')} />
+              )}
 
               <FormField
                 control={form.control}
