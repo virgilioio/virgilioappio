@@ -176,26 +176,35 @@ export default function PublicBookingPage() {
     enabled: !!config?.id,
   });
 
-  // Auto-select event type only if eventSlug is in URL (direct link)
-  useEffect(() => {
-    if (!eventTypes.length) return;
-    if (selectedEventType) return;
-    
-    if (eventSlug) {
-      const match = eventTypes.find((et: any) => et.slug === eventSlug);
-      if (match) setSelectedEventType(match);
-    }
-    // No auto-select for single event type on general link — always show picker
-  }, [eventTypes, eventSlug, selectedEventType]);
-
   // Determine if we need to show the event type picker
   const hasContextualLink = !!bookingContext || hasShortToken(searchParams);
+
+  // On general links the URL is the source of truth: /schedule/:code/:slug selects that event type.
+  useEffect(() => {
+    if (hasContextualLink || !eventTypes.length) return;
+    const match = eventSlug ? eventTypes.find((et: any) => et.slug === eventSlug) : null;
+    setSelectedEventType((prev: any) => (prev?.id === match?.id ? prev : match ?? null));
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    hasAutoSelectedRef.current = false;
+  }, [eventTypes, eventSlug, hasContextualLink]);
+
+  const unknownEventSlug = !hasContextualLink && !!eventSlug && eventTypes.length > 0 &&
+    !eventTypes.some((et: any) => et.slug === eventSlug);
+
+  const goToEventType = (et: any | null) => {
+    const qs = searchParams.toString();
+    const path = et ? `/schedule/${shortCode}/${et.slug}` : `/schedule/${shortCode}`;
+    navigate(qs ? `${path}?${qs}` : path);
+  };
+  const selectEventType = (et: any) => (hasContextualLink ? setSelectedEventType(et) : goToEventType(et));
+
   // Show picker on general link when event types exist and none selected
   const showEventPicker = !hasContextualLink && eventTypes.length > 0 && !selectedEventType;
   // Show empty state when no event types and no contextual link
   const showNoEventTypes = !hasContextualLink && !isLoadingEventTypes && eventTypes.length === 0;
-  // Can go back to picker (came from picker, not from direct slug URL)
-  const canGoBackToPicker = !hasContextualLink && !eventSlug && selectedEventType && eventTypes.length > 0;
+  // Can go back to the event list on general links
+  const canGoBackToPicker = !hasContextualLink && selectedEventType && eventTypes.length > 1;
 
   // Use event type's duration if selected, otherwise config default
   const activeDuration = selectedEventType?.duration_minutes || config?.duration_minutes || 30;
