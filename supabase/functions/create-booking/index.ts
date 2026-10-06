@@ -258,11 +258,20 @@ serve(async (req) => {
       // Per-booking custom event title override (takes priority over config default)
       custom_event_title = null,
       // Guest emails for additional attendees
-      guest_emails = [],
+      guest_emails: rawGuestEmails = [],
       // Reschedule support: cancel old booking atomically
       reschedule_booking_id = null,
       reschedule_token = null,
     } = payload;
+
+    // Sanitize guest emails: valid, lowercase, deduped, max 10
+    const GUEST_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const guest_emails: string[] = Array.from(new Set(
+      (Array.isArray(rawGuestEmails) ? rawGuestEmails : [])
+        .filter((g: unknown) => typeof g === 'string')
+        .map((g: string) => g.trim().toLowerCase())
+        .filter((g: string) => g.length <= 255 && GUEST_RE.test(g) && g !== String(payload.candidate_email || '').trim().toLowerCase())
+    )).slice(0, 10);
 
     // Validate custom location if specified
     if (meeting_type_preference === 'custom' && (!custom_meeting_location || custom_meeting_location.trim() === '')) {
