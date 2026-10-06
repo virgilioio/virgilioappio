@@ -384,6 +384,7 @@ export default function PublicBookingPage() {
             candidate_name: variables.candidate_name,
             candidate_timezone: candidateTimezone,
             meeting_location: data.google_meet_link || config!.meeting_location || '',
+            guest_emails: !hasContextualLink ? variables.guest_emails ?? [] : [],
           },
           config: {
             display_name: config!.display_name,

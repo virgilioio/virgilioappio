@@ -23,6 +23,7 @@ interface BookingState {
     candidate_timezone: string;
     meeting_location?: string;
     ics_uid?: string;
+    guest_emails?: string[];
   };
   config: {
     display_name: string;
@@ -149,6 +150,14 @@ END:VCALENDAR`;
           A calendar invite with the video link is on its way to{' '}
           <span className="font-poppins font-semibold text-virgilio-text">{state.booking.candidate_email}</span>.
         </p>
+        {!!state.booking.guest_emails?.length && (
+          <div className="-mt-6 mb-10 flex flex-wrap items-center justify-center gap-1.5 text-sm text-virgilio-muted">
+            <span>Also invited:</span>
+            {state.booking.guest_emails.map((g) => (
+              <span key={g} className="rounded-md bg-muted px-2 py-0.5 text-xs text-virgilio-text">{g}</span>
+            ))}
+          </div>
+        )}
 
         {/* Stacked card: dark top + white bottom */}
         <div className="rounded-2xl overflow-hidden border border-virgilio-border shadow-[0_24px_60px_-30px_rgba(13,13,9,0.18)]">

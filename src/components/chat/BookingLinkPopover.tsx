@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Briefcase, User, Plus, X, CalendarPlus, Link as LinkIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useBookingConfig } from '@/hooks/useBookingConfig'
+import { useBookingEventTypes } from '@/hooks/useBookingEventTypes'
 import { useContextualBookingLink } from '@/hooks/useContextualBookingLink'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
@@ -134,6 +135,7 @@ export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpen
   const rootRef = useRef<HTMLDivElement>(null)
   const ctx = useBookingCtx(threadId, source, open)
   const { config } = useBookingConfig()
+  const { eventTypes } = useBookingEventTypes(config?.id)
   const { profile } = useUserProfile()
 
   const contextualParams =
@@ -204,6 +206,20 @@ export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpen
       url: personalUrl,
       title: `Intro call with ${recruiterName}`,
       meta: `${personalDuration} min · video`,
+      status: 'awaiting',
+    })
+    onOpenChange(false)
+  }
+
+  const activeEventTypes = personalUrl ? eventTypes.filter((et) => et.is_active) : []
+
+  const handlePickEventType = (et: (typeof eventTypes)[number]) => {
+    onPick({
+      kind: 'booking_link',
+      variant: 'personal',
+      url: `${personalUrl}/${et.slug}`,
+      title: `${et.title} with ${recruiterName}`,
+      meta: `${et.duration_minutes} min · video`,
       status: 'awaiting',
     })
     onOpenChange(false)
@@ -307,6 +323,24 @@ export function BookingLinkPopover({ threadId, source, anchorStyle, open, onOpen
         >
           You don't have a personal booking link yet. Set one up in Settings.
         </div>
+      )}
+
+      {activeEventTypes.length > 0 && (
+        <>
+          <SectionLabel style={{ padding: '10px 4px 3px' }}>Your event types</SectionLabel>
+          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+            {activeEventTypes.map((et) => (
+              <LinkRow
+                key={et.id}
+                tile={{ bg: '#F1F0EC', fg: '#5A6072' }}
+                icon={CalendarPlus}
+                title={et.title}
+                meta={`${personalSlug}/${et.slug} · ${et.duration_minutes} min`}
+                onClick={() => handlePickEventType(et)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Footer */}
