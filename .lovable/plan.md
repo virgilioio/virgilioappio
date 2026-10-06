@@ -1,18 +1,26 @@
-# Restyle the Mark hired dialog
+# General booking link: per-event URLs and "Add participants"
 
-## What will change
-- Rebuild the existing dialog presentation as a centered 480px, calm white surface with the specified header, opening cards, attribution pickers, date field, impact notes, and footer.
-- Keep the existing opening eligibility, offer-based preselection, date defaults, required attribution, close-job control, RPC payload, error handling, and success callback unchanged.
-- Add the deal-only success-fee note using the job/opening and accepted-offer values already associated with this hire; hide unavailable salary detail as specified.
-- Replace the current success notification with the requested bottom-center confirmation message after the dialog closes.
+## What exists today
+- Each event type already has its own address (`/schedule/{your-code}/{event-slug}`), and Settings → Booking shows a "Copy direct link" button per event type.
+- But on the public page, when a visitor picks an event type from the list, the address bar stays on the general link — so the link they see and could re-share is not the event-specific one. The quick "Share booking link" popover in chat also only offers the general link.
+- The booking backend already accepts extra guest emails and adds them to the calendar invite; the public form just never asks for them.
 
-## Interaction and accessibility
-- Retain the shared dialog primitive for focus trapping, Escape/backdrop close, initial focus, and focus restoration.
-- Keep native radio semantics for opening selection, accessible labels, keyboard selection, and Enter-to-confirm only when the form is valid.
-- Use the existing button, badge, and menu primitives while locally applying the ink-only dialog treatment.
+## 1. One URL per event type
+- Picking an event type on the public page updates the address to that event's own URL; "Back" returns to the general link. Browser back/forward works as expected.
+- Opening an event URL directly keeps working as today (goes straight to the calendar).
+- Unknown/deactivated event slug: show the event picker with a quiet "This event type is no longer available" note instead of a blank page.
+- Share popover in chat: add a per-event-type list with a copy button for each (alongside the general link).
+- Settings → Booking: keep the existing per-event copy button; also show the event URL under each event's name so it's visible at a glance.
 
-## Technical details
-- Primary file: `src/components/candidates/MarkHiredDialog.tsx`.
-- If needed for display-only deal metadata, extend the existing opening query to expose fields already present in `job_openings_with_status`; the hire request remains byte-for-byte equivalent.
-- Use existing Poppins, Inter, and JetBrains Mono font setup and semantic design tokens; add dialog-specific semantic tokens only if existing tokens cannot represent the supplied palette.
-- Validate with the project typecheck/build signal and inspect the dialog in the preview where authenticated access permits.
+## 2. "Add participants" on the public form
+- Only on general (non-interview) booking links — never on candidate/job interview links.
+- Field under the visitor's own details: type an email, press space, comma, Enter (or paste a list) and it becomes a removable tag — same behavior as the member-invite field.
+- Invalid emails are rejected with an inline message; duplicates and the visitor's own email are ignored; limit 10 participants.
+- Participants receive the calendar invite with everyone else, and appear on the confirmation screen ("Also invited: ...").
+
+## Technical notes
+- `PublicBookingPage.tsx`: picker `onSelect` → `navigate(/schedule/{shortCode}/{slug})`; back → `navigate(/schedule/{shortCode})`; derive `selectedEventType` from `eventSlug` (clear when slug absent) so history works; preserve query string.
+- `BookingConfirmationForm.tsx`: new optional `allowGuests` prop (true only when `!hasContextualLink`), renders the shared tag-input (reuse `scheduling/GuestEmailInput` / member-invite chip pattern), zod-validated; pass `guest_emails` to `create-booking`.
+- `create-booking`: server-side guard on `guest_emails` — array of valid, lowercase, deduped emails, max 10, ignored for contextual (candidate/job) bookings.
+- `BookingLinkPopover.tsx` + `BookingLinkSection.tsx`: per-event copy rows using `${bookingUrl}/${slug}`; active event types only.
+- `BookingConfirmed.tsx`: list stored `guest_emails` if present.
