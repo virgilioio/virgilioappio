@@ -204,7 +204,7 @@ export default function PublicBookingPage() {
   // Show empty state when no event types and no contextual link
   const showNoEventTypes = !hasContextualLink && !isLoadingEventTypes && eventTypes.length === 0;
   // Can go back to the event list on general links
-  const canGoBackToPicker = !hasContextualLink && selectedEventType && eventTypes.length > 1;
+  const canGoBackToPicker = !hasContextualLink && selectedEventType && eventTypes.length > 0;
 
   // Use event type's duration if selected, otherwise config default
   const activeDuration = selectedEventType?.duration_minutes || config?.duration_minutes || 30;
@@ -325,6 +325,7 @@ export default function PublicBookingPage() {
       candidate_email: string;
       candidate_phone?: string;
       notes?: string;
+      guest_emails?: string[];
     }) => {
       if (!selectedSlot || !config) throw new Error('Missing required data');
 
@@ -339,6 +340,7 @@ export default function PublicBookingPage() {
           scheduled_start: selectedSlot.start,
           scheduled_end: selectedSlot.end,
           notes: formData.notes || null,
+          ...(!hasContextualLink && formData.guest_emails?.length && { guest_emails: formData.guest_emails }),
           // Pass event type data if selected (skip in group mode)
           ...(!isGroupBooking && selectedEventType && {
             event_type_id: selectedEventType.id,
@@ -541,11 +543,14 @@ export default function PublicBookingPage() {
       <div className="min-h-screen bg-[#FAF8F2] flex flex-col">
         <PublicBookingHeader workspaceName={workspaceName} />
         <main className="flex-1 container mx-auto px-4 py-10 md:py-16">
+          {unknownEventSlug && (
+            <p className="text-center text-sm text-virgilio-muted mb-6">This event type is no longer available — pick another below.</p>
+          )}
           <EventTypePicker
             variant="standalone"
             eventTypes={eventTypes}
             selectedId={selectedEventType?.id}
-            onSelect={(et) => setSelectedEventType(et)}
+            onSelect={selectEventType}
             interviewerName={interviewerFullName}
             interviewerFirstName={config?.profiles?.first_name || undefined}
             interviewerRole={config?.description || null}
@@ -580,12 +585,7 @@ export default function PublicBookingPage() {
                 variant="ghost"
                 size="sm"
                 className="mb-4 text-virgilio-muted hover:text-virgilio-text -ml-2"
-                onClick={() => {
-                  setSelectedEventType(null);
-                  setSelectedDate(null);
-                  setSelectedSlot(null);
-                  hasAutoSelectedRef.current = false;
-                }}
+                onClick={() => goToEventType(null)}
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to options
@@ -698,6 +698,7 @@ export default function PublicBookingPage() {
                         onConfirm={createBookingMutation.mutateAsync}
                         defaultCandidateName={bookingContext?.candidateName}
                         defaultCandidateEmail={bookingContext?.candidateEmail}
+                        allowGuests={!hasContextualLink}
                       />
                     </div>
                   )}
@@ -740,7 +741,7 @@ export default function PublicBookingPage() {
                             <EventTypePicker
                               eventTypes={eventTypes}
                               selectedId={selectedEventType?.id}
-                              onSelect={(et) => setSelectedEventType(et)}
+                              onSelect={selectEventType}
                             />
                           </>
                         )}
@@ -776,6 +777,7 @@ export default function PublicBookingPage() {
                         onConfirm={createBookingMutation.mutateAsync}
                         defaultCandidateName={bookingContext?.candidateName}
                         defaultCandidateEmail={bookingContext?.candidateEmail}
+                        allowGuests={!hasContextualLink}
                       />
                     ) : (
                       <div className="space-y-4">
