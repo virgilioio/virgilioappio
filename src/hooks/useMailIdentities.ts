@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useOrgContext } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/hooks/useTenant';
-import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress';
+import { startGoogleWorkspaceConnect } from '@/lib/googleWorkspaceConnect';
 
 export interface MailIdentity {
   id: string;
