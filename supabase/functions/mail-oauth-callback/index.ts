@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
+import { openState } from "../_shared/mailOAuthState.ts";
+
+class OAuthError extends Error {
+  constructor(public code: string, message: string, public status = 400) { super(message); }
+}
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -30,47 +35,43 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
-    // Initialize Supabase client with user's JWT
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-    
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    // The sealed state (encrypted server-side by mail-oauth-start) identifies
+    // the user, so the popup can finish on any allowed Gio address even
+    // without a Gio session there. All writes are scoped to that user.
+    const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-    // Get the authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
+    const { code, state }: OAuthCallbackRequest = await req.json();
+    if (!code || !state) {
+      throw new OAuthError('missing_params', 'Google did not return the sign-in details. Please try again.');
     }
 
-    const { code, state, code_verifier }: OAuthCallbackRequest = await req.json();
-
-    // Validate state parameter
     let stateData;
     try {
-      stateData = JSON.parse(atob(state));
-      if (stateData.user_id !== user.id) {
-        throw new Error('State validation failed: user mismatch');
-      }
-      // Check if state is not too old (5 minutes)
-      if (Date.now() - stateData.timestamp > 5 * 60 * 1000) {
-        throw new Error('State validation failed: expired');
-      }
+      stateData = await openState(state);
     } catch (e) {
-      throw new Error('Invalid state parameter');
+      const expired = (e as Error).message === 'state_expired';
+      throw new OAuthError(
+        expired ? 'state_expired' : 'state_invalid',
+        expired ? 'The sign-in took too long and expired. Please try again.' : 'This sign-in link is not valid anymore. Please start again from Gio.',
+      );
     }
 
+    // If the popup does have a Gio session, it must be the same person.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const bearer = authHeader.replace(/^Bearer\s+/i, '');
+    if (bearer && bearer !== Deno.env.get('SUPABASE_ANON_KEY')) {
+      const { data: { user: sessionUser } } = await supabase.auth.getUser(bearer);
+      if (sessionUser && sessionUser.id !== stateData.user_id) {
+        throw new OAuthError('user_mismatch', 'You are signed in to Gio as a different person in this window. Please start again from your own account.');
+      }
+    }
+    const user = { id: stateData.user_id as string };
+    const code_verifier = stateData.code_verifier as string;
+
     // Exchange code for tokens
-    const redirectUri = `${Deno.env.get('OAUTH_REDIRECT_BASE')}/mail/oauth/callback`;
+    const redirectUri = `${stateData.redirect_base}/mail/oauth/callback`;
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -88,8 +89,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
-      console.error('Token exchange failed:', errorData);
-      throw new Error('Failed to exchange authorization code for tokens');
+      console.error('Token exchange failed:', tokenResponse.status, errorData, 'redirect_uri:', redirectUri);
+      throw new OAuthError('token_exchange_failed', `Google rejected the sign-in (${tokenResponse.status}). Please try again.`, 502);
     }
 
     const tokens: GoogleTokenResponse = await tokenResponse.json();
@@ -128,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (!userInfoResponse.ok) {
-      throw new Error('Failed to fetch user info from Google');
+      throw new OAuthError('userinfo_failed', 'Could not read your Google profile. Please try again.', 502);
     }
 
     const userInfo: GoogleUserInfo = await userInfoResponse.json();
@@ -141,11 +142,16 @@ const handler = async (req: Request): Promise<Response> => {
       .select('tenant_id')
       .eq('user_id', user.id)
       .eq('user_status', 'active')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
-    if (memberError) {
+    if (memberError || !memberData) {
       console.error('Failed to fetch user tenant:', memberError);
-      throw new Error('Failed to fetch user tenant');
+      throw new OAuthError('no_workspace', 'Your Gio account is not active in a workspace.', 403);
+    }
+
+    if (!hasMailAccess && !hasCalendarAccess) {
+      throw new OAuthError('scopes_missing', 'Google did not grant access to email or calendar. Please try again and tick every box on the Google screen.');
     }
 
     // Encrypt the refresh token using the database function
@@ -154,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (encryptError) {
       console.error('Failed to encrypt refresh token:', encryptError);
-      throw new Error('Failed to encrypt credentials');
+      throw new OAuthError('encrypt_failed', 'Could not save your Google connection securely.', 500);
     }
 
     // Store or update mail identity
@@ -163,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
       .select('id')
       .eq('user_id', user.id)
       .eq('email_address', userInfo.email)
-      .single();
+      .maybeSingle();
 
     const identityData = {
       user_id: user.id,
@@ -199,7 +205,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (result.error) {
       console.error('Failed to store mail identity:', result.error);
-      throw new Error('Failed to store mail identity');
+      throw new OAuthError('store_failed', 'Could not save your Google connection.', 500);
     }
 
     if (!hasMailAccess) {
@@ -229,7 +235,7 @@ const handler = async (req: Request): Promise<Response> => {
         .select('id')
         .eq('user_id', user.id)
         .eq('email_address', userInfo.email)
-        .single();
+        .maybeSingle();
 
       let calendarResult;
       if (existingCalendarIdentity) {
@@ -262,7 +268,7 @@ const handler = async (req: Request): Promise<Response> => {
             {
               method: 'POST',
               headers: {
-                'Authorization': authHeader,
+                'Authorization': `Bearer ${serviceKey}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
@@ -316,6 +322,7 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         email: userInfo.email,
         identity_id: result.data.id,
+        return_origin: stateData.return_origin ?? null,
         scopes_granted: {
           mail: hasMailAccess,
           calendar: hasCalendarAccess,
@@ -334,11 +341,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error('Error in mail-oauth-callback:', error);
+    console.error('Error in mail-oauth-callback:', error?.code ?? '', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, code: error?.code ?? 'unexpected' }),
       {
-        status: 500,
+        status: error instanceof OAuthError ? error.status : 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
