@@ -113,7 +113,8 @@ function ProviderRow({
   )
 }
 
-export function EmailCalendarTab() {
+/** The one Google Workspace connect/reconnect/disconnect card, shared by Email & calendar and Integrations. */
+export function GoogleWorkspaceConnection() {
   const queryClient = useQueryClient()
   const {
     identities: mailIdentities,
@@ -166,10 +167,6 @@ export function EmailCalendarTab() {
   }
 
   return (
-    <SettingsCard
-      title="Email & calendar"
-      description="One connection powers both — candidate replies from your address, and scheduling against your real calendar."
-    >
       <div className="space-y-3">
         {isLoading ? (
           <Skeleton className="h-[88px] w-full rounded-lg" />
@@ -243,6 +240,16 @@ export function EmailCalendarTab() {
           </>
         )}
       </div>
+  )
+}
+
+export function EmailCalendarTab() {
+  return (
+    <SettingsCard
+      title="Email & calendar"
+      description="One connection powers both — candidate replies from your address, and scheduling against your real calendar."
+    >
+      <GoogleWorkspaceConnection />
     </SettingsCard>
   )
 }

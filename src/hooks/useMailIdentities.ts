@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useOrgContext } from '@/contexts/OrgContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/hooks/useTenant';
-import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress';
+import { startGoogleWorkspaceConnect } from '@/lib/googleWorkspaceConnect';
 
 export interface MailIdentity {
   id: string;
@@ -44,61 +44,11 @@ export function useMailIdentities() {
     },
   });
 
+  // Single shared Google Workspace flow (Gmail + Calendar).
   const connectGmail = useMutation({
-    mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Not authenticated');
-
-      const { data, error } = await supabase.functions.invoke('mail-oauth-start', {
-        body: { provider: 'gmail' },
-      });
-
-      if (error) throw error;
-      return data as { auth_url: string; code_verifier: string; state: string };
-    },
-    onSuccess: (data) => {
-      const { auth_url, code_verifier, state } = data;
-
-      // Save verifier keyed by state (localStorage is shared with popup)
-      localStorage.setItem(`mail_oauth:${state}:code_verifier`, code_verifier);
-      localStorage.setItem(`mail_oauth:${state}:provider`, 'gmail');
-
-      // Open OAuth popup
-      const popup = window.open(
-        auth_url,
-        'gmail-oauth',
-        'width=520,height=640,scrollbars=yes'
-      );
-
-      if (!popup) {
-        toast.error('Please allow popups for this site');
-        return;
-      }
-
-      // Listen for success/error from the popup
-      const onMessage = async (e: MessageEvent) => {
-        if (e.origin !== window.location.origin) return;
-        
-        if (e.data?.type === 'mail-oauth-success') {
-          window.removeEventListener('message', onMessage);
-          toast.success(`Google Workspace connected: ${e.data.payload.email}`);
-          queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
-          queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
-          
-          // Recompute onboarding progress
-          refreshOnboardingProgress(queryClient, user?.id, tenant?.id);
-        }
-        
-        if (e.data?.type === 'mail-oauth-error') {
-          window.removeEventListener('message', onMessage);
-          toast.error(e.data.error || 'Failed to connect account');
-        }
-      };
-      
-      window.addEventListener('message', onMessage);
-    },
+    mutationFn: () => startGoogleWorkspaceConnect(queryClient),
     onError: (error: Error) => {
-      toast.error(`Failed to connect Gmail: ${error.message}`);
+      toast.error(`Failed to connect Google Workspace: ${error.message}`);
     },
   });
 

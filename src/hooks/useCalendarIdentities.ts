@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cacheTiers } from '@/lib/cache/cacheTiers';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { startGoogleWorkspaceConnect } from '@/lib/googleWorkspaceConnect';
 
 export interface CalendarIdentity {
   id: string;
@@ -103,124 +104,9 @@ export function useCalendarIdentities() {
 
   const connectGoogleCalendar = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('mail-oauth-start', {
-        body: { provider: 'gmail' }
-      });
-
-      if (error) throw error;
-
-      // Store PKCE values for the callback
-      localStorage.setItem(`mail_oauth:${data.state}:code_verifier`, data.code_verifier);
-      localStorage.setItem(`mail_oauth:${data.state}:provider`, 'gmail');
-
-      // Open OAuth in popup window
-      const popup = window.open(
-        data.auth_url,
-        'google-calendar-oauth',
-        'width=520,height=640,scrollbars=yes'
-      );
-
-      if (!popup) {
-        toast.error('Please allow popups for this site');
-        return;
-      }
-
-      // Listen for success/error from the popup
-      const onMessage = async (e: MessageEvent) => {
-        if (e.origin !== window.location.origin) return;
-        
-        if (e.data?.type === 'mail-oauth-success') {
-          window.removeEventListener('message', onMessage);
-          toast.success(`Calendar connected: ${e.data.payload.email}`);
-          queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
-
-          // Setup webhook for bidirectional sync
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            try {
-              // Fetch the newly created calendar identity
-              const { data: calendarIdentity } = await supabase
-                .from('calendar_identities')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('email_address', e.data.payload.email)
-                .single();
-
-              if (calendarIdentity) {
-                // Setup webhook for bidirectional calendar sync
-                const { error: webhookError } = await supabase.functions.invoke('setup-calendar-watch', {
-                  body: { calendar_identity_id: calendarIdentity.id }
-                });
-
-                if (webhookError) {
-                  console.error('[Calendar] Webhook setup failed:', webhookError);
-                  toast.warning('Calendar connected, but sync setup failed. Please reconnect if needed.');
-                } else {
-                  console.log('[Calendar] Webhook setup successful for bidirectional sync');
-                }
-
-                // Auto-sync timezone from Google Calendar (frontend fallback)
-                try {
-                  await supabase.functions.invoke('sync-calendar-timezone', {
-                    body: { calendar_identity_id: calendarIdentity.id },
-                  });
-                  queryClient.invalidateQueries({ queryKey: ['booking-config'] });
-                  queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-                } catch (tzError) {
-                  console.warn('[Calendar] Timezone sync failed (non-blocking):', tzError);
-                }
-
-                // Booking config should now be auto-activated by database trigger
-                // But let's verify and notify the user
-                const { data: bookingConfig, error: bcError } = await supabase
-                  .from('booking_configurations')
-                  .select('id, is_active')
-                  .eq('user_id', user.id)
-                  .maybeSingle();
-
-                if (bcError) {
-                  console.error('[Calendar] Error checking booking config:', bcError);
-                }
-
-                if (bookingConfig?.is_active) {
-                  toast.success('Your booking link is now active! Share it with candidates.');
-                } else if (!bookingConfig) {
-                  // Trigger lazy creation by invalidating the query
-                  queryClient.invalidateQueries({ queryKey: ['booking-config'] });
-                  toast.success('Calendar connected! Setting up your booking link...');
-                } else {
-                  // Booking config exists but not active - trigger may have failed, try manual activation
-                  console.warn('[Calendar] Booking config not auto-activated, attempting manual activation');
-                  const { error: updateError } = await supabase
-                    .from('booking_configurations')
-                    .update({ is_active: true })
-                    .eq('id', bookingConfig.id);
-                  
-                  if (updateError) {
-                    console.error('[Calendar] Manual activation failed:', updateError);
-                    toast.warning('Calendar connected but booking link activation failed. Please try toggling it manually in settings.');
-                  } else {
-                    queryClient.invalidateQueries({ queryKey: ['booking-config'] });
-                    toast.success('Your booking link is now active! Share it with candidates.');
-                  }
-                }
-              }
-            } catch (setupError) {
-              console.error('[Calendar] Post-connection setup error:', setupError);
-              toast.warning('Calendar connected but some setup steps failed. Please check your booking link settings.');
-            }
-          }
-        }
-        
-        if (e.data?.type === 'mail-oauth-error') {
-          window.removeEventListener('message', onMessage);
-          toast.error(e.data.error || 'Failed to connect calendar');
-        }
-      };
-      
-      window.addEventListener('message', onMessage);
+      await startGoogleWorkspaceConnect(queryClient);
     } catch (error: any) {
-      toast.error(`Failed to start OAuth: ${error.message}`);
+      toast.error(`Failed to connect Google Workspace: ${error.message}`);
     }
   };
 

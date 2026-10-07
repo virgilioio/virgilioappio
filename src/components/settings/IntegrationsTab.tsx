@@ -13,7 +13,10 @@ import { useIntegrationStatuses } from '@/hooks/useIntegrationStatuses'
 
 // Detail components
 import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
-import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
+import { GoogleWorkspaceConnection } from './tabs/EmailCalendarTab'
+import { supabase } from '@/integrations/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 
 // Logos
@@ -54,7 +57,7 @@ export const INTEGRATIONS: IntegrationEntry[] = [
     description: 'Connect Gmail and Google Calendar for email sending and interview scheduling.',
     category: 'productivity',
     logo: <GoogleLogo size={24} />,
-    DetailComponent: GoogleWorkspaceIntegrationSection,
+    DetailComponent: GoogleWorkspaceConnection,
     images: [googleWorkspaceImg],
     detailContent: (
       <>
@@ -161,9 +164,7 @@ function IntegrationCardWrapper({
 function useIntegrationActions(integrationId: string | null) {
   const { toggle: toggleWhatsApp, isSaving: whatsAppSaving } = useWorkspaceAutomation('whatsapp_integration')
   const { connectGmail } = useMailIdentities()
-  const { disconnectCalendar } = useCalendarIdentities()
-  const { identities: mailIdentities, disconnectIdentity: disconnectMail } = useMailIdentities()
-  const { identities: calendarIdentities } = useCalendarIdentities()
+  const queryClient = useQueryClient()
 
   const install = () => {
     switch (integrationId) {
@@ -185,15 +186,12 @@ function useIntegrationActions(integrationId: string | null) {
         toggleWhatsApp(false)
         break
       case 'google-workspace':
-        if (mailIdentities) {
-          for (const identity of mailIdentities) {
-            await disconnectMail.mutateAsync(identity.id)
-          }
-        }
-        if (calendarIdentities) {
-          for (const identity of calendarIdentities) {
-            await disconnectCalendar(identity.id)
-          }
+        {
+          const { error } = await supabase.functions.invoke('disconnect-google-workspace', { body: {} })
+          if (error) { toast.error(`Failed to disconnect Google Workspace: ${error.message}`); break }
+          queryClient.invalidateQueries({ queryKey: ['mail-identities'] })
+          queryClient.invalidateQueries({ queryKey: ['calendar-identities'] })
+          toast.success('Google Workspace disconnected')
         }
         break
       case 'chrome-extension':
