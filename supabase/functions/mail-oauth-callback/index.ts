@@ -182,6 +182,7 @@ const handler = async (req: Request): Promise<Response> => {
       token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
       is_active: hasMailAccess, // Only activate if scopes are granted
       sync_status: hasMailAccess ? 'active' : 'error',
+      sync_error: null,
       last_sync_at: new Date().toISOString(),
     };
 
@@ -227,6 +228,7 @@ const handler = async (req: Request): Promise<Response> => {
         token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
         is_active: true,
         sync_status: 'healthy',
+        sync_error_message: null,
         last_sync_at: new Date().toISOString(),
       };
 
