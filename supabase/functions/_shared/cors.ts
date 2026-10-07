@@ -6,6 +6,8 @@
 const ALLOWED_HOSTNAMES = new Set([
   'app.gogio.io',
   'auth.gogio.io',
+  'app.virgilio.io',
+  'auth.virgilio.io',
   'lovable.app',
   'localhost',
 ]);
@@ -77,3 +79,31 @@ export function handlePreflight(req: Request): Response | null {
 export const createSecureCorsHeaders = () => corsHeadersFor();
 export const handleSecureCorsPreFlight = (req: Request, _corsHeaders?: Record<string, string>) => handlePreflight(req);
 export const corsHeaders = corsHeadersFor();
+
+/**
+ * Wraps a handler so every response echoes the caller's Origin when it is on
+ * the allowlist. Functions build their headers once at module load (no request
+ * yet), which otherwise pins Access-Control-Allow-Origin to the fallback and
+ * makes the browser block every other Gio address.
+ */
+export function withRequestCors(
+  handler: (req: Request) => Response | Promise<Response>,
+): (req: Request) => Promise<Response> {
+  return async (req: Request): Promise<Response> => {
+    const res = await handler(req)
+    const origin = req.headers.get('Origin') ?? undefined
+    if (!origin || !isAllowedOrigin(origin).allowed) return res
+    if (!res.headers.has('Access-Control-Allow-Origin')) return res
+    if (res.headers.get('Access-Control-Allow-Origin') === '*') return res
+    try {
+      res.headers.set('Access-Control-Allow-Origin', origin)
+      res.headers.set('Vary', 'Origin')
+      return res
+    } catch {
+      const headers = new Headers(res.headers)
+      headers.set('Access-Control-Allow-Origin', origin)
+      headers.set('Vary', 'Origin')
+      return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
+    }
+  }
+}
