@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -16,7 +16,7 @@ async function withTimeout<T>(
   return Promise.race([promise, timeoutPromise]);
 }
 
-serve(async (req) => {
+serve(withRequestCors(async (req) => {
   const startTime = Date.now();
   console.log('[set-current-organization] Invocation started', {
     timestamp: new Date().toISOString(),
@@ -127,4 +127,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

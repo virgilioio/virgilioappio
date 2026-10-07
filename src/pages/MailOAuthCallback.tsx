@@ -1,82 +1,81 @@
 import { useEffect, useState } from 'react';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { BrandDot } from '@/components/ui/BrandDot';
 
+/**
+ * Google returns here after consent. This page is public on purpose: the
+ * sealed `state` identifies the Gio user server-side, so it works even when
+ * this window has no Gio session (e.g. it came back on a different Gio address).
+ */
 export default function MailOAuthCallback() {
   const [msg, setMsg] = useState('Connecting your account...');
 
   useEffect(() => {
-    (async () => {
+    const notify = (message: Record<string, unknown>, targetOrigin: string) => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        const state = params.get('state');
-        
-        if (!code || !state) {
-          throw new Error('Missing OAuth parameters');
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(message, targetOrigin);
         }
+      } catch (e) {
+        console.warn('Could not post message to opener:', e);
+      }
+    };
 
-        const code_verifier = localStorage.getItem(`mail_oauth:${state}:code_verifier`);
-        if (!code_verifier) {
-          throw new Error('No code_verifier found (state mismatch)');
-        }
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const googleError = params.get('error');
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          throw new Error('Session not available');
+      try {
+        if (googleError) {
+          throw new Error(
+            googleError === 'access_denied'
+              ? 'Google access was not granted.'
+              : `Google returned an error: ${googleError}`,
+          );
         }
+        if (!code || !state) throw new Error('Google did not return the sign-in details. Please try again.');
 
         const { data, error } = await supabase.functions.invoke('mail-oauth-callback', {
-          body: { code, state, code_verifier },
+          body: { code, state },
         });
 
         if (error) {
-          throw new Error(error.message || 'Callback failed');
+          let details = error.message;
+          if (error instanceof FunctionsHttpError) {
+            try {
+              const body = await error.context.json();
+              details = body?.error || details;
+            } catch {
+              /* keep generic */
+            }
+          }
+          throw new Error(details || 'Could not connect your account.');
         }
 
-        // Cleanup
+        // Legacy cleanup from the old flow.
         localStorage.removeItem(`mail_oauth:${state}:code_verifier`);
         localStorage.removeItem(`mail_oauth:${state}:provider`);
 
-        // Notify the opener and close
-        try {
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage(
-              { type: 'mail-oauth-success', payload: data },
-              window.location.origin
-            );
-          }
-        } catch (e) {
-          console.warn('Could not post message to opener:', e);
-        }
-        
+        const target = (data as any)?.return_origin || window.location.origin;
+        notify({ type: 'mail-oauth-success', payload: data }, target);
+
         setMsg('Connected! You can close this window.');
-        
-        // Auto-close after a short delay
-        setTimeout(() => {
-          window.close();
-        }, 1000);
+        setTimeout(() => window.close(), 1000);
       } catch (err: any) {
         console.error('OAuth callback error:', err);
-        
-        try {
-          if (window.opener && !window.opener.closed) {
-            window.opener.postMessage(
-              { type: 'mail-oauth-error', error: err.message || String(err) },
-              window.location.origin
-            );
-          }
-        } catch (e) {
-          console.warn('Could not post message to opener:', e);
-        }
-        
-        setMsg('Could not connect your account. You can close this window.');
+        const message = err?.message || String(err);
+        // We don't know the opener's address here; the message carries no secrets.
+        notify({ type: 'mail-oauth-error', error: message }, '*');
+        setMsg(`Could not connect your account: ${message} You can close this window.`);
       }
     })();
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="flex items-center justify-center min-h-screen bg-background px-6 text-center">
       <BrandDot message={msg} />
     </div>
   );

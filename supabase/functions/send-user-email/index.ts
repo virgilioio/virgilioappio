@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 import { z } from "npm:zod@3.23.8";
 
 const corsHeaders = createSecureCorsHeaders();
@@ -1167,4 +1167,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withRequestCors(handler));

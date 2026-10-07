@@ -139,6 +139,8 @@ function AppContent() {
         <Route path="/schedule/:shortCode/:eventSlug" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
         <Route path="/chrome-oauth/start" element={<ChromeOAuthStart />} />
+        {/* Google Workspace consent returns here; public — the sealed state identifies the user. */}
+        <Route path="/mail/oauth/callback" element={<MailOAuthCallback />} />
         <Route path="/c/chat/:token" element={<CandidateChat />} />
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
         {/* Public reference-check pages — token-resolved, no account.
@@ -173,7 +175,6 @@ function AppContent() {
             <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
           </Route>
           <Route path="/account-setup" element={<AccountSetup />} />
-          <Route path="/mail/oauth/callback" element={<MailOAuthCallback />} />
           
           {/* Protected routes - wrapped with BillingGuard */}
           <Route element={<BillingGuard requireActive={false} />}>

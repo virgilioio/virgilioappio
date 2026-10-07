@@ -14,3 +14,5 @@
 - Gio Sales is the master client list: ATS client organizations are mirrored via the signed `sales-company-upsert` function, never created or edited in the ATS, and the CRM/deals UI is removed — avoids two diverging client lists.
 - Req IDs are assigned only by the database (per-workspace req_id_counters via allocate_req_ids in a job_openings insert trigger; never editable, never reused) — keeps IDs unique across ATS and Gio Sales openings.
 - Google Workspace connect/reconnect/disconnect has one flow (src/lib/googleWorkspaceConnect.ts + GoogleWorkspaceConnection card, disconnect via disconnect-google-workspace), reused by Email & calendar and Integrations — keeps both screens consistent and reachable by every role.
+- Edge functions answer CORS with the caller's allowlisted Origin (wrap handlers in withRequestCors from _shared/cors.ts), never a fixed default — a fixed origin blocked every other Gio domain.
+- Google Workspace OAuth state is sealed server-side (_shared/mailOAuthState.ts: user, PKCE verifier, redirect base, opener origin) and /mail/oauth/callback is public — the popup can finish on any allowed Gio address without a session there.

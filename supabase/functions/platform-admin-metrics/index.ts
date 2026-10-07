@@ -1,10 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
-serve(async (req) => {
+serve(withRequestCors(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
@@ -204,4 +204,4 @@ serve(async (req) => {
       }
     )
   }
-})
+}))

@@ -1,11 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { getErrorMessage } from "../_shared/types.ts";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
-serve(async (req) => {
+serve(withRequestCors(async (req) => {
   console.log('Document conversion request received:', req.method);
 
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
@@ -53,7 +53,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));
 
 async function processDocumentConversion(supabase: any, attachmentId: string, fileUrl: string, fileType: string) {
   try {
