@@ -1,17 +1,28 @@
-# Give every user access to Integrations
+# One Google Workspace connection, used everywhere
 
-## What's wrong
-Jurre is a Member (Hiring Manager) and has no Google Workspace connected. The Integrations page itself works for everyone, but its menu entry sits inside the "Workspace" group of Settings, and that whole group is hidden for anyone who isn't an admin or owner. So members never see the link.
+## What's wrong today
+- Jurre (Member) has no Google connected at all — no email, no calendar.
+- There are two separate Google Workspace screens that behave differently:
+  - **Settings → Email & calendar** (every user sees it): connect, reconnect, and a full disconnect.
+  - **Settings → Integrations → Google Workspace** (admins/owners only): its own connect button, separate "Reconnect Calendar" button, and a disconnect that removes email and calendar one by one.
+- Both start the same Google sign-in, but they differ afterwards: different success messages, only one turns on the booking link afterwards, the status ("Connected" / "Reconnect required") is worked out differently, and the two disconnects don't clean up the same things.
 
-## Change
-- Show **Integrations** in Settings for every user type (members, hiring managers, interviewers, recruiters, sales, admins, owners).
-- For non-admins it appears in their personal group (next to Profile, Email & calendar, Booking, Notifications). Admins and owners keep it where it is now, so their menu doesn't change.
-- Inside the page, everyone can connect their own Google Workspace. WhatsApp stays admin-only, because it's a workspace-wide setting, not a personal one.
-- Direct links (Settings → Integrations, and links from the setup checklist) open the page for everyone.
+## What changes
+- One shared Google Workspace card, with one connect / reconnect / disconnect flow, shown in both places:
+  - **Settings → Email & calendar** — the main home for every user, including Members, Hiring Managers and Interviewers.
+  - **Settings → Integrations → Google Workspace** — opens the same card. The Integrations menu stays admin/owner only.
+- The same status everywhere: Connected (with the email address), Reconnect required (with the reason), or Not connected.
+- After connecting, every time: email and calendar both linked, calendar sync and time zone set up, the booking link turned on, and one clear "Google Workspace connected: name@…" confirmation.
+- Disconnect always removes email and calendar together.
+- The "Connect Google" prompts elsewhere (setup checklist, scheduling, booking) point to Settings → Email & calendar, so Members never land on a page they can't open.
 
 ## After this
-Ask Jurre to open Settings → Integrations → Google Workspace → Connect. I can then confirm his email and calendar show as connected.
+Jurre connects from Settings → Email & calendar → Connect. I'll then check his email and calendar both show as connected.
 
 ## Technical details
-- `src/components/settings/SettingsSidebar.tsx`: add an `integrations` item to the personal section with `show: !isAdminOrOwner`; keep the workspace-section item for admins/owners.
-- No changes to `Settings.tsx` routing (the `integrations` / `integration-*` tabs already render for any user) and no database changes.
+- New `src/hooks/useGoogleWorkspaceConnection.ts`: wraps `mail-oauth-start` popup + `mail-oauth-callback` (which already creates the calendar identity and calls `setup-calendar-watch` / `sync-calendar-timezone` server-side). On success it invalidates mail/calendar/booking-config/user-profile queries, runs the booking-config activation check (moved out of `useCalendarIdentities.connectGoogleCalendar`), and refreshes onboarding progress. Derives state with the existing `hasTokenFailure` rules. Disconnect always goes through `disconnect-google-workspace`.
+- New `src/components/settings/GoogleWorkspaceCard.tsx` (the current Email & calendar row UI), used by `tabs/EmailCalendarTab.tsx` and as the Integrations `DetailComponent` in place of `GoogleWorkspaceIntegrationSection`.
+- `useCalendarIdentities.connectGoogleCalendar` and `useMailIdentities.connectGmail` become thin calls into the shared hook so other callers keep working; remove the unused `GoogleWorkspaceIntegrationSection`, `EmailAccountsSection`, `CalendarIntegrationSection` once nothing imports them.
+- `useGoogleConnected` (integration status) reuses the shared state so the Integrations tile matches.
+- Repoint any `tab=integrations` / `integration-google-workspace` links shown to non-admins to `tab=email-calendar`.
+- No database or edge-function changes.
