@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@16";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -10,7 +10,7 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
-serve(async (req) => {
+serve(withRequestCors(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
@@ -194,7 +194,7 @@ serve(async (req) => {
       status: 500,
     });
   }
-});
+}));
 
 async function handleSubscriptionChange(supabaseClient: any, subscription: Stripe.Subscription) {
   logStep("Handling subscription change", { 

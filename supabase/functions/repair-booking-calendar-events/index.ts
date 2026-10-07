@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -271,7 +271,7 @@ async function repairOne(supabase: any, booking: any) {
   };
 }
 
-serve(async (req) => {
+serve(withRequestCors(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
@@ -340,4 +340,4 @@ serve(async (req) => {
     console.error('[repair-booking-calendar-events] Error:', message);
     return json({ error: message }, 500);
   }
-});
+}));

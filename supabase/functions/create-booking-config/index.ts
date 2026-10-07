@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 const log = (msg: string, data?: unknown) => console.log(`[create-booking-config] ${msg}`, data ?? "");
@@ -32,7 +32,7 @@ function generateShortCode(firstName: string, lastName: string): string {
   return `${baseSlug}-${suffix}`;
 }
 
-serve(async (req) => {
+serve(withRequestCors(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
@@ -205,4 +205,4 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
-});
+}));

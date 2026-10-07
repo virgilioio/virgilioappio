@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 interface DownloadRequest {
   attachmentId: string
@@ -7,7 +7,7 @@ interface DownloadRequest {
 
 const corsHeaders = createSecureCorsHeaders();
 
-Deno.serve(async (req) => {
+Deno.serve(withRequestCors(async (req) => {
   try {
     console.log(`Download attachment request: ${req.method} ${req.url}`)
 
@@ -154,4 +154,4 @@ Deno.serve(async (req) => {
       }
     })
   }
-})
+}))
