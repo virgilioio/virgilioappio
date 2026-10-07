@@ -1,11 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
+import { sealState, pickRedirectBase, sanitizeReturnOrigin } from "../_shared/mailOAuthState.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
 interface OAuthStartRequest {
   provider: 'gmail' | 'outlook';
+  return_origin?: string;
 }
 
 // Generate PKCE code verifier and challenge
@@ -57,7 +59,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Unauthorized');
     }
 
-    const { provider }: OAuthStartRequest = await req.json();
+    const { provider, return_origin }: OAuthStartRequest = await req.json();
+    const returnOrigin = sanitizeReturnOrigin(return_origin) ?? sanitizeReturnOrigin(req.headers.get('Origin'));
 
     // Guard: Check for required environment variables
     const appBase = Deno.env.get('OAUTH_REDIRECT_BASE');
@@ -80,18 +83,20 @@ const handler = async (req: Request): Promise<Response> => {
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     
-    // Generate state parameter with user_id and timestamp
-    const state = btoa(JSON.stringify({
+    const redirectBase = pickRedirectBase(returnOrigin);
+    const state = await sealState({
       user_id: user.id,
       timestamp: Date.now(),
       nonce: crypto.randomUUID(),
-    }));
+      code_verifier: codeVerifier,
+      redirect_base: redirectBase,
+      return_origin: returnOrigin,
+    });
 
     let authUrl: string;
-    const redirectUri = `${appBase}/mail/oauth/callback`;
+    const redirectUri = `${redirectBase}/mail/oauth/callback`;
 
-    if (provider === 'gmail') {
-  const scopes = [
+    const scopes = [
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/gmail.readonly', // Read emails
     'https://www.googleapis.com/auth/gmail.modify', // Mark as read, add labels
@@ -100,6 +105,8 @@ const handler = async (req: Request): Promise<Response> => {
     'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/calendar.events',
   ];
+
+    if (provider === 'gmail') {
 
       authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
         client_id: googleClientId,
@@ -117,7 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Only Gmail provider is currently supported');
     }
 
-    console.log('OAuth start initiated for user:', user.id, 'provider:', provider);
+    console.log('OAuth start initiated for user:', user.id, 'provider:', provider, 'redirect:', redirectBase, 'return:', returnOrigin);
     
     // Debug logging
     const logLevel = Deno.env.get('LOG_LEVEL');
