@@ -16,6 +16,7 @@ import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
 import { GoogleWorkspaceConnection } from './tabs/EmailCalendarTab'
 import { supabase } from '@/integrations/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { WhatsAppIntegrationDetail } from './WhatsAppIntegrationDetail'
 
 // Logos
