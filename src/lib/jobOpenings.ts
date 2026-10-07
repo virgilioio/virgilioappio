@@ -46,12 +46,7 @@ export function validateOpenings(
     if (k) counts.set(k, (counts.get(k) || 0) + 1)
   })
   for (const r of rows) {
-    const req = r.req_id.trim()
-    const k = req.toLowerCase()
-    if (!req) out[r.id] = { message: 'Req ID is required.', fields: ['req'] }
-    else if ((counts.get(k) || 0) > 1 || serverTaken[k])
-      out[r.id] = { message: `${req.toUpperCase()} is already used by another opening.`, fields: ['req'] }
-    else if (!r.target_hire_date || !r.target_start_date)
+    if (!r.target_hire_date || !r.target_start_date)
       out[r.id] = {
         message: 'Both dates are required.',
         fields: [!r.target_hire_date && 'hire', !r.target_start_date && 'start'].filter(Boolean) as any,

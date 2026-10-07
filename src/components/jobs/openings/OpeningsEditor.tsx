@@ -8,12 +8,11 @@ import { supabase } from '@/integrations/supabase/client'
 import { cn } from '@/lib/utils'
 import {
   OpeningRow,
-  nextReqId,
   tmpId,
   validateOpenings,
   setupSummaryText,
 } from '@/lib/jobOpenings'
-import { fetchWorkspaceReqIds, isReqIdTaken, useJobOpenings } from '@/hooks/useJobOpenings'
+import { useJobOpenings } from '@/hooks/useJobOpenings'
 
 const db = supabase as any
 
@@ -54,23 +53,16 @@ export function OpeningsEditor(props: CreateProps | SetupProps) {
 /* ------------------------------------------------------------ CREATE MODE */
 
 function CreateEditor({ value, onChange, onValidityChange, readOnly }: CreateProps) {
-  const [taken, setTaken] = useState<Record<string, boolean>>({})
-  const [workspaceIds, setWorkspaceIds] = useState<string[]>([])
   const focusId = useRef<string | null>(null)
 
   useEffect(() => {
-    fetchWorkspaceReqIds().then((ids) => {
-      setWorkspaceIds(ids)
-      if (value.length === 0) {
-        onChange([
-          { id: tmpId(), req_id: nextReqId(ids), target_hire_date: '', target_start_date: '', status: 'open' },
-        ])
-      }
-    })
+    if (value.length === 0) {
+      onChange([{ id: tmpId(), req_id: '', target_hire_date: '', target_start_date: '', status: 'open' }])
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const errors = useMemo(() => validateOpenings(value, taken), [value, taken])
+  const errors = useMemo(() => validateOpenings(value), [value])
   useEffect(() => {
     onValidityChange?.(value.length > 0 && Object.keys(errors).length === 0)
   }, [errors, value.length, onValidityChange])
@@ -81,20 +73,13 @@ function CreateEditor({ value, onChange, onValidityChange, readOnly }: CreatePro
     const last = value[value.length - 1]
     const row: OpeningRow = {
       id: tmpId(),
-      req_id: nextReqId([...workspaceIds, ...value.map((r) => r.req_id)]),
+      req_id: '',
       target_hire_date: last?.target_hire_date || '',
       target_start_date: last?.target_start_date || '',
       status: 'open',
     }
     focusId.current = row.id
     onChange([...value, row])
-  }
-
-  const checkServer = async (row: OpeningRow) => {
-    const k = row.req_id.trim().toLowerCase()
-    if (!k) return
-    const t = await isReqIdTaken(row.req_id)
-    setTaken((prev) => ({ ...prev, [k]: t }))
   }
 
   const n = value.length
@@ -106,7 +91,6 @@ function CreateEditor({ value, onChange, onValidityChange, readOnly }: CreatePro
       readOnly={readOnly}
       focusId={focusId}
       onPatch={patch}
-      onBlurReq={checkServer}
       onRemove={(id) => onChange(value.filter((r) => r.id !== id))}
       onAdd={add}
       summary={`${n} ${n === 1 ? 'opening' : 'openings'} · this job can make ${n} ${n === 1 ? 'hire' : 'hires'}`}
@@ -119,9 +103,7 @@ function CreateEditor({ value, onChange, onValidityChange, readOnly }: CreatePro
 function SetupEditor({ jobId, readOnly }: SetupProps) {
   const { openings, isLoading, refetch } = useJobOpenings(jobId)
   const [rows, setRows] = useState<OpeningRow[]>([])
-  const [taken, setTaken] = useState<Record<string, boolean>>({})
   const [serverErr, setServerErr] = useState<Record<string, string>>({})
-  const [workspaceIds, setWorkspaceIds] = useState<string[]>([])
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const rowsRef = useRef<OpeningRow[]>([])
   const focusId = useRef<string | null>(null)
@@ -148,30 +130,28 @@ function SetupEditor({ jobId, readOnly }: SetupProps) {
   }, [openings, isLoading])
 
   useEffect(() => {
-    fetchWorkspaceReqIds().then(setWorkspaceIds)
     return () => Object.values(timers.current).forEach(clearTimeout)
   }, [])
 
   const errors = useMemo(() => {
-    const e = validateOpenings(rows, taken)
+    const e = validateOpenings(rows)
     for (const [id, m] of Object.entries(serverErr)) if (!e[id]) e[id] = { message: m, fields: ['req'] }
     return e
-  }, [rows, taken, serverErr])
+  }, [rows, serverErr])
 
   const save = async (id: string) => {
     const row = rowsRef.current.find((r) => r.id === id)
     if (!row) return
-    const local = validateOpenings(rowsRef.current, taken)
+    const local = validateOpenings(rowsRef.current)
     if (local[id]) return
     const payload = {
-      req_id: row.req_id.trim().toUpperCase(),
       target_hire_date: row.target_hire_date,
       target_start_date: row.target_start_date,
       position: rowsRef.current.findIndex((r) => r.id === id),
     }
     const res = row.persisted
       ? await db.from('job_openings').update(payload).eq('id', id)
-      : await db.from('job_openings').insert({ ...payload, job_id: jobId }).select('id').single()
+      : await db.from('job_openings').insert({ ...payload, job_id: jobId }).select('id, req_id').single()
     if (res.error) {
       setServerErr((p) => ({ ...p, [id]: cleanErr(res.error.message) }))
       return
@@ -182,7 +162,7 @@ function SetupEditor({ jobId, readOnly }: SetupProps) {
     })
     if (!row.persisted && res.data?.id) {
       const newId = res.data.id as string
-      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, id: newId, persisted: true } : r)))
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, id: newId, req_id: res.data.req_id, persisted: true } : r)))
     }
     refetch()
   }
@@ -205,7 +185,7 @@ function SetupEditor({ jobId, readOnly }: SetupProps) {
     const last = rows[rows.length - 1]
     const row: OpeningRow = {
       id: tmpId(),
-      req_id: nextReqId([...workspaceIds, ...rows.map((r) => r.req_id)]),
+      req_id: '',
       target_hire_date: last?.target_hire_date || '',
       target_start_date: last?.target_start_date || '',
       status: 'open',
@@ -232,13 +212,6 @@ function SetupEditor({ jobId, readOnly }: SetupProps) {
     refetch()
   }
 
-  const checkServer = async (row: OpeningRow) => {
-    const k = row.req_id.trim().toLowerCase()
-    if (!k) return
-    const t = await isReqIdTaken(row.req_id, row.id)
-    setTaken((prev) => ({ ...prev, [k]: t }))
-  }
-
   if (isLoading) {
     return <div className="py-6 text-center font-inter text-[12px] text-[#8B8F9E]">Loading openings…</div>
   }
@@ -251,7 +224,6 @@ function SetupEditor({ jobId, readOnly }: SetupProps) {
       readOnly={readOnly}
       focusId={focusId}
       onPatch={patch}
-      onBlurReq={checkServer}
       onRemove={remove}
       onAdd={add}
       summary={setupSummaryText(rows)}
@@ -273,7 +245,6 @@ function EditorShell({
   readOnly,
   focusId,
   onPatch,
-  onBlurReq,
   onRemove,
   onAdd,
   summary,
@@ -284,7 +255,6 @@ function EditorShell({
   readOnly?: boolean
   focusId: React.MutableRefObject<string | null>
   onPatch: (id: string, p: Partial<OpeningRow>) => void
-  onBlurReq: (row: OpeningRow) => void
   onRemove: (id: string) => void
   onAdd: () => void
   summary: string
@@ -307,7 +277,7 @@ function EditorShell({
               style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', color: '#8B8F9E' }}
             >
               {l}
-              {l !== 'Status' && <span style={{ color: '#FA5252' }}> *</span>}
+              {l !== 'Status' && l !== 'Req ID' && <span style={{ color: '#FA5252' }}> *</span>}
             </span>
           ))}
           <span />
@@ -338,33 +308,18 @@ function EditorShell({
                   <TooltipContent>Opening ID · {r.persisted ? r.id : 'not saved yet'}</TooltipContent>
                 </Tooltip>
 
-                {locked ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        className="flex items-center gap-1.5 font-mono"
-                        style={{ height: 34, background: '#FAFAF7', border: '1px solid #EDEBE5', borderRadius: 8, padding: '0 10px', fontSize: 12, color: '#1F2230' }}
-                      >
-                        <Lock style={{ width: 12, height: 12, color: '#8B8F9E' }} />
-                        <span className="truncate">{r.req_id}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Locked — linked to a candidate</TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <input
-                    className={cn(inputCls, 'font-mono text-[12px] uppercase', has('req') && errCls)}
-                    value={r.req_id}
-                    placeholder="REQ-0000"
-                    disabled={readOnly}
-                    autoFocus={focusId.current === r.id}
-                    onFocus={() => {
-                      if (focusId.current === r.id) focusId.current = null
-                    }}
-                    onChange={(e) => onPatch(r.id, { req_id: e.target.value.toUpperCase() })}
-                    onBlur={() => onBlurReq(r)}
-                  />
-                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="flex items-center gap-1.5 font-mono"
+                      style={{ height: 34, background: '#FAFAF7', border: '1px solid #EDEBE5', borderRadius: 8, padding: '0 10px', fontSize: 12, color: r.req_id ? '#1F2230' : '#8B8F9E' }}
+                    >
+                      {locked && <Lock style={{ width: 12, height: 12, color: '#8B8F9E' }} />}
+                      <span className={cn('truncate', !r.req_id && 'font-inter text-[12px]')}>{r.req_id || 'Assigned on save'}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{locked ? 'Locked — linked to a candidate' : 'Req IDs are assigned automatically and never reused'}</TooltipContent>
+                </Tooltip>
 
                 {(['target_hire_date', 'target_start_date'] as const).map((k) =>
                   filled ? (

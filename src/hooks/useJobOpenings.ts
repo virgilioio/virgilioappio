@@ -45,7 +45,6 @@ export async function insertOpenings(jobId: string, rows: OpeningRow[]) {
   const { error } = await db.from('job_openings').insert(
     rows.map((r, i) => ({
       job_id: jobId,
-      req_id: r.req_id.trim().toUpperCase(),
       target_hire_date: r.target_hire_date,
       target_start_date: r.target_start_date,
       position: i,
