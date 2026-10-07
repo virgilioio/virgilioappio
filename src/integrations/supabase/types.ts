@@ -6787,6 +6787,30 @@ export type Database = {
           },
         ]
       }
+      req_id_counters: {
+        Row: {
+          last_n: number
+          prefix: string
+          tenant_id: string
+          updated_at: string
+          width: number
+        }
+        Insert: {
+          last_n?: number
+          prefix?: string
+          tenant_id: string
+          updated_at?: string
+          width?: number
+        }
+        Update: {
+          last_n?: number
+          prefix?: string
+          tenant_id?: string
+          updated_at?: string
+          width?: number
+        }
+        Relationships: []
+      }
       salary_market_data: {
         Row: {
           cached_at: string
@@ -9077,6 +9101,10 @@ export type Database = {
       admin_restore_record: {
         Args: { record_id: string; table_name: string }
         Returns: Json
+      }
+      allocate_req_ids: {
+        Args: { _count: number; _tenant_id: string }
+        Returns: string[]
       }
       ats_person: { Args: { p_user: string }; Returns: Json }
       audit_platform_admin_access: {
