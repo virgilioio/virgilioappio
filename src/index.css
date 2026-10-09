@@ -1421,3 +1421,24 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 @keyframes gio-list-in { from { opacity: 0; transform: translateY(6px); } }
 .gio-list-in { animation: gio-list-in var(--dur-dialog-in) var(--ease-out) backwards; }
 @media (prefers-reduced-motion: reduce) { .gio-list-in { animation-name: gio-fade-only; } }
+
+/* §10 Hover cards (ui/hover-card.tsx): grow from the trigger; neighbours appear at once. */
+.gio-hovercard {
+  transform-origin: var(--radix-hover-card-content-transform-origin, center);
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.97;
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.97;
+}
+.gio-hovercard[data-state="open"] { animation: enter var(--dur-hovercard) var(--ease-out); }
+.gio-hovercard[data-state="open"][data-instant] { animation: none; }
+.gio-hovercard[data-state="closed"] { animation: exit var(--dur-menu-out) var(--ease-out); }
+
+/* §10/§14 Truncated text (src/lib/autoTitle.ts): the full value in a tooltip, only
+ * while the text is actually cut. Same look as the Tooltip primitive. */
+.gio-autotip {
+  position: fixed;
+  max-width: min(360px, calc(100vw - 16px));
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}

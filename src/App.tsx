@@ -1,3 +1,4 @@
+import { installAutoTitle } from '@/lib/autoTitle'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
 import {
@@ -112,6 +113,8 @@ function ChatRouteGuard({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
+  // §10/§14: truncated text shows its full value in a tooltip while it's cut.
+  useEffect(() => installAutoTitle(), [])
 
 
 
