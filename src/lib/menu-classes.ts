@@ -24,7 +24,8 @@ export const menuPanel =
 export const menuItem =
   'relative flex cursor-default select-none items-center gap-2 ' +
   'h-[var(--menu-item-h)] px-2 rounded-[var(--menu-item-radius)] ' +
-  'text-menu-item font-inter outline-none transition-colors ' +
+  // No transition: hover and keyboard highlight move instantly (§3, §7).
+  'text-menu-item font-inter outline-none ' +
   'focus:bg-[hsl(var(--menu-hover))] focus:text-foreground ' +
   'data-[highlighted]:bg-[hsl(var(--menu-hover))] data-[highlighted]:text-foreground ' +
   'data-[state=checked]:bg-[hsl(var(--menu-selected))] data-[state=checked]:text-foreground ' +
