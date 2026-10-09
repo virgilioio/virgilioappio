@@ -1200,6 +1200,27 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   }
 }
 
+/* §14 Segmented controls (ui/segmented.tsx): one fill slides between options. */
+.gio-seg { position: relative; isolation: isolate; }
+.gio-seg > .gio-seg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  visibility: hidden;
+}
+.gio-seg[data-seg-ready] > .gio-seg-layer { visibility: visible; }
+.gio-seg > .gio-seg-layer > .gio-seg-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--seg-fill, var(--seg-default-fill));
+  clip-path: inset(var(--seg-y, 0) var(--seg-right, 0) var(--seg-bottom, 0) var(--seg-x, 0) round var(--seg-radius, 8px));
+  transition: var(--seg-transition, clip-path var(--dur-tabs) var(--ease-in-out), background-color var(--dur-hover) ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-seg > .gio-seg-layer > .gio-seg-fill { transition: none !important; }
+}
+
 /* §2 Accordion and Collapsible: height animates to the real content size
  * (Radix measures it) over --dur-expand on --ease-in-out; the content fades in a
  * quarter of the way through. Only the animation frames clip; open content rests
