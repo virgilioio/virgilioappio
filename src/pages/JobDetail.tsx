@@ -151,6 +151,7 @@ export default function JobDetail() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
   const [pipelineSearch, setPipelineSearch] = useState('')
+  const [pipelineRefreshing, setPipelineRefreshing] = useState(false)
   const [pipelineFilters, setPipelineFilters] = useState<PipelineFilter[]>([])
 
   // Changing filters or the query drops any selection — the set is no longer what you saw.
@@ -1301,6 +1302,7 @@ export default function JobDetail() {
                         view={pipelineView}
                         onViewChange={setPipelineView}
                         showViewToggle
+                        busy={pipelineRefreshing}
                       />
                     </div>
                     <ClientViewStrip jobId={id!} />
@@ -1322,6 +1324,10 @@ export default function JobDetail() {
                           searchTerm={pipelineSearch}
                           filters={pipelineFilters}
                           onAddCandidateClick={() => setShowAddCandidate(true)}
+                          onClearFilters={() => { setPipelineFilters([]); setPipelineSearch('') }}
+                          // The share menu lives in the job hero, which phones don't show.
+                          onSharePosting={isMobile ? undefined : () => window.dispatchEvent(new CustomEvent('gio:open-job-share', { detail: { jobId: id } }))}
+                          onRefreshingChange={setPipelineRefreshing}
                         />
                       </div>
                       <SelectionBar

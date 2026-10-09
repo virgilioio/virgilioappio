@@ -37,6 +37,10 @@ import { cn } from '@/lib/utils'
 import { matchesPipelineFilters, type PipelineFilter } from './pipelineFilters'
 import { stageColor, daysInStage } from './pipelineVisuals'
 import { PipelineListView, type PipelineListGroup } from './PipelineListView'
+import { Loadable } from '@/components/ui/loadable'
+import { CandidatesEmpty } from '@/components/empty/CandidatesEmpty'
+import { EmptyAction, InlineEmpty } from '@/components/ui/empty-state'
+import { UserPlus, Link as LinkIcon, X as XIcon, RotateCcw } from 'lucide-react'
 
 
 interface PipelineOverviewProps {
@@ -62,7 +66,16 @@ interface PipelineOverviewProps {
   onAddCandidateClick?: () => void
   /** Opens stage configuration for a stage instance (rename / settings) */
   onOpenStageSettings?: (stageJhsId: string) => void
+  /** Filtered empty: clears the host's filters and search. */
+  onClearFilters?: () => void
+  /** Truly empty: opens the job's share menu. Omit where there's none (the button hides). */
+  onSharePosting?: () => void
+  /** A background refresh is running (the host's toolbar shows its small spinner). */
+  onRefreshingChange?: (refreshing: boolean) => void
 }
+
+/** §16: a first load that hasn't answered by then shows the error state, never an endless skeleton. */
+const FIRST_LOAD_TIMEOUT_MS = 15000
 
 
 const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgeProps['variant']> = {
@@ -117,7 +130,113 @@ function ColumnShell({
 }
 
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick, onOpenStageSettings }: PipelineOverviewProps) {
+type PipelineEmptyKind = 'empty' | 'elsewhere' | 'filtered'
+
+/** The board area's white card for the empty and error states (fills it, min 360px). */
+function PipelineEmptyCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        height: '100%',
+        minHeight: 360,
+        background: '#fff',
+        border: '1px solid #E7E8EE',
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '56px 24px',
+        overflow: 'auto',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function PipelineLoadError({ timedOut, onRetry }: { timedOut: boolean; onRetry: () => void }) {
+  return (
+    <PipelineEmptyCard>
+      <div role="alert" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', maxWidth: 340 }}>
+        <div style={{ fontFamily: "'Poppins', system-ui, sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: '-0.025em', color: '#0d0d09' }}>
+          {timedOut ? 'This pipeline is taking too long to load' : "Couldn't load this pipeline"}
+        </div>
+        <p style={{ margin: '8px auto 0', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, lineHeight: 1.55, color: '#5A6072' }}>
+          {timedOut
+            ? "The candidates didn't arrive within 15 seconds. Try again in a moment."
+            : 'Check your connection, then try again.'}
+        </p>
+        <div style={{ marginTop: 20 }}>
+          <EmptyAction variant="secondary" icon={<RotateCcw size={16} />} onClick={onRetry}>
+            Retry
+          </EmptyAction>
+        </div>
+      </div>
+    </PipelineEmptyCard>
+  )
+}
+
+/** First-load skeleton with the real board's footprint (5 × 280px columns, 41px headers). */
+function PipelineSkeleton({ view }: { view: 'board' | 'list' }) {
+  if (view === 'list') {
+    return (
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label="Loading candidates"
+        style={{ height: '100%', background: '#fff', border: '1px solid #E7E8EE', borderRadius: 12, overflow: 'hidden' }}
+      >
+        <div style={{ height: 38, borderBottom: '1px solid #E7E8EE' }} />
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="flex items-center" style={{ gap: 12, minHeight: 56, padding: '10px 16px', borderBottom: '1px solid #F1F0EC' }}>
+            <Skeleton className="rounded-[4px]" style={{ width: 14, height: 14 }} />
+            <div className="flex flex-col" style={{ gap: 6, flex: 1 }}>
+              <Skeleton className="rounded-[4px]" style={{ width: '38%', height: 10 }} />
+              <Skeleton className="rounded-[4px]" style={{ width: '24%', height: 8 }} />
+            </div>
+            <Skeleton className="rounded-full" style={{ width: 72, height: 18 }} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading candidates" style={{ display: 'flex', gap: 12, height: '100%', overflow: 'hidden' }}>
+      {[3, 2, 2, 1, 1].map((cards, i) => (
+        <div
+          key={i}
+          style={{ flex: '0 0 280px', background: '#FAFAF7', border: '1px solid #E7E8EE', borderRadius: 12, display: 'flex', flexDirection: 'column' }}
+        >
+          <div
+            style={{ height: 41, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #E7E8EE', background: '#fff', borderRadius: '12px 12px 0 0' }}
+          >
+            <Skeleton className="rounded-full" style={{ width: 8, height: 8 }} />
+            <Skeleton className="rounded-[4px]" style={{ width: 84, height: 10 }} />
+            <Skeleton className="rounded-[4px]" style={{ width: 14, height: 10 }} />
+          </div>
+          <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Array.from({ length: cards }).map((_, j) => (
+              <div key={j} style={{ background: '#fff', border: '1px solid #EEEDE8', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Skeleton className="rounded-full" style={{ width: 28, height: 28 }} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <Skeleton className="rounded-[4px]" style={{ width: '62%', height: 10 }} />
+                    <Skeleton className="rounded-[4px]" style={{ width: '40%', height: 8 }} />
+                  </div>
+                  <Skeleton className="rounded-full" style={{ width: 26, height: 18 }} />
+                </div>
+                <Skeleton className="rounded-[4px]" style={{ width: '72%', height: 8 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick, onOpenStageSettings, onClearFilters, onSharePosting, onRefreshingChange }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
@@ -154,7 +273,16 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
-  const hasRenderedOnce = useRef(false)
+  // §16 Loading vs empty: the view comes from the request status, never the row count.
+  const [stagesReady, setStagesReady] = useState(false)
+  const [candidatesReady, setCandidatesReady] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
+  const [retryToken, setRetryToken] = useState(0)
+  const [firstLoadDone, setFirstLoadDone] = useState(false)
+  const [totalAssociations, setTotalAssociations] = useState(0)
+  const firstLoadDoneRef = useRef(false)
+  firstLoadDoneRef.current = firstLoadDone
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
   const byStageRef = useRef(byStage)
   byStageRef.current = byStage
@@ -347,6 +475,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       ? plan
       : plan.filter(opt => opt.stage.stage_type !== 'application_review')
     setStageOptions(filtered.length > 0 ? filtered : [])
+    setStagesReady(true)
   }, [jobId, loadHiringPlanInstances, includeApplicationReview])
 
   const processPipelineData = useCallback((associations: PipelineAssociation[]) => {
@@ -362,33 +491,47 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     setByStage(grouped)
     setRejected(rejectedList)
     setHired(hiredList)
+    setTotalAssociations(associations.length)
   }, [])
 
   const loadPipeline = useCallback(async () => {
     if (!jobId) return
     setIsLoadingCandidates(true)
     try {
-      const associations = await fetchAssociationsForJob(jobId)
+      const associations = await fetchAssociationsForJob(jobId, { throwOnError: true })
       processPipelineData(associations)
+      setCandidatesReady(true)
+      setLoadFailed(false)
     } catch (e) {
       console.error('Failed to load pipeline:', e)
-      toast({
-        title: 'Error',
-        description: 'Failed to load candidates in pipeline.',
-        variant: 'destructive',
-      })
+      // Before anything has shown, the board area shows the error with Retry; after
+      // that, keep what's on screen and say so.
+      if (firstLoadDoneRef.current) {
+        toast({
+          title: "Couldn't refresh the pipeline",
+          description: 'Showing the last loaded candidates.',
+          variant: 'destructive',
+        })
+      } else {
+        setLoadFailed(true)
+      }
     } finally {
       setIsLoadingCandidates(false)
     }
   }, [jobId, fetchAssociationsForJob, processPipelineData])
 
+  const onRefreshingChangeRef = useRef(onRefreshingChange)
+  onRefreshingChangeRef.current = onRefreshingChange
   const silentRefresh = useCallback(async () => {
     if (!jobId) return
+    onRefreshingChangeRef.current?.(true)
     try {
       const associations = await fetchAssociationsForJob(jobId)
       processPipelineData(associations)
     } catch (e) {
       console.error('Silent refresh failed:', e)
+    } finally {
+      onRefreshingChangeRef.current?.(false)
     }
   }, [jobId, fetchAssociationsForJob, processPipelineData])
 
@@ -397,14 +540,14 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     ;(async () => {
       await loadStages()
     })()
-  }, [jobId, loadStages])
+  }, [jobId, loadStages, retryToken])
 
   useEffect(() => {
     if (!jobId) return
     ;(async () => {
       await loadPipeline()
     })()
-  }, [jobId, stageOptions, loadPipeline])
+  }, [jobId, stageOptions, loadPipeline, retryToken])
 
   useEffect(() => {
     if (typeof refreshToken !== 'undefined') {
@@ -511,12 +654,29 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   // Get status priorities for all candidates (batch query)
   const { statusMap, isLoading: isStatusLoading } = usePipelineCandidateStatuses(jobId, allAssociations)
 
-  // Mark board as "has rendered once" so subsequent refreshes skip the skeleton
+  // The skeleton is for the first load only: once stages, candidates and their
+  // statuses have answered, refreshes keep the board on screen.
   useEffect(() => {
-    if (!isLoadingPlan && !isLoadingCandidates && !isStatusLoading) {
-      hasRenderedOnce.current = true
+    if (!firstLoadDone && stagesReady && candidatesReady && !isLoadingPlan && !isStatusLoading) {
+      setFirstLoadDone(true)
+      setTimedOut(false)
     }
-  }, [isLoadingPlan, isLoadingCandidates, isStatusLoading])
+  }, [firstLoadDone, stagesReady, candidatesReady, isLoadingPlan, isStatusLoading])
+
+  // A first load that hasn't answered in 15s shows the error state with Retry.
+  useEffect(() => {
+    if (firstLoadDone || loadFailed || timedOut) return
+    const timer = setTimeout(() => setTimedOut(true), FIRST_LOAD_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [firstLoadDone, loadFailed, timedOut, retryToken])
+
+  const retryFirstLoad = useCallback(() => {
+    setLoadFailed(false)
+    setTimedOut(false)
+    setStagesReady(false)
+    setCandidatesReady(false)
+    setRetryToken((t) => t + 1)
+  }, [])
 
   const getTimeInfo = useCallback((a: PipelineAssociation) => {
     const base = a.entered_stage_at || a.created_at
@@ -872,6 +1032,90 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     [onCandidateClick, orderedCandidateIds, handleOpenCandidateSheet],
   )
 
+  // ── §16 Loading vs empty ────────────────────────────────────────────────────
+  const filtersActive = !!externalTerm || activeFilters.length > 0 || favoriteFilter.length > 0
+  const inViewTotal = useMemo(
+    () => stageOptions.reduce((n, o) => n + (byStage[o.jhsId]?.length || 0), 0),
+    [stageOptions, byStage],
+  )
+  // null: show the board or list. Otherwise which empty state.
+  const emptyKind: PipelineEmptyKind | null =
+    stageOptions.length === 0 || allVisibleIds.length > 0
+      ? null
+      : inViewTotal > 0 && filtersActive
+        ? 'filtered'
+        : totalAssociations > 0
+          ? 'elsewhere'
+          : 'empty'
+  const clearAllFilters = useCallback(() => {
+    setFavoriteFilter([])
+    onClearFilters?.()
+  }, [onClearFilters])
+
+  // Empty → first candidate (realtime or after Add candidate): the empty state fades
+  // out over --dur-hover while the board appears, and the new cards rise and flash.
+  const [leavingEmpty, setLeavingEmpty] = useState<PipelineEmptyKind | null>(null)
+  const [arrivingIds, setArrivingIds] = useState<Set<string>>(() => new Set())
+  const prevEmptyKind = useRef<PipelineEmptyKind | null>(null)
+  // Layout effect: the new cards must carry their rise class on the first frame they paint.
+  React.useLayoutEffect(() => {
+    const prev = prevEmptyKind.current
+    prevEmptyKind.current = firstLoadDone ? emptyKind : null
+    if (!firstLoadDone || !prev || prev === 'filtered' || emptyKind) return
+    setLeavingEmpty(prev)
+    setArrivingIds(new Set(allVisibleIds))
+    const leave = setTimeout(() => setLeavingEmpty(null), 160)
+    const settle = setTimeout(() => setArrivingIds(new Set()), 1600)
+    return () => {
+      clearTimeout(leave)
+      clearTimeout(settle)
+    }
+    // Only the empty → populated transition matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emptyKind, firstLoadDone])
+
+  // Stage columns: the first empty column may carry the compact illustration; the
+  // rest get the one-line tier (one plane in view at a time).
+  const firstEmptyJhsId = useMemo(
+    () => stageOptions.find((o) => (sortedByStage[o.jhsId] || []).length === 0)?.jhsId ?? null,
+    [stageOptions, sortedByStage],
+  )
+
+  const renderEmpty = (kind: PipelineEmptyKind, still = false) => (
+    <PipelineEmptyCard>
+      <CandidatesEmpty
+        onceKey={`pipeline-empty:${jobId}`}
+        animate={!still}
+        title={
+          kind === 'filtered'
+            ? 'No candidates match these filters'
+            : kind === 'elsewhere'
+              ? 'No one in the recruiting process yet'
+              : 'No candidates yet'
+        }
+        body={
+          kind === 'filtered'
+            ? 'Clear filters to see everyone in this job.'
+            : kind === 'elsewhere'
+              ? "This job's candidates are in other sections for now. They show up here as they move into the recruiting process."
+              : 'Applications land here the moment your posting goes live. You can also add someone manually.'
+        }
+        primary={
+          kind === 'filtered'
+            ? { label: 'Clear filters', icon: <XIcon size={16} />, onClick: clearAllFilters }
+            : onAddCandidateClick
+              ? { label: 'Add candidate', icon: <UserPlus size={16} />, onClick: onAddCandidateClick }
+              : undefined
+        }
+        secondary={
+          kind === 'empty' && onSharePosting
+            ? { label: 'Share posting', icon: <LinkIcon size={16} />, onClick: onSharePosting }
+            : undefined
+        }
+      />
+    </PipelineEmptyCard>
+  )
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       {showHeader && (
@@ -918,32 +1162,19 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {/* Unified loading gate: show skeleton only on initial load; after first render, keep board mounted */}
-      {(!hasRenderedOnce.current && (isLoadingPlan || isLoadingCandidates || isStatusLoading)) ? (
-        <div className="flex gap-4 overflow-hidden pb-2">
-          {Array.from({ length: 4 }).map((_, colIdx) => (
-            <div key={colIdx} className="w-72 flex-shrink-0 rounded-lg border bg-card flex flex-col">
-              <div className="p-3 border-b">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-5 w-24" />
-                  <Skeleton className="h-5 w-8 rounded-full" />
-                </div>
-              </div>
-              <div className="p-3 space-y-2 flex-1">
-                {Array.from({ length: colIdx === 0 ? 4 : colIdx === 1 ? 3 : 2 }).map((_, cardIdx) => (
-                  <div key={cardIdx} className="rounded-lg border bg-background p-3 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                    <div className="flex items-center gap-2 pt-1">
-                      <Skeleton className="h-5 w-10 rounded-full" />
-                      <Skeleton className="h-5 w-12 rounded-full" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* §16: skeleton on the first load only (crossfades out), then the error with
+          Retry, the empty state, or the board / list. Refreshes never bring it back. */}
+      <Loadable
+        loading={!firstLoadDone && !loadFailed && !timedOut}
+        skeleton={<PipelineSkeleton view={currentView} />}
+        className="flex-1 min-h-0 [grid-template-rows:minmax(0,1fr)]"
+      >
+      {!firstLoadDone ? (
+        <PipelineLoadError timedOut={timedOut && !loadFailed} onRetry={retryFirstLoad} />
+      ) : (
+      <div className="relative h-full min-h-0">
+      {emptyKind ? (
+        renderEmpty(emptyKind)
       ) : currentView === 'board' ? (
         <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
           <div ref={boardRef} style={{ display: 'flex', gap: 12, height: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
@@ -1062,6 +1293,19 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                     </div>
                   }
                 >
+                  {rows.length === 0 &&
+                    (opt.jhsId === firstEmptyJhsId ? (
+                      <div style={{ padding: '18px 4px 10px' }}>
+                        <CandidatesEmpty
+                          size="compact"
+                          onceKey={`pipeline-stage-empty:${jobId}`}
+                          title={`Nothing in ${opt.stage.stage_name}`}
+                          body="Move candidates here as they progress."
+                        />
+                      </div>
+                    ) : (
+                      <InlineEmpty text={`Nothing in ${opt.stage.stage_name}`} />
+                    ))}
                   {rows.map((assoc) => {
                     const isPartOfBulkDrag = activeId !== null &&
                       activeId !== assoc.id &&
@@ -1070,6 +1314,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                       selectedIds.size > 1
                     return (
                       <DraggableCandidateCard id={assoc.id} key={assoc.id} isPartOfBulkDrag={isPartOfBulkDrag} skipOffscreen={rows.length > 100}>
+                        <div className={arrivingIds.has(assoc.id) ? 'gio-arrive' : undefined}>
                         <CandidateCard
                           candidateId={assoc.candidate_id}
                           associationId={assoc.id}
@@ -1093,6 +1338,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           aiFitScore={assoc.ai_fit_score}
                           status={statusMap.get(assoc.id) ?? null}
                         />
+                        </div>
                       </DraggableCandidateCard>
                     )
                   })}
@@ -1178,6 +1424,14 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           onMove={(assocId, toStageJhsId) => { handleMove(assocId, toStageJhsId) }}
         />
       )}
+      {leavingEmpty && (
+        <div aria-hidden="true" className="gio-empty-leave pointer-events-none absolute inset-0">
+          {renderEmpty(leavingEmpty, true)}
+        </div>
+      )}
+      </div>
+      )}
+      </Loadable>
       {!onCandidateClick && (
         <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} onStageChanged={() => { silentRefresh(); onStageChanged?.(); }} />
       )}

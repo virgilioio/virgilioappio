@@ -1220,6 +1220,28 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   .gio-plane .gio-plane-dot { animation: none; }
 }
 
+/* §16 / §5 Empty → first candidate: the empty state fades out (--dur-hover) over the
+ * board, the new card rises 6px into place, then flashes the saved-row yellow. */
+@keyframes gio-empty-leave { to { opacity: 0; } }
+.gio-empty-leave { animation: gio-empty-leave var(--dur-hover) var(--ease-out) forwards; }
+@keyframes gio-arrive-rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes gio-arrive-flash { from { opacity: 1; } to { opacity: 0; } }
+.gio-arrive { position: relative; border-radius: 10px; animation: gio-arrive-rise 260ms var(--ease-out) backwards; }
+.gio-arrive::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #FBEFC9;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  opacity: 0;
+  animation: gio-arrive-flash var(--dur-flash) ease-out 260ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-arrive { animation-name: gio-fade-only; }
+}
+
 /* §14 Segmented controls (ui/segmented.tsx): one fill slides between options. */
 .gio-seg { position: relative; isolation: isolate; }
 .gio-seg > .gio-seg-layer {

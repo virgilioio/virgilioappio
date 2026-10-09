@@ -70,6 +70,17 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
     return Array.from(byId.values())
   }, [assignments, members])
 
+  // Other surfaces (the empty pipeline's "Share posting") open this menu by event.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      if ((e as CustomEvent<{ jobId?: string }>).detail?.jobId !== jobId) return
+      triggerRef.current?.scrollIntoView({ block: 'nearest' })
+      setOpen(true)
+    }
+    window.addEventListener('gio:open-job-share', onOpen)
+    return () => window.removeEventListener('gio:open-job-share', onOpen)
+  }, [jobId])
+
   // Close on outside mousedown / Escape
   useEffect(() => {
     if (!open) return

@@ -29,6 +29,7 @@ export function PipelineToolbar({
   view,
   onViewChange,
   showViewToggle = false,
+  busy = false,
   primary,
   sort,
 }: {
@@ -39,6 +40,8 @@ export function PipelineToolbar({
   view?: 'board' | 'list'
   onViewChange?: (v: 'board' | 'list') => void
   showViewToggle?: boolean
+  /** A background refresh is running: a small inline spinner, never a skeleton (§16). */
+  busy?: boolean
   /** Optional section primary action, rendered at the end of the right cluster. */
   primary?: React.ReactNode
   /** Optional sort control, rendered right after the filter control. */
@@ -218,6 +221,11 @@ export function PipelineToolbar({
           )}
         </div>
 
+        {busy && (
+          <span role="status" aria-label="Refreshing" className="inline-flex shrink-0 items-center justify-center" style={{ width: 16, height: 16, color: '#8B8F9E' }}>
+            <span className="gio-spinner gio-spinner-current" style={{ width: 12, height: 12, borderWidth: 1.5 }} />
+          </span>
+        )}
         {showViewToggle && view && onViewChange && (
           <div
             ref={segRef}
