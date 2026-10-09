@@ -153,7 +153,8 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
         <PopoverContent
           align="start"
           sideOffset={10}
-          className="p-0 border-0 bg-transparent shadow-none w-auto"
+          // Search results never animate (§2 command palette, §12 search).
+          className="p-0 border-0 bg-transparent shadow-none w-auto gio-static"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
         >

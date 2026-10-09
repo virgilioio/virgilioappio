@@ -14,7 +14,7 @@
  * from its trigger — scale 0.96 + fade, 180ms in / 120ms out.
  */
 export const menuPanel =
-  'rounded-[var(--menu-radius)] bg-popover text-popover-foreground p-[var(--menu-pad)] gio-pop'
+  'rounded-[var(--menu-radius)] bg-popover text-popover-foreground p-[var(--menu-pad)] shadow-pop gio-pop'
 
 /**
  * Item row — 30px h · 12.5px Inter · radius 8.

@@ -958,7 +958,6 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   --tw-enter-scale: 0.96;
   --tw-exit-opacity: 0;
   --tw-exit-scale: 0.96;
-  box-shadow: var(--shadow-pop);
 }
 .gio-pop[data-state="open"] {
   animation: enter var(--dur-menu-in) var(--ease-out);
@@ -990,4 +989,36 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 }
 .gio-tip[data-state="closed"] {
   animation: exit var(--dur-tooltip) var(--ease-out);
+}
+
+/* §2 Dialog and AlertDialog: centre scale 0.96 + fade, 220ms in / 150ms out.
+ * Centring uses the independent `translate` property so the animation's
+ * transform never fights it. */
+.gio-dialog {
+  transform-origin: center;
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.96;
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.96;
+}
+.gio-dialog[data-state="open"] {
+  animation: enter var(--dur-dialog-in) var(--ease-out);
+}
+.gio-dialog[data-state="closed"] {
+  animation: exit var(--dur-dialog-out) var(--ease-out);
+}
+.gio-dialog-overlay {
+  --tw-enter-opacity: 0;
+  --tw-exit-opacity: 0;
+}
+.gio-dialog-overlay[data-state="open"] {
+  animation: enter var(--dur-dialog-in) var(--ease-out);
+}
+.gio-dialog-overlay[data-state="closed"] {
+  animation: exit var(--dur-dialog-out) var(--ease-out);
+}
+/* §2 Command palette: no animation, open or close. */
+.gio-static,
+.gio-static[data-state] {
+  animation: none !important;
 }
