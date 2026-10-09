@@ -411,11 +411,11 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
       <div className="pt-4 border-t border-border/50">
         <div className="flex justify-between items-center">
           <p className="text-sm text-text-secondary">Total stages: {planRows.length}</p>
-          <Button
+          <Button loading={isSavingPlan}
             disabled={readOnly || !hasUnsavedChanges || isSavingPlan}
             onClick={handleSaveHiringPlan}
           >
-            {isSavingPlan ? 'Saving...' : 'Save Hiring Plan'}
+            Save Hiring Plan
           </Button>
         </div>
       </div>

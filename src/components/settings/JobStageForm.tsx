@@ -192,8 +192,8 @@ export function JobStageForm({ stage, onSuccess, onCancel }: JobStageFormProps) 
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : stage ? 'Update Stage' : 'Create Stage'}
+        <Button loading={isLoading} type="submit" disabled={isLoading}>
+          {stage ? 'Update Stage' : 'Create Stage'}
         </Button>
       </div>
     </form>

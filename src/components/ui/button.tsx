@@ -189,9 +189,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       console.warn("[Button] iconOnly requires `aria-label` (or aria-labelledby).")
     }
 
-    // Lock width during loading to prevent layout shift (Gio spec).
+    // §7 Save buttons: hold the width the button had while it was idle (measured before
+    // the swap, as layout width so a press scale doesn't count) while it's loading, so
+    // the spinner swap never resizes it. Pass `loading` rather than swapping the label.
     const innerRef = React.useRef<HTMLElement | null>(null)
-    const [lockedWidth, setLockedWidth] = React.useState<number | null>(null)
+    const idleWidth = React.useRef<number | null>(null)
 
     const setRefs = React.useCallback(
       (node: HTMLElement | null) => {
@@ -203,23 +205,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     )
 
     React.useLayoutEffect(() => {
-      if (loading && innerRef.current && lockedWidth == null) {
-        setLockedWidth(innerRef.current.getBoundingClientRect().width)
-      }
-      if (!loading && lockedWidth != null) {
-        setLockedWidth(null)
-      }
-    }, [loading, lockedWidth])
+      if (!loading && innerRef.current) idleWidth.current = innerRef.current.offsetWidth
+    })
 
-    const mergedStyle = lockedWidth != null ? { ...style, width: lockedWidth } : style
+    const lockedWidth = loading ? idleWidth.current : null
+    const mergedStyle = lockedWidth ? { ...style, minWidth: lockedWidth } : style
 
     const onDarkClass =
       onDark && variant && variant in onDarkClasses
         ? onDarkClasses[variant as keyof typeof onDarkClasses]
         : undefined
 
-    // Icon composition. Loading spinner replaces the leading icon.
-    const leading = loading ? (
+    // Icon composition. Loading spinner replaces the leading icon. A button without a
+    // leading icon swaps its label for a centred spinner instead (§13 submit): the
+    // label stays in place, invisible, so the width never changes.
+    const swapLabel = !!loading && !Icon && !iconOnly
+    const leading = loading && !swapLabel ? (
       <Spinner size={14} tone="current" aria-hidden />
     ) : Icon ? (
       <Icon aria-hidden />
@@ -232,7 +233,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     )
 
-    const composed = (
+    const composed = swapLabel ? (
+      <>
+        <span className="contents invisible [&>*]:invisible">
+          {children}
+          {trailing}
+        </span>
+        <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
+          <Spinner size={14} tone="current" />
+        </span>
+        {typeof children === 'string' ? <span className="sr-only">{children}</span> : null}
+      </>
+    ) : (
       <>
         {leading}
         {children}
@@ -265,7 +277,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         ref={setRefs as any}
         disabled={isDisabled}
-        style={mergedStyle}
+        aria-busy={loading || undefined}
+        style={swapLabel ? { ...mergedStyle, position: 'relative' } : mergedStyle}
         {...props}
       >
         {composed}
