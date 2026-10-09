@@ -51,6 +51,11 @@ interface CandidatesTabProps {
   onUnlinkJob?: () => Promise<void> | void;
   savedCandidatesCount?: number;
   onCandidatesChanged?: () => void | Promise<void>;
+  totalMatches?: number;
+  onClearFilters?: () => void;
+  onEditSearch?: () => void;
+  loadFailed?: boolean;
+  onRetry?: () => void;
 }
 
 export function CandidatesTab({
@@ -65,6 +70,11 @@ export function CandidatesTab({
   onUnlinkJob,
   savedCandidatesCount = 0,
   onCandidatesChanged,
+  totalMatches,
+  onClearFilters,
+  onEditSearch,
+  loadFailed,
+  onRetry,
 }: CandidatesTabProps) {
   // Run summary stats — derived from candidates
   const summary = useMemo(() => {
@@ -147,6 +157,11 @@ export function CandidatesTab({
           sourceBreakdown={sourceBreakdown}
           onCandidatesChanged={onCandidatesChanged}
           topMatchRowId={topMatch?.rowId ?? null}
+          totalMatches={totalMatches}
+          onClearFilters={onClearFilters}
+          onEditSearch={onEditSearch}
+          loadFailed={loadFailed}
+          onRetry={onRetry}
         />
       </div>
     </div>
