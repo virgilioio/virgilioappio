@@ -68,8 +68,8 @@ interface PipelineOverviewProps {
   onOpenStageSettings?: (stageJhsId: string) => void
   /** Filtered empty: clears the host's filters and search. */
   onClearFilters?: () => void
-  /** Truly empty: opens the job's share menu. Omit where there's none (the button hides). */
-  onSharePosting?: () => void
+  /** Truly empty: the secondary action — share the live posting, or create one. */
+  postingAction?: { kind: 'share' | 'create'; onClick: () => void }
   /** A background refresh is running (the host's toolbar shows its small spinner). */
   onRefreshingChange?: (refreshing: boolean) => void
 }
@@ -236,7 +236,7 @@ function PipelineSkeleton({ view }: { view: 'board' | 'list' }) {
 }
 
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick, onOpenStageSettings, onClearFilters, onSharePosting, onRefreshingChange }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, includeApplicationReview = false, onCandidateClick, searchTerm, filters: pipelineFilters, onAddCandidateClick, onOpenStageSettings, onClearFilters, postingAction, onRefreshingChange }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
@@ -469,7 +469,15 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   }
 
   const loadStages = useCallback(async () => {
-    const plan = await loadHiringPlanInstances(jobId)
+    let plan: Awaited<ReturnType<typeof loadHiringPlanInstances>>
+    try {
+      plan = await loadHiringPlanInstances(jobId, { throwOnError: true })
+    } catch {
+      // A plan that couldn't load is not "no hiring plan": show the error with Retry,
+      // or keep the board if it already showed.
+      if (!firstLoadDoneRef.current) setLoadFailed(true)
+      return
+    }
     // Exclude application_review stages unless includeApplicationReview is true
     const filtered = includeApplicationReview
       ? plan
@@ -494,15 +502,21 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     setTotalAssociations(associations.length)
   }, [])
 
+  // Each load or refresh takes a generation number; an answer from an older one
+  // (a Retry, a newer refresh) is dropped instead of overwriting newer data.
+  const loadGeneration = useRef(0)
   const loadPipeline = useCallback(async () => {
     if (!jobId) return
+    const gen = ++loadGeneration.current
     setIsLoadingCandidates(true)
     try {
       const associations = await fetchAssociationsForJob(jobId, { throwOnError: true })
+      if (gen !== loadGeneration.current) return
       processPipelineData(associations)
       setCandidatesReady(true)
       setLoadFailed(false)
     } catch (e) {
+      if (gen !== loadGeneration.current) return
       console.error('Failed to load pipeline:', e)
       // Before anything has shown, the board area shows the error with Retry; after
       // that, keep what's on screen and say so.
@@ -522,16 +536,26 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const onRefreshingChangeRef = useRef(onRefreshingChange)
   onRefreshingChangeRef.current = onRefreshingChange
+  const refreshesInFlight = useRef(0)
   const silentRefresh = useCallback(async () => {
     if (!jobId) return
-    onRefreshingChangeRef.current?.(true)
+    const gen = ++loadGeneration.current
+    if (refreshesInFlight.current++ === 0) onRefreshingChangeRef.current?.(true)
     try {
-      const associations = await fetchAssociationsForJob(jobId)
-      processPipelineData(associations)
+      // A failed refresh must never read as "no candidates": keep what's on screen.
+      const associations = await fetchAssociationsForJob(jobId, { throwOnError: true })
+      if (gen === loadGeneration.current) processPipelineData(associations)
     } catch (e) {
       console.error('Silent refresh failed:', e)
+      if (gen === loadGeneration.current && firstLoadDoneRef.current) {
+        toast({
+          title: "Couldn't refresh the pipeline",
+          description: 'Showing the last loaded candidates.',
+          variant: 'destructive',
+        })
+      }
     } finally {
-      onRefreshingChangeRef.current?.(false)
+      if (--refreshesInFlight.current === 0) onRefreshingChangeRef.current?.(false)
     }
   }, [jobId, fetchAssociationsForJob, processPipelineData])
 
@@ -549,10 +573,12 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     })()
   }, [jobId, stageOptions, loadPipeline, retryToken])
 
+  // Refresh when the host bumps refreshToken — not on mount, where the first load runs.
+  const lastRefreshToken = useRef(refreshToken)
   useEffect(() => {
-    if (typeof refreshToken !== 'undefined') {
-      silentRefresh()
-    }
+    if (typeof refreshToken === 'undefined' || refreshToken === lastRefreshToken.current) return
+    lastRefreshToken.current = refreshToken
+    silentRefresh()
   }, [refreshToken, silentRefresh])
 
   const handleMove = async (associationId: string, toStageId: string) => {
@@ -1061,6 +1087,13 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const [leavingEmpty, setLeavingEmpty] = useState<PipelineEmptyKind | null>(null)
   const [arrivingIds, setArrivingIds] = useState<Set<string>>(() => new Set())
   const prevEmptyKind = useRef<PipelineEmptyKind | null>(null)
+  // Timers live in a ref so a quick second change can't cancel them and leave the
+  // overlay or the arrival class behind; cleared on unmount.
+  const arrivalTimers = useRef<{ leave?: ReturnType<typeof setTimeout>; settle?: ReturnType<typeof setTimeout> }>({})
+  useEffect(() => () => {
+    clearTimeout(arrivalTimers.current.leave)
+    clearTimeout(arrivalTimers.current.settle)
+  }, [])
   // Layout effect: the new cards must carry their rise class on the first frame they paint.
   React.useLayoutEffect(() => {
     const prev = prevEmptyKind.current
@@ -1068,12 +1101,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     if (!firstLoadDone || !prev || prev === 'filtered' || emptyKind) return
     setLeavingEmpty(prev)
     setArrivingIds(new Set(allVisibleIds))
-    const leave = setTimeout(() => setLeavingEmpty(null), 160)
-    const settle = setTimeout(() => setArrivingIds(new Set()), 1600)
-    return () => {
-      clearTimeout(leave)
-      clearTimeout(settle)
-    }
+    clearTimeout(arrivalTimers.current.leave)
+    clearTimeout(arrivalTimers.current.settle)
+    arrivalTimers.current.leave = setTimeout(() => setLeavingEmpty(null), 160)
+    arrivalTimers.current.settle = setTimeout(() => setArrivingIds(new Set()), 1600)
     // Only the empty → populated transition matters here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emptyKind, firstLoadDone])
@@ -1081,8 +1112,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   // Stage columns: the first empty column may carry the compact illustration; the
   // rest get the one-line tier (one plane in view at a time).
   const firstEmptyJhsId = useMemo(
-    () => stageOptions.find((o) => (sortedByStage[o.jhsId] || []).length === 0)?.jhsId ?? null,
-    [stageOptions, sortedByStage],
+    () =>
+      stageOptions.find((o) => (sortedByStage[o.jhsId] || []).length === 0 && (byStage[o.jhsId]?.length || 0) === 0)
+        ?.jhsId ?? null,
+    [stageOptions, sortedByStage, byStage],
   )
 
   const renderEmpty = (kind: PipelineEmptyKind, still = false) => (
@@ -1112,8 +1145,10 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               : undefined
         }
         secondary={
-          kind === 'empty' && onSharePosting
-            ? { label: 'Share posting', icon: <LinkIcon size={16} />, onClick: onSharePosting }
+          kind === 'empty' && postingAction
+            ? postingAction.kind === 'share'
+              ? { label: 'Share posting', icon: <LinkIcon size={16} />, onClick: postingAction.onClick }
+              : { label: 'Create job post', icon: <Plus size={16} />, onClick: postingAction.onClick }
             : undefined
         }
       />
@@ -1308,7 +1343,13 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         />
                       </div>
                     ) : (
-                      <InlineEmpty text={`Nothing in ${opt.stage.stage_name}`} />
+                      <InlineEmpty
+                        text={
+                          (byStage[opt.jhsId]?.length || 0) > 0
+                            ? `No matches in ${opt.stage.stage_name}`
+                            : `Nothing in ${opt.stage.stage_name}`
+                        }
+                      />
                     ))}
                   {rows.map((assoc) => {
                     const isPartOfBulkDrag = activeId !== null &&
@@ -1429,7 +1470,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         />
       )}
       {leavingEmpty && (
-        <div aria-hidden="true" className="gio-empty-leave pointer-events-none absolute inset-0">
+        <div aria-hidden="true" {...({ inert: '' } as Record<string, string>)} className="gio-empty-leave pointer-events-none absolute inset-0">
           {renderEmpty(leavingEmpty, true)}
         </div>
       )}

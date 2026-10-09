@@ -15,6 +15,7 @@ import { JobSetupLayout } from '@/components/jobs/JobSetupLayout'
 import { JobPostingsTab } from '@/components/jobs/JobPostingsTab'
 import { useCareersPageSettings } from '@/hooks/useCareersPageSettings'
 import { buildPostingPath } from '@/lib/postingUrl'
+import { copyToClipboard } from '@/utils/clipboard'
 import { saveCandidateNavOrder } from '@/lib/candidateNavOrder'
 
 import { HiringTeamManageDialog } from '@/components/jobs/HiringTeamManageDialog'
@@ -456,6 +457,19 @@ export default function JobDetail() {
   const [associationsRetry, setAssociationsRetry] = useState(0)
   // True once the section lists have been built the first time; refreshes keep showing them.
   const [sectionListsReady, setSectionListsReady] = useState(false)
+  const [stageMapLoaded, setStageMapLoaded] = useState(false)
+  // Moving to another job reuses this page: start its first load from scratch, so the
+  // previous job's lists never show under the new job's header.
+  const loadedJobId = useRef(id)
+  useEffect(() => {
+    if (loadedJobId.current === id) return
+    loadedJobId.current = id
+    setAssociations([])
+    setAssociationsLoaded(false)
+    setAssociationsError(null)
+    setSectionListsReady(false)
+    setStageMapLoaded(false)
+  }, [id])
 
   // Jobs hook for updating
   const { updateJob, archiveJob, deleteJob, isLoading: jobUpdateLoading } = useJobs()
@@ -651,6 +665,9 @@ export default function JobDetail() {
         })
         setStageMap(m)
       }
+      // Ready either way: the lists need the map to sort by stage type, and a failed
+      // map still lets them build by status rather than wait forever.
+      setStageMapLoaded(true)
     }
     load()
   }, [id])
@@ -684,10 +701,13 @@ export default function JobDetail() {
 
   // Load candidate details for offers/hired/rejected/application-review and all associated
   useEffect(() => {
+    // §16: build the lists only once both the associations and the stage map answered.
+    if (!associationsLoaded || !stageMapLoaded) return
+    let cancelled = false
     const run = async () => {
       if (!associations.length) {
         setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); setApplicationReviewCandidates([])
-        if (associationsLoaded) setSectionListsReady(true)
+        setSectionListsReady(true)
         return
       }
       const allIdsAll = Array.from(new Set(associations.map(a => a.candidate_id)))
@@ -724,11 +744,13 @@ export default function JobDetail() {
           return rows || []
         })
       } catch (error) {
+        if (cancelled) return
         console.error('Failed to load candidate details for status lists', error)
         setStatusListsLoading(false)
         setAssociationsError((prev) => prev ?? 'failed')
         return
       }
+      if (cancelled) return
       const byId = new Map((data || []).map((c: any) => [c.id, c]))
       setOffersCandidates(offerIds.map((id) => byId.get(id)).filter(Boolean))
       setHiredCandidates(hiredIds.map((id) => byId.get(id)).filter(Boolean))
@@ -752,7 +774,8 @@ export default function JobDetail() {
       setSectionListsReady(true)
     }
     run()
-  }, [associations, stageMap, associationsLoaded])
+    return () => { cancelled = true }
+  }, [associations, stageMap, associationsLoaded, stageMapLoaded])
 
   // Job query with improved error handling for assigned recruiters
   const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
@@ -1338,6 +1361,7 @@ export default function JobDetail() {
                       {/* Phones drop the 28px sides so the board and list line up with the stage bar above. */}
                       <div className="h-full min-h-0 pt-3 pb-6 px-0 sm:px-7">
                         <PipelineOverview
+                          key={id}
                           jobId={id!}
                           showHeader={false}
                           externalScroll
@@ -1354,7 +1378,20 @@ export default function JobDetail() {
                           onAddCandidateClick={() => setShowAddCandidate(true)}
                           onClearFilters={() => { setPipelineFilters([]); setPipelineSearch('') }}
                           // The share menu lives in the job hero, which phones don't show.
-                          onSharePosting={isMobile ? undefined : () => window.dispatchEvent(new CustomEvent('gio:open-job-share', { detail: { jobId: id } }))}
+                          postingAction={
+                            job?.status === 'draft'
+                              ? undefined
+                              : activePosting
+                                ? {
+                                    kind: 'share',
+                                    onClick: () =>
+                                      copyToClipboard(
+                                        `${window.location.origin}${buildPostingPath({ postingSlug: activePosting.slug, organizationId: job?.organization_id ?? null, companySlug })}`,
+                                        'Posting link copied',
+                                      ),
+                                  }
+                                : { kind: 'create', onClick: () => setShowCreatePostingSheet(true) }
+                          }
                           onRefreshingChange={setPipelineRefreshing}
                         />
                       </div>
@@ -1409,9 +1446,9 @@ export default function JobDetail() {
                     candidates={applyPipelineNarrowing(sectionCandidateList)}
                     associations={associations}
                     stageMap={stageMap}
-                    isLoading={!sectionListsReady}
+                    isLoading={!sectionListsReady || loadedJobId.current !== id}
                     totalCount={sectionCandidateList.length}
-                    loadError={sectionListsReady ? null : associationsError}
+                    loadError={sectionListsReady || loadedJobId.current !== id ? null : associationsError}
                     onRetry={() => { setAssociationsError(null); setAssociationsRetry((n) => n + 1) }}
                     filters={pipelineFilters}
                     onFiltersChange={setPipelineFilters}

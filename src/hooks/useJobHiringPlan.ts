@@ -65,12 +65,14 @@ export function useJobHiringPlan() {
     return ordered
   }
 
-  const loadHiringPlanInstances = useCallback(async (jobId: string): Promise<HiringPlanInstance[]> => {
+  /** `throwOnError`: throw instead of toasting and returning [] (so "couldn't load" isn't "no plan"). */
+  const loadHiringPlanInstances = useCallback(async (jobId: string, opts: { throwOnError?: boolean } = {}): Promise<HiringPlanInstance[]> => {
     setIsLoadingPlan(true)
     try {
       return await loadHiringPlanInstancesInternal(jobId)
     } catch (error) {
       console.error('Error loading hiring plan instances:', error)
+      if (opts.throwOnError) throw error
       toast({
         title: 'Error',
         description: 'Failed to load the hiring plan for this job.',
