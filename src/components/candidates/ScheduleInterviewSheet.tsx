@@ -61,6 +61,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented';
 import { confirmDialog } from '@/components/ui/confirm-dialog';
 
 const formSchema = z.object({
@@ -633,6 +634,7 @@ export function ScheduleInterviewSheet({
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
+  const durationSegRef = useSegmentLayer<HTMLDivElement>();
   const [bufferMinutes, setBufferMinutes] = useState<number>(0);
   const [formatOption, setFormatOption] = useState<'video' | 'phone' | 'onsite'>('video');
   const [siteAddress, setSiteAddress] = useState('');
@@ -1410,7 +1412,8 @@ export function ScheduleInterviewSheet({
                     <div className="space-y-1.5">
                       <Label className="text-form-label text-virgilio-muted">Duration</Label>
                       <div
-                        className="flex items-center rounded-lg bg-[#F1F0EC]"
+                        ref={durationSegRef}
+                        className="gio-seg flex items-center rounded-lg bg-[#F1F0EC]"
                         style={{ gap: 2, padding: 2 }}
                       >
                         {[15, 30, 45, 60, 90].map((d) => {
@@ -1419,12 +1422,14 @@ export function ScheduleInterviewSheet({
                             <button
                               key={d}
                               type="button"
+                              data-seg-option
+                              data-active={active || undefined}
                               onClick={() => handleDurationChange(d)}
                               style={{ flex: 1, minWidth: 0 }}
                               className={cn(
                                 'h-7 rounded-md text-[12px] font-poppins transition-colors',
                                 active
-                                  ? 'bg-white font-semibold text-[#1F2230] shadow-[0_1px_2px_rgba(13,13,9,0.06)]'
+                                  ? 'bg-transparent font-semibold text-[#1F2230]'
                                   : 'bg-transparent font-medium text-[#5A6072] hover:text-[#1F2230]',
                               )}
                             >
@@ -1432,6 +1437,7 @@ export function ScheduleInterviewSheet({
                             </button>
                           );
                         })}
+                        <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
                       </div>
                     </div>
                     <div className="space-y-1.5">

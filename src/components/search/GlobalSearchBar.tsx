@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
 import { GlobalSearchPanel } from './v2/GlobalSearchPanel'
 import { SearchResultsDialog } from './SearchResultsDialog'
+import { IconTip } from '@/components/ui/tooltip'
 
 interface GlobalSearchBarProps {
   collapsible?: boolean
@@ -19,6 +20,7 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [expanded, setExpanded] = useState(!collapsible)
+  const [searching, setSearching] = useState(false)
 
   // Cmd+/ shortcut (Cmd+K is reserved for creating a candidate)
   useEffect(() => {
@@ -121,7 +123,14 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
                     : 'relative',
                 )}
               >
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted pointer-events-none" />
+                {/* §12: while results load, the search icon becomes a 13px inline spinner. */}
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center text-virgilio-muted pointer-events-none" aria-hidden="true">
+                  {searching ? (
+                    <span className="gio-spinner gio-spinner-current" style={{ width: 13, height: 13 }} />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </span>
                 <input
                   ref={inputRef}
                   type="text"
@@ -135,11 +144,30 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
                     'focus:outline-none focus:ring-2 focus:ring-virgilio-purple/30 focus:border-virgilio-purple/50',
                     'hover:border-virgilio-purple/40',
                     collapsible
-                      ? 'w-[320px] pr-3 bg-[#0d0d09] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]'
+                      ? 'w-[320px] pr-9 bg-[#0d0d09] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]'
                       : 'w-[320px] focus:w-[420px] pr-12 bg-surface-primary',
                   )}
                 />
-                {!collapsible && (
+                {/* §12: the clear button fades in (120ms) only when there's text. */}
+                <IconTip label="Clear search">
+                  <button
+                    type="button"
+                    aria-label="Clear search"
+                    tabIndex={query ? 0 : -1}
+                    aria-hidden={!query || undefined}
+                    data-visible={query ? '' : undefined}
+                    // Keep focus in the input so the results panel stays open (and keeps its scope).
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setQuery(''); inputRef.current?.focus() }}
+                    className={cn(
+                      'gio-search-clear absolute right-2 top-1/2 -translate-y-1/2 z-[1] flex h-6 w-6 items-center justify-center rounded-md',
+                      collapsible ? 'text-white/60 hover:text-white' : 'text-virgilio-muted hover:text-foreground',
+                    )}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </IconTip>
+                {!collapsible && !query && (
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-[10px] text-virgilio-muted pointer-events-none">
                     <kbd className="px-1.5 py-0.5 bg-virgilio-border/50 rounded font-mono">⌘</kbd>
                     <kbd className="px-1 py-0.5 bg-virgilio-border/50 rounded font-mono">/</kbd>
@@ -157,12 +185,17 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
           className="p-0 border-0 bg-transparent shadow-none w-auto gio-static"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
+          // The input and its clear button sit outside the panel; using them keeps it open.
+          onInteractOutside={(e) => {
+            if (wrapperRef.current?.contains(e.target as Node)) e.preventDefault()
+          }}
         >
           <GlobalSearchPanel
             query={query}
             onQueryChange={(q) => { setQuery(q); inputRef.current?.focus() }}
             onClose={() => setIsOpen(false)}
             onOpenCandidate={handleOpenCandidate}
+            onLoadingChange={setSearching}
           />
         </PopoverContent>
       </Popover>

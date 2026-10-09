@@ -873,6 +873,22 @@
   border-top-color: #6F3FF5;
   animation: gioSpin 600ms linear infinite; /* §6 spinners: 600ms per turn, linear */
 }
+.gio-spinner-current {
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+}
+/* §12 async validation (ui/async-status.tsx): the ✓ / ✕ grows in. */
+@keyframes gio-tick-in { from { transform: scale(0.6); filter: blur(2px); opacity: 0; } }
+.gio-tick-in { animation: gio-tick-in var(--dur-tick) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) {
+  .gio-tick-in { animation-name: gio-fade-only; }
+}
+/* §12 character counter: hidden until 75% of the limit, then fades in. */
+.gio-char-counter { opacity: 0; transition: opacity var(--dur-hover) ease, color var(--dur-hover) ease; }
+.gio-char-counter[data-visible] { opacity: 1; }
+/* §12 search: the clear (×) button fades in only when there's text. */
+.gio-search-clear { opacity: 0; pointer-events: none; transition: opacity 120ms var(--ease-out), color var(--dur-hover) ease; }
+.gio-search-clear[data-visible] { opacity: 1; pointer-events: auto; }
 .gio-progress {
   position: relative;
   overflow: hidden;
@@ -1182,6 +1198,27 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   .gio-tablist > .gio-tab-indicator {
     transition: none !important;
   }
+}
+
+/* §14 Segmented controls (ui/segmented.tsx): one fill slides between options. */
+.gio-seg { position: relative; isolation: isolate; }
+.gio-seg > .gio-seg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  visibility: hidden;
+}
+.gio-seg[data-seg-ready] > .gio-seg-layer { visibility: visible; }
+.gio-seg > .gio-seg-layer > .gio-seg-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--seg-fill, var(--seg-default-fill));
+  clip-path: inset(var(--seg-y, 0) var(--seg-right, 0) var(--seg-bottom, 0) var(--seg-x, 0) round var(--seg-radius, 8px));
+  transition: var(--seg-transition, clip-path var(--dur-tabs) var(--ease-in-out), background-color var(--dur-hover) ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-seg > .gio-seg-layer > .gio-seg-fill { transition: none !important; }
 }
 
 /* §2 Accordion and Collapsible: height animates to the real content size

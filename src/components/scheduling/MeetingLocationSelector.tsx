@@ -3,6 +3,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { MapPin } from "lucide-react";
 import googleMeetIcon from "@/assets/google-meet-icon.png";
+import { CharCounterLine } from '@/components/ui/char-counter'
 
 interface MeetingLocationSelectorProps {
   meetingType: 'google_meet' | 'custom';
@@ -61,9 +62,9 @@ export function MeetingLocationSelector({
                   maxLength={500}
                   className="w-full"
                 />
-                <p className="text-xs text-text-secondary">
-                  Enter Zoom link, phone number, or physical address ({customLocation.length}/500)
-                </p>
+                <CharCounterLine count={customLocation.length} max={500} className="text-text-secondary">
+                  Enter Zoom link, phone number, or physical address
+                </CharCounterLine>
               </div>
             )}
             

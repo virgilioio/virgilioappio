@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,6 +101,7 @@ export default function ReferencesPage() {
   const { requests, isLoading } = useTenantReferenceRequests()
 
   const [tab, setTab] = useState<RefBucket>('all')
+  const segRef = useSegmentLayer<HTMLDivElement>()
   const [job, setJob] = useState(ALL)
   const [client, setClient] = useState(ALL)
   const [recruiter, setRecruiter] = useState(ALL)
@@ -220,7 +222,8 @@ export default function ReferencesPage() {
           style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}
         >
           <div
-            className="inline-flex"
+            ref={segRef}
+            className="gio-seg inline-flex"
             style={{ gap: 3, padding: 3, background: '#F1F0EC', borderRadius: 9 }}
           >
             {tabs.map(([id, label, count]) => {
@@ -229,6 +232,8 @@ export default function ReferencesPage() {
                 <button
                   key={id}
                   type="button"
+                  data-seg-option
+                  data-active={active || undefined}
                   onClick={() => setTab(id)}
                   className="inline-flex items-center font-poppins"
                   style={{
@@ -239,8 +244,8 @@ export default function ReferencesPage() {
                     fontSize: 12,
                     fontWeight: active ? 600 : 500,
                     color: active ? '#1F2230' : '#5A6072',
-                    background: active ? '#fff' : 'transparent',
-                    boxShadow: active ? '0 1px 2px rgba(13,13,9,0.06)' : undefined,
+                    background: 'transparent',
+                    transition: 'color var(--dur-hover) ease',
                   }}
                 >
                   {label}
@@ -259,6 +264,7 @@ export default function ReferencesPage() {
                 </button>
               )
             })}
+            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
           </div>
 
           <span aria-hidden style={{ width: 1, height: 22, background: '#E0DDD3' }} />

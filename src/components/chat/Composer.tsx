@@ -9,6 +9,7 @@ import {
   EyeOff,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { useSendChatMessage } from '@/hooks/chat/useSendChatMessage'
 import { DraftWithGioPopover } from '@/components/chat/DraftWithGioPopover'
 import { SuggestedReplies } from '@/components/chat/SuggestedReplies'
@@ -38,6 +39,7 @@ const CHANNEL_META: Record<string, { color: string; label: string }> = {
 export function Composer({ threadId, disabled = false }: ComposerProps) {
   const [draft, setDraft] = useState('')
   const [mode, setMode] = useState<Mode>('reply')
+  const segRef = useSegmentLayer<HTMLDivElement>()
   const [channel, setChannel] = useState<string>('in_app')
   const [draftOpen, setDraftOpen] = useState(false)
   const [bookingOpen, setBookingOpen] = useState(false)
@@ -155,9 +157,10 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
         {/* Top row: mode toggle + indicator */}
         <div className="flex items-center" style={{ marginBottom: 11 }}>
           <div
+            ref={segRef}
             role="tablist"
             aria-label="Composer mode"
-            className="inline-flex items-center"
+            className="gio-seg inline-flex items-center"
             style={{ background: '#F6F5F1', borderRadius: 8, padding: 3, gap: 2 }}
           >
             <ModeSegment
@@ -173,6 +176,11 @@ export function Composer({ threadId, disabled = false }: ComposerProps) {
               icon={<Lock style={{ height: 12, width: 12 }} strokeWidth={2} />}
               label="Internal note"
               tone="note"
+            />
+            {/* The amber note fill comes from its data-seg-fill; only the white reply fill casts a shadow. */}
+            <SegmentLayer
+              fill="#FFFFFF"
+              shadow={mode === 'note' ? undefined : '0 1px 2px rgba(15,18,34,0.06)'}
             />
           </div>
 
@@ -356,19 +364,16 @@ interface ModeSegmentProps {
 }
 
 function ModeSegment({ active, onClick, icon, label, tone }: ModeSegmentProps) {
-  const activeStyle =
-    tone === 'note'
-      ? { background: '#FEF3C7', color: '#B45309' }
-      : {
-          background: '#FFFFFF',
-          color: '#0d0d09',
-          boxShadow: '0 1px 2px rgba(15,18,34,0.06)',
-        }
+  // §14: the active fill is the parent's sliding SegmentLayer, coloured per tone.
+  const activeColor = tone === 'note' ? '#B45309' : '#0d0d09'
   return (
     <button
       type="button"
       role="tab"
       aria-selected={active}
+      data-seg-option
+      data-active={active || undefined}
+      data-seg-fill={tone === 'note' ? '#FEF3C7' : '#FFFFFF'}
       onClick={onClick}
       className={cn('inline-flex items-center font-poppins transition-colors')}
       style={{
@@ -378,9 +383,8 @@ function ModeSegment({ active, onClick, icon, label, tone }: ModeSegmentProps) {
         fontSize: 11.5,
         fontWeight: 500,
         border: 0,
-        ...(active
-          ? activeStyle
-          : { background: 'transparent', color: '#8B8F9E' }),
+        background: 'transparent',
+        color: active ? activeColor : '#8B8F9E',
       }}
     >
       {icon}

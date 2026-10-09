@@ -47,11 +47,29 @@ These are the screens that no longer match the old `main` pixel for pixel.
 - **The job pipeline still opens on the board on phones.** The code asked for the list view there, but phones never got it because of the `useIsMobile` bug, and the list view doesn't fit a 390px screen yet.
 - **Mark hired, Req IDs and the Gio Sales sync** are unchanged. The only change is the delight on success.
 
-## Open items
+## Open items, closed (2026-10-09, second pass)
 
-- **Mobile pipeline list view.** It needs a phone layout before it can be the default there.
-- **Analytics line chart.** It doesn't morph on a period change; it redraws. Hand-built bars and recharts series do morph.
-- **Per-job active counts on /pipeline rows.** They show 0 until their metrics load.
-- **Not built yet.** Hover previews of candidates and jobs; async validation; character-counter components (counters are in hint text today); the prefix/suffix segment; converting hand-rolled segmented controls to the moving layer; textarea auto-grow as a shared default; search result highlighting and the inline spinner.
-- **Breakpoints.** The `useIsMobile` breakpoint (768px) and the app shell (640px) still disagree.
-- **Dead code** found during the audit: `IndependentCandidateTable`, `CandidateTable` (imported in JobDetail but never rendered), `SettingsMobileHeader`, `MobileStatusTabSelector`, the unused `vaul` drawer wrapper.
+Same method: fake data only, each change checked in the browser, pixel comparison against the previous `main` at 1440px and 390px. An independent review of the branch found eight issues; all were fixed before merging.
+
+| Item | What changed | Checked |
+|---|---|---|
+| Dead code | `IndependentCandidateTable`, `CandidateTable`, `SettingsMobileHeader`, `MobileStatusTabSelector` and the `vaul` drawer wrapper removed. The `vaul` package is still listed in `package.json`, but no code uses it any more. | Type check, build |
+| Breakpoints | `useIsMobile()` now uses the shell's 640px line (`SHELL_BREAKPOINT`); the public booking page passes 768 to match its `md:` layout; CandidateChat uses the shared hook. 640–767px windows no longer mix the desktop shell with the phone job header. | Job, settings and dashboard pages at 600 and 700px |
+| /pipeline counts | Same-size skeletons for the active count and funnel until a job's metrics arrive, then a crossfade; a failed load shows "—"; rows that are new after a filter change also load rather than show 0. | 1.5s delayed and failing metrics; row height constant |
+| Analytics line chart | The hand-built SVG line morphs to new values over 320ms (`--ease-in-out`), resampling when the point count changes. | 30 → 90-day switch; reduced motion |
+| Phone pipeline list | Phone layout (tick, name, role, then match · days · status, always-visible move button), toolbar shown on phones, 28px side padding dropped there, list is the phone default when no choice is saved. "Add filter" no longer shows two plus signs. | 390px: select, mixed stage tick, move menu, row tap; 1440px unchanged |
+| Text fields | `Textarea` auto-grows to 160px (respects a manual resize; dialogs don't animate while typing). `CharCounterLine` on SEO title/description, meeting location and booking notes. `AffixInput` for salary and `/jobs/` slug fields. `useAsyncValidation` + `AsyncStatus`, first on team invites ("already in this workspace / pending invitation"; informative, sending still runs the server check). Top-bar search: 150ms debounce, stale answers ignored, inline 13px spinner, fading clear button, fixed results height. | Scratch page and real screens; no layout shift |
+| Segmented controls | `useSegmentLayer` + `SegmentLayer`: one sliding fill for 22 hand-rolled controls (list in the commit). Same look at rest; keyboard changes jump. | Clip-path traces; pixel diffs only on rounded-corner antialiasing |
+| Hover previews | `JobPreview` / `CandidatePreview` on the job link in a candidate's breadcrumb, the linked job on a sourcing project and candidate names in the job briefing. Portalled; mouse only. | 500ms open, focus doesn't open |
+
+### Intended visible differences in this pass
+- **Phones:** the job pipeline opens on the list, with the filter/search/toggle toolbar; the board and list use the full width (the 28px side padding is gone on phones).
+- **Salary inputs:** the currency and period sit in their own segments; the amount is right-aligned.
+- **Search:** the results panel is always 560px tall; a clear button appears in the input when there's text.
+- **Invite sheet:** a status line under the addresses.
+- **SEO fields:** the counter appears from 75% of the limit instead of always.
+
+### Still open
+- **Search highlight colour.** Matches were already highlighted, in the ATS's own `#FFF4B8`. Block B names `#FBEFC9`; it was kept as is, under the visual-identity rule.
+- **Not converted:** three segmented controls draw a border or inset outline only when active: job status in the wizard, the dossier view switch and the job form section nav. They still switch instantly.
+- **Dark mode** is unfinished and not wired up: there's no theme provider, and the toggle is unused. The redesigned screens hard-code about 6,000 colours. Left as it is, per CLAUDE.md.

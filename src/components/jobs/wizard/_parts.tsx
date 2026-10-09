@@ -2,6 +2,7 @@ import * as React from 'react'
 import { useChipMotion } from '@/lib/chipMotion'
 import { cn } from '@/lib/utils'
 import { Sparkles, X, Info } from 'lucide-react'
+import { AffixInput } from '@/components/ui/affix-input'
 
 /** Round avatar with initials — tone cycle by name hash. */
 const AVATAR_TONES = [
@@ -473,29 +474,22 @@ export function SalaryInput({
 }) {
   const formatted = value == null || Number.isNaN(value) ? '' : value.toLocaleString('en-US')
 
+  // §12 prefix and suffix: the currency and the period sit in their own segments; the
+  // amount is right-aligned in tabular figures.
   return (
-    <div
-      className={cn(
-        'flex h-11 items-center rounded-xl border bg-white px-3 transition-colors',
-        invalid
-          ? 'border-destructive ring-2 ring-destructive/20'
-          : 'border-virgilio-border focus-within:ring-2 focus-within:ring-virgilio-purple/30'
-      )}
-    >
-      <span className="text-[13px] text-text-tertiary pr-2">{symbol}</span>
-      <input
-        inputMode="numeric"
-        value={formatted}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/[^\d]/g, '')
-          onChange(raw === '' ? undefined : Number(raw))
-        }}
-        placeholder={placeholder}
-        className="flex-1 min-w-0 bg-transparent text-[13px] tabular-nums outline-none placeholder:text-text-tertiary"
-      />
-      {suffix && (
-        <span className="text-[12px] text-text-tertiary pl-2 whitespace-nowrap">{suffix}</span>
-      )}
-    </div>
+    <AffixInput
+      wrapperClassName="rounded-xl bg-white"
+      prefix={<span className="text-[13px]">{symbol}</span>}
+      suffix={suffix || undefined}
+      numeric
+      invalid={invalid}
+      inputMode="numeric"
+      value={formatted}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^\d]/g, '')
+        onChange(raw === '' ? undefined : Number(raw))
+      }}
+      placeholder={placeholder}
+    />
   )
 }

@@ -26,6 +26,8 @@ import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { CharCounterLine } from '@/components/ui/char-counter'
+import { AffixInput } from '@/components/ui/affix-input'
 import { useJobsWithPostings } from '@/hooks/useJobsWithPostings'
 import { useTenant } from '@/hooks/useTenant'
 import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, type AppField as SharedAppField, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
@@ -488,14 +490,12 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <FieldLabel required>URL slug</FieldLabel>
-              <div className="mt-2 flex h-11 items-center rounded-xl border border-virgilio-border bg-white overflow-hidden focus-within:ring-2 focus-within:ring-virgilio-purple/30">
-                <span className="px-3 text-[12.5px] text-text-tertiary bg-[#FAFAF7] h-full inline-flex items-center border-r border-virgilio-border">/jobs/</span>
-                <input
-                  value={slug}
-                  onChange={(e) => { slugTouched.current = true; setSlug(e.target.value) }}
-                  className="flex-1 min-w-0 bg-transparent px-3 text-[13px] outline-none"
-                />
-              </div>
+              <AffixInput
+                wrapperClassName="mt-2 rounded-xl bg-white"
+                prefix="/jobs/"
+                value={slug}
+                onChange={(e) => { slugTouched.current = true; setSlug(e.target.value) }}
+              />
               <FieldHint>your-careers-domain/jobs/{slug || '…'}</FieldHint>
             </div>
             <div>
@@ -925,12 +925,12 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           <div>
             <FieldLabel>Meta title</FieldLabel>
             <Input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} maxLength={60} className="mt-2 h-11" />
-            <FieldHint>Shown in search engines. {metaTitle.length}/60 chars.</FieldHint>
+            <CharCounterLine count={metaTitle.length} max={60} className="mt-1.5 text-text-tertiary">Shown in search engines.</CharCounterLine>
           </div>
           <div>
             <FieldLabel>Meta description</FieldLabel>
             <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} maxLength={155} className="mt-2 min-h-[88px]" />
-            <FieldHint>Shown under the title in search results. {metaDescription.length}/155 chars.</FieldHint>
+            <CharCounterLine count={metaDescription.length} max={155} className="mt-1.5 text-text-tertiary">Shown under the title in search results.</CharCounterLine>
           </div>
           <div>
             <p className="text-[10.5px] font-poppins font-semibold uppercase tracking-[0.12em] text-text-secondary mb-2">Social card preview</p>

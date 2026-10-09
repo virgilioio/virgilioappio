@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useGlobalSearch } from '@/hooks/useGlobalSearch'
 import { useRecentSearches } from './useRecentSearches'
 import { SearchResultRowV2, GlyphKind } from './SearchResultRowV2'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 
 type Scope = 'all' | 'candidates' | 'jobs' | 'saved'
 
@@ -32,6 +33,8 @@ interface GlobalSearchPanelProps {
   onQueryChange: (q: string) => void
   onClose: () => void
   onOpenCandidate: (id: string) => void
+  /** Reports when a search is in flight, so the input can show its inline spinner. */
+  onLoadingChange?: (loading: boolean) => void
 }
 
 const SCOPES: { id: Scope; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -51,12 +54,13 @@ function initialsOf(name: string): string {
 }
 
 export function GlobalSearchPanel({
-  query, onQueryChange, onClose, onOpenCandidate,
+  query, onQueryChange, onClose, onOpenCandidate, onLoadingChange,
 }: GlobalSearchPanelProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [scope, setScope] = useState<Scope>('all')
   const [askMode, setAskMode] = useState(false)
+  const segRef = useSegmentLayer<HTMLDivElement>()
   const [highlighted, setHighlighted] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -65,6 +69,11 @@ export function GlobalSearchPanel({
 
   const { results, isLoading, totalCounts } = useGlobalSearch(hasQuery && !askMode ? query : '', { limit: 5 })
   const recent = useRecentSearches(user?.id ?? null)
+  const searching = isLoading && !askMode
+  useEffect(() => {
+    onLoadingChange?.(searching)
+  }, [searching, onLoadingChange])
+  useEffect(() => () => onLoadingChange?.(false), [onLoadingChange])
 
   // Saved views (candidates context — most used)
   const { data: savedViews = [] } = useQuery({
@@ -276,30 +285,37 @@ export function GlobalSearchPanel({
       role="listbox"
       onKeyDown={handleKeyDown}
       tabIndex={-1}
-      className="w-[600px] max-h-[560px] flex flex-col rounded-[12px] border border-border bg-popover text-popover-foreground shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] overflow-hidden"
+      // §12: the results box keeps one height while you type, whatever the result count.
+      className="w-[600px] h-[min(560px,calc(100dvh-96px))] flex flex-col rounded-[12px] border border-border bg-popover text-popover-foreground shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] overflow-hidden"
     >
       {/* Scope chip bar */}
       <div className="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-border">
-        {SCOPES.map(s => {
-          const Icon = s.icon
-          const active = !askMode && scope === s.id
-          return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => { setAskMode(false); setScope(s.id) }}
-              className={cn(
-                'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md font-poppins font-medium text-[12px] tracking-[-0.005em] transition-colors',
-                active
-                  ? 'bg-[#0d0d09] text-[#FFFCF9]'
-                  : 'text-virgilio-muted hover:text-foreground hover:bg-[#F1F0EC]'
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {s.label}
-            </button>
-          )
-        })}
+        {/* §14: the dark scope fill is one sliding SegmentLayer; Ask Gio sits outside it. */}
+        <div ref={segRef} className="gio-seg inline-flex items-center gap-1">
+          {SCOPES.map(s => {
+            const Icon = s.icon
+            const active = !askMode && scope === s.id
+            return (
+              <button
+                key={s.id}
+                type="button"
+                data-seg-option
+                data-active={active || undefined}
+                onClick={() => { setAskMode(false); setScope(s.id) }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md font-poppins font-medium text-[12px] tracking-[-0.005em] transition-colors',
+                  active
+                    ? 'text-[#FFFCF9]'
+                    : 'text-virgilio-muted hover:text-foreground hover:bg-[#F1F0EC]'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {s.label}
+              </button>
+            )
+          })}
+          <SegmentLayer fill="#0d0d09" />
+        </div>
         <button
           type="button"
           onClick={() => setAskMode(v => !v)}
@@ -383,7 +399,7 @@ export function GlobalSearchPanel({
 
         {/* Render rows */}
         {rows.length === 0 && !isLoading && (
-          <div className="px-4 py-12 text-center">
+          <div className="flex h-full flex-col items-center justify-center px-4 py-12 text-center">
             {hasQuery ? (
               <>
                 <p className="font-poppins font-semibold text-[14px] text-foreground">No results for “{trimmed}”</p>
@@ -415,7 +431,8 @@ export function GlobalSearchPanel({
           />
         ))}
 
-        {isLoading && !askMode && (
+        {/* Previous results stay while a new search runs; the input shows the spinner. */}
+        {isLoading && !askMode && rows.length === 0 && (
           <div className="px-4 py-3 text-[12px] font-inter text-virgilio-muted">Searching…</div>
         )}
       </div>

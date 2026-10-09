@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { MessagesSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import type { ChatThreadScope } from '@/hooks/chat/useChatThreads'
 
 const SEGMENTS: { id: ChatThreadScope; label: string }[] = [
@@ -17,6 +18,7 @@ const SEGMENTS: { id: ChatThreadScope; label: string }[] = [
 export function ChatHeaderSlot() {
   const [params, setParams] = useSearchParams()
   const scope = (params.get('scope') as ChatThreadScope) || 'all'
+  const segRef = useSegmentLayer<HTMLDivElement>()
 
   const setScope = (next: ChatThreadScope) => {
     const p = new URLSearchParams(params)
@@ -34,9 +36,10 @@ export function ChatHeaderSlot() {
         </span>
       </div>
       <div
+        ref={segRef}
         role="tablist"
         aria-label="Chat scope"
-        className="inline-flex items-center gap-0.5 p-[3px] rounded-[9px]"
+        className="gio-seg inline-flex items-center gap-0.5 p-[3px] rounded-[9px]"
         style={{ background: 'rgba(255,255,255,0.06)' }}
       >
         {SEGMENTS.map((seg) => {
@@ -46,11 +49,13 @@ export function ChatHeaderSlot() {
               key={seg.id}
               role="tab"
               aria-selected={active}
+              data-seg-option
+              data-active={active || undefined}
               onClick={() => setScope(seg.id)}
               className={cn(
                 'h-6 px-2.5 rounded-[7px] font-poppins text-[12px] tracking-[-0.005em] transition-colors',
                 active
-                  ? 'bg-[#fffcf9] text-[#0d0d09] font-semibold'
+                  ? 'text-[#0d0d09] font-semibold'
                   : 'text-white/70 font-medium hover:text-white',
               )}
             >
@@ -58,6 +63,7 @@ export function ChatHeaderSlot() {
             </button>
           )
         })}
+        <SegmentLayer fill="#fffcf9" />
       </div>
     </div>
   )

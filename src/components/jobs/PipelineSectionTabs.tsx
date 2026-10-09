@@ -3,6 +3,7 @@ import { Eye, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CREAM, HAIRLINE, INK, MUTED, PASTELS, SAND, SURFACE_HOVER, TERTIARY } from '@/lib/pastels'
 import { useJobPipelineShare } from '@/hooks/useJobPipelineShare'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 
 export type PipelineSection = 'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'
 
@@ -36,6 +37,13 @@ export interface PipelineSectionTabsProps {
 
 export function PipelineSectionTabs({ value, onChange, counts, jobId, className }: PipelineSectionTabsProps) {
   const refs = React.useRef<(HTMLButtonElement | null)[]>([])
+  const segRef = useSegmentLayer<HTMLDivElement>()
+  // §14: the active pastel is the sliding SegmentLayer. The mouse hover below paints
+  // inline, so clear any hover fill left on the option that just became active.
+  React.useLayoutEffect(() => {
+    const el = refs.current[SECTIONS.findIndex((s) => s.value === value)]
+    if (el) el.style.background = 'transparent'
+  }, [value])
   const { share } = useJobPipelineShare(jobId)
   const isShared = (section: PipelineSection) => {
     if (!share?.is_public || section === 'suggested') return false
@@ -61,9 +69,10 @@ export function PipelineSectionTabs({ value, onChange, counts, jobId, className 
 
   return (
     <div
+      ref={segRef}
       role="tablist"
       aria-label="Pipeline section"
-      className={cn('grid', className)}
+      className={cn('gio-seg grid', className)}
       style={{
         gridTemplateColumns: `repeat(${SECTIONS.length}, minmax(0, 1fr))`,
         gap: 6,
@@ -87,6 +96,9 @@ export function PipelineSectionTabs({ value, onChange, counts, jobId, className 
             role="tab"
             type="button"
             aria-selected={isActive}
+            data-seg-option
+            data-active={isActive || undefined}
+            data-seg-fill={pastel.bg}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onChange(s.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
@@ -102,7 +114,7 @@ export function PipelineSectionTabs({ value, onChange, counts, jobId, className 
               borderRadius: 9,
               border: '1px solid',
               borderColor: isActive ? 'transparent' : 'transparent',
-              background: isActive ? pastel.bg : 'transparent',
+              background: 'transparent',
               color: isActive ? pastel.fg : MUTED,
               fontFamily: "'Poppins', system-ui, sans-serif",
               fontSize: 12.5,
@@ -152,6 +164,7 @@ export function PipelineSectionTabs({ value, onChange, counts, jobId, className 
           </button>
         )
       })}
+      <SegmentLayer fill={PASTELS.purple.bg} />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Download, FileText, Link as LinkIcon, Mail, MapPin, Phone, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { printDossier } from './printDossier'
 import printCss from './dossierPrint.css?inline'
 import { DossierPrintDocument, DOSSIER_PAGE_GEOMETRY, type DossierPageSize, type DossierPrintProps } from './DossierPrintDocument'
@@ -51,8 +52,9 @@ function Segmented({
   small?: boolean
   label: string
 }) {
+  const segRef = useSegmentLayer<HTMLDivElement>()
   return (
-    <div className="flex w-fit gap-[2px] rounded-lg bg-fit-chip p-[3px]" role="group" aria-label={label}>
+    <div ref={segRef} className="gio-seg flex w-fit gap-[2px] rounded-lg bg-fit-chip p-[3px]" role="group" aria-label={label}>
       {options.map((option) => {
         const active = option.value === value
         return (
@@ -60,12 +62,14 @@ function Segmented({
             key={option.value}
             type="button"
             aria-pressed={active}
+            data-seg-option
+            data-active={active || undefined}
             onClick={() => onChange(option.value)}
             className={cn(
               'rounded-md text-[12px] transition-colors',
               small ? 'px-3 py-[5px]' : 'px-3.5 py-1.5',
               active
-                ? 'bg-surface-primary font-semibold text-fit-ink shadow-[0_1px_2px_rgba(13,13,9,0.08)]'
+                ? 'bg-transparent font-semibold text-fit-ink'
                 : 'bg-transparent font-medium text-fit-subtle',
             )}
           >
@@ -73,6 +77,7 @@ function Segmented({
           </button>
         )
       })}
+      <SegmentLayer fill="hsl(var(--surface-primary))" shadow="0 1px 2px rgba(13,13,9,0.08)" />
     </div>
   )
 }

@@ -93,7 +93,7 @@ export function useCandidateJobAssociations(candidateId: string | null) {
   }
 }
 
-// ── New bulk hook used by IndependentCandidateTable ──
+// ── Bulk hook: associations for many candidates at once ──
 
 export interface AssociationDetail {
   associationId: string

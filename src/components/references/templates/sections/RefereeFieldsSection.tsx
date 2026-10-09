@@ -24,6 +24,7 @@ import {
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { TypeChip } from '@/components/references/TypeChip'
 import { RefToggle } from '@/components/references/RefToggle'
 import { RowShell, SectionCard, SectionHead } from '../rowKit'
@@ -91,9 +92,11 @@ function Segmented<T extends string>({
   options: { value: T; label: string }[]
   onChange: (v: T) => void
 }) {
+  const segRef = useSegmentLayer<HTMLDivElement>()
   return (
     <div
-      className="inline-flex"
+      ref={segRef}
+      className="gio-seg inline-flex"
       style={{ gap: 3, padding: 3, background: '#F1F0EC', borderRadius: 8 }}
     >
       {options.map((o) => {
@@ -102,6 +105,8 @@ function Segmented<T extends string>({
           <button
             key={o.value}
             type="button"
+            data-seg-option
+            data-active={active || undefined}
             onClick={() => onChange(o.value)}
             className="font-inter"
             style={{
@@ -110,16 +115,17 @@ function Segmented<T extends string>({
               border: 'none',
               fontSize: 11.5,
               cursor: 'pointer',
-              background: active ? '#fff' : 'transparent',
+              background: 'transparent',
               fontWeight: active ? 600 : 500,
               color: active ? '#1F2230' : '#5A6072',
-              boxShadow: active ? '0 1px 2px rgba(13,13,9,0.06)' : 'none',
+              transition: 'color var(--dur-hover) ease',
             }}
           >
             {o.label}
           </button>
         )
       })}
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
     </div>
   )
 }

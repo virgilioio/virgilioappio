@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Check, Loader2, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import type { StageConfiguration, AdditionalSettingsPayload } from '@/hooks/useStageConfiguration'
 
 interface BasicsTabProps {
@@ -36,9 +37,11 @@ function Segmented<T extends string | number>({
   onChange: (v: T) => void
   format?: (v: T) => string
 }) {
+  const segRef = useSegmentLayer<HTMLDivElement>()
   return (
     <div
-      className="flex w-full"
+      ref={segRef}
+      className="gio-seg flex w-full"
       style={{ background: '#F1F0EC', borderRadius: 8, padding: 2 }}
     >
       {options.map((opt) => {
@@ -47,23 +50,25 @@ function Segmented<T extends string | number>({
           <button
             key={String(opt)}
             type="button"
+            data-seg-option
+            data-active={active || undefined}
             onClick={() => onChange(opt)}
             className={cn(
-              'flex-1 font-poppins font-medium transition-all',
+              'flex-1 font-poppins font-medium transition-colors',
               active ? 'text-[#1F2230]' : 'text-[#5A6072] hover:text-[#1F2230]'
             )}
             style={{
               fontSize: 12,
               padding: '6px 8px',
               borderRadius: 6,
-              background: active ? '#fff' : 'transparent',
-              boxShadow: active ? '0 1px 2px rgba(13,13,9,0.06)' : 'none',
+              background: 'transparent',
             }}
           >
             {format ? format(opt) : opt}
           </button>
         )
       })}
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
     </div>
   )
 }

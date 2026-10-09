@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { X, Plus, Trash2, Sparkles, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented';
 import { supabase } from '@/integrations/supabase/client';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
@@ -79,6 +80,7 @@ export function AutomationBuilderSheet({ open, onOpenChange, jobId, jhsId, stage
   const [action, setAction] = useState<AutomationAction | null>(null);
   const [config, setConfig] = useState<AutomationConfig>({});
   const [timing, setTiming] = useState<AutomationTiming>('immediate');
+  const timingSegRef = useSegmentLayer<HTMLDivElement>();
   const [delayAmount, setDelayAmount] = useState<number>(1);
   const [delayUnit, setDelayUnit] = useState<string>('days');
   const [sendAt, setSendAt] = useState<string>('09:00');
@@ -465,13 +467,14 @@ export function AutomationBuilderSheet({ open, onOpenChange, jobId, jhsId, stage
             {/* TIMING */}
             <section>
               <div style={SECTION} className="font-inter mb-2">When to run</div>
-              <div className="inline-flex rounded-lg p-1 gap-1" style={{ background: '#F1F0EC' }}>
+              <div ref={timingSegRef} className="gio-seg inline-flex rounded-lg p-1 gap-1" style={{ background: '#F1F0EC' }}>
                 {([['immediate', 'Right away'], ['delay', 'After a delay'], ['at_time', 'At a time of day']] as const).map(([k, l]) => (
-                  <button key={k} type="button" aria-pressed={timing === k} onClick={() => setTiming(k)}
-                    className={cn('h-7 px-3 rounded-md font-poppins', timing === k ? 'bg-white shadow-sm' : 'hover:bg-white/60')} style={{ fontSize: 12, fontWeight: 500, color: '#0d0d09' }}>
+                  <button key={k} type="button" aria-pressed={timing === k} data-seg-option data-active={timing === k || undefined} onClick={() => setTiming(k)}
+                    className={cn('h-7 px-3 rounded-md font-poppins transition-colors', timing !== k && 'hover:bg-white/60')} style={{ fontSize: 12, fontWeight: 500, color: '#0d0d09' }}>
                     {l}
                   </button>
                 ))}
+                <SegmentLayer fill="#fff" shadow="0 1px 3px rgba(0,0,0,0.1)" />
               </div>
               {timing === 'delay' && (
                 <div className="mt-3 flex items-center gap-2 font-inter" style={{ fontSize: 12.5, color: '#5A6072' }}>

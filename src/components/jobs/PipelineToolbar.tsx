@@ -14,6 +14,8 @@ import {
   upsertPipelineFilter,
   type PipelineFilter,
 } from '@/components/jobs/pipelineFilters'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
+import { IconTip } from '@/components/ui/tooltip'
 
 /**
  * One thin row: state on the left (active filter chips), view controls on the
@@ -87,10 +89,13 @@ export function PipelineToolbar({
     justifyContent: 'center',
     border: 0,
     cursor: 'pointer',
-    background: active ? '#0d0d09' : 'transparent',
+    // The dark fill is the sliding SegmentLayer; buttons only change their icon colour.
+    background: 'transparent',
     color: active ? '#fffcf9' : '#8B8F9E',
+    transition: 'color var(--dur-hover) ease',
     padding: 0,
   })
+  const segRef = useSegmentLayer<HTMLDivElement>()
 
   return (
     <div
@@ -115,7 +120,7 @@ export function PipelineToolbar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <span>
-              <SugFilterChip label="＋ Add filter" variant="add" />
+              <SugFilterChip label="Add filter" variant="add" />
             </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" sideOffset={8} className="w-[220px]">
@@ -150,7 +155,8 @@ export function PipelineToolbar({
             borderRadius: 8,
             height: 32,
             padding: expanded ? '0 8px' : 0,
-            width: expanded ? 240 : 32,
+            // Phones: leave room for the filter chip and the view toggle beside it.
+            width: expanded ? 'min(240px, calc(100vw - 210px))' : 32,
             transition: 'width 160ms ease-out, padding 160ms ease-out',
             overflow: 'hidden',
           }}
@@ -214,6 +220,8 @@ export function PipelineToolbar({
 
         {showViewToggle && view && onViewChange && (
           <div
+            ref={segRef}
+            className="gio-seg"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -224,24 +232,33 @@ export function PipelineToolbar({
               border: '1px solid #E7E8EE',
             }}
           >
-            <button
-              type="button"
-              title="Board"
-              aria-pressed={view === 'board'}
-              onClick={() => onViewChange('board')}
-              style={segBtn(view === 'board')}
-            >
-              <LayoutGrid size={14} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              title="List"
-              aria-pressed={view === 'list'}
-              onClick={() => onViewChange('list')}
-              style={segBtn(view === 'list')}
-            >
-              <List size={14} strokeWidth={2} />
-            </button>
+            <IconTip label="Board view">
+              <button
+                type="button"
+                aria-label="Board view"
+                aria-pressed={view === 'board'}
+                data-seg-option
+                data-active={view === 'board' || undefined}
+                onClick={() => onViewChange('board')}
+                style={segBtn(view === 'board')}
+              >
+                <LayoutGrid size={14} strokeWidth={2} />
+              </button>
+            </IconTip>
+            <IconTip label="List view">
+              <button
+                type="button"
+                aria-label="List view"
+                aria-pressed={view === 'list'}
+                data-seg-option
+                data-active={view === 'list' || undefined}
+                onClick={() => onViewChange('list')}
+                style={segBtn(view === 'list')}
+              >
+                <List size={14} strokeWidth={2} />
+              </button>
+            </IconTip>
+            <SegmentLayer fill="#0d0d09" />
           </div>
         )}
 

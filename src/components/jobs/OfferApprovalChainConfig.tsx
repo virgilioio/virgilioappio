@@ -41,6 +41,7 @@ import {
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 
 interface OfferApprovalChainConfigProps {
   jobId: string
@@ -526,6 +527,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
   } = useOfferApprovalChain(jobId)
   const { members, isLoading: membersLoading } = useMembers(true)
   const permissions = usePermissions()
+  const modeSegRef = useSegmentLayer<HTMLDivElement>()
 
   const canEdit = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin
   const sequential = mode === 'sequential'
@@ -617,7 +619,8 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
               </p>
             </div>
             <div
-              className="inline-flex shrink-0 items-center gap-1"
+              ref={modeSegRef}
+              className="gio-seg inline-flex shrink-0 items-center gap-1"
               style={{ backgroundColor: '#F1F0EC', borderRadius: 9, padding: 3 }}
             >
               {([
@@ -630,14 +633,15 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
                     key={opt.value}
                     type="button"
                     disabled={!canEdit}
+                    data-seg-option
+                    data-active={active || undefined}
                     onClick={() => setMode(opt.value)}
                     className={cn(
-                      'inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 font-inter',
+                      'inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1 font-inter transition-colors',
                       !canEdit && 'cursor-not-allowed opacity-60'
                     )}
                     style={{
-                      backgroundColor: active ? '#FFFFFF' : 'transparent',
-                      boxShadow: active ? '0 1px 2px rgba(13,13,9,0.08)' : undefined,
+                      backgroundColor: 'transparent',
                       fontSize: 12,
                       fontWeight: active ? 600 : 500,
                       color: active ? '#0d0d09' : '#5A6072',
@@ -648,6 +652,12 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
                   </button>
                 )
               })}
+              {/* Dimmed with the options when the chain is read-only, as the old per-button fill was. */}
+              <SegmentLayer
+                fill="#FFFFFF"
+                shadow="0 1px 2px rgba(13,13,9,0.08)"
+                className={!canEdit ? 'opacity-60' : undefined}
+              />
             </div>
           </div>
         )}

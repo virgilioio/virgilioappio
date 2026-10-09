@@ -10,6 +10,7 @@ import { ApplicationSwitcher } from '@/components/candidates/profile/Application
 
 import { ClientVerdictPill } from '@/components/candidates/profile/ClientVerdictPill'
 import type { ClientVerdictState } from '@/hooks/useClientVerdict'
+import { JobPreview } from '@/components/previews/EntityPreview'
 
 interface ProfileHeroCardProps {
   candidateName: string
@@ -88,9 +89,11 @@ export function ProfileHeroCard({
             {jobTitle && (
               <>
                 <span className="text-[#D1D5DB]">›</span>
-                <Link to={`/jobs/${jobId}`} className="hover:text-[#5A6072] transition-colors truncate max-w-[260px]">
-                  {jobTitle}
-                </Link>
+                <JobPreview jobId={jobId}>
+                  <Link to={`/jobs/${jobId}`} className="hover:text-[#5A6072] transition-colors truncate max-w-[260px]">
+                    {jobTitle}
+                  </Link>
+                </JobPreview>
               </>
             )}
             <span className="text-[#D1D5DB]">›</span>

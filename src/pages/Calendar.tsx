@@ -75,6 +75,7 @@ import {
   type CalendarTone,
 } from '@/lib/calendar/colors'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 
 // ─── Tokens ──────────────────────────────────────────────────
 const C = {
@@ -302,6 +303,7 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const { user, organizationId } = useAuth()
   const permissions = usePermissions()
+  const viewSegRef = useSegmentLayer<HTMLDivElement>()
   const [view, setViewState] = useState<ViewMode>(() => {
     try {
       const saved = localStorage.getItem(VIEW_KEY)
@@ -1468,19 +1470,21 @@ export default function CalendarPage() {
               style={{ border: `1px solid ${C.border}`, padding: 10 }}
             >
               {/* Day/Week/Month */}
-              <div className="inline-flex h-7 rounded-lg p-0.5" style={{ background: C.hairline }}>
+              <div ref={viewSegRef} className="gio-seg inline-flex h-7 rounded-lg p-0.5" style={{ background: C.hairline }}>
                 {(['day', 'week', 'month'] as const).map(v => {
                   const active = view === v
                   return (
                     <button
                       key={v}
                       type="button"
+                      data-seg-option
+                      data-active={active || undefined}
                       onClick={() => setView(v)}
                       className={cn('px-2.5 rounded-md font-inter capitalize transition-colors')}
                       style={{
                         fontSize: 12,
                         fontWeight: 600,
-                        background: active ? C.ink : 'transparent',
+                        background: 'transparent',
                         color: active ? '#fffcf9' : C.tertiary,
                       }}
                     >
@@ -1488,6 +1492,7 @@ export default function CalendarPage() {
                     </button>
                   )
                 })}
+                <SegmentLayer fill={C.ink} />
               </div>
 
               {/* Nav cluster */}
