@@ -156,8 +156,13 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
                     tabIndex={query ? 0 : -1}
                     aria-hidden={!query || undefined}
                     data-visible={query ? '' : undefined}
+                    // Keep focus in the input so the results panel stays open (and keeps its scope).
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => { setQuery(''); inputRef.current?.focus() }}
-                    className="gio-search-clear absolute right-2 top-1/2 -translate-y-1/2 z-[1] flex h-6 w-6 items-center justify-center rounded-md text-virgilio-muted hover:text-foreground"
+                    className={cn(
+                      'gio-search-clear absolute right-2 top-1/2 -translate-y-1/2 z-[1] flex h-6 w-6 items-center justify-center rounded-md',
+                      collapsible ? 'text-white/60 hover:text-white' : 'text-virgilio-muted hover:text-foreground',
+                    )}
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -180,6 +185,10 @@ export function GlobalSearchBar({ collapsible = false }: GlobalSearchBarProps) {
           className="p-0 border-0 bg-transparent shadow-none w-auto gio-static"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
+          // The input and its clear button sit outside the panel; using them keeps it open.
+          onInteractOutside={(e) => {
+            if (wrapperRef.current?.contains(e.target as Node)) e.preventDefault()
+          }}
         >
           <GlobalSearchPanel
             query={query}
