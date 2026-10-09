@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Check, ChevronDown, Clock, MoreHorizontal, Sparkles, ArrowRight, Heart } from 'lucide-react'
+import { Check, ChevronDown, Minus, Clock, MoreHorizontal, Sparkles, ArrowRight, Heart } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -62,7 +62,8 @@ function Tick({
   onClick,
 }: {
   size: 14 | 16
-  checked: boolean
+  /** 'mixed': some of this stage's candidates are selected (§14 indeterminate parent). */
+  checked: boolean | 'mixed'
   onClick: (e: React.MouseEvent) => void
 }) {
   return (
@@ -78,13 +79,18 @@ function Tick({
         borderRadius: 4,
         border: checked ? 'none' : '1.5px solid #C2C6D2',
         background: checked ? '#0d0d09' : '#fff',
+        transition: 'background-color 120ms ease',
       }}
       onClick={(e) => {
         e.stopPropagation()
         onClick(e)
       }}
     >
-      {checked && <Check size={size === 14 ? 9 : 10} strokeWidth={3} color="#fffcf9" />}
+      {checked === 'mixed' ? (
+        <Minus size={size === 14 ? 9 : 10} strokeWidth={3} color="#fffcf9" />
+      ) : checked ? (
+        <Check size={size === 14 ? 9 : 10} strokeWidth={3} color="#fffcf9" />
+      ) : null}
     </button>
   )
 }
@@ -161,7 +167,7 @@ export function PipelineListView({
                   borderBottom: '1px solid #E7E8EE',
                 }}
               >
-                <Tick size={16} checked={allSelected} onClick={() => onToggleStage(group.jhsId)} />
+                <Tick size={16} checked={allSelected ? true : anySelected ? 'mixed' : false} onClick={() => onToggleStage(group.jhsId)} />
                 <div className="flex items-center" style={{ gap: 8, minWidth: 0 }}>
                   <button
                     type="button"

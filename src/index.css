@@ -1458,3 +1458,22 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-tablist[data-overflow][data-indicator="pill"] > .gio-tab-indicator { right: auto; width: var(--tab-scroll-w); }
 .gio-tablist[data-overflow][data-indicator="underline"] > .gio-tab-indicator { bottom: 0; }
 .gio-tablist[data-overflow] > [role="tab"] { flex-shrink: 0; }
+
+/* §14 Checkbox (ui/checkbox.tsx): the tick draws in, the box colours over 120ms and
+ * presses to 0.9; indeterminate draws a dash. */
+.gio-check-root {
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform var(--dur-press) var(--ease-out);
+}
+.gio-check-root .gio-check-svg { overflow: visible; }
+.gio-check-root path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.gio-check-root[data-state="checked"] .gio-check-tick,
+.gio-check-root[data-state="indeterminate"] .gio-check-dash {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--dur-tick) var(--ease-out);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gio-check-root:active:not(:disabled) { transform: scale(0.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-check-root path { transition: none !important; }
+}
