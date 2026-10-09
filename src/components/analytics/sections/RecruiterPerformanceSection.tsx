@@ -11,7 +11,7 @@ interface RecruiterPerformanceSectionProps {
 }
 
 export function RecruiterPerformanceSection({ data }: RecruiterPerformanceSectionProps) {
-  const { sortedData, sortConfig: sort, requestSort: handleSort } = useSortableTable<RecruiterRow>(data.rows, { key: 'candidatesAdded', direction: 'desc' })
+  const { sortedData, sortConfig: sort, requestSort: handleSort, bodyRef } = useSortableTable<RecruiterRow>(data.rows, { key: 'candidatesAdded', direction: 'desc' })
 
   return (
     <AnalyticsSection
@@ -48,7 +48,7 @@ export function RecruiterPerformanceSection({ data }: RecruiterPerformanceSectio
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody ref={bodyRef}>
             {sortedData.map(row => (
               <TableRow key={row.userId}>
                 <TableCell className="font-poppins font-medium">
