@@ -916,3 +916,34 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   opacity: 0.9;
   pointer-events: none;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Motion & Feel primitives (Block B, CLAUDE.md). Plain CSS after the Tailwind
+ * layers on purpose: these win over transition-* utilities on the same element.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* §2 Buttons and every pressable: press scale 0.97 at --dur-press, colour at
+ * --dur-hover. Keyboard activation (focus-visible) and disabled never scale. */
+.gio-pressable {
+  transform-origin: center;
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: var(--dur-press), var(--dur-hover), var(--dur-hover), var(--dur-hover), var(--dur-hover), var(--dur-hover);
+  transition-timing-function: var(--ease-out), ease, ease, ease, ease, ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gio-pressable:active:not(:focus-visible):not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
+    transform: scale(0.97);
+  }
+}
+
+/* §12 Text fields: colour and shadow only, never movement; focus is instant. */
+.gio-field {
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: var(--dur-hover);
+  transition-timing-function: ease;
+}
+.gio-field:focus-visible,
+.gio-field:focus-within:has(:focus-visible) {
+  transition-duration: 0ms;
+}

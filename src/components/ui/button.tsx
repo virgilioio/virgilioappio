@@ -31,8 +31,9 @@ import { cn } from "@/lib/utils"
  *  - onDark        remaps primary/secondary/ghost for the citron-noir top bar
  *  - loading       swap leading icon for spinner; lock width; keep label
  *
- * Motion (per spec): "barely a posture". Hover = fill shift only. Active =
- * filled variants darken further + inner shadow. NO translate, NO lift, NO scale.
+ * Motion (Block B §2, CLAUDE.md): hover = fill shift only (mouse only). Active =
+ * filled variants darken further + inner shadow, and the button presses to
+ * scale(0.97) at --dur-press (gio-pressable). No translate, no lift.
  *
  * Focus: 2px purple ring at 30% opacity, no offset (:focus-visible only).
  *
@@ -46,7 +47,7 @@ import { cn } from "@/lib/utils"
  *  - size="icon|icon-sm|icon-lg" → use `iconOnly` + size
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-poppins font-medium tracking-[-0.005em] ring-offset-0 transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30 disabled:pointer-events-none disabled:opacity-45 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-poppins font-medium tracking-[-0.005em] ring-offset-0 gio-pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple/30 disabled:pointer-events-none disabled:opacity-45 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {

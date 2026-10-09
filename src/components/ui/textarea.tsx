@@ -13,8 +13,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <textarea
         className={cn(
-          "flex min-h-[96px] w-full rounded-lg border bg-surface-primary px-3 py-2 text-sm ring-offset-background placeholder:text-text-tertiary transition-all duration-200 ease-out shadow-[var(--shadow-xs)]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2 focus-visible:border-virgilio-purple hover:shadow-[var(--shadow-button)] hover:-translate-y-0.5",
+          "flex min-h-[96px] w-full rounded-lg border bg-surface-primary px-3 py-2 text-sm ring-offset-background placeholder:text-text-tertiary gio-field shadow-[var(--shadow-xs)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2 focus-visible:border-virgilio-purple hover:shadow-[var(--shadow-button)]",
           "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-secondary",
           error && "border-destructive ring-destructive focus-visible:ring-destructive shadow-[0_0_0_1px_hsl(var(--destructive))]",
           success && "border-success ring-success focus-visible:ring-success shadow-[0_0_0_1px_hsl(var(--success))]",

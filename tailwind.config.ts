@@ -3,6 +3,9 @@ import type { Config } from "tailwindcss";
 
 export default {
 	darkMode: ["class"],
+	// Block B §2: hover styles apply only on devices that really hover (mouse, trackpad),
+	// so a tap on a phone never leaves a button stuck in its hover colour.
+	future: { hoverOnlyWhenSupported: true },
 	content: [
 		"./pages/**/*.{ts,tsx}",
 		"./components/**/*.{ts,tsx}",
