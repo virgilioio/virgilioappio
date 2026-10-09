@@ -1491,3 +1491,24 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 
 /* §12 Autosave status ("Saving…" → "Draft saved · just now"): each step fades in. */
 .gio-autosave-label { display: inline-block; animation: gio-fade-only var(--dur-hover) ease; }
+
+/* §13 Stacked sheets (ui/sheet.tsx): the sheet under the top one steps back under a 12%
+ * dim; deeper ones fade away. Independent translate/scale compose with the slide. */
+.gio-drawer {
+  translate: 0 0;
+  scale: 1;
+  transition:
+    translate var(--dur-drawer-out) var(--ease-drawer),
+    scale var(--dur-drawer-out) var(--ease-drawer),
+    opacity var(--dur-drawer-out) var(--ease-drawer);
+}
+.gio-drawer[data-stack-depth] {
+  translate: -28px 0;
+  scale: 0.97;
+  transition-duration: var(--dur-drawer-in);
+}
+.gio-drawer[data-stack-depth="2"] { opacity: 0; pointer-events: none; }
+.gio-dialog-overlay[data-stacked] { background-color: rgb(13 13 9 / 0.12); }
+@media (prefers-reduced-motion: reduce) {
+  .gio-drawer[data-stack-depth] { translate: 0 0; scale: 1; }
+}

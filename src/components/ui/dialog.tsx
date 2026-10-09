@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { mergeRefs, useHeightTransition } from "@/lib/heightTransition"
 
 const Dialog = DialogPrimitive.Root
 
@@ -33,11 +34,15 @@ const DialogContent = React.forwardRef<
     overlayClassName?: string
     closeClassName?: string
   }
->(({ className, overlayClassName, closeClassName, children, ...props }, ref) => (
+>(({ className, overlayClassName, closeClassName, children, ...props }, ref) => {
+  // §13: when the content changes, the dialog resizes over --dur-resize (content swaps instantly).
+  const resizeRef = useHeightTransition<HTMLDivElement>()
+  const contentRef = React.useMemo(() => mergeRefs(ref, resizeRef), [ref, resizeRef])
+  return (
   <DialogPortal>
     <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
-      ref={ref}
+      ref={contentRef}
       className={cn(
         "fixed left-[50%] top-[50%] z-[70] grid w-full max-w-lg [translate:-50%_-50%] gap-4 border bg-background p-6 shadow-lg gio-dialog sm:rounded-lg",
         className
@@ -51,7 +56,8 @@ const DialogContent = React.forwardRef<
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
-))
+  )
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({

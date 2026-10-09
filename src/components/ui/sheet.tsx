@@ -7,6 +7,40 @@ import { cn } from "@/lib/utils"
 
 const Sheet = SheetPrimitive.Root
 
+/**
+ * §13 Stacked sheets. Every open sheet registers here in opening order. The one
+ * directly under the top sheet steps back (translateX(-28px) scale(.97)) under a 12%
+ * dim; anything deeper fades away, so never more than two show. A sheet leaves the
+ * stack as soon as it starts closing, so the lower one steps forward while it slides out.
+ */
+const sheetStack: string[] = []
+const stackListeners = new Set<() => void>()
+function setInStack(id: string, open: boolean) {
+  const at = sheetStack.indexOf(id)
+  if (open === at >= 0) return
+  if (open) sheetStack.push(id)
+  else sheetStack.splice(at, 1)
+  stackListeners.forEach((listener) => listener())
+}
+function subscribeStack(listener: () => void) {
+  stackListeners.add(listener)
+  return () => {
+    stackListeners.delete(listener)
+  }
+}
+function useStackPlace(id: string) {
+  const depth = React.useSyncExternalStore(
+    subscribeStack,
+    () => {
+      const at = sheetStack.indexOf(id)
+      return at < 0 ? 0 : sheetStack.length - 1 - at
+    },
+    () => 0
+  )
+  const above = React.useSyncExternalStore(subscribeStack, () => sheetStack.indexOf(id) > 0, () => false)
+  return { depth, above }
+}
+
 const SheetTrigger = SheetPrimitive.Trigger
 
 const SheetClose = SheetPrimitive.Close
@@ -146,15 +180,42 @@ const SheetContent = React.forwardRef<
   const closeRef = React.useRef<HTMLButtonElement>(null)
   const close = React.useCallback(() => closeRef.current?.click(), [])
   const swipe = useSheetSwipe((side ?? "right") as SheetSide, close)
+  // §13 stacking: register while open (data-state), step back when another opens on top.
+  const panel = React.useRef<HTMLDivElement | null>(null)
+  const [mounted, setMounted] = React.useState(false)
+  const stackId = React.useId()
+  const { depth, above } = useStackPlace(stackId)
+  const [overSheet, setOverSheet] = React.useState(false)
+  if (above && !overSheet) setOverSheet(true)
+  if (!mounted && overSheet) setOverSheet(false)
+  React.useEffect(() => {
+    const node = panel.current
+    if (!mounted || !node) return
+    const sync = () => setInStack(stackId, node.getAttribute("data-state") === "open")
+    sync()
+    const watcher = new MutationObserver(sync)
+    watcher.observe(node, { attributes: true, attributeFilter: ["data-state"] })
+    return () => {
+      watcher.disconnect()
+      setInStack(stackId, false)
+    }
+  }, [mounted, stackId])
+  const attach = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      panel.current = node
+      setMounted(Boolean(node))
+      if (typeof ref === "function") ref(node)
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+      swipe(node)
+    },
+    [ref, swipe]
+  )
   return (
   <SheetPortal>
-    {showOverlay && <SheetOverlay />}
+    {showOverlay && <SheetOverlay data-stacked={overSheet || undefined} />}
     <SheetPrimitive.Content
-      ref={(node) => {
-        if (typeof ref === "function") ref(node)
-        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
-        swipe(node)
-      }}
+      ref={attach}
+      data-stack-depth={depth > 0 ? Math.min(depth, 2) : undefined}
       data-side={side ?? "right"}
       className={cn(sheetVariants({ side }), className)}
       {...props}
