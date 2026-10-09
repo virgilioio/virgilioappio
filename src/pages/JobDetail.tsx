@@ -81,6 +81,7 @@ import { useJobSuggestedCandidates, useJobSuggestedCandidatesCount } from '@/hoo
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
 import { isPublishGateError } from '@/lib/jobTeam'
+import { inChunks } from '@/lib/fetchAllRows'
 
 
 export default function JobDetail() {
@@ -678,11 +679,15 @@ export default function JobDetail() {
         )
         .map(a => a.candidate_id)
       setStatusListsLoading(true)
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .in('id', allIdsAll)
-      if (error) {
+      // In chunks: one request with every id on a large job makes the URL too long.
+      let data: any[]
+      try {
+        data = await inChunks(allIdsAll as string[], async (chunk) => {
+          const { data: rows, error } = await supabase.from('candidates').select('*').in('id', chunk)
+          if (error) throw error
+          return rows || []
+        })
+      } catch (error) {
         console.error('Failed to load candidate details for status lists', error)
         setStatusListsLoading(false)
         return

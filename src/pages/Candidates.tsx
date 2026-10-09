@@ -537,7 +537,7 @@ function CandidatesInner() {
 
 
 
-          <section className="relative bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm overflow-hidden">
+          <section className="relative bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm overflow-clip">
             <SelectionBar
               count={selectedIds.length}
               totalCount={finalAfterSmart.length}

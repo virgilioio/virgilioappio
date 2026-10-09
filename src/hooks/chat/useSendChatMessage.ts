@@ -112,9 +112,9 @@ export function useSendChatMessage() {
         _optimistic: true,
       }
       if (prev) {
+        // pages[0] is the newest batch; new messages belong at its end.
         const pages = prev.pages.slice()
-        const last = pages[pages.length - 1] ?? []
-        pages[pages.length - 1] = [...last, optimistic]
+        pages[0] = [...(pages[0] ?? []), optimistic]
         qc.setQueryData<InfiniteData<ChatMessageRow[]>>(key, { ...prev, pages })
       } else {
         qc.setQueryData<InfiniteData<ChatMessageRow[]>>(key, {

@@ -175,9 +175,11 @@ export function SourcingCandidateTable({
   })
 
   // Sortable table — sort key derived from sortMode
-  const sortKey = sortMode === 'ai_fit' ? 'match_score' : sortMode === 'experience' ? 'experience_years' : 'created_at'
+  // Experience arrives as years_experience or experience_years depending on the source.
+  const sortKey = sortMode === 'ai_fit' ? 'match_score' : sortMode === 'experience' ? 'sort_experience' : 'created_at'
+  const sortable = segmentFiltered.map(c => ({ ...c, sort_experience: c.years_experience ?? c.experience_years ?? null }))
   const { sortedData, sortConfig, requestSort } = useSortableTable(
-    segmentFiltered,
+    sortable,
     { key: sortKey as any, direction: 'desc' }
   )
 

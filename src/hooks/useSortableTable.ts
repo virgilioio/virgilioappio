@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 export type SortDirection = 'asc' | 'desc' | null
 
@@ -14,6 +14,13 @@ export function useSortableTable<T>(data: T[], defaultSort?: { key: string; dire
     direction: defaultSort?.direction || null
   })
 
+  // A default chosen outside the table (e.g. a "Sort:" menu) takes over when it changes.
+  const defaultKey = defaultSort?.key ?? null
+  const defaultDirection = defaultSort?.direction ?? null
+  useEffect(() => {
+    setSortConfig({ key: defaultKey, direction: defaultDirection })
+  }, [defaultKey, defaultDirection])
+
   const sortedData = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) {
       return data
@@ -23,10 +30,10 @@ export function useSortableTable<T>(data: T[], defaultSort?: { key: string; dire
       const aValue = getNestedValue(a, sortConfig.key!)
       const bValue = getNestedValue(b, sortConfig.key!)
 
-      // Handle null/undefined values
+      // Missing values always go last, whichever way the column is sorted
       if (aValue == null && bValue == null) return 0
-      if (aValue == null) return sortConfig.direction === 'asc' ? 1 : -1
-      if (bValue == null) return sortConfig.direction === 'asc' ? -1 : 1
+      if (aValue == null) return 1
+      if (bValue == null) return -1
 
       // Handle different data types
       let comparison = 0

@@ -59,24 +59,67 @@ interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
   bordered?: boolean
 }
 
+/** Nearest ancestor that scrolls vertically, or null when the page itself scrolls. */
+function scrollParent(el: HTMLElement | null): HTMLElement | null {
+  for (let node = el?.parentElement ?? null; node && node !== document.body; node = node.parentElement) {
+    const y = getComputedStyle(node).overflowY
+    if (y === "auto" || y === "scroll" || y === "overlay") return node
+  }
+  return null
+}
+
+/**
+ * Sticky headers need the wrapper not to be a scroll container. It clips by default
+ * (keeping the rounded corners) and only becomes a horizontal scroller when the table
+ * is actually wider than it. `data-sticky` says what the header sticks to: the page
+ * (below the fixed top bar, `--tbl-page-top`) or the nearest scrolling box.
+ */
+function useStickyWrapper(tableRef: React.RefObject<HTMLTableElement>) {
+  const wrapperRef = React.useRef<HTMLDivElement>(null)
+  React.useLayoutEffect(() => {
+    const wrapper = wrapperRef.current
+    const table = tableRef.current
+    if (!wrapper || !table) return
+    const update = () => {
+      const wide = table.scrollWidth > wrapper.clientWidth + 1
+      wrapper.style.overflowX = wide ? "auto" : "clip"
+      wrapper.style.overflowY = wide ? "hidden" : "visible"
+      wrapper.dataset.sticky = !wide && !scrollParent(wrapper) ? "page" : "local"
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(wrapper)
+    ro.observe(table)
+    return () => ro.disconnect()
+  }, [tableRef])
+  return wrapperRef
+}
+
 const Table = React.forwardRef<HTMLTableElement, TableProps>(
-  ({ className, density = "default", zebra = false, bordered = true, ...props }, ref) => (
-    <TableContext.Provider value={{ density, zebra }}>
-      <div
-        className={cn(
-          "relative w-full overflow-auto",
-          bordered &&
-            "rounded-[var(--tbl-border-radius)] border border-[hsl(var(--tbl-border-color))] bg-white"
-        )}
-      >
-        <table
-          ref={ref}
-          className={cn("w-full caption-bottom font-inter", className)}
-          {...props}
-        />
-      </div>
-    </TableContext.Provider>
-  )
+  ({ className, density = "default", zebra = false, bordered = true, ...props }, ref) => {
+    const tableRef = React.useRef<HTMLTableElement>(null)
+    React.useImperativeHandle(ref, () => tableRef.current as HTMLTableElement)
+    const wrapperRef = useStickyWrapper(tableRef)
+    return (
+      <TableContext.Provider value={{ density, zebra }}>
+        <div
+          ref={wrapperRef}
+          data-sticky="local"
+          className={cn(
+            "group/table relative w-full [overflow-x:clip]",
+            bordered &&
+              "rounded-[var(--tbl-border-radius)] border border-[hsl(var(--tbl-border-color))] bg-white"
+          )}
+        >
+          <table
+            ref={tableRef}
+            className={cn("w-full caption-bottom font-inter", className)}
+            {...props}
+          />
+        </div>
+      </TableContext.Provider>
+    )
+  }
 )
 Table.displayName = "Table"
 
@@ -89,7 +132,7 @@ const TableHeader = React.forwardRef<
     <thead
       ref={ref}
       className={cn(
-        "sticky top-0 z-10 bg-[hsl(var(--tbl-row-hover))] border-b border-[hsl(var(--tbl-divider-color))]",
+        "sticky top-0 group-data-[sticky=page]/table:top-[var(--tbl-page-top,0px)] z-10 bg-[hsl(var(--tbl-row-hover))] border-b border-[hsl(var(--tbl-divider-color))]",
         HEADER_TR_H[density],
         className
       )}

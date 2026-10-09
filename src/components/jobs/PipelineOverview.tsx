@@ -131,6 +131,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           job_hiring_stage_id,
           is_active
         `)
+        .eq('job_id', jobId)
         .eq('is_active', true);
       
       if (error) throw error;
