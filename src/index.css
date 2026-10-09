@@ -1022,3 +1022,50 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-static[data-state] {
   animation: none !important;
 }
+
+/* §2 Sheets and drawers: slide in from their edge on --ease-drawer, 360ms in /
+ * 240ms out. A visibility keyframe hides the panel the moment the exit ends, so
+ * no resting shadow bleeds onto the page. Reduced motion: a short fade. */
+.gio-drawer {
+  --tw-enter-opacity: 1;
+  --tw-exit-opacity: 1;
+  --tw-enter-scale: 1;
+  --tw-exit-scale: 1;
+  --tw-enter-translate-x: 0;
+  --tw-exit-translate-x: 0;
+  --tw-enter-translate-y: 0;
+  --tw-exit-translate-y: 0;
+}
+.gio-drawer[data-side="right"] { --tw-enter-translate-x: 100%; --tw-exit-translate-x: 100%; }
+.gio-drawer[data-side="left"] { --tw-enter-translate-x: -100%; --tw-exit-translate-x: -100%; }
+.gio-drawer[data-side="top"] { --tw-enter-translate-y: -100%; --tw-exit-translate-y: -100%; }
+.gio-drawer[data-side="bottom"] { --tw-enter-translate-y: 100%; --tw-exit-translate-y: 100%; }
+.gio-drawer[data-state="open"] {
+  visibility: visible;
+  animation: enter var(--dur-drawer-in) var(--ease-drawer) both;
+}
+.gio-drawer[data-state="closed"] {
+  visibility: hidden;
+  pointer-events: none;
+  animation:
+    exit var(--dur-drawer-out) var(--ease-drawer) both,
+    gio-drawer-hide var(--dur-drawer-out) var(--ease-drawer) both;
+}
+@keyframes gio-drawer-hide {
+  from { visibility: visible; }
+  to { visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-drawer {
+    --tw-enter-opacity: 0;
+    --tw-exit-opacity: 0;
+  }
+  .gio-drawer[data-state="open"] {
+    animation: enter var(--dur-dialog-out) var(--ease-out) both;
+  }
+  .gio-drawer[data-state="closed"] {
+    animation:
+      exit var(--dur-dialog-out) var(--ease-out) both,
+      gio-drawer-hide var(--dur-dialog-out) var(--ease-out) both;
+  }
+}
