@@ -6,6 +6,12 @@ import { useCallback, useEffect, useRef } from "react"
  * with --ease-in-out. The content itself swaps instantly. The first measurement
  * (opening) never animates, and reduced motion snaps.
  */
+// Typing never animates (§12): a dialog that grows because a textarea grew snaps.
+let lastTypingAt = 0;
+if (typeof window !== "undefined") {
+  window.addEventListener("input", () => { lastTypingAt = performance.now(); }, true);
+}
+
 export function useHeightTransition<T extends HTMLElement>() {
   const cleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => cleanup.current?.(), []);
@@ -19,7 +25,8 @@ export function useHeightTransition<T extends HTMLElement>() {
     const observer = new ResizeObserver(() => {
       if (running) return;
       const next = el.offsetHeight;
-      if (last !== null && Math.abs(next - last) > 1 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const typing = performance.now() - lastTypingAt < 120;
+      if (!typing && last !== null && Math.abs(next - last) > 1 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
         const style = getComputedStyle(el);
         const raw = style.getPropertyValue("--dur-resize").trim();
         const duration = Number.parseFloat(raw) * (raw.endsWith("ms") ? 1 : 1000) || 220;

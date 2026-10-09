@@ -16,6 +16,8 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 const AUTO_GROW_MAX = 160
 
 function fitToContent(el: HTMLTextAreaElement) {
+  // Once someone drags the resize handle, their height wins.
+  if (el.dataset.userResized) return
   const cs = getComputedStyle(el)
   const declaredMax = parseFloat(cs.maxHeight)
   const max = Number.isFinite(declaredMax) ? declaredMax : AUTO_GROW_MAX
@@ -47,6 +49,20 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     React.useLayoutEffect(() => {
       if (autoGrow && inner.current) fitToContent(inner.current)
     }, [autoGrow, props.value])
+    // A drag on the resize handle changes the inline height between pointer down and up.
+    React.useEffect(() => {
+      const el = inner.current
+      if (!autoGrow || !el) return
+      let before = ""
+      const down = () => { before = el.style.height }
+      const up = () => { if (el.style.height !== before) el.dataset.userResized = "1" }
+      el.addEventListener("pointerdown", down)
+      window.addEventListener("pointerup", up)
+      return () => {
+        el.removeEventListener("pointerdown", down)
+        window.removeEventListener("pointerup", up)
+      }
+    }, [autoGrow])
     // Width changes rewrap the text.
     React.useEffect(() => {
       const el = inner.current
