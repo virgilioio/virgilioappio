@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef } from 'react'
+
 /** Motion & Feel helpers shared by the motion primitives (CLAUDE.md). */
 
 /** Read a motion token from :root as a number (ms) or a string (easing). */
@@ -43,4 +45,27 @@ export function shakeFirstInvalid(scope?: Element | null) {
       )
     }),
   )
+}
+
+/**
+ * §7 Date picker: when the shown month changes, slide the day grid 12px in the direction
+ * you went, with opacity, over --dur-switch on --ease-out. Reduced motion: opacity only.
+ * `monthKey` is any value that orders months (e.g. year * 12 + month).
+ */
+export function useMonthSlide(ref: { current: Element | null }, monthKey: number, selector?: string) {
+  const previous = useRef(monthKey)
+  useLayoutEffect(() => {
+    const before = previous.current
+    previous.current = monthKey
+    if (before === monthKey) return
+    const root = ref.current
+    if (!root) return
+    const targets = selector ? Array.from(root.querySelectorAll(selector)) : [root]
+    const dx = (monthKey > before ? 1 : -1) * 12
+    const from = prefersReducedMotion() ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dx}px)` }
+    const to = prefersReducedMotion() ? { opacity: 1 } : { opacity: 1, transform: 'translateX(0)' }
+    targets.forEach((el) =>
+      el.animate([from, to], { duration: motionToken('--dur-switch', 200), easing: motionToken('--ease-out', 'ease-out') }),
+    )
+  }, [monthKey, ref, selector])
 }

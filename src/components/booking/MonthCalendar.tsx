@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRef } from 'react';
+import { useMonthSlide } from '@/lib/motion';
 import {
   startOfMonth,
   endOfMonth,
@@ -39,6 +41,9 @@ export function MonthCalendar({
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  // §7: the date grid slides 12px toward the month you moved to.
+  const grid = useRef<HTMLDivElement>(null);
+  useMonthSlide(grid, currentMonth.getFullYear() * 12 + currentMonth.getMonth());
   const weekDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
   const isDateAvailable = (date: Date) =>
@@ -86,7 +91,7 @@ export function MonthCalendar({
       </div>
 
       {/* Date cells */}
-      <div className="grid grid-cols-7 gap-1.5">
+      <div ref={grid} className="grid grid-cols-7 gap-1.5">
         {days.map((day, idx) => {
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isAvailable = isDateAvailable(day);
