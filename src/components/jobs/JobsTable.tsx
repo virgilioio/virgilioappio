@@ -12,8 +12,8 @@ import {
   IdentityCell, StatusCell, NumericCell, ComposedCell, AvatarStack, ActionCell,
 } from '@/components/ui/table-cells'
 import { TableSkeleton } from '@/components/ui/table-states'
-import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { SoftFlag, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
 import { Plus, RotateCcw } from 'lucide-react'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { FilterChipPopover, type FilterChipOption } from '@/components/ui/filter-chip-popover'
@@ -62,6 +62,9 @@ interface JobsTableProps {
   onSetupDraft?: (job: Job) => void
   onAssignOwner?: (job: Job) => void
   onDiscardDraft?: (job: Job) => void
+  /** §16: the first load failed or passed 15s — show the error with Retry, not "No open jobs". */
+  loadError?: 'failed' | 'timeout' | null
+  onRetry?: () => void
 }
 
 type StatusTone = 'green' | 'yellow' | 'neutral' | 'ink'
@@ -92,6 +95,9 @@ export function JobsTable({
   onSetupDraft,
   onAssignOwner,
   onDiscardDraft,
+  onCreateNew,
+  loadError = null,
+  onRetry,
 }: JobsTableProps) {
   const [draftSource, setDraftSource] = useState<'all' | 'wizard' | 'sales'>('all')
   const draftSegRef = useSegmentLayer<HTMLDivElement>()
@@ -245,6 +251,41 @@ export function JobsTable({
     selectedUsers.length > 0 ||
     selectedPriorities.length > 0 ||
     postedRange.length > 0
+
+  // §16/§17 empty states: truly empty (jobs), filters hiding everything (search, Clear
+  // filters, never Create), or only the status tab hiding them (that tab's own copy).
+  const STATUS_EMPTY: Record<string, { title: string; body: string }> = {
+    active: { title: 'No open jobs', body: 'Your other jobs are in Drafts, Closed or Archived.' },
+    closed: { title: 'No closed jobs', body: 'Jobs you close show up here.' },
+    archived: { title: 'No archived jobs', body: 'Jobs you archive show up here.' },
+    all: { title: 'No jobs', body: 'Create a job to start routing applicants into a pipeline.' },
+  }
+  const renderEmpty = () =>
+    jobs.length === 0 ? (
+      <AnimatedEmpty
+        scene="jobs"
+        onceKey="jobs-list"
+        title="No open jobs"
+        body="Create a job to start routing applicants into a pipeline."
+        primary={{ label: 'Create job', icon: <Plus size={16} />, onClick: onCreateNew }}
+      />
+    ) : hasActiveFilters ? (
+      <AnimatedEmpty
+        scene="search"
+        onceKey="jobs-list"
+        title="No jobs match these filters"
+        body="Clear filters to see every job."
+        primary={{ label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: clearAll }}
+      />
+    ) : (
+      <AnimatedEmpty
+        scene="jobs"
+        onceKey="jobs-list"
+        title={(STATUS_EMPTY[statusFilter] ?? STATUS_EMPTY.all).title}
+        body={(STATUS_EMPTY[statusFilter] ?? STATUS_EMPTY.all).body}
+        primary={statusFilter === 'active' ? { label: 'Create job', icon: <Plus size={16} />, onClick: onCreateNew } : undefined}
+      />
+    )
 
   const clearAll = () => {
     setSearchTerm('')
@@ -428,31 +469,18 @@ export function JobsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isLoading && !loadError ? (
               <TableSkeleton rows={5} columns={COLS} />
+            ) : loadError ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={COLS} style={{ padding: '56px 24px' }}>
+                  <LoadError what="jobs" timedOut={loadError === 'timeout'} onRetry={onRetry} />
+                </TableCell>
+              </TableRow>
             ) : sortedJobs.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={COLS} className="p-4">
-                  {jobs.length === 0 ? (
-                    <EmptyState
-                      size="card"
-                      illustration={<SoftFlag />}
-                      title="No open jobs"
-                      body="Create a job and its live pipeline shows up here — stage by stage, candidates routed automatically."
-                    />
-                  ) : (
-                    <EmptyState
-                      size="card"
-                      illustration={<SoftMagnifier />}
-                      title="No matching jobs"
-                      body={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs fit these filters.'}
-                      primary={
-                        <EmptyAction icon={<RotateCcw size={16} strokeWidth={2} />} onClick={clearAll}>
-                          Clear filters
-                        </EmptyAction>
-                      }
-                    />
-                  )}
+                <TableCell colSpan={COLS} style={{ padding: '48px 24px' }}>
+                  {renderEmpty()}
                 </TableCell>
               </TableRow>
             ) : (
@@ -591,31 +619,14 @@ export function JobsTable({
 
       {/* Mobile card view */}
       <div className="lg:hidden space-y-2">
-        {isLoading ? (
+        {isLoading && !loadError ? (
           <Card><CardContent className="p-4 text-text-tertiary text-sm">Loading…</CardContent></Card>
-        ) : sortedJobs.length === 0 ? (
-          <Card><CardContent className="p-4">
-            {jobs.length === 0 ? (
-              <EmptyState
-                size="card"
-                illustration={<SoftFlag />}
-                title="No open jobs"
-                body="Create a job and its live pipeline shows up here."
-              />
-            ) : (
-              <EmptyState
-                size="card"
-                illustration={<SoftMagnifier />}
-                title="No matching jobs"
-                body={searchTerm ? `No jobs match "${searchTerm}".` : 'No jobs match the current filters.'}
-                primary={
-                  <EmptyAction icon={<RotateCcw size={16} strokeWidth={2} />} onClick={clearAll}>
-                    Clear filters
-                  </EmptyAction>
-                }
-              />
-            )}
+        ) : loadError ? (
+          <Card><CardContent style={{ padding: '40px 16px' }}>
+            <LoadError what="jobs" timedOut={loadError === 'timeout'} onRetry={onRetry} />
           </CardContent></Card>
+        ) : sortedJobs.length === 0 ? (
+          <Card><CardContent style={{ padding: '40px 16px' }}>{renderEmpty()}</CardContent></Card>
         ) : (
           sortedJobs.map(job => {
             const status = statusBadge(job.status)
