@@ -16,3 +16,31 @@ export function motionToken(name: string, fallback: number | string): number | s
 
 export const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * §7 invalid submit: focus the first invalid field inside `scope` and shake it once
+ * (6px, --dur-shake). Reduced motion: focus only. Runs after React has rendered the
+ * errors, so call it from a form library's invalid callback.
+ */
+export function shakeFirstInvalid(scope?: Element | null) {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const root: ParentNode = scope ?? document
+      const field = root.querySelector<HTMLElement>('[aria-invalid="true"]')
+      if (!field) return
+      if (document.activeElement !== field) field.focus({ preventScroll: false })
+      if (prefersReducedMotion()) return
+      field.animate(
+        [
+          { transform: 'translateX(0)' },
+          { transform: 'translateX(-6px)' },
+          { transform: 'translateX(5px)' },
+          { transform: 'translateX(-3px)' },
+          { transform: 'translateX(2px)' },
+          { transform: 'translateX(0)' },
+        ],
+        { duration: motionToken('--dur-shake', 300), easing: 'ease-out' },
+      )
+    }),
+  )
+}

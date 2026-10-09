@@ -147,18 +147,17 @@ const FormMessage = React.forwardRef<
   const { error, formMessageId } = useFormField()
   const body = error ? String(error?.message) : children
 
-  if (!body) {
-    return null
-  }
-
+  // §7: the message line is always reserved (18px), and a new message fades down 3px.
   return (
     <p
       ref={ref}
       id={formMessageId}
-      className={cn("text-sm font-medium text-destructive", className)}
+      key={body ? `e:${String(body)}` : 'idle'}
+      data-state={error ? 'error' : undefined}
+      className={cn("gio-field-message text-sm font-medium text-destructive", className)}
       {...props}
     >
-      {body}
+      {body || null}
     </p>
   )
 })
