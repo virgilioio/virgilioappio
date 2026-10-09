@@ -1112,6 +1112,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const renderEmpty = (kind: PipelineEmptyKind, still = false) => (
     <PipelineEmptyCard>
       <CandidatesEmpty
+        filtered={kind === 'filtered'}
         onceKey={`pipeline-empty:${jobId}`}
         animate={!still}
         title={
