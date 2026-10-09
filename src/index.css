@@ -916,3 +916,345 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   opacity: 0.9;
   pointer-events: none;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Motion & Feel primitives (Block B, CLAUDE.md). Plain CSS after the Tailwind
+ * layers on purpose: these win over transition-* utilities on the same element.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* §2 Buttons and every pressable: press scale 0.97 at --dur-press, colour at
+ * --dur-hover. Keyboard activation (focus-visible) and disabled never scale. */
+.gio-pressable {
+  transform-origin: center;
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: var(--dur-press), var(--dur-hover), var(--dur-hover), var(--dur-hover), var(--dur-hover), var(--dur-hover);
+  transition-timing-function: var(--ease-out), ease, ease, ease, ease, ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gio-pressable:active:not(:focus-visible):not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
+    transform: scale(0.97);
+  }
+}
+
+/* §12 Text fields: colour and shadow only, never movement; focus is instant. */
+.gio-field {
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: var(--dur-hover);
+  transition-timing-function: ease;
+}
+.gio-field:focus-visible,
+.gio-field:focus-within:has(:focus-visible) {
+  transition-duration: 0ms;
+}
+
+/* §2 DropdownMenu, Popover, Select and every row menu: grow from the trigger
+ * (Radix popper origin) — scale 0.96 + fade, 180ms in / 120ms out, ease-out.
+ * Keyframes (tailwindcss-animate enter/exit) because Radix Presence waits for
+ * animationend before unmounting. Layered --shadow-pop instead of a border. */
+.gio-pop {
+  transform-origin: var(--radix-popper-transform-origin, center);
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.96;
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.96;
+}
+.gio-pop[data-state="open"] {
+  animation: enter var(--dur-menu-in) var(--ease-out);
+}
+.gio-pop[data-state="closed"] {
+  animation: exit var(--dur-menu-out) var(--ease-out);
+}
+
+/* §14 Right-click menus open at the cursor with no animation. */
+.gio-context-menu,
+.gio-context-menu[data-state] {
+  animation: none !important;
+  box-shadow: var(--shadow-pop);
+}
+
+/* §2 Tooltip: after the delay it grows from the trigger (scale 0.97 + fade,
+ * 125ms); a neighbour opened within the skip window appears instantly; exit fades. */
+.gio-tip {
+  transform-origin: var(--radix-tooltip-content-transform-origin, center);
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.97;
+  --tw-exit-opacity: 0;
+}
+.gio-tip[data-state="delayed-open"] {
+  animation: enter var(--dur-tooltip) var(--ease-out);
+}
+.gio-tip[data-state="instant-open"] {
+  animation: none;
+}
+.gio-tip[data-state="closed"] {
+  animation: exit var(--dur-tooltip) var(--ease-out);
+}
+
+/* §2 Dialog and AlertDialog: centre scale 0.96 + fade, 220ms in / 150ms out.
+ * Centring uses the independent `translate` property so the animation's
+ * transform never fights it. */
+.gio-dialog {
+  transform-origin: center;
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.96;
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.96;
+}
+.gio-dialog[data-state="open"] {
+  animation: enter var(--dur-dialog-in) var(--ease-out);
+}
+.gio-dialog[data-state="closed"] {
+  animation: exit var(--dur-dialog-out) var(--ease-out);
+}
+.gio-dialog-overlay {
+  --tw-enter-opacity: 0;
+  --tw-exit-opacity: 0;
+}
+.gio-dialog-overlay[data-state="open"] {
+  animation: enter var(--dur-dialog-in) var(--ease-out);
+}
+.gio-dialog-overlay[data-state="closed"] {
+  animation: exit var(--dur-dialog-out) var(--ease-out);
+}
+/* §2 Command palette: no animation, open or close. */
+.gio-static,
+.gio-static[data-state] {
+  animation: none !important;
+}
+
+/* §2 Sheets and drawers: slide in from their edge on --ease-drawer, 360ms in /
+ * 240ms out. A visibility keyframe hides the panel the moment the exit ends, so
+ * no resting shadow bleeds onto the page. Reduced motion: a short fade. */
+.gio-drawer {
+  --tw-enter-opacity: 1;
+  --tw-exit-opacity: 1;
+  --tw-enter-scale: 1;
+  --tw-exit-scale: 1;
+  --tw-enter-translate-x: 0;
+  --tw-exit-translate-x: 0;
+  --tw-enter-translate-y: 0;
+  --tw-exit-translate-y: 0;
+}
+.gio-drawer[data-side="right"] { --tw-enter-translate-x: 100%; --tw-exit-translate-x: 100%; }
+.gio-drawer[data-side="left"] { --tw-enter-translate-x: -100%; --tw-exit-translate-x: -100%; }
+.gio-drawer[data-side="top"] { --tw-enter-translate-y: -100%; --tw-exit-translate-y: -100%; }
+.gio-drawer[data-side="bottom"] { --tw-enter-translate-y: 100%; --tw-exit-translate-y: 100%; }
+.gio-drawer[data-state="open"] {
+  visibility: visible;
+  animation: enter var(--dur-drawer-in) var(--ease-drawer) both;
+}
+.gio-drawer[data-state="closed"] {
+  visibility: hidden;
+  pointer-events: none;
+  animation:
+    exit var(--dur-drawer-out) var(--ease-drawer) both,
+    gio-drawer-hide var(--dur-drawer-out) var(--ease-drawer) both;
+}
+@keyframes gio-drawer-hide {
+  from { visibility: visible; }
+  to { visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-drawer {
+    --tw-enter-opacity: 0;
+    --tw-exit-opacity: 0;
+  }
+  .gio-drawer[data-state="open"] {
+    animation: enter var(--dur-dialog-out) var(--ease-out) both;
+  }
+  .gio-drawer[data-state="closed"] {
+    animation:
+      exit var(--dur-dialog-out) var(--ease-out) both,
+      gio-drawer-hide var(--dur-dialog-out) var(--ease-out) both;
+  }
+}
+
+/* §2 Toast — the one Sonner surface (src/components/ui/sonner.tsx). Ink card, opal
+ * text, Inter 500 12.5px, radius 12, the Mark hired toast shadow. Sonner moves toasts
+ * with 400ms transitions (not keyframes) and pauses on hover / hidden tab. Custom
+ * toasts (toast.custom) are unstyled by Sonner and keep their own look. */
+@media (min-width: 640px) {
+  /* 24px from the content region, which starts after the 5.5rem rail. */
+  .gio-toaster[data-x-position="left"] {
+    left: calc(5.5rem + 24px) !important;
+  }
+}
+@media (max-width: 639px) {
+  /* Clear the floating bottom navigation on phones. */
+  .gio-toaster[data-y-position="bottom"] {
+    bottom: calc(56px + 24px + env(safe-area-inset-bottom)) !important;
+  }
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] {
+  background: #0d0d09;
+  color: #fffcf9;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  gap: 10px;
+  box-shadow: var(--shadow-hire-toast);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-description] {
+  color: rgb(255 252 249 / 0.72);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-icon] {
+  color: #fffcf9;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"][data-type="error"] [data-icon] {
+  color: #fa5252;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"][data-type="success"] [data-icon] {
+  color: #12b886;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"][data-type="warning"] [data-icon] {
+  color: #ffd93d;
+}
+/* Undo and other actions: a ghost button on ink. */
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-button] {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: #fffcf9;
+  border: 1px solid rgb(255 252 249 / 0.2);
+  font-family: Poppins, ui-sans-serif, system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .gio-toaster [data-sonner-toast][data-styled="true"] [data-button]:hover {
+    background: rgb(255 252 249 / 0.1);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gio-toaster [data-sonner-toast][data-styled="true"] [data-button]:active:not(:focus-visible) {
+    transform: scale(0.97);
+  }
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-button]:focus-visible {
+  outline: 2px solid #6f3ff5;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* §2 Tabs: one moving layer (see TabsList in src/components/ui/tabs.tsx). */
+.gio-tablist {
+  position: relative;
+  isolation: isolate;
+}
+.gio-tablist > .gio-tab-indicator {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  visibility: hidden;
+}
+.gio-tablist[data-indicator-ready] > .gio-tab-indicator {
+  visibility: visible;
+}
+/* Pill: a lilac fill clipped to the active tab; the clip slides. */
+.gio-tablist[data-indicator="pill"] > .gio-tab-indicator {
+  inset: 0;
+  background: #d7c5fb;
+  clip-path: inset(var(--tab-y, 0) var(--tab-right, 0) var(--tab-bottom, 0) var(--tab-x, 0) round var(--tab-radius, 8px));
+  transition: clip-path var(--dur-tabs) var(--ease-in-out);
+}
+/* Underline: a 2px bar on the list's bottom edge, moved and stretched. */
+.gio-tablist[data-indicator="underline"] > .gio-tab-indicator {
+  left: 0;
+  bottom: -1px;
+  width: 1px;
+  height: 2px;
+  background: hsl(var(--text-primary));
+  transform-origin: left center;
+  transform: translateX(var(--tab-x, 0)) scaleX(var(--tab-w, 0));
+  transition: transform var(--dur-tabs) var(--ease-in-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-tablist > .gio-tab-indicator {
+    transition: none !important;
+  }
+}
+
+/* §2 Accordion and Collapsible: height animates to the real content size
+ * (Radix measures it) over --dur-expand on --ease-in-out; the content fades in a
+ * quarter of the way through. Only the animation frames clip; open content rests
+ * auto-sized and overflow-visible. Never the max-height trick. */
+@keyframes gio-expand {
+  from { height: 0; overflow: hidden; }
+  to { height: var(--radix-accordion-content-height, var(--radix-collapsible-content-height)); overflow: hidden; }
+}
+@keyframes gio-collapse {
+  from { height: var(--radix-accordion-content-height, var(--radix-collapsible-content-height)); overflow: hidden; }
+  to { height: 0; overflow: hidden; }
+}
+.gio-accordion-content[data-state="open"] {
+  animation: gio-expand var(--dur-expand) var(--ease-in-out);
+}
+/* No resting height:0 on closed: Radix measures the panel as it starts to close,
+ * and a 0 there would collapse from 0. The keyframe's last frame holds 0 until
+ * Radix unmounts or hides the panel. */
+.gio-accordion-content[data-state="closed"] {
+  overflow: hidden;
+  animation: gio-collapse var(--dur-expand) var(--ease-in-out) forwards;
+}
+.gio-accordion-content > [data-disclosure-inner] {
+  opacity: 0;
+  transition: opacity calc(var(--dur-expand) * 3 / 4) var(--ease-out);
+}
+.gio-accordion-content[data-state="open"] > [data-disclosure-inner] {
+  opacity: 1;
+  transition-delay: calc(var(--dur-expand) / 4);
+}
+@starting-style {
+  .gio-accordion-content[data-state="open"] > [data-disclosure-inner] {
+    opacity: 0;
+  }
+}
+.gio-disclosure-chevron {
+  transition: transform var(--dur-switch) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-accordion-content[data-state="open"],
+  .gio-accordion-content[data-state="closed"] {
+    animation-duration: 0ms;
+  }
+}
+
+/* §2 Switch: the thumb slides at --dur-switch on --ease-out, the track colour at
+ * --dur-hover, and the thumb presses to 0.92 (independent scale, so it composes
+ * with the translate utilities). */
+.gio-switch {
+  transition: background-color var(--dur-hover) ease, border-color var(--dur-hover) ease;
+}
+.gio-switch > .gio-switch-thumb {
+  scale: 1;
+  transition: transform var(--dur-switch) var(--ease-out), scale var(--dur-press) var(--ease-out);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gio-switch:active:not(:focus-visible):not(:disabled):not([data-disabled]) > .gio-switch-thumb {
+    scale: 0.92;
+  }
+}
+
+/* §8 Focus rings (CLAUDE.md): every interactive control shows the same instant 2px
+ * purple outline at 2px offset on keyboard focus — never on a mouse click, never
+ * animated, never removed. Tailwind focus rings on these controls are folded into
+ * it so they don't double up. Text fields (inputs, textareas, comboboxes) use the
+ * §12 border + soft ring instead, set in their primitives. Menu items and options
+ * keep their highlight row. */
+:where(button, a[href], summary, [role="button"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="link"], [tabindex]:not([tabindex="-1"]):not(input):not(textarea):not([role="menuitem"]):not([role="option"]):not([role="combobox"]):not([contenteditable="true"])):focus-visible {
+  outline: 2px solid #6f3ff5 !important;
+  outline-offset: 2px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  transition-property: none;
+}

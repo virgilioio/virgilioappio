@@ -1120,7 +1120,7 @@ export default function JobDetail() {
           className="w-full flex-1 min-h-0 flex flex-col overflow-hidden"
         >
           {(() => {
-            const triggerCls = "relative h-auto px-0 py-2 rounded-none bg-transparent shadow-none font-poppins font-medium text-[13px] tracking-[-0.01em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none after:absolute after:bottom-[-1px] after:left-0 after:right-0 after:h-[2px] after:bg-text-primary after:opacity-0 data-[state=active]:after:opacity-100"
+            const triggerCls = "relative h-auto px-0 py-2 rounded-none bg-transparent shadow-none font-poppins font-medium text-[13px] tracking-[-0.01em] text-text-secondary hover:text-text-primary data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
             const triggers = (
               <>
                 <TabsTrigger value="overview" className={triggerCls}>Overview</TabsTrigger>
@@ -1170,12 +1170,12 @@ export default function JobDetail() {
                   onDelete={() => setConfirmDelete(true)}
                   canEdit={!isRestrictedViewer}
                 />
-                <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4">
+                <TabsList indicator="underline" className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4">
                   {triggers}
                 </TabsList>
               </div>
             ) : (
-              <TabsList className="h-auto bg-transparent p-0 shadow-none border-0 border-b border-virgilio-border rounded-none w-full justify-start gap-6 mb-3 shrink-0">
+              <TabsList indicator="underline" className="h-auto bg-transparent p-0 shadow-none border-0 border-b border-virgilio-border rounded-none w-full justify-start gap-6 mb-3 shrink-0">
                 {triggers}
               </TabsList>
             )

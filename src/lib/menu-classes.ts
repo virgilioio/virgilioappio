@@ -9,17 +9,12 @@
  */
 
 /**
- * Panel chrome — radius 12 · pad 4 · shadow 12/32/-8 black/18.
- * Always paired with `bg-popover text-popover-foreground` and a 1px hairline border.
+ * Panel chrome — radius 12 · pad 4. Motion & Feel (CLAUDE.md §2): no border; the
+ * layered --shadow-pop draws the edge, and `gio-pop` (src/index.css) grows the panel
+ * from its trigger — scale 0.96 + fade, 180ms in / 120ms out.
  */
 export const menuPanel =
-  'rounded-[var(--menu-radius)] border border-border bg-popover text-popover-foreground p-[var(--menu-pad)] shadow-[var(--menu-shadow)] ' +
-  // Radix open/close animations — preserved from shadcn defaults.
-  'data-[state=open]:animate-in data-[state=closed]:animate-out ' +
-  'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 ' +
-  'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 ' +
-  'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 ' +
-  'data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2'
+  'rounded-[var(--menu-radius)] bg-popover text-popover-foreground p-[var(--menu-pad)] shadow-pop gio-pop'
 
 /**
  * Item row — 30px h · 12.5px Inter · radius 8.

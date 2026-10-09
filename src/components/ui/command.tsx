@@ -31,7 +31,7 @@ interface CommandDialogProps extends DialogProps {}
 const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0 shadow-[var(--menu-shadow)] sm:max-w-[640px] sm:min-w-[540px]">
+      <DialogContent overlayClassName="gio-static" className="overflow-hidden p-0 shadow-[var(--menu-shadow)] sm:max-w-[640px] sm:min-w-[540px] gio-static">
         <Command>{children}</Command>
       </DialogContent>
     </Dialog>

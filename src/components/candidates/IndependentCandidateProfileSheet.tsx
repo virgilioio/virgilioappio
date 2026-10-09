@@ -442,7 +442,7 @@ export function IndependentCandidateProfileSheet({
                                 </CollapsibleTrigger>
                               </div>
                             </div>
-                            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                            <CollapsibleContent>
                               <div className="px-4 pb-4">
                                 {candidate.profile_summary ? (
                                   <ProfileSummaryMarkdown
