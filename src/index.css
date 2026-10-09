@@ -1406,3 +1406,8 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
     background-color var(--dur-hover) ease,
     visibility 0s;
 }
+
+/* §5 Avatars: the image fades in over the same-size initials, which then hide. */
+.gio-avatar-img { opacity: 0; transition: opacity var(--dur-switch) ease; }
+.gio-avatar-img[data-loaded] { opacity: 1; }
+[data-status="loaded"] > .gio-avatar-fallback { visibility: hidden; transition: visibility 0s linear var(--dur-switch); }
