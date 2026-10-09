@@ -15,6 +15,7 @@ import type { IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import type { AssociationsMap, AssociationDetail } from '@/hooks/useCandidateJobAssociations'
 import { Plus, RotateCcw } from 'lucide-react'
 import { useTableWindow } from '@/lib/useTableWindow'
+import { useFirstLoadStagger } from '@/lib/motion'
 
 interface CandidatesTableProps {
   candidates: IndependentCandidate[]
@@ -148,6 +149,8 @@ export function CandidatesTable({
 
   // §9: past 150 rows only the rows in view are rendered.
   const win = useTableWindow(candidates.length)
+  // §9: the first time the list shows this session, its first rows rise in.
+  const stagger = useFirstLoadStagger('candidates-table', !isLoading && !isSearching && candidates.length > 0)
 
   if (isLoading || isSearching) return <TableSkeleton rows={8} columns={9} />
   if (candidates.length === 0) {
@@ -207,7 +210,8 @@ export function CandidatesTable({
       </TableHeader>
       <TableBody ref={win.bodyRef}>
         {win.topSpacer}
-        {candidates.slice(win.start, win.end).map((c) => {
+        {candidates.slice(win.start, win.end).map((c, i) => {
+          const enter = stagger(win.start + i)
           const skills = (c.standardized_skills?.length ? c.standardized_skills : c.skills) ?? []
           const assocs = associationsMap.get(c.id)
           const isFav = !!(assocs?.some(a => (a as any).isFavorite))
@@ -218,7 +222,8 @@ export function CandidatesTable({
               key={c.id}
               data-window-row=""
               interactive
-              className={cn('cursor-pointer group', selected && 'bg-[#FAF8FF]')}
+              className={cn('cursor-pointer group', selected && 'bg-[#FAF8FF]', enter.className)}
+              style={enter.style}
               onClick={() => onOpenCandidate(c.id)}
             >
               <TableCell onClick={(e) => e.stopPropagation()}>

@@ -1416,3 +1416,8 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
  * size but aren't laid out or painted (used only past 100 in one column or group). */
 .gio-cv-card { content-visibility: auto; contain-intrinsic-size: auto 108px; }
 .gio-cv-row { content-visibility: auto; contain-intrinsic-size: auto 57px; }
+
+/* §9 List stagger (useFirstLoadStagger): first load only, first 8 rows. */
+@keyframes gio-list-in { from { opacity: 0; transform: translateY(6px); } }
+.gio-list-in { animation: gio-list-in var(--dur-dialog-in) var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { .gio-list-in { animation-name: gio-fade-only; } }

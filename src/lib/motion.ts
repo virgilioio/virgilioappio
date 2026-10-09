@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 
 /** Motion & Feel helpers shared by the motion primitives (CLAUDE.md). */
 
@@ -86,4 +86,24 @@ export function useMonthSlide(ref: { current: Element | null }, monthKey: number
 /** §7 Wizard: Next slides the step in from +16px, Back from −16px (220ms, --ease-out). */
 export function useStepSlide(ref: { current: Element | null }, step: number) {
   useDirectionalSlide(ref, step, 16, '--dur-dialog-in')
+}
+
+// UI-only session identifiers; never list data.
+const staggered = new Set<string>()
+
+/**
+ * §9 List stagger: the first time a list appears this session, its first 8 rows rise in
+ * from 6px + opacity, --stagger (40ms) apart. Never on re-sort, filter, pagination or
+ * scroll, never blocking input; reduced motion fades only. Returns props for row `index`.
+ */
+export function useFirstLoadStagger(id: string, ready: boolean) {
+  const play = useRef<boolean | null>(null)
+  if (play.current === null && ready) {
+    play.current = !staggered.has(id)
+    staggered.add(id)
+  }
+  return (index: number): { className?: string; style?: CSSProperties } =>
+    play.current && index < 8
+      ? { className: 'gio-list-in', style: { animationDelay: `calc(${index} * var(--stagger))` } }
+      : {}
 }

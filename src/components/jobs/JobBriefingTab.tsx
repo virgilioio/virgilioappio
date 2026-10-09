@@ -776,7 +776,7 @@ export function JobBriefingTab({ jobId, jobTitle }: JobBriefingTabProps) {
           const Icon = copy.icon;
           const critical = copy.tone === 'red';
           return (
-            <div key={finding.id} className="briefing-tile-rise flex gap-3 bg-white p-4" style={{ animationDelay: `${120 + index * 90}ms` }}>
+            <div key={finding.id} className="briefing-tile-rise flex gap-3 bg-white p-4" style={{ animationDelay: `calc(120ms + ${index} * var(--stagger))` }}>
               <span className="inline-flex size-[30px] shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: critical ? '#FEE2E2' : '#FEF3C7' }}>
                 <Icon size={14} color={critical ? '#C92A2A' : '#B45309'} strokeWidth={2} />
               </span>
