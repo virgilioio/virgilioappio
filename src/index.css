@@ -947,3 +947,29 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-field:focus-within:has(:focus-visible) {
   transition-duration: 0ms;
 }
+
+/* §2 DropdownMenu, Popover, Select and every row menu: grow from the trigger
+ * (Radix popper origin) — scale 0.96 + fade, 180ms in / 120ms out, ease-out.
+ * Keyframes (tailwindcss-animate enter/exit) because Radix Presence waits for
+ * animationend before unmounting. Layered --shadow-pop instead of a border. */
+.gio-pop {
+  transform-origin: var(--radix-popper-transform-origin, center);
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.96;
+  --tw-exit-opacity: 0;
+  --tw-exit-scale: 0.96;
+  box-shadow: var(--shadow-pop);
+}
+.gio-pop[data-state="open"] {
+  animation: enter var(--dur-menu-in) var(--ease-out);
+}
+.gio-pop[data-state="closed"] {
+  animation: exit var(--dur-menu-out) var(--ease-out);
+}
+
+/* §14 Right-click menus open at the cursor with no animation. */
+.gio-context-menu,
+.gio-context-menu[data-state] {
+  animation: none !important;
+  box-shadow: var(--shadow-pop);
+}
