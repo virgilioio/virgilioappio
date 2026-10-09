@@ -114,7 +114,7 @@ export default function Pipeline() {
     return list
   }, [statusFilteredJobs, selectedDepartments, departments, selectedOwners, assignedJobIds, search])
 
-  const { data: globalMetrics } = usePipelineGlobalMetrics({ jobStatuses: ['open'] })
+  const { data: globalMetrics, isLoading: globalMetricsLoading } = usePipelineGlobalMetrics({ jobStatuses: ['open'] })
   const jobIds = filteredJobs.map((j) => j.id)
   const { data: jobMetrics } = usePipelineJobMetrics(jobIds)
   const metricsMap = useMemo(() => new Map((jobMetrics ?? []).map((m) => [m.job_id, m])), [jobMetrics])
@@ -179,8 +179,9 @@ export default function Pipeline() {
       label: 'Avg days in review',
       value:
         globalMetrics?.avg_days_in_application_review != null
-          ? Number(globalMetrics.avg_days_in_application_review).toFixed(1)
+          ? Number(globalMetrics.avg_days_in_application_review)
           : '—',
+      format: (n) => n.toFixed(1),
       unit: globalMetrics?.avg_days_in_application_review != null ? 'd' : undefined,
     },
   ]
@@ -267,7 +268,7 @@ export default function Pipeline() {
 
             {/* Metric strip */}
             <div style={{ marginTop: 12 }}>
-              <MetricStrip items={metricItems} />
+              <MetricStrip id="pipeline" items={metricItems} loading={globalMetricsLoading} />
             </div>
 
             {/* Filter bar */}
