@@ -39,7 +39,7 @@ import { stageColor, daysInStage } from './pipelineVisuals'
 import { PipelineListView, type PipelineListGroup } from './PipelineListView'
 import { Loadable } from '@/components/ui/loadable'
 import { CandidatesEmpty } from '@/components/empty/CandidatesEmpty'
-import { EmptyAction, InlineEmpty } from '@/components/ui/empty-state'
+import { EmptyAction } from '@/components/ui/empty-state'
 import { UserPlus, Link as LinkIcon, X as XIcon, RotateCcw } from 'lucide-react'
 
 
@@ -1109,15 +1109,6 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emptyKind, firstLoadDone])
 
-  // Stage columns: the first empty column may carry the compact illustration; the
-  // rest get the one-line tier (one plane in view at a time).
-  const firstEmptyJhsId = useMemo(
-    () =>
-      stageOptions.find((o) => (sortedByStage[o.jhsId] || []).length === 0 && (byStage[o.jhsId]?.length || 0) === 0)
-        ?.jhsId ?? null,
-    [stageOptions, sortedByStage, byStage],
-  )
-
   const renderEmpty = (kind: PipelineEmptyKind, still = false) => (
     <PipelineEmptyCard>
       <CandidatesEmpty
@@ -1332,25 +1323,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                     </div>
                   }
                 >
-                  {rows.length === 0 &&
-                    (opt.jhsId === firstEmptyJhsId ? (
-                      <div style={{ padding: '18px 4px 10px' }}>
-                        <CandidatesEmpty
-                          size="compact"
-                          onceKey={`pipeline-stage-empty:${jobId}`}
-                          title={`Nothing in ${opt.stage.stage_name}`}
-                          body="Move candidates here as they progress."
-                        />
-                      </div>
-                    ) : (
-                      <InlineEmpty
-                        text={
-                          (byStage[opt.jhsId]?.length || 0) > 0
-                            ? `No matches in ${opt.stage.stage_name}`
-                            : `Nothing in ${opt.stage.stage_name}`
-                        }
-                      />
-                    ))}
+                  {/* An empty stage stays empty (just its Add candidate button): the
+                      illustration is only for a pipeline with no candidates at all. */}
                   {rows.map((assoc) => {
                     const isPartOfBulkDrag = activeId !== null &&
                       activeId !== assoc.id &&

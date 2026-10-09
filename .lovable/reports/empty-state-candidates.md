@@ -18,7 +18,7 @@ A job with no candidates showed its loading skeleton forever. `usePipelineCandid
   - Error, or more than 15 seconds: an inline error with Retry.
   - Empty and filtered-empty states.
   - When the first candidate arrives, the empty state fades out and the card rises and flashes.
-  - Empty stage columns use two tiers: the first gets the compact illustration, the rest a one-line row.
+  - Empty stage columns on a board with candidates elsewhere stay empty: no illustration or text, just their Add candidate button (Allan, 2026-10-09, after seeing the first version).
   - Refreshes show a toolbar spinner and never the skeleton.
 - **Application review, Job offers, Hired, Rejected:** the same rules, with each section's own copy. Suggested keeps its copy; its empty and filtered states use the plane.
 - **Robustness:**
@@ -37,7 +37,6 @@ A job with no candidates showed its loading skeleton forever. `usePipelineCandid
 | "Share posting" opens the share menu | Copies the live posting's public link; "Create job post" when there's none; hidden on drafts | The share menu has no posting link |
 | Plane CSS transform about the SVG origin | Plane rolls about its resting centroid (`transform-origin` 123.1/57) | Rotating about the SVG origin would swing the plane off the trail |
 | Not in the design | "No one in the recruiting process yet" when the job's candidates are all in other sections | "No candidates yet" would be untrue there |
-| Not in the design | "No matches in {Stage}" for a stage column emptied by filters | "Nothing in {Stage}" would be untrue |
 
 ## Checks (Step 6)
 1. **Zero candidates:** the skeleton shows, then the empty state as soon as the request answers. Pass.
