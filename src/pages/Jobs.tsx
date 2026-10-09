@@ -13,6 +13,7 @@ import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { useJobs, Job } from '@/hooks/useJobs'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 
 import type { StatusSegment } from '@/components/jobs/JobsTable'
 
@@ -26,7 +27,12 @@ export default function Jobs() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusSegment>('active')
 
-  const { jobs, isLoading, createJob, updateJob, archiveJob, deleteJob } = useJobs()
+  const { jobs, isLoading, error: jobsError, getJobs, createJob, updateJob, archiveJob, deleteJob } = useJobs()
+  // §16: an error with nothing loaded, or a first load past 15s, shows Retry — not "No open jobs".
+  const [jobsRetry, setJobsRetry] = useState(0)
+  const jobsTimedOut = useLoadTimeout(isLoading, jobsRetry)
+  const jobsLoadError: 'failed' | 'timeout' | null =
+    jobsError && jobs.length === 0 ? 'failed' : jobsTimedOut ? 'timeout' : null
 
   const counts = useMemo(() => {
     const c = { active: 0, all: jobs.length, drafts: 0, salesDrafts: 0, closed: 0, archived: 0 }
@@ -145,6 +151,8 @@ export default function Jobs() {
                 onSetupDraft={handleSetupDraft}
                 onAssignOwner={handleAssignOwner}
                 onDiscardDraft={setDiscardJob}
+                loadError={jobsLoadError}
+                onRetry={() => { setJobsRetry((n) => n + 1); getJobs() }}
               />
             </div>
           </div>

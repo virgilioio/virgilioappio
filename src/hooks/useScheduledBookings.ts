@@ -108,7 +108,7 @@ export function useScheduledBookings(
   const { user, organizationId } = useAuth()
   const queryClient = useQueryClient()
 
-  const { data: bookings, isLoading } = useQuery({
+  const { data: bookings, isLoading, error, refetch } = useQuery({
     queryKey: [
       'scheduled-bookings',
       user?.id,
@@ -300,6 +300,8 @@ export function useScheduledBookings(
   return {
     bookings: bookings || [],
     isLoading,
+    error,
+    refetch,
     cancelBooking: cancelBookingMutation.mutate,
     updateStatus: updateStatusMutation.mutate,
     isCancelling: cancelBookingMutation.isPending,

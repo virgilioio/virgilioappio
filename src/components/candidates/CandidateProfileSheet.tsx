@@ -287,7 +287,7 @@ const [activityFilters, setActivityFilters] = useState<Record<string, boolean>>(
 // "Open in Emails" from an activity email card.
 const [focusEmailId, setFocusEmailId] = useState<string | null>(null)
 // Activity feed — one source for the feed, the card subtitle, the sidebar and the tab badge.
-const { data: activityEvents = [], refetch: refetchActivity, isFetching: activityFetching } =
+const { data: activityEvents = [], refetch: refetchActivity, isFetching: activityFetching, isLoading: activityLoading } =
   useActivityFeed(candidateId || undefined, jobId)
 const activityDerived = useMemo(() => {
   const events = activityEvents || []
@@ -549,6 +549,20 @@ const [markHiredOpen, setMarkHiredOpen] = useState(false)
 
 // Simple schedule interview (not stage-specific)
 const [simpleScheduleOpen, setSimpleScheduleOpen] = useState(false)
+// Schedule interview: in the current stage when there is one, otherwise the simple sheet.
+// Used by the stage actions and by the empty Activity tab.
+const openScheduleInterview = () => {
+  const sorted = [...planStages].sort((a, b) => a.position - b.position)
+  const current = currentStageId ? sorted.find(st => st.jhsId === currentStageId) ?? null : null
+  if (current && associationId) {
+    setOldBookingId(null)
+    setScheduleStageId(current.jhsId)
+    setScheduleStageName(current.stage.stage_name)
+    setScheduleOpen(true)
+  } else {
+    setSimpleScheduleOpen(true)
+  }
+}
 
 // Offer delete warning dialog
 const [showOfferDeleteWarning, setShowOfferDeleteWarning] = useState(false)
@@ -1573,16 +1587,7 @@ const stageHasAutomation = useMemo(() => {
                             id: 'schedule',
                             label: 'Schedule',
                             icon: Calendar,
-                            onClick: () => {
-                              if (currentStage && associationId) {
-                                setOldBookingId(null)
-                                setScheduleStageId(currentStage.jhsId)
-                                setScheduleStageName(currentStage.stage.stage_name)
-                                setScheduleOpen(true)
-                              } else {
-                                setSimpleScheduleOpen(true)
-                              }
-                            },
+                            onClick: openScheduleInterview,
                           },
                         ]
 
@@ -1889,8 +1894,9 @@ const stageHasAutomation = useMemo(() => {
                             <div>
                               <CardTitle>Activity</CardTitle>
                               <p className="mt-1 font-inter text-[11.5px] text-[#8B8F9E]">
-                                {activityDerived.events.length} event{activityDerived.events.length === 1 ? '' : 's'}
-                                {activityDerived.lastUpdate
+                                {/* Never "0 events" while the feed is still loading. */}
+                                {activityLoading ? 'Loading…' : `${activityDerived.events.length} event${activityDerived.events.length === 1 ? '' : 's'}`}
+                                {!activityLoading && activityDerived.lastUpdate
                                   ? ` · last update ${formatDistanceToNow(new Date(activityDerived.lastUpdate), { addSuffix: true })}`
                                   : ''}
                               </p>
@@ -1912,6 +1918,8 @@ const stageHasAutomation = useMemo(() => {
                                   candidateId={candidate.id}
                                   jobId={jobId}
                                   visibleCategories={visibleActivityCategories}
+                                  onClearFilters={() => setActivityFilters({})}
+                                  emptyAction={{ label: 'Schedule interview', icon: <Calendar size={16} strokeWidth={2} />, onClick: openScheduleInterview }}
                                   onOpenInEmails={(id) => {
                                     setFocusEmailId(id)
                                     setActiveTab('emails')

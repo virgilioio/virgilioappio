@@ -319,6 +319,7 @@ export function PipelineSectionTable({
         ) : rows.length === 0 ? (
           <div style={{ padding: '56px 24px' }}>
             <CandidatesEmpty
+              filtered={filtered}
               onceKey={emptyKey}
               title={filtered ? 'No candidates match these filters' : empty.title}
               body={filtered ? 'Clear filters to see everyone in this list.' : empty.body}

@@ -474,5 +474,9 @@ export function useTalentIntelligenceData(filters?: TalentIntelligenceFilters) {
     stageMappings: assocData?.stageMappings ?? [],
     isLoading: candidatesQuery.isLoading || associationsQuery.isLoading,
     error: candidatesQuery.error || associationsQuery.error,
+    refetch: () => {
+      void candidatesQuery.refetch()
+      void associationsQuery.refetch()
+    },
   }
 }

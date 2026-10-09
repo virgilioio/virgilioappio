@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RotateCcw } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { CareersTopBar } from '@/components/careers/public/CareersTopBar'
 import { CareersHero } from '@/components/careers/public/CareersHero'
@@ -10,8 +10,10 @@ import { CareersRoleList, type CareersRole } from '@/components/careers/public/C
 import { CareersHowWeHireCard } from '@/components/careers/public/CareersHowWeHireCard'
 import { CareersOpenApplicationBand } from '@/components/careers/public/CareersOpenApplicationBand'
 import { CareersFooter } from '@/components/careers/public/CareersFooter'
-import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { SoftFlag, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { EmptyState } from '@/components/ui/empty-state'
+import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
+import { SoftFlag } from '@/components/ui/EmptyIllustrations'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 
 // Virgilio internal org — its jobs live exclusively on /virgilio-careers, never here.
@@ -50,6 +52,9 @@ export default function PublicCareersPage() {
   const [workspaceDepartments, setWorkspaceDepartments] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // A failed fetch is not "not found": it gets Retry (§16).
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reload, setReload] = useState(0)
 
   const [search, setSearch] = useState('')
   const [department, setDepartment] = useState('all')
@@ -65,6 +70,7 @@ export default function PublicCareersPage() {
         const { data: s, error: se } = await supabase
           .from('careers_page_settings').select('*')
           .eq('company_slug', companySlug).eq('is_active', true).single()
+        if (se && se.code !== 'PGRST116') throw se
         if (se || !s) { setError('Company careers page not found'); setIsLoading(false); return }
         setSettings(s)
 
@@ -73,13 +79,14 @@ export default function PublicCareersPage() {
         const t = Array.isArray(tRows) ? tRows[0] : null
         if (t) setTenantInfo({ id: t.id, name: t.name })
 
-        const { data: p } = await supabase
+        const { data: p, error: pe } = await supabase
           .from('job_postings')
           .select('id, title, slug, details, created_at, job_id, tenant_id, location, job_type, jobs!inner(status, organization_id)')
           .eq('is_active', true).eq('tenant_id', s.tenant_id)
           .eq('jobs.status', 'open')
           .neq('jobs.organization_id', VIRGILIO_INTERNAL_ORG_ID)
           .order('created_at', { ascending: false })
+        if (pe) throw pe
         if (p) setPostings(p as RawPosting[])
 
         const { data: deps } = await supabase
@@ -92,11 +99,11 @@ export default function PublicCareersPage() {
 
         setIsLoading(false)
       } catch (e) {
-        console.error(e); setError('Failed to load careers page'); setIsLoading(false)
+        console.error(e); setLoadFailed(true); setIsLoading(false)
       }
     }
     fetchData()
-  }, [companySlug])
+  }, [companySlug, reload])
 
   const roles: CareersRole[] = useMemo(() => postings.map((p) => ({
     id: p.id,
@@ -162,6 +169,21 @@ export default function PublicCareersPage() {
     )
   }
 
+  if (loadFailed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
+        <div className="max-w-md w-full">
+          <EmptyCard>
+            <LoadError
+              what="this careers page"
+              onRetry={() => { setLoadFailed(false); setIsLoading(true); setReload((n) => n + 1) }}
+            />
+          </EmptyCard>
+        </div>
+      </div>
+    )
+  }
+
   if (error || !settings) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
@@ -204,29 +226,28 @@ export default function PublicCareersPage() {
         />
         {groups.length === 0 ? (
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            {roles.length === 0 ? (
-              <EmptyState
-                size="card"
-                illustration={<SoftFlag />}
-                title="No open roles right now"
-                body="Check back soon — we're always on the lookout for great people."
-              />
-            ) : (
-              <EmptyState
-                size="card"
-                illustration={<SoftMagnifier />}
-                title="No roles match your filters"
-                body="Try clearing your filters to see all open positions."
-                primary={
-                  <EmptyAction
-                    variant="primary"
-                    onClick={() => { setSearch(''); setDepartment('all'); setLocation('all'); setType('all') }}
-                  >
-                    Clear filters
-                  </EmptyAction>
-                }
-              />
-            )}
+            <EmptyCard>
+              {roles.length === 0 ? (
+                <AnimatedEmpty
+                  scene="jobs"
+                  onceKey="careers-roles"
+                  title="No open roles right now"
+                  body="Check back soon, or follow us to hear when something opens."
+                />
+              ) : (
+                <AnimatedEmpty
+                  scene="search"
+                  onceKey="careers-roles"
+                  title="No roles match your filters"
+                  body="Clear filters to see every open role."
+                  primary={{
+                    label: 'Clear filters',
+                    icon: <RotateCcw size={16} strokeWidth={2} />,
+                    onClick: () => { setSearch(''); setDepartment('all'); setLocation('all'); setType('all') },
+                  }}
+                />
+              )}
+            </EmptyCard>
           </div>
         ) : (
           <CareersRoleList groups={groups} onOpen={handleOpen} />

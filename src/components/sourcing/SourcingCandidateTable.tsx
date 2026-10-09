@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, ChevronDown, Download, Mail, Phone, X, Info, ArrowUpDown, Sparkles, Heart, Lock } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, ChevronDown, Download, Mail, Phone, X, Info, ArrowUpDown, Sparkles, Heart, Lock, RotateCcw, Search } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { EmptyState } from '@/components/ui/empty-state'
-import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
@@ -100,6 +100,13 @@ interface SourcingCandidateTableProps {
   }
   onCandidatesChanged?: () => void | Promise<void>
   topMatchRowId?: string | null
+  /** How many matches the search found before the result filters. */
+  totalMatches?: number
+  onClearFilters?: () => void
+  onEditSearch?: () => void
+  /** §16: the search failed; shown instead of "no matches". */
+  loadFailed?: boolean
+  onRetry?: () => void
 }
 
 export function SourcingCandidateTable({ 
@@ -111,6 +118,11 @@ export function SourcingCandidateTable({
   sourceBreakdown,
   onCandidatesChanged,
   topMatchRowId,
+  totalMatches = 0,
+  onClearFilters,
+  onEditSearch,
+  loadFailed = false,
+  onRetry,
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -657,18 +669,41 @@ export function SourcingCandidateTable({
     }
   }
 
+  if (loadFailed && candidates.length === 0) {
+    return (
+      <EmptyCard>
+        <LoadError what="matches for this search" onRetry={onRetry} />
+      </EmptyCard>
+    )
+  }
+
   if (isLoading) {
     return <CandidateTableSkeleton rows={8} />
   }
 
   if (candidates.length === 0) {
+    // §17: the result filters hide every match → Clear filters; the search itself
+    // found nothing → widen it.
     return (
-      <EmptyState
-        size="card"
-        illustration={<SoftMagnifier />}
-        title="No matches"
-        body="Try adjusting your search criteria or filters."
-      />
+      <EmptyCard>
+        {totalMatches > 0 ? (
+          <AnimatedEmpty
+            scene="search"
+            onceKey="find-results"
+            title="No matches for these filters"
+            body={`The ${totalMatches.toLocaleString()} ${totalMatches === 1 ? 'match is' : 'matches are'} still there, just hidden by your filters.`}
+            primary={onClearFilters ? { label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: onClearFilters } : undefined}
+          />
+        ) : (
+          <AnimatedEmpty
+            scene="search"
+            onceKey="find-results"
+            title="No matches for this search"
+            body="Try widening the criteria. Fewer must-haves usually helps."
+            primary={onEditSearch ? { label: 'Edit search', icon: <Search size={16} strokeWidth={2} />, onClick: onEditSearch } : undefined}
+          />
+        )}
+      </EmptyCard>
     )
   }
 

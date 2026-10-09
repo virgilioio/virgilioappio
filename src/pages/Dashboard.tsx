@@ -17,7 +17,9 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { SoftPlane, SoftMagnifier, SoftCalendar, SoftFlag } from '@/components/ui/EmptyIllustrations'
+import { SoftPlane, SoftMagnifier, SoftFlag } from '@/components/ui/EmptyIllustrations'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
 import { format } from 'date-fns'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -228,7 +230,7 @@ export default function Dashboard() {
   const { data: pending, isLoading: pendingLoading, markEmailAsRead } = usePendingActivities()
   const { data: stale } = useStaleCandidates()
   const { data: newApps, isLoading: appsLoading } = useNewApplicationsQueue()
-  const { bookings: todayBookings, isLoading: bookingsLoading } =
+  const { bookings: todayBookings, isLoading: bookingsLoading, error: bookingsError, refetch: refetchBookings } =
     useScheduledBookings('upcoming', permissions)
   const { jobs, isLoading: jobsLoading } = useJobs()
   const openJobs = useMemo(() => (jobs ?? []).filter(j => j.status === 'open'), [jobs])
@@ -412,6 +414,8 @@ export default function Dashboard() {
           <TodayCard
             bookings={todayList}
             isLoading={bookingsLoading}
+            loadFailed={!!bookingsError && !todayBookings?.length}
+            onRetry={() => { void refetchBookings() }}
             nextEventId={nextEventId}
             freeAfter={freeAfter}
             onFullCalendar={() => navigate('/calendar')}
@@ -784,13 +788,15 @@ function EmptyQueue({
 interface TodayCardProps {
   bookings: ScheduledBooking[]
   isLoading: boolean
+  loadFailed?: boolean
+  onRetry?: () => void
   nextEventId?: string
   freeAfter: string | null
   onFullCalendar: () => void
   onRowClick: (b: ScheduledBooking) => void
 }
 
-function TodayCard({ bookings, isLoading, nextEventId, freeAfter, onFullCalendar, onRowClick }: TodayCardProps) {
+function TodayCard({ bookings, isLoading, loadFailed, onRetry, nextEventId, freeAfter, onFullCalendar, onRowClick }: TodayCardProps) {
   return (
     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12 }}>
       <div
@@ -839,11 +845,16 @@ function TodayCard({ bookings, isLoading, nextEventId, freeAfter, onFullCalendar
             <div key={i} className="gio-shimmer" style={{ height: 44, borderRadius: 6, marginBottom: 8 }} />
           ))}
         </div>
+      ) : loadFailed ? (
+        <div style={{ borderTop: `1px solid ${C.hairline}`, padding: '32px 20px' }}>
+          <LoadError what="today's schedule" compact onRetry={onRetry} />
+        </div>
       ) : bookings.length === 0 ? (
-        <div style={{ borderTop: `1px solid ${C.hairline}` }}>
-          <EmptyState
-            size="card"
-            illustration={<SoftCalendar />}
+        <div style={{ borderTop: `1px solid ${C.hairline}`, padding: '28px 20px 32px' }}>
+          <AnimatedEmpty
+            scene="scheduling"
+            size="compact"
+            onceKey="dashboard-today"
             title="Nothing on today"
             body="Your schedule is clear. Newly booked interviews will show up here."
           />

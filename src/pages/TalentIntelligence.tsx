@@ -13,13 +13,18 @@ import { SkillsLandscape } from '@/components/talent-intelligence/SkillsLandscap
 import { CompensationInsights } from '@/components/talent-intelligence/CompensationInsights'
 import { TalentPoolComposition } from '@/components/talent-intelligence/TalentPoolComposition'
 import { TalentOrigins } from '@/components/talent-intelligence/TalentOrigins'
-import { TalentIntelligenceEmptyState } from '@/components/talent-intelligence/TalentIntelligenceEmptyState'
+import { CandidatesEmpty } from '@/components/empty/CandidatesEmpty'
+import { EmptyCard } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { usePermissions } from '@/hooks/usePermissions'
+import { useNavigate } from 'react-router-dom'
+import { RotateCcw, Upload } from 'lucide-react'
 import { TalentIntelligenceFilterBar } from '@/components/talent-intelligence/TalentIntelligenceFilterBar'
 import { SavedViewSelector } from '@/components/filters/SavedViewSelector'
 import { usePersistentFilters } from '@/hooks/usePersistentFilters'
 import { useSavedViews } from '@/hooks/useSavedViews'
 import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
-import { Button } from '@/components/ui/button'
 import { Loadable } from '@/components/ui/loadable'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -34,7 +39,13 @@ const EMPTY_TI_FILTERS: TalentIntelligenceFilters = {
 
 function TalentIntelligenceContent() {
   const { filters, setArrayFilter, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
-  const { data, rawCandidates, associations, jobs, stageMappings, isLoading, error } = useTalentIntelligenceData(filters)
+  const { data, rawCandidates, associations, jobs, stageMappings, isLoading, error, refetch } = useTalentIntelligenceData(filters)
+  const navigate = useNavigate()
+  const { canManageCandidates } = usePermissions()
+  // §16: a failed or 15-second-slow first load is an inline error with Retry.
+  const [loadRetry, setLoadRetry] = useState(0)
+  const loadTimedOut = useLoadTimeout(isLoading, loadRetry)
+  const loadError: 'failed' | 'timeout' | null = error && !data ? 'failed' : loadTimedOut ? 'timeout' : null
   const filterOptions = useTalentIntelligenceFilterOptions(rawCandidates, associations, jobs, stageMappings)
 
   // Saved views integration
@@ -176,27 +187,50 @@ function TalentIntelligenceContent() {
           </div>
         )}
 
-        {error && (
-          <div className="flex items-center justify-center py-20">
-            <p className="text-destructive text-sm">Failed to load talent intelligence</p>
-          </div>
+        {loadError && (
+          <EmptyCard minHeight={360}>
+            <LoadError
+              what="your talent database"
+              timedOut={loadError === 'timeout'}
+              onRetry={() => { setLoadRetry((n) => n + 1); refetch() }}
+            />
+          </EmptyCard>
         )}
 
-        {data && data.totalCandidates === 0 && !hasActiveFilters && (
-          <TalentIntelligenceEmptyState message="No candidates in your talent database yet" />
+        {!loadError && data && rawCandidates.length === 0 && (
+          <EmptyCard minHeight={360}>
+            <CandidatesEmpty
+              onceKey="talent-db"
+              title="Your talent database is empty"
+              body="Candidates you save from Find, or import in bulk, live here."
+              primary={
+                canManageCandidates
+                  ? { label: 'Import candidates', icon: <Upload size={16} strokeWidth={2} />, onClick: () => navigate('/candidates?import=csv') }
+                  : undefined
+              }
+            />
+          </EmptyCard>
         )}
 
-        {data && data.totalCandidates === 0 && hasActiveFilters && (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <TalentIntelligenceEmptyState message="No candidates match the selected filters" />
-            <Button variant="outline" size="sm" onClick={clearAll}>
-              Clear filters
-            </Button>
-          </div>
+        {!loadError && data && rawCandidates.length > 0 && data.totalCandidates === 0 && (
+          <EmptyCard minHeight={360}>
+            <CandidatesEmpty
+              filtered
+              onceKey="talent-db"
+              title="No matches"
+              body={
+                <>
+                  Nothing fits these filters. The {rawCandidates.length.toLocaleString()}{' '}
+                  {rawCandidates.length === 1 ? 'candidate is' : 'candidates are'} still there, just hidden by your filters.
+                </>
+              }
+              primary={{ label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: clearAll }}
+            />
+          </EmptyCard>
         )}
 
         {/* §6: a skeleton laid out like the page, then the content crossfades in over it. */}
-        {(isLoading || (data && data.totalCandidates > 0)) && (
+        {!loadError && (isLoading || (data && data.totalCandidates > 0)) && (
           <Loadable loading={isLoading} skeleton={<TalentIntelligenceSkeleton />}>
             {data && (
               <div className="space-y-6">

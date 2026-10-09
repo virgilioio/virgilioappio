@@ -34,6 +34,8 @@ interface SourcingProjectViewProps {
   setIsRefreshing: (v: boolean) => void
   onProjectLoaded?: (project: any) => void
   onUpdateSearchCriteria?: (fn: ((criteria: SearchCriteria) => Promise<void>) | null) => void
+  /** Moves focus to the search criteria (Find's filter panel). */
+  onEditSearch?: () => void
   onExposeActions?: (actions: SourcingProjectActions | null) => void
 }
 
@@ -46,6 +48,7 @@ export function SourcingProjectView({
   setIsRefreshing,
   onProjectLoaded,
   onUpdateSearchCriteria: exposeUpdateSearchCriteria,
+  onEditSearch,
   onExposeActions
 }: SourcingProjectViewProps) {
   const navigate = useNavigate()
@@ -55,6 +58,7 @@ export function SourcingProjectView({
     candidates, 
     matchingResult,
     isLoading: candidatesLoading, 
+    error: candidatesError,
     refetch: refetchCandidates 
   } = useSourcingProjectCandidates({
     projectId,
@@ -378,7 +382,13 @@ export function SourcingProjectView({
       <CandidatesTab
         project={project}
         candidates={filteredCandidates as any}
-        isLoading={candidatesLoading}
+        // Before the first search answers there's no result yet: loading, not empty.
+        isLoading={candidatesLoading || (!matchingResult && !candidatesError)}
+        totalMatches={candidates.length}
+        onClearFilters={() => onFiltersChange({ matchTiers: [], minExperience: 0, maxExperience: 30, source: 'all' })}
+        onEditSearch={onEditSearch}
+        loadFailed={!!candidatesError}
+        onRetry={refetchCandidates}
         jobId={project.job_id}
         projectId={project.id}
         searchCriteria={project.search_criteria}

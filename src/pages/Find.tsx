@@ -179,6 +179,15 @@ export default function Find() {
     updateSearchCriteriaRef.current = fn
   }, [])
 
+  // "Edit search" in an empty result: bring the criteria panel into view and focus its first field.
+  const filterPanelRef = useRef<HTMLDivElement>(null)
+  const handleEditSearch = useCallback(() => {
+    const panel = filterPanelRef.current
+    const field = panel?.querySelector<HTMLElement>('input:not([type=hidden]), textarea') ?? panel?.querySelector<HTMLElement>('button')
+    field?.scrollIntoView({ block: 'nearest' })
+    field?.focus()
+  }, [])
+
   const handleExposeActions = useCallback((actions: SourcingProjectActionsType | null) => {
     projectActionsRef.current = actions
   }, [])
@@ -278,12 +287,14 @@ export default function Find() {
             {/* Two-column workspace */}
             <div className="flex gap-6 min-h-[calc(100dvh-16rem)]">
               {mode === 'project' && (
+                <div ref={filterPanelRef} className="contents">
                 <FindFilterPanel
                   criteria={editableCriteria}
                   onCriteriaChange={handleCriteriaChange}
                   resultFilters={filters}
                   onResultFiltersChange={setFilters}
                 />
+                </div>
               )}
 
               <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -323,6 +334,7 @@ export default function Find() {
                       onProjectLoaded={handleProjectLoaded}
                       onUpdateSearchCriteria={handleExposeUpdateSearchCriteria}
                       onExposeActions={handleExposeActions}
+                      onEditSearch={handleEditSearch}
                     />
                   )}
                 </div>
