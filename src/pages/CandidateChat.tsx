@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { GioWordmark } from '@/components/icons/GioWordmark'
 import { BookingLinkCard } from '@/components/chat/BookingLinkCard'
 
@@ -111,19 +112,6 @@ function recruiterColor(seed: string) {
 
 function candidateInitial(name: string) {
   return (name.trim()[0] ?? 'U').toUpperCase()
-}
-
-function useIsMobile() {
-  const [m, setM] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false,
-  )
-  useEffect(() => {
-    const mm = window.matchMedia('(max-width: 640px)')
-    const on = () => setM(mm.matches)
-    mm.addEventListener('change', on)
-    return () => mm.removeEventListener('change', on)
-  }, [])
-  return m
 }
 
 function formatTime(ts: number) {
