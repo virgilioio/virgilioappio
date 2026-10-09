@@ -10,6 +10,7 @@ import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { GoGioLogo } from '@/components/GoGioLogo'
+import { IconSwap } from '@/components/ui/icon-swap'
 
 type InviteState = 'valid' | 'accepted' | 'expired' | 'unknown'
 
@@ -565,7 +566,7 @@ export default function AcceptInvite() {
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
                   disabled={isSubmitting}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <IconSwap swapped={showPassword} from={<Eye className="h-4 w-4" />} to={<EyeOff className="h-4 w-4" />} />
                 </button>
               </div>
               {errors.password ? (
@@ -596,7 +597,7 @@ export default function AcceptInvite() {
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
                   disabled={isSubmitting}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <IconSwap swapped={showConfirmPassword} from={<Eye className="h-4 w-4" />} to={<EyeOff className="h-4 w-4" />} />
                 </button>
               </div>
               {errors.confirmPassword && (

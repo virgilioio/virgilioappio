@@ -1477,3 +1477,14 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 @media (prefers-reduced-motion: reduce) {
   .gio-check-root path { transition: none !important; }
 }
+
+/* §12 Phones (app and public pages): text inputs are at least 16px so iOS doesn't zoom
+ * the page on focus. (Inline font sizes on public fields lose to this on purpose.) */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="color"]):not([type="hidden"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+}
