@@ -16,3 +16,4 @@
 - Google Workspace connect/reconnect/disconnect has one flow (src/lib/googleWorkspaceConnect.ts + GoogleWorkspaceConnection card, disconnect via disconnect-google-workspace), reused by Email & calendar and Integrations — keeps both screens consistent and reachable by every role.
 - Edge functions answer CORS with the caller's allowlisted Origin (wrap handlers in withRequestCors from _shared/cors.ts), never a fixed default — a fixed origin blocked every other Gio domain.
 - Google Workspace OAuth state is sealed server-side (_shared/mailOAuthState.ts: user, PKCE verifier, redirect base, opener origin) and /mail/oauth/callback is public — the popup can finish on any allowed Gio address without a session there.
+- Motion, feel and robustness follow CLAUDE.md (Block B §1–§15 adopted from Gio Sales, 2026-10-09): motion tokens in src/index.css, one Sonner toast system, the ATS keeps its own visual identity — keeps both apps feeling the same without restyling the ATS.
