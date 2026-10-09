@@ -22,6 +22,7 @@ import { SourcingProject } from '@/types/sourcing'
 import { LinkToJobDialog } from './LinkToJobDialog'
 import { CreateJobFromProjectDialog } from './CreateJobFromProjectDialog'
 import { RoleInterpretationDrawer } from './RoleInterpretationDrawer'
+import { JobPreview } from '@/components/previews/EntityPreview'
 
 interface SourcingProjectHeaderProps {
   project: SourcingProject
@@ -250,12 +251,14 @@ export function SourcingProjectHeader({
                 <Briefcase className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-foreground">
                   Linked to:{' '}
-                  <Link 
-                    to={`/jobs/${project.job_id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {linkedJobLabel}
-                  </Link>
+                  <JobPreview jobId={project.job_id}>
+                    <Link
+                      to={`/jobs/${project.job_id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {linkedJobLabel}
+                    </Link>
+                  </JobPreview>
                 </span>
               </div>
             </>

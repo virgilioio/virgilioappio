@@ -16,6 +16,7 @@ import {
   type BriefingPhaseState,
   type BriefingStatTile,
 } from './JobDashboardBriefingLoader';
+import { CandidatePreview } from '@/components/previews/EntityPreview'
 
 // ---- shapes mirroring the edge function payload --------------------------
 
@@ -135,14 +136,15 @@ function renderEvidence(
     const match = candidates.find((c) => c.name === part);
     if (match && match.id) {
       return (
-        <button
-          key={i}
-          type="button"
-          onClick={() => onClickCandidate(match.id!)}
-          className="text-[#0d0d09] underline decoration-[#E0DDD3] underline-offset-2 hover:decoration-[#6F3FF5]"
-        >
-          {part}
-        </button>
+        <CandidatePreview key={i} candidateId={match.id}>
+          <button
+            type="button"
+            onClick={() => onClickCandidate(match.id!)}
+            className="text-[#0d0d09] underline decoration-[#E0DDD3] underline-offset-2 hover:decoration-[#6F3FF5]"
+          >
+            {part}
+          </button>
+        </CandidatePreview>
       );
     }
     return <span key={i}>{part}</span>;
