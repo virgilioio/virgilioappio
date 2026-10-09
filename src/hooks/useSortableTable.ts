@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 
 export type SortDirection = 'asc' | 'desc' | null
 
@@ -14,12 +14,42 @@ export function useSortableTable<T>(data: T[], defaultSort?: { key: string; dire
     direction: defaultSort?.direction || null
   })
 
+  // §3 Sort FLIP: attach `bodyRef` to the <TableBody> whose rows are `sortedData` in
+  // order (one <tr> per row). On a sort change each row slides from where it was to its
+  // new place (--dur-move, --ease-in-out). Filtering, paging and data updates never
+  // animate; more than 60 rows or reduced motion just re-render.
+  const bodyRef = useRef<HTMLTableSectionElement>(null)
+  const shownRef = useRef<T[]>(data)
+  const snapshot = useRef<{ tops: Map<unknown, number> } | null>(null)
+  const running = useRef<Animation[]>([])
+  const keyOf = (row: T, i: number): unknown => (row as { id?: unknown })?.id ?? row ?? i
+
+  const capture = useCallback(() => {
+    snapshot.current = null
+    const body = bodyRef.current
+    const rows = shownRef.current
+    if (!body || typeof window === 'undefined') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const trs = Array.from(body.children) as HTMLElement[]
+    if (trs.length !== rows.length || rows.length > 60) return
+    const tops = new Map<unknown, number>()
+    trs.forEach((tr, i) => tops.set(keyOf(rows[i], i), tr.getBoundingClientRect().top))
+    snapshot.current = { tops }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // A default chosen outside the table (e.g. a "Sort:" menu) takes over when it changes.
   const defaultKey = defaultSort?.key ?? null
   const defaultDirection = defaultSort?.direction ?? null
+  const firstSync = useRef(true)
   useEffect(() => {
+    if (firstSync.current) {
+      firstSync.current = false
+      return
+    }
+    capture()
     setSortConfig({ key: defaultKey, direction: defaultDirection })
-  }, [defaultKey, defaultDirection])
+  }, [defaultKey, defaultDirection, capture])
 
   const sortedData = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) {
@@ -59,7 +89,39 @@ export function useSortableTable<T>(data: T[], defaultSort?: { key: string; dire
     })
   }, [data, sortConfig])
 
+  shownRef.current = sortedData
+
+  useLayoutEffect(() => {
+    const snap = snapshot.current
+    snapshot.current = null
+    const body = bodyRef.current
+    if (!snap || !body) return
+    const trs = Array.from(body.children) as HTMLElement[]
+    if (trs.length !== sortedData.length) return
+    const tokens = getComputedStyle(document.documentElement)
+    const raw = tokens.getPropertyValue('--dur-move').trim()
+    const duration = parseFloat(raw) * (raw.endsWith('ms') ? 1 : 1000)
+    const easing = tokens.getPropertyValue('--ease-in-out').trim()
+    if (!Number.isFinite(duration) || !easing) return
+    const moves = trs.flatMap((tr, i) => {
+      const before = snap.tops.get(keyOf(sortedData[i], i))
+      return before === undefined ? [] : [{ tr, delta: before - tr.getBoundingClientRect().top }]
+    })
+    running.current.forEach((a) => a.cancel())
+    running.current = moves
+      .filter((m) => Math.abs(m.delta) >= 0.5)
+      .map(({ tr, delta }) => {
+        const a = tr.animate([{ transform: `translateY(${delta}px)` }, { transform: 'none' }], { duration, easing })
+        a.onfinish = () => a.cancel()
+        return a
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedData])
+
+  useEffect(() => () => running.current.forEach((a) => a.cancel()), [])
+
   const requestSort = (key: string) => {
+    capture()
     let direction: SortDirection = 'asc'
     
     if (sortConfig.key === key) {
@@ -73,7 +135,7 @@ export function useSortableTable<T>(data: T[], defaultSort?: { key: string; dire
     setSortConfig({ key: direction ? key : null, direction })
   }
 
-  return { sortedData, sortConfig, requestSort }
+  return { sortedData, sortConfig, requestSort, bodyRef }
 }
 
 function getNestedValue(obj: any, path: string): any {

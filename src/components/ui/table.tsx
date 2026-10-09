@@ -90,7 +90,23 @@ function useStickyWrapper(tableRef: React.RefObject<HTMLTableElement>) {
     const ro = new ResizeObserver(update)
     ro.observe(wrapper)
     ro.observe(table)
-    return () => ro.disconnect()
+
+    // §3 Sticky header: a soft shadow only while rows are scrolled under it.
+    const scroller = scrollParent(wrapper)
+    const target: HTMLElement | Window = scroller ?? window
+    const onScroll = () => {
+      const head = table.tHead
+      if (!head) return
+      const stuck = wrapper.getBoundingClientRect().top + wrapper.clientTop < head.getBoundingClientRect().top - 0.5
+      if (stuck) wrapper.setAttribute("data-scrolled", "")
+      else wrapper.removeAttribute("data-scrolled")
+    }
+    onScroll()
+    target.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      ro.disconnect()
+      target.removeEventListener("scroll", onScroll)
+    }
   }, [tableRef])
   return wrapperRef
 }
@@ -191,7 +207,8 @@ const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
           "group border-b border-[hsl(var(--tbl-divider-color))] last:border-b-0",
           ROW_H[density],
           // Hover = fill, NOT glow — no translate, no shadow.
-          "transition-colors duration-100 hover:bg-[hsl(var(--tbl-row-hover))]",
+          // §3 Row hover is instant and mouse-only.
+          "hover:bg-[hsl(var(--tbl-row-hover))]",
           // Selected = #FAF8FF + 2px purple LEFT rail.
           "data-[state=selected]:bg-[hsl(var(--tbl-row-selected))]",
           "data-[state=selected]:shadow-[inset_2px_0_0_0_hsl(var(--virgilio-purple))]",
@@ -238,7 +255,8 @@ const TableCell = React.forwardRef<
     <td
       ref={ref}
       className={cn(
-        "px-[var(--tbl-cell-px)] align-middle font-inter text-text-primary",
+        // §3 Numbers line up in every column (digits only; letters are unaffected).
+        "px-[var(--tbl-cell-px)] align-middle font-inter text-text-primary tabular-nums",
         CELL_TEXT[density],
         "[&:has([role=checkbox])]:pr-0",
         className

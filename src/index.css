@@ -1258,3 +1258,20 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   --tw-ring-offset-shadow: 0 0 #0000 !important;
   transition-property: none;
 }
+
+/* §3 Tables — sticky header shadow (only while rows pass under it), sort arrow. */
+.group\/table > table > thead {
+  transition: box-shadow var(--dur-hover) ease;
+}
+.group\/table[data-scrolled] > table > thead {
+  box-shadow: 0 6px 12px -10px rgb(13 13 9 / 0.18);
+}
+.gio-sort-arrow {
+  transition: transform var(--dur-switch) var(--ease-out);
+}
+.gio-sort-arrow[data-dir="desc"] {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-sort-arrow { transition: none; }
+}

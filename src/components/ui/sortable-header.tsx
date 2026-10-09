@@ -1,6 +1,5 @@
-
 import { Button } from '@/components/ui/button'
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUpDown, ArrowUp } from 'lucide-react'
 import { SortDirection } from '@/hooks/useSortableTable'
 import { cn } from '@/lib/utils'
 
@@ -12,27 +11,27 @@ interface SortableHeaderProps {
   className?: string
 }
 
-export function SortableHeader({ 
-  children, 
-  sortKey, 
-  currentSort, 
-  onSort, 
-  className 
+/**
+ * §3 Sort: one arrow that turns 180° (--dur-switch, --ease-out) between ascending and
+ * descending; unsorted columns show the neutral up/down glyph. The rows themselves
+ * FLIP to their new places (useSortableTable).
+ */
+export function SortableHeader({
+  children,
+  sortKey,
+  currentSort,
+  onSort,
+  className
 }: SortableHeaderProps) {
   const isActive = currentSort.key === sortKey
   const direction = isActive ? currentSort.direction : null
-
-  const getSortIcon = () => {
-    if (!isActive || !direction) return <ArrowUpDown className="h-3 w-3" />
-    if (direction === 'asc') return <ArrowUp className="h-3 w-3" />
-    return <ArrowDown className="h-3 w-3" />
-  }
 
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={() => onSort(sortKey)}
+      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : undefined}
       className={cn(
         "h-auto p-0 font-medium justify-start hover:bg-transparent",
         isActive && "text-primary",
@@ -41,7 +40,11 @@ export function SortableHeader({
     >
       <span className="flex items-center gap-1">
         {children}
-        {getSortIcon()}
+        {direction ? (
+          <ArrowUp aria-hidden="true" data-dir={direction} className="gio-sort-arrow h-3 w-3" />
+        ) : (
+          <ArrowUpDown aria-hidden="true" className="h-3 w-3" />
+        )}
       </span>
     </Button>
   )
