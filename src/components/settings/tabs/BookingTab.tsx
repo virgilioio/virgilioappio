@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { makeSwapIcon } from '@/components/ui/icon-swap'
 import {
   Copy,
   Check,
@@ -26,6 +27,9 @@ import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { EventTypeSheet } from '@/components/settings/booking/EventTypeSheet'
 import { GeneralLinkConfigurator } from '@/components/settings/booking/GeneralLinkConfigurator'
 import { toast } from 'sonner'
+
+// §7 copy chips: Copy shrinks out, Check grows in.
+const CopyCheckIcon = makeSwapIcon(Copy, Check)
 
 const DAY_ORDER: (keyof import('@/hooks/useBookingConfig').WeeklySchedule)[] = [
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
@@ -129,7 +133,7 @@ export function BookingTab() {
     await navigator.clipboard.writeText(bookingUrl)
     setCopied(true)
     toast.success('Booking link copied')
-    setTimeout(() => setCopied(false), 1500)
+    setTimeout(() => setCopied(false), 1600)
   }
 
   const handleToggleActive = () => {
@@ -217,7 +221,7 @@ export function BookingTab() {
             <Button
               variant="secondary"
               size="sm"
-              icon={copied ? Check : Copy}
+              icon={CopyCheckIcon} data-swapped={copied || undefined}
               onClick={handleCopyMain}
             >
               {copied ? 'Copied' : 'Copy'}

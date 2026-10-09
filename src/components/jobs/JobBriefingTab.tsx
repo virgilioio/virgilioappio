@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { IconSwap } from '@/components/ui/icon-swap'
 import {
   Check, RefreshCw, ArrowUp, ArrowUpRight, Sparkles, Info, Calendar,
   Hourglass, Megaphone, Scale, Banknote, AlertTriangle,
@@ -472,7 +473,7 @@ function CopyButton({ text, label, size = 13 }: { text: string; label?: string; 
     const ok = await copyToClipboardSilent(text);
     if (ok) {
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
+      window.setTimeout(() => setCopied(false), 1600);
     }
   }, [text]);
   return (
@@ -484,7 +485,7 @@ function CopyButton({ text, label, size = 13 }: { text: string; label?: string; 
       className="inline-flex items-center justify-center hover:text-[#1F2230]"
       style={{ color: copied ? '#0B7A52' : '#8B8F9E', padding: 4, background: 'transparent', border: 'none' }}
     >
-      {copied ? <Check size={size} strokeWidth={2} /> : <Copy size={size} strokeWidth={2} />}
+      <IconSwap swapped={copied} from={<Copy size={size} strokeWidth={2} />} to={<Check size={size} strokeWidth={2} />} />
     </button>
   );
 }

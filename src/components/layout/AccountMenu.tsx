@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { IconSwap } from '@/components/ui/icon-swap'
 import { useNavigate } from 'react-router-dom'
 import {
   User as UserIcon,
@@ -285,7 +286,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
                   copied ? 'bg-[#D1FAE5] text-[#0B7A57]' : 'bg-[#F1F0EC] text-[#5A6072]',
                 )}
               >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <LinkIcon className="h-3.5 w-3.5" />}
+                <IconSwap swapped={copied} from={<LinkIcon className="h-3.5 w-3.5" />} to={<Check className="h-3.5 w-3.5" />} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-poppins font-semibold text-[12px] leading-tight text-[#0d0d09]">
@@ -312,7 +313,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
                 )}
                 style={{ letterSpacing: '-0.005em' }}
               >
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                <IconSwap swapped={copied} from={<Copy className="h-3 w-3" />} to={<Check className="h-3 w-3" />} />
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>

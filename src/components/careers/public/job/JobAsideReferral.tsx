@@ -1,4 +1,5 @@
 import { Copy, Check } from 'lucide-react'
+import { IconSwap } from '@/components/ui/icon-swap'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -16,7 +17,7 @@ export function JobAsideReferral({ slug, amount, currency }: Props) {
       await navigator.clipboard.writeText(url)
       setCopied(true)
       toast.success('Referral link copied')
-      setTimeout(() => setCopied(false), 1800)
+      setTimeout(() => setCopied(false), 1600)
     } catch {
       toast.error('Could not copy link')
     }
@@ -38,7 +39,7 @@ export function JobAsideReferral({ slug, amount, currency }: Props) {
         onClick={handleCopy}
         className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-white border border-black/10 text-[12.5px] font-poppins font-medium text-[#0d0d09] hover:bg-[#FAFAF7]"
       >
-        {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+        <IconSwap swapped={copied} from={<Copy className="h-3.5 w-3.5" />} to={<Check className="h-3.5 w-3.5 text-emerald-600" />} />
         {copied ? 'Copied' : 'Copy referral link'}
       </button>
     </div>

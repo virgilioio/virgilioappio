@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IconSwap } from '@/components/ui/icon-swap'
 import { ChevronDown, ChevronUp, Copy, Check, ArrowDown, CheckCircle2 } from 'lucide-react';
 import { copyToClipboard } from '@/utils/clipboard';
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown';
@@ -182,7 +183,7 @@ export function AiSuggestedRatingCard({
                 className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-[#F5F1FE] transition-colors"
                 style={{ color: copied ? '#0E7A53' : '#5B21B6', fontSize: 11.5 }}
               >
-                {copied ? <Check size={13} /> : <Copy size={13} />}
+                <IconSwap swapped={copied} from={<Copy size={13} />} to={<Check size={13} />} />
                 <span className="font-inter" style={{ fontWeight: 500 }}>
                   {copied ? 'Copied' : 'Copy'}
                 </span>
