@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { motionToken, prefersReducedMotion } from '@/lib/motion'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -301,6 +302,30 @@ export function NotificationCenter() {
     return groups
   }, [filtered])
 
+  // §8 Notifications: an item that arrives while the panel is open opens its space
+  // (grid rows 0fr → 1fr, --dur-expand) and then fades in; the bell's dot pulses once
+  // (scale 1 → 1.25 → 1, --dur-shake) when the unread count goes up.
+  const seenIds = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (!notifications.length && !seenIds.current) return
+    const next = seenIds.current ?? new Set<string>()
+    notifications.forEach((n) => next.add(n.id))
+    seenIds.current = next
+  }, [notifications])
+  const isArriving = (id: string) => !!seenIds.current && !seenIds.current.has(id)
+
+  const dotRef = useRef<HTMLSpanElement>(null)
+  const lastUnread = useRef<number | null>(null)
+  useEffect(() => {
+    const before = lastUnread.current
+    lastUnread.current = counts.all
+    if (before === null || counts.all <= before || !dotRef.current || prefersReducedMotion()) return
+    dotRef.current.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }],
+      { duration: motionToken('--dur-shake', 300), easing: motionToken('--ease-out', 'ease-out') },
+    )
+  }, [counts.all])
+
   const handleClick = (n: NotificationRow) => {
     setOpen(false)
     if (n.category === 'chat_message') {
@@ -324,7 +349,7 @@ export function NotificationCenter() {
         >
           <Bell className="h-[16px] w-[16px]" strokeWidth={1.75} />
           {counts.all > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#D7C5FB] ring-2 ring-[#0d0d09]" />
+            <span ref={dotRef} className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#D7C5FB] ring-2 ring-[#0d0d09]" />
           )}
         </button>
       </PopoverTrigger>
@@ -407,12 +432,21 @@ export function NotificationCenter() {
                       </div>
                       <div className="divide-y divide-[#F1F0EC]">
                         {items.map((n) => (
-                          <NotificationItem
+                          <div
                             key={n.id}
-                            n={n}
-                            onClick={() => handleClick(n)}
-                            onMarkRead={() => markAsRead.mutate(n.id)}
-                          />
+                            className={isArriving(n.id) ? 'gio-open-space' : undefined}
+                            onAnimationEnd={(e) => {
+                              if (e.animationName === 'gio-fade-in-after') e.currentTarget.classList.remove('gio-open-space')
+                            }}
+                          >
+                            <div>
+                              <NotificationItem
+                                n={n}
+                                onClick={() => handleClick(n)}
+                                onMarkRead={() => markAsRead.mutate(n.id)}
+                              />
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
