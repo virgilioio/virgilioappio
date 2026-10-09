@@ -272,7 +272,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
         creatingRef.current = false
         setSaveState('idle')
       }
-    }, 1000)
+    }, 1000) // the draft auto-save cadence is a behaviour contract (CLAUDE.md); unchanged
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, wizardState.jobData, wizardState.currentStep, wizardState.createdJobId, wizardState.isComplete])
@@ -675,7 +675,8 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
               <div className="flex items-center gap-3">
                 {saveStatusText && (
                   <span className="hidden sm:inline font-inter text-[11.5px] text-[#8B8F9E] min-w-[110px]" aria-live="polite">
-                    {saveStatusText}
+                    {/* §12 autosave: each status crossfades in over 150ms. */}
+                    <span key={saveStatusText} className="gio-autosave-label">{saveStatusText}</span>
                   </span>
                 )}
                 {wizardState.currentStep === 1 ? (

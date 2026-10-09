@@ -1488,3 +1488,6 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
     font-size: 16px !important;
   }
 }
+
+/* §12 Autosave status ("Saving…" → "Draft saved · just now"): each step fades in. */
+.gio-autosave-label { display: inline-block; animation: gio-fade-only var(--dur-hover) ease; }
