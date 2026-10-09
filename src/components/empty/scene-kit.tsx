@@ -153,12 +153,19 @@ export function useSceneMode({ onceKey, still: forceStill = false, playKey = 0 }
   React.useEffect(() => {
     if (mode !== 'fly') return
     const until = flyingUntil
-    const timer = setTimeout(() => svgRef.current?.classList.add('gio-scene-still'), ms + 50)
+    let done = false
+    const timer = setTimeout(() => {
+      done = true
+      svgRef.current?.classList.add('gio-scene-still')
+    }, ms + 50)
     return () => {
       clearTimeout(timer)
-      // Unmounted mid-flight: free the slot for whatever replaces it.
+      if (done) return
+      // Unmounted mid-flight: free the slot, and don't count a flight nobody saw end.
       if (flyingUntil === until) flyingUntil = 0
+      if (onceKey) played.delete(onceKey)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, ms])
 
   return { still: mode === 'still', paused: mode === 'wait', svgRef, uid: `${uid}-${playKey}` }
