@@ -1244,3 +1244,17 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
     scale: 0.92;
   }
 }
+
+/* §8 Focus rings (CLAUDE.md): every interactive control shows the same instant 2px
+ * purple outline at 2px offset on keyboard focus — never on a mouse click, never
+ * animated, never removed. Tailwind focus rings on these controls are folded into
+ * it so they don't double up. Text fields (inputs, textareas, comboboxes) use the
+ * §12 border + soft ring instead, set in their primitives. Menu items and options
+ * keep their highlight row. */
+:where(button, a[href], summary, [role="button"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="link"], [tabindex]:not([tabindex="-1"]):not(input):not(textarea):not([role="menuitem"]):not([role="option"]):not([role="combobox"]):not([contenteditable="true"])):focus-visible {
+  outline: 2px solid #6f3ff5 !important;
+  outline-offset: 2px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  transition-property: none;
+}
