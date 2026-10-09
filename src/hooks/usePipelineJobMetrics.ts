@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { log } from '@/lib/logger';
 
@@ -43,5 +43,8 @@ export function usePipelineJobMetrics(jobIds: string[]) {
     },
     enabled: jobIds && jobIds.length > 0,
     staleTime: 30000, // 30s
+    // A filter change asks for a new set of jobs; keep the counts already on screen
+    // (rows are matched by job id) instead of dropping every row back to loading.
+    placeholderData: keepPreviousData,
   });
 }

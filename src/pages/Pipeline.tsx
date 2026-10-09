@@ -116,7 +116,7 @@ export default function Pipeline() {
 
   const { data: globalMetrics, isLoading: globalMetricsLoading } = usePipelineGlobalMetrics({ jobStatuses: ['open'] })
   const jobIds = filteredJobs.map((j) => j.id)
-  const { data: jobMetrics } = usePipelineJobMetrics(jobIds)
+  const { data: jobMetrics, isPending: jobMetricsPending, isError: jobMetricsFailed } = usePipelineJobMetrics(jobIds)
   const metricsMap = useMemo(() => new Map((jobMetrics ?? []).map((m) => [m.job_id, m])), [jobMetrics])
 
   const sortedJobs = useMemo(() => {
@@ -380,6 +380,7 @@ export default function Pipeline() {
                             key={job.id}
                             job={job}
                             metrics={metricsMap.get(job.id)}
+                            metricsStatus={metricsMap.has(job.id) ? 'ready' : jobMetricsFailed ? 'error' : jobMetricsPending ? 'loading' : 'ready'}
                             expanded={expanded.has(job.id)}
                             onToggle={() => toggleRow(job.id)}
                           />
@@ -395,6 +396,7 @@ export default function Pipeline() {
                       key={job.id}
                       job={job}
                       metrics={metricsMap.get(job.id)}
+                      metricsStatus={metricsMap.has(job.id) ? 'ready' : jobMetricsFailed ? 'error' : jobMetricsPending ? 'loading' : 'ready'}
                       expanded={expanded.has(job.id)}
                       onToggle={() => toggleRow(job.id)}
                     />

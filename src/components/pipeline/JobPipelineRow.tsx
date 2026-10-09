@@ -9,6 +9,8 @@ import { PipelineJobMetric } from '@/hooks/usePipelineJobMetrics'
 import { StageFunnelBar, FunnelStage } from './StageFunnelBar'
 import { InlineKanban } from './InlineKanban'
 import { cn } from '@/lib/utils'
+import { Loadable } from '@/components/ui/loadable'
+import { Skeleton } from '@/components/ui/skeleton'
 
 function initials(name: string) {
   return name
@@ -39,6 +41,8 @@ function shortRelative(iso?: string | null) {
 export interface JobPipelineRowProps {
   job: Job
   metrics?: PipelineJobMetric
+  /** 'loading' until this job's metrics arrive: the count and funnel show skeletons, never a 0. */
+  metricsStatus?: 'loading' | 'error' | 'ready'
   expanded: boolean
   onToggle: () => void
   /** count of idle (>7d) candidates in this job, optional. */
@@ -47,7 +51,9 @@ export interface JobPipelineRowProps {
   quietDays?: number
 }
 
-export function JobPipelineRow({ job, metrics, expanded, onToggle, idleCount, quietDays }: JobPipelineRowProps) {
+export function JobPipelineRow({ job, metrics, metricsStatus = 'ready', expanded, onToggle, idleCount, quietDays }: JobPipelineRowProps) {
+  const metricsLoading = metricsStatus === 'loading'
+  const metricsFailed = metricsStatus === 'error' && !metrics
   const stages: FunnelStage[] =
     metrics?.stages?.map((s) => ({ id: s.stage_id, name: s.stage_name, count: s.count_in_stage })) ?? []
   const activeCount = metrics?.active_candidates ?? 0
@@ -121,22 +127,39 @@ export function JobPipelineRow({ job, metrics, expanded, onToggle, idleCount, qu
 
         {/* Funnel (fixed 360px: from tablet width up; phones get the title and count) */}
         <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
-          <StageFunnelBar stages={stages} />
+          <Loadable
+            loading={metricsLoading}
+            skeleton={
+              // The bar (20px) plus the stage-label line under it, so nothing moves when it loads.
+              <div className="w-[360px]" style={{ paddingBottom: 15.7 }}>
+                <Skeleton className="rounded-[4px]" style={{ height: 20 }} />
+              </div>
+            }
+          >
+            <StageFunnelBar stages={stages} />
+          </Loadable>
         </div>
 
         {/* Active count */}
         <div className="flex shrink-0 flex-col items-end" style={{ minWidth: 44 }}>
-          <span
-            className="font-poppins tabular-nums"
-            style={{
-              fontSize: 16,
-              fontWeight: 600,
-              color: activeCount === 0 ? '#B5B9C4' : '#0d0d09',
-              lineHeight: 1.1,
-            }}
+          <Loadable
+            loading={metricsLoading}
+            className="flex justify-end"
+            skeleton={<Skeleton className="ml-auto rounded-[4px]" style={{ width: 18, height: 17.6 }} />}
           >
-            {activeCount}
-          </span>
+            <span
+              className="block text-right font-poppins tabular-nums"
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: activeCount === 0 || metricsFailed ? '#B5B9C4' : '#0d0d09',
+                lineHeight: 1.1,
+              }}
+              title={metricsFailed ? "Couldn't load this job's counts" : undefined}
+            >
+              {metricsFailed ? '—' : activeCount}
+            </span>
+          </Loadable>
           <span className="font-inter" style={{ fontSize: 10, color: '#8B8F9E' }}>
             active
           </span>
