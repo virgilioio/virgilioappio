@@ -38,7 +38,7 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: eventTypes = [], isLoading } = useQuery({
+  const { data: eventTypes = [], isLoading, error, refetch } = useQuery({
     queryKey: ['booking-event-types', bookingConfigId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -157,6 +157,8 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
   return {
     eventTypes,
     isLoading,
+    error,
+    refetch,
     createEventType: createMutation.mutate,
     updateEventType: updateMutation.mutate,
     deleteEventType: deleteMutation.mutate,

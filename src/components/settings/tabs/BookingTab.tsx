@@ -17,6 +17,8 @@ import {
   Bell,
   CalendarRange,
 } from 'lucide-react'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
 import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -82,6 +84,8 @@ export function BookingTab() {
   const {
     eventTypes,
     isLoading: isLoadingEventTypes,
+    error: eventTypesError,
+    refetch: refetchEventTypes,
     createEventType,
     updateEventType,
     deleteEventType,
@@ -317,19 +321,21 @@ export function BookingTab() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-[#8B8F9E]" />
             </div>
+          ) : eventTypesError && eventTypes.length === 0 ? (
+            <div className="px-5 py-10">
+              <LoadError what="event types" compact onRetry={() => { void refetchEventTypes() }} />
+            </div>
           ) : eventTypes.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <p className="font-poppins text-[13px] font-medium text-[#0d0d09]">
-                No event types yet
-              </p>
-              <p className="font-inter text-[12px] text-[#5A6072] mt-1">
-                Create your first event type to let candidates pick what to book.
-              </p>
-              <div className="mt-4 flex justify-center">
-                <Button variant="secondary" size="sm" icon={Plus} onClick={handleOpenCreate}>
-                  Create event type
-                </Button>
-              </div>
+            <div className="px-5 pt-8 pb-10">
+              <AnimatedEmpty
+                scene="scheduling"
+                size="compact"
+                onceKey="booking-event-types"
+                title="No event types yet"
+                body="Create an event type candidates can use to pick a time that works."
+                // Secondary: the card header already has the primary Create event type.
+                secondary={{ label: 'Create event type', icon: <Plus size={16} strokeWidth={2} />, onClick: handleOpenCreate }}
+              />
             </div>
           ) : (
             <ul className="divide-y divide-[#F1F0EC]">
