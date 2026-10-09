@@ -52,7 +52,7 @@ import { PipelineFlatSection } from '@/components/jobs/sections/PipelineFlatSect
 import { matchesPipelineFilters, matchesPipelineSearch, type PipelineFilter } from '@/components/jobs/pipelineFilters'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { SHELL_BREAKPOINT, useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 import { HeroCardSkeleton, PipelineSectionTabsSkeleton } from '@/components/ui/hero-skeletons'
 import { TableSkeleton } from '@/components/ui/table-states'
@@ -141,10 +141,9 @@ export default function JobDetail() {
     if (typeof window === 'undefined') return 'board'
     const saved = localStorage.getItem('jobPipelineView')
     if (saved) return saved === 'list' ? 'list' : 'board'
-    // Board by default everywhere. (This used to say "list on mobile", but useIsMobile
-    // always answered false on the first render, so phones have always opened the
-    // board; the list view doesn't fit a 390px screen yet.)
-    return 'board'
+    // Phones open the list (it has a phone layout); everything else opens the board.
+    // A saved choice always wins.
+    return window.innerWidth < SHELL_BREAKPOINT ? 'list' : 'board'
   })
   useEffect(() => {
     try { localStorage.setItem('jobPipelineView', pipelineView) } catch {}
@@ -1293,7 +1292,7 @@ export default function JobDetail() {
               <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
                 {pipelineSectionTab === 'recruiting' ? (
                   <>
-                    <div className="hidden shrink-0 mb-2 sm:block">
+                    <div className="shrink-0 mb-2">
                       <PipelineToolbar
                         filters={pipelineFilters}
                         onFiltersChange={setPipelineFilters}
@@ -1306,7 +1305,8 @@ export default function JobDetail() {
                     </div>
                     <ClientViewStrip jobId={id!} />
                     <div className="relative p-0 flex-1 min-h-0">
-                      <div className="h-full min-h-0" style={{ padding: '12px 28px 24px' }}>
+                      {/* Phones drop the 28px sides so the board and list line up with the stage bar above. */}
+                      <div className="h-full min-h-0 pt-3 pb-6 px-0 sm:px-7">
                         <PipelineOverview
                           jobId={id!}
                           showHeader={false}

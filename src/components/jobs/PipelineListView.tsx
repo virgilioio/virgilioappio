@@ -20,6 +20,8 @@ import {
 import PipelineStatusBadge from './PipelineStatusBadge'
 import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
 import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { IconTip } from '@/components/ui/tooltip'
 
 export type PipelineListRow = {
   id: string
@@ -42,6 +44,18 @@ export type PipelineListGroup = {
   name: string
   color: string
   rows: PipelineListRow[]
+}
+
+/**
+ * Phones (below the shell's 640px line): no column header; each row is
+ * tick · candidate (name, role @ company, then match · days · status) · move.
+ * Ticks and the move button stay visible because there is no hover on touch.
+ */
+const PHONE_GRID: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '20px minmax(0,1fr) auto',
+  alignItems: 'center',
+  gap: 10,
 }
 
 const HEADER_LABEL: React.CSSProperties = {
@@ -113,6 +127,9 @@ export function PipelineListView({
   onMove: (assocId: string, toStageJhsId: string) => void
 }) {
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({})
+  const phone = useIsMobile()
+  const GRID = phone ? PHONE_GRID : LIST_GRID
+  const pad = phone ? '10px 12px 10px 11px' : '10px 16px 10px 13px'
 
   return (
     <div
@@ -127,6 +144,7 @@ export function PipelineListView({
       }}
     >
       {/* Header row */}
+      {!phone && (
       <div
         style={{
           ...LIST_GRID,
@@ -144,6 +162,7 @@ export function PipelineListView({
         <div style={HEADER_LABEL}>Owner</div>
         <div />
       </div>
+      )}
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         {groups.map((group) => {
@@ -156,11 +175,11 @@ export function PipelineListView({
               {/* Stage group header */}
               <div
                 style={{
-                  ...LIST_GRID,
+                  ...GRID,
                   position: 'sticky',
                   top: 0,
                   zIndex: 5,
-                  padding: '9px 16px 9px 13px',
+                  padding: phone ? '9px 12px 9px 11px' : '9px 16px 9px 13px',
                   borderLeft: `3px solid ${group.color}`,
                   background: '#FAFAF7',
                   borderTop: '1px solid #E7E8EE',
@@ -225,16 +244,20 @@ export function PipelineListView({
                     </span>
                   )}
                 </div>
-                <div />
-                <div />
-                <div />
-                <div />
+                {!phone && (
+                  <>
+                    <div />
+                    <div />
+                    <div />
+                    <div />
+                  </>
+                )}
                 <div className="flex justify-end">
                   <button
                     type="button"
                     aria-label="Stage actions"
                     className="inline-flex items-center justify-center"
-                    style={{ width: 24, height: 24, borderRadius: 6, color: PIPELINE_TERTIARY }}
+                    style={{ width: phone ? 32 : 24, height: phone ? 32 : 24, borderRadius: 6, color: PIPELINE_TERTIARY }}
                     onClick={() => onToggleStage(group.jhsId)}
                   >
                     <MoreHorizontal size={13} />
@@ -266,9 +289,9 @@ export function PipelineListView({
                       key={row.id}
                       className={cn('group/row cursor-pointer', group.rows.length > 100 && 'gio-cv-row')}
                       style={{
-                        ...LIST_GRID,
+                        ...GRID,
                         minHeight: 56,
-                        padding: '10px 16px 10px 13px',
+                        padding: pad,
                         borderLeft: `3px solid ${group.color}22`,
                         borderBottom: '1px solid #F1F0EC',
                         background: selected ? '#FAF8FF' : '#fff',
@@ -288,7 +311,7 @@ export function PipelineListView({
                       >
                         <span
                           className={
-                            selected || anySelected
+                            selected || anySelected || phone
                               ? 'opacity-100'
                               : 'opacity-0 group-hover/row:opacity-100 inline-block'
                           }
@@ -338,7 +361,33 @@ export function PipelineListView({
                             </>
                           )}
                         </div>
+                        {phone && (
+                          <div
+                            className="flex flex-wrap items-center"
+                            style={{ marginTop: 6, gap: '4px 10px', fontFamily: 'Inter, sans-serif', fontSize: 12 }}
+                          >
+                            <span className="inline-flex items-center tabular-nums" style={{ gap: 3, color: scoreColor(row.score) }}>
+                              <Sparkles size={11} strokeWidth={2.25} />
+                              <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600 }}>
+                                {typeof row.score === 'number' ? row.score : '—'}
+                              </span>
+                            </span>
+                            <span className="inline-flex items-center tabular-nums" style={{ gap: 3 }}>
+                              {stale && <Clock size={11} strokeWidth={2.2} color={PIPELINE_RED} />}
+                              <span style={{ color: stale ? PIPELINE_RED : undefined, fontWeight: stale ? 600 : undefined }}>
+                                {row.days}d
+                              </span>
+                              <span style={{ color: PIPELINE_TERTIARY }}>in stage</span>
+                            </span>
+                            <span className="inline-flex min-w-0 max-w-full items-center">
+                              <PipelineStatusBadge status={row.status} />
+                            </span>
+                          </div>
+                        )}
                       </div>
+
+                      {!phone && (
+                      <>
 
                       {/* 3 · match */}
                       <div
@@ -407,10 +456,13 @@ export function PipelineListView({
                         )}
                       </div>
 
+                      </>
+                      )}
+
                       {/* 7 · actions */}
                       <div
                         className={
-                          selected
+                          selected || phone
                             ? 'flex items-center justify-end opacity-100'
                             : 'flex items-center justify-end opacity-0 group-hover/row:opacity-100 transition-opacity duration-[120ms]'
                         }
@@ -418,15 +470,15 @@ export function PipelineListView({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <DropdownMenu>
+                          <IconTip label="Move stage">
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              title="Move stage"
                               aria-label="Move stage"
                               className="inline-flex items-center justify-center"
                               style={{
-                                width: 26,
-                                height: 26,
+                                width: phone ? 32 : 26,
+                                height: phone ? 32 : 26,
                                 borderRadius: 7,
                                 border: '1px solid #E7E8EE',
                                 background: '#fff',
@@ -435,6 +487,7 @@ export function PipelineListView({
                               <ArrowRight size={12} />
                             </button>
                           </DropdownMenuTrigger>
+                          </IconTip>
                           <DropdownMenuContent align="end" sideOffset={8}>
                             {stages
                               .filter((s) => s.jhsId !== group.jhsId)
@@ -445,7 +498,9 @@ export function PipelineListView({
                               ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        {!phone && (
                         <DropdownMenu>
+                          <IconTip label="More">
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
@@ -456,12 +511,14 @@ export function PipelineListView({
                               <MoreHorizontal size={13} />
                             </button>
                           </DropdownMenuTrigger>
+                          </IconTip>
                           <DropdownMenuContent align="end" sideOffset={8}>
                             <DropdownMenuItem onSelect={() => onRowClick(row.candidateId)}>
                               Open profile
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        )}
                       </div>
                     </div>
                   )
