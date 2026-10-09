@@ -10,7 +10,7 @@ import CandidateCard from './CandidateCard'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
 import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, type DropAnimation, MouseSensor, TouchSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
-import { BoardLift, boardDropAnimation, useBoardFlip } from '@/lib/boardMotion'
+import { BoardLift, boardDropAnimation, flashRevert, useBoardFlip } from '@/lib/boardMotion'
 import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
@@ -156,6 +156,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
   const hasRenderedOnce = useRef(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
+  const byStageRef = useRef(byStage)
+  byStageRef.current = byStage
   const [rejected, setRejected] = useState<PipelineAssociation[]>([])
   const [hired, setHired] = useState<PipelineAssociation[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
@@ -428,6 +430,23 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     const idsToMove = (selectedIds.has(assocId) && selectedIds.size > 1) 
       ? Array.from(selectedIds) 
       : [assocId]
+
+    // Clear selection after bulk move
+    if (idsToMove.length > 1) {
+      setSelectedIds(new Set())
+      emitSelectedCandidateIds(new Set())
+    }
+    await runMoveRef.current(idsToMove, toStageId)
+  }, [selectedIds, emitSelectedCandidateIds, captureBoard])
+
+  /**
+   * §5 Optimistic move: the cards move now and save in the background. If the save
+   * fails, they slide back to where they were (FLIP), flash a short red ring
+   * (--dur-revert), and one toast offers Retry. Never a raw server error.
+   */
+  const runMove = async (idsToMove: string[], toStageId: string, isRetry = false) => {
+    const snapshot = byStageRef.current
+    if (isRetry) captureBoard()
     
     // Optimistic update: move cards in local state immediately
     setByStage(prev => {
@@ -448,12 +467,6 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       return next
     })
     
-    // Clear selection after bulk move
-    if (idsToMove.length > 1) {
-      setSelectedIds(new Set())
-      emitSelectedCandidateIds(new Set())
-    }
-    
     // Server sync in background
     try {
       await Promise.all(idsToMove.map(id => moveAssociationToStage(id, toStageId, { silent: true })))
@@ -466,18 +479,23 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       // Silently sync server state
       silentRefresh()
     } catch (error) {
+      console.error('Move failed', error)
+      // Revert: slide the cards back and ring them briefly.
+      captureBoard()
+      setByStage(snapshot)
+      requestAnimationFrame(() => flashRevert(boardRef.current, idsToMove))
+      const name = idsToMove.length === 1 ? assocMap.get(idsToMove[0])?.assoc.candidate_name : null
       toast({
-        title: 'Error',
-        description: idsToMove.length > 1 
-          ? 'Failed to move some candidates. Please try again.'
-          : 'Failed to move candidate to selected stage.',
+        title: idsToMove.length > 1 ? `Couldn't move ${idsToMove.length} candidates` : `Couldn't move ${name || 'the candidate'}`,
         variant: 'destructive',
+        action: <button onClick={() => void runMoveRef.current(idsToMove, toStageId, true)}>Retry</button>,
       })
-      // Revert on failure
       silentRefresh()
     }
     onStageChanged?.()
-  }, [moveAssociationToStage, silentRefresh, selectedIds, emitSelectedCandidateIds, onStageChanged, assocMap])
+  }
+  const runMoveRef = useRef(runMove)
+  runMoveRef.current = runMove
 
   // Get all associations for status-based sorting
   const allAssociations = useMemo(() => {

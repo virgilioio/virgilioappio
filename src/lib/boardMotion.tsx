@@ -59,6 +59,22 @@ export function boardDropAnimation(): DropAnimation | null {
   }
 }
 
+/**
+ * §5 Revert: a card whose move failed flashes a short red ring as it settles back
+ * (--dur-revert, --ease-out). Colour only, so reduced motion keeps it.
+ */
+export function flashRevert(root: Element | null, ids: string[]) {
+  if (!root) return
+  for (const id of ids) {
+    const card = root.querySelector<HTMLElement>(`[data-board-card="${CSS.escape(id)}"]`)
+    const target = (card?.firstElementChild as HTMLElement | null) ?? card
+    target?.animate(
+      [{ boxShadow: '0 0 0 2px rgb(250 82 82 / 0.7)' }, { boxShadow: '0 0 0 2px rgb(250 82 82 / 0)' }],
+      { duration: motionToken('--dur-revert', 600), easing: motionToken('--ease-out', 'ease-out') },
+    )
+  }
+}
+
 const MAX_FLIP_CARDS = 150
 
 export function useBoardFlip(boardRef: React.RefObject<HTMLElement>, layoutKey: unknown) {

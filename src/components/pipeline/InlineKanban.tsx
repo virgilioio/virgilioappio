@@ -16,7 +16,7 @@ import {
   type DragStartEvent,
   type DropAnimation,
 } from '@dnd-kit/core'
-import { BoardLift, boardDropAnimation, useBoardFlip } from '@/lib/boardMotion'
+import { BoardLift, boardDropAnimation, flashRevert, useBoardFlip } from '@/lib/boardMotion'
 import { ArrowUpRight, Plus, UserPlus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
@@ -135,11 +135,17 @@ export function InlineKanban({ jobId }: { jobId: string }) {
     }
     if (!candidate || fromJhs === toJhs) return
     captureBoard([associationId])
+    await runMove(associationId, candidate, fromJhs!, toJhs)
+  }
+
+  /** §5 Optimistic move; on failure the row slides back, rings red once, and Retry is offered. */
+  const runMove = async (associationId: string, candidate: InlineCandidate, fromJhs: string, toJhs: string) => {
+    const snapshot = stages
     // Optimistic: move + reset days
     setStages((prev) =>
       prev.map((s) => {
         if (s.jhsId === fromJhs) return { ...s, candidates: s.candidates.filter((x) => x.id !== associationId) }
-        if (s.jhsId === toJhs) return { ...s, candidates: [...s.candidates, { ...candidate!, daysInStage: 0 }] }
+        if (s.jhsId === toJhs) return { ...s, candidates: [...s.candidates, { ...candidate, daysInStage: 0 }] }
         return s
       }),
     )
@@ -147,8 +153,23 @@ export function InlineKanban({ jobId }: { jobId: string }) {
       await moveAssociationToStage(associationId, toJhs, { silent: true })
     } catch (err) {
       console.error(err)
-      toast({ title: 'Move failed', description: 'Could not move candidate.', variant: 'destructive' })
-      refresh()
+      captureBoard()
+      setStages(snapshot)
+      requestAnimationFrame(() => flashRevert(boardRef.current, [associationId]))
+      toast({
+        title: `Couldn't move ${candidate.name || 'the candidate'}`,
+        variant: 'destructive',
+        action: (
+          <button
+            onClick={() => {
+              captureBoard()
+              void runMove(associationId, candidate, fromJhs, toJhs)
+            }}
+          >
+            Retry
+          </button>
+        ),
+      })
     }
   }
 
