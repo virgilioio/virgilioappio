@@ -249,9 +249,10 @@ export function Header() {
                     />
                   )}
                 </span>
-                <span className="hidden lg:inline">{item.label}</span>
+                {/* Labels from 1280px: below that the search and the nav would overlap. */}
+                <span className="hidden xl:inline">{item.label}</span>
                 {item.dropdown && (
-                  <ChevronDown className="hidden lg:inline h-3 w-3 opacity-65" />
+                  <ChevronDown className="hidden xl:inline h-3 w-3 opacity-65" />
                 )}
               </span>
             )

@@ -97,10 +97,11 @@ function SortableWidget({ cfg, onChange, onRemove }: { cfg: WidgetConfig; onChan
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    gridColumn: `span ${cfg.span} / span ${cfg.span}`,
+    ['--span' as string]: cfg.span,
   }
+  // Full width on phones; the saved span from tablet width up.
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
+    <div ref={setNodeRef} style={style} className="col-span-12 md:[grid-column:span_var(--span)/span_var(--span)]" {...attributes}>
       <WidgetFrame cfg={cfg} onChange={onChange} onRemove={onRemove} dragHandleProps={listeners as Record<string, unknown>} isDragging={isDragging} />
     </div>
   )

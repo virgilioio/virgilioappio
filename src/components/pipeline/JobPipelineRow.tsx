@@ -72,7 +72,7 @@ export function JobPipelineRow({ job, metrics, expanded, onToggle, idleCount, qu
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className="truncate font-poppins text-[#0d0d09]"
+              className="min-w-0 max-w-full truncate font-poppins text-[#0d0d09]"
               style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: '-0.01em' }}
             >
               {job.title}
@@ -104,13 +104,13 @@ export function JobPipelineRow({ job, metrics, expanded, onToggle, idleCount, qu
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-inter" style={{ fontSize: 11.5, color: '#8B8F9E' }}>
             {job.department ? (
-              <span className="inline-flex items-center gap-1">
-                <Building2 size={11} strokeWidth={2} /> {job.department}
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1">
+                <Building2 size={11} strokeWidth={2} className="shrink-0" /> <span className="truncate">{job.department}</span>
               </span>
             ) : null}
             {job.location ? (
-              <span className="inline-flex items-center gap-1">
-                <MapPin size={11} strokeWidth={2} /> {job.location}
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1">
+                <MapPin size={11} strokeWidth={2} className="shrink-0" /> <span className="truncate">{job.location}</span>
               </span>
             ) : null}
             <span className="inline-flex items-center gap-1">
@@ -119,8 +119,8 @@ export function JobPipelineRow({ job, metrics, expanded, onToggle, idleCount, qu
           </div>
         </div>
 
-        {/* Funnel */}
-        <div onClick={(e) => e.stopPropagation()}>
+        {/* Funnel (fixed 360px: from tablet width up; phones get the title and count) */}
+        <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
           <StageFunnelBar stages={stages} />
         </div>
 
@@ -143,7 +143,7 @@ export function JobPipelineRow({ job, metrics, expanded, onToggle, idleCount, qu
         </div>
 
         {/* Avatar stack */}
-        <div className="flex shrink-0 -space-x-1.5">
+        <div className="hidden shrink-0 -space-x-1.5 sm:flex">
           {team.length === 0 ? (
             <span
               className="flex items-center justify-center rounded-full font-poppins"
