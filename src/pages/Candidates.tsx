@@ -51,6 +51,7 @@ import { Tag as TagIcon, Users as UsersIcon, Share2 as Share2Icon, Briefcase, Ma
 import { ShareListModal } from '@/components/candidates/bulk/ShareListModal'
 import { useTags, useAllCandidateTagsMap, useTagMutations, type Tag } from '@/hooks/useTags'
 import { recallValue, rememberValue, useScrollMemory } from '@/lib/scrollMemory'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
   all: {},
@@ -467,12 +468,32 @@ function CandidatesInner() {
     clearSelection(); getCandidates()
   }
 
-  if (error) {
-    return <div className="p-8 text-destructive">Error loading candidates</div>
+  // §16: a failed first load is an inline error with Retry, never the whole page
+  // and never an empty list. With rows already on screen, they stay.
+  const [loadRetry, setLoadRetry] = useState(0)
+  const loadTimedOut = useLoadTimeout(isLoading, loadRetry)
+  const loadError: 'failed' | 'timeout' | null =
+    error && candidates.length === 0 ? 'failed' : loadTimedOut ? 'timeout' : null
+  const retryLoad = () => { setLoadRetry(n => n + 1); getCandidates() }
+
+  const editSearch = () => {
+    listRef.current?.scrollTo({ top: 0 })
+    listRef.current?.querySelector<HTMLInputElement | HTMLTextAreaElement>('[data-candidate-search] input, [data-candidate-search] textarea')?.focus()
   }
 
   const activeView = views.find(v => v.id === activeViewId) ?? null
   const smartListLabel = activeSmartList ? SMART_LIST_LABEL[activeSmartList] : null
+  // What hides the rows, for the filtered empty state: “query”, the smart list or
+  // saved view, and how many filters.
+  const filterSummary = (() => {
+    const parts: string[] = []
+    const q = (committedQuery || query).trim()
+    if (q) parts.push(`\u201C${q}\u201D`)
+    else if (activeView) parts.push(`\u201C${activeView.name}\u201D`)
+    else if (activeSmartList && activeSmartList !== 'all' && smartListLabel) parts.push(`\u201C${smartListLabel}\u201D`)
+    if (activeFilterCount > 0) parts.push(`${parts.length ? '' : 'these '}${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'}`)
+    return parts.length ? parts.join(' and ') : null
+  })()
 
   return (
     <div className="h-[100dvh] sm:h-[calc(100dvh-3.5rem)] flex flex-col overflow-hidden bg-virgilio-cream">
@@ -529,6 +550,7 @@ function CandidatesInner() {
             />
 
             <SearchModeTabs value={mode} onChange={setMode} />
+            <div data-candidate-search>
             <CandidateSearchBar
               value={query}
               onChange={setQuery}
@@ -557,6 +579,7 @@ function CandidatesInner() {
                 />
               }
             />
+            </div>
             <FilterChipsRow filterOptions={filterOptions} />
           </section>
 
@@ -648,7 +671,12 @@ function CandidatesInner() {
                 associationsMap={associationsMap}
                 isLoading={isLoading}
                 isSearching={isSearching}
-                hasActiveFilters={activeFilterCount > 0 || !!query}
+                hasActiveFilters={activeFilterCount > 0 || !!query || (!!activeSmartList && activeSmartList !== 'all') || !!activeViewId}
+                baseCount={candidates.length}
+                filterSummary={filterSummary}
+                onEditSearch={editSearch}
+                loadError={loadError}
+                onRetry={retryLoad}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}

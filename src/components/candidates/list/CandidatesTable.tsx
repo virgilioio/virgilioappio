@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MoreHorizontal, Eye, Trash2 } from 'lucide-react'
@@ -6,14 +7,15 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { IdentityCell, NumericCell, ActionCell } from '@/components/ui/table-cells'
 import { TableSkeleton } from '@/components/ui/table-states'
-import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { SoftMagnifier, SoftPlane } from '@/components/ui/EmptyIllustrations'
+import { CandidatesEmpty } from '@/components/empty/CandidatesEmpty'
+import { EmptyCard } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import type { AssociationsMap, AssociationDetail } from '@/hooks/useCandidateJobAssociations'
-import { Plus, RotateCcw } from 'lucide-react'
+import { Plus, RotateCcw, Search } from 'lucide-react'
 import { useTableWindow } from '@/lib/useTableWindow'
 import { useFirstLoadStagger } from '@/lib/motion'
 
@@ -32,6 +34,14 @@ interface CandidatesTableProps {
   onDelete: (candidate: IndependentCandidate) => void
   onClearFilters?: () => void
   onAddCandidate?: () => void
+  /** How many candidates exist before search, smart list and filters. */
+  baseCount?: number
+  /** Short description of what is hiding them, e.g. “Senior” and 2 filters. */
+  filterSummary?: React.ReactNode
+  onEditSearch?: () => void
+  /** §16: the first load failed or ran past 15s. */
+  loadError?: 'failed' | 'timeout' | null
+  onRetry?: () => void
 }
 
 const SOURCE_TONE: Record<string, { letter: string; tone: 'green' | 'blue' | 'purple' | 'orange' | 'neutral' | 'pink' }> = {
@@ -140,6 +150,7 @@ function isNew(iso: string): boolean {
 export function CandidatesTable({
   candidates, totalCount, associationsMap, isLoading, isSearching, hasActiveFilters,
   selectedIds, onToggleSelect, onToggleSelectAll, onOpenCandidate, onDelete, onClearFilters, onAddCandidate,
+  baseCount = 0, filterSummary, onEditSearch, loadError, onRetry,
 }: CandidatesTableProps) {
   const navigate = useNavigate()
   const allSelected = useMemo(
@@ -152,41 +163,55 @@ export function CandidatesTable({
   // §9: the first time the list shows this session, its first rows rise in.
   const stagger = useFirstLoadStagger('candidates-table', !isLoading && !isSearching && candidates.length > 0)
 
-  if (isLoading || isSearching) return <TableSkeleton rows={8} columns={9} />
-  if (candidates.length === 0) {
+  if (loadError) {
     return (
       <div className="min-h-[500px] w-full p-6 flex items-center justify-center">
-        {hasActiveFilters ? (
-          <EmptyState
-            className="w-full max-w-[540px]"
-            size="card"
-            illustration={<SoftMagnifier />}
-            title="No matches"
-            body="No items match the current filters. Clear them to see everything again."
-            primary={
-              onClearFilters ? (
-                <EmptyAction icon={<RotateCcw size={16} strokeWidth={2} />} onClick={onClearFilters}>
-                  Clear filters
-                </EmptyAction>
-              ) : undefined
-            }
-          />
-        ) : (
-          <EmptyState
-            className="w-full max-w-[540px]"
-            size="card"
-            illustration={<SoftPlane />}
-            title="No candidates yet"
-            body="Add your first candidate to get started."
-            primary={
-              onAddCandidate ? (
-                <EmptyAction icon={<Plus size={16} strokeWidth={2} />} onClick={onAddCandidate}>
-                  Add candidate
-                </EmptyAction>
-              ) : undefined
-            }
-          />
-        )}
+        <div className="w-full max-w-[540px]">
+          <EmptyCard>
+            <LoadError what="candidates" timedOut={loadError === 'timeout'} onRetry={onRetry} />
+          </EmptyCard>
+        </div>
+      </div>
+    )
+  }
+  if (isLoading || isSearching) return <TableSkeleton rows={8} columns={9} />
+  if (candidates.length === 0) {
+    // §16/§17: rows hidden by search, a smart list or filters → search scene with
+    // Clear filters, never Add. Only a truly empty database offers Add candidate.
+    const filtered = hasActiveFilters || baseCount > 0
+    const n = baseCount
+    return (
+      <div className="min-h-[500px] w-full p-6 flex items-center justify-center">
+        <div className="w-full max-w-[540px]">
+          <EmptyCard>
+            {filtered ? (
+              <CandidatesEmpty
+                filtered
+                onceKey="candidates-list"
+                title="No matches"
+                body={
+                  n > 0 ? (
+                    <>
+                      Nothing fits {filterSummary ?? 'these filters'}. The {n.toLocaleString()} {n === 1 ? 'candidate is' : 'candidates are'} still
+                      there, just hidden by your filters.
+                    </>
+                  ) : (
+                    <>Nothing fits {filterSummary ?? 'these filters'}.</>
+                  )
+                }
+                primary={onClearFilters ? { label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: onClearFilters } : undefined}
+                secondary={onEditSearch ? { label: 'Edit search', icon: <Search size={16} strokeWidth={2} />, onClick: onEditSearch } : undefined}
+              />
+            ) : (
+              <CandidatesEmpty
+                onceKey="candidates-list"
+                title="No candidates yet"
+                body="Everyone who applies or gets added to a job shows up here."
+                primary={onAddCandidate ? { label: 'Add candidate', icon: <Plus size={16} strokeWidth={2} />, onClick: onAddCandidate } : undefined}
+              />
+            )}
+          </EmptyCard>
+        </div>
       </div>
     )
   }
