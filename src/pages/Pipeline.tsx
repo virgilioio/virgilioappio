@@ -116,7 +116,9 @@ export default function Pipeline() {
 
   const { data: globalMetrics, isLoading: globalMetricsLoading } = usePipelineGlobalMetrics({ jobStatuses: ['open'] })
   const jobIds = filteredJobs.map((j) => j.id)
-  const { data: jobMetrics, isPending: jobMetricsPending, isError: jobMetricsFailed } = usePipelineJobMetrics(jobIds)
+  const { data: jobMetrics, isPending: jobMetricsPending, isPlaceholderData: jobMetricsStandIn, isError: jobMetricsFailed } = usePipelineJobMetrics(jobIds)
+  // Rows not in the stand-in data (a filter change) are still loading, not zero.
+  const jobMetricsLoading = jobMetricsPending || jobMetricsStandIn
   const metricsMap = useMemo(() => new Map((jobMetrics ?? []).map((m) => [m.job_id, m])), [jobMetrics])
 
   const sortedJobs = useMemo(() => {
@@ -380,7 +382,7 @@ export default function Pipeline() {
                             key={job.id}
                             job={job}
                             metrics={metricsMap.get(job.id)}
-                            metricsStatus={metricsMap.has(job.id) ? 'ready' : jobMetricsFailed ? 'error' : jobMetricsPending ? 'loading' : 'ready'}
+                            metricsStatus={metricsMap.has(job.id) ? 'ready' : jobMetricsFailed ? 'error' : jobMetricsLoading ? 'loading' : 'ready'}
                             expanded={expanded.has(job.id)}
                             onToggle={() => toggleRow(job.id)}
                           />
@@ -396,7 +398,7 @@ export default function Pipeline() {
                       key={job.id}
                       job={job}
                       metrics={metricsMap.get(job.id)}
-                      metricsStatus={metricsMap.has(job.id) ? 'ready' : jobMetricsFailed ? 'error' : jobMetricsPending ? 'loading' : 'ready'}
+                      metricsStatus={metricsMap.has(job.id) ? 'ready' : jobMetricsFailed ? 'error' : jobMetricsLoading ? 'loading' : 'ready'}
                       expanded={expanded.has(job.id)}
                       onToggle={() => toggleRow(job.id)}
                     />
