@@ -196,7 +196,11 @@ export function CandidatesTable({
       <TableHeader>
         <TableRow>
           <TableHead className="w-10">
-            <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} aria-label="Select all" />
+            <Checkbox
+              checked={allSelected ? true : candidates.some((c) => selectedIds.includes(c.id)) ? 'indeterminate' : false}
+              onCheckedChange={onToggleSelectAll}
+              aria-label="Select all"
+            />
           </TableHead>
           <TableHead>Candidate</TableHead>
           <TableHead>Skills</TableHead>

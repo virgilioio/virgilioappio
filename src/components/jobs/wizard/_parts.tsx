@@ -348,23 +348,36 @@ export function ChipInput({
   // §12 chips: pop in, shrink out, neighbours FLIP over.
   const chipsRef = useChipMotion()
 
-  const commit = (raw: string) => {
+  // §12: Backspace on an empty input selects the last chip first; a second one removes it.
+  const [armed, setArmed] = React.useState(false)
+
+  const commitMany = (parts: string[]) => {
     if (disabled) return
-    const v = raw.trim().replace(/,$/, '').trim()
-    if (!v) return
-    if (values.some((x) => x.toLowerCase() === v.toLowerCase())) return
-    if (maxChips && values.length >= maxChips) return
-    onChange([...values, v])
+    const next = [...values]
+    for (const raw of parts) {
+      const v = raw.trim().replace(/,$/, '').trim()
+      if (!v || next.some((x) => x.toLowerCase() === v.toLowerCase())) continue
+      if (maxChips && next.length >= maxChips) break
+      next.push(v)
+    }
+    if (next.length !== values.length) onChange(next)
     setDraft('')
   }
+  const commit = (raw: string) => commitMany([raw])
 
   const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (disabled) return
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === 'Enter' || e.key === ',' || (e.key === 'Tab' && draft.trim())) {
       e.preventDefault()
       commit(draft)
+      setArmed(false)
     } else if (e.key === 'Backspace' && !draft && values.length) {
-      onChange(values.slice(0, -1))
+      if (armed) {
+        onChange(values.slice(0, -1))
+        setArmed(false)
+      } else setArmed(true)
+    } else {
+      setArmed(false)
     }
   }
 
@@ -383,12 +396,14 @@ export function ChipInput({
       )}
       onClick={() => !disabled && inputRef.current?.focus()}
     >
-      {values.map((v) => (
+      {values.map((v, i) => (
         <span
           key={v}
           data-chip={v}
+          data-armed={armed && i === values.length - 1 ? '' : undefined}
           className={cn(
             'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium',
+            'data-[armed]:ring-2 data-[armed]:ring-virgilio-purple/40',
             toneCls
           )}
         >
@@ -411,9 +426,24 @@ export function ChipInput({
       <input
         ref={inputRef}
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => {
+          setDraft(e.target.value)
+          setArmed(false)
+        }}
         onKeyDown={onKey}
-        onBlur={() => draft && commit(draft)}
+        onPaste={(e) => {
+          // A pasted list becomes several chips at once (they pop in 40ms apart).
+          const text = e.clipboardData.getData('text')
+          const parts = text.split(/[,;\n\t]+/)
+          if (parts.length > 1) {
+            e.preventDefault()
+            commitMany(parts)
+          }
+        }}
+        onBlur={() => {
+          setArmed(false)
+          if (draft) commit(draft)
+        }}
         disabled={disabled}
         placeholder={values.length === 0 ? placeholder : ''}
         className={cn(

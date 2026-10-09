@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { GoGioLogo } from '@/components/GoGioLogo'
 import { supabase } from '@/lib/supabaseClient'
 import { CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { IconSwap } from '@/components/ui/icon-swap'
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams()
@@ -177,7 +178,7 @@ export default function ResetPassword() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    <IconSwap swapped={showPassword} from={<Eye className="h-5 w-5" />} to={<EyeOff className="h-5 w-5" />} />
                   </button>
                 </div>
               </div>
@@ -202,7 +203,7 @@ export default function ResetPassword() {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    <IconSwap swapped={showConfirmPassword} from={<Eye className="h-5 w-5" />} to={<EyeOff className="h-5 w-5" />} />
                   </button>
                 </div>
               </div>

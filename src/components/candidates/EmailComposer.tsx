@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
 import { useChipMotion } from '@/lib/chipMotion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -47,6 +47,7 @@ import { AIDraftPopover } from './AIDraftPopover';
 import { useAIDraftEmail } from '@/hooks/useAIDraftEmail';
 import { BookingLinkPopover, type BookingCardPayload } from '@/components/chat/BookingLinkPopover';
 import { cn } from '@/lib/utils';
+import { motionToken, prefersReducedMotion } from '@/lib/motion';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -1157,6 +1158,24 @@ function ChipInput({
   const removeAt = (i: number) => onChange(value.filter((_, idx) => idx !== i));
   // §12 email chips: pop in (40ms apart on paste), shrink out, neighbours FLIP over.
   const chipsRef = useChipMotion();
+  // Backspace on an empty input selects the last chip first; a second one removes it.
+  const [armed, setArmed] = useState(false);
+  // A newly added invalid address shakes once.
+  const seen = useRef<string[]>(value);
+  useLayoutEffect(() => {
+    const before = seen.current;
+    seen.current = value;
+    const root = chipsRef.current;
+    if (!root || prefersReducedMotion()) return;
+    value
+      .filter((addr) => !before.includes(addr) && !EMAIL_RE.test(addr))
+      .forEach((addr) => {
+        root.querySelector<HTMLElement>(`[data-chip="${CSS.escape(addr)}"]`)?.animate(
+          [{ translate: '0' }, { translate: '-6px 0' }, { translate: '5px 0' }, { translate: '-3px 0' }, { translate: '0' }],
+          { duration: motionToken('--dur-shake', 300), easing: 'ease-out', delay: motionToken('--dur-press', 160) },
+        );
+      });
+  }, [value, chipsRef]);
 
   return (
     <div
@@ -1171,6 +1190,7 @@ function ChipInput({
           <Badge
             key={`${addr}-${i}`}
             data-chip={addr}
+            className={armed && i === value.length - 1 ? 'ring-2 ring-virgilio-purple/40' : undefined}
             tone={invalid ? 'red' : 'neutral'}
             size="sm"
             icon={Mail}
@@ -1183,19 +1203,23 @@ function ChipInput({
       <input
         ref={inputRef}
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => { setDraft(e.target.value); setArmed(false); }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
             if (draft.trim()) {
               e.preventDefault();
               commit(draft);
             }
+            setArmed(false);
           } else if (e.key === 'Backspace' && !draft && value.length) {
             e.preventDefault();
-            removeAt(value.length - 1);
-          }
+            if (armed) {
+              removeAt(value.length - 1);
+              setArmed(false);
+            } else setArmed(true);
+          } else setArmed(false);
         }}
-        onBlur={() => { if (draft.trim()) commit(draft); }}
+        onBlur={() => { setArmed(false); if (draft.trim()) commit(draft); }}
         onPaste={(e) => {
           const text = e.clipboardData.getData('text');
           if (/[,;\s]/.test(text)) {

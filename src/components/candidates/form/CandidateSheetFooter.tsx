@@ -19,6 +19,8 @@ interface CandidateSheetFooterProps {
   onOpenProfile?: () => void
   /** Optional left-side live status line (overrides the default dedupe hint in add mode). */
   statusLine?: React.ReactNode
+  /** Rendered last, over the footer (the §13 UnsavedGuard). */
+  children?: React.ReactNode
 }
 
 /**
@@ -39,11 +41,12 @@ export function CandidateSheetFooter({
   editedLabel,
   onOpenProfile,
   statusLine,
+  children,
 }: CandidateSheetFooterProps) {
   return (
     <div
       className={cn(
-        'border-t border-virgilio-border/60 bg-background',
+        'relative border-t border-virgilio-border/60 bg-background',
         'px-6 py-4 flex items-center gap-3 flex-wrap',
       )}
     >
@@ -122,6 +125,7 @@ export function CandidateSheetFooter({
           </div>
         </>
       )}
+      {children}
     </div>
   )
 }
