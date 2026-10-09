@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -6,10 +5,62 @@ import { cn } from "@/lib/utils"
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean
   success?: boolean
+  /**
+   * Motion & Feel §12: grow instantly with the content, up to 160px (or the field's own
+   * max-height), then scroll; no scrollbar before that. On by default. Fields whose
+   * resting size is already 160px or taller (editors) keep their size and scroll.
+   */
+  autoGrow?: boolean
+}
+
+const AUTO_GROW_MAX = 160
+
+function fitToContent(el: HTMLTextAreaElement) {
+  const cs = getComputedStyle(el)
+  const declaredMax = parseFloat(cs.maxHeight)
+  const max = Number.isFinite(declaredMax) ? declaredMax : AUTO_GROW_MAX
+  // The resting size (min-height, rows) is what the field is when it isn't grown.
+  el.style.height = ""
+  const resting = el.offsetHeight // layout size: unaffected by a dialog scaling in
+  if (resting >= max) {
+    el.style.overflowY = ""
+    return
+  }
+  const borders = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
+  const content = el.scrollHeight + borders
+  el.style.height = `${Math.min(max, Math.max(resting, content))}px`
+  el.style.overflowY = content > max ? "auto" : "hidden"
 }
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, error, success, ...props }, ref) => {
+  ({ className, error, success, autoGrow = true, onInput, ...props }, ref) => {
+    const inner = React.useRef<HTMLTextAreaElement | null>(null)
+    const setRef = React.useCallback(
+      (el: HTMLTextAreaElement | null) => {
+        inner.current = el
+        if (typeof ref === "function") ref(el)
+        else if (ref) ref.current = el
+      },
+      [ref]
+    )
+    // Controlled values set from outside (reset, prefill) refit too.
+    React.useLayoutEffect(() => {
+      if (autoGrow && inner.current) fitToContent(inner.current)
+    }, [autoGrow, props.value])
+    // Width changes rewrap the text.
+    React.useEffect(() => {
+      const el = inner.current
+      if (!autoGrow || !el || typeof ResizeObserver === "undefined") return
+      let width = el.clientWidth
+      const observer = new ResizeObserver(() => {
+        if (el.clientWidth !== width) {
+          width = el.clientWidth
+          fitToContent(el)
+        }
+      })
+      observer.observe(el)
+      return () => observer.disconnect()
+    }, [autoGrow])
     return (
       <textarea
         className={cn(
@@ -21,7 +72,11 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           !error && !success && "border-virgilio-border hover:border-virgilio-purple/50 aria-[invalid=true]:border-destructive aria-[invalid=true]:hover:border-destructive",
           className
         )}
-        ref={ref}
+        ref={setRef}
+        onInput={(event) => {
+          if (autoGrow) fitToContent(event.currentTarget)
+          onInput?.(event)
+        }}
         {...props}
       />
     )
