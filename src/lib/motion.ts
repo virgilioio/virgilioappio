@@ -20,6 +20,29 @@ export const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
+ * A JS easing function for a `cubic-bezier(…)` token, for the few motions that run in
+ * requestAnimationFrame (SVG geometry WAAPI can't animate). Unknown values fall back to linear.
+ */
+export function easingFunction(css: string): (t: number) => number {
+  const m = /cubic-bezier\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(css)
+  if (!m) return (t) => t
+  const [x1, y1, x2, y2] = m.slice(1).map(Number)
+  const bez = (t: number, a: number, b: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t ** 2 * (1 - t) + t ** 3
+  return (x: number) => {
+    if (x <= 0) return 0
+    if (x >= 1) return 1
+    let lo = 0
+    let hi = 1
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2
+      if (bez(mid, x1, x2) < x) lo = mid
+      else hi = mid
+    }
+    return bez((lo + hi) / 2, y1, y2)
+  }
+}
+
+/**
  * §7 invalid submit: focus the first invalid field inside `scope` and shake it once
  * (6px, --dur-shake). Reduced motion: focus only. Runs after React has rendered the
  * errors, so call it from a form library's invalid callback.
