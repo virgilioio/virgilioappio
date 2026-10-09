@@ -1442,3 +1442,19 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   overflow-wrap: anywhere;
   pointer-events: none;
 }
+
+/* §10 Tab bars too wide for their space scroll sideways, with a 28px right-edge fade
+ * until the end. Only while they overflow; normal tab bars are untouched. */
+.gio-tablist[data-overflow] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  justify-content: flex-start;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+.gio-tablist[data-overflow]::-webkit-scrollbar { display: none; }
+.gio-tablist[data-overflow][data-scroll-end] { -webkit-mask-image: none; mask-image: none; }
+.gio-tablist[data-overflow][data-indicator="pill"] > .gio-tab-indicator { right: auto; width: var(--tab-scroll-w); }
+.gio-tablist[data-overflow][data-indicator="underline"] > .gio-tab-indicator { bottom: 0; }
+.gio-tablist[data-overflow] > [role="tab"] { flex-shrink: 0; }
