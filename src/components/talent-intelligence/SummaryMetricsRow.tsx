@@ -10,7 +10,7 @@ interface SummaryMetricsRowProps {
 export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
   const formatSalary = (val: number) => {
     if (val >= 1000) return `$${Math.round(val / 1000)}k`
-    return `$${val}`
+    return `$${Math.round(val)}`
   }
 
   return (
@@ -20,7 +20,8 @@ export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
         <MetricCard
           variant="hero"
           title="Total Candidates"
-          value={data.totalCandidates.toLocaleString()}
+          value={data.totalCandidates}
+          countId="ti.total"
           icon={Users}
           iconColor="text-primary"
           tooltip="Total candidates in your talent database"
@@ -29,7 +30,9 @@ export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
           <MetricCard
             variant="hero"
             title="Median Salary"
-            value={formatSalary(data.medianSalary)}
+            value={data.medianSalary}
+            countId="ti.median-salary"
+            format={formatSalary}
             icon={DollarSign}
             iconColor="text-virgilio-success"
             tooltip="Median annual salary expectation (normalized)"
@@ -40,6 +43,7 @@ export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
             variant="hero"
             title="Avg. Experience"
             value={data.avgExperience}
+            countId="ti.avg-experience"
             suffix=" yrs"
             icon={Clock}
             iconColor="text-warning"
@@ -64,6 +68,7 @@ export function SummaryMetricsRow({ data }: SummaryMetricsRowProps) {
               variant="inline"
               title="Enriched Profiles"
               value={data.enrichedPercentage}
+              countId="ti.enriched"
               suffix="%"
               tooltip="Percentage of candidates with AI-enriched profiles"
             />

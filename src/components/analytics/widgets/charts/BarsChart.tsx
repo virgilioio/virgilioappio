@@ -3,8 +3,10 @@ import { TONE_COLOR, TRACK } from '../../model/tokens'
 import { fmt } from '../../model/format'
 import { useHoverTip } from './ChartHoverTip'
 import type { MetricId, SeriesPoint, Format } from '../../model/types'
+import { ChartMotion } from '@/components/ui/chart-motion'
 
 interface Props {
+  widgetId: string
   metricId: MetricId
   data: SeriesPoint[]
   format: Format
@@ -12,13 +14,13 @@ interface Props {
   max?: number
 }
 
-export function BarsChart({ metricId, data, format, currency, max }: Props) {
+export function BarsChart({ widgetId, metricId, data, format, currency, max }: Props) {
   const color = TONE_COLOR[METRICS[metricId].tone]
   const tip = useHoverTip()
   const rows = data.slice(0, 10)
   const m = max ?? Math.max(1, ...rows.map(r => r.value))
   return (
-    <div className="flex flex-col gap-2.5 py-1 w-full overflow-hidden">
+    <ChartMotion id={`analytics:${widgetId}`} axis="x" className="flex flex-col gap-2.5 py-1 w-full overflow-hidden">
       {rows.length === 0 && <div className="text-[12px] text-[#8B8F9E] font-inter">No data</div>}
       {rows.map((r, i) => (
         <div key={`${r.label}-${i}`} className="flex items-center gap-3 min-w-0">
@@ -36,7 +38,8 @@ export function BarsChart({ metricId, data, format, currency, max }: Props) {
             onMouseLeave={tip.hide}
           >
             <div
-              className="h-full rounded-[4px] transition-[width] duration-[400ms] ease-out"
+              data-chart-bar={r.label}
+              className="h-full rounded-[4px]"
               style={{ width: `${(r.value / m) * 100}%`, background: color }}
             />
           </div>
@@ -49,6 +52,6 @@ export function BarsChart({ metricId, data, format, currency, max }: Props) {
         </div>
       ))}
       {tip.node}
-    </div>
+    </ChartMotion>
   )
 }

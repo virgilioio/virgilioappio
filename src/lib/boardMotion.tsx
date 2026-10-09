@@ -1,5 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { defaultDropAnimationSideEffects, type DropAnimation } from '@dnd-kit/core'
+import { motionToken, prefersReducedMotion } from '@/lib/motion'
+
+export { motionToken }
 
 /**
  * Motion & Feel §4 Boards (CLAUDE.md) — shared by the job pipeline board and the
@@ -17,22 +20,7 @@ import { defaultDropAnimationSideEffects, type DropAnimation } from '@dnd-kit/co
  * Cards are found by `data-board-card` inside the board element.
  */
 
-/** Read a motion token from :root as a number (ms) or a string (easing). */
-export function motionToken(name: string, fallback: number): number
-export function motionToken(name: string, fallback: string): string
-export function motionToken(name: string, fallback: number | string): number | string {
-  if (typeof window === 'undefined') return fallback
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  if (!raw) return fallback
-  if (typeof fallback === 'number') {
-    const n = parseFloat(raw) * (raw.endsWith('ms') ? 1 : raw.endsWith('s') ? 1000 : 1)
-    return Number.isFinite(n) ? n : fallback
-  }
-  return raw
-}
-
-const reduced = () =>
-  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const reduced = prefersReducedMotion
 
 export function BoardLift({ children, className }: { children: ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)

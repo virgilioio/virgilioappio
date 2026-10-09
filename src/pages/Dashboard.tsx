@@ -706,6 +706,7 @@ function QueueRow({
   )
 }
 
+/** §6 loading: shimmering rows laid out like QueueRow. */
 function QueueSkeleton() {
   return (
     <div>
@@ -720,13 +721,13 @@ function QueueSkeleton() {
             borderBottom: i === 3 ? 'none' : `1px solid ${C.hairline}`,
           }}
         >
-          <div style={{ width: 18, height: 18, borderRadius: 6, background: C.hairline }} />
-          <div style={{ width: 26, height: 26, borderRadius: 8, background: C.hairline }} />
+          <div className="gio-shimmer" style={{ width: 18, height: 18, borderRadius: 6 }} />
+          <div className="gio-shimmer" style={{ width: 26, height: 26, borderRadius: 8 }} />
           <div style={{ flex: 1 }}>
-            <div style={{ width: '50%', height: 11, background: C.hairline, borderRadius: 4 }} />
-            <div style={{ width: '35%', height: 9, background: C.hairline, borderRadius: 4, marginTop: 6 }} />
+            <div className="gio-shimmer" style={{ width: '50%', height: 11, borderRadius: 4 }} />
+            <div className="gio-shimmer" style={{ width: '35%', height: 9, borderRadius: 4, marginTop: 6 }} />
           </div>
-          <div style={{ width: 60, height: 16, background: C.hairline, borderRadius: 999 }} />
+          <div className="gio-shimmer" style={{ width: 60, height: 16, borderRadius: 999 }} />
         </div>
       ))}
     </div>
@@ -826,9 +827,9 @@ function TodayCard({ bookings, isLoading, nextEventId, freeAfter, onFullCalendar
       </div>
 
       {isLoading ? (
-        <div style={{ padding: '16px' }}>
+        <div style={{ padding: '16px' }} aria-hidden="true">
           {[0, 1, 2].map(i => (
-            <div key={i} style={{ height: 44, background: C.hairline, borderRadius: 6, marginBottom: 8 }} />
+            <div key={i} className="gio-shimmer" style={{ height: 44, borderRadius: 6, marginBottom: 8 }} />
           ))}
         </div>
       ) : bookings.length === 0 ? (
@@ -1016,9 +1017,19 @@ function OpenJobsCard({ jobs, metrics, stale, isLoading, onPipeline, onJobClick,
       </div>
 
       {isLoading ? (
-        <div style={{ padding: 16 }}>
+        // §6 loading: rows the size of an open-job row (dot, title, context line).
+        <div aria-hidden="true">
           {[0, 1, 2].map(i => (
-            <div key={i} style={{ height: 36, background: C.hairline, borderRadius: 6, marginBottom: 8 }} />
+            <div
+              key={i}
+              style={{ display: 'flex', gap: 10, padding: '8px 16px', alignItems: 'center', borderTop: `1px solid ${C.hairline}`, height: 50 }}
+            >
+              <span className="gio-shimmer" style={{ width: 7, height: 7, borderRadius: 999, flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div className="gio-shimmer" style={{ width: '55%', height: 11, borderRadius: 4 }} />
+                <div className="gio-shimmer" style={{ width: '30%', height: 9, borderRadius: 4, marginTop: 6 }} />
+              </div>
+            </div>
           ))}
         </div>
       ) : list.length === 0 ? (

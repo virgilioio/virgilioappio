@@ -6,6 +6,8 @@
  */
 import { ArrowDown, ArrowUp, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BlendNumber } from '@/components/ui/blend-number'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export type MetricTone = 'purple' | 'yellow' | 'green' | 'blue' | 'pink' | 'neutral'
 
@@ -39,9 +41,16 @@ export interface MetricItem {
   annotation?: string
   /** Treat value as zero state (muted). Auto-detected when value === 0. */
   isZero?: boolean
+  /** Formats a numeric value (and its count-up frames); default whole numbers. */
+  format?: (value: number) => string
 }
 
-export function MetricStrip({ items }: { items: MetricItem[] }) {
+/**
+ * §6 (CLAUDE.md): with an `id`, numeric values count up on their first view this session
+ * and blend on later changes. `loading` holds each value's place with a skeleton instead
+ * of showing a misleading 0.
+ */
+export function MetricStrip({ items, id, loading = false }: { items: MetricItem[]; id?: string; loading?: boolean }) {
   return (
     <div
       className="flex w-full overflow-hidden rounded-[12px] bg-white"
@@ -53,16 +62,18 @@ export function MetricStrip({ items }: { items: MetricItem[] }) {
           className="flex-1 min-w-0"
           style={i > 0 ? { borderLeft: '1px solid #F1F0EC' } : undefined}
         >
-          <MetricCell {...it} />
+          <MetricCell {...it} countId={id ? `${id}:${it.label}` : undefined} loading={loading} />
         </div>
       ))}
     </div>
   )
 }
 
-function MetricCell({ icon: Icon, tone, label, value, unit, delta, annotation, isZero }: MetricItem) {
+function MetricCell({
+  icon: Icon, tone, label, value, unit, delta, annotation, isZero, format, countId, loading,
+}: MetricItem & { countId?: string; loading?: boolean }) {
   const t = TONE[tone]
-  const zero = isZero ?? (value === 0 || value === '0')
+  const zero = !loading && (isZero ?? (value === 0 || value === '0'))
   const valueColor = zero ? '#B5B9C4' : '#0d0d09'
   const chipBg = zero ? '#F1F0EC' : t.bg
   const chipFg = zero ? '#8B8F9E' : t.fg
@@ -83,17 +94,31 @@ function MetricCell({ icon: Icon, tone, label, value, unit, delta, annotation, i
           {label}
         </div>
         <div className="flex items-baseline gap-1.5">
+          {loading ? (
+            <Skeleton className="my-px h-5 w-10 rounded-[6px]" />
+          ) : (
           <span
             className="font-poppins tabular-nums"
             style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.03em', color: valueColor, lineHeight: 1.15 }}
           >
-            {value}
-            {unit ? (
-              <span style={{ fontSize: 12, fontWeight: 500, color: '#5A6072', marginLeft: 1 }}>{unit}</span>
-            ) : null}
+            {countId && typeof value === 'number' ? (
+              <BlendNumber id={countId} value={value} format={format}>
+                {unit ? (
+                  <span style={{ fontSize: 12, fontWeight: 500, color: '#5A6072', marginLeft: 1 }}>{unit}</span>
+                ) : null}
+              </BlendNumber>
+            ) : (
+              <>
+                {typeof value === 'number' && format ? format(value) : value}
+                {unit ? (
+                  <span style={{ fontSize: 12, fontWeight: 500, color: '#5A6072', marginLeft: 1 }}>{unit}</span>
+                ) : null}
+              </>
+            )}
           </span>
-          {delta && !annotation ? <Delta {...delta} /> : null}
-          {annotation ? (
+          )}
+          {delta && !annotation && !loading ? <Delta {...delta} /> : null}
+          {annotation && !loading ? (
             <span
               className="font-inter"
               style={{ fontSize: 10.5, fontWeight: 500, color: '#B45309' }}

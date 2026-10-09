@@ -38,16 +38,16 @@ function duration(phase: BriefingPhaseState) {
 function TileSkeleton() {
   return (
     <div className="briefing-tile-skeleton bg-white">
-      <span className="h-[9px] w-20" />
-      <span className="h-[22px] w-12" />
-      <span className="h-2 w-28" />
+      <span className="gio-shimmer h-[9px] w-20" />
+      <span className="gio-shimmer h-[22px] w-12" />
+      <span className="gio-shimmer h-2 w-28" />
     </div>
   )
 }
 
 function StatTile({ tile, index }: { tile: BriefingStatTile; index: number }) {
   return (
-    <div className="briefing-tile-rise bg-white" style={{ animationDelay: `${index * 70}ms` }}>
+    <div className="briefing-tile-rise bg-white" style={{ animationDelay: `calc(${index} * var(--stagger))` }}>
       <div className="text-[11.5px] font-medium text-[#8B8F9E]">{tile.label}</div>
       <div className="mt-1 font-poppins text-[27px] font-semibold leading-[1.1] tracking-[-0.04em] tabular-nums" style={{ color: tile.empty ? '#B5B9C4' : '#0d0d09' }}>
         {tile.value}
@@ -185,9 +185,9 @@ export const jobDashboardBriefingLoaderCss = `
 .briefing-caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-.12em; background:#6F3FF5; animation:briefingCaret 1s steps(1,end) infinite; }
 .briefing-tile-skeleton,.briefing-tile-rise { min-height:94px; border:1px solid #E7E8EE; border-radius:12px; padding:14px 16px 13px; box-shadow:0 1px 2px rgba(13,13,9,.03); }
 .briefing-tile-skeleton { display:flex; flex-direction:column; gap:10px; }
-.briefing-tile-skeleton span { display:block; border-radius:4px; background:#F1F0EC; animation:briefingPulse 1.4s ease-in-out infinite; }
-.briefing-tile-rise { animation:briefingRise .42s cubic-bezier(.22,1,.36,1) both; }
-.briefing-issues-rise { animation:briefingRise .42s .12s cubic-bezier(.22,1,.36,1) both; }
+.briefing-tile-skeleton span { display:block; border-radius:4px; }
+.briefing-tile-rise { animation:briefingRise var(--dur-expand) var(--ease-out) both; }
+.briefing-issues-rise { animation:briefingRise var(--dur-expand) .12s var(--ease-out) both; }
 @keyframes briefingSpin { to { transform:rotate(360deg) } }
 @keyframes briefingSweep { from { transform:translateX(-110%) } to { transform:translateX(330%) } }
 @keyframes briefingCaret { 50% { opacity:0 } }

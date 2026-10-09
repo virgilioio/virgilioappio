@@ -871,7 +871,7 @@
   border-radius: 9999px;
   border: 2px solid rgba(111, 63, 245, 0.22);
   border-top-color: #6F3FF5;
-  animation: gioSpin 0.7s linear infinite;
+  animation: gioSpin 600ms linear infinite; /* §6 spinners: 600ms per turn, linear */
 }
 .gio-progress {
   position: relative;
@@ -892,7 +892,7 @@
 .gio-skeleton {
   background: linear-gradient(90deg, #EFEAFB 25%, #DFD3F6 37%, #EFEAFB 63%);
   background-size: 400% 100%;
-  animation: gioShimmer 1.4s ease infinite;
+  animation: gioShimmer 1.2s linear infinite; /* §6 skeleton shimmer */
 }
 .gio-pulse {
   animation: gioPulse 1.4s ease-in-out infinite;
@@ -1285,3 +1285,52 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-board-slot > * {
   visibility: hidden;
 }
+
+/* §6 Dashboards ─────────────────────────────────────────────────────────────
+ * Skeleton (ui/skeleton.tsx): neutral 1.2s linear shimmer. Reduced motion: a still fill. */
+@keyframes gio-skeleton-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.gio-shimmer {
+  background-color: hsl(var(--virgilio-border) / 0.32);
+  background-image: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.55) 50%, transparent 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: gio-skeleton-sweep 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-shimmer { animation: none; background-image: none; }
+}
+
+/* Loadable (ui/loadable.tsx): the skeleton and the content share one grid cell, so
+ * the content crossfades in on top of a same-size skeleton (--dur-switch) and the
+ * layout never jumps. */
+.gio-loadable { display: grid; min-width: 0; }
+.gio-loadable > * { grid-area: 1 / 1; min-width: 0; }
+.gio-loadable-placeholder,
+.gio-loadable-content { opacity: 0; pointer-events: none; }
+.gio-loadable[data-fade] > * { transition: opacity var(--dur-switch) ease; }
+.gio-loadable > [data-visible] { opacity: 1; }
+.gio-loadable-content[data-visible] { pointer-events: auto; }
+
+/* BlendNumber (ui/blend-number.tsx): KPIs count up once per session; later changes
+ * blend through blur(2px) + opacity .4 over --dur-menu-in. The hidden reserve copy
+ * holds the final width so counting never shifts the layout. */
+.gio-blend-number {
+  display: inline-grid;
+  vertical-align: baseline;
+  max-width: 100%;
+  transition: filter var(--dur-menu-in) ease, opacity var(--dur-menu-in) ease;
+}
+.gio-blend-number > * { grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.gio-number-reserve { visibility: hidden; pointer-events: none; }
+.gio-blend-number[data-blend] { filter: blur(2px); opacity: 0.4; }
+
+/* ChartMotion (ui/chart-motion.tsx): hand-built bars grow from their baseline on
+ * first view (--stagger-chart apart) and morph to new values (--dur-chart). */
+.gio-chart { position: relative; }
+.gio-chart [data-chart-bar], .gio-chart-ghost { min-width: 1px; }
+.gio-chart[data-axis="x"] [data-chart-bar], .gio-chart[data-axis="x"] .gio-chart-ghost { transform-origin: left center; }
+.gio-chart[data-axis="y"] [data-chart-bar], .gio-chart[data-axis="y"] .gio-chart-ghost { transform-origin: center bottom; }
+.gio-chart-ghost { position: absolute; pointer-events: none; }

@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { AnalyticsEmptyState } from './AnalyticsEmptyState'
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
+import { Loadable } from '@/components/ui/loadable'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface AnalyticsChartCardProps {
   title: string
@@ -50,18 +52,21 @@ export function AnalyticsChartCard({
       </CardHeader>
       <CardContent>
         <div className={height}>
-          {isLoading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="h-6 w-6 rounded-full border-2 border-virgilio-purple border-t-transparent animate-spin" />
-            </div>
-          ) : isEmpty ? (
-            <AnalyticsEmptyState
-              title={emptyMessage || 'No data available'}
-              description={emptyDescription || 'Try adjusting your filters or date range'}
-            />
-          ) : (
-            children
-          )}
+          {/* §6: a skeleton the size of the chart, then the chart crossfades in over it. */}
+          <Loadable
+            loading={!!isLoading}
+            className="h-full [&>.gio-loadable-content]:h-full"
+            skeleton={<Skeleton className="h-full w-full rounded-[10px]" />}
+          >
+            {isEmpty ? (
+              <AnalyticsEmptyState
+                title={emptyMessage || 'No data available'}
+                description={emptyDescription || 'Try adjusting your filters or date range'}
+              />
+            ) : (
+              children
+            )}
+          </Loadable>
         </div>
       </CardContent>
     </Card>

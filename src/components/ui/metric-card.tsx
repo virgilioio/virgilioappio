@@ -3,6 +3,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { BlendNumber } from '@/components/ui/blend-number'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export interface MetricCardProps {
   title: string
@@ -29,6 +31,13 @@ export interface MetricCardProps {
   /** Accent color class for the icon, e.g. 'text-primary', 'text-destructive' */
   iconColor?: string
   className?: string
+  /**
+   * §6 KPIs: with a numeric `value`, names the KPI so it counts up on its first view this
+   * session and blends on later changes. `format` turns the number into text (default
+   * locale digits with the value's own decimals); `suffix` is appended.
+   */
+  countId?: string
+  format?: (value: number) => string
 }
 
 function isLucideIcon(icon: any): icon is LucideIcon {
@@ -40,6 +49,27 @@ function formatValue(value: string | number | React.ReactNode | null | undefined
   if (typeof value === 'number') return `${value.toLocaleString()}${suffix || ''}`
   if (typeof value === 'string' && suffix) return `${value}${suffix}`
   return value
+}
+
+function decimalsOf(n: number) {
+  const text = String(n)
+  const dot = text.indexOf('.')
+  return dot === -1 ? 0 : Math.min(2, text.length - dot - 1)
+}
+
+/** The value text; a counting BlendNumber when the card has a `countId` and a number. */
+function ValueText({ value, suffix, countId, format }: Pick<MetricCardProps, 'value' | 'suffix' | 'countId' | 'format'>) {
+  if (countId && typeof value === 'number' && Number.isFinite(value)) {
+    const digits = decimalsOf(value)
+    const fmt =
+      format ?? ((n: number) => n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }))
+    return (
+      <BlendNumber id={countId} value={value} format={fmt}>
+        {suffix}
+      </BlendNumber>
+    )
+  }
+  return <>{formatValue(value, suffix)}</>
 }
 
 function TrendBadge({ trend, isLoading }: Pick<MetricCardProps, 'trend' | 'isLoading'>) {
@@ -114,8 +144,10 @@ export function MetricCard({
   variant = 'default',
   iconColor,
   className,
+  countId,
+  format,
 }: MetricCardProps) {
-  const formattedValue = formatValue(value, suffix)
+  const formattedValue = <ValueText value={value} suffix={suffix} countId={countId} format={format} />
 
   // ─── Inline variant (no card wrapper, used inside MetricCardGroup) ───
   if (variant === 'inline') {
@@ -125,7 +157,7 @@ export function MetricCard({
           <p className="text-xs font-poppins font-medium text-muted-foreground truncate">{title}</p>
           <div className="flex items-baseline gap-2">
             {isLoading ? (
-              <span className="inline-block w-10 h-6 bg-border/50 rounded animate-pulse" />
+              <Skeleton className="inline-block w-10 h-6 rounded" />
             ) : (
               <p className="text-xl font-poppins font-bold text-foreground leading-none truncate">
                 {formattedValue}
@@ -156,7 +188,7 @@ export function MetricCard({
               </p>
               <div className="flex items-baseline gap-2 mt-1">
                 {isLoading ? (
-                  <span className="inline-block w-16 h-9 bg-border/50 rounded animate-pulse" />
+                  <Skeleton className="inline-block w-16 h-9 rounded" />
                 ) : (
                   <p className="text-3xl font-poppins font-bold text-foreground leading-none truncate">
                     {formattedValue}
@@ -188,7 +220,7 @@ export function MetricCard({
             </p>
             <div className="flex items-baseline gap-2 mt-0.5">
               {isLoading ? (
-                <span className="inline-block w-12 h-7 bg-border/50 rounded animate-pulse" />
+                <Skeleton className="inline-block w-12 h-7 rounded" />
               ) : (
                 <p className="text-2xl font-poppins font-bold text-foreground leading-none truncate">
                   {formattedValue}

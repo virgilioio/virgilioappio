@@ -16,6 +16,9 @@ import { AgingChart } from './charts/AgingChart'
 import { StuckList } from './charts/StuckList'
 import type { WidgetConfig, DimensionId, VizId, MetricId } from '../model/types'
 import { fmt } from '../model/format'
+import { Loadable } from '@/components/ui/loadable'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { NormalizedData } from '../model/types'
 
 interface Props {
   cfg: WidgetConfig
@@ -50,7 +53,13 @@ export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, 
   const tone = TONE_COLOR[meta.tone]
   const tint = TONE_TINT[meta.tone]
   const [configOpen, setConfigOpen] = useState(false)
-  const data = useWidgetData(cfg)
+  const live = useWidgetData(cfg)
+  // §6: a period or filter change keeps the current numbers on screen until the new ones
+  // arrive, so KPIs blend and bars morph instead of the widget dropping back to a skeleton.
+  const settled = useRef<{ key: string; data: NormalizedData } | null>(null)
+  const key = `${cfg.metric}|${cfg.groupBy}|${cfg.viz}|${cfg.threshold ?? ''}|${cfg.scope?.value ?? ''}`
+  if (!live.loading) settled.current = { key, data: live }
+  const data = live.loading && settled.current?.key === key ? settled.current.data : live
 
   return (
     <div
@@ -99,20 +108,18 @@ export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, 
 
       {/* Body */}
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-        {data.loading ? (
-          <div className="h-full min-h-[60px] flex items-center justify-center">
-            <div className="h-4 w-4 rounded-full border-2 border-[#E7E8EE] border-t-[#6F3FF5] animate-spin" />
-          </div>
-        ) : data.empty ? (
-          <div className="h-full min-h-[60px] flex items-center justify-center font-poppins font-semibold text-[22px] tracking-[-0.02em] text-[#8B8F9E] tabular-nums">
-            {fmt(0, data.format, data.currency)}
-          </div>
-        ) : (
-          <>
-            {renderViz(cfg, data)}
-            {data.note && <div className="mt-2 text-[10.5px] font-inter text-[#8B8F9E]">{data.note}</div>}
-          </>
-        )}
+        <Loadable loading={data.loading} skeleton={<WidgetSkeleton viz={cfg.viz} />}>
+          {data.empty ? (
+            <div className="h-full min-h-[60px] flex items-center justify-center font-poppins font-semibold text-[22px] tracking-[-0.02em] text-[#8B8F9E] tabular-nums">
+              {fmt(0, data.format, data.currency)}
+            </div>
+          ) : (
+            <>
+              {renderViz(cfg, data)}
+              {data.note && <div className="mt-2 text-[10.5px] font-inter text-[#8B8F9E]">{data.note}</div>}
+            </>
+          )}
+        </Loadable>
       </div>
 
       {configOpen && (
@@ -125,23 +132,52 @@ export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, 
 function renderViz(cfg: WidgetConfig, data: ReturnType<typeof useWidgetData>) {
   switch (cfg.viz) {
     case 'kpi':
-      return <KpiChart metricId={cfg.metric} data={data} />
+      return <KpiChart widgetId={cfg.id} metricId={cfg.metric} data={data} />
     case 'line':
       return <LineChart metricId={cfg.metric} series={data.series} />
     case 'bars':
-      return <BarsChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
+      return <BarsChart widgetId={cfg.id} metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'columns':
-      return <ColumnsChart data={data.breakdown} format={data.format} currency={data.currency} />
+      return <ColumnsChart widgetId={cfg.id} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'donut':
       return <DonutChart data={data.breakdown} />
     case 'funnel':
-      return <FunnelChart metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
+      return <FunnelChart widgetId={cfg.id} metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'aging':
       return <AgingChart data={data.aging ?? []} />
     case 'list':
       return <StuckList rows={data.list ?? []} />
     case 'table':
       return <TableViz dimensionLabel={(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label} data={data.breakdown} format={data.format} currency={data.currency} />
+  }
+}
+
+/** §6 loading: a skeleton the size of each visualization, so nothing shifts when it fills. */
+function WidgetSkeleton({ viz }: { viz: VizId }) {
+  switch (viz) {
+    case 'kpi':
+      return (
+        <div className="flex flex-col">
+          <Skeleton className="h-[34px] w-[45%] rounded-[8px]" />
+          <Skeleton className="mt-2 h-5 w-[60%] rounded-[6px]" />
+        </div>
+      )
+    case 'line':
+    case 'columns':
+      return <Skeleton className="h-[220px] w-full rounded-[10px]" />
+    case 'donut':
+      return <Skeleton className="mx-auto h-[200px] w-[200px] rounded-full" />
+    default:
+      return (
+        <div className="flex flex-col gap-2.5 py-1">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="h-3 flex-shrink-0 rounded-[4px]" style={{ width: 'clamp(72px, 28%, 140px)' }} />
+              <Skeleton className="h-5 flex-1 rounded-[4px]" />
+            </div>
+          ))}
+        </div>
+      )
   }
 }
 
