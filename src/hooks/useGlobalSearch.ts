@@ -45,7 +45,8 @@ export function useGlobalSearch(
   query: string,
   options: UseGlobalSearchOptions = {}
 ): UseGlobalSearchReturn {
-  const { limit = 5, debounceMs = 300, minQueryLength = 2 } = options
+  // §12 search: results wait --delay-search (150ms) after typing stops.
+  const { limit = 5, debounceMs = 150, minQueryLength = 2 } = options
   const { user } = useAuth()
   
   const [results, setResults] = useState<SearchResult[]>([])
@@ -82,6 +83,9 @@ export function useGlobalSearch(
 
     const searchQuery = query.trim()
     abortControllerRef.current = new AbortController()
+    // A newer query aborts this one: its late answer must not replace newer results
+    // or end the newer search's loading state.
+    const signal = abortControllerRef.current.signal
 
     const timeoutId = setTimeout(async () => {
       setIsLoading(true)
@@ -125,6 +129,7 @@ export function useGlobalSearch(
           ...sourcingResult.results
         ]
 
+        if (signal.aborted) return
         setResults(combinedResults)
         setTotalCounts({
           jobs: jobsResult.count,
@@ -136,7 +141,7 @@ export function useGlobalSearch(
           setError(err)
         }
       } finally {
-        setIsLoading(false)
+        if (!signal.aborted) setIsLoading(false)
       }
     }, debounceMs)
 

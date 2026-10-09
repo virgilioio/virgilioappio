@@ -32,6 +32,8 @@ interface GlobalSearchPanelProps {
   onQueryChange: (q: string) => void
   onClose: () => void
   onOpenCandidate: (id: string) => void
+  /** Reports when a search is in flight, so the input can show its inline spinner. */
+  onLoadingChange?: (loading: boolean) => void
 }
 
 const SCOPES: { id: Scope; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -51,7 +53,7 @@ function initialsOf(name: string): string {
 }
 
 export function GlobalSearchPanel({
-  query, onQueryChange, onClose, onOpenCandidate,
+  query, onQueryChange, onClose, onOpenCandidate, onLoadingChange,
 }: GlobalSearchPanelProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -65,6 +67,11 @@ export function GlobalSearchPanel({
 
   const { results, isLoading, totalCounts } = useGlobalSearch(hasQuery && !askMode ? query : '', { limit: 5 })
   const recent = useRecentSearches(user?.id ?? null)
+  const searching = isLoading && !askMode
+  useEffect(() => {
+    onLoadingChange?.(searching)
+  }, [searching, onLoadingChange])
+  useEffect(() => () => onLoadingChange?.(false), [onLoadingChange])
 
   // Saved views (candidates context — most used)
   const { data: savedViews = [] } = useQuery({
@@ -276,7 +283,8 @@ export function GlobalSearchPanel({
       role="listbox"
       onKeyDown={handleKeyDown}
       tabIndex={-1}
-      className="w-[600px] max-h-[560px] flex flex-col rounded-[12px] border border-border bg-popover text-popover-foreground shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] overflow-hidden"
+      // §12: the results box keeps one height while you type, whatever the result count.
+      className="w-[600px] h-[min(560px,calc(100dvh-96px))] flex flex-col rounded-[12px] border border-border bg-popover text-popover-foreground shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] overflow-hidden"
     >
       {/* Scope chip bar */}
       <div className="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-border">
@@ -383,7 +391,7 @@ export function GlobalSearchPanel({
 
         {/* Render rows */}
         {rows.length === 0 && !isLoading && (
-          <div className="px-4 py-12 text-center">
+          <div className="flex h-full flex-col items-center justify-center px-4 py-12 text-center">
             {hasQuery ? (
               <>
                 <p className="font-poppins font-semibold text-[14px] text-foreground">No results for “{trimmed}”</p>
@@ -415,7 +423,8 @@ export function GlobalSearchPanel({
           />
         ))}
 
-        {isLoading && !askMode && (
+        {/* Previous results stay while a new search runs; the input shows the spinner. */}
+        {isLoading && !askMode && rows.length === 0 && (
           <div className="px-4 py-3 text-[12px] font-inter text-virgilio-muted">Searching…</div>
         )}
       </div>

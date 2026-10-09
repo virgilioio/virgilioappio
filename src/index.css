@@ -873,6 +873,13 @@
   border-top-color: #6F3FF5;
   animation: gioSpin 600ms linear infinite; /* §6 spinners: 600ms per turn, linear */
 }
+.gio-spinner-current {
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+}
+/* §12 search: the clear (×) button fades in only when there's text. */
+.gio-search-clear { opacity: 0; pointer-events: none; transition: opacity 120ms var(--ease-out), color var(--dur-hover) ease; }
+.gio-search-clear[data-visible] { opacity: 1; pointer-events: auto; }
 .gio-progress {
   position: relative;
   overflow: hidden;
