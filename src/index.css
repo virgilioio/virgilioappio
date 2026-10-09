@@ -1275,3 +1275,13 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 @media (prefers-reduced-motion: reduce) {
   .gio-sort-arrow { transition: none; }
 }
+
+/* §4 Boards: the picked-up card's place stays as a dashed slot of the same size. */
+.gio-board-slot {
+  outline: 1px dashed #d9d6cc;
+  outline-offset: -1px;
+  border-radius: var(--board-slot-radius, 10px);
+}
+.gio-board-slot > * {
+  visibility: hidden;
+}
