@@ -35,7 +35,7 @@ A job with no candidates showed its loading skeleton forever. `usePipelineCandid
 | Title Poppins 17px `#2A2730`, body 13px `#8B8F9E` | Title 18px `#0d0d09`, body 13px `#5A6072` (compact 15 / 12.5) | The ATS empty-state typography (`ui/empty-state.tsx`) |
 | Black pill buttons (Inter 600 13px, radius 999) | `EmptyAction` (Poppins 500 14px, radius 8), now with press feedback | The ATS empty-state button |
 | "Share posting" opens the share menu | Copies the live posting's public link; "Create job post" when there's none; hidden on drafts | The share menu has no posting link |
-| Plane CSS transform about the SVG origin | Plane rolls about its resting centroid (`transform-origin` 123.1/57) | The roll otherwise swung the plane about 40px off the trail |
+| Plane CSS transform about the SVG origin | Plane rolls about its resting centroid (`transform-origin` 123.1/57) | Rotating about the SVG origin would swing the plane off the trail |
 | Not in the design | "No one in the recruiting process yet" when the job's candidates are all in other sections | "No candidates yet" would be untrue there |
 | Not in the design | "No matches in {Stage}" for a stage column emptied by filters | "Nothing in {Stage}" would be untrue |
 
