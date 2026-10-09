@@ -63,7 +63,7 @@ Same method: fake data only, each change checked in the browser, pixel compariso
 | Hover previews | `JobPreview` / `CandidatePreview` on the job link in a candidate's breadcrumb, the linked job on a sourcing project and candidate names in the job briefing. Portalled; mouse only. | 500ms open, focus doesn't open |
 
 ### Intended visible differences in this pass
-- **Phones:** the job pipeline opens on the list, with the filter/search/toggle toolbar; the board and list sit 28px wider.
+- **Phones:** the job pipeline opens on the list, with the filter/search/toggle toolbar; the board and list use the full width (the 28px side padding is gone on phones).
 - **Salary inputs:** the currency and period sit in their own segments; the amount is right-aligned.
 - **Search:** the results panel is always 560px tall; a clear button appears in the input when there's text.
 - **Invite sheet:** a status line under the addresses.
