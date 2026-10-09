@@ -1,3 +1,4 @@
+import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
 import {
   BrowserRouter as Router,
   Routes,
@@ -216,6 +217,7 @@ function AppContent() {
       </Routes>
       </Suspense>
       <Sonner />
+      <ConfirmDialogHost />
       <AppUpdateNotification />
     </div>
   )

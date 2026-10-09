@@ -8,6 +8,7 @@ import { BulkUploadSummary } from "./BulkUploadSummary"
 import { useBulkCandidateUpload } from "@/hooks/useBulkCandidateUpload"
 import { useBulkUploadContext } from "@/contexts/BulkUploadContext"
 import { useNavigate } from "react-router-dom"
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export function GlobalBulkUploadWidget() {
   const { isUploadActive, isMinimized, files, options, closeUpload, setMinimized } = useBulkUploadContext()
@@ -64,11 +65,15 @@ export function GlobalBulkUploadWidget() {
     }
   }, [isUploadActive])
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isProcessing) {
-      const confirmed = window.confirm(
-        "Upload is still in progress. Are you sure you want to close? This will cancel the upload."
-      )
+      const confirmed = await confirmDialog({
+        title: 'Cancel the upload?',
+        description: 'It is still in progress. Closing now cancels it.',
+        confirmLabel: 'Cancel upload',
+        cancelLabel: 'Keep uploading',
+        destructive: true,
+      })
       if (!confirmed) return
     }
     closeUpload()

@@ -12,6 +12,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
 import { formatDistanceToNow } from 'date-fns'
 import { AttachmentPreviewDialog } from './AttachmentPreviewDialog'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface CandidateAttachmentsProps {
   candidateId: string
@@ -87,7 +88,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
   }
 
   const handleDelete = async (attachmentId: string, fileUrl: string) => {
-    if (window.confirm('Are you sure you want to delete this attachment?')) {
+    if (await confirmDialog({ title: 'Delete this attachment?', confirmLabel: 'Delete attachment', destructive: true })) {
       try {
         await deleteAttachment(attachmentId, fileUrl)
       } catch (error) {

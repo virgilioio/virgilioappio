@@ -25,6 +25,7 @@ import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useChatWithGio } from '@/hooks/useChatWithGio'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -464,10 +465,10 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
     }
   }
 
-  const handleToggleChatMode = (enabled: boolean) => {
+  const handleToggleChatMode = async (enabled: boolean) => {
     if (!enabled && chatMessages.length > 0) {
       // Show confirmation if user has active chat
-      if (window.confirm('This will discard your conversation. Continue?')) {
+      if (await confirmDialog({ title: 'Discard this conversation?', confirmLabel: 'Discard', destructive: true })) {
         resetConversation()
         setChatMode(false)
       }

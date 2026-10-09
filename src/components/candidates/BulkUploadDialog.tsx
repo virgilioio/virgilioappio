@@ -20,6 +20,7 @@ import { useJobs } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateSources } from '@/hooks/useCandidateSources'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface BulkUploadDialogProps {
   isOpen: boolean
@@ -102,9 +103,9 @@ export function BulkUploadDialog({
     onClose()
   }
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isProcessing) {
-      if (!confirm('Upload in progress. Are you sure you want to cancel?')) {
+      if (!(await confirmDialog({ title: 'Cancel the upload?', description: 'It is still in progress.', confirmLabel: 'Cancel upload', cancelLabel: 'Keep uploading', destructive: true }))) {
         return
       }
     }

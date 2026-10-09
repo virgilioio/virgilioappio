@@ -18,6 +18,7 @@ import {
   submitReferee,
   type RefereeResolve,
 } from '@/lib/references/publicApi'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 type Answers = Record<string, unknown>
 
@@ -108,7 +109,7 @@ export default function PublicReferenceAnswer() {
   }
 
   const handleDecline = useCallback(async () => {
-    if (!window.confirm('Decline this reference request? Nothing you typed will be kept.')) return
+    if (!(await confirmDialog({ title: 'Decline this reference request?', description: "Nothing you've typed will be kept.", confirmLabel: 'Decline', destructive: true }))) return
     try {
       await declineReference(token)
     } finally {
