@@ -115,7 +115,7 @@ export function PipelineToolbar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <span>
-              <SugFilterChip label="＋ Add filter" variant="add" />
+              <SugFilterChip label="Add filter" variant="add" />
             </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" sideOffset={8} className="w-[220px]">
