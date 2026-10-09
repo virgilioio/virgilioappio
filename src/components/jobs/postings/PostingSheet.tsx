@@ -44,6 +44,8 @@ import {
   type BrandingValue,
 } from './PostingBrandingCard'
 import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint, ChipInput } from '@/components/jobs/wizard/_parts'
+import { CharCounterLine } from '@/components/ui/char-counter'
+import { AffixInput } from '@/components/ui/affix-input'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface PostingSheetProps {
@@ -499,18 +501,14 @@ export function PostingSheet({
                 />
               </FormField>
               <FormField label="URL slug" required>
-                <div className="flex items-center rounded-lg border border-virgilio-border bg-surface-primary focus-within:ring-2 focus-within:ring-virgilio-purple/30">
-                  <span className="px-3 text-[12.5px] text-text-tertiary font-mono border-r border-virgilio-border h-11 inline-flex items-center">
-                    /jobs/
-                  </span>
-                  <Input
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    placeholder={isEdit ? 'posting-slug' : 'auto-generated from title'}
-                    className="border-0 focus-visible:ring-0 h-11"
-                    disabled={readOnly}
-                  />
-                </div>
+                <AffixInput
+                  prefix={<span className="font-mono">/jobs/</span>}
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder={isEdit ? 'posting-slug' : 'auto-generated from title'}
+                  className="text-sm"
+                  disabled={readOnly}
+                />
               </FormField>
               <FormField label="Reference ID">
                 <Input
@@ -885,25 +883,35 @@ export function PostingSheet({
             chip={!isEdit ? 'Will auto-generate' : undefined}
           >
             <div className="space-y-4">
-              <FormField label="Meta title" helpText={`${metaTitle.length} / 60`}>
-                <Input
-                  value={metaTitle}
-                  onChange={(e) => setMetaTitle(e.target.value)}
-                  placeholder="Auto-generates from public title"
-                  maxLength={80}
-                  disabled={readOnly}
-                />
-              </FormField>
-              <FormField label="Meta description" helpText={`${metaDescription.length} / 155`}>
-                <Textarea
-                  value={metaDescription}
-                  onChange={(e) => setMetaDescription(e.target.value)}
-                  placeholder="Auto-generates from public description"
-                  rows={3}
-                  maxLength={200}
-                  disabled={readOnly}
-                />
-              </FormField>
+              <div className="space-y-1.5">
+                <FormField label="Meta title">
+                  <Input
+                    value={metaTitle}
+                    onChange={(e) => setMetaTitle(e.target.value)}
+                    placeholder="Auto-generates from public title"
+                    maxLength={80}
+                    disabled={readOnly}
+                  />
+                </FormField>
+                <CharCounterLine count={metaTitle.length} max={60} className="text-virgilio-muted">
+                  Search engines show about 60 characters.
+                </CharCounterLine>
+              </div>
+              <div className="space-y-1.5">
+                <FormField label="Meta description">
+                  <Textarea
+                    value={metaDescription}
+                    onChange={(e) => setMetaDescription(e.target.value)}
+                    placeholder="Auto-generates from public description"
+                    rows={3}
+                    maxLength={200}
+                    disabled={readOnly}
+                  />
+                </FormField>
+                <CharCounterLine count={metaDescription.length} max={155} className="text-virgilio-muted">
+                  Search engines show about 155 characters.
+                </CharCounterLine>
+              </div>
             </div>
           </Section>
 

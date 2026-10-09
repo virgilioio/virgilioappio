@@ -17,6 +17,7 @@ import {
 import { Calendar, Clock, Globe, ArrowLeft } from 'lucide-react';
 import { suggestEmailFix } from '@/utils/emailTypoSuggest';
 import { ParticipantsInput } from './ParticipantsInput';
+import { CharCounterLine } from '@/components/ui/char-counter'
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -214,9 +215,7 @@ export function BookingConfirmationForm({
                       />
                     </FormControl>
                     <FormMessage className="text-virgilio-error text-xs" />
-                    <p className="text-xs text-virgilio-muted">
-                      {field.value?.length || 0}/500
-                    </p>
+                    <CharCounterLine count={field.value?.length || 0} max={500} className="text-virgilio-muted" />
                   </FormItem>
                 )}
               />

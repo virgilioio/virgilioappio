@@ -877,6 +877,9 @@
   border-color: color-mix(in srgb, currentColor 25%, transparent);
   border-top-color: currentColor;
 }
+/* §12 character counter: hidden until 75% of the limit, then fades in. */
+.gio-char-counter { opacity: 0; transition: opacity var(--dur-hover) ease, color var(--dur-hover) ease; }
+.gio-char-counter[data-visible] { opacity: 1; }
 /* §12 search: the clear (×) button fades in only when there's text. */
 .gio-search-clear { opacity: 0; pointer-events: none; transition: opacity 120ms var(--ease-out), color var(--dur-hover) ease; }
 .gio-search-clear[data-visible] { opacity: 1; pointer-events: auto; }
