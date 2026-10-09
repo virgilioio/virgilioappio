@@ -19,6 +19,7 @@ import {
 } from './pipelineVisuals'
 import PipelineStatusBadge from './PipelineStatusBadge'
 import type { CandidateStatusInfo } from '@/hooks/usePipelineCandidateStatuses'
+import { cn } from '@/lib/utils'
 
 export type PipelineListRow = {
   id: string
@@ -257,7 +258,7 @@ export function PipelineListView({
                   return (
                     <div
                       key={row.id}
-                      className="group/row cursor-pointer"
+                      className={cn('group/row cursor-pointer', group.rows.length > 100 && 'gio-cv-row')}
                       style={{
                         ...LIST_GRID,
                         minHeight: 56,

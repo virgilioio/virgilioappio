@@ -1069,7 +1069,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                       selectedIds.has(activeId) &&
                       selectedIds.size > 1
                     return (
-                      <DraggableCandidateCard id={assoc.id} key={assoc.id} isPartOfBulkDrag={isPartOfBulkDrag}>
+                      <DraggableCandidateCard id={assoc.id} key={assoc.id} isPartOfBulkDrag={isPartOfBulkDrag} skipOffscreen={rows.length > 100}>
                         <CandidateCard
                           candidateId={assoc.candidate_id}
                           associationId={assoc.id}

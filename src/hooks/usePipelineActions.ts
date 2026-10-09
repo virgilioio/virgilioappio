@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
-import { inChunks } from '@/lib/fetchAllRows'
+import { fetchAll, inChunks } from '@/lib/fetchAllRows'
 
 
 export interface PipelineAssociation {
@@ -41,12 +41,22 @@ export interface PipelineAssociation {
 export function usePipelineActions() {
   const fetchAssociationsForJob = useCallback(async (jobId: string): Promise<PipelineAssociation[]> => {
     // 1) Load associations for job
-    const { data: associations, error: assocError } = await supabase
-      .from('job_candidate_associations')
-      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite, added_by, rejection_reason_id, rejected_by, rejected_at, rejection_notes, updated_at, offered_at, hired_at')
-      .eq('job_id', jobId)
-      .order('pipeline_position', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false })
+    //    Paged: the database returns at most 1,000 rows per request, and a big job's
+    //    pipeline can hold more.
+    let associations: any[] | null = null
+    let assocError: unknown = null
+    try {
+      associations = await fetchAll(() =>
+        supabase
+          .from('job_candidate_associations')
+          .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at, status, whatsapp_template_sent_at, ai_fit_score, is_favorite, added_by, rejection_reason_id, rejected_by, rejected_at, rejection_notes, updated_at, offered_at, hired_at')
+          .eq('job_id', jobId)
+          .order('pipeline_position', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: false }),
+      )
+    } catch (e) {
+      assocError = e
+    }
 
     if (assocError) {
       console.error('Error fetching associations:', assocError)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { AuthGate } from '@/components/auth/AuthGate'
@@ -50,6 +50,7 @@ import { Button } from '@/components/ui/button'
 import { Tag as TagIcon, Users as UsersIcon, Share2 as Share2Icon, Briefcase, Mail as MailIcon, BookmarkPlus as BookmarkPlusIcon, Archive as ArchiveIcon } from 'lucide-react'
 import { ShareListModal } from '@/components/candidates/bulk/ShareListModal'
 import { useTags, useAllCandidateTagsMap, useTagMutations, type Tag } from '@/hooks/useTags'
+import { recallValue, rememberValue, useScrollMemory } from '@/lib/scrollMemory'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
   all: {},
@@ -219,6 +220,30 @@ function CandidatesInner() {
   }, [clearAll])
   const shown = Math.min(page * pageSize, finalAfterSmart.length)
   const visible = finalAfterSmart.slice(0, shown)
+
+  // §9: coming back to this view (same list, search and filters) restores how many
+  // pages were open and where the list was scrolled to.
+  const listRef = useRef<HTMLElement>(null)
+  const viewKey = `candidates:${activeSmartList}:${activeViewId ?? ''}:${mode}:${committedQuery}:${JSON.stringify(filters)}`
+  const [pendingPages, setPendingPages] = useState<number | null>(() => {
+    const pages = recallValue(viewKey)
+    return pages && pages > 1 ? pages : null
+  })
+  useEffect(() => {
+    const pages = recallValue(viewKey)
+    if (pages && pages > 1) {
+      setPage(pages)
+      setPendingPages(pages)
+    } else setPendingPages(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewKey])
+  useEffect(() => {
+    rememberValue(viewKey, page)
+    // Only when the page count changes: a new view starts from its own memory.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
+  // Restore the scroll only once the remembered pages are rendered.
+  useScrollMemory(listRef, viewKey, !isLoading && visible.length > 0 && (pendingPages == null || page >= pendingPages))
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -488,7 +513,7 @@ function CandidatesInner() {
         </div>
 
 
-        <main className="flex-1 min-w-0 overflow-y-auto space-y-4">
+        <main ref={listRef} className="flex-1 min-w-0 overflow-y-auto space-y-4">
           <section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm p-4 space-y-3">
             <SavedSearchToolbar
               activeView={activeView}

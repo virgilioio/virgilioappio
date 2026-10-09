@@ -6,6 +6,8 @@ interface DraggableCandidateCardProps {
   id: string
   children: ReactNode
   isPartOfBulkDrag?: boolean // True if selected while another selected card is being dragged
+  /** §9: in very long columns, let the browser skip laying out cards that are off screen. */
+  skipOffscreen?: boolean
 }
 
 /**
@@ -14,7 +16,7 @@ interface DraggableCandidateCardProps {
  * the column never jumps. `touch-action: pan-y` lets a phone scroll the column; a
  * long-press (--delay-longpress) picks the card up.
  */
-export default function DraggableCandidateCard({ id, children, isPartOfBulkDrag }: DraggableCandidateCardProps) {
+export default function DraggableCandidateCard({ id, children, isPartOfBulkDrag, skipOffscreen }: DraggableCandidateCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
 
   const style: React.CSSProperties = isDragging
@@ -31,7 +33,7 @@ export default function DraggableCandidateCard({ id, children, isPartOfBulkDrag 
       ref={setNodeRef}
       style={style}
       data-board-card={id}
-      className={isDragging ? 'gio-board-slot' : undefined}
+      className={isDragging ? 'gio-board-slot' : skipOffscreen ? 'gio-cv-card' : undefined}
       {...listeners}
       {...attributes}
     >
