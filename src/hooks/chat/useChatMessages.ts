@@ -24,7 +24,7 @@ const PAGE_SIZE = 30
 
 /**
  * useChatMessages — cursor-paginated messages for a single thread (Step 1.6).
- * Returns oldest-first within each page; flatten via `data.pages`.
+ * Each page is oldest-first; pages run newest batch first. Render with `chatMessagesInOrder`.
  */
 export function useChatMessages(threadId: string | undefined) {
   return useInfiniteQuery({
@@ -48,11 +48,17 @@ export function useChatMessages(threadId: string | undefined) {
       // Return ascending so render order is natural
       return (data ?? []).slice().reverse() as ChatMessageRow[]
     },
-    getNextPageParam: (firstPage, allPages) => {
-      const oldest = allPages.flat()[0]
+    // pages[0] is the newest batch, each later page is older. The cursor is the oldest
+    // message of the page fetched last; a full page means there may be more.
+    getNextPageParam: (lastPage) => {
+      const oldest = lastPage[0]
       if (!oldest) return undefined
-      // If the most recently fetched page was full, there may be more.
-      return firstPage.length === PAGE_SIZE ? oldest.created_at : undefined
+      return lastPage.length >= PAGE_SIZE ? oldest.created_at : undefined
     },
   })
+}
+
+/** All loaded messages oldest → newest (pages are stored newest batch first). */
+export function chatMessagesInOrder(pages: ChatMessageRow[][] | undefined): ChatMessageRow[] {
+  return (pages ?? []).slice().reverse().flat()
 }

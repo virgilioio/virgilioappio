@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SoftBubble } from '@/components/ui/EmptyIllustrations'
 import { MessageBubble } from '@/components/chat/MessageBubble'
 import { DaySeparator } from '@/components/chat/DaySeparator'
-import { useChatMessages, type ChatMessageRow } from '@/hooks/chat/useChatMessages'
+import { chatMessagesInOrder, useChatMessages, type ChatMessageRow } from '@/hooks/chat/useChatMessages'
 
 
 interface MessageListProps {
@@ -23,10 +23,26 @@ export function MessageList({ threadId, topSlot }: MessageListProps) {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useChatMessages(threadId)
 
-  const messages = useMemo<ChatMessageRow[]>(() => (data?.pages ?? []).flat(), [data])
+  const messages = useMemo<ChatMessageRow[]>(() => chatMessagesInOrder(data?.pages), [data])
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastIdRef = useRef<string | null>(null)
+  // Distance from the bottom when "Load earlier messages" was pressed, so the view
+  // stays on the same message after older ones are added above it.
+  const keepFromBottom = useRef<number | null>(null)
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el || keepFromBottom.current === null || isFetchingNextPage) return
+    el.scrollTop = el.scrollHeight - keepFromBottom.current
+    keepFromBottom.current = null
+  }, [messages, isFetchingNextPage])
+
+  const loadEarlier = () => {
+    const el = scrollRef.current
+    if (el) keepFromBottom.current = el.scrollHeight - el.scrollTop
+    void fetchNextPage()
+  }
 
   useEffect(() => {
     const last = messages[messages.length - 1]
@@ -63,7 +79,7 @@ export function MessageList({ threadId, topSlot }: MessageListProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => fetchNextPage()}
+            onClick={loadEarlier}
             disabled={isFetchingNextPage}
           >
             {isFetchingNextPage ? 'Loading…' : 'Load earlier messages'}
