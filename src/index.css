@@ -1183,3 +1183,64 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
     transition: none !important;
   }
 }
+
+/* §2 Accordion and Collapsible: height animates to the real content size
+ * (Radix measures it) over --dur-expand on --ease-in-out; the content fades in a
+ * quarter of the way through. Only the animation frames clip; open content rests
+ * auto-sized and overflow-visible. Never the max-height trick. */
+@keyframes gio-expand {
+  from { height: 0; overflow: hidden; }
+  to { height: var(--radix-accordion-content-height, var(--radix-collapsible-content-height)); overflow: hidden; }
+}
+@keyframes gio-collapse {
+  from { height: var(--radix-accordion-content-height, var(--radix-collapsible-content-height)); overflow: hidden; }
+  to { height: 0; overflow: hidden; }
+}
+.gio-accordion-content[data-state="open"] {
+  animation: gio-expand var(--dur-expand) var(--ease-in-out);
+}
+/* No resting height:0 on closed: Radix measures the panel as it starts to close,
+ * and a 0 there would collapse from 0. The keyframe's last frame holds 0 until
+ * Radix unmounts or hides the panel. */
+.gio-accordion-content[data-state="closed"] {
+  overflow: hidden;
+  animation: gio-collapse var(--dur-expand) var(--ease-in-out) forwards;
+}
+.gio-accordion-content > [data-disclosure-inner] {
+  opacity: 0;
+  transition: opacity calc(var(--dur-expand) * 3 / 4) var(--ease-out);
+}
+.gio-accordion-content[data-state="open"] > [data-disclosure-inner] {
+  opacity: 1;
+  transition-delay: calc(var(--dur-expand) / 4);
+}
+@starting-style {
+  .gio-accordion-content[data-state="open"] > [data-disclosure-inner] {
+    opacity: 0;
+  }
+}
+.gio-disclosure-chevron {
+  transition: transform var(--dur-switch) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-accordion-content[data-state="open"],
+  .gio-accordion-content[data-state="closed"] {
+    animation-duration: 0ms;
+  }
+}
+
+/* §2 Switch: the thumb slides at --dur-switch on --ease-out, the track colour at
+ * --dur-hover, and the thumb presses to 0.92 (independent scale, so it composes
+ * with the translate utilities). */
+.gio-switch {
+  transition: background-color var(--dur-hover) ease, border-color var(--dur-hover) ease;
+}
+.gio-switch > .gio-switch-thumb {
+  scale: 1;
+  transition: transform var(--dur-switch) var(--ease-out), scale var(--dur-press) var(--ease-out);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gio-switch:active:not(:focus-visible):not(:disabled):not([data-disabled]) > .gio-switch-thumb {
+    scale: 0.92;
+  }
+}
