@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils"
  * Motion & Feel §14: the tick draws in (stroke-dashoffset, --dur-tick, --ease-out), the
  * box colour changes over 120ms and the box presses to scale(.9). A parent shows
  * `checked="indeterminate"` as a dash when only some of its children are selected.
- * Same look as before: ink border, ink fill when checked.
+ * Same look and alignment as before: ink border, ink fill when checked (the tick is
+ * absolutely placed so the box keeps its old baseline).
  */
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
@@ -16,12 +17,12 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      "gio-check-root peer grid h-4 w-4 shrink-0 place-items-center rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground",
+      "gio-check-root peer relative h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground",
       className
     )}
     {...props}
   >
-    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="gio-check-svg h-3 w-3">
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="gio-check-svg pointer-events-none absolute inset-0 m-auto h-3 w-3">
       <path className="gio-check-tick" pathLength={1} d="M3.6 8.4 6.6 11.2 12.4 4.8" />
       <path className="gio-check-dash" pathLength={1} d="M4 8h8" />
     </svg>
