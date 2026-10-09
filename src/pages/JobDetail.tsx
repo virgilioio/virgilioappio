@@ -28,7 +28,6 @@ import { PipelineSectionTabs, type PipelineSection } from '@/components/jobs/Pip
 import { SelectionBar } from '@/components/shared/SelectionBar'
 import { JobSuggestedTab } from '@/components/jobs/suggested/JobSuggestedTab'
 
-import { CandidateTable } from '@/components/candidates/CandidateTable'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
