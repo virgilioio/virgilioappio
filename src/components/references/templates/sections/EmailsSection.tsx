@@ -5,6 +5,7 @@ import { SubjectTemplateEditor, BodyTemplateEditor } from '@/components/editors'
 import type { SubjectTemplateEditorHandle } from '@/components/editors/SubjectTemplateEditor'
 import type { BodyTemplateEditorHandle } from '@/components/editors/BodyTemplateEditor'
 import { FormField } from '@/components/ui/form-field'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { PlaceholderPill } from '@/components/references/PlaceholderPill'
 import { SectionCard, SectionHead } from '../rowKit'
 import {
@@ -43,10 +44,12 @@ function AudienceSwitcher({
     { id: 'candidate', label: 'Candidate email', icon: UserRound },
     { id: 'referee', label: 'Referee email', icon: Users },
   ]
+  const segRef = useSegmentLayer<HTMLDivElement>()
 
   return (
     <div
-      className="inline-flex"
+      ref={segRef}
+      className="gio-seg inline-flex"
       style={{ gap: 4, padding: 4, background: '#F1F0EC', borderRadius: 10, marginBottom: 14 }}
     >
       {options.map((o) => {
@@ -56,6 +59,8 @@ function AudienceSwitcher({
           <button
             key={o.id}
             type="button"
+            data-seg-option
+            data-active={active || undefined}
             onClick={() => onChange(o.id)}
             className="inline-flex items-center font-poppins"
             style={{
@@ -67,8 +72,8 @@ function AudienceSwitcher({
               letterSpacing: '-0.01em',
               fontWeight: active ? 600 : 500,
               color: active ? '#1F2230' : '#5A6072',
-              background: active ? '#fff' : 'transparent',
-              boxShadow: active ? '0 1px 2px rgba(13,13,9,0.06)' : 'none',
+              background: 'transparent',
+              transition: 'color var(--dur-hover) ease',
               cursor: 'pointer',
             }}
           >
@@ -77,6 +82,7 @@ function AudienceSwitcher({
           </button>
         )
       })}
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
   Info,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { useJobs } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateTransfer } from '@/hooks/useCandidateTransfer'
@@ -62,6 +63,7 @@ export function AddOrTransferCandidateDialog({
   }
 
   const [mode, setMode] = useState<Mode>('add')
+  const segRef = useSegmentLayer<HTMLDivElement>()
   const [selectedJobId, setSelectedJobId] = useState<string>('')
   const [selectedStageId, setSelectedStageId] = useState<string>('')
   const [stageOptions, setStageOptions] = useState<HiringPlanStageOption[]>([])
@@ -284,7 +286,8 @@ export function AddOrTransferCandidateDialog({
           >
             {/* 1 · Segmented control */}
             <div
-              className="flex"
+              ref={segRef}
+              className="gio-seg flex"
               style={{
                 background: '#F1F0EC',
                 borderRadius: 12,
@@ -303,8 +306,10 @@ export function AddOrTransferCandidateDialog({
                   <button
                     key={key}
                     type="button"
+                    data-seg-option
+                    data-active={active || undefined}
                     onClick={() => setMode(key)}
-                    className="font-poppins flex items-center justify-center transition-all"
+                    className="font-poppins flex items-center justify-center transition-colors"
                     style={{
                       flex: 1,
                       height: 38,
@@ -313,8 +318,7 @@ export function AddOrTransferCandidateDialog({
                       fontSize: 13,
                       fontWeight: active ? 600 : 500,
                       color: active ? '#fffcf9' : '#5A6072',
-                      background: active ? '#0d0d09' : 'transparent',
-                      boxShadow: active ? '0 1px 2px rgba(13,13,9,0.14)' : 'none',
+                      background: 'transparent',
                       border: 0,
                       cursor: 'pointer',
                     }}
@@ -324,6 +328,7 @@ export function AddOrTransferCandidateDialog({
                   </button>
                 )
               })}
+              <SegmentLayer fill="#0d0d09" shadow="0 1px 2px rgba(13,13,9,0.14)" />
             </div>
 
             {/* 2 · Outcome panel */}

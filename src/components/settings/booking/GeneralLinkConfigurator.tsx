@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { BookingConfig, WeeklySchedule } from '@/hooks/useBookingConfig'
 import { WeeklyScheduleEditor } from './WeeklyScheduleEditor'
 import { TimezoneSelector } from './TimezoneSelector'
@@ -48,9 +49,11 @@ function SegmentedTabs({
     { key: 'meeting', label: 'Meeting', icon: Video },
     { key: 'rules', label: 'Booking rules', icon: ShieldCheck },
   ]
+  const segRef = useSegmentLayer<HTMLDivElement>()
   return (
     <div
-      className="inline-flex items-center gap-1 rounded-[10px] p-[3px]"
+      ref={segRef}
+      className="gio-seg inline-flex items-center gap-1 rounded-[10px] p-[3px]"
       style={{ background: '#F1F0EC' }}
       role="tablist"
     >
@@ -63,11 +66,13 @@ function SegmentedTabs({
             type="button"
             role="tab"
             aria-selected={active}
+            data-seg-option
+            data-active={active || undefined}
             onClick={() => onChange(item.key)}
             className={cn(
-              'h-[32px] px-3.5 rounded-[8px] inline-flex items-center justify-center gap-1.5 font-inter text-[12.5px] transition-all',
+              'h-[32px] px-3.5 rounded-[8px] inline-flex items-center justify-center gap-1.5 font-inter text-[12.5px] transition-colors',
               active
-                ? 'bg-[#0d0d09] text-[#fffcf9] font-semibold'
+                ? 'text-[#fffcf9] font-semibold'
                 : 'text-[#5A6072] hover:text-[#1F2230] font-medium'
             )}
           >
@@ -76,6 +81,7 @@ function SegmentedTabs({
           </button>
         )
       })}
+      <SegmentLayer fill="#0d0d09" />
     </div>
   )
 }

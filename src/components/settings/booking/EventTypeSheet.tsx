@@ -22,6 +22,7 @@ import { WeeklyScheduleEditor } from './WeeklyScheduleEditor';
 import { SchedulePresets } from './SchedulePresets';
 import { TimezoneSelector } from './TimezoneSelector';
 import { cn } from '@/lib/utils';
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented';
 import { BookingEventType } from '@/hooks/useBookingEventTypes';
 import { WeeklySchedule, getDefaultWeeklySchedule } from '@/hooks/useBookingConfig';
 import {
@@ -143,9 +144,11 @@ function SegmentedTabs({
   onChange: (v: TabKey) => void;
   items: { key: TabKey; label: string; icon: typeof CalendarClock }[];
 }) {
+  const segRef = useSegmentLayer<HTMLDivElement>();
   return (
     <div
-      className="inline-flex w-full items-center gap-1 rounded-[11px] p-[3px]"
+      ref={segRef}
+      className="gio-seg inline-flex w-full items-center gap-1 rounded-[11px] p-[3px]"
       style={{ background: '#F1F0EC' }}
       role="tablist"
     >
@@ -158,11 +161,13 @@ function SegmentedTabs({
             type="button"
             role="tab"
             aria-selected={active}
+            data-seg-option
+            data-active={active || undefined}
             onClick={() => onChange(item.key)}
             className={cn(
-              'flex-1 h-[30px] rounded-[9px] inline-flex items-center justify-center gap-1.5 font-poppins font-medium text-[12px] transition-all',
+              'flex-1 h-[30px] rounded-[9px] inline-flex items-center justify-center gap-1.5 font-poppins font-medium text-[12px] transition-colors',
               active
-                ? 'bg-[#0d0d09] text-[#fffcf9] shadow-[0_2px_6px_-1px_rgba(13,13,9,0.25)]'
+                ? 'text-[#fffcf9]'
                 : 'text-[#5A6072] hover:text-[#1F2230]'
             )}
           >
@@ -171,6 +176,7 @@ function SegmentedTabs({
           </button>
         );
       })}
+      <SegmentLayer fill="#0d0d09" shadow="0 2px 6px rgba(13,13,9,0.25)" />
     </div>
   );
 }

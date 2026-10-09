@@ -49,6 +49,7 @@ import { RejectionReasonSelector } from '@/components/candidates/RejectionReason
 import { ScheduleDelaySelector } from '@/components/candidates/ScheduleDelaySelector'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -126,19 +127,22 @@ function Segmented<T extends string>({
   onChange: (v: T) => void
   options: { value: T; label: string; icon?: React.ReactNode }[]
 }) {
+  const segRef = useSegmentLayer<HTMLDivElement>()
   return (
-    <div className="inline-flex items-center gap-1 rounded-[10px] bg-[#F1F0EC] p-1">
+    <div ref={segRef} className="gio-seg inline-flex items-center gap-1 rounded-[10px] bg-[#F1F0EC] p-1">
       {options.map((o) => {
         const active = o.value === value
         return (
           <button
             key={o.value}
             type="button"
+            data-seg-option
+            data-active={active || undefined}
             onClick={() => onChange(o.value)}
             className={
               'inline-flex items-center gap-1.5 rounded-[7px] px-[13px] py-[7px] font-poppins text-[12px] transition-colors ' +
               (active
-                ? 'bg-white text-[#1F2230] font-semibold shadow-[0_1px_2px_rgba(13,13,9,0.06)]'
+                ? 'text-[#1F2230] font-semibold'
                 : 'text-[#5A6072] font-medium hover:text-[#1F2230]')
             }
           >
@@ -147,6 +151,7 @@ function Segmented<T extends string>({
           </button>
         )
       })}
+      <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
     </div>
   )
 }

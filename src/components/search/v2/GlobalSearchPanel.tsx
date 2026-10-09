@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useGlobalSearch } from '@/hooks/useGlobalSearch'
 import { useRecentSearches } from './useRecentSearches'
 import { SearchResultRowV2, GlyphKind } from './SearchResultRowV2'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 
 type Scope = 'all' | 'candidates' | 'jobs' | 'saved'
 
@@ -59,6 +60,7 @@ export function GlobalSearchPanel({
   const { user } = useAuth()
   const [scope, setScope] = useState<Scope>('all')
   const [askMode, setAskMode] = useState(false)
+  const segRef = useSegmentLayer<HTMLDivElement>()
   const [highlighted, setHighlighted] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -288,26 +290,32 @@ export function GlobalSearchPanel({
     >
       {/* Scope chip bar */}
       <div className="flex items-center gap-1 px-3 pt-3 pb-2 border-b border-border">
-        {SCOPES.map(s => {
-          const Icon = s.icon
-          const active = !askMode && scope === s.id
-          return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => { setAskMode(false); setScope(s.id) }}
-              className={cn(
-                'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md font-poppins font-medium text-[12px] tracking-[-0.005em] transition-colors',
-                active
-                  ? 'bg-[#0d0d09] text-[#FFFCF9]'
-                  : 'text-virgilio-muted hover:text-foreground hover:bg-[#F1F0EC]'
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {s.label}
-            </button>
-          )
-        })}
+        {/* §14: the dark scope fill is one sliding SegmentLayer; Ask Gio sits outside it. */}
+        <div ref={segRef} className="gio-seg inline-flex items-center gap-1">
+          {SCOPES.map(s => {
+            const Icon = s.icon
+            const active = !askMode && scope === s.id
+            return (
+              <button
+                key={s.id}
+                type="button"
+                data-seg-option
+                data-active={active || undefined}
+                onClick={() => { setAskMode(false); setScope(s.id) }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md font-poppins font-medium text-[12px] tracking-[-0.005em] transition-colors',
+                  active
+                    ? 'text-[#FFFCF9]'
+                    : 'text-virgilio-muted hover:text-foreground hover:bg-[#F1F0EC]'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {s.label}
+              </button>
+            )
+          })}
+          <SegmentLayer fill="#0d0d09" />
+        </div>
         <button
           type="button"
           onClick={() => setAskMode(v => !v)}

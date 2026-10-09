@@ -28,6 +28,7 @@ import { useSortableTable } from '@/hooks/useSortableTable'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 
 // Helper to safely resolve display name across PDL (full_name) and Apollo (candidate_name) candidates
 const getDisplayName = (c: { full_name?: string; candidate_name?: string }) =>
@@ -126,6 +127,7 @@ export function SourcingCandidateTable({
   // Fit segment filter (toolbar) — All / Strong fit / Good / Possible / Collected
   type FitSegment = 'all' | 'strong' | 'good' | 'possible' | 'collected'
   const [fitSegment, setFitSegment] = useState<FitSegment>('all')
+  const fitSegRef = useSegmentLayer<HTMLDivElement>()
   // Sort mode (toolbar)
   type SortMode = 'ai_fit' | 'recent' | 'experience'
   const [sortMode, setSortMode] = useState<SortMode>('ai_fit')
@@ -752,7 +754,7 @@ export function SourcingCandidateTable({
           </div>
 
           {/* Center: fit segments */}
-          <div className="inline-flex items-center gap-0.5 rounded-lg bg-[#F1F0EC] p-0.5">
+          <div ref={fitSegRef} className="gio-seg inline-flex items-center gap-0.5 rounded-lg bg-[#F1F0EC] p-0.5">
             {([
               { id: 'all', label: 'All', count: segmentCounts.all },
               { id: 'strong', label: 'Strong fit', count: segmentCounts.strong },
@@ -763,12 +765,14 @@ export function SourcingCandidateTable({
               <button
                 key={seg.id}
                 type="button"
+                data-seg-option
+                data-active={fitSegment === seg.id || undefined}
                 onClick={() => { setFitSegment(seg.id); setVisibleCount(PAGE_STEP) }}
                 className={cn(
                   'h-7 px-2.5 rounded-md font-poppins text-[12px] font-medium tracking-[-0.005em] transition-colors',
                   'inline-flex items-center gap-1.5',
                   fitSegment === seg.id
-                    ? 'bg-white text-text-primary shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+                    ? 'text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'
                 )}
               >
@@ -781,6 +785,7 @@ export function SourcingCandidateTable({
                 </span>
               </button>
             ))}
+            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(0,0,0,0.06)" />
           </div>
 
           {/* Right: sort + select all */}

@@ -2,6 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { AnalyticsChartCard } from '@/components/analytics/shared/AnalyticsChartCard'
 import { Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { useTalentOriginsData, type OriginSegment } from '@/hooks/useTalentOriginsData'
 import { useRechartsMotion } from '@/lib/chartMotion'
 
@@ -78,24 +79,28 @@ function CustomYTick(props: any) {
 export function TalentOrigins({ filteredCandidateIds }: TalentOriginsProps) {
   const { companies, isLoading, segment, setSegment } = useTalentOriginsData(filteredCandidateIds)
   const motion = useRechartsMotion('ti.origins', companies, { bars: 'x' })
+  const segRef = useSegmentLayer<HTMLDivElement>()
 
   const segmentToggle = (
-    <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
+    <div ref={segRef} className="gio-seg flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
       {segments.map(s => (
         <Button
           key={s.value}
           variant="ghost"
           size="sm"
+          data-seg-option
+          data-active={segment === s.value || undefined}
           onClick={() => setSegment(s.value)}
-          className={`h-6 px-2.5 text-[11px] font-poppins rounded-md transition-all ${
+          className={`h-6 px-2.5 text-[11px] font-poppins rounded-md transition-colors ${
             segment === s.value
-              ? 'bg-background text-virgilio-text shadow-sm'
+              ? 'text-virgilio-text hover:bg-transparent active:bg-transparent'
               : 'text-virgilio-muted hover:text-virgilio-text'
           }`}
         >
           {s.label}
         </Button>
       ))}
+      <SegmentLayer fill="hsl(var(--background))" shadow="0 1px 3px rgba(0,0,0,0.1)" />
     </div>
   )
 

@@ -21,6 +21,7 @@ import { usePushSubscription } from '@/hooks/usePushSubscription'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftCaughtUp } from '@/components/ui/EmptyIllustrations'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { toast } from 'sonner'
 
 type Tab = 'all' | 'mentions' | 'activity'
@@ -278,6 +279,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'feed' | 'prefs'>('feed')
   const [tab, setTab] = useState<Tab>('all')
+  const tabSegRef = useSegmentLayer<HTMLDivElement>()
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { data: notifications = [], markAsRead, markAllAsRead } = useNotifications()
@@ -398,7 +400,7 @@ export function NotificationCenter() {
 
             {/* Tabs */}
             <div className="flex items-center justify-between px-4 pb-2.5">
-              <div className="flex items-center gap-1">
+              <div ref={tabSegRef} className="gio-seg flex items-center gap-1">
                 {([
                   ['all', 'All', counts.all],
                   ['mentions', 'Mentions', counts.mentions],
@@ -406,10 +408,12 @@ export function NotificationCenter() {
                 ] as const).map(([k, label, count]) => (
                   <button
                     key={k}
+                    data-seg-option
+                    data-active={tab === k || undefined}
                     onClick={() => setTab(k)}
                     className={cn(
                       'h-7 px-2.5 rounded-md text-[12px] font-poppins font-medium flex items-center gap-1.5 transition-colors',
-                      tab === k ? 'bg-[#0d0d09] text-[#fffcf9]' : 'text-[#5A6072] hover:bg-[#F1F0EC]'
+                      tab === k ? 'text-[#fffcf9]' : 'text-[#5A6072] hover:bg-[#F1F0EC]'
                     )}
                   >
                     {label}
@@ -419,6 +423,7 @@ export function NotificationCenter() {
                     )}>{count}</span>
                   </button>
                 ))}
+                <SegmentLayer fill="#0d0d09" />
               </div>
               <button className="text-[11.5px] text-[#5A6072] hover:text-virgilio-text flex items-center gap-1">
                 <Filter className="h-3 w-3" /> Filter

@@ -28,6 +28,7 @@ import { useUserAssignedJobIds } from '@/hooks/useUserAssignedJobIds'
 import { jobMatchesUsers } from '@/utils/jobInvolvement'
 import { Job } from '@/hooks/useJobs'
 import { cn } from '@/lib/utils'
+import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
 import { JobPriorityBadge } from '@/components/jobs/JobPriorityBadge'
 import { JOB_PRIORITIES, jobPriorityRank, type JobPriority } from '@/lib/job-priority'
 import { JobPriorityFilterChip } from '@/components/jobs/JobPriorityFilterChip'
@@ -93,6 +94,7 @@ export function JobsTable({
   onDiscardDraft,
 }: JobsTableProps) {
   const [draftSource, setDraftSource] = useState<'all' | 'wizard' | 'sales'>('all')
+  const draftSegRef = useSegmentLayer<HTMLDivElement>()
   const draftJobs = useMemo(() => jobs.filter(j => j.status === 'draft'), [jobs])
   const salesDraftCount = draftJobs.filter(j => j.sales_deal_id).length
   const permissions = usePermissions()
@@ -341,22 +343,25 @@ export function JobsTable({
               />
             )}
             {statusFilter === 'drafts' && (
-              <div className="inline-flex h-8 items-center rounded-lg bg-[#F1F0EC] p-0.5" role="tablist" aria-label="Draft source">
+              <div ref={draftSegRef} className="gio-seg inline-flex h-8 items-center rounded-lg bg-[#F1F0EC] p-0.5" role="tablist" aria-label="Draft source">
                 {([['all', 'All sources'], ['wizard', 'Started here'], ['sales', 'From Gio Sales']] as const).map(([v, l]) => (
                   <button
                     key={v}
                     type="button"
                     role="tab"
                     aria-selected={draftSource === v}
+                    data-seg-option
+                    data-active={draftSource === v || undefined}
                     onClick={() => setDraftSource(v)}
                     className={cn(
                       'h-7 rounded-md px-2.5 font-inter text-[12px] transition-colors',
-                      draftSource === v ? 'bg-white text-text-primary font-medium shadow-sm' : 'text-text-tertiary hover:text-text-primary'
+                      draftSource === v ? 'text-text-primary font-medium' : 'text-text-tertiary hover:text-text-primary'
                     )}
                   >
                     {l}
                   </button>
                 ))}
+                <SegmentLayer fill="#fff" shadow="0 1px 3px rgba(0,0,0,0.1)" />
               </div>
             )}
             <JobPriorityFilterChip selected={selectedPriorities} onChange={setSelectedPriorities} />
