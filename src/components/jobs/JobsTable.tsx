@@ -407,7 +407,7 @@ export function JobsTable({
         />
       ) : (<>
       {/* Desktop table */}
-      <div className="hidden lg:block rounded-2xl border border-virgilio-border bg-white overflow-hidden">
+      <div className="hidden lg:block rounded-2xl border border-virgilio-border bg-white overflow-clip">
         <Table density="comfortable">
           <TableHeader>
             <TableRow>
