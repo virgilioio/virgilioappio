@@ -45,12 +45,17 @@ function attachSegmentLayer(root: HTMLElement) {
     if (!slide) layer.style.setProperty('--seg-transition', 'none')
     const rb = root.getBoundingClientRect()
     const ab = active.getBoundingClientRect()
-    const x = ab.left - rb.left - root.clientLeft
-    const y = ab.top - rb.top - root.clientTop
+    // Screen boxes include any scale on the way up (a dialog growing in, a pressed
+    // button); divide it out so the clip is in the container's own pixels.
+    const s = root.offsetWidth ? rb.width / root.offsetWidth || 1 : 1
+    const x = (ab.left - rb.left) / s - root.clientLeft
+    const y = (ab.top - rb.top) / s - root.clientTop
+    const w = ab.width / s
+    const h = ab.height / s
     root.style.setProperty('--seg-x', `${x}px`)
     root.style.setProperty('--seg-y', `${y}px`)
-    root.style.setProperty('--seg-right', `${root.clientWidth - x - ab.width}px`)
-    root.style.setProperty('--seg-bottom', `${root.clientHeight - y - ab.height}px`)
+    root.style.setProperty('--seg-right', `${root.clientWidth - x - w}px`)
+    root.style.setProperty('--seg-bottom', `${root.clientHeight - y - h}px`)
     root.style.setProperty('--seg-radius', getComputedStyle(active).borderRadius)
     const fill = active.dataset.segFill
     if (fill) root.style.setProperty('--seg-fill', fill)
