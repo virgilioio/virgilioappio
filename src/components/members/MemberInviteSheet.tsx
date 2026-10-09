@@ -25,6 +25,9 @@ import {
   Plus,
 } from "lucide-react"
 import { SeatLimitUpgradeDialog } from "./SeatLimitUpgradeDialog"
+import { supabase } from "@/integrations/supabase/client"
+import { useAsyncValidation } from "@/hooks/useAsyncValidation"
+import { AsyncStatus } from "@/components/ui/async-status"
 
 interface MemberInviteSheetProps {
   isOpen: boolean
@@ -236,6 +239,48 @@ export function MemberInviteSheet({
   const validChips = chips.filter((c) => c.valid)
   const invalidChips = chips.filter((c) => !c.valid)
   const hasPersonal = validChips.some((c) => isPersonalEmail(c.value))
+
+  // §12 async validation: once you stop adding addresses, check which are already in
+  // this workspace or invited. It informs only; sending still runs the server-side check.
+  const inviteCheckKey = Array.from(new Set(validChips.map((c) => c.value.trim().toLowerCase()))).sort().join(",")
+  const inviteCheck = useAsyncValidation(
+    inviteCheckKey,
+    async (signal) => {
+      const emails = inviteCheckKey.split(",")
+      const { data, error } = await supabase
+        .from("members")
+        .select("invited_email, user_status, invite_expires_at")
+        .eq("organization_id", organizationId!)
+        .in("invited_email", emails)
+        .abortSignal(signal)
+      if (error) return null
+      const now = Date.now()
+      const taken = (data ?? []).filter(
+        (m) => m.user_status !== "invited" || !m.invite_expires_at || new Date(m.invite_expires_at).getTime() > now,
+      )
+      if (taken.length === 0) {
+        return {
+          ok: true,
+          message: emails.length === 1 ? "Not in this workspace yet" : `None of these ${emails.length} are in this workspace yet`,
+        }
+      }
+      if (taken.length === 1) {
+        const m = taken[0]
+        return {
+          ok: false,
+          message:
+            m.user_status === "invited"
+              ? `${m.invited_email} already has a pending invitation`
+              : `${m.invited_email} is already in this workspace`,
+        }
+      }
+      if (taken.length === 2) {
+        return { ok: false, message: `${taken[0].invited_email} and ${taken[1].invited_email} are already in this workspace or invited` }
+      }
+      return { ok: false, message: `${taken.length} of these are already in this workspace or invited` }
+    },
+    { enabled: isOpen && !isEditing && !!organizationId },
+  )
 
   const selectedRoleDef = roleOptions.find((r) => r.value === role)
   const rolePaid = selectedRoleDef?.seat === "paid"
@@ -544,6 +589,7 @@ export function MemberInviteSheet({
                       }}
                     />
                   </div>
+                  <AsyncStatus state={inviteCheck} checking="Checking addresses…" />
 
                   {invalidChips.length > 0 ? (
                     <div
