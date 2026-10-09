@@ -145,7 +145,6 @@ export function AppSidebar() {
                     to={item.href}
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={item.id === 'chat' && chatUnread > 0 ? `${item.label} (${chatUnread} unread)` : item.label}
-                    title={item.label}
                     className={cn(tileBase, isActive ? tileActive : tileInactive, 'relative')}
                   >
                     <Icon className="h-6 w-6" />
@@ -187,7 +186,6 @@ export function AppSidebar() {
                 to="/settings"
                 aria-current={active === 'settings' ? 'page' : undefined}
                 aria-label="Settings"
-                title="Settings"
                 className={cn(tileBase, active === 'settings' ? tileActive : tileInactive, 'group')}
               >
                 {active === 'settings' ? (
@@ -215,9 +213,8 @@ export function AppSidebar() {
                 to="/settings?tab=profile"
                 aria-current={active === 'my-profile' ? 'page' : undefined}
                 aria-label="My Profile"
-                title="My Profile"
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 ease-out',
+                  'flex h-9 w-9 items-center justify-center rounded-full transition-shadow duration-hover',
                   active === 'my-profile'
                     ? 'ring-2 ring-[#fffcf9] ring-offset-2 ring-offset-[#0d0d09]'
                     : 'hover:ring-2 hover:ring-white/30 hover:ring-offset-2 hover:ring-offset-[#0d0d09]'

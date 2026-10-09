@@ -973,3 +973,21 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   animation: none !important;
   box-shadow: var(--shadow-pop);
 }
+
+/* §2 Tooltip: after the delay it grows from the trigger (scale 0.97 + fade,
+ * 125ms); a neighbour opened within the skip window appears instantly; exit fades. */
+.gio-tip {
+  transform-origin: var(--radix-tooltip-content-transform-origin, center);
+  --tw-enter-opacity: 0;
+  --tw-enter-scale: 0.97;
+  --tw-exit-opacity: 0;
+}
+.gio-tip[data-state="delayed-open"] {
+  animation: enter var(--dur-tooltip) var(--ease-out);
+}
+.gio-tip[data-state="instant-open"] {
+  animation: none;
+}
+.gio-tip[data-state="closed"] {
+  animation: exit var(--dur-tooltip) var(--ease-out);
+}
