@@ -19,11 +19,6 @@ export default {
 			}
 		},
 		extend: {
-			boxShadow: {
-				'hire-dialog': 'var(--shadow-hire-dialog)',
-				'hire-menu': 'var(--shadow-hire-menu)',
-				'hire-toast': 'var(--shadow-hire-toast)',
-			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -350,6 +345,10 @@ export default {
 				'button-xl-v2': 'var(--button-height-xl-v2)',
 			},
 			boxShadow: {
+				// Mark hired dialog (was a second boxShadow key above, silently overridden by this one)
+				'hire-dialog': 'var(--shadow-hire-dialog)',
+				'hire-menu': 'var(--shadow-hire-menu)',
+				'hire-toast': 'var(--shadow-hire-toast)',
 				xs: 'var(--shadow-xs)',
 				sm: 'var(--shadow-sm)',
 				md: 'var(--shadow-md)',
