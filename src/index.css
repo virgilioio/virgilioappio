@@ -1378,3 +1378,31 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 /* §8 Progress and stepper fills: the fill is full width and grows with scaleX from the
  * left (--dur-progress, --ease-in-out). Never animate width. */
 .gio-progress-fill { transform-origin: left center; transition: transform var(--dur-progress) var(--ease-in-out); }
+
+/* §5 Offline banner: slides over the top, never pushes content. */
+.gio-offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 16px;
+  transform: translateY(-100%);
+  visibility: hidden;
+  transition:
+    transform var(--dur-dialog-out) var(--ease-out),
+    background-color var(--dur-hover) ease,
+    visibility 0s linear var(--dur-dialog-out);
+}
+.gio-offline-banner[data-shown] {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform var(--dur-dialog-in) var(--ease-out),
+    background-color var(--dur-hover) ease,
+    visibility 0s;
+}

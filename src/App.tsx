@@ -1,3 +1,4 @@
+import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
 import {
   BrowserRouter as Router,
@@ -218,6 +219,7 @@ function AppContent() {
       </Suspense>
       <Sonner />
       <ConfirmDialogHost />
+      <OfflineBanner />
       <AppUpdateNotification />
     </div>
   )
