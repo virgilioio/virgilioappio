@@ -82,6 +82,7 @@ import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
 import { isPublishGateError } from '@/lib/jobTeam'
 import { inChunks } from '@/lib/fetchAllRows'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 
 export default function JobDetail() {
@@ -886,7 +887,7 @@ export default function JobDetail() {
   }, [refetch])
 
   const handleArchiveJob = async () => {
-    if (!id || !confirm('Are you sure you want to archive this job?')) return
+    if (!id || !(await confirmDialog({ title: 'Archive this job?', description: 'It leaves your active jobs. You can reopen it later.', confirmLabel: 'Archive job' }))) return
 
     try {
       const { error } = await supabase

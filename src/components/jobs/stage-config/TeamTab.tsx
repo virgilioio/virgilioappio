@@ -14,6 +14,7 @@ import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { User, UserPlus, Users, Trash2, Info, Loader2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface TeamTabProps {
   jhsId: string
@@ -115,7 +116,7 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
   }
   
   const handleRemove = async (assignmentId: string, memberName: string) => {
-    if (confirm(`Remove ${memberName} as an interviewer for this stage?`)) {
+    if (await confirmDialog({ title: `Remove ${memberName} as an interviewer for this stage?`, confirmLabel: 'Remove', destructive: true })) {
       await removeInterviewer.mutateAsync({ assignmentId, jhsId })
     }
   }

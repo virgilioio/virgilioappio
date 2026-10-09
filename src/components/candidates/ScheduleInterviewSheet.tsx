@@ -61,6 +61,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
+import { confirmDialog } from '@/components/ui/confirm-dialog';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -1702,7 +1703,7 @@ export function ScheduleInterviewSheet({
                 loading={isDeleting}
                 onClick={async () => {
                   if (!oldBookingId) return;
-                  if (!window.confirm('Delete this interview? Panelists will be notified and the event will be removed.')) return;
+                  if (!(await confirmDialog({ title: 'Delete this interview?', description: 'Panelists will be notified and the event will be removed.', confirmLabel: 'Delete interview', destructive: true }))) return;
                   setIsDeleting(true);
                   try {
                     const { error } = await supabase.functions.invoke('cancel-booking', {

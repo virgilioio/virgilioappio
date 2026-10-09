@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Lock, Globe, Plus, Pencil, Copy, Trash2, Check, Star } from 'lucide-react'
 import { useSavedViews, type SavedView, type ViewVisibility } from '@/hooks/useSavedViews'
 import { useAuth } from '@/contexts/AuthContext'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Props {
   activeViewId: string | null
@@ -114,7 +115,8 @@ export function AnalyticsViewSwitcher({ activeViewId, onActivate, currentFilters
                     <MiniAction
                       icon={Trash2}
                       label="Delete"
-                      onClick={() => {
+                      onClick={async () => {
+                        if (!(await confirmDialog({ title: `Delete the view "${active.name}"?`, description: 'Its widgets go with it.', confirmLabel: 'Delete view', destructive: true }))) return
                         deleteView.mutate(active.id, {
                           onSuccess: () => onActivate(views.find(v => v.id !== active.id) ?? null),
                         })

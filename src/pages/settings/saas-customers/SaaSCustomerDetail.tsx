@@ -28,6 +28,7 @@ import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
 import { ChangePlanDialog } from '@/components/settings/ChangePlanDialog'
 import { AssignCreditsDialog } from '@/components/settings/AssignCreditsDialog'
 import { GrantAccessDialog } from '@/components/settings/GrantAccessDialog'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // ─────────────────────────────────────────────────────────────────
 // design tokens
@@ -1512,7 +1513,7 @@ function FraudSignalsSection({ tenantId, stripeCustomerId }: { tenantId?: string
       : action === 'refund_and_suspend'
       ? 'Refund the latest charge as fraudulent, cancel subscription, and suspend tenant?'
       : 'Suspend tenant without refunding?'
-    if (!window.confirm(confirmMsg)) return
+    if (!(await confirmDialog({ title: confirmMsg, confirmLabel: 'Confirm', destructive: true }))) return
     setBusy(action)
     try {
       const { data, error } = await supabase.functions.invoke('admin-stripe-handle-fraud', {

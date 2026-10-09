@@ -30,6 +30,7 @@ import { useJobsWithPostings } from '@/hooks/useJobsWithPostings'
 import { useTenant } from '@/hooks/useTenant'
 import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, type AppField as SharedAppField, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
 import { PostingChannelsCard, type ChannelsValue } from '@/components/jobs/postings/PostingChannelsCard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 
 /* ---------------- helpers ---------------- */
@@ -226,7 +227,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
         toast.error('Please fill in more details to generate a description')
         return
       }
-      if (description.trim() && !window.confirm('Replace the current description with a freshly generated one?')) return
+      if (description.trim() && !(await confirmDialog({ title: 'Replace the current description?', description: 'Gio will write a fresh one from the job details.', confirmLabel: 'Replace' }))) return
       setGenLoading(true)
       try {
         const { data, error } = await supabase.functions.invoke('generate-job-description', {
@@ -1003,16 +1004,18 @@ function CopyFromAnotherJobButton({
     )
   }, [jobs, query])
 
-  const handleSelect = (j: (typeof jobs)[number]) => {
+  const handleSelect = async (j: (typeof jobs)[number]) => {
     const copied = fieldsFromPostingDetails(j.posting_details)
     if (copied.length === 0) {
       toast.error('That job has no application fields to copy')
       return
     }
     if (currentFieldCount > 0) {
-      const ok = window.confirm(
-        `Replace the current ${currentFieldCount} application field${currentFieldCount === 1 ? '' : 's'} with ${copied.length} from "${j.title}"?`,
-      )
+      const ok = await confirmDialog({
+        title: `Replace the current ${currentFieldCount} application field${currentFieldCount === 1 ? '' : 's'}?`,
+        description: `They'll be replaced with ${copied.length} from "${j.title}".`,
+        confirmLabel: 'Replace',
+      })
       if (!ok) return
     }
     onCopy(j.title, copied)

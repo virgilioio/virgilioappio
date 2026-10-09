@@ -19,6 +19,7 @@ import { ConfirmationBadge } from './ConfirmationBadge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { confirmDialog } from '@/components/ui/confirm-dialog';
 
 interface StageBookingsListProps {
   jhsId: string;
@@ -73,8 +74,8 @@ export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBoo
     onReschedule?.(jhsId, bookingId);
   };
 
-  const handleCancel = (bookingId: string) => {
-    if (confirm('Are you sure you want to cancel this interview? Both parties will be notified via email with a cancellation notice.')) {
+  const handleCancel = async (bookingId: string) => {
+    if (await confirmDialog({ title: 'Cancel this interview?', description: 'Both parties will get a cancellation email.', confirmLabel: 'Cancel interview', cancelLabel: 'Keep it', destructive: true })) {
       cancelBookingMutation.mutate({ bookingId });
     }
   };

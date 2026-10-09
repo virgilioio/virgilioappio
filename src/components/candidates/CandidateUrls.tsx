@@ -15,6 +15,7 @@ import { Plus, ExternalLink, Trash2, Github, FileText } from 'lucide-react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface CandidateUrlsProps {
   candidateId: string
@@ -64,7 +65,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
   }
 
   const handleDelete = async (urlId: string, label: string) => {
-    if (window.confirm(`Are you sure you want to delete "${label}"?`)) {
+    if (await confirmDialog({ title: `Delete "${label}"?`, confirmLabel: 'Delete link', destructive: true })) {
       try {
         await deleteUrl(urlId)
       } catch (error) {

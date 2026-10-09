@@ -135,6 +135,7 @@ import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { checkScorecardGate } from '@/utils/scorecardGate'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -592,6 +593,7 @@ const stageHasAutomation = useMemo(() => {
   }
   const handleDeleteResume = async () => {
     if (!resumeAttachment) return
+    if (!(await confirmDialog({ title: 'Delete this résumé?', description: 'The file is removed from the candidate. Parsed details stay on the profile.', confirmLabel: 'Delete résumé', destructive: true }))) return
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 

@@ -44,6 +44,7 @@ import {
   type BrandingValue,
 } from './PostingBrandingCard'
 import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint, ChipInput } from '@/components/jobs/wizard/_parts'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface PostingSheetProps {
   jobId: string
@@ -340,7 +341,7 @@ export function PostingSheet({
     if (!jobId) return
     if (
       description.trim() &&
-      !window.confirm('Replace the current description with a freshly generated one?')
+      !(await confirmDialog({ title: 'Replace the current description?', description: 'Gio will write a fresh one from the job details.', confirmLabel: 'Replace' }))
     ) {
       return
     }

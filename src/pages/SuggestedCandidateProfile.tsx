@@ -45,6 +45,7 @@ import { dismissSuggestion } from '@/components/jobs/suggested/suggestedDismisse
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 const ordinal = (n: number) => {
   const rest = n % 100
@@ -454,7 +455,7 @@ function SuggestedCandidateProfileInner() {
                   uploadedBy={(candidate as any)?.source ? `${(candidate as any).source} import` : null}
                   parsedFields={null}
                   onReplace={() => replaceResumeInputRef.current?.click()}
-                  onDelete={resume ? () => { void deleteAttachment(resume.id, resume.file_url) } : undefined}
+                  onDelete={resume ? async () => { if (await confirmDialog({ title: 'Delete this résumé?', description: 'The file is removed from the candidate. Parsed details stay on the profile.', confirmLabel: 'Delete résumé', destructive: true })) void deleteAttachment(resume.id, resume.file_url) } : undefined}
                 />
 
                 <ProfileSidebar>

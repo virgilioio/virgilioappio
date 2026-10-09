@@ -12,6 +12,7 @@ import { useBaseCurrency } from '@/hooks/useBaseCurrency'
 import { useCurrencyRates, useCurrencyOverrides, useRefreshFxRates } from '@/hooks/useCurrencyRates'
 import { CURRENCIES } from '@/constants/currencies'
 import { formatDistanceToNow } from 'date-fns'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export function CurrencySettings() {
   const { baseCurrency, update: updateBase, isLoading } = useBaseCurrency()
@@ -151,8 +152,8 @@ export function CurrencySettings() {
                             icon={Trash2}
                             iconOnly
                             aria-label={`Remove ${quote} override`}
-                            onClick={() => {
-                              if (confirm(`Remove manual override for ${quote}? Auto rate will resume.`))
+                            onClick={async () => {
+                              if (await confirmDialog({ title: `Remove the manual rate for ${quote}?`, description: 'The automatic rate will apply again.', confirmLabel: 'Remove override', destructive: true }))
                                 overrides.remove.mutate(override.id)
                             }}
                           />

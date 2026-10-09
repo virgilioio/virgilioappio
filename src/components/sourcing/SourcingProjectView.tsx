@@ -16,6 +16,7 @@ import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export interface SourcingProjectActions {
   onRefresh: () => Promise<void>
@@ -225,7 +226,7 @@ export function SourcingProjectView({
   }
   
   const handleDelete = async () => {
-    if (!project || !confirm('Are you sure you want to delete this project?')) return
+    if (!project || !(await confirmDialog({ title: 'Delete this project?', confirmLabel: 'Delete project', destructive: true }))) return
     
     const { error } = await supabase
       .from('sourcing_projects')

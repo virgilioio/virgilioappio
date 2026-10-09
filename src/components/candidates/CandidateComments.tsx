@@ -10,6 +10,7 @@ import { useCandidateComments } from '@/hooks/useCandidateComments'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useSubmitShortcut } from '@/hooks/useSubmitShortcut'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface CandidateCommentsProps {
   candidateId: string
@@ -56,7 +57,7 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
   }
 
   const handleDelete = async (commentId: string) => {
-    if (confirm('Are you sure you want to delete this comment?')) {
+    if (await confirmDialog({ title: 'Delete this comment?', confirmLabel: 'Delete comment', destructive: true })) {
       await deleteComment(commentId)
     }
   }
