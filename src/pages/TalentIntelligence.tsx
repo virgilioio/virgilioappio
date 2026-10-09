@@ -20,6 +20,8 @@ import { usePersistentFilters } from '@/hooks/usePersistentFilters'
 import { useSavedViews } from '@/hooks/useSavedViews'
 import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
 import { Button } from '@/components/ui/button'
+import { Loadable } from '@/components/ui/loadable'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const EMPTY_TI_FILTERS: TalentIntelligenceFilters = {
   roles: [], functionalAreas: [], specializations: [], seniorities: [],
@@ -130,6 +132,18 @@ function TalentIntelligenceContent() {
       </Section>
 
       <Section container className="animate-fade-in">
+        {/* §6: hold the filter bar's place while loading, so the page doesn't jump down. */}
+        {isLoading && (
+          <div className="mb-6 space-y-3" aria-hidden="true">
+            <Skeleton className="h-8 w-[98px] rounded-full" />
+            <div className="flex flex-wrap items-center gap-2">
+              {[70, 74, 102, 88, 97, 84, 98, 78].map((w, i) => (
+                <Skeleton key={i} className="h-9 rounded-[10px]" style={{ width: w }} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Filter bar + saved views */}
         {rawCandidates.length > 0 && (
           <div className="mb-6 space-y-3">
@@ -162,12 +176,6 @@ function TalentIntelligenceContent() {
           </div>
         )}
 
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          </div>
-        )}
-
         {error && (
           <div className="flex items-center justify-center py-20">
             <p className="text-destructive text-sm">Failed to load talent intelligence</p>
@@ -187,42 +195,70 @@ function TalentIntelligenceContent() {
           </div>
         )}
 
-        {data && data.totalCandidates > 0 && (
-          <div className="space-y-6">
-            <SummaryMetricsRow data={data} />
-            <GeographyInsights
-              countryCounts={data.countryCounts}
-              cityCounts={data.cityCounts}
-              totalCandidates={data.totalCandidates}
-              onCountryClick={(country) => handleFilterApply('country', country)}
-            />
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <ExperienceDistribution
-                experienceBands={data.experienceBands}
-                seniorityCounts={data.seniorityCounts}
-                onBandClick={handleExperienceBandClick}
-                onSeniorityClick={(s) => handleFilterApply('seniority', s)}
-              />
-              <SkillsLandscape
-                topSkills={data.topSkills}
-                onSkillClick={(skill) => handleFilterApply('skill', skill)}
-              />
-            </div>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <CompensationInsights salaryStats={data.salaryStats} salaryValues={data.salaryValues} />
-              <TalentPoolComposition
-                functionalAreaCounts={data.functionalAreaCounts}
-                titleCounts={data.titleCounts}
-                specializationCounts={data.specializationCounts}
-                onTitleClick={(t) => handleFilterApply('role', t)}
-                onFunctionalAreaClick={(fa) => handleFilterApply('functionalArea', fa)}
-                onSpecializationClick={(s) => handleFilterApply('specialization', s)}
-              />
-            </div>
-            <TalentOrigins filteredCandidateIds={filteredCandidateIds} />
-          </div>
+        {/* §6: a skeleton laid out like the page, then the content crossfades in over it. */}
+        {(isLoading || (data && data.totalCandidates > 0)) && (
+          <Loadable loading={isLoading} skeleton={<TalentIntelligenceSkeleton />}>
+            {data && (
+              <div className="space-y-6">
+                <SummaryMetricsRow data={data} />
+                <GeographyInsights
+                  countryCounts={data.countryCounts}
+                  cityCounts={data.cityCounts}
+                  totalCandidates={data.totalCandidates}
+                  onCountryClick={(country) => handleFilterApply('country', country)}
+                />
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <ExperienceDistribution
+                    experienceBands={data.experienceBands}
+                    seniorityCounts={data.seniorityCounts}
+                    onBandClick={handleExperienceBandClick}
+                    onSeniorityClick={(s) => handleFilterApply('seniority', s)}
+                  />
+                  <SkillsLandscape
+                    topSkills={data.topSkills}
+                    onSkillClick={(skill) => handleFilterApply('skill', skill)}
+                  />
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <CompensationInsights salaryStats={data.salaryStats} salaryValues={data.salaryValues} />
+                  <TalentPoolComposition
+                    functionalAreaCounts={data.functionalAreaCounts}
+                    titleCounts={data.titleCounts}
+                    specializationCounts={data.specializationCounts}
+                    onTitleClick={(t) => handleFilterApply('role', t)}
+                    onFunctionalAreaClick={(fa) => handleFilterApply('functionalArea', fa)}
+                    onSpecializationClick={(s) => handleFilterApply('specialization', s)}
+                  />
+                </div>
+                <TalentOrigins filteredCandidateIds={filteredCandidateIds} />
+              </div>
+            )}
+          </Loadable>
         )}
       </Section>
+    </div>
+  )
+}
+
+/** Same grid as the loaded page (KPI row, composition, geography, two chart rows). */
+function TalentIntelligenceSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Skeleton className="h-[78px] rounded-2xl" />
+          <Skeleton className="h-[78px] rounded-2xl" />
+          <Skeleton className="h-[78px] rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Skeleton className="h-[222px] rounded-2xl" />
+        </div>
+      </div>
+      <Skeleton className="h-[467px] rounded-lg" />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <Skeleton className="h-[678px] rounded-lg" />
+        <Skeleton className="h-[678px] rounded-lg" />
+      </div>
     </div>
   )
 }

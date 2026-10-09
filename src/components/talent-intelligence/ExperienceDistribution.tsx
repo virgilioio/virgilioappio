@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import { AnalyticsChartCard } from '@/components/analytics/shared/AnalyticsChartCard'
 import { Clock, Users } from 'lucide-react'
 import type { ExperienceBand, CountEntry } from '@/hooks/useTalentIntelligenceData'
+import { useRechartsMotion } from '@/lib/chartMotion'
 
 interface ExperienceDistributionProps {
   experienceBands: ExperienceBand[]
@@ -32,6 +33,8 @@ const pillTooltipStyle = {
 export function ExperienceDistribution({ experienceBands, seniorityCounts, onBandClick, onSeniorityClick }: ExperienceDistributionProps) {
   const hasExperience = experienceBands.some(b => b.count > 0)
   const hasSeniority = seniorityCounts.length > 0
+  const barMotion = useRechartsMotion('ti.experience', experienceBands, { bars: 'y' })
+  const pieMotion = useRechartsMotion('ti.seniority', seniorityCounts)
 
   const seniorityTotal = useMemo(
     () => seniorityCounts.reduce((sum, s) => sum + s.count, 0),
@@ -56,6 +59,7 @@ export function ExperienceDistribution({ experienceBands, seniorityCounts, onBan
       {/* Years of Experience — Gradient Bar Chart */}
       {hasExperience && (
         <AnalyticsChartCard title="Years of Experience" icon={Clock} height="h-[240px]">
+          <div ref={barMotion.ref} className="h-full w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={experienceBands} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
               <defs>
@@ -79,12 +83,14 @@ export function ExperienceDistribution({ experienceBands, seniorityCounts, onBan
                 dataKey="count"
                 radius={[6, 6, 0, 0]}
                 maxBarSize={48}
+                {...barMotion.bar}
                 fill="url(#expBarGradient)"
                 onClick={(data) => onBandClick?.(data?.band)}
                 className={onBandClick ? 'cursor-pointer' : ''}
               />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </AnalyticsChartCard>
       )}
 
@@ -96,6 +102,7 @@ export function ExperienceDistribution({ experienceBands, seniorityCounts, onBan
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
+                    {...pieMotion.series}
                     data={seniorityCounts}
                     dataKey="count"
                     nameKey="name"

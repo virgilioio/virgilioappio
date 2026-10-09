@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useRechartsMotion } from '@/lib/chartMotion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ComposedChart, Area, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Switch } from '@/components/ui/switch'
@@ -119,6 +120,7 @@ export function CompensationInsights({ salaryStats, salaryValues }: Compensation
       avgSalary: Math.round(avgSalary),
     }
   }, [salaryValues, showMonthly])
+  const motion = useRechartsMotion('ti.compensation', chartData?.chartData ?? null, { bars: 'y' })
 
   if (!chartData) {
     return (
@@ -161,7 +163,7 @@ export function CompensationInsights({ salaryStats, salaryValues }: Compensation
         </p>
       </CardHeader>
       <CardContent>
-        <div className="h-[240px] w-full overflow-hidden">
+        <div ref={motion.ref} className="h-[240px] w-full overflow-hidden">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
               data={chartData.chartData}
@@ -204,6 +206,7 @@ export function CompensationInsights({ salaryStats, salaryValues }: Compensation
                 label={{ value: 'High', position: 'top', fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
               />
               <Bar
+                {...motion.bar}
                 dataKey="count"
                 fill="hsl(267 100% 62% / 0.15)"
                 stroke="hsl(267 100% 62% / 0.4)"
@@ -211,6 +214,7 @@ export function CompensationInsights({ salaryStats, salaryValues }: Compensation
                 barSize={20}
               />
               <Area
+                {...motion.series}
                 type="monotone"
                 dataKey="density"
                 stroke="hsl(267 100% 62%)"

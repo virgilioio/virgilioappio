@@ -2,6 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { AnalyticsChartCard } from '@/components/analytics/shared/AnalyticsChartCard'
 import { Sparkles } from 'lucide-react'
 import type { SkillEntry } from '@/hooks/useTalentIntelligenceData'
+import { useRechartsMotion } from '@/lib/chartMotion'
 
 interface SkillsLandscapeProps {
   topSkills: SkillEntry[]
@@ -22,6 +23,7 @@ const pillTooltipStyle = {
 }
 
 export function SkillsLandscape({ topSkills, onSkillClick }: SkillsLandscapeProps) {
+  const motion = useRechartsMotion('ti.skills', topSkills, { bars: 'x' })
   const handleBarClick = (data: any) => {
     if (onSkillClick && data?.name) onSkillClick(data.name)
   }
@@ -35,6 +37,7 @@ export function SkillsLandscape({ topSkills, onSkillClick }: SkillsLandscapeProp
       emptyMessage="No skills data available yet"
       height="h-[400px]"
     >
+      <div ref={motion.ref} className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={topSkills} layout="vertical" margin={{ left: 120, right: 40, top: 0, bottom: 0 }}>
           <defs>
@@ -77,6 +80,7 @@ export function SkillsLandscape({ topSkills, onSkillClick }: SkillsLandscapeProp
             ]}
           />
           <Bar
+            {...motion.bar}
             dataKey="percentage"
             radius={[0, 6, 6, 0]}
             maxBarSize={20}
@@ -93,6 +97,7 @@ export function SkillsLandscape({ topSkills, onSkillClick }: SkillsLandscapeProp
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </div>
     </AnalyticsChartCard>
   )
 }

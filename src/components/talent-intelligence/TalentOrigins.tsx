@@ -3,6 +3,7 @@ import { AnalyticsChartCard } from '@/components/analytics/shared/AnalyticsChart
 import { Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useTalentOriginsData, type OriginSegment } from '@/hooks/useTalentOriginsData'
+import { useRechartsMotion } from '@/lib/chartMotion'
 
 interface TalentOriginsProps {
   filteredCandidateIds: string[]
@@ -76,6 +77,7 @@ function CustomYTick(props: any) {
 
 export function TalentOrigins({ filteredCandidateIds }: TalentOriginsProps) {
   const { companies, isLoading, segment, setSegment } = useTalentOriginsData(filteredCandidateIds)
+  const motion = useRechartsMotion('ti.origins', companies, { bars: 'x' })
 
   const segmentToggle = (
     <div className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
@@ -109,6 +111,7 @@ export function TalentOrigins({ filteredCandidateIds }: TalentOriginsProps) {
       height="h-[400px]"
       actions={segmentToggle}
     >
+      <div ref={motion.ref} className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={companies} layout="vertical" margin={{ left: 160, right: 40, top: 0, bottom: 0 }}>
           <defs>
@@ -152,6 +155,7 @@ export function TalentOrigins({ filteredCandidateIds }: TalentOriginsProps) {
             }}
           />
           <Bar
+            {...motion.bar}
             dataKey="count"
             radius={[0, 6, 6, 0]}
             maxBarSize={20}
@@ -166,6 +170,7 @@ export function TalentOrigins({ filteredCandidateIds }: TalentOriginsProps) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </div>
     </AnalyticsChartCard>
   )
 }
