@@ -1,196 +1,99 @@
 import * as React from "react"
+import { toast as sonner, type ExternalToast } from "sonner"
 
-import type {
-  ToastActionElement,
-  ToastProps,
-} from "@/components/ui/toast"
+/**
+ * Motion & Feel (CLAUDE.md, Allan 2026-10-09): Gio ATS has one toast system, Sonner,
+ * mounted once in App.tsx (bottom-left, one at a time, 6s, pauses on hover and while
+ * the tab is hidden). This module keeps the old Radix `useToast()` / `toast({...})` API
+ * so the 150+ calling files don't change: every call is forwarded to Sonner.
+ *
+ *   variant "destructive" → toast.error · "success" → toast.success · "warning" → toast.warning
+ *   action: an element with onClick (the Undo buttons) → Sonner's action button
+ */
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000 // 1 second after dismiss animation
-const TOAST_AUTO_DISMISS_DELAY = 5000 // Auto-dismiss after 5 seconds
+type ToastVariant = "default" | "destructive" | "success" | "warning" | string | null | undefined
 
-type ToasterToast = ToastProps & {
-  id: string
+export interface Toast {
   title?: React.ReactNode
   description?: React.ReactNode
-  action?: ToastActionElement
+  variant?: ToastVariant
+  /** An element with an onClick, usually an Undo button. Its text becomes the label. */
+  action?: React.ReactNode
+  duration?: number
+  /** Accepted for compatibility; Sonner styles every toast the same way. */
+  className?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const
-
-let count = 0
-
-function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER
-  return count.toString()
+export interface ToastHandle {
+  id: string
+  dismiss: () => void
+  update: (props: Toast) => void
 }
 
-type ActionType = typeof actionTypes
-
-type Action =
-  | {
-      type: ActionType["ADD_TOAST"]
-      toast: ToasterToast
-    }
-  | {
-      type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast>
-    }
-  | {
-      type: ActionType["DISMISS_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
-  | {
-      type: ActionType["REMOVE_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
-
-interface State {
-  toasts: ToasterToast[]
+function textOf(node: React.ReactNode): string {
+  if (node == null || typeof node === "boolean") return ""
+  if (typeof node === "string" || typeof node === "number") return String(node)
+  if (Array.isArray(node)) return node.map(textOf).join("")
+  if (React.isValidElement(node)) return textOf((node.props as { children?: React.ReactNode }).children)
+  return ""
 }
 
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
-
-const addToRemoveQueue = (toastId: string) => {
-  if (toastTimeouts.has(toastId)) {
-    return
+/** Turn a Radix-style action element into Sonner's { label, onClick }. */
+function toSonnerAction(action: React.ReactNode): ExternalToast["action"] | undefined {
+  if (!React.isValidElement(action)) return undefined
+  const props = action.props as {
+    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void
+    altText?: string
+    children?: React.ReactNode
   }
-
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId)
-    dispatch({
-      type: "REMOVE_TOAST",
-      toastId: toastId,
-    })
-  }, TOAST_REMOVE_DELAY)
-
-  toastTimeouts.set(toastId, timeout)
+  if (typeof props.onClick !== "function") return undefined
+  const label = textOf(props.children).trim() || props.altText || "Undo"
+  return { label, onClick: (e) => props.onClick!(e) }
 }
 
-export const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case "ADD_TOAST":
-      return {
-        ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
-      }
+function show(props: Toast, id?: string | number): string | number {
+  const { title, description, variant, action, duration, onOpenChange } = props
+  // A toast with only a description shows it as the message.
+  const message = title ?? description ?? ""
+  const opts: ExternalToast = {}
+  if (title != null && description != null) opts.description = description
+  if (duration != null) opts.duration = duration
+  if (id != null) opts.id = id
+  const sonnerAction = toSonnerAction(action)
+  if (sonnerAction) opts.action = sonnerAction
+  if (onOpenChange) opts.onDismiss = () => onOpenChange(false)
 
-    case "UPDATE_TOAST":
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
-      }
-
-    case "DISMISS_TOAST": {
-      const { toastId } = action
-
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
-      }
-
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t
-        ),
-      }
-    }
-    case "REMOVE_TOAST":
-      if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        }
-      }
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId),
-      }
+  switch (variant) {
+    case "destructive":
+      return sonner.error(message, opts)
+    case "success":
+      return sonner.success(message, opts)
+    case "warning":
+      return sonner.warning(message, opts)
+    default:
+      return sonner(message, opts)
   }
 }
 
-const listeners: Array<(state: State) => void> = []
-
-let memoryState: State = { toasts: [] }
-
-function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => {
-    listener(memoryState)
-  })
-}
-
-type Toast = Omit<ToasterToast, "id">
-
-function toast({ ...props }: Toast) {
-  const id = genId()
-
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: "UPDATE_TOAST",
-      toast: { ...props, id },
-    })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
-
-  dispatch({
-    type: "ADD_TOAST",
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
-      },
-    },
-  })
-
-  // Auto-dismiss after 5 seconds
-  setTimeout(() => {
-    dismiss()
-  }, TOAST_AUTO_DISMISS_DELAY)
-
+function toast(props: Toast): ToastHandle {
+  const id = show(props)
   return {
-    id: id,
-    dismiss,
-    update,
+    id: String(id),
+    dismiss: () => sonner.dismiss(id),
+    update: (next: Toast) => {
+      show({ ...props, ...next }, id)
+    },
   }
 }
 
 function useToast() {
-  const [state, setState] = React.useState<State>(memoryState)
-
-  React.useEffect(() => {
-    listeners.push(setState)
-    return () => {
-      const index = listeners.indexOf(setState)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
-    }
-  }, [state])
-
   return {
-    ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) => sonner.dismiss(toastId),
+    /** The Radix toaster's list; always empty now that Sonner renders toasts. */
+    toasts: [] as never[],
   }
 }
 

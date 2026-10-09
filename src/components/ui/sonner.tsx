@@ -1,29 +1,25 @@
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, toast } from "sonner"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
-  return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
-      toastOptions={{
-        classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton:
-            "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton:
-            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-        },
-      }}
-      {...props}
-    />
-  )
-}
+/**
+ * The one toast surface (CLAUDE.md §2 Toast, Allan 2026-10-09). Bottom-left, one at a
+ * time, 6s, pause on hover and while the tab is hidden (Sonner does both), transitions
+ * rather than keyframes. The look lives in src/index.css under [data-sonner-toaster]:
+ * ink surface, opal text, a ghost action button for Undo. Dark mode isn't live, so the
+ * theme is fixed to light instead of following the OS.
+ */
+const Toaster = (props: ToasterProps) => (
+  <Sonner
+    theme="light"
+    position="bottom-left"
+    visibleToasts={1}
+    duration={6000}
+    offset={24}
+    gap={8}
+    className="toaster gio-toaster"
+    {...props}
+  />
+)
 
 export { Toaster, toast }

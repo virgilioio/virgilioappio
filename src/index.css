@@ -1069,3 +1069,79 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
       gio-drawer-hide var(--dur-dialog-out) var(--ease-out) both;
   }
 }
+
+/* §2 Toast — the one Sonner surface (src/components/ui/sonner.tsx). Ink card, opal
+ * text, Inter 500 12.5px, radius 12, the Mark hired toast shadow. Sonner moves toasts
+ * with 400ms transitions (not keyframes) and pauses on hover / hidden tab. Custom
+ * toasts (toast.custom) are unstyled by Sonner and keep their own look. */
+@media (min-width: 640px) {
+  /* 24px from the content region, which starts after the 5.5rem rail. */
+  .gio-toaster[data-x-position="left"] {
+    left: calc(5.5rem + 24px) !important;
+  }
+}
+@media (max-width: 639px) {
+  /* Clear the floating bottom navigation on phones. */
+  .gio-toaster[data-y-position="bottom"] {
+    bottom: calc(56px + 24px + env(safe-area-inset-bottom)) !important;
+  }
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] {
+  background: #0d0d09;
+  color: #fffcf9;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  gap: 10px;
+  box-shadow: var(--shadow-hire-toast);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-description] {
+  color: rgb(255 252 249 / 0.72);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-icon] {
+  color: #fffcf9;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"][data-type="error"] [data-icon] {
+  color: #fa5252;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"][data-type="success"] [data-icon] {
+  color: #12b886;
+}
+.gio-toaster [data-sonner-toast][data-styled="true"][data-type="warning"] [data-icon] {
+  color: #ffd93d;
+}
+/* Undo and other actions: a ghost button on ink. */
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-button] {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: #fffcf9;
+  border: 1px solid rgb(255 252 249 / 0.2);
+  font-family: Poppins, ui-sans-serif, system-ui, sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .gio-toaster [data-sonner-toast][data-styled="true"] [data-button]:hover {
+    background: rgb(255 252 249 / 0.1);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gio-toaster [data-sonner-toast][data-styled="true"] [data-button]:active:not(:focus-visible) {
+    transform: scale(0.97);
+  }
+}
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-button]:focus-visible {
+  outline: 2px solid #6f3ff5;
+  outline-offset: 2px;
+  box-shadow: none;
+}

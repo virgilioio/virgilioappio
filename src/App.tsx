@@ -19,7 +19,6 @@ import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
-import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
@@ -216,8 +215,7 @@ function AppContent() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
-      <Toaster />
-      <Sonner position="bottom-center" offset={24} />
+      <Sonner />
       <AppUpdateNotification />
     </div>
   )
