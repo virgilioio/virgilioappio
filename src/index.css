@@ -1243,6 +1243,9 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 @keyframes gio-e2-cd2 { 0%, 68% { transform: scale(.2); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
 .gio-scene-still *,
 .gio-scene-still { animation: none !important; }
+/* Waiting to come into view: blank (its own first frame), entrances not started. */
+.gio-scene-wait { visibility: hidden; }
+.gio-scene-wait * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .gio-scene, .gio-scene * { animation: none !important; }
 }

@@ -108,48 +108,71 @@ export interface SceneProps {
  * Decides once per mount whether the scene animates, claims the "one flying at a
  * time" slot when it does, and drops the finished CSS entrances afterwards so the
  * resting frame is the plain static graphic.
+ *
+ * A scene that can animate waits (`paused`: drawn blank, which is its own first
+ * frame) until at least a third of it is on screen, then claims the flight. So a
+ * scene below the fold plays when it's scrolled to, and a copy in a CSS-hidden
+ * desktop/phone branch never takes the flight from the one the user can see. If
+ * another scene is flying when it comes into view, it shows the rest state.
  */
 export function useSceneMode({ onceKey, still: forceStill = false, playKey = 0 }: SceneProps, ms = SCENE_MS) {
   const svgRef = React.useRef<SVGSVGElement>(null)
-  const [still, setStill] = React.useState(
-    () => forceStill || prefersReducedMotion() || (!!onceKey && played.has(onceKey)),
+  const [mode, setMode] = React.useState<'still' | 'wait' | 'fly'>(() =>
+    forceStill || prefersReducedMotion() || (!!onceKey && played.has(onceKey)) ? 'still' : 'wait',
   )
   const uid = React.useId().replace(/:/g, '')
-  // Claimed in a layout effect (tree order, before paint), and only by a scene that
-  // is actually rendered: a copy inside a CSS-hidden desktop/phone branch never
-  // takes the one flight from the copy the user can see.
+
   React.useLayoutEffect(() => {
-    if (still) return
+    if (mode !== 'wait') return
     const svg = svgRef.current
-    const visible = !!svg && svg.getClientRects().length > 0
-    if (!visible || typeof performance === 'undefined' || performance.now() < flyingUntil) {
-      setStill(true)
+    const claim = () => {
+      if (typeof performance === 'undefined' || performance.now() < flyingUntil) return setMode('still')
+      if (onceKey) played.add(onceKey)
+      flyingUntil = performance.now() + ms
+      setMode('fly')
+    }
+    if (!svg || typeof IntersectionObserver === 'undefined') {
+      claim()
       return
     }
-    if (onceKey) played.add(onceKey)
-    const until = performance.now() + ms
-    flyingUntil = until
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect()
+          claim()
+        }
+      },
+      { threshold: 0.35 },
+    )
+    io.observe(svg)
+    return () => io.disconnect()
+    // Decided once per mount (or replay); later prop changes don't re-decide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, playKey])
+
+  React.useEffect(() => {
+    if (mode !== 'fly') return
+    const until = flyingUntil
     const timer = setTimeout(() => svgRef.current?.classList.add('gio-scene-still'), ms + 50)
     return () => {
       clearTimeout(timer)
       // Unmounted mid-flight: free the slot for whatever replaces it.
       if (flyingUntil === until) flyingUntil = 0
     }
-    // Decided once per mount (or replay); later prop changes don't re-decide.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playKey])
-  return { still, svgRef, uid: `${uid}-${playKey}` }
+  }, [mode, ms])
+
+  return { still: mode === 'still', paused: mode === 'wait', svgRef, uid: `${uid}-${playKey}` }
 }
 
 /** The 190×150 scene canvas, at the requested width (default 176×140). */
 export const SceneSvg = React.forwardRef<
   SVGSVGElement,
-  { width: number; still: boolean; playKey: number; children: React.ReactNode }
->(({ width, still, playKey, children }, ref) => (
+  { width: number; still: boolean; paused?: boolean; playKey: number; children: React.ReactNode }
+>(({ width, still, paused = false, playKey, children }, ref) => (
   <svg
     ref={ref}
     key={playKey}
-    className={still ? 'gio-scene gio-scene-still' : 'gio-scene'}
+    className={still ? 'gio-scene gio-scene-still' : paused ? 'gio-scene gio-scene-wait' : 'gio-scene'}
     width={width}
     height={Math.round((width / 176) * 140)}
     viewBox="0 0 190 150"

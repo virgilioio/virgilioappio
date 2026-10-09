@@ -24,7 +24,7 @@ const BANK = 0.55 // damping on the tangent-following roll
 
 export function PaperPlaneScene(props: SceneProps) {
   const { width = 176, playKey = 0 } = props
-  const { still, svgRef, uid } = useSceneMode(props)
+  const { still, paused, svgRef, uid } = useSceneMode(props)
   const maskId = `gio-plane-mask-${uid}`
 
   const plane = React.useRef<SVGGElement>(null)
@@ -51,6 +51,7 @@ export function PaperPlaneScene(props: SceneProps) {
       rest()
       return
     }
+    if (paused) return // blank until it's on screen and claims the flight
     const len = g.getTotalLength()
     const end = g.getPointAtLength(len)
     // The plane rides this far above the trail; zero at rest by construction.
@@ -92,10 +93,10 @@ export function PaperPlaneScene(props: SceneProps) {
       cancelAnimationFrame(raf)
       rest()
     }
-  }, [still, playKey])
+  }, [still, paused, playKey])
 
   return (
-    <SceneSvg ref={svgRef} width={width} still={still} playKey={playKey}>
+    <SceneSvg ref={svgRef} width={width} still={still} paused={paused} playKey={playKey}>
       <defs>
         <mask id={maskId}>
           <path

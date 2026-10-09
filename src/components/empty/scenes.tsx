@@ -34,9 +34,9 @@ const CSS_MS = 2600
 // pennant unfurls and waves to rest. Resting frame === SoftFlag.
 export function FlagScene(props: SceneProps) {
   const { width = 176, playKey = 0 } = props
-  const { still, svgRef } = useSceneMode(props, CSS_MS)
+  const { still, paused, svgRef } = useSceneMode(props, CSS_MS)
   return (
-    <SceneSvg ref={svgRef} width={width} still={still} playKey={playKey}>
+    <SceneSvg ref={svgRef} width={width} still={still} paused={paused} playKey={playKey}>
       <path className="gio-scene-blob" d={BLOB_PATH} fill={GREEN0} />
       {/* The fade runs on a wrapper: animating the ellipse's own opacity would
           override its 0.05 and flash a solid shadow. */}
@@ -61,7 +61,7 @@ const SEARCH_FLY = 0.78
 
 export function MagnifierScene(props: SceneProps) {
   const { width = 176, playKey = 0 } = props
-  const { still, svgRef, uid } = useSceneMode(props)
+  const { still, paused, svgRef, uid } = useSceneMode(props)
   const maskId = `gio-search-mask-${uid}`
   const lens = React.useRef<SVGGElement>(null)
   const shadow = React.useRef<SVGGElement>(null)
@@ -90,6 +90,7 @@ export function MagnifierScene(props: SceneProps) {
       rest()
       return
     }
+    if (paused) return // blank until it's on screen and claims the flight
     const len = g.getTotalLength()
     let raf = 0
     let start: number | null = null
@@ -130,10 +131,10 @@ export function MagnifierScene(props: SceneProps) {
       cancelAnimationFrame(raf)
       rest()
     }
-  }, [still, playKey])
+  }, [still, paused, playKey])
 
   return (
-    <SceneSvg ref={svgRef} width={width} still={still} playKey={playKey}>
+    <SceneSvg ref={svgRef} width={width} still={still} paused={paused} playKey={playKey}>
       <defs>
         <mask id={maskId}>
           <path
@@ -190,9 +191,9 @@ export function MagnifierScene(props: SceneProps) {
 // the purple event is booked into its slot. Resting frame === SoftCalendar.
 export function CalendarScene(props: SceneProps) {
   const { width = 176, playKey = 0 } = props
-  const { still, svgRef } = useSceneMode(props, CSS_MS)
+  const { still, paused, svgRef } = useSceneMode(props, CSS_MS)
   return (
-    <SceneSvg ref={svgRef} width={width} still={still} playKey={playKey}>
+    <SceneSvg ref={svgRef} width={width} still={still} paused={paused} playKey={playKey}>
       <path className="gio-scene-blob" d={BLOB_PATH} fill={CYAN0} />
       <g className="gio-e2 gio-e2-cshadow">
         <ellipse cx="95" cy="114" rx="32" ry="5" fill="#000" opacity="0.05" />
