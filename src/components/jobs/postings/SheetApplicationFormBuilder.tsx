@@ -23,6 +23,7 @@ import {
   type AppField,
   type FieldType as SharedFieldType,
 } from './ApplicationFormBuilder'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 const CORE_FIELD_ICONS: Record<string, any> = {
   resume: FileText,
@@ -136,7 +137,9 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
         const merged = { ...(current?.field_config as any || {}), ...patch }
         void updateField(id, { field_config: merged } as any)
       }}
-      onRemoveField={(id) => {
+      onRemoveField={async (id) => {
+        const field = posting.find((p) => p.id === id) as { label?: string } | undefined
+        if (!(await confirmDialog({ title: field?.label ? `Remove "${field.label}" from the form?` : 'Remove this question from the form?', description: 'Answers already submitted are kept.', confirmLabel: 'Remove question', destructive: true }))) return
         void deleteField(id)
       }}
       onReorderFields={(orderedIds) => {

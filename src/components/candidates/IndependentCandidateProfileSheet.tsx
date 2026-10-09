@@ -43,6 +43,7 @@ import { Separator } from '@/components/ui/separator'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 import { EeoResponseCard } from './EeoResponseCard'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface IndependentCandidateProfileSheetProps {
   open: boolean
@@ -100,6 +101,7 @@ export function IndependentCandidateProfileSheet({
   
   const handleDeleteResume = async () => {
     if (!resumeAttachment) return
+    if (!(await confirmDialog({ title: 'Delete this résumé?', description: 'The file is removed from the candidate. Parsed details stay on the profile.', confirmLabel: 'Delete résumé', destructive: true }))) return
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 

@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { SaveViewDialog } from './SaveViewDialog'
 import type { SavedView, PageContext } from '@/hooks/useSavedViews'
 import { useSavedViews } from '@/hooks/useSavedViews'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface SavedViewSelectorProps {
   pageContext: PageContext
@@ -74,7 +75,8 @@ export function SavedViewSelector({
     updateView.mutate({ id: view.id, is_default: !view.is_default })
   }, [updateView])
 
-  const handleDelete = useCallback((view: SavedView) => {
+  const handleDelete = useCallback(async (view: SavedView) => {
+    if (!(await confirmDialog({ title: `Delete the view "${view.name}"?`, confirmLabel: 'Delete view', destructive: true }))) return
     deleteView.mutate(view.id, {
       onSuccess: () => {
         if (activeViewId === view.id) onActiveViewChange(null)

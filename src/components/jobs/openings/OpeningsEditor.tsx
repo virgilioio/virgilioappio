@@ -13,6 +13,7 @@ import {
   setupSummaryText,
 } from '@/lib/jobOpenings'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 const db = supabase as any
 
@@ -198,6 +199,7 @@ function SetupEditor({ jobId, readOnly }: SetupProps) {
   const remove = async (id: string) => {
     const row = rows.find((r) => r.id === id)
     if (!row) return
+    if (row.persisted && !(await confirmDialog({ title: 'Remove this opening?', description: 'Its Req ID, hire and start details go with it.', confirmLabel: 'Remove opening', destructive: true }))) return
     clearTimeout(timers.current[id])
     if (!row.persisted) {
       setRows((prev) => prev.filter((r) => r.id !== id))

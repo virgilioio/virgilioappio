@@ -13,6 +13,7 @@ import { ApplicationFieldForm } from '../ApplicationFieldForm'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 type TopTab = 'stages' | 'fields' | 'templates' | 'automations'
 
@@ -168,7 +169,7 @@ function FieldsTab() {
                   <Pencil size={12} />
                 </button>
                 {!isCore && (
-                  <button type="button" aria-label="Delete" onClick={() => deleteField(field.id)} className="text-[#8B8F9E] hover:text-[#B91C1C]">
+                  <button type="button" aria-label="Delete" onClick={async () => { if (await confirmDialog({ title: `Delete the "${field.field_label || field.field_name}" field?`, description: 'It disappears from the default application form.', confirmLabel: 'Delete field', destructive: true })) deleteField(field.id) }} className="text-[#8B8F9E] hover:text-[#B91C1C]">
                     <Trash2 size={12} />
                   </button>
                 )}

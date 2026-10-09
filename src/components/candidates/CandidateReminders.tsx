@@ -7,6 +7,7 @@ import { useCandidateReminders, type CandidateReminder } from '@/hooks/useCandid
 import { ReminderCard } from './ReminderCard'
 import { ReminderForm } from './ReminderForm'
 import { InlineEmpty } from '@/components/ui/empty-state'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface CandidateRemindersProps {
   candidateId: string
@@ -155,7 +156,9 @@ export function CandidateReminders({ candidateId, jobId }: CandidateRemindersPro
                 reminder={reminder}
                 onComplete={() => completeReminder(reminder.id)}
                 onEdit={() => handleEdit(reminder)}
-                onDelete={() => deleteReminder(reminder.id)}
+                onDelete={async () => {
+                  if (await confirmDialog({ title: 'Delete this reminder?', confirmLabel: 'Delete reminder', destructive: true })) deleteReminder(reminder.id)
+                }}
                 isEditing={editingReminder?.id === reminder.id}
               />
             ))}
