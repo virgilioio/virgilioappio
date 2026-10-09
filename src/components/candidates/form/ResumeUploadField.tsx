@@ -193,12 +193,15 @@ export function ResumeUploadField({
         e.preventDefault()
         setDragOver(false)
       }}
+      // §14 file upload: on drag-over the zone highlights (border and background
+      // over 120ms) and grows to scale 1.01.
       className={cn(
-        'cursor-pointer rounded-[10px] px-4 py-6 text-center transition-colors',
+        'gio-dropzone cursor-pointer rounded-[10px] px-4 py-6 text-center',
         'flex flex-col items-center justify-center gap-2',
       )}
+      data-drag-over={dragOver || undefined}
       style={{
-        background: '#FAFAF7',
+        background: dragOver ? '#F5F0FF' : '#FAFAF7',
         border: '1.5px dashed',
         borderColor: dragOver ? '#6F3FF5' : '#D1D0CB',
       }}

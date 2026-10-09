@@ -1537,3 +1537,13 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-swap-label > [data-to],
 .gio-swap-label[data-swapped] > [data-from] { opacity: 0; filter: blur(2px); }
 .gio-swap-label[data-swapped] > [data-to] { opacity: 1; filter: none; }
+
+/* §14 Radio (ui/radio-group.tsx): the dot grows in. */
+@keyframes gio-radio-dot { from { opacity: 0; transform: scale(0.4); } }
+.gio-radio-dot { animation: gio-radio-dot var(--dur-tick) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .gio-radio-dot { animation-name: gio-fade-only; } }
+
+/* §14 File upload drop zones: highlight and a 1.01 lift while a file is over them. */
+.gio-dropzone { transition: background-color 120ms ease, border-color 120ms ease, transform 120ms var(--ease-out); }
+.gio-dropzone[data-drag-over] { transform: scale(1.01); }
+@media (prefers-reduced-motion: reduce) { .gio-dropzone[data-drag-over] { transform: none; } }
