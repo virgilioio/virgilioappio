@@ -3,21 +3,23 @@ import { TONE_COLOR } from '../../model/tokens'
 import { fmt } from '../../model/format'
 import { useHoverTip } from './ChartHoverTip'
 import type { MetricId, SeriesPoint, Format } from '../../model/types'
+import { ChartMotion } from '@/components/ui/chart-motion'
 
 interface Props {
+  widgetId: string
   metricId: MetricId
   data: SeriesPoint[]
   format: Format
   currency?: string
 }
 
-export function FunnelChart({ metricId, data, format, currency }: Props) {
+export function FunnelChart({ widgetId, metricId, data, format, currency }: Props) {
   const tone = TONE_COLOR[METRICS[metricId].tone]
   const tip = useHoverTip()
   const rows = data
   const top = rows[0]?.value ?? 0
   return (
-    <div className="flex flex-col gap-2 py-1 w-full overflow-hidden">
+    <ChartMotion id={`analytics:${widgetId}`} axis="x" className="flex flex-col gap-2 py-1 w-full overflow-hidden">
       {rows.length === 0 && <div className="text-[12px] text-[#8B8F9E] font-inter">No data</div>}
       {rows.map((r, i) => {
         const widthPct = top > 0 ? (r.value / top) * 100 : 0
@@ -41,10 +43,13 @@ export function FunnelChart({ metricId, data, format, currency }: Props) {
               ] })}
               onMouseLeave={tip.hide}
             >
+              {/* The fill morphs on its own (§6); the label sits over it at the same width, so text never stretches. */}
               <div
-                className="h-full rounded-[4px] flex items-center px-2 transition-[width] duration-[400ms]"
+                data-chart-bar={r.label}
+                className="absolute inset-y-0 left-0 rounded-[4px]"
                 style={{ width: `${widthPct}%`, background: bg }}
-              >
+              />
+              <div className="relative h-full flex items-center px-2" style={{ width: `${widthPct}%` }}>
                 <span className="font-poppins font-semibold text-[11px] tabular-nums text-[#0d0d09] truncate">
                   {fmt(r.value, format, currency)}
                 </span>
@@ -58,6 +63,6 @@ export function FunnelChart({ metricId, data, format, currency }: Props) {
         )
       })}
       {tip.node}
-    </div>
+    </ChartMotion>
   )
 }

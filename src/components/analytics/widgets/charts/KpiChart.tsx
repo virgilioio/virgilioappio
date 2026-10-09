@@ -3,13 +3,15 @@ import { METRICS } from '../../model/metrics'
 import { TONE_COLOR } from '../../model/tokens'
 import { fmt } from '../../model/format'
 import type { MetricId, NormalizedData } from '../../model/types'
+import { BlendNumber } from '@/components/ui/blend-number'
 
 interface Props {
+  widgetId: string
   metricId: MetricId
   data: NormalizedData
 }
 
-export function KpiChart({ metricId, data }: Props) {
+export function KpiChart({ widgetId, metricId, data }: Props) {
   const meta = METRICS[metricId]
   const color = TONE_COLOR[meta.tone]
   const series = data.trend.sparkline
@@ -38,7 +40,12 @@ export function KpiChart({ metricId, data }: Props) {
     <div className="flex flex-col h-full w-full min-w-0 overflow-hidden">
       <div className="flex items-end justify-between gap-3 min-w-0">
         <div className="font-poppins font-semibold text-[34px] leading-none tracking-[-0.02em] text-[#0d0d09] min-w-0 flex-1 truncate">
-          {fmt(data.value, data.format, data.currency)}
+          <BlendNumber
+            id={`analytics:${widgetId}`}
+            value={data.value}
+            ready={!data.loading}
+            format={(n) => fmt(n, data.format, data.currency)}
+          />
         </div>
         {series.length > 0 && (
           <svg width={w} height={h} className="flex-shrink-0">
