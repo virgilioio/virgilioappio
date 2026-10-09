@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { CheckCircle2, Loader2, Receipt } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
@@ -22,6 +22,7 @@ import {
 import { toast as legacyToast } from '@/hooks/use-toast'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { burstFrom, claimOpeningFilled, tintHired } from '@/lib/delight'
 
 interface MarkHiredDialogProps {
   open: boolean
@@ -172,6 +173,12 @@ export function MarkHiredDialog({
     setCloseJob(eligible.length === 1)
   }
 
+  const [hired, setHired] = useState(false)
+  const confirmRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!open) setHired(false)
+  }, [open])
+
   const confirmHire = async () => {
     if (!openingId || !startDate || !sourcerId || !recruiterId) return
     setSaving(true)
@@ -187,9 +194,10 @@ export function MarkHiredDialog({
 
     if (error) {
       const race = /just filled|that opening/i.test(error.message || '')
+      // §5: a plain, specific message — never the raw server error.
       legacyToast({
-        title: race ? 'Opening no longer available' : 'Could not mark candidate hired',
-        description: error.message || 'Please try again.',
+        title: race ? 'Opening no longer available' : `Couldn't mark ${firstName} hired`,
+        description: race ? 'Someone just filled it. Pick another opening.' : 'Nothing was changed. Try again.',
         variant: 'destructive',
       })
       await refetch()
@@ -199,7 +207,20 @@ export function MarkHiredDialog({
     const result = Array.isArray(data) ? data[0] : data
     const reqId = result?.req_id || selected?.req_id || ''
     onSuccess({ reqId, startDate })
-    onOpenChange(false)
+    // §15 Opening filled: the label morphs to "Hired", 10 dots burst from the button,
+    // and once the dialog has closed the candidate's card gets a fading green tint.
+    // Once per opening per session; reduced motion just closes.
+    if (claimOpeningFilled(openingId)) {
+      setHired(true)
+      if (confirmRef.current) burstFrom(confirmRef.current)
+      window.setTimeout(() => {
+        onOpenChange(false)
+        const card = document.querySelector<HTMLElement>(`[data-board-card="${CSS.escape(applicationId)}"]`)
+        tintHired((card?.firstElementChild as HTMLElement | null) ?? card)
+      }, 600)
+    } else {
+      onOpenChange(false)
+    }
     toast.custom(
       () => (
         <div className="flex items-center gap-2 rounded-[10px] bg-hire-ink px-3.5 py-2.5 font-inter text-[12.5px] text-hire-cream shadow-hire-toast">
@@ -383,6 +404,7 @@ export function MarkHiredDialog({
               Cancel
             </Button>
             <Button
+              ref={confirmRef}
               type="submit"
               variant="primary"
               size="md"
@@ -391,7 +413,10 @@ export function MarkHiredDialog({
               loading={saving}
               className="bg-hire-title text-hire-cream hover:bg-hire-ink focus-visible:ring-hire-ink/10"
             >
-              Mark hired{selected?.req_id ? ` · ${selected.req_id}` : ''}
+              <span className="gio-swap-label" data-swapped={hired || undefined}>
+                <span data-from="">Mark hired{selected?.req_id ? ` · ${selected.req_id}` : ''}</span>
+                <span data-to="" aria-hidden={!hired}>Hired</span>
+              </span>
             </Button>
           </DialogFooter>
         </form>

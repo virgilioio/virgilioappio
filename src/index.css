@@ -1527,3 +1527,13 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   transition: opacity var(--dur-guard) var(--ease-out), translate var(--dur-guard) var(--ease-out), visibility 0ms;
 }
 @media (prefers-reduced-motion: reduce) { .gio-guard, .gio-guard[data-open] { translate: 0 0; } }
+
+/* §15 Opening filled (src/lib/delight.ts): a 10-dot burst from the confirm button. */
+.gio-burst { position: fixed; z-index: 90; width: 0; height: 0; pointer-events: none; }
+.gio-burst > span { position: absolute; left: 0; top: 0; width: 6px; height: 6px; border-radius: 9999px; }
+/* The confirm label morphs to "Hired": both labels share one grid cell (same width). */
+.gio-swap-label { display: inline-grid; }
+.gio-swap-label > * { grid-area: 1 / 1; transition: opacity var(--dur-menu-in) ease, filter var(--dur-menu-in) ease; }
+.gio-swap-label > [data-to],
+.gio-swap-label[data-swapped] > [data-from] { opacity: 0; filter: blur(2px); }
+.gio-swap-label[data-swapped] > [data-to] { opacity: 1; filter: none; }
