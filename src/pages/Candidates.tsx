@@ -274,6 +274,13 @@ function CandidatesInner() {
     }
   }, [searchParams, setSearchParams, navigate])
 
+  // ?import=csv (from the Talent Intelligence empty state) opens the CSV import.
+  useEffect(() => {
+    if (searchParams.get('import') !== 'csv') return
+    const next = new URLSearchParams(searchParams); next.delete('import'); setSearchParams(next, { replace: true })
+    setIsCSVImportOpen(true)
+  }, [searchParams, setSearchParams])
+
   const handleOpenCandidate = (id: string) => navigate(`/candidates/${id}`)
   const handleDelete = async () => {
     if (!deleteTarget) return
