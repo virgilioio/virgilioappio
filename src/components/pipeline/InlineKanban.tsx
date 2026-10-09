@@ -3,7 +3,7 @@
  * Reads per-job hiring stages (jhsId map) + associations, renders an
  * equal-width column grid with DnD between stages.
  */
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -14,7 +14,9 @@ import {
   useDroppable,
   type DragEndEvent,
   type DragStartEvent,
+  type DropAnimation,
 } from '@dnd-kit/core'
+import { BoardLift, boardDropAnimation, useBoardFlip } from '@/lib/boardMotion'
 import { ArrowUpRight, Plus, UserPlus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
@@ -93,8 +95,12 @@ export function InlineKanban({ jobId }: { jobId: string }) {
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    // §4 Touch: a long-press (--delay-longpress) picks a row up; moving 8px first is a scroll.
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } }),
   )
+  const dropAnimation = useMemo<DropAnimation | null>(boardDropAnimation, [])
+  const boardRef = useRef<HTMLDivElement>(null)
+  const { captureBoard } = useBoardFlip(boardRef, stages)
 
   const activeCandidate = useMemo(() => {
     if (!activeId) return null
@@ -106,6 +112,11 @@ export function InlineKanban({ jobId }: { jobId: string }) {
   }, [activeId, stages])
 
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
+  // Esc during a drag: dnd-kit returns the row to where it started.
+  const onDragCancel = () => {
+    setActiveId(null)
+    setOverStage(null)
+  }
   const onDragEnd = async (e: DragEndEvent) => {
     setActiveId(null)
     setOverStage(null)
@@ -123,6 +134,7 @@ export function InlineKanban({ jobId }: { jobId: string }) {
       }
     }
     if (!candidate || fromJhs === toJhs) return
+    captureBoard([associationId])
     // Optimistic: move + reset days
     setStages((prev) =>
       prev.map((s) => {
@@ -174,9 +186,10 @@ export function InlineKanban({ jobId }: { jobId: string }) {
         </div>
       </div>
 
-      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}
+      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}
         onDragOver={(e) => setOverStage(e.over?.id ? String(e.over.id) : null)}>
         <div
+          ref={boardRef}
           className="grid"
           style={{ gridTemplateColumns: `repeat(${Math.max(stages.length, 1)}, minmax(0, 1fr))`, gap: 8 }}
         >
@@ -198,11 +211,11 @@ export function InlineKanban({ jobId }: { jobId: string }) {
                 />
               ))}
         </div>
-        <DragOverlay>
+        <DragOverlay dropAnimation={dropAnimation}>
           {activeCandidate ? (
-            <div className="opacity-90">
-              <InlineCandidateRow c={activeCandidate} />
-            </div>
+            <BoardLift className="rounded-[7px]">
+              <InlineCandidateRow c={activeCandidate} overlay />
+            </BoardLift>
           ) : null}
         </DragOverlay>
       </DndContext>

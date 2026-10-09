@@ -9,7 +9,8 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import CandidateCard from './CandidateCard'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
-import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
+import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, type DropAnimation, MouseSensor, TouchSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
+import { BoardLift, boardDropAnimation, useBoardFlip } from '@/lib/boardMotion'
 import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
@@ -165,7 +166,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const navigationSnapshotRef = useRef<string[]>([])
 
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 10 } })
-  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
+  // §4 Touch: a long-press (--delay-longpress) picks a card up; moving 8px first is a scroll.
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } })
   const sensors = useSensors(mouseSensor, touchSensor)
 
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -285,6 +287,13 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const onDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(String(event.active.id))
   }, [])
+  // Esc during a drag: dnd-kit returns the card to where it started; just end the drag.
+  const onDragCancel = useCallback(() => setActiveId(null), [])
+  // §4 Drop: the card settles into its new place on the spring curve (--dur-board-drop).
+  const dropAnimation = useMemo<DropAnimation | null>(boardDropAnimation, [])
+  // §4 Move: when a drop reflows the columns, the other cards FLIP aside (--dur-board-flip).
+  const boardRef = useRef<HTMLDivElement>(null)
+  const { captureBoard } = useBoardFlip(boardRef, byStage)
 
   
 
@@ -410,6 +419,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     const { active, over } = event
     setActiveId(null)
     if (!over) return
+    captureBoard([String(active.id)])
     
     const assocId = String(active.id)
     const toStageId = String(over.id)
@@ -739,7 +749,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   // Esc clears the selection in both views.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      // Esc during a drag only cancels the drag (dnd-kit); the selection stays.
+      if (e.key === 'Escape' && !document.querySelector('.gio-board-slot')) {
         setSelectedIds(new Set())
         emitSelectedCandidateIds(new Set())
       }
@@ -916,8 +927,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           ))}
         </div>
       ) : currentView === 'board' ? (
-        <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div style={{ display: 'flex', gap: 12, height: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
+        <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
+          <div ref={boardRef} style={{ display: 'flex', gap: 12, height: '100%', overflowX: 'auto', overflowY: 'hidden' }}>
             {stageOptions.length === 0 && (
               <Card className="min-w-[280px]">
                 <CardContent className="py-8 text-center text-text-secondary text-sm">
@@ -1091,7 +1102,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               )
             })}
           </div>
-          <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          <DragOverlay dropAnimation={dropAnimation}>
             {activeId && assocMap.get(activeId) ? (
               (() => {
                 const { assoc, stageJhsId } = assocMap.get(activeId)!
@@ -1107,13 +1118,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         <div className="absolute -top-1 left-1 right-1 h-full rounded-[10px] bg-white border border-[#E7E8EE] shadow-md opacity-70" />
                       </>
                     )}
-                    <div
-                      className="relative"
-                      style={{
-                        transform: 'rotate(-1.5deg) scale(1.03)',
-                        boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
-                      }}
-                    >
+                    <BoardLift className="relative rounded-[10px]">
                       <CandidateCard
                         candidateId={assoc.candidate_id}
                         associationId={assoc.id}
@@ -1127,7 +1132,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         isFavorite={assoc.is_favorite}
                           aiFitScore={assoc.ai_fit_score}
                       />
-                    </div>
+                    </BoardLift>
                     {dragCount > 1 && (
                       <Badge
                         className="absolute -top-3 -right-3 bg-primary text-primary-foreground shadow-lg z-10 min-w-[24px] justify-center"

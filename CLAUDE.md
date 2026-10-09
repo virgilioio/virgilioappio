@@ -29,6 +29,8 @@ Shared primitives as they land. New components use these; don't add per-componen
 - **`gio-switch`**, **`gio-accordion-content`** (AccordionContent, CollapsibleContent — caller's className styles an inner `[data-disclosure-inner]`), **`gio-disclosure-chevron`**.
 - **Focus** — a global `:focus-visible` rule at the end of `src/index.css` draws the 2px purple outline on every control; don't add `focus-visible:ring-*` to new controls.
 - **Hover** — Tailwind `future.hoverOnlyWhenSupported`: `hover:` styles apply only on mouse/trackpad.
+- **Tables** — `useSortableTable` returns `bodyRef` (put it on `<TableBody ref={bodyRef}>`): rows FLIP on sort (240ms, skipped above 60 rows and under reduced motion). `SortableHeader` draws one `gio-sort-arrow` that rotates, plus `aria-sort`. `Table` sets `data-scrolled` for the sticky-header shadow; `TableRow` hover is instant; `TableCell` is `tabular-nums`. A card around a sticky table uses `overflow-clip`, never `overflow-hidden`.
+- **Boards** (`src/lib/boardMotion.tsx`) — every dnd-kit board: draggables carry `data-board-card={id}`, `touch-action: pan-y` and the `gio-board-slot` class while dragging (dashed slot, same size; `--board-slot-radius` for non-10px cards); the DragOverlay copy sits in `<BoardLift>`; `<DragOverlay dropAnimation={boardDropAnimation()}>`; `useBoardFlip(boardRef, state)` → call `captureBoard([activeId])` right before the optimistic move; `onDragCancel` clears the active id; TouchSensor `{ delay: 350, tolerance: 8 }`. Used by `PipelineOverview` (job board) and `InlineKanban` (/pipeline).
 
 ### 1. Tokens
 ```css

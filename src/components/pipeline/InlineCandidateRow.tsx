@@ -27,19 +27,24 @@ function initials(name: string) {
 export function InlineCandidateRow({
   c,
   onClick,
+  overlay = false,
 }: {
   c: InlineCandidate
   onClick?: (candidateId: string) => void
+  /** The copy rendered inside DragOverlay: not a draggable of its own. */
+  overlay?: boolean
 }) {
   const idle = c.daysInStage > 7
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: c.id,
+    id: overlay ? `overlay:${c.id}` : c.id,
     data: { candidateId: c.candidateId },
+    disabled: overlay,
   })
 
+  // §4 Pick up: the original stays in place as a dashed slot while DragOverlay carries the copy.
   const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0 : 1,
+    transform: isDragging ? undefined : CSS.Translate.toString(transform),
+    touchAction: 'pan-y',
   }
 
   return (
@@ -53,7 +58,11 @@ export function InlineCandidateRow({
         e.stopPropagation()
         onClick?.(c.candidateId)
       }}
-      className="flex cursor-grab items-center gap-2 rounded-[7px] bg-white hover:bg-[#FAFAF7]"
+      data-board-card={overlay ? undefined : c.id}
+      className={cn(
+        'flex cursor-grab items-center gap-2 rounded-[7px] bg-white hover:bg-[#FAFAF7] [--board-slot-radius:7px]',
+        isDragging && 'gio-board-slot',
+      )}
       // padding 5×8
       // border-radius 7
       // border 1px #E7E8EE
