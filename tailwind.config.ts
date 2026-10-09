@@ -345,6 +345,10 @@ export default {
 				'button-xl-v2': 'var(--button-height-xl-v2)',
 			},
 			boxShadow: {
+				// Motion-state shadows (menus in flight, dragged cards) — Block B §1
+				pop: 'var(--shadow-pop)',
+				lift: 'var(--shadow-lift)',
+				input: 'var(--input-ring)',
 				// Mark hired dialog (was a second boxShadow key above, silently overridden by this one)
 				'hire-dialog': 'var(--shadow-hire-dialog)',
 				'hire-menu': 'var(--shadow-hire-menu)',
@@ -375,7 +379,36 @@ export default {
 			transitionDuration: {
 				'fast': 'var(--transition-fast)',
 				'default': 'var(--transition-default)',
-				'slow': 'var(--transition-slow)'
+				'slow': 'var(--transition-slow)',
+				// Motion tokens (Block B §1, CLAUDE.md)
+				'instant': 'var(--dur-instant)',
+				'press': 'var(--dur-press)',
+				'hover': 'var(--dur-hover)',
+				'tooltip': 'var(--dur-tooltip)',
+				'hovercard': 'var(--dur-hovercard)',
+				'menu-in': 'var(--dur-menu-in)',
+				'menu-out': 'var(--dur-menu-out)',
+				'dialog-in': 'var(--dur-dialog-in)',
+				'dialog-out': 'var(--dur-dialog-out)',
+				'drawer-in': 'var(--dur-drawer-in)',
+				'drawer-out': 'var(--dur-drawer-out)',
+				'resize': 'var(--dur-resize)',
+				'expand': 'var(--dur-expand)',
+				'move': 'var(--dur-move)',
+				'tabs': 'var(--dur-tabs)',
+				'switch': 'var(--dur-switch)',
+				'progress': 'var(--dur-progress)',
+				'chart': 'var(--dur-chart)',
+				'toast': 'var(--dur-toast)',
+				'tick': 'var(--dur-tick)',
+				'guard': 'var(--dur-guard)',
+			},
+			transitionTimingFunction: {
+				// Overrides Tailwind's ease-out / ease-in-out with the Block B curves.
+				'out': 'var(--ease-out)',
+				'in-out': 'var(--ease-in-out)',
+				'drawer': 'var(--ease-drawer)',
+				'spring': 'var(--ease-spring)',
 			},
 			keyframes: {
 				'accordion-down': {
