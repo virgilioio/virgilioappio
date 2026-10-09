@@ -80,7 +80,7 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
   const stageIds = useMemo(() => [...new Set(associations.map(a => a.current_stage_id).filter(Boolean) as string[])], [associations])
 
   // Batch fetch scorecards for all associations (human-submitted only)
-  const { data: scorecards } = useQuery({
+  const { data: scorecards, isLoading: scorecardsLoading } = useQuery({
     queryKey: ['pipeline-scorecards', jobId, associationIds],
     queryFn: async () => {
       if (associationIds.length === 0) return []
@@ -97,7 +97,7 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
   })
 
   // Batch fetch bookings for all candidates in relevant stages
-  const { data: bookings } = useQuery({
+  const { data: bookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ['pipeline-bookings', jobId, candidateIds, stageIds],
     queryFn: async () => {
       if (candidateIds.length === 0 || stageIds.length === 0) return []
@@ -145,7 +145,7 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
   })
 
   // Batch fetch booking_link_sent_at for all associations
-  const { data: associationsData } = useQuery({
+  const { data: associationsData, isLoading: associationsDataLoading } = useQuery({
     queryKey: ['pipeline-associations-booking-sent', associationIds],
     queryFn: async () => {
       if (associationIds.length === 0) return []
@@ -347,8 +347,10 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
     return map
   }, [associations, scorecards, bookings, associationsData, attendees, bookingPrimary])
 
-  // isLoading is true until all queries that we need have returned data
-  const isLoading = !scorecards || !bookings || !associationsData
+  // Loading only while a query that will run is still fetching its first answer.
+  // (Checking `!data` kept this true forever on a job with no candidates, where the
+  // queries are disabled, and on a failed query — the pipeline's endless skeleton.)
+  const isLoading = scorecardsLoading || bookingsLoading || associationsDataLoading
 
   return { statusMap, isLoading }
 }
