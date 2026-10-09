@@ -20,9 +20,12 @@ export function CharCounter({ count, max, className }: { count: number; max: num
       )}
       data-visible={shown || undefined}
       aria-hidden={!shown || undefined}
-      aria-live="polite"
     >
       {count}/{max}
+      {/* Screen readers hear about the limit once, not every keystroke. */}
+      <span className="sr-only" aria-live="polite">
+        {atLimit ? `Limit of ${max} characters reached` : ''}
+      </span>
     </span>
   )
 }
