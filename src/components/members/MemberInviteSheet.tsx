@@ -247,16 +247,24 @@ export function MemberInviteSheet({
     inviteCheckKey,
     async (signal) => {
       const emails = inviteCheckKey.split(",")
+      // Stored addresses keep the case they were typed in, so compare here, lowercased.
       const { data, error } = await supabase
         .from("members")
         .select("invited_email, user_status, invite_expires_at")
         .eq("organization_id", organizationId!)
-        .in("invited_email", emails)
+        .not("invited_email", "is", null)
         .abortSignal(signal)
       if (error) return null
       const now = Date.now()
+      const wanted = new Set(emails)
+      // Active members, and invitations that haven't expired. Inactive members can be
+      // invited again, so they don't count.
       const taken = (data ?? []).filter(
-        (m) => m.user_status !== "invited" || !m.invite_expires_at || new Date(m.invite_expires_at).getTime() > now,
+        (m) =>
+          !!m.invited_email &&
+          wanted.has(m.invited_email.trim().toLowerCase()) &&
+          (m.user_status === "active" ||
+            (m.user_status === "invited" && (!m.invite_expires_at || new Date(m.invite_expires_at).getTime() > now))),
       )
       if (taken.length === 0) {
         return {
