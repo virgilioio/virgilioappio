@@ -155,7 +155,8 @@ export function PipelineToolbar({
             borderRadius: 8,
             height: 32,
             padding: expanded ? '0 8px' : 0,
-            width: expanded ? 240 : 32,
+            // Phones: leave room for the filter chip and the view toggle beside it.
+            width: expanded ? 'min(240px, calc(100vw - 210px))' : 32,
             transition: 'width 160ms ease-out, padding 160ms ease-out',
             overflow: 'hidden',
           }}
