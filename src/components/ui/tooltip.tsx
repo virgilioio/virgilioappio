@@ -43,4 +43,25 @@ const TooltipContent = React.forwardRef<
 ))
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/**
+ * IconTip — the tooltip every icon-only control gets (its text matches the control's
+ * aria-label). Never pair it with a native `title`.
+ */
+function IconTip({
+  label,
+  side = "bottom",
+  children,
+}: {
+  label: React.ReactNode
+  side?: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>["side"]
+  children: React.ReactElement
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, IconTip }

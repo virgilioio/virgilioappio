@@ -10,7 +10,7 @@ import { HeroCardSkeleton, StageStripSkeleton } from '@/components/ui/hero-skele
  */
 export function CandidateProfileSkeleton() {
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
+    <div className="space-y-4">
       <HeroCardSkeleton variant="candidate" />
       <StageStripSkeleton />
 

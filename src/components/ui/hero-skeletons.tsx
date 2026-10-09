@@ -18,7 +18,7 @@ export function HeroCardSkeleton({ variant = 'job', className }: HeroCardSkeleto
   return (
     <section
       className={cn(
-        'bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5 animate-in fade-in duration-300',
+        'bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5',
         className,
       )}
       aria-hidden
@@ -96,7 +96,7 @@ export function HeroCardSkeleton({ variant = 'job', className }: HeroCardSkeleto
 export function PipelineSectionTabsSkeleton({ className }: { className?: string }) {
   return (
     <div
-      className={cn('grid animate-in fade-in duration-300', className)}
+      className={cn('grid', className)}
       style={{
         gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
         gap: 6,
@@ -129,7 +129,7 @@ export function StageStripSkeleton({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        'bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6 animate-in fade-in duration-300',
+        'bg-white border border-virgilio-border rounded-2xl shadow-sm p-5 sm:p-6',
         className,
       )}
       aria-hidden

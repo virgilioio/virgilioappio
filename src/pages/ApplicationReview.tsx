@@ -264,8 +264,8 @@ export default function ApplicationReviewPage() {
       {/* Progress hairline */}
       <div className="h-[3px] w-full bg-[#EAE8E1] relative">
         <div
-          className="h-full bg-[#6F3FF5] transition-all duration-500"
-          style={{ width: `${progressPct}%` }}
+          className="gio-progress-fill h-full w-full bg-[#6F3FF5]"
+          style={{ transform: `scaleX(${progressPct / 100})` }}
         />
       </div>
 
@@ -711,7 +711,7 @@ function DecisionRail({
           </span>
         </div>
         <div className="mt-2 h-[5px] rounded-full bg-[#EAE8E1] overflow-hidden">
-          <div className="h-full bg-[#6F3FF5] transition-all duration-500" style={{ width: `${progressPct}%` }} />
+          <div className="gio-progress-fill h-full w-full bg-[#6F3FF5]" style={{ transform: `scaleX(${progressPct / 100})` }} />
         </div>
       </div>
 

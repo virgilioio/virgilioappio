@@ -1360,3 +1360,21 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 [data-swapped] .gio-icon-swap > [data-from] { transform: scale(0.6); filter: blur(2px); opacity: 0; }
 .gio-icon-swap[data-swapped] > [data-to],
 [data-swapped] .gio-icon-swap > [data-to] { transform: none; filter: none; opacity: 1; }
+
+/* §8 Notifications: a newly arrived item opens its space, then fades in. */
+@keyframes gio-open-space { from { grid-template-rows: 0fr; } to { grid-template-rows: 1fr; } }
+@keyframes gio-fade-in-after { from { opacity: 0; } }
+.gio-open-space { display: grid; animation: gio-open-space var(--dur-expand) var(--ease-in-out) both; }
+.gio-open-space > * {
+  min-height: 0;
+  overflow: hidden;
+  animation: gio-fade-in-after var(--dur-hover) ease var(--dur-expand) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-open-space { animation: none; }
+  .gio-open-space > * { animation-delay: 0ms; }
+}
+
+/* §8 Progress and stepper fills: the fill is full width and grows with scaleX from the
+ * left (--dur-progress, --ease-in-out). Never animate width. */
+.gio-progress-fill { transform-origin: left center; transition: transform var(--dur-progress) var(--ease-in-out); }

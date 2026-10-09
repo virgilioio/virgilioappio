@@ -45,7 +45,7 @@ export function ProfileStageStrip({ stages, currentStageId, meta = {}, onStageCl
         const m = meta[opt.jhsId] || {}
         const clickable = interactive && !isCurrent
 
-        const base = 'flex-1 min-w-0 rounded-lg px-3 py-2.5 transition-all text-left flex items-center gap-2'
+        const base = 'flex-1 min-w-0 rounded-lg px-3 py-2.5 transition-colors duration-[var(--dur-hover)] text-left flex items-center gap-2'
         const stateClass = isPast
           ? 'bg-[#D1FAE5] text-[#065F46] border border-solid border-transparent'
           : isCurrent
