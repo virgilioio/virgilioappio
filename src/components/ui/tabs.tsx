@@ -44,15 +44,23 @@ function useTabIndicator(listRef: React.RefObject<HTMLElement>, indicator: Indic
       if (animate && ready) slidingUntil = performance.now() + 300
       // A jump: no transition for this change, restored on the next frame.
       if (el && !slide) el.style.transition = "none"
+      // §10: a tab bar too wide for its space scrolls sideways (with a 28px fade on the
+      // right edge until you reach the end); coordinates are in its scrolled content.
+      const overflowing = list.scrollWidth > list.clientWidth + 1
+      list.toggleAttribute("data-overflow", overflowing)
       const lb = list.getBoundingClientRect()
       const ab = active.getBoundingClientRect()
-      const x = ab.left - lb.left - list.clientLeft
+      const x = ab.left - lb.left - list.clientLeft + list.scrollLeft
       const y = ab.top - lb.top - list.clientTop
+      const contentWidth = overflowing ? list.scrollWidth : list.clientWidth
       list.style.setProperty("--tab-x", `${x}px`)
       list.style.setProperty("--tab-y", `${y}px`)
       list.style.setProperty("--tab-w", `${ab.width}`)
       list.style.setProperty("--tab-h", `${ab.height}`)
-      list.style.setProperty("--tab-right", `${list.clientWidth - x - ab.width}px`)
+      list.style.setProperty("--tab-scroll-w", `${contentWidth}px`)
+      list.style.setProperty("--tab-right", `${contentWidth - x - ab.width}px`)
+      if (overflowing && animate) active.scrollIntoView({ block: "nearest", inline: "nearest" })
+      list.toggleAttribute("data-scroll-end", list.scrollLeft + list.clientWidth >= list.scrollWidth - 1)
       list.style.setProperty("--tab-bottom", `${list.clientHeight - y - ab.height}px`)
       list.style.setProperty("--tab-radius", getComputedStyle(active).borderRadius)
       list.setAttribute("data-indicator-ready", "")
@@ -68,6 +76,8 @@ function useTabIndicator(listRef: React.RefObject<HTMLElement>, indicator: Indic
     measure(false)
     const resize = new ResizeObserver(() => measure(false))
     resize.observe(list)
+    const onScroll = () => list.toggleAttribute("data-scroll-end", list.scrollLeft + list.clientWidth >= list.scrollWidth - 1)
+    list.addEventListener("scroll", onScroll, { passive: true })
     list.querySelectorAll('[role="tab"]').forEach((t) => resize.observe(t))
     const mutation = new MutationObserver((records) => {
       const tabChanged = records.some((r) => r.type === "attributes" && r.attributeName === "data-state")
@@ -80,6 +90,7 @@ function useTabIndicator(listRef: React.RefObject<HTMLElement>, indicator: Indic
     document.fonts?.ready.then(() => measure(false))
     return () => {
       resize.disconnect()
+      list.removeEventListener("scroll", onScroll)
       mutation.disconnect()
       cancelAnimationFrame(frame)
     }
