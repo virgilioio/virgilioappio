@@ -1547,3 +1547,6 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-dropzone { transition: background-color 120ms ease, border-color 120ms ease, transform 120ms var(--ease-out); }
 .gio-dropzone[data-drag-over] { transform: scale(1.01); }
 @media (prefers-reduced-motion: reduce) { .gio-dropzone[data-drag-over] { transform: none; } }
+
+/* §12 Search: the clear (×) button fades in (120ms) when there's text. */
+button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
