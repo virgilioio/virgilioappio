@@ -94,9 +94,11 @@
 
 .gf-progress-fill {
   height: 100%;
+  width: 100%;
   border-radius: 999px;
   background: #6F3FF5;
-  transition: width 400ms ease;
+  transform-origin: left center;
+  transition: transform var(--dur-progress) var(--ease-in-out); /* §8: scaleX, never width */
 }
 
 .gf-progress-note { font-size: 11px; color: #8B8F9E; margin-top: 8px; }

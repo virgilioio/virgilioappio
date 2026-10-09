@@ -98,7 +98,7 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'
 // Tile classes — state-aware. The accent shape inside the glyph receives lilac
 // fill only on hover/active; inactive keeps it at currentColor (signal OFF).
 const tileBase =
-  'flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ease-out'
+  'flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-[var(--dur-hover)]'
 const tileActive =
   'bg-[#fffcf9] text-[#0d0d09] [&_.accent]:fill-[#D7C5FB]'
 const tileInactive =

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { IconTip } from '@/components/ui/tooltip'
 import { MoreHorizontal, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -204,11 +205,13 @@ export function SelectionBar({
 
       {overflow.length > 0 && (
         <DropdownMenu>
+          <IconTip label="More bulk actions" side="top">
           <DropdownMenuTrigger asChild>
             <button type="button" style={roundBtn} aria-label="More bulk actions" disabled={busy}>
               <MoreHorizontal size={13} />
             </button>
           </DropdownMenuTrigger>
+          </IconTip>
           <DropdownMenuContent align="end" side="top" sideOffset={8}>
             {overflow.map((a) => {
               const item = (
@@ -235,9 +238,11 @@ export function SelectionBar({
         </DropdownMenu>
       )}
 
-      <button type="button" onClick={onClear} style={roundBtn} title="Clear selection" aria-label="Clear selection">
+      <IconTip label="Clear selection" side="top">
+      <button type="button" onClick={onClear} style={roundBtn} aria-label="Clear selection">
         <X size={13} strokeWidth={2.2} />
       </button>
+      </IconTip>
     </div>
   )
 }

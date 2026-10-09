@@ -85,7 +85,7 @@ export function useGioFitNarration(active: boolean) {
 export function GioFitProgressBar({ progress }: { progress: number }) {
   return (
     <div className="gf-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
-      <div className="gf-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+      <div className="gf-progress-fill" style={{ transform: `scaleX(${progress})` }} />
     </div>
   )
 }

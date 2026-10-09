@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { IconTip } from '@/components/ui/tooltip'
 import { motionToken, prefersReducedMotion } from '@/lib/motion'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -326,6 +327,8 @@ export function NotificationCenter() {
     )
   }, [counts.all])
 
+  const bellLabel = counts.all > 0 ? `Notifications, ${counts.all} unread` : 'Notifications'
+
   const handleClick = (n: NotificationRow) => {
     setOpen(false)
     if (n.category === 'chat_message') {
@@ -342,9 +345,10 @@ export function NotificationCenter() {
 
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setView('feed') }}>
+      <IconTip label={bellLabel}>
       <PopoverTrigger asChild>
         <button
-          aria-label="Notifications"
+          aria-label={bellLabel}
           className="relative h-8 w-8 rounded-md flex items-center justify-center text-white/80 hover:text-white hover:bg-white/8 transition-colors"
         >
           <Bell className="h-[16px] w-[16px]" strokeWidth={1.75} />
@@ -353,6 +357,7 @@ export function NotificationCenter() {
           )}
         </button>
       </PopoverTrigger>
+      </IconTip>
       <PopoverContent
         align="end"
         sideOffset={10}
@@ -369,6 +374,7 @@ export function NotificationCenter() {
                 <span className="text-[11px] text-[#8B8F9E]">{counts.all} unread</span>
               </div>
               <div className="flex items-center gap-1">
+                <IconTip label="Mark all read">
                 <button
                   onClick={() => markAllAsRead.mutate()}
                   disabled={counts.all === 0}
@@ -377,6 +383,8 @@ export function NotificationCenter() {
                 >
                   <CheckCheck className="h-4 w-4" />
                 </button>
+                </IconTip>
+                <IconTip label="Notification preferences">
                 <button
                   onClick={() => setView('prefs')}
                   className="h-7 w-7 rounded-md flex items-center justify-center text-[#5A6072] hover:bg-[#F1F0EC]"
@@ -384,6 +392,7 @@ export function NotificationCenter() {
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                 </button>
+                </IconTip>
               </div>
             </div>
 

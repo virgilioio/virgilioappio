@@ -1,4 +1,5 @@
 import { Shield, AlertTriangle, X, Loader2 } from 'lucide-react'
+import { IconTip } from '@/components/ui/tooltip'
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -146,6 +147,7 @@ function Band({
     >
       {children}
       {onDismiss && (
+        <IconTip label="Dismiss">
         <button
           type="button"
           onClick={onDismiss}
@@ -157,6 +159,7 @@ function Band({
         >
           <X className="h-3.5 w-3.5" />
         </button>
+        </IconTip>
       )}
     </div>
   )

@@ -839,11 +839,12 @@ export function EmailComposer({
         {isBulk && bulkSend.isPending && bulkSend.progress.total > 0 && (
           <div className="shrink-0" style={{ height: 2, background: '#F1F0EC' }}>
             <div
+              className="gio-progress-fill"
               style={{
                 height: '100%',
-                width: `${((bulkSend.progress.completed + bulkSend.progress.failed) / bulkSend.progress.total) * 100}%`,
+                width: '100%',
+                transform: `scaleX(${(bulkSend.progress.completed + bulkSend.progress.failed) / bulkSend.progress.total})`,
                 background: '#6F3FF5',
-                transition: 'width 200ms ease',
               }}
             />
           </div>

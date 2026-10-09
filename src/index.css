@@ -1374,3 +1374,7 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   .gio-open-space { animation: none; }
   .gio-open-space > * { animation-delay: 0ms; }
 }
+
+/* §8 Progress and stepper fills: the fill is full width and grows with scaleX from the
+ * left (--dur-progress, --ease-in-out). Never animate width. */
+.gio-progress-fill { transform-origin: left center; transition: transform var(--dur-progress) var(--ease-in-out); }
