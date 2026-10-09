@@ -259,8 +259,8 @@ export default function Analytics() {
     <div className="min-h-screen bg-[#F6F5F1]">
       <div className="mx-auto" style={{ maxWidth: 1320, padding: '26px 32px 48px' }}>
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-5">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+          <div className="min-w-0">
             <div className="text-[11px] font-inter font-semibold tracking-[0.12em] uppercase text-[#8B8F9E] mb-1">
               ANALYTICS
             </div>
@@ -269,10 +269,10 @@ export default function Analytics() {
             </h1>
             <div className="mt-2 flex items-center gap-3 text-[12px] font-inter text-[#5A6072]">
               <span className="inline-flex items-center gap-1.5"><LayoutGrid size={12} /> {widgets.length} widgets</span>
-              <span className="inline-flex items-center gap-1.5"><Sparkles size={12} /> Hover any card to configure, drag to rearrange</span>
+              <span className="hidden sm:inline-flex items-center gap-1.5"><Sparkles size={12} /> Hover any card to configure, drag to rearrange</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <AnalyticsViewSwitcher
               activeViewId={activeViewId}
               onActivate={v => v && activateView(v)}

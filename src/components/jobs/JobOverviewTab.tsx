@@ -51,6 +51,7 @@ import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { markdownToHtml } from '@/utils/markdown'
+import { CURRENCY_SYMBOLS } from '@/constants/currencies'
 
 const WORK_MODE_LABEL: Record<string, string> = {
   remote: 'Remote',
@@ -159,23 +160,25 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
           : 'Not specified'
 
   // Compensation
+  // §10 compact money: 999 · 85k · 12.45M, with the exact range in the tooltip.
+  const currency = job?.currency || 'USD'
+  const symbol = CURRENCY_SYMBOLS[currency.toUpperCase()] ?? ''
   const fmtMoney = (n: number | null | undefined) => {
     if (n == null) return null
-    if (n >= 1000) {
-      const k = n / 1000
-      return `${Math.round(k)}k`
-    }
+    if (n >= 1_000_000) return `${Number((n / 1_000_000).toFixed(2))}M`
+    if (n >= 1000) return `${Math.round(n / 1000)}k`
     return n.toLocaleString()
   }
-  const salaryLabel = (() => {
-    const lo = fmtMoney(job?.salary_min)
-    const hi = fmtMoney(job?.salary_max)
+  const range = (fmt: (n: number) => string | null) => {
+    const lo = job?.salary_min != null ? fmt(job.salary_min) : null
+    const hi = job?.salary_max != null ? fmt(job.salary_max) : null
     if (!lo && !hi) return null
-    if (lo && hi) return `$${lo} – $${hi}`
-    if (lo) return `$${lo}+`
-    return `Up to $${hi}`
-  })()
-  const currency = job?.currency || 'USD'
+    if (lo && hi) return lo === hi ? `${symbol}${lo}` : `${symbol}${lo} – ${symbol}${hi}`
+    if (lo) return `${symbol}${lo}+`
+    return `Up to ${symbol}${hi}`
+  }
+  const salaryLabel = range(fmtMoney)
+  const salaryExact = range((n) => n.toLocaleString('en-US'))
 
   // Details rows values
   const postedAt = job?.created_at ? fmtDate(job.created_at) : null
@@ -422,7 +425,7 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
                         color: '#0d0d09',
                       }}
                     >
-                      {salaryLabel}
+                      <span title={salaryExact && salaryExact !== salaryLabel ? `${salaryExact} ${currency}` : undefined}>{salaryLabel}</span>
                     </span>
                     <span
                       className="font-inter"

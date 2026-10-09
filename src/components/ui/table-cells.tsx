@@ -33,20 +33,23 @@ interface IdentityCellProps {
 
 export function IdentityCell({ name, sub, src, fallback, className, hideAvatar }: IdentityCellProps) {
   const { density } = useTableDensity()
-  const initials = (fallback ?? (typeof name === "string" ? name : ""))
-    .toString()
-    .split(/\s+/)
-    .map(s => s[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
+  // §10: initials from the name; an email gives its first letter; nothing gives "?".
+  const source = (fallback ?? (typeof name === "string" ? name : "")).toString().trim()
+  const initials = source.includes("@") && !source.includes(" ")
+    ? source[0].toUpperCase()
+    : source
+        .split(/\s+/)
+        .map(s => s[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
   return (
     <div className={cn("flex items-center gap-3 min-w-0", className)}>
       {!hideAvatar && (
         <Avatar className={cn("shrink-0", AVATAR_SIZE[density])}>
           {src ? <AvatarImage src={src} alt="" /> : null}
-          <AvatarFallback className="text-[11px] font-medium">{initials || "—"}</AvatarFallback>
+          <AvatarFallback className="text-[11px] font-medium">{initials || "?"}</AvatarFallback>
         </Avatar>
       )}
       <div className="min-w-0 leading-tight">

@@ -488,7 +488,7 @@ export function JobsTable({
                       <IdentityCell
                         hideAvatar
                         name={
-                          <span className="inline-flex items-center gap-2 min-w-0">
+                          <span className="inline-flex items-center gap-2 min-w-0 max-w-[min(520px,42vw)]">
                             <span className="truncate">{job.title}</span>
                             {trending && (
                               <Badge tone="purple" size="xs">Trending</Badge>
@@ -499,7 +499,10 @@ export function JobsTable({
                         fallback={job.title}
                       />
                     </TableCell>
-                    <TableCell>{job.organization_name || '—'}</TableCell>
+                    <TableCell>
+                      {/* §10: company names clamp to two lines (full name in the tooltip). */}
+                      <span className="line-clamp-2 max-w-[240px] break-words">{job.organization_name || '—'}</span>
+                    </TableCell>
                     <TableCell>
                       {job.location ? (
                         <span className="inline-flex items-center gap-1.5">
