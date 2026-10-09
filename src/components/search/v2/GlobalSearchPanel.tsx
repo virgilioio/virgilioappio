@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Search, Briefcase, Users, Bookmark, Clock, Plus,
-  Sparkles, ArrowRight, CornerDownLeft, ArrowUp, ArrowDown,
+  Sparkles, ArrowRight, CornerDownLeft, ArrowUp, ArrowDown, X,
 } from 'lucide-react'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -67,7 +69,7 @@ export function GlobalSearchPanel({
   const trimmed = query.trim()
   const hasQuery = trimmed.length >= 2
 
-  const { results, isLoading, totalCounts } = useGlobalSearch(hasQuery && !askMode ? query : '', { limit: 5 })
+  const { results, isLoading, totalCounts, error: searchError, retry: retrySearch, resultsFor } = useGlobalSearch(hasQuery && !askMode ? query : '', { limit: 5 })
   const recent = useRecentSearches(user?.id ?? null)
   const searching = isLoading && !askMode
   useEffect(() => {
@@ -235,7 +237,7 @@ export function GlobalSearchPanel({
     }
 
     // No results recovery
-    if (r.length === 0 && hasQuery && !isLoading) {
+    if (r.length === 0 && hasQuery && !isLoading && !searchError) {
       r.push({
         key: 'no-ask',
         glyph: 'ai',
@@ -252,7 +254,7 @@ export function GlobalSearchPanel({
       })
     }
     return r
-  }, [askMode, askResult, hasQuery, recent, savedViews, results, scope, filteredSaved, trimmed, isLoading, navigate, onClose, onOpenCandidate, onQueryChange])
+  }, [askMode, askResult, hasQuery, recent, savedViews, results, scope, filteredSaved, trimmed, isLoading, searchError, navigate, onClose, onOpenCandidate, onQueryChange])
 
   useEffect(() => { setHighlighted(0) }, [rows.length, scope, askMode])
 
@@ -275,6 +277,10 @@ export function GlobalSearchPanel({
       return
     }
   }, [rows, highlighted, scope, onClose])
+
+  // Only once the results belong to what's typed: never during the 150ms debounce.
+  const settled = resultsFor === trimmed
+  const noMatches = hasQuery && !askMode && !isLoading && settled && !searchError && rows.length > 0 && rows.every(r => r.key.startsWith('no-'))
 
   // Top "See all N results" banner when mixed and has query
   const totalAll = totalCounts.jobs + totalCounts.candidates
@@ -397,8 +403,29 @@ export function GlobalSearchPanel({
           <GroupLabel label="Jump to" />
         )}
 
+        {/* §16/§17: a failed search is an error with Retry, never "no matches". */}
+        {searchError && settled && hasQuery && !askMode && !isLoading && (
+          <div className="px-4 py-10">
+            <LoadError what="search results" compact onRetry={retrySearch} />
+          </div>
+        )}
+
+        {/* No matches: the search scene above the recovery rows (Ask Gio, Add as candidate). */}
+        {noMatches && (
+          <div className="px-4 pt-6 pb-4">
+            <AnimatedEmpty
+              scene="search"
+              size="compact"
+              onceKey="global-search"
+              title="No matches"
+              body={<>Nothing fits {'\u201C'}{trimmed}{'\u201D'}. Try fewer words or check the spelling.</>}
+              primary={{ label: 'Clear search', icon: <X size={16} strokeWidth={2} />, onClick: () => onQueryChange('') }}
+            />
+          </div>
+        )}
+
         {/* Render rows */}
-        {rows.length === 0 && !isLoading && (
+        {rows.length === 0 && !isLoading && !(searchError && hasQuery && !askMode) && (
           <div className="flex h-full flex-col items-center justify-center px-4 py-12 text-center">
             {hasQuery ? (
               <>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { Briefcase, Users, Target, LucideIcon } from 'lucide-react'
@@ -23,6 +23,10 @@ interface UseGlobalSearchReturn {
   results: SearchResult[]
   isLoading: boolean
   error: Error | null
+  /** Runs the current query again (after an error). */
+  retry: () => void
+  /** The trimmed query the current results (or error) belong to; '' before any. */
+  resultsFor: string
   totalCounts: {
     jobs: number
     candidates: number
@@ -53,6 +57,9 @@ export function useGlobalSearch(
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [totalCounts, setTotalCounts] = useState({ jobs: 0, candidates: 0, sourcing_projects: 0 })
+  const [attempt, setAttempt] = useState(0)
+  const [resultsFor, setResultsFor] = useState('')
+  const retry = useCallback(() => setAttempt((n) => n + 1), [])
   
   const abortControllerRef = useRef<AbortController | null>(null)
   const tenantIdRef = useRef<string | null>(null)
@@ -75,6 +82,8 @@ export function useGlobalSearch(
     }
 
     if (!query || query.trim().length < minQueryLength) {
+      setError(null)
+      setResultsFor('')
       setResults([])
       setTotalCounts({ jobs: 0, candidates: 0, sourcing_projects: 0 })
       setIsLoading(false)
@@ -105,6 +114,7 @@ export function useGlobalSearch(
         if (!tenantId) {
           setResults([])
           setTotalCounts({ jobs: 0, candidates: 0, sourcing_projects: 0 })
+          setResultsFor(searchQuery)
           setIsLoading(false)
           return
         }
@@ -123,6 +133,17 @@ export function useGlobalSearch(
         if (candidatesSettled.status === 'rejected') console.error('Search candidates failed:', candidatesSettled.reason)
         if (sourcingSettled.status === 'rejected') console.error('Search sourcing projects failed:', sourcingSettled.reason)
 
+        // §16: when every source failed, that's an error, not "no matches".
+        const settled = [jobsSettled, candidatesSettled, sourcingSettled]
+        if (settled.every((r) => r.status === 'rejected')) {
+          if (signal.aborted) return
+          setResults([])
+          setTotalCounts({ jobs: 0, candidates: 0, sourcing_projects: 0 })
+          setError(new Error('Search failed'))
+          setResultsFor(searchQuery)
+          return
+        }
+
         const combinedResults: SearchResult[] = [
           ...jobsResult.results,
           ...candidatesResult.results,
@@ -131,6 +152,7 @@ export function useGlobalSearch(
 
         if (signal.aborted) return
         setResults(combinedResults)
+        setResultsFor(searchQuery)
         setTotalCounts({
           jobs: jobsResult.count,
           candidates: candidatesResult.count,
@@ -139,6 +161,7 @@ export function useGlobalSearch(
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
           setError(err)
+          setResultsFor(searchQuery)
         }
       } finally {
         if (!signal.aborted) setIsLoading(false)
@@ -151,9 +174,9 @@ export function useGlobalSearch(
         abortControllerRef.current.abort()
       }
     }
-  }, [query, limit, debounceMs, minQueryLength, user?.id])
+  }, [query, limit, debounceMs, minQueryLength, user?.id, attempt])
 
-  return { results, isLoading, error, totalCounts }
+  return { results, isLoading, error, totalCounts, retry, resultsFor }
 }
 
 async function searchJobs(query: string, limit: number, tenantId: string) {

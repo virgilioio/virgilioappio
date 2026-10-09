@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X, Briefcase, Users, Target } from 'lucide-react'
 import {
@@ -15,6 +15,8 @@ import { SearchResultsSkeleton } from './SearchResultsSkeleton'
 
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
 
 interface SearchResultsDialogProps {
   open: boolean
@@ -28,9 +30,11 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
   const navigate = useNavigate()
   const [query, setQuery] = useState(initialQuery)
   const [activeTab, setActiveTab] = useState<TabType>('all')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const clearSearch = () => { setQuery(''); inputRef.current?.focus() }
   
   // Use unlimited results for dialog
-  const { results, isLoading, totalCounts } = useGlobalSearch(query, { limit: 50 })
+  const { results, isLoading, totalCounts, error, retry, resultsFor } = useGlobalSearch(query, { limit: 50 })
 
   // Sync initial query when dialog opens
   useEffect(() => {
@@ -74,6 +78,7 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted" />
               <Input
+                ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search for anything..."
@@ -82,7 +87,9 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
               />
               {query && (
                 <button
-                  onClick={() => setQuery('')}
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={clearSearch}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-virgilio-muted hover:text-virgilio-text transition-colors"
                 >
                   <X className="h-4 w-4" />
@@ -128,16 +135,46 @@ export function SearchResultsDialog({ open, onOpenChange, initialQuery }: Search
               <div className="p-4">
                 <SearchResultsSkeleton count={5} />
               </div>
-            ) : filteredResults.length === 0 ? (
+            ) : error && resultsFor === query.trim() && query.trim().length >= 2 ? (
+              <div className="p-6">
+                <LoadError what="search results" onRetry={retry} />
+              </div>
+            ) : query.trim().length < 2 ? (
               <div className="p-6">
                 <EmptyState
                   size="card"
                   illustration={<SoftMagnifier />}
-                  title={query.length < 2 ? 'Start typing to search' : 'No matches'}
-                  body={query.length < 2
-                    ? 'Type at least 2 characters to search candidates, jobs, and more.'
-                    : `Nothing found for "${query}". Try different keywords.`}
+                  title="Start typing to search"
+                  body="Type at least 2 characters to search candidates, jobs, and more."
                 />
+              </div>
+            ) : resultsFor !== query.trim() && filteredResults.length === 0 ? (
+              // Debouncing: results for what's typed haven't arrived yet.
+              <div className="p-4">
+                <SearchResultsSkeleton count={5} />
+              </div>
+            ) : filteredResults.length === 0 ? (
+              <div className="p-6">
+                <EmptyCard>
+                  {results.length > 0 ? (
+                    // Only the tab hides them: show all, never "clear search".
+                    <AnimatedEmpty
+                      scene="search"
+                      onceKey="global-search"
+                      title={`No ${tabs.find((t) => t.id === activeTab)?.label.toLowerCase() ?? 'results'} match`}
+                      body={<>Other tabs have results for {'\u201C'}{query.trim()}{'\u201D'}.</>}
+                      primary={{ label: 'Show all results', onClick: () => setActiveTab('all') }}
+                    />
+                  ) : (
+                    <AnimatedEmpty
+                      scene="search"
+                      onceKey="global-search"
+                      title="No matches"
+                      body={<>Nothing fits {'\u201C'}{query.trim()}{'\u201D'}. Try fewer words or check the spelling.</>}
+                      primary={{ label: 'Clear search', icon: <X size={16} strokeWidth={2} />, onClick: clearSearch }}
+                    />
+                  )}
+                </EmptyCard>
               </div>
             ) : (
               <div className="p-2">
