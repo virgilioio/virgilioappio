@@ -101,18 +101,26 @@ async function fetchIndependentCandidates(organizationId: string): Promise<Indep
     orgTreeCache.set(organizationId, orgIds)
   }
 
-  const { data, error } = await withAuthRetry(async () =>
-    await supabase
-      .from('candidates')
-      .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current')
-      .in('organization_id', orgIds)
-      .order('created_at', { ascending: false })
-      .limit(1000)
-  )
+  // The API returns at most 1,000 rows per request, so page until a short page.
+  // Newest first, with id as a tiebreaker so pages never overlap or skip rows.
+  const PAGE = 1000
+  const data: any[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data: rows, error } = await withAuthRetry(async () =>
+      await supabase
+        .from('candidates')
+        .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current')
+        .in('organization_id', orgIds!)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + PAGE - 1)
+    )
+    if (error) throw error
+    data.push(...(rows || []))
+    if (!rows || rows.length < PAGE) break
+  }
 
-  if (error) throw error
-
-  return (data || []).map(candidate => ({
+  return data.map(candidate => ({
     ...candidate,
     auto_generated_skills: (candidate.auto_generated_skills as any) || null
   })) as IndependentCandidate[]
