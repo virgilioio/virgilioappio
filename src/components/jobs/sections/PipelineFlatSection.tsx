@@ -56,6 +56,9 @@ export function PipelineFlatSection({
   associations,
   stageMap,
   isLoading,
+  totalCount,
+  loadError = null,
+  onRetry,
   filters,
   onFiltersChange,
   search,
@@ -70,6 +73,10 @@ export function PipelineFlatSection({
   associations: any[]
   stageMap: Record<string, { type: string; name: string }>
   isLoading?: boolean
+  /** How many candidates the section holds before filters and search. */
+  totalCount?: number
+  loadError?: 'failed' | 'timeout' | null
+  onRetry?: () => void
   filters: PipelineFilter[]
   onFiltersChange: (next: PipelineFilter[]) => void
   search: string
@@ -159,6 +166,14 @@ export function PipelineFlatSection({
           actions={cfg.actions}
           empty={cfg.empty}
           isLoading={isLoading}
+          filtered={(totalCount ?? candidates.length) > 0 && rows.length === 0}
+          onClearFilters={() => {
+            onFiltersChange([])
+            onSearchChange('')
+          }}
+          loadError={loadError}
+          onRetry={onRetry}
+          emptyKey={`section-empty:${jobId}:${section}`}
           selectedIds={selectedIds}
           onSelectedIdsChange={onSelectedIdsChange}
           onOpenRow={(row) => handlers.onOpenRow?.(row)}

@@ -1,7 +1,8 @@
 import * as React from 'react'
 import { RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SoftFind, SoftMagnifier } from '@/components/ui/EmptyIllustrations'
+import { SoftFind } from '@/components/ui/EmptyIllustrations'
+import { PaperPlaneScene } from '@/components/empty/PaperPlaneScene'
 import type { SuggestedFilter } from './suggestedFilters'
 
 const inter = "'Inter', system-ui, sans-serif"
@@ -57,7 +58,8 @@ export function SuggestedEmpty({
 }) {
   return (
     <Shell>
-      <SoftFind />
+      {/* Candidate lists share one illustration (Empty State — Candidates). */}
+      <PaperPlaneScene onceKey="suggested-empty" />
       <Title>No suggestions for this job yet</Title>
       <Body>
         Gio compared your database against this job's requirements and found no meaningful overlap.
@@ -91,7 +93,7 @@ export function SuggestedNoResults({
 }) {
   return (
     <Shell>
-      <SoftMagnifier />
+      <PaperPlaneScene onceKey="suggested-empty" />
       <Title>No suggestions match your filters</Title>
       <Body>
         {total} {total === 1 ? 'suggestion is' : 'suggestions are'} hidden. Remove a filter to see them.

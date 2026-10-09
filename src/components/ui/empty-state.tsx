@@ -59,7 +59,6 @@ export function EmptyAction({
     letterSpacing: '-0.005em',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
-    transition: 'background-color 120ms ease, border-color 120ms ease',
   }
   const skins = {
     primary: {
@@ -75,7 +74,8 @@ export function EmptyAction({
     },
   } as const
   return (
-    <button type={type} onClick={onClick} style={{ ...base, ...skins[variant] }}>
+    // gio-pressable: §2 press feedback (scale .97) and colour transitions.
+    <button type={type} onClick={onClick} className="gio-pressable" style={{ ...base, ...skins[variant] }}>
       {icon}
       {children}
     </button>

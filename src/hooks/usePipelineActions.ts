@@ -39,7 +39,11 @@ export interface PipelineAssociation {
  * - createAssociationAndMove: creates association (if missing) and sets stage
  */
 export function usePipelineActions() {
-  const fetchAssociationsForJob = useCallback(async (jobId: string): Promise<PipelineAssociation[]> => {
+  /**
+   * `throwOnError`: throw instead of toasting and returning [], so a caller can tell
+   * "couldn't load" from "no candidates" (the pipeline's error state).
+   */
+  const fetchAssociationsForJob = useCallback(async (jobId: string, opts: { throwOnError?: boolean } = {}): Promise<PipelineAssociation[]> => {
     // 1) Load associations for job
     //    Paged: the database returns at most 1,000 rows per request, and a big job's
     //    pipeline can hold more.
@@ -60,6 +64,7 @@ export function usePipelineActions() {
 
     if (assocError) {
       console.error('Error fetching associations:', assocError)
+      if (opts.throwOnError) throw assocError
       toast({
         title: 'Error',
         description: 'Failed to load pipeline candidates.',
@@ -91,6 +96,7 @@ export function usePipelineActions() {
 
     if (candError) {
       console.error('Error fetching candidates:', candError)
+      if (opts.throwOnError) throw candError
       toast({
         title: 'Error',
         description: 'Failed to load candidate details.',
