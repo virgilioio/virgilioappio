@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Activity as ActivityIcon } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useActivityFeed, type Activity } from '@/hooks/useActivityFeed';
 import { ActivityFeedItem } from './ActivityFeedItem';
 import { Skeleton } from '@/components/ui/skeleton';
-import { InlineEmpty } from '@/components/ui/empty-state';
+import { AnimatedEmpty, type EmptyStateAction } from '@/components/empty/AnimatedEmpty';
+import { LoadError } from '@/components/empty/LoadError';
 import { activityMeta, type ActivityCategory } from '@/lib/activityRegistry';
 
 interface ActivityFeedListProps {
@@ -13,10 +14,14 @@ interface ActivityFeedListProps {
   visibleCategories?: ActivityCategory[];
   /** Jump to the Emails tab and scroll a message into view. */
   onOpenInEmails?: (emailLogId: string) => void;
+  /** Shows every category again (filtered empty). */
+  onClearFilters?: () => void;
+  /** The action on the truly empty state, e.g. Schedule interview. */
+  emptyAction?: EmptyStateAction;
 }
 
-export function ActivityFeedList({ candidateId, jobId, visibleCategories, onOpenInEmails }: ActivityFeedListProps) {
-  const { data: activities, isLoading, error } = useActivityFeed(candidateId, jobId);
+export function ActivityFeedList({ candidateId, jobId, visibleCategories, onOpenInEmails, onClearFilters, emptyAction }: ActivityFeedListProps) {
+  const { data: activities, isLoading, error, refetch } = useActivityFeed(candidateId, jobId);
 
   const visible = useMemo(() => {
     const list = (activities || []) as Activity[];
@@ -44,21 +49,41 @@ export function ActivityFeedList({ candidateId, jobId, visibleCategories, onOpen
     );
   }
 
-  if (error) {
+  // §16: an error is never an empty feed. With events already shown, they stay.
+  if (error && !activities?.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="rounded-full bg-surface-secondary p-3 mb-4">
-          <ActivityIcon className="h-6 w-6 text-text-secondary" />
-        </div>
-        <p className="text-sm text-destructive">
-          Failed to load activity feed
-        </p>
+      <div className="py-8">
+        <LoadError what="activity" compact onRetry={() => { void refetch(); }} />
       </div>
     );
   }
 
   if (visible.length === 0) {
-    return <InlineEmpty text="No activity yet." />;
+    const total = activities?.length ?? 0;
+    return (
+      <div className="py-4">
+        {total > 0 ? (
+          // §17: categories hide every event → search scene with Clear filters.
+          <AnimatedEmpty
+            scene="search"
+            size="compact"
+            onceKey="candidate-activity"
+            title="No activity matches these filters"
+            body={`${total.toLocaleString()} ${total === 1 ? 'event is' : 'events are'} hidden by your filters.`}
+            primary={onClearFilters ? { label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: onClearFilters } : undefined}
+          />
+        ) : (
+          <AnimatedEmpty
+            scene="scheduling"
+            size="compact"
+            onceKey="candidate-activity"
+            title="No activities yet"
+            body="Calls, meetings and interviews with this candidate show up here."
+            primary={emptyAction}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
