@@ -124,14 +124,14 @@ function TalentIntelligenceContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Section variant="default" banded container className="animate-fade-in">
+      <Section variant="default" banded container>
         <PageHeader
           title="Talent Intelligence"
          
         />
       </Section>
 
-      <Section container className="animate-fade-in">
+      <Section container>
         {/* §6: hold the filter bar's place while loading, so the page doesn't jump down. */}
         {isLoading && (
           <div className="mb-6 space-y-3" aria-hidden="true">

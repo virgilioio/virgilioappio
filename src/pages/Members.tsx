@@ -97,14 +97,14 @@ export default function Members() {
     <AuthGate>
       <PermissionGate permission="canManageMembers">
         <div className="min-h-screen bg-background">
-          <Section variant="default" banded container className="animate-fade-in">
+          <Section variant="default" banded container>
             <PageHeader
               title="Team Members"
              
             />
           </Section>
 
-          <Section container className="animate-fade-in">
+          <Section container>
             <MembersTable
               members={members}
               isLoading={isLoading}

@@ -1140,7 +1140,7 @@ export default function JobDetail() {
               </>
             )
             return !isMobile ? (
-              <div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5 animate-fade-in shrink-0">
+              <div className="mb-3 bg-white border border-virgilio-border rounded-2xl shadow-sm px-6 pt-5 shrink-0">
                 <JobHero
                   title={job.title}
                   status={job.status}
