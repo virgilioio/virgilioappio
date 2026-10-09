@@ -52,6 +52,7 @@ import { ProfileSummarySection } from './form/ProfileSummarySection'
 import { FooterStatusLine } from './form/FooterStatusLine'
 import type { ParsedResumeData } from './EnhancedResumeDropzone'
 import { splitFullName, composeFullName } from '@/utils/nameSplit'
+import { UnsavedGuard } from '@/components/ui/unsaved-guard'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
@@ -678,11 +679,19 @@ export function CandidateFormSheet({
     onClose()
   }
 
-  const handleCancel = () => {
+  const discard = () => {
+    setConfirmDiscard(false)
     resetFormState()
     clearPersistedData()
     setCurrentCandidateId(null)
     onClose()
+  }
+  // §13: Cancel throws the draft away, so a dirty form asks first, in the footer.
+  // (× / Esc / the overlay keep the draft, so they close straight away.)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const handleCancel = () => {
+    if (form.formState.isDirty && !isLoading) setConfirmDiscard(true)
+    else discard()
   }
 
   // ── Derived metadata ──────────────────────────────────────────────────────
@@ -746,6 +755,13 @@ export function CandidateFormSheet({
       <SheetContent
         side="right"
         className="w-full sm:max-w-[720px] p-0 flex flex-col h-full bg-[#F6F5F1] border-l border-virgilio-border"
+        onEscapeKeyDown={(e) => {
+          // While the discard question is up, Esc means "keep editing".
+          if (confirmDiscard) {
+            e.preventDefault()
+            setConfirmDiscard(false)
+          }
+        }}
       >
         <SheetHeader className="px-6 pt-6 pb-5 border-b border-virgilio-border/60 bg-background space-y-0">
           <CandidateSheetHeader
@@ -1128,7 +1144,9 @@ export function CandidateFormSheet({
           addedLabel={addedLabel}
           editedLabel={editedLabel}
           onOpenProfile={onOpenProfile}
-        />
+        >
+          <UnsavedGuard open={confirmDiscard} onKeep={() => setConfirmDiscard(false)} onDiscard={discard} />
+        </CandidateSheetFooter>
 
       </SheetContent>
 

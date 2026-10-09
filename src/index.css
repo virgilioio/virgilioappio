@@ -1512,3 +1512,18 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 @media (prefers-reduced-motion: reduce) {
   .gio-drawer[data-stack-depth] { translate: 0 0; scale: 1; }
 }
+
+/* §13 Unsaved changes (ui/unsaved-guard.tsx): the footer turns into the question. */
+.gio-guard {
+  opacity: 0;
+  translate: 0 4px;
+  visibility: hidden;
+  transition: opacity var(--dur-menu-out) var(--ease-out), translate var(--dur-menu-out) var(--ease-out), visibility 0ms linear var(--dur-menu-out);
+}
+.gio-guard[data-open] {
+  opacity: 1;
+  translate: 0 0;
+  visibility: visible;
+  transition: opacity var(--dur-guard) var(--ease-out), translate var(--dur-guard) var(--ease-out), visibility 0ms;
+}
+@media (prefers-reduced-motion: reduce) { .gio-guard, .gio-guard[data-open] { translate: 0 0; } }
