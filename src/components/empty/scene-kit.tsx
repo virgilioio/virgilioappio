@@ -111,20 +111,33 @@ export interface SceneProps {
  */
 export function useSceneMode({ onceKey, still: forceStill = false, playKey = 0 }: SceneProps, ms = SCENE_MS) {
   const svgRef = React.useRef<SVGSVGElement>(null)
-  // Claimed during the first render, so two scenes mounting together can't both fly.
-  const [still] = React.useState(() => {
-    if (forceStill || prefersReducedMotion() || (!!onceKey && played.has(onceKey))) return true
-    if (typeof performance === 'undefined' || performance.now() < flyingUntil) return true
-    if (onceKey) played.add(onceKey)
-    flyingUntil = performance.now() + ms
-    return false
-  })
+  const [still, setStill] = React.useState(
+    () => forceStill || prefersReducedMotion() || (!!onceKey && played.has(onceKey)),
+  )
   const uid = React.useId().replace(/:/g, '')
+  // Claimed in a layout effect (tree order, before paint), and only by a scene that
+  // is actually rendered: a copy inside a CSS-hidden desktop/phone branch never
+  // takes the one flight from the copy the user can see.
   React.useLayoutEffect(() => {
     if (still) return
+    const svg = svgRef.current
+    const visible = !!svg && svg.getClientRects().length > 0
+    if (!visible || typeof performance === 'undefined' || performance.now() < flyingUntil) {
+      setStill(true)
+      return
+    }
+    if (onceKey) played.add(onceKey)
+    const until = performance.now() + ms
+    flyingUntil = until
     const timer = setTimeout(() => svgRef.current?.classList.add('gio-scene-still'), ms + 50)
-    return () => clearTimeout(timer)
-  }, [still, onceKey, ms, playKey])
+    return () => {
+      clearTimeout(timer)
+      // Unmounted mid-flight: free the slot for whatever replaces it.
+      if (flyingUntil === until) flyingUntil = 0
+    }
+    // Decided once per mount (or replay); later prop changes don't re-decide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playKey])
   return { still, svgRef, uid: `${uid}-${playKey}` }
 }
 
