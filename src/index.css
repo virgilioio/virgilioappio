@@ -1411,3 +1411,8 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-avatar-img { opacity: 0; transition: opacity var(--dur-switch) ease; }
 .gio-avatar-img[data-loaded] { opacity: 1; }
 [data-status="loaded"] > .gio-avatar-fallback { visibility: hidden; transition: visibility 0s linear var(--dur-switch); }
+
+/* §9 Long lists the browser can skip: off-screen cards and rows keep their remembered
+ * size but aren't laid out or painted (used only past 100 in one column or group). */
+.gio-cv-card { content-visibility: auto; contain-intrinsic-size: auto 108px; }
+.gio-cv-row { content-visibility: auto; contain-intrinsic-size: auto 57px; }
