@@ -462,7 +462,7 @@ export default function IndependentCandidateProfile() {
                   <nav aria-label="breadcrumb" className="hidden md:flex items-center gap-1.5 font-inter text-[11.5px] text-[#8B8F9E] min-w-0">
                     <Link to="/candidates" className="hover:text-[#5A6072] transition-colors">Candidates</Link>
                     <span className="text-[#D1D5DB]">›</span>
-                    <span className="text-[#1F2230] font-medium truncate max-w-[260px]">{candidate.candidate_name}</span>
+                    <span className="text-[#1F2230] font-medium truncate max-w-[260px]">{candidate.candidate_name?.trim() || 'Unnamed candidate'}</span>
                   </nav>
                 </div>
 
@@ -499,7 +499,7 @@ export default function IndependentCandidateProfile() {
               <div className="mt-3.5 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="font-poppins font-semibold tracking-[-0.04em] text-[#1F2230] text-[28px] sm:text-[30px] leading-tight truncate">
-                    {candidate.candidate_name}
+                    {candidate.candidate_name?.trim() || 'Unnamed candidate'}
                     <span className="text-[#D7C5FB]">.</span>
                   </h1>
                   <button

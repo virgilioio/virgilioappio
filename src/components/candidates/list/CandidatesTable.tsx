@@ -234,12 +234,13 @@ export function CandidatesTable({
                   <IdentityCell
                     name={
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="truncate">{c.candidate_name}</span>
+                        <span className={cn('truncate', !c.candidate_name?.trim() && 'text-text-tertiary')}>{c.candidate_name?.trim() || 'Unnamed candidate'}</span>
                         {isFav && <Heart className="h-3 w-3 text-pastel-pink-foreground fill-pastel-pink-foreground" />}
                         {isNew(c.created_at) && <Badge tone="green" size="xs" shape="pill">New</Badge>}
                       </span>
                     }
                     sub={c.current_job_title || c.company_current || c.email || '—'}
+                    fallback={c.candidate_name?.trim() || c.email || ''}
                   />
                 </div>
               </TableCell>
