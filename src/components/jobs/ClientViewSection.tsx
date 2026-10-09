@@ -1,5 +1,6 @@
 /** Job Setup › Client view. Every control saves immediately. */
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import { makeSwapIcon } from '@/components/ui/icon-swap'
 import { formatDistanceToNowStrict } from 'date-fns'
 import { Check, ChevronRight, Copy, Eye, EyeOff, Globe, Link2, RefreshCw } from 'lucide-react'
 
@@ -18,6 +19,9 @@ import { stageColor } from './pipelineVisuals'
 import {
   NON_RECRUITING_STAGE_TYPES, pipelinePublicUrl, useJobPipelineShare, type PipelineShareSettings,
 } from '@/hooks/useJobPipelineShare'
+
+// §7 copy chips: Copy shrinks out, Check grows in.
+const CopyCheckIcon = makeSwapIcon(Copy, Check)
 
 interface StageRow { id: string; name: string; type: string; count: number }
 export type ClientSectionKey = 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'
@@ -183,7 +187,7 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
         {on && share && <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F1F0EC' }}>
           <div className="flex items-center flex-wrap" style={{ gap: 8 }}>
             <span className="truncate" style={{ flex: '1 1 220px', minWidth: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#5A6072', background: '#FBFAF7', border: '1px solid #EFEEE8', borderRadius: 7, padding: '7px 10px' }}>{url}</span>
-            <Button variant="secondary" size="sm" icon={copied ? Check : Copy} onClick={async () => { if (await copyToClipboardSilent(url)) { setCopied(true); setTimeout(() => setCopied(false), 1500) } }}>{copied ? 'Copied' : 'Copy link'}</Button>
+            <Button variant="secondary" size="sm" icon={CopyCheckIcon} data-swapped={copied || undefined} onClick={async () => { if (await copyToClipboardSilent(url)) { setCopied(true); setTimeout(() => setCopied(false), 1600) } }}>{copied ? 'Copied' : 'Copy link'}</Button>
             {!readOnly && <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => setConfirmReset(true)}>Reset link</Button>}
             <Button variant="primary" size="sm" icon={Eye} onClick={() => window.open(url, '_blank', 'noopener')}>Preview as client</Button>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { IconSwap } from '@/components/ui/icon-swap'
 import { useLocation } from 'react-router-dom'
 import { Link2, Check, Share2, Globe } from 'lucide-react'
 import { pipelinePublicUrl, useJobPipelineShare } from '@/hooks/useJobPipelineShare'
@@ -266,7 +267,7 @@ export function JobShareMenu({ jobId, canManageTeam = false, onManage }: JobShar
               style={{ gap: 10, padding: '8px 10px', marginTop: 6, borderTop: '1px solid #F1F0EC' }}
             >
               <span className="inline-flex items-center justify-center shrink-0" style={{ width: 28, height: 28, borderRadius: 8, background: '#EDE4FF', color: '#5B21B6' }}>
-                {pipelineCopied ? <Check size={14} /> : <Globe size={14} />}
+                <IconSwap swapped={pipelineCopied} from={<Globe size={14} />} to={<Check size={14} />} />
               </span>
               <span className="min-w-0">
                 <span className="block font-inter" style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>

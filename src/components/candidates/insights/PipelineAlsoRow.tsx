@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { IconSwap } from '@/components/ui/icon-swap'
 import { Check, Kanban } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { copyToClipboardSilent } from '@/utils/clipboard'
@@ -41,7 +42,7 @@ export function PipelineAlsoRow({ jobId, candidateId, firstName }: { jobId: stri
       style={{ gap: 10, padding: '8px 10px', marginTop: 4 }}
     >
       <span className="inline-flex items-center justify-center shrink-0" style={{ width: 26, height: 26, borderRadius: 7, background: '#F1F0EC', color: '#5A6072' }}>
-        {copied ? <Check size={13} /> : <Kanban size={13} />}
+        <IconSwap swapped={copied} from={<Kanban size={13} />} to={<Check size={13} />} />
       </span>
       <span className="min-w-0 font-inter">
         <span className="block" style={{ fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>{copied ? 'Copied to clipboard' : 'Also in the client pipeline'}</span>

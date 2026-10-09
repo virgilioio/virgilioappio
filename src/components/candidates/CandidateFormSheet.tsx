@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { shakeFirstInvalid } from '@/lib/motion'
 import { removeOldResumes, currentResumeIds } from '@/lib/removeOldResumes'
 import { useForm } from 'react-hook-form'
 import { formatDistanceToNowStrict, format } from 'date-fns'
@@ -538,7 +539,7 @@ export function CandidateFormSheet({
       resetFormState()
       return
     }
-  })
+  }, () => shakeFirstInvalid(document.querySelector('[role="dialog"]')))
 
   const addSkill = (skill: string) => {
     const v = skill.trim()

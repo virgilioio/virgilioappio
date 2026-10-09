@@ -109,8 +109,8 @@ export function ProfileTab() {
         description="How your name and contact details appear across the workspace."
         footer={
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={isLoading || !hasChanges}>
-              {isLoading ? 'Saving…' : 'Save changes'}
+            <Button loading={isLoading} onClick={handleSave} disabled={isLoading || !hasChanges}>
+              Save changes
             </Button>
           </div>
         }

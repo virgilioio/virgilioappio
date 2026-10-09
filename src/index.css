@@ -1334,3 +1334,29 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 .gio-chart[data-axis="x"] [data-chart-bar], .gio-chart[data-axis="x"] .gio-chart-ghost { transform-origin: left center; }
 .gio-chart[data-axis="y"] [data-chart-bar], .gio-chart[data-axis="y"] .gio-chart-ghost { transform-origin: center bottom; }
 .gio-chart-ghost { position: absolute; pointer-events: none; }
+
+/* §7 Forms ──────────────────────────────────────────────────────────────────
+ * Validation: the message line is reserved (min-height 18px) so nothing moves; a new
+ * error enters from translateY(-3px) + opacity at --dur-hover. Reduced motion: fade only. */
+.gio-field-message { min-height: 18px; line-height: 18px; }
+.gio-field-message[data-state="error"] { animation: gio-message-in var(--dur-hover) var(--ease-out); }
+@keyframes gio-message-in { from { opacity: 0; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .gio-field-message[data-state="error"] { animation-name: gio-fade-only; }
+}
+
+/* §7 Copy chips (ui/icon-swap.tsx): copy icon shrinks out, check grows in. */
+.gio-icon-swap { display: inline-grid; place-items: center; flex-shrink: 0; vertical-align: middle; }
+.gio-icon-swap > * {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  transition:
+    transform var(--dur-hover) var(--ease-out),
+    filter var(--dur-hover) var(--ease-out),
+    opacity var(--dur-hover) var(--ease-out);
+}
+.gio-icon-swap > [data-to],
+.gio-icon-swap[data-swapped] > [data-from],
+[data-swapped] .gio-icon-swap > [data-from] { transform: scale(0.6); filter: blur(2px); opacity: 0; }
+.gio-icon-swap[data-swapped] > [data-to],
+[data-swapped] .gio-icon-swap > [data-to] { transform: none; filter: none; opacity: 1; }

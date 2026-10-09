@@ -46,5 +46,11 @@
 }
 
 .ob-tracker-mark {
-  transition: all 300ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  /* §11: never transition: all. The dot grows into a pill (width/height are the
+   * mark's own size, nothing reflows around it); colour follows at hover speed. */
+  transition:
+    width var(--dur-expand) var(--ease-in-out),
+    height var(--dur-expand) var(--ease-in-out),
+    background-color var(--dur-hover) ease,
+    opacity var(--dur-hover) ease;
 }

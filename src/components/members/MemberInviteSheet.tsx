@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback, KeyboardEvent, ClipboardEvent } from "react"
+import { useChipMotion } from '@/lib/chipMotion'
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
@@ -139,6 +140,8 @@ export function MemberInviteSheet({
 
   const inputRef = useRef<HTMLInputElement>(null)
   const chipContainerRef = useRef<HTMLDivElement>(null)
+  // §12 email chips: pop in (40ms apart on paste), shrink out, neighbours FLIP over.
+  useChipMotion(chipContainerRef)
 
   // Reset when opening / when editing target changes
   useEffect(() => {
@@ -473,6 +476,7 @@ export function MemberInviteSheet({
                       return (
                         <span
                           key={`${chip.value}-${idx}`}
+                          data-chip={chip.value}
                           className="inline-flex items-center font-inter"
                           style={{
                             height: 26,

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, type CSSProperties, type ReactNode } from 'react'
+import { IconSwap } from '@/components/ui/icon-swap'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -185,9 +186,9 @@ function CopyBtn({ value, title = 'Copy' }: { value: string; title?: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <button type="button" title={title} aria-label={title}
-      onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1200) }}
+      onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1600) }}
       style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: copied ? '#0B7A57' : '#8B8F9E' }}>
-      {copied ? <Check size={12} /> : <Copy size={12} />}
+      <IconSwap swapped={copied} from={<Copy size={12} />} to={<Check size={12} />} />
     </button>
   )
 }

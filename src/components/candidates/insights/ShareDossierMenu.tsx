@@ -8,6 +8,8 @@
  * they deactivate themselves.
  */
 import { useEffect, useRef, useState } from 'react'
+import { makeSwapIcon } from '@/components/ui/icon-swap'
+import { IconSwap } from '@/components/ui/icon-swap'
 import { Check, Copy, Eye, Globe, Link2, ShieldOff } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -15,6 +17,9 @@ import { Switch } from '@/components/ui/switch'
 import { copyToClipboardSilent } from '@/utils/clipboard'
 import { PipelineAlsoRow } from './PipelineAlsoRow'
 import { dossierPublicUrl, type DossierShare } from '@/hooks/useDossierShare'
+
+// §7 copy chips: Copy shrinks out, Check grows in.
+const CopyCheckIcon = makeSwapIcon(Copy, Check)
 
 interface ShareDossierMenuProps {
   open: boolean
@@ -195,7 +200,7 @@ export function ShareDossierMenu({
         onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
       >
         <Chip tone={internalCopy.copied ? 'done' : 'neutral'}>
-          {internalCopy.copied ? <Check size={13} strokeWidth={2.1} /> : <Link2 size={13} strokeWidth={2.1} />}
+          <IconSwap swapped={internalCopy.copied} from={<Link2 size={13} strokeWidth={2.1} />} to={<Check size={13} strokeWidth={2.1} />} />
         </Chip>
         <span style={{ minWidth: 0, flex: 1 }}>
           <span style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 500, color: '#1F2230' }}>
@@ -280,7 +285,7 @@ export function ShareDossierMenu({
               <Button
                 variant="secondary"
                 size="sm"
-                icon={publicCopy.copied ? Check : Copy}
+                icon={CopyCheckIcon} data-swapped={publicCopy.copied || undefined}
                 onClick={() => void publicCopy.copy(url, urlRef.current)}
               >
                 {publicCopy.manual ? 'Press ⌘C' : publicCopy.copied ? 'Copied' : 'Copy'}

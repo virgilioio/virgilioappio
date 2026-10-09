@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useChipMotion } from '@/lib/chipMotion'
 import { cn } from '@/lib/utils'
 import { Sparkles, X, Info } from 'lucide-react'
 
@@ -344,6 +345,8 @@ export function ChipInput({
 }) {
   const [draft, setDraft] = React.useState('')
   const inputRef = React.useRef<HTMLInputElement>(null)
+  // §12 chips: pop in, shrink out, neighbours FLIP over.
+  const chipsRef = useChipMotion()
 
   const commit = (raw: string) => {
     if (disabled) return
@@ -372,6 +375,7 @@ export function ChipInput({
 
   return (
     <div
+      ref={chipsRef}
       className={cn(
         'flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded-xl border border-virgilio-border bg-white px-2.5 py-2',
         'focus-within:ring-2 focus-within:ring-virgilio-purple/30',
@@ -382,6 +386,7 @@ export function ChipInput({
       {values.map((v) => (
         <span
           key={v}
+          data-chip={v}
           className={cn(
             'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium',
             toneCls

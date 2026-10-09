@@ -413,8 +413,8 @@ export function RoleInterpretationDrawer({
               <X className="h-4 w-4 mr-2" />
               Discard Changes
             </Button>
-            <Button onClick={handleSaveChanges} disabled={isUpdating}>
-              {isUpdating ? 'Saving...' : 'Save & Refresh Search'}
+            <Button loading={isUpdating} onClick={handleSaveChanges} disabled={isUpdating}>
+              Save & Refresh Search
             </Button>
           </SheetFooter>
         )}

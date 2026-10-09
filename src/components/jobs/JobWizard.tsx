@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { useStepSlide } from '@/lib/motion'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
@@ -157,6 +158,10 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
       ? wizardState.createdJobId
       : null,
   )
+
+  // §7 Wizard: Next slides the new step in from the right, Back from the left.
+  const stepRef = useRef<HTMLDivElement>(null)
+  useStepSlide(stepRef, wizardState.currentStep)
 
   // Reset scroll position on step change — UX: always start at top of new step.
   useEffect(() => {
@@ -655,7 +660,7 @@ export function JobWizard({ isOpen, onClose, initialData, resumeJobId }: JobWiza
 
             {/* Main content */}
             <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto px-6 sm:px-10 pb-8">
-              {renderStepContent()}
+              <div ref={stepRef}>{renderStepContent()}</div>
             </main>
 
           </div>

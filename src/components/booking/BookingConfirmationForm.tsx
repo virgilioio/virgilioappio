@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { shakeFirstInvalid } from '@/lib/motion'
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -117,7 +118,7 @@ export function BookingConfirmationForm({
           </h3>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+            <form onSubmit={form.handleSubmit(handleSubmit, () => shakeFirstInvalid())} className="space-y-5">
               <FormField
                 control={form.control}
                 name="candidate_name"

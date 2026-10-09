@@ -157,13 +157,13 @@ export default function AccountSetup() {
                     />
                   </div>
 
-                  <Button 
+                  <Button loading={isSubmitting} 
                     type="submit" 
                     size="lg" 
                     className="w-full h-12" 
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Saving...' : 'Continue'}
+                    Continue
                   </Button>
 
                   <div className="mt-6 text-center space-y-2">

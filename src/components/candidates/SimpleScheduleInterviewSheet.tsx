@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { shakeFirstInvalid } from '@/lib/motion'
 import { useStageInterviewDefaults } from '@/hooks/useStageInterviewDefaults';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
@@ -154,7 +155,7 @@ function SimpleBookingConfirmationForm({
           </h3>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleSubmit, () => shakeFirstInvalid(document.querySelector('[role="dialog"]')))} className="space-y-4">
               {/* Custom Event Title */}
               <div className="space-y-2">
                 <Label htmlFor="custom-event-title">Meeting Title</Label>

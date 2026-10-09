@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
+import { useMonthSlide } from "@/lib/motion";
 import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
@@ -21,11 +22,28 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  fixedWeeks = true,
+  onMonthChange,
   ...props
 }: CalendarProps) {
+  // §7: six fixed weeks, and the day grid slides 12px toward the month you moved to.
+  const wrap = React.useRef<HTMLDivElement>(null);
+  const [shown, setShown] = React.useState(() => {
+    const p = props as { month?: Date; defaultMonth?: Date; selected?: unknown };
+    const sel = p.selected instanceof Date ? p.selected : (p.selected as { from?: Date } | undefined)?.from;
+    const start = p.month ?? p.defaultMonth ?? sel ?? new Date();
+    return start.getFullYear() * 12 + start.getMonth();
+  });
+  useMonthSlide(wrap, shown, "table");
   return (
+    <div ref={wrap} className="contents">
     <DayPicker
       showOutsideDays={showOutsideDays}
+      fixedWeeks={fixedWeeks}
+      onMonthChange={(month) => {
+        setShown(month.getFullYear() * 12 + month.getMonth());
+        onMonthChange?.(month);
+      }}
       className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -69,6 +87,7 @@ function Calendar({
       }}
       {...props}
     />
+    </div>
   );
 }
 Calendar.displayName = "Calendar";

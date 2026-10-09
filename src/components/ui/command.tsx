@@ -59,16 +59,40 @@ const CommandInput = React.forwardRef<
 ))
 CommandInput.displayName = CommandPrimitive.Input.displayName
 
+/**
+ * §7 Combobox: the list keeps the height it opened with while you type (it never
+ * shrinks under the cursor; "No results" and "Create '…'" fill the same box), and
+ * neither typing nor the highlight animates.
+ */
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden p-[var(--menu-pad)]", className)}
-    {...props}
-  />
-))
+>(({ className, style, ...props }, ref) => {
+  const local = React.useRef<HTMLDivElement | null>(null)
+  const [minHeight, setMinHeight] = React.useState<number>()
+  React.useLayoutEffect(() => {
+    const el = local.current
+    if (!el) return
+    // Measure once the first results have rendered.
+    const frame = requestAnimationFrame(() => {
+      const h = el.offsetHeight // layout size, unaffected by the popover's grow-in scale
+      if (h > 0) setMinHeight(h)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
+  return (
+    <CommandPrimitive.List
+      ref={(node) => {
+        local.current = node
+        if (typeof ref === 'function') ref(node)
+        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+      }}
+      className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden p-[var(--menu-pad)]", className)}
+      style={minHeight ? { minHeight, ...style } : style}
+      {...props}
+    />
+  )
+})
 CommandList.displayName = CommandPrimitive.List.displayName
 
 const CommandEmpty = React.forwardRef<

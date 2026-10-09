@@ -400,8 +400,8 @@ export function InterviewQuestionForm({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!canSave || isSaving}>
-            {isSaving ? 'Saving...' : existingQuestion ? 'Update Question' : 'Add Question'}
+          <Button loading={isSaving} onClick={handleSave} disabled={!canSave || isSaving}>
+            {existingQuestion ? 'Update Question' : 'Add Question'}
           </Button>
         </div>
       </SheetContent>

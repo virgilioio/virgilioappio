@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, isToday, isBefore, startOfDay } from 'date-fns'
+import { useRef, useState } from 'react'
+import { useMonthSlide } from '@/lib/motion'
+import { format, addMonths, subMonths, startOfMonth, eachDayOfInterval, startOfWeek, addDays, isSameMonth, isSameDay, isToday, isBefore, startOfDay } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -46,10 +47,12 @@ export function DatePickerVirgilio({
 
   // Calendar calculations
   const monthStart = startOfMonth(currentMonth)
-  const monthEnd = endOfMonth(currentMonth)
   const calendarStart = startOfWeek(monthStart)
-  const calendarEnd = endOfWeek(monthEnd)
+  // Always six weeks, so the popover never changes height between months (§7).
+  const calendarEnd = addDays(calendarStart, 41)
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+  const grid = useRef<HTMLDivElement>(null)
+  useMonthSlide(grid, currentMonth.getFullYear() * 12 + currentMonth.getMonth())
 
   const isDateDisabled = (date: Date) => {
     if (disabled?.(date)) return true
@@ -156,7 +159,7 @@ export function DatePickerVirgilio({
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1">
+            <div ref={grid} className="grid grid-cols-7 gap-1">
               {days.map((day, idx) => {
                 const isCurrentMonth = isSameMonth(day, currentMonth)
                 const isSelected = value ? isSameDay(day, value) : false

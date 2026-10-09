@@ -14,16 +14,24 @@ interface FormFieldProps {
   htmlFor?: string
 }
 
-export function FormField({ 
-  children, 
-  label, 
-  error, 
-  success, 
-  helpText, 
-  required, 
-  className, 
-  htmlFor 
-}: FormFieldProps) {
+/**
+ * Motion & Feel §7 (CLAUDE.md): a field that can show an error (its caller passes an
+ * `error` prop, even while it's undefined) reserves an 18px message line, so a message
+ * appearing or clearing never moves the form. The message enters from translateY(-3px)
+ * + opacity at --dur-hover; the input's border shifts colour at the same speed.
+ */
+export function FormField(props: FormFieldProps) {
+  const {
+    children,
+    label,
+    error,
+    success,
+    helpText,
+    required,
+    className,
+    htmlFor,
+  } = props
+  const validates = 'error' in props
   const fieldId = htmlFor || React.useId()
   const errorId = error ? `${fieldId}-error` : undefined
   const helpId = helpText ? `${fieldId}-help` : undefined
@@ -67,20 +75,34 @@ export function FormField({
       <div className="relative">
         {clonedChild}
       </div>
-      {error && (
-        <p id={errorId} role="alert" aria-live="assertive" className="text-xs text-virgilio-error font-medium">
-          {error}
+      {validates ? (
+        <p
+          id={error ? errorId : helpId}
+          role={error ? 'alert' : undefined}
+          aria-live={error ? 'assertive' : success ? 'polite' : undefined}
+          className={cn(
+            'gio-field-message text-xs',
+            error ? 'text-virgilio-error font-medium' : success ? 'text-virgilio-success font-medium' : 'text-virgilio-muted',
+          )}
+          data-state={error ? 'error' : undefined}
+          // A new message re-runs the enter animation.
+          key={error ? `e:${error}` : 'idle'}
+        >
+          {error || success || helpText || null}
         </p>
-      )}
-      {success && !error && (
-        <p aria-live="polite" className="text-xs text-virgilio-success font-medium">
-          {success}
-        </p>
-      )}
-      {helpText && !error && !success && (
-        <p id={helpId} className="text-xs text-virgilio-muted">
-          {helpText}
-        </p>
+      ) : (
+        <>
+          {success && !error && (
+            <p aria-live="polite" className="text-xs text-virgilio-success font-medium">
+              {success}
+            </p>
+          )}
+          {helpText && !error && !success && (
+            <p id={helpId} className="text-xs text-virgilio-muted">
+              {helpText}
+            </p>
+          )}
+        </>
       )}
     </div>
   )

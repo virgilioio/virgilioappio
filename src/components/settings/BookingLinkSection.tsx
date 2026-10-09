@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IconSwap } from '@/components/ui/icon-swap'
 import { Copy, ExternalLink, Check, AlertCircle, Loader2, Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,7 +49,7 @@ export function BookingLinkSection() {
     await navigator.clipboard.writeText(bookingUrl);
     setCopied(true);
     toast.success('Booking link copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1600);
   };
 
   const handleOpenCreate = () => {
@@ -195,7 +196,7 @@ export function BookingLinkSection() {
                   onClick={handleCopy}
                   title="Copy to clipboard"
                 >
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <IconSwap swapped={copied} from={<Copy className="w-4 h-4" />} to={<Check className="w-4 h-4" />} />
                 </Button>
                 {!isMobile && (
                   <Button

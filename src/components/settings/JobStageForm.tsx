@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { shakeFirstInvalid } from '@/lib/motion'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -96,7 +97,7 @@ export function JobStageForm({ stage, onSuccess, onCancel }: JobStageFormProps) 
   const isLoading = isCreating || isUpdating
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={form.handleSubmit(onSubmit, () => shakeFirstInvalid())} className="space-y-4">
       <FormField
         label="Stage Name"
         required
@@ -191,8 +192,8 @@ export function JobStageForm({ stage, onSuccess, onCancel }: JobStageFormProps) 
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : stage ? 'Update Stage' : 'Create Stage'}
+        <Button loading={isLoading} type="submit" disabled={isLoading}>
+          {stage ? 'Update Stage' : 'Create Stage'}
         </Button>
       </div>
     </form>

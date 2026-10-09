@@ -19,7 +19,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-secondary",
           error && "border-destructive shadow-[0_0_0_1px_hsl(var(--destructive))] focus-visible:border-destructive focus-visible:shadow-[0_0_0_1px_hsl(var(--destructive)),var(--input-ring)]",
           success && "border-success shadow-[0_0_0_1px_hsl(var(--success))] focus-visible:border-success",
-          !error && !success && "border-virgilio-border hover:border-virgilio-purple/50",
+          !error && !success && "border-virgilio-border hover:border-virgilio-purple/50 aria-[invalid=true]:border-destructive aria-[invalid=true]:hover:border-destructive",
           // Hide number input spinner arrows
           type === "number" && [
             "[appearance:textfield]", // Firefox
