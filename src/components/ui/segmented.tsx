@@ -47,7 +47,9 @@ function attachSegmentLayer(root: HTMLElement) {
     const ab = active.getBoundingClientRect()
     // Screen boxes include any scale on the way up (a dialog growing in, a pressed
     // button); divide it out so the clip is in the container's own pixels.
-    const s = root.offsetWidth ? rb.width / root.offsetWidth || 1 : 1
+    // (offsetWidth is rounded, so near-1 ratios are rounding, not scale.)
+    const ratio = root.offsetWidth ? rb.width / root.offsetWidth : 1
+    const s = ratio && Math.abs(ratio - 1) > 0.01 ? ratio : 1
     const x = (ab.left - rb.left) / s - root.clientLeft
     const y = (ab.top - rb.top) / s - root.clientTop
     const w = ab.width / s
