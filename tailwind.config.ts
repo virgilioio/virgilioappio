@@ -553,7 +553,9 @@ export default {
 			'collapsible-down': 'collapsible-down 0.2s ease-out',
 			'collapsible-up': 'collapsible-up 0.2s ease-out',
 			'badge-pulse': 'badge-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-			'gio-spin': 'gio-spin 0.9s linear infinite',
+			'gio-spin': 'gio-spin 600ms linear infinite',
+			// §6 spinners: 600ms per turn, linear
+			spin: 'spin 600ms linear infinite',
 			'gio-pulse': 'gio-pulse 1.2s ease-in-out infinite',
 			'gio-shimmer': 'gio-shimmer 1.4s ease-in-out infinite',
 			'gio-indeterminate': 'gio-indeterminate 1.1s cubic-bezier(0.65,0,0.35,1) infinite',

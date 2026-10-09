@@ -1,13 +1,15 @@
 
 import { cn } from "@/lib/utils"
 
+/** Motion & Feel §6: a 1.2s linear shimmer (`gio-shimmer`); sized like the content it stands in for. */
 function Skeleton({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-lg bg-virgilio-border/30", className)}
+      aria-hidden="true"
+      className={cn("gio-shimmer rounded-lg", className)}
       {...props}
     />
   )
