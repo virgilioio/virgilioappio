@@ -52,8 +52,10 @@ const pillBase: React.CSSProperties = {
 }
 
 /**
- * The floating bulk-action bar. Absolutely positioned inside its surface's
- * scroll container so ticking a row costs zero layout — the table never moves.
+ * The floating bulk-action bar. Fixed over the content area (centred on it, not on
+ * the window, so the rail doesn't push it off-centre); ticking a row costs zero
+ * layout, the table never moves. §8: rises 8px + fades in over --dur-dialog-in, and
+ * sinks back out over --dur-dialog-out, still showing the last count while it leaves.
  */
 export function SelectionBar({
   count,
@@ -65,13 +67,20 @@ export function SelectionBar({
   className,
 }: SelectionBarProps) {
   const [mounted, setMounted] = React.useState(false)
+  // Keep rendering through the exit, with the count it had when it started leaving.
+  const [present, setPresent] = React.useState(count > 0)
+  const lastCount = React.useRef(count)
+  if (count > 0) lastCount.current = count
 
   React.useEffect(() => {
     if (count > 0) {
-      const raf = requestAnimationFrame(() => setMounted(true))
+      setPresent(true)
+      const raf = requestAnimationFrame(() => requestAnimationFrame(() => setMounted(true)))
       return () => cancelAnimationFrame(raf)
     }
     setMounted(false)
+    const timer = setTimeout(() => setPresent(false), 200)
+    return () => clearTimeout(timer)
   }, [count > 0])
 
   React.useEffect(() => {
@@ -83,7 +92,8 @@ export function SelectionBar({
     return () => window.removeEventListener('keydown', onKey)
   }, [count, onClear])
 
-  if (count === 0) return null
+  if (count === 0 && !present) return null
+  const shownCount = count > 0 ? count : lastCount.current
 
   const primary = actions.find((a) => a.slot === 'primary')
   const secondary = actions.filter((a) => a.slot === 'secondary').slice(0, 2)
@@ -138,11 +148,12 @@ export function SelectionBar({
     <div
       role="region"
       aria-live="polite"
-      aria-label={`${count} selected`}
-      className={cn('pointer-events-auto', className)}
+      aria-label={`${shownCount} selected`}
+      aria-hidden={count === 0 || undefined}
+      className={cn('pointer-events-auto sm:[--selection-bar-offset:2.75rem]', className)}
       style={{
         position: 'fixed',
-        left: '50%',
+        left: 'calc(50% + var(--selection-bar-offset, 0px))',
         bottom: 28,
         zIndex: 60,
         display: 'flex',
@@ -155,13 +166,14 @@ export function SelectionBar({
         boxShadow: '0 12px 30px rgba(13,13,9,0.28)',
         opacity: mounted ? 1 : 0,
         transform: mounted ? 'translate(-50%, 0)' : 'translate(-50%, 8px)',
+        pointerEvents: count === 0 ? 'none' : undefined,
         transition: mounted
-          ? 'opacity 160ms ease-out, transform 160ms ease-out'
-          : 'opacity 120ms ease-out, transform 120ms ease-out',
+          ? 'opacity var(--dur-dialog-in) var(--ease-out), transform var(--dur-dialog-in) var(--ease-out)'
+          : 'opacity var(--dur-dialog-out) var(--ease-out), transform var(--dur-dialog-out) var(--ease-out)',
       }}
     >
       <span style={{ fontFamily: inter, fontSize: 12.5, color: '#fffcf9' }}>
-        <span style={{ fontWeight: 600 }}>{count}</span> selected
+        <span style={{ fontWeight: 600 }}>{shownCount}</span> selected
       </span>
 
       {onSelectAll && typeof totalCount === 'number' && totalCount > count && (
