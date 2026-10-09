@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import type { IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import type { AssociationsMap, AssociationDetail } from '@/hooks/useCandidateJobAssociations'
 import { Plus, RotateCcw } from 'lucide-react'
+import { useTableWindow } from '@/lib/useTableWindow'
 
 interface CandidatesTableProps {
   candidates: IndependentCandidate[]
@@ -145,6 +146,9 @@ export function CandidatesTable({
     [candidates, selectedIds],
   )
 
+  // §9: past 150 rows only the rows in view are rendered.
+  const win = useTableWindow(candidates.length)
+
   if (isLoading || isSearching) return <TableSkeleton rows={8} columns={9} />
   if (candidates.length === 0) {
     return (
@@ -201,8 +205,9 @@ export function CandidatesTable({
           <TableHead className="w-12" />
         </TableRow>
       </TableHeader>
-      <TableBody>
-        {candidates.map((c) => {
+      <TableBody ref={win.bodyRef}>
+        {win.topSpacer}
+        {candidates.slice(win.start, win.end).map((c) => {
           const skills = (c.standardized_skills?.length ? c.standardized_skills : c.skills) ?? []
           const assocs = associationsMap.get(c.id)
           const isFav = !!(assocs?.some(a => (a as any).isFavorite))
@@ -211,6 +216,7 @@ export function CandidatesTable({
           return (
             <TableRow
               key={c.id}
+              data-window-row=""
               interactive
               className={cn('cursor-pointer group', selected && 'bg-[#FAF8FF]')}
               onClick={() => onOpenCandidate(c.id)}
@@ -264,6 +270,7 @@ export function CandidatesTable({
             </TableRow>
           )
         })}
+        {win.bottomSpacer}
       </TableBody>
     </Table>
   )
