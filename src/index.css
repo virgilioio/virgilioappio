@@ -1145,3 +1145,41 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   outline-offset: 2px;
   box-shadow: none;
 }
+
+/* §2 Tabs: one moving layer (see TabsList in src/components/ui/tabs.tsx). */
+.gio-tablist {
+  position: relative;
+  isolation: isolate;
+}
+.gio-tablist > .gio-tab-indicator {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  visibility: hidden;
+}
+.gio-tablist[data-indicator-ready] > .gio-tab-indicator {
+  visibility: visible;
+}
+/* Pill: a lilac fill clipped to the active tab; the clip slides. */
+.gio-tablist[data-indicator="pill"] > .gio-tab-indicator {
+  inset: 0;
+  background: #d7c5fb;
+  clip-path: inset(var(--tab-y, 0) var(--tab-right, 0) var(--tab-bottom, 0) var(--tab-x, 0) round var(--tab-radius, 8px));
+  transition: clip-path var(--dur-tabs) var(--ease-in-out);
+}
+/* Underline: a 2px bar on the list's bottom edge, moved and stretched. */
+.gio-tablist[data-indicator="underline"] > .gio-tab-indicator {
+  left: 0;
+  bottom: -1px;
+  width: 1px;
+  height: 2px;
+  background: hsl(var(--text-primary));
+  transform-origin: left center;
+  transform: translateX(var(--tab-x, 0)) scaleX(var(--tab-w, 0));
+  transition: transform var(--dur-tabs) var(--ease-in-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-tablist > .gio-tab-indicator {
+    transition: none !important;
+  }
+}
