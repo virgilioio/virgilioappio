@@ -20,12 +20,6 @@ import {
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import {
-  SoftArchive,
-  SoftCaughtUp,
-  SoftPaper,
-  SoftPeople,
-} from '@/components/ui/EmptyIllustrations'
 import type { SelectionAction } from '@/components/shared/SelectionBar'
 import type { PSColumn, PSEmptyConfig, PSRowAction } from './PipelineSectionTable'
 import {
@@ -177,7 +171,6 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
         ],
       },
       empty: {
-        illustration: <SoftPeople />,
         title: 'No applications waiting',
         body:
           "New applications land here the moment they arrive. Gio auto-screens each one against this job's must-haves before you see it.",
@@ -224,7 +217,6 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
         ],
       },
       empty: {
-        illustration: <SoftPaper />,
         title: 'No offers out',
         body:
           'Draft an offer from a candidate in final review and it appears here — with its approval chain and response deadline.',
@@ -274,7 +266,6 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
         ],
       },
       empty: {
-        illustration: <SoftCaughtUp />,
         title: 'Nobody hired yet',
         body: 'Accepted offers move here with their onboarding checklist attached.',
       },
@@ -322,7 +313,6 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
       ],
     },
     empty: {
-      illustration: <SoftArchive />,
       title: 'Nobody rejected yet',
       body:
         'Rejected and withdrawn candidates stay here with the reason attached — so a future role can start from what you already learned.',

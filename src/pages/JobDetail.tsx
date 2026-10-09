@@ -449,6 +449,13 @@ export default function JobDetail() {
   const [suggestedCandidates, setSuggestedCandidates] = useState<any[]>([])
   const [allAssociatedCandidates, setAllAssociatedCandidates] = useState<any[]>([])
   const [statusListsLoading, setStatusListsLoading] = useState(false)
+  // §16: the flat sections show their skeleton until the associations first answer,
+  // an error with Retry if that fails or takes over 15s, and only then empty.
+  const [associationsLoaded, setAssociationsLoaded] = useState(false)
+  const [associationsError, setAssociationsError] = useState<'failed' | 'timeout' | null>(null)
+  const [associationsRetry, setAssociationsRetry] = useState(0)
+  // True once the section lists have been built the first time; refreshes keep showing them.
+  const [sectionListsReady, setSectionListsReady] = useState(false)
 
   // Jobs hook for updating
   const { updateJob, archiveJob, deleteJob, isLoading: jobUpdateLoading } = useJobs()
@@ -651,18 +658,37 @@ export default function JobDetail() {
   // Load associations for status tabs
   useEffect(() => {
     if (!id) return
+    let cancelled = false
     const load = async () => {
-      const list = await fetchAssociationsForJob(id)
-      setAssociations(list)
+      try {
+        const list = await fetchAssociationsForJob(id, { throwOnError: true })
+        if (cancelled) return
+        setAssociations(list)
+        setAssociationsLoaded(true)
+        setAssociationsError(null)
+      } catch {
+        if (cancelled) return
+        // After a first success, keep what's on screen; before it, show the error.
+        setAssociationsError((prev) => prev ?? 'failed')
+      }
     }
     load()
-  }, [id, fetchAssociationsForJob, pipelineRefresh])
+    return () => { cancelled = true }
+  }, [id, fetchAssociationsForJob, pipelineRefresh, associationsRetry])
+
+  useEffect(() => {
+    if (sectionListsReady || associationsError) return
+    const timer = setTimeout(() => setAssociationsError('timeout'), 15000)
+    return () => clearTimeout(timer)
+  }, [sectionListsReady, associationsError, associationsRetry])
 
   // Load candidate details for offers/hired/rejected/application-review and all associated
   useEffect(() => {
     const run = async () => {
       if (!associations.length) {
-        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); setApplicationReviewCandidates([]); return
+        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); setApplicationReviewCandidates([])
+        if (associationsLoaded) setSectionListsReady(true)
+        return
       }
       const allIdsAll = Array.from(new Set(associations.map(a => a.candidate_id)))
       const offerIds = associations
@@ -700,6 +726,7 @@ export default function JobDetail() {
       } catch (error) {
         console.error('Failed to load candidate details for status lists', error)
         setStatusListsLoading(false)
+        setAssociationsError((prev) => prev ?? 'failed')
         return
       }
       const byId = new Map((data || []).map((c: any) => [c.id, c]))
@@ -722,9 +749,10 @@ export default function JobDetail() {
       setApplicationReviewCandidates(appReviewCands)
       setAllAssociatedCandidates(allIdsAll.map((id) => byId.get(id)).filter(Boolean))
       setStatusListsLoading(false)
+      setSectionListsReady(true)
     }
     run()
-  }, [associations, stageMap])
+  }, [associations, stageMap, associationsLoaded])
 
   // Job query with improved error handling for assigned recruiters
   const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
@@ -1381,7 +1409,10 @@ export default function JobDetail() {
                     candidates={applyPipelineNarrowing(sectionCandidateList)}
                     associations={associations}
                     stageMap={stageMap}
-                    isLoading={statusListsLoading}
+                    isLoading={!sectionListsReady}
+                    totalCount={sectionCandidateList.length}
+                    loadError={sectionListsReady ? null : associationsError}
+                    onRetry={() => { setAssociationsError(null); setAssociationsRetry((n) => n + 1) }}
                     filters={pipelineFilters}
                     onFiltersChange={setPipelineFilters}
                     search={pipelineSearch}

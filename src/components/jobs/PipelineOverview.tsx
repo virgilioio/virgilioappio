@@ -1047,9 +1047,13 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         : totalAssociations > 0
           ? 'elsewhere'
           : 'empty'
+  // The Clear filters button disappears with the empty state; keep focus in the
+  // pipeline area instead of dropping it to the page.
+  const contentRef = useRef<HTMLDivElement>(null)
   const clearAllFilters = useCallback(() => {
     setFavoriteFilter([])
     onClearFilters?.()
+    requestAnimationFrame(() => contentRef.current?.focus({ preventScroll: true }))
   }, [onClearFilters])
 
   // Empty → first candidate (realtime or after Add candidate): the empty state fades
@@ -1172,7 +1176,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       {!firstLoadDone ? (
         <PipelineLoadError timedOut={timedOut && !loadFailed} onRetry={retryFirstLoad} />
       ) : (
-      <div className="relative h-full min-h-0">
+      <div ref={contentRef} tabIndex={-1} className="relative h-full min-h-0 outline-none">
       {emptyKind ? (
         renderEmpty(emptyKind)
       ) : currentView === 'board' ? (
