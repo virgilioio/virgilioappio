@@ -115,3 +115,26 @@ export function AnimatedEmpty({
     </div>
   )
 }
+
+/** The card an empty state sits in when no list or table hosts it (the canonical
+ *  EmptyState card: white, hairline border, radius 18, card shadow). */
+export function EmptyCard({ children, minHeight = 300 }: { children: React.ReactNode; minHeight?: number }) {
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid #E7E8EE',
+        borderRadius: 18,
+        boxShadow: '0 1px 2px rgba(13,13,9,0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight,
+        padding: '32px 20px',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
