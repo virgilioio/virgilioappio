@@ -19,6 +19,16 @@ Gio ATS is Virgilio's applicant tracking system (Vite, React 18, React Router 6,
 ## Implementation map
 Shared primitives as they land. New components use these; don't add per-component animation classes.
 - **Tokens** — `:root` in `src/index.css`, mapped in `tailwind.config.ts` (`ease-out`, `ease-in-out`, `ease-drawer`, `ease-spring`; `duration-press`, `duration-hover`, `duration-menu-in`, …; `shadow-pop`, `shadow-lift`). Reduced-motion base layer at the end of `src/index.css`.
+- **`gio-pressable`** — the Button primitive and every pressable: scale 0.97 on press. **`gio-field`** — Input, Textarea, PlaceholderInput: colour/shadow only, focus border `--input-border-focus` + `shadow-input`.
+- **`menuPanel` / `gio-pop`** (`src/lib/menu-classes.ts`) — DropdownMenu, Popover, Select, Command popovers, tag/filter popovers: grow from the trigger, `shadow-pop`, no border. **`gio-context-menu`** — right-click menus, no animation.
+- **`TooltipProvider`** (`src/components/ui/tooltip.tsx`) — fixed 400/400ms; nested providers can't override. **`gio-tip`** on TooltipContent. No native `title` on a control that has a tooltip.
+- **`gio-dialog` + `gio-dialog-overlay`** — Dialog, AlertDialog (centred with the `translate` property). **`gio-static`** — the command dialog and top-bar search results: no animation.
+- **`gio-drawer`** — Sheet (needs `data-side`, set by SheetContent).
+- **Toasts** — Sonner only (`src/components/ui/sonner.tsx`, styled under `.gio-toaster` in `src/index.css`); `useToast()` / `toast({...})` from `@/hooks/use-toast` forward to it. Undo = an element with `onClick` passed as `action`, or Sonner's `action: { label, onClick }`.
+- **`TabsList indicator="pill" | "underline" | "none"`** (`src/components/ui/tabs.tsx`) — one moving `.gio-tab-indicator`; triggers never draw their own active fill.
+- **`gio-switch`**, **`gio-accordion-content`** (AccordionContent, CollapsibleContent — caller's className styles an inner `[data-disclosure-inner]`), **`gio-disclosure-chevron`**.
+- **Focus** — a global `:focus-visible` rule at the end of `src/index.css` draws the 2px purple outline on every control; don't add `focus-visible:ring-*` to new controls.
+- **Hover** — Tailwind `future.hoverOnlyWhenSupported`: `hover:` styles apply only on mouse/trackpad.
 
 ### 1. Tokens
 ```css
