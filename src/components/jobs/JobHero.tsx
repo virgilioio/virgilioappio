@@ -151,7 +151,9 @@ export function JobHero({
         {/* Title */}
         <h1 className={cn(
           'font-poppins font-semibold tracking-[-0.04em] text-text-primary',
-          'text-[28px] leading-tight sm:text-[32px]'
+          'text-[28px] leading-tight sm:text-[32px]',
+          // §10: very long titles stop at three lines (full title in the tooltip).
+          'line-clamp-3 break-words'
         )}>
           {title}<span className="text-virgilio-purple">.</span>
           {isDraft && <DraftPill className="ml-3 align-middle" />}
