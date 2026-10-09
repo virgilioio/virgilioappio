@@ -1200,6 +1200,26 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
   }
 }
 
+/* Empty State — Candidates (empty/PaperPlaneScene.tsx): the supporting elements of the
+ * one-shot 2.8s plane scene; every keyframe ends on the static graphic. */
+.gio-plane .gio-plane-blob,
+.gio-plane .gio-plane-spark,
+.gio-plane .gio-plane-dot { transform-box: fill-box; transform-origin: center; }
+.gio-plane .gio-plane-blob { animation: gio-plane-blob 2800ms cubic-bezier(.22,1,.36,1) both; }
+.gio-plane .gio-plane-spark { animation: gio-plane-spark 2800ms cubic-bezier(.34,1.56,.64,1) both; }
+.gio-plane .gio-plane-dot { animation: gio-plane-dot 2800ms cubic-bezier(.34,1.4,.64,1) both; }
+@keyframes gio-plane-blob { 0% { transform: scale(.9); opacity: 0 } 25% { opacity: 1 } 60% { transform: scale(1.02) } 100% { transform: scale(1); opacity: 1 } }
+@keyframes gio-plane-spark { 0%, 74% { transform: scale(.2) rotate(-45deg); opacity: 0 } 100% { transform: scale(1) rotate(0deg); opacity: 1 } }
+@keyframes gio-plane-dot { 0%, 30% { transform: scale(.2); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
+.gio-plane-still .gio-plane-blob,
+.gio-plane-still .gio-plane-spark,
+.gio-plane-still .gio-plane-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .gio-plane .gio-plane-blob,
+  .gio-plane .gio-plane-spark,
+  .gio-plane .gio-plane-dot { animation: none; }
+}
+
 /* §14 Segmented controls (ui/segmented.tsx): one fill slides between options. */
 .gio-seg { position: relative; isolation: isolate; }
 .gio-seg > .gio-seg-layer {
