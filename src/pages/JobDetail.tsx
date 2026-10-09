@@ -139,11 +139,13 @@ export default function JobDetail() {
   }, [])
   const [showEditJobModal, setShowEditJobModal] = useState(false)
   const [pipelineView, setPipelineView] = useState<'board' | 'list'>(() => {
-    if (typeof window === 'undefined') return isMobile ? 'list' : 'board'
+    if (typeof window === 'undefined') return 'board'
     const saved = localStorage.getItem('jobPipelineView')
-    // Default to list view on mobile for better accessibility
     if (saved) return saved === 'list' ? 'list' : 'board'
-    return isMobile ? 'list' : 'board'
+    // Board by default everywhere. (This used to say "list on mobile", but useIsMobile
+    // always answered false on the first render, so phones have always opened the
+    // board; the list view doesn't fit a 390px screen yet.)
+    return 'board'
   })
   useEffect(() => {
     try { localStorage.setItem('jobPipelineView', pipelineView) } catch {}
