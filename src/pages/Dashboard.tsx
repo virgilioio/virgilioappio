@@ -354,6 +354,12 @@ export default function Dashboard() {
           {greetingFor(today)}, {firstName}
           <span style={{ color: C.purpleBorder }}>.</span>
         </h1>
+        {queueLoading || bookingsLoading ? (
+          // §5/§6: no "0 scorecards…" before the counts are in — hold the line instead.
+          <div aria-hidden="true" style={{ height: 20, display: 'flex', alignItems: 'center' }}>
+            <span className="gio-shimmer" style={{ display: 'block', width: 'min(420px, 80%)', height: 12, borderRadius: 4 }} />
+          </div>
+        ) : (
         <p style={{ font: '400 13.5px/1.5 Inter', color: C.muted, margin: 0 }}>
           You have{' '}
           <strong style={{ color: C.ink, fontWeight: 600 }}>
@@ -376,6 +382,7 @@ export default function Dashboard() {
             </>
           ) : null}
         </p>
+        )}
       </div>
 
       {/* Two-column grid */}
