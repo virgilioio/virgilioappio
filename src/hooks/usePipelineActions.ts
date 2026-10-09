@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { resolveCandidateHeadline } from '@/lib/candidateHeadline'
+import { inChunks } from '@/lib/fetchAllRows'
 
 
 export interface PipelineAssociation {
@@ -61,11 +62,22 @@ export function usePipelineActions() {
 
     const candidateIds = Array.from(new Set(associations.map(a => a.candidate_id)))
 
-    // 2) Load candidate names/links from independent candidates table
-    const { data: candidates, error: candError } = await supabase
-      .from('candidates')
-      .select('id, candidate_name, linkedin_url, phone, current_job_title, role_current, company_current, bio')
-      .in('id', candidateIds as string[])
+    // 2) Load candidate names/links from independent candidates table, in chunks so
+    //    the request URL stays short however many candidates the job has.
+    let candidates: any[] = []
+    let candError: unknown = null
+    try {
+      candidates = await inChunks(candidateIds as string[], async (chunk) => {
+        const { data, error } = await supabase
+          .from('candidates')
+          .select('id, candidate_name, linkedin_url, phone, current_job_title, role_current, company_current, bio')
+          .in('id', chunk)
+        if (error) throw error
+        return data || []
+      })
+    } catch (e) {
+      candError = e
+    }
 
     if (candError) {
       console.error('Error fetching candidates:', candError)
