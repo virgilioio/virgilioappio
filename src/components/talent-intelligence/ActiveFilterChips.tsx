@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge'
+import { useChipMotion } from '@/lib/chipMotion'
 import { Button } from '@/components/ui/button'
 import { X } from 'lucide-react'
 import { useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
@@ -30,13 +31,15 @@ interface ActiveFilterChipsProps {
 
 export function ActiveFilterChips({ jobLookup }: ActiveFilterChipsProps) {
   const { filters, removeArrayFilterValue, clearFilter, clearAll, hasActiveFilters } = useTalentIntelligenceFilters()
+  // §7 filter chips: pop in, shrink out, neighbours close the gap.
+  const chipsRef = useChipMotion()
 
   if (!hasActiveFilters) return null
 
   const arrayKeys = ['roles', 'functionalAreas', 'specializations', 'seniorities', 'skills', 'countries', 'states', 'cities', 'jobs', 'candidateStatuses', 'pipelineStatuses', 'stages'] as const
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div ref={chipsRef} className="flex flex-wrap items-center gap-2">
       {arrayKeys.map(key =>
         filters[key].map(val => {
           // For jobs, display the title instead of the ID
@@ -44,6 +47,7 @@ export function ActiveFilterChips({ jobLookup }: ActiveFilterChipsProps) {
           return (
             <Badge
               key={`${key}-${val}`}
+              data-chip={`${key}-${val}`}
               variant="purple"
               className="gap-1 pr-1 text-xs font-poppins"
             >
@@ -60,7 +64,7 @@ export function ActiveFilterChips({ jobLookup }: ActiveFilterChipsProps) {
       )}
 
       {(filters.experienceMin !== null || filters.experienceMax !== null) && (
-        <Badge variant="purple" className="gap-1 pr-1 text-xs font-poppins">
+        <Badge data-chip="exp" variant="purple" className="gap-1 pr-1 text-xs font-poppins">
           <span className="text-muted-foreground">Exp:</span>
           {filters.experienceMin ?? 0}–{filters.experienceMax ?? '∞'} yrs
           <button
@@ -73,7 +77,7 @@ export function ActiveFilterChips({ jobLookup }: ActiveFilterChipsProps) {
       )}
 
       {(filters.salaryMin !== null || filters.salaryMax !== null) && (
-        <Badge variant="purple" className="gap-1 pr-1 text-xs font-poppins">
+        <Badge data-chip="salary" variant="purple" className="gap-1 pr-1 text-xs font-poppins">
           <span className="text-muted-foreground">Salary:</span>
           {formatCurrency(filters.salaryMin ?? 0)}–{formatCurrency(filters.salaryMax ?? 999999)}
           <button
@@ -86,7 +90,7 @@ export function ActiveFilterChips({ jobLookup }: ActiveFilterChipsProps) {
       )}
 
       {(filters.dateFrom || filters.dateTo) && (
-        <Badge variant="purple" className="gap-1 pr-1 text-xs font-poppins">
+        <Badge data-chip="date" variant="purple" className="gap-1 pr-1 text-xs font-poppins">
           <span className="text-muted-foreground">Date:</span>
           {filters.dateFrom ? format(filters.dateFrom, 'MMM d, yyyy') : 'Start'}
           {' – '}
@@ -100,7 +104,7 @@ export function ActiveFilterChips({ jobLookup }: ActiveFilterChipsProps) {
         </Badge>
       )}
 
-      <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs h-6 px-2 text-muted-foreground hover:text-foreground">
+      <Button data-chip="clear" variant="ghost" size="sm" onClick={clearAll} className="text-xs h-6 px-2 text-muted-foreground hover:text-foreground">
         Clear all
       </Button>
     </div>

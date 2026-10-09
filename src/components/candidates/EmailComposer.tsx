@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useChipMotion } from '@/lib/chipMotion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -1153,9 +1154,12 @@ function ChipInput({
   };
 
   const removeAt = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+  // §12 email chips: pop in (40ms apart on paste), shrink out, neighbours FLIP over.
+  const chipsRef = useChipMotion();
 
   return (
     <div
+      ref={chipsRef}
       className="flex flex-wrap items-center gap-1 cursor-text"
       style={{ minHeight: 28, padding: '2px 0' }}
       onClick={() => inputRef.current?.focus()}
@@ -1165,6 +1169,7 @@ function ChipInput({
         return (
           <Badge
             key={`${addr}-${i}`}
+            data-chip={addr}
             tone={invalid ? 'red' : 'neutral'}
             size="sm"
             icon={Mail}
