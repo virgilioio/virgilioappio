@@ -48,24 +48,42 @@ export function shakeFirstInvalid(scope?: Element | null) {
 }
 
 /**
- * §7 Date picker: when the shown month changes, slide the day grid 12px in the direction
- * you went, with opacity, over --dur-switch on --ease-out. Reduced motion: opacity only.
- * `monthKey` is any value that orders months (e.g. year * 12 + month).
+ * Slide content in from the side it came from when `orderKey` changes: from +distance
+ * when the key grows, −distance when it shrinks, with opacity, over `durationToken` on
+ * --ease-out. Reduced motion: opacity only. `selector` animates matching descendants
+ * instead of the element itself.
  */
-export function useMonthSlide(ref: { current: Element | null }, monthKey: number, selector?: string) {
-  const previous = useRef(monthKey)
+export function useDirectionalSlide(
+  ref: { current: Element | null },
+  orderKey: number,
+  distance: number,
+  durationToken: string,
+  selector?: string,
+) {
+  const previous = useRef(orderKey)
   useLayoutEffect(() => {
     const before = previous.current
-    previous.current = monthKey
-    if (before === monthKey) return
+    previous.current = orderKey
+    if (before === orderKey) return
     const root = ref.current
     if (!root) return
     const targets = selector ? Array.from(root.querySelectorAll(selector)) : [root]
-    const dx = (monthKey > before ? 1 : -1) * 12
-    const from = prefersReducedMotion() ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dx}px)` }
-    const to = prefersReducedMotion() ? { opacity: 1 } : { opacity: 1, transform: 'translateX(0)' }
+    const dx = (orderKey > before ? 1 : -1) * distance
+    const still = prefersReducedMotion()
+    const from = still ? { opacity: 0 } : { opacity: 0, transform: `translateX(${dx}px)` }
+    const to = still ? { opacity: 1 } : { opacity: 1, transform: 'translateX(0)' }
     targets.forEach((el) =>
-      el.animate([from, to], { duration: motionToken('--dur-switch', 200), easing: motionToken('--ease-out', 'ease-out') }),
+      el.animate([from, to], { duration: motionToken(durationToken, 200), easing: motionToken('--ease-out', 'ease-out') }),
     )
-  }, [monthKey, ref, selector])
+  }, [orderKey, ref, selector, distance, durationToken])
+}
+
+/** §7 Date picker: the day grid slides 12px toward the month you moved to (--dur-switch). */
+export function useMonthSlide(ref: { current: Element | null }, monthKey: number, selector?: string) {
+  useDirectionalSlide(ref, monthKey, 12, '--dur-switch', selector)
+}
+
+/** §7 Wizard: Next slides the step in from +16px, Back from −16px (220ms, --ease-out). */
+export function useStepSlide(ref: { current: Element | null }, step: number) {
+  useDirectionalSlide(ref, step, 16, '--dur-dialog-in')
 }
