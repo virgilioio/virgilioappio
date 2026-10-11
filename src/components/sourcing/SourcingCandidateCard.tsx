@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useToast } from '@/hooks/use-toast'
+import { addCandidateToJob } from '@/lib/addCandidateToJob'
 import { supabase } from '@/lib/supabaseClient'
 
 
@@ -67,15 +68,7 @@ export function SourcingCandidateCard({ candidate, jobId }: SourcingCandidateCar
     
     setIsAdding(true)
     try {
-      const { error } = await supabase
-        .from('job_candidate_associations')
-        .insert({
-          job_id: jobId,
-          candidate_id: candidate.id,
-          stage: 'sourced'
-        })
-      
-      if (error) throw error
+      await addCandidateToJob(jobId, candidate.id)
       
       setIsAdded(true)
       toast({

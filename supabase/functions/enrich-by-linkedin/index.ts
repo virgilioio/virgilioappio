@@ -2,6 +2,8 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
+import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
+import { creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl } from "../_shared/apolloCredits.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
@@ -16,77 +18,6 @@ interface EnrichByLinkedInRequest {
   user_id?: string;
 }
 
-// Check credit availability
-async function checkCollectCredit(
-  tenantId: string
-): Promise<{ available: boolean; remaining: number; usage: any }> {
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-  
-  let { data: usage, error } = await supabase
-    .from('sourcing_credits_usage')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('billing_cycle_start', currentMonth)
-    .single();
-  
-  if (error && error.code === 'PGRST116') {
-    // No usage record exists, create one
-    const { data: limits, error: limitsError } = await supabase
-      .rpc('get_tenant_credit_limits', { p_tenant_id: tenantId })
-      .single();
-    
-    if (limitsError) {
-      console.error('Error getting tenant credit limits:', limitsError);
-      throw limitsError;
-    }
-    
-    const { data: newUsage, error: insertError } = await supabase
-      .from('sourcing_credits_usage')
-      .insert({
-        tenant_id: tenantId,
-        billing_cycle_start: currentMonth,
-        search_credits_limit: limits.search_limit,
-        collect_credits_limit: limits.collect_limit
-      })
-      .select()
-      .single();
-    
-    if (insertError) throw insertError;
-    usage = newUsage;
-  } else if (error) {
-    throw error;
-  }
-  
-  const limit = usage.collect_credits_limit;
-  const used = usage.collect_credits_used || 0;
-  
-  return {
-    available: used < limit,
-    remaining: limit - used,
-    usage
-  };
-}
-
-// Increment collect credit usage
-async function incrementCollectCredits(tenantId: string, count: number): Promise<void> {
-  const now = new Date();
-  const billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  
-  for (let i = 0; i < count; i++) {
-    const { error } = await supabase.rpc('increment_sourcing_usage', {
-      p_tenant_id: tenantId,
-      p_billing_cycle_start: billingCycleStart,
-      p_credit_type: 'collect'
-    });
-    
-    if (error) {
-      console.error('Failed to increment collect credit usage:', error);
-      throw error;
-    }
-  }
-  
-  console.log(`Successfully incremented ${count} collect credits for tenant ${tenantId}`);
-}
 
 serve(async (req) => {
   const pre = handlePreflight(req);
@@ -101,7 +32,16 @@ serve(async (req) => {
     // Support both singular (candidate_id) and plural (candidate_ids)
     const candidateIds = requestBody.candidate_ids || 
                          (requestBody.candidate_id ? [requestBody.candidate_id] : []);
-    const { user_id } = requestBody;
+    // Who is asking: a server function (applications, the extension) with the
+    // service key, or a signed-in user, never ids from the body (2026-10-11).
+    const serviceCall = isServiceCall(req);
+    const caller = serviceCall ? null : await callerFromRequest(req, supabase);
+    if (!serviceCall && !caller) {
+      return new Response(JSON.stringify({ error: 'Sign in to enrich' }), {
+        status: 401, headers: { 'Content-Type': 'application/json', ...cors },
+      });
+    }
+    const user_id = caller?.userId ?? null;
     // Automatic enrichment (applications, the Chrome extension) never asks
     // Apollo for the phone: it costs 8 credits more (2026-10-11).
     const withPhone = requestBody.with_phone === true;
@@ -132,8 +72,11 @@ serve(async (req) => {
       throw new Error('No candidates found');
     }
 
+    // A signed-in user only enriches candidates of their own workspaces.
+    const allowed = serviceCall ? candidates : candidates.filter(c => caller!.memberOf(c.tenant_id));
+
     // Filter candidates that have LinkedIn URLs and haven't been enriched
-    const candidatesToEnrich = candidates.filter(c => 
+    const candidatesToEnrich = allowed.filter(c => 
       c.linkedin_url && !c.apollo_collected_at
     );
 
@@ -165,8 +108,9 @@ serve(async (req) => {
       throw new Error('Candidate has no tenant_id');
     }
 
-    // Check credit availability
-    const creditCheck = await checkCollectCredit(tenantId);
+    // Check credit availability (Apollo plan and ledger)
+    const status = await creditStatus(supabase, tenantId);
+    const creditCheck = { available: status.configured && status.remaining > 0, remaining: status.remaining };
     
     if (!creditCheck.available) {
       console.warn('❌ Monthly contact reveal credit limit reached');
@@ -180,8 +124,8 @@ serve(async (req) => {
       });
     }
 
-    // Limit to available credits
-    const toProcess = candidatesToEnrich.slice(0, creditCheck.remaining);
+    // Limit to available credits, and to one workspace per call
+    const toProcess = candidatesToEnrich.filter(c => c.tenant_id === tenantId).slice(0, creditCheck.remaining);
     
     if (toProcess.length < candidatesToEnrich.length) {
       console.warn(`⚠️ Only enriching ${toProcess.length} of ${candidatesToEnrich.length} due to credit limit`);
@@ -190,8 +134,7 @@ serve(async (req) => {
     console.log(`💳 Credits available: ${creditCheck.remaining}, processing ${toProcess.length} candidates`);
 
     // Call Apollo bulk_match API with LinkedIn URLs
-    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
-    console.log(`📞 Phone webhook URL: ${webhookUrl}`);
+    const webhookUrl = withPhone ? await phoneWebhookUrl(tenantId, user_id) : null;
     
     const apolloResponse = await fetch(APOLLO_BULK_MATCH_URL, {
       method: 'POST',
@@ -214,6 +157,12 @@ serve(async (req) => {
 
     const apolloData = await apolloResponse.json();
     const matches = apolloData.matches || [];
+    const cost = creditsFromResponse(apolloData, matches.filter(Boolean).length);
+    await recordCredits(supabase, {
+      tenantId, kind: 'enrich', people: matches.filter(Boolean).length,
+      credits: cost.credits, estimated: cost.estimated, userId: user_id,
+      note: requestBody.trigger_source ? `Enrich by LinkedIn (${String(requestBody.trigger_source).slice(0, 40)})` : 'Enrich by LinkedIn',
+    });
     
     console.log(`✅ Apollo enrichment returned ${matches.length} profiles`);
 
@@ -270,7 +219,7 @@ serve(async (req) => {
       }
 
       // Update existing candidate record
-      const { error: updateError } = await supabase
+      let { error: updateError } = await supabase
         .from('candidates')
         .update({
           apollo_id: person.id,
@@ -288,6 +237,29 @@ serve(async (req) => {
           apollo_collected_at: new Date().toISOString()
         })
         .eq('id', matchingCandidate.id);
+
+      // Another candidate in the workspace already holds this Apollo id: keep
+      // the rest of the data and leave the id where it is (Phase 1 merges).
+      if (updateError && updateError.code === '23505') {
+        const retry = await supabase
+          .from('candidates')
+          .update({
+            email: person.email || undefined,
+            email_status: person.email_status,
+            phone: phone || undefined,
+            contact_phones: contactPhones.length > 0 ? contactPhones : undefined,
+            contact_emails: contactEmails.length > 0 ? contactEmails : undefined,
+            role_current: person.title || undefined,
+            company_current: person.organization_name || undefined,
+            location_city: person.city || undefined,
+            location_state: person.state || undefined,
+            location_country: person.country || undefined,
+            bio: person.headline || undefined,
+            apollo_collected_at: new Date().toISOString()
+          })
+          .eq('id', matchingCandidate.id);
+        updateError = retry.error;
+      }
 
       if (updateError) {
         console.error('Failed to update candidate:', updateError);
@@ -338,16 +310,12 @@ serve(async (req) => {
       });
     }
 
-    // Increment credit usage for successful enrichments
-    if (successCount > 0) {
-      await incrementCollectCredits(tenantId, successCount);
-    }
 
     return new Response(JSON.stringify({
       results,
       enriched_count: successCount,
-      credits_used: successCount,
-      credits_remaining: creditCheck.remaining - successCount,
+      credits_used: cost.credits,
+      credits_remaining: Math.max(0, creditCheck.remaining - cost.credits),
       already_enriched: alreadyEnriched.length,
       missing_linkedin: noLinkedIn.length
     }), {

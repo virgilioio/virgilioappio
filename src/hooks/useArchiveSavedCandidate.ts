@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
+import { setProjectCandidateStatus } from '@/lib/projectCandidateState'
 
 interface ArchiveParams {
   apolloId: string
@@ -12,16 +12,7 @@ export function useArchiveSavedCandidate() {
 
   const archiveMutation = useMutation({
     mutationFn: async ({ apolloId, projectId }: ArchiveParams) => {
-      const { error } = await supabase
-        .from('sourcing_preview_candidates')
-        .update({ 
-          status: 'archived', 
-          archived_at: new Date().toISOString() 
-        })
-        .eq('apollo_id', apolloId)
-        .eq('sourcing_project_id', projectId)
-
-      if (error) throw error
+      await setProjectCandidateStatus(projectId, apolloId, 'archived')
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
@@ -35,16 +26,7 @@ export function useArchiveSavedCandidate() {
 
   const restoreMutation = useMutation({
     mutationFn: async ({ apolloId, projectId }: ArchiveParams) => {
-      const { error } = await supabase
-        .from('sourcing_preview_candidates')
-        .update({ 
-          status: 'active', 
-          archived_at: null 
-        })
-        .eq('apollo_id', apolloId)
-        .eq('sourcing_project_id', projectId)
-
-      if (error) throw error
+      await setProjectCandidateStatus(projectId, apolloId, 'active')
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })

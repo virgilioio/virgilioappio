@@ -510,10 +510,9 @@ export function ApolloPreviewSheet({
     collectWithPhone.current = false
     setIsCollecting(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       const jobIdToUse = selectedJobId || jobId
       const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
-        body: { apollo_id: apolloId, job_id: jobIdToUse, stage_id: selectedStageId, user_id: user?.id, with_phone: withPhone }
+        body: { apollo_id: apolloId, job_id: jobIdToUse, stage_id: selectedStageId, sourcing_project_id: projectId ?? undefined, with_phone: withPhone }
       })
       if (error) throw error
       if (withPhone) setPhoneRequested(true)
@@ -623,9 +622,8 @@ export function ApolloPreviewSheet({
     if (!apolloId) return
     setIsRequestingPhone(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
-        body: { apollo_id: apolloId, user_id: user?.id, with_phone: true }
+        body: { apollo_id: apolloId, sourcing_project_id: projectId ?? undefined, with_phone: true }
       })
       if (error) throw error
       if (!data?.phone_requested) {

@@ -1,11 +1,12 @@
 /**
  * Hook for managing candidate preview status (shortlist / not a fit) in sourcing projects
- * Uses the existing status column on sourcing_preview_candidates table
+ * Stored in sourcing_project_candidates, so it survives search refreshes (2026-10-11)
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
+import { setProjectCandidateStatus } from '@/lib/projectCandidateState'
 
 type PreviewStatus = 'active' | 'shortlisted' | 'not_a_fit' | 'archived'
 
@@ -20,16 +21,7 @@ export function useCandidatePreviewStatus() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ apolloId, projectId, newStatus }: UpdateStatusParams) => {
-      const { error } = await supabase
-        .from('sourcing_preview_candidates')
-        .update({ 
-          status: newStatus,
-          archived_at: newStatus === 'archived' ? new Date().toISOString() : null
-        })
-        .eq('apollo_id', apolloId)
-        .eq('sourcing_project_id', projectId)
-
-      if (error) throw error
+      await setProjectCandidateStatus(projectId, apolloId, newStatus)
       return { newStatus }
     },
     onSuccess: ({ newStatus }, { projectId }) => {
@@ -47,7 +39,7 @@ export function useCandidatePreviewStatus() {
       toast.success(messages[newStatus])
     },
     onError: (error: any) => {
-      toast.error('Failed to update status', { description: error.message })
+      toast.error("Couldn't update the candidate", { description: 'Try again in a moment.' })
     }
   })
 

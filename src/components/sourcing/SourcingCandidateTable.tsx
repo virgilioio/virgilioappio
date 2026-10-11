@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
+import { addCandidateToJob } from '@/lib/addCandidateToJob'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { CandidateTableSkeleton } from './CandidateTableSkeleton'
@@ -134,7 +135,7 @@ export function SourcingCandidateTable({
   const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
   const [selectedPdlData, setSelectedPdlData] = useState<MatchedCandidate | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const { isCollectDisabled } = useSourcingCreditWarnings()
+  const { isCollectDisabled, renewsOn } = useSourcingCreditWarnings()
 
   // Fit segment filter (toolbar) — All / Strong fit / Good / Possible / Collected
   type FitSegment = 'all' | 'strong' | 'good' | 'possible' | 'collected'
@@ -418,7 +419,7 @@ export function SourcingCandidateTable({
       
       if (error) {
         if (error.message?.includes('CREDITS_EXHAUSTED')) {
-          throw new Error('Monthly collect credit limit reached.')
+          throw new Error(`This cycle's Apollo credits are used. They renew on ${renewsOn}.`)
         }
         throw error
       }
@@ -482,8 +483,8 @@ export function SourcingCandidateTable({
 
     if (isCollectDisabled) {
       toast({
-        title: 'Monthly collect limit reached',
-        description: 'You have exhausted your collect credits for this month. Credits will reset on the 1st of next month.',
+        title: 'Apollo credits used up',
+        description: `This cycle's Apollo credits are used. They renew on ${renewsOn}.`,
         variant: 'destructive',
         duration: 8000
       })
@@ -507,7 +508,7 @@ export function SourcingCandidateTable({
       if (error) {
         // Handle credit exhaustion error specifically
         if (error.message?.includes('CREDITS_EXHAUSTED')) {
-          throw new Error('Monthly collect credit limit reached. Credits will reset on the 1st of next month.')
+          throw new Error(`This cycle's Apollo credits are used. They renew on ${renewsOn}.`)
         }
         throw error
       }
@@ -571,7 +572,9 @@ export function SourcingCandidateTable({
     setLoadingCandidates(prev => new Set(prev).add(candidate.id))
 
     try {
-      let candidateDbId = candidate.id
+      // The real candidate: an internal row's candidate_id, or a PDL person
+      // saved just below. An Apollo preview has no candidate until collected.
+      let candidateDbId: string | null = candidate.candidate_id ?? null
 
       // PDL candidates are in-memory only — upsert into candidates table first
       if (isPdlCandidate(candidate) && !candidate.candidate_id) {
@@ -616,15 +619,10 @@ export function SourcingCandidateTable({
         candidateDbId = newCandidate.id
       }
 
-      const { error } = await supabase
-        .from('job_candidate_associations')
-        .insert({
-          job_id: jobId,
-          candidate_id: candidateDbId,
-          stage: 'sourced'
-        })
-
-      if (error) throw error
+      if (!candidateDbId) {
+        throw new Error('Collect this person first, then add them to the job.')
+      }
+      await addCandidateToJob(jobId, candidateDbId)
 
       setAddedCandidates(prev => new Set(prev).add(candidate.id))
       toast({
@@ -1127,7 +1125,7 @@ export function SourcingCandidateTable({
                                   handleCollectProfile(candidate.apollo_id!)
                                 }}
                                 disabled={isCollecting || isCollectDisabled}
-                                title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Reveal full profile (1 credit)'}
+                                title={isCollectDisabled ? `Apollo credits used up until ${renewsOn}` : 'Reveal full profile (1 credit)'}
                               >
                                 {isCollecting && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
                                 {isCollectDisabled ? 'Credits exhausted' : 'Collect · 1 credit'}

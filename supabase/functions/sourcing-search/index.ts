@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
+import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -48,6 +49,15 @@ serve(async (req) => {
     }
 
     const projectTenantId = (project as any).organizations?.tenant_id;
+
+    // Only members of the project's workspace may run its search (2026-10-11).
+    const caller = isServiceCall(req) ? null : await callerFromRequest(req, supabase);
+    if (!isServiceCall(req) && (!caller || !caller.memberOf(projectTenantId))) {
+      return new Response(JSON.stringify({ error: 'Project not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', ...cors },
+      });
+    }
 
     const criteria = project.search_criteria || {};
 
@@ -247,26 +257,20 @@ serve(async (req) => {
       .filter(Boolean);
 
     let sameTenantMap = new Map<string, any>();
-    let crossTenantMap = new Map<string, any>();
 
     if (apolloIds.length > 0) {
       const { data: collected } = await supabase
         .from('candidates')
         .select('id, apollo_id, tenant_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current, skills, profile_summary, years_experience, apollo_collected_at')
+        .eq('tenant_id', projectTenantId)
+        .is('deleted_at', null)
+        .is('merged_into', null)
         .in('apollo_id', apolloIds)
         .limit(2000);
 
-      if (collected) {
-        for (const c of collected) {
-          if (projectTenantId && c.tenant_id === projectTenantId) {
-            sameTenantMap.set(c.apollo_id, c);
-          } else {
-            if (!sameTenantMap.has(c.apollo_id)) {
-              crossTenantMap.set(c.apollo_id, c);
-            }
-          }
-        }
-      }
+      // Only this workspace's candidates. The cross-workspace "Gio" lane was
+      // removed (Allan, 2026-10-11): it showed other workspaces' private data.
+      for (const c of (collected || [])) sameTenantMap.set(c.apollo_id, c);
 
       // Safety net — for any apollo_id we still didn't match in the same tenant,
       // try matching by linkedin_url within the same tenant. This catches collected
@@ -295,52 +299,8 @@ serve(async (req) => {
         }
       }
 
-      console.log(`✅ Collected matches: ${sameTenantMap.size} same-tenant (Internal), ${crossTenantMap.size} cross-tenant (Gio), ${apolloIds.length - sameTenantMap.size - crossTenantMap.size} unmatched`);
+      console.log(`✅ Collected matches: ${sameTenantMap.size} in this workspace, ${apolloIds.length - sameTenantMap.size} new from Apollo`);
     }
-
-
-    // Fetch rich data for cross-tenant (Gio) candidates
-    if (crossTenantMap.size > 0) {
-      const crossTenantDbIds = Array.from(crossTenantMap.values()).map((c: any) => c.id);
-
-      const [{ data: workExp }, { data: edu }] = await Promise.all([
-        supabase
-          .from('candidate_work_experience')
-          .select('candidate_id, job_title, company_name, start_date, end_date, is_current, location, company_industry, company_size_category')
-          .in('candidate_id', crossTenantDbIds),
-        supabase
-          .from('candidate_education')
-          .select('candidate_id, institution_name, degree_type, field_of_study, start_date, end_date')
-          .in('candidate_id', crossTenantDbIds),
-      ]);
-
-      // Group by candidate DB id
-      const expByCandidate = new Map<string, any[]>();
-      const eduByCandidate = new Map<string, any[]>();
-      for (const w of (workExp || [])) {
-        if (!expByCandidate.has(w.candidate_id)) expByCandidate.set(w.candidate_id, []);
-        expByCandidate.get(w.candidate_id)!.push({
-          title: w.job_title, company: w.company_name, start_date: w.start_date,
-          end_date: w.end_date, is_current: w.is_current, location: w.location,
-          company_industry: w.company_industry, company_size: w.company_size_category,
-        });
-      }
-      for (const e of (edu || [])) {
-        if (!eduByCandidate.has(e.candidate_id)) eduByCandidate.set(e.candidate_id, []);
-        eduByCandidate.get(e.candidate_id)!.push({
-          school: e.institution_name, degree: e.degree_type, field_of_study: e.field_of_study,
-          start_date: e.start_date, end_date: e.end_date,
-        });
-      }
-
-      // Attach rich data to crossTenantMap entries
-      for (const [apolloId, c] of crossTenantMap.entries()) {
-        c._experience = expByCandidate.get(c.id) || [];
-        c._education = eduByCandidate.get(c.id) || [];
-      }
-      console.log(`✅ Fetched rich data for ${crossTenantMap.size} Gio candidates`);
-    }
-
 
 
     // ── Pipeline filter: exclude Internal candidates already in the linked job ──
@@ -355,7 +315,6 @@ serve(async (req) => {
     }
 
     let internalCount = 0;
-    let gioCount = 0;
     let apolloPreviewCount = 0;
 
     const enrichedApollo = dedupedApollo.map((c: any) => {
@@ -386,33 +345,6 @@ serve(async (req) => {
         };
       }
 
-      const crossMatch = c.apollo_id ? crossTenantMap.get(c.apollo_id) : null;
-      if (crossMatch) {
-        gioCount++;
-        // Cross-tenant → Gio: rich display data but NO candidate_id
-        return {
-          ...c,
-          display_source: 'gio',
-          is_gio_sourced: true,
-          candidate_id: null, // SECURITY: never expose cross-tenant DB IDs
-          candidate_name: crossMatch.candidate_name,
-          full_name: crossMatch.candidate_name,
-          linkedin_url: crossMatch.linkedin_url || c.linkedin_url,
-          location_city: crossMatch.location_city,
-          location_state: crossMatch.location_state,
-          location_country: crossMatch.location_country,
-          current_company: crossMatch.company_current || c.current_company,
-          current_role: crossMatch.role_current || c.current_role,
-          skills: crossMatch.skills || [],
-          summary: crossMatch.profile_summary || c.summary,
-          years_experience: crossMatch.years_experience,
-          experience: crossMatch._experience || [],
-          education: crossMatch._education || [],
-          is_preview: false,
-          needs_enrichment: false,
-        };
-      }
-
       apolloPreviewCount++;
       return { ...c, display_source: 'apollo' };
     }).filter(Boolean);
@@ -422,6 +354,21 @@ serve(async (req) => {
       console.log(`🚫 Filtered out ${pipelineFiltered} Internal candidates already in pipeline`);
     }
 
+    // ── Project state (shortlist / not a fit / archive / collected) ──
+    // Lives apart from the search cache, so it survives every refresh.
+    const { data: stateRows } = await supabase
+      .from('sourcing_project_candidates')
+      .select('apollo_id, candidate_id, status, collected_at')
+      .eq('sourcing_project_id', sourcing_project_id);
+    const stateByApollo = new Map((stateRows || []).filter((r: any) => r.apollo_id).map((r: any) => [r.apollo_id, r]));
+    for (const c of enrichedApollo as any[]) {
+      const st = c.apollo_id ? stateByApollo.get(c.apollo_id) : null;
+      if (!st) continue;
+      c.project_status = st.status;
+      c.project_collected_at = st.collected_at;
+      if (st.collected_at && !c.candidate_id && st.candidate_id) c.candidate_id = st.candidate_id;
+    }
+
     // Tag PDL candidates with display_source
     const taggedPdl = pdlCandidates.map((c: any) => ({ ...c, display_source: 'pdl' }));
 
@@ -429,10 +376,10 @@ serve(async (req) => {
 
     const sourceBreakdown = {
       internal: internalCount,
-      gio: gioCount,
+      gio: 0,
       pdl: pdlCandidates.length,
       apollo: apolloPreviewCount,
-      full_data: internalCount + gioCount + pdlCandidates.length,
+      full_data: internalCount + pdlCandidates.length,
       preview_only: apolloPreviewCount,
       deduplicated,
     };

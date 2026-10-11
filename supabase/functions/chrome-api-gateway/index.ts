@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
+import { creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl } from "../_shared/apolloCredits.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
@@ -838,7 +839,9 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
   }
 
   // Check credit availability
-  const creditCheck = await checkCollectCredit(tenantId);
+  // Apollo plan and ledger (Find Phase 0, 2026-10-11)
+  const status = await creditStatus(supabase, tenantId);
+  const creditCheck = { available: status.configured && status.remaining > 0, remaining: status.remaining };
   
   if (!creditCheck.available) {
     console.warn('❌ Monthly contact reveal credit limit reached for tenant:', tenantId);
@@ -851,8 +854,8 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
   console.log(`🔍 Enrich contact for LinkedIn URL: ${linkedin_url}, tenant: ${tenantId}`);
 
   // Call enrichment provider bulk_match API
-  const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
-  console.log(`📞 Phone webhook URL: ${webhookUrl}`);
+  // Signed per workspace: the webhook fills phones only in this workspace.
+  const webhookUrl = await phoneWebhookUrl(tenantId, user?.id ?? null);
   
   const enrichResponse = await fetch(APOLLO_BULK_MATCH_URL, {
     method: 'POST',
@@ -880,6 +883,11 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
   const enrichData = await enrichResponse.json();
   const matches = enrichData.matches || [];
   const person = matches[0];
+  const cost = creditsFromResponse(enrichData, person ? 1 : 0);
+  await recordCredits(supabase, {
+    tenantId, kind: 'enrich', people: person ? 1 : 0, credits: cost.credits, estimated: cost.estimated,
+    userId: user?.id ?? null, note: 'Chrome extension: reveal contact (phone requested)',
+  });
 
   if (!person) {
     console.log('ℹ️ No enrichment match found for:', linkedin_url);
@@ -911,10 +919,7 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     });
   }
 
-  // Increment credit usage
-  await incrementCollectCredits(tenantId, 1);
-
-  const remaining = creditCheck.remaining - 1;
+  const remaining = Math.max(0, creditCheck.remaining - cost.credits);
   console.log(`✅ Contact enriched for ${linkedin_url}, credits remaining: ${remaining}`);
 
   return new Response(JSON.stringify({
@@ -925,7 +930,7 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     contact_emails: contactEmails,
     title: person.title || null,
     company: person.organization_name || null,
-    credits_used: 1,
+    credits_used: cost.credits,
     credits_remaining: remaining
   }), {
     status: 200,

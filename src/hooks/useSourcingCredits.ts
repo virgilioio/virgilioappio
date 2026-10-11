@@ -33,6 +33,19 @@ export interface SourcingCreditsUsage {
   updated_at: string
 }
 
+/** "Oct 19": the day Apollo's credits renew, for messages. */
+export function creditsRenewLabel(usage: Pick<SourcingCreditsUsage, 'next_reset'> | null | undefined): string {
+  if (!usage?.next_reset) return 'the next cycle'
+  return new Date(usage.next_reset).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/**
+ * The workspace's Apollo balance (Find Phase 0, 2026-10-11): read from
+ * apollo_credit_status(), the same function the server checks before every
+ * collect. Credits are what Apollo bills (the ledger), on Apollo's own cycle.
+ * The old per-seat and bonus fields stay in the shape for the screens that
+ * read them; bonus credits are always 0.
+ */
 export function useSourcingCredits() {
   const { organizationId } = useAuth()
 
@@ -41,143 +54,40 @@ export function useSourcingCredits() {
     queryFn: async () => {
       if (!organizationId) return null
 
-      // Step 1: Resolve tenant_id
       const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('tenant_id')
         .eq('id', organizationId)
         .single()
+      if (orgError || !org?.tenant_id) return null
 
-      if (orgError || !org?.tenant_id) {
-        console.error('Failed to resolve tenant_id:', orgError)
-        return null
-      }
+      const { data, error } = await supabase.rpc('apollo_credit_status', { p_tenant: org.tenant_id })
+      if (error) throw error
+      const st = Array.isArray(data) ? data[0] : data
+      if (!st) return null
 
-      const tenantId = org.tenant_id
-
-      // Step 2: Get subscription info including seat count and bonus credits
-      const { data: subscription, error: subError } = await supabase
-        .from('tenant_subscriptions')
-        .select(`
-          subscription_tier, 
-          billing_status, 
-          current_period_start, 
-          billing_interval, 
-          trial_started_at,
-          seat_quantity,
-          bonus_credits_purchased,
-          bonus_credits_used
-        `)
-        .eq('tenant_id', tenantId)
-        .single()
-
-      if (subError) {
-        console.error('Failed to fetch subscription:', subError)
-        return null
-      }
-
-      // Determine billing cycle start for reference only
-      let billingCycleStart: Date
-      if (subscription.billing_status === 'trialing' && subscription.trial_started_at) {
-        billingCycleStart = new Date(subscription.trial_started_at)
-      } else if (subscription.current_period_start) {
-        billingCycleStart = new Date(subscription.current_period_start)
-      } else {
-        const now = new Date()
-        billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      }
-
-      // Step 3: Query usage - get most recent record for this tenant
-      const { data, error } = await supabase
-        .from('sourcing_credits_usage')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (error && error.code !== 'PGRST116') {
-        throw error
-      }
-
-      // Calculate credits per seat based on billing interval (per-seat model)
-      const seatQuantity = subscription.seat_quantity || 1
-      const isAnnual = subscription.billing_interval === 'year'
-      const isTrialing = subscription.billing_status === 'trialing'
-      
-      // Trial users get fixed 5 credits (matches get_tenant_credit_limits backend)
-      // Paid users get per-seat calculation
-      const calculatedLimit = isTrialing 
-        ? 5 
-        : seatQuantity * (isAnnual ? 120 : 100)
-      
-      // Admin overrides should ALWAYS win - use Math.max for both cases
-      // This respects manual credit assignments regardless of billing status
-      const databaseLimit = data?.collect_credits_limit || 0
-      const collectLimit = Math.max(calculatedLimit, databaseLimit)
-
-      // Bonus credits calculation
-      const bonusPurchased = subscription.bonus_credits_purchased || 0
-      const bonusUsed = subscription.bonus_credits_used || 0
-      const bonusAvailable = Math.max(0, bonusPurchased - bonusUsed)
-
-      // Calculate next reset
-      const nextReset = new Date(billingCycleStart)
-      const interval = subscription.billing_interval === 'year' ? 12 : 1
-      nextReset.setMonth(nextReset.getMonth() + interval)
-
-      // Create new record if doesn't exist
-      if (!data) {
-        const { data: newRecord, error: insertError } = await supabase
-          .from('sourcing_credits_usage')
-          .insert({
-            tenant_id: tenantId,
-            billing_cycle_start: billingCycleStart.toISOString(),
-            search_credits_limit: 0, // Searches are now free
-            collect_credits_limit: collectLimit
-          })
-          .select()
-          .single()
-
-        if (insertError) throw insertError
-
-        return {
-          ...newRecord,
-          collect_credits_limit: collectLimit,
-          collect_percentage: 0,
-          bonus_credits_available: bonusAvailable,
-          bonus_credits_purchased: bonusPurchased,
-          bonus_credits_used: bonusUsed,
-          subscription_tier: subscription.subscription_tier || null,
-          billing_status: subscription.billing_status,
-          billing_interval: subscription.billing_interval as 'month' | 'year' | null,
-          seat_quantity: seatQuantity,
-          next_reset: nextReset.toISOString(),
-          // Legacy fields
-          search_credits_used: 0,
-          search_credits_limit: 0,
-          search_percentage: 0,
-        }
-      }
-
-      const collectUsed = data.collect_credits_used || 0
-
+      const limit = st.configured ? st.monthly_credits : 0
+      const used = st.configured ? st.used : 0
+      const now = new Date().toISOString()
       return {
-        ...data,
-        collect_credits_limit: collectLimit,
-        collect_percentage: collectLimit > 0 ? Math.round((collectUsed / collectLimit) * 100) : 0,
-        bonus_credits_available: bonusAvailable,
-        bonus_credits_purchased: bonusPurchased,
-        bonus_credits_used: bonusUsed,
-        subscription_tier: subscription.subscription_tier || null,
-        billing_status: subscription.billing_status,
-        billing_interval: subscription.billing_interval as 'month' | 'year' | null,
-        seat_quantity: seatQuantity,
-        next_reset: nextReset.toISOString(),
-        // Legacy fields (searches are now free)
+        tenant_id: org.tenant_id,
+        collect_credits_used: used,
+        collect_credits_limit: limit,
+        collect_percentage: limit > 0 ? Math.round((used / limit) * 100) : 0,
+        bonus_credits_available: 0,
+        bonus_credits_purchased: 0,
+        bonus_credits_used: 0,
+        subscription_tier: null,
+        billing_status: st.configured ? 'active' : 'not_set_up',
+        billing_interval: 'month',
+        seat_quantity: 1,
+        next_reset: st.cycle_end ?? now,
+        billing_cycle_start: st.cycle_start ?? now,
         search_credits_used: 0,
         search_credits_limit: 0,
         search_percentage: 0,
+        created_at: st.cycle_start ?? now,
+        updated_at: now,
       }
     },
     enabled: !!organizationId,

@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
+import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 // CORRECT Apollo endpoint for searching (api_search, not search)
@@ -357,6 +358,41 @@ serve(async (req) => {
 
   try {
     const { project_id, criteria, limit = 100, max_results = 2000, organization_id }: SearchRequest = await req.json();
+
+    // Target companies (2026-10-11): companies the person named are stored as
+    // user_company_names (a hard filter); older projects use company_names.
+    // AI-researched companies (researched_companies) stay soft and are not sent.
+    {
+      const named = [
+        ...(((criteria as any)?.user_company_names as string[] | undefined) ?? []),
+        ...((criteria?.company_names as string[] | undefined) ?? []),
+      ].map((n) => (typeof n === 'string' ? n.trim() : '')).filter(Boolean);
+      const seen = new Set<string>();
+      if (criteria) {
+        criteria.company_names = named.filter((n) => {
+          const k = n.toLowerCase();
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      }
+    }
+
+    // A project's search (and its cache) belongs to its workspace (2026-10-11).
+    if (project_id && !isServiceCall(req)) {
+      const { data: proj } = await supabase
+        .from('sourcing_projects')
+        .select('organizations!inner(tenant_id)')
+        .eq('id', project_id)
+        .maybeSingle();
+      const caller = await callerFromRequest(req, supabase);
+      if (!proj || !caller || !caller.memberOf((proj as any).organizations?.tenant_id)) {
+        return new Response(JSON.stringify({ error: 'Project not found', provider: 'apollo' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      }
+    }
 
     // Clamp max_results between 100 and 2000
     const effectiveMaxResults = Math.min(Math.max(max_results, 100), 2000);

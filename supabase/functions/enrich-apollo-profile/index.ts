@@ -1,646 +1,431 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+/**
+ * Collect (Find, Phase 0 — 2026-10-11).
+ *
+ * - Who and which workspace come from the signed-in user, never the body.
+ *   A job or project in the request must belong to one of their workspaces.
+ * - People we already have (same Apollo id) are never paid for again; they
+ *   are added to the job and marked collected in the project.
+ * - After Apollo answers, each person is matched again by LinkedIn and email
+ *   (find_tenant_candidate), so someone added by hand, by the extension or
+ *   through an application is filled in, not duplicated.
+ * - Credits: the balance is apollo_credit_status(); every Apollo call writes
+ *   what Apollo reported to apollo_credit_ledger. Collect costs 1 a person;
+ *   with_phone asks for the mobile too (8 more, charged when it arrives).
+ * - The project's state lives in sourcing_project_candidates, so a search
+ *   refresh never loses who was collected.
+ */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
+import { callerFromRequest } from "../_shared/caller.ts";
+import {
+  creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl,
+  PERSON_CREDITS, PHONE_CREDITS,
+} from "../_shared/apolloCredits.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
-// CORRECT Apollo endpoint for enrichment (bulk_match for IDs)
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
-const APOLLO_BATCH_SIZE = 10; // Apollo API limit per request
-
-// Helper to chunk array into smaller batches
-function chunkArray<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
-}
+const APOLLO_BATCH_SIZE = 10; // Apollo's limit per request
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-interface EnrichRequest {
-  apollo_ids: string[];  // Array of Apollo IDs to enrich
-  job_id?: string;
-  stage_id?: string;
-  user_id?: string;
+// deno-lint-ignore no-explicit-any
+type ApolloPerson = any;
+
+function chunk<T>(list: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
 }
 
-interface ApolloPerson {
-  id: string;
-  first_name: string;
-  last_name: string;
-  name: string;
-  email?: string;
-  email_status?: string;
-  headline?: string;
-  title?: string;
-  linkedin_url?: string;
-  phone_numbers?: Array<{ raw_number: string; sanitized_number: string; type: string }>;
-  organization_name?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  seniority?: string;
-  departments?: string[];
-  employment_history?: Array<{
-    organization_name: string;
-    title: string;
-    start_date?: string;
-    end_date?: string;
-    current: boolean;
-    description?: string;
-  }>;
+function json(body: unknown, status: number, cors: Record<string, string>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...cors },
+  });
 }
 
-// Helper to get tenant_id from organization
-async function getTenantIdFromOrganization(organizationId: string): Promise<string> {
-  const { data: org, error } = await supabase
-    .from('organizations')
-    .select('tenant_id')
-    .eq('id', organizationId)
-    .single();
-  
-  if (error || !org) {
-    throw new Error(`Organization not found: ${organizationId}`);
+async function bulkMatch(ids: string[], webhook: string | null): Promise<{ ok: boolean; body: any; status: number; text?: string }> {
+  const res = await fetch(APOLLO_BULK_MATCH_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': APOLLO_API_KEY! },
+    body: JSON.stringify({
+      details: ids.map((id) => ({ id })),
+      ...(webhook ? { reveal_phone_number: true, webhook_url: webhook } : {}),
+    }),
+  });
+  if (!res.ok) return { ok: false, body: null, status: res.status, text: await res.text() };
+  return { ok: true, body: await res.json(), status: res.status };
+}
+
+/** Adds a candidate to the job's first stage unless already there. */
+async function addToJob(db: SupabaseClient, jobId: string, candidateId: string, stageId: string | undefined, userId: string) {
+  const { data: assoc } = await db
+    .from('job_candidate_associations')
+    .select('id')
+    .eq('candidate_id', candidateId)
+    .eq('job_id', jobId)
+    .maybeSingle();
+  if (assoc) return;
+  let target = stageId;
+  if (!target) {
+    const { data: first } = await db
+      .from('job_hiring_stages')
+      .select('id')
+      .eq('job_id', jobId)
+      .order('position', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    target = first?.id;
   }
-  
-  return org.tenant_id;
+  const { error } = await db.from('job_candidate_associations').insert({
+    candidate_id: candidateId,
+    job_id: jobId,
+    current_stage_id: target,
+    status: 'active',
+    added_by: userId,
+  });
+  if (error) console.warn('Add to job failed:', error.message);
 }
 
-// Check credit availability
-async function checkCollectCredit(
-  tenantId: string
-): Promise<{ available: boolean; remaining: number; usage: any }> {
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-  
-  let { data: usage, error } = await supabase
-    .from('sourcing_credits_usage')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('billing_cycle_start', currentMonth)
-    .single();
-  
-  if (error && error.code === 'PGRST116') {
-    // No usage record exists, create one
-    const { data: limits, error: limitsError } = await supabase
-      .rpc('get_tenant_credit_limits', { p_tenant_id: tenantId })
-      .single();
-    
-    if (limitsError) {
-      console.error('Error getting tenant credit limits:', limitsError);
-      throw limitsError;
-    }
-    
-    const { data: newUsage, error: insertError } = await supabase
-      .from('sourcing_credits_usage')
-      .insert({
-        tenant_id: tenantId,
-        billing_cycle_start: currentMonth,
-        search_credits_limit: limits.search_limit,
-        collect_credits_limit: limits.collect_limit
-      })
-      .select()
-      .single();
-    
-    if (insertError) throw insertError;
-    usage = newUsage;
-  } else if (error) {
-    throw error;
-  }
-  
-  const limit = usage.collect_credits_limit;
-  const used = usage.collect_credits_used || 0;
-  
-  return {
-    available: used < limit,
-    remaining: limit - used,
-    usage
-  };
-}
-
-// Increment collect credit usage (for multiple candidates)
-async function incrementCollectCredits(tenantId: string, count: number): Promise<void> {
-  const now = new Date();
-  const billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  
-  // Increment multiple times or use a custom RPC
-  for (let i = 0; i < count; i++) {
-    const { error } = await supabase.rpc('increment_sourcing_usage', {
-      p_tenant_id: tenantId,
-      p_billing_cycle_start: billingCycleStart,
-      p_credit_type: 'collect'
+/** Marks the person collected in the project (state table + cache row). */
+async function markCollected(db: SupabaseClient, projectId: string, apolloId: string, candidateId: string, userId: string, at: string) {
+  const { data: row } = await db
+    .from('sourcing_project_candidates')
+    .select('id, collected_at')
+    .eq('sourcing_project_id', projectId)
+    .eq('apollo_id', apolloId)
+    .maybeSingle();
+  if (row) {
+    const { error } = await db
+      .from('sourcing_project_candidates')
+      .update({ candidate_id: candidateId, collected_at: row.collected_at ?? at, collected_by: userId })
+      .eq('id', row.id);
+    if (error) console.warn('Project state update failed:', error.message);
+  } else {
+    const { error } = await db.from('sourcing_project_candidates').insert({
+      sourcing_project_id: projectId,
+      tenant_id: '00000000-0000-0000-0000-000000000000', // set by the trigger from the project
+      apollo_id: apolloId,
+      candidate_id: candidateId,
+      collected_at: at,
+      collected_by: userId,
     });
-    
-    if (error) {
-      console.error('Failed to increment collect credit usage:', error);
-      throw error;
-    }
+    if (error) console.warn('Project state insert failed:', error.message);
   }
-  
-  console.log(`Successfully incremented ${count} collect credits for tenant ${tenantId}`);
+  // The search cache still shows the badge until the app reads the state table.
+  await db
+    .from('sourcing_preview_candidates')
+    .update({ collected_at: at })
+    .eq('sourcing_project_id', projectId)
+    .eq('apollo_id', apolloId)
+    .is('collected_at', null);
+}
+
+function phonesOf(person: ApolloPerson) {
+  const contactPhones = (person.phone_numbers || []).map((p: any) => ({
+    type: p.type || 'other',
+    number: p.sanitized_number || p.raw_number || '',
+    raw_number: p.raw_number || null,
+  })).filter((p: any) => p.number);
+  return { phone: contactPhones[0]?.number || null, contactPhones };
+}
+
+function emailsOf(person: ApolloPerson) {
+  const list: any[] = [];
+  if (person.email) list.push({ type: 'work', email: person.email, status: person.email_status || null });
+  for (const e of (Array.isArray(person.personal_emails) ? person.personal_emails : [])) {
+    if (e && e !== person.email) list.push({ type: 'personal', email: e, status: null });
+  }
+  return list;
+}
+
+/** Fills only what the existing candidate is missing; never overwrites. */
+async function fillExisting(db: SupabaseClient, candidateId: string, person: ApolloPerson, at: string) {
+  const { data: c } = await db
+    .from('candidates')
+    .select('apollo_id, email, email_status, phone, contact_phones, contact_emails, linkedin_url, role_current, company_current, location_city, location_state, location_country, bio, apollo_collected_at')
+    .eq('id', candidateId)
+    .single();
+  if (!c) return;
+  const { phone, contactPhones } = phonesOf(person);
+  const emails = emailsOf(person);
+  const patch: Record<string, unknown> = {};
+  const fill = (col: string, value: unknown) => {
+    const cur = (c as any)[col];
+    const empty = cur == null || cur === '' || (Array.isArray(cur) && cur.length === 0);
+    if (empty && value != null && value !== '' && !(Array.isArray(value) && value.length === 0)) patch[col] = value;
+  };
+  fill('apollo_id', person.id);
+  fill('email', person.email);
+  fill('email_status', person.email_status);
+  fill('phone', phone);
+  fill('contact_phones', contactPhones);
+  fill('contact_emails', emails);
+  fill('linkedin_url', person.linkedin_url);
+  fill('role_current', person.title);
+  fill('company_current', person.organization_name);
+  fill('location_city', person.city);
+  fill('location_state', person.state);
+  fill('location_country', person.country);
+  fill('bio', person.headline);
+  fill('apollo_collected_at', at);
+  if (Object.keys(patch).length === 0) return;
+  const { error } = await db.from('candidates').update(patch).eq('id', candidateId);
+  if (error) console.warn('Filling existing candidate failed:', error.message);
 }
 
 serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
-  
   const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
   const cors = corsHeadersFor(origin);
 
   try {
-    const requestBody = await req.json();
-    
-    // Support both singular (apollo_id from frontend) and plural (apollo_ids for batch)
-    const apollo_ids = requestBody.apollo_ids || 
-                       (requestBody.apollo_id ? [requestBody.apollo_id] : []);
-    const { job_id, stage_id, user_id, sourcing_project_id } = requestBody;
-    // Phones cost Apollo 8 credits each on top of the 1 for the person
-    // (2026-10-11), so Collect asks for them only when someone will call:
-    // "Collect with phone" and "Get phone" send with_phone: true.
-    const withPhone = requestBody.with_phone === true;
+    if (!APOLLO_API_KEY) return json({ error: 'Apollo is not configured' }, 500, cors);
 
-    // Ensure we have an array
-    const idsToEnrich = Array.isArray(apollo_ids) ? apollo_ids.filter(Boolean) : [apollo_ids].filter(Boolean);
-    
-    console.log('🚀 Apollo Enrich Request:', { count: idsToEnrich.length, job_id });
+    const caller = await callerFromRequest(req, supabase);
+    if (!caller) return json({ error: 'Sign in to collect' }, 401, cors);
+    const userId = caller.userId;
 
-    if (!idsToEnrich.length) {
-      throw new Error('apollo_ids is required');
-    }
+    const body = await req.json();
+    const requested: string[] = (Array.isArray(body.apollo_ids) ? body.apollo_ids : body.apollo_id ? [body.apollo_id] : [])
+      .filter((x: unknown): x is string => typeof x === 'string' && x.length > 0);
+    const ids = Array.from(new Set(requested));
+    const jobId: string | null = body.job_id || null;
+    const stageId: string | undefined = body.stage_id || undefined;
+    const projectId: string | null = body.sourcing_project_id || null;
+    // Phones cost Apollo 8 credits each on top of the 1 for the person, so
+    // Collect asks for them only on "Collect with phone" and "Get phone".
+    const withPhone = body.with_phone === true;
+    if (ids.length === 0) return json({ error: 'apollo_ids is required' }, 400, cors);
 
-    // Validate API key
-    if (!APOLLO_API_KEY) {
-      throw new Error('APOLLO_API_KEY not configured');
-    }
-
-    // Get organization and tenant from job if provided, otherwise from user
-    let organizationId: string;
-    let tenantId: string;
-    
-    if (job_id) {
-      const { data: job, error: jobError } = await supabase
-        .from('jobs')
-        .select('organization_id, tenant_id')
-        .eq('id', job_id)
-        .single();
-      
-      if (jobError || !job) {
-        throw new Error('Job not found');
-      }
-      
-      organizationId = job.organization_id;
+    // ── Workspace: from the job or project, checked against the caller ──
+    let tenantId: string | null = null;
+    let organizationId: string | null = null;
+    if (jobId) {
+      const { data: job } = await supabase.from('jobs').select('organization_id, tenant_id').eq('id', jobId).maybeSingle();
+      if (!job || !caller.memberOf(job.tenant_id)) return json({ error: 'Job not found' }, 404, cors);
       tenantId = job.tenant_id;
-    } else if (user_id) {
-      // Get user's default organization
-      const { data: member, error: memberError } = await supabase
-        .from('members')
-        .select('organization_id, tenant_id')
-        .eq('user_id', user_id)
-        .eq('user_status', 'active')
-        .single();
-      
-      if (memberError || !member) {
-        throw new Error('User membership not found');
-      }
-      
-      organizationId = member.organization_id;
-      tenantId = member.tenant_id;
-    } else {
-      throw new Error('job_id or user_id required');
+      organizationId = job.organization_id;
     }
-
-    // Check which candidates already exist
-    const { data: existingCandidates } = await supabase
-      .from('candidates')
-      .select('id, apollo_id, apollo_collected_at, phone')
-      .in('apollo_id', idsToEnrich)
-      .eq('tenant_id', tenantId);
-
-    const existingApolloIds = new Set((existingCandidates || []).map(c => c.apollo_id));
-    const newApolloIds = idsToEnrich.filter(id => !existingApolloIds.has(id));
-
-    const collectedAtIso = new Date().toISOString();
-
-    const existingCandidateIdsMissingCollectedAt = (existingCandidates || [])
-      .filter((candidate) => !candidate.apollo_collected_at)
-      .map((candidate) => candidate.id)
-      .filter(Boolean);
-
-    if (existingCandidateIdsMissingCollectedAt.length > 0) {
-      const { error: backfillCollectedAtError } = await supabase
-        .from('candidates')
-        .update({ apollo_collected_at: collectedAtIso })
-        .in('id', existingCandidateIdsMissingCollectedAt)
-        .is('apollo_collected_at', null);
-
-      if (backfillCollectedAtError) {
-        console.warn('Failed to backfill apollo_collected_at for existing Apollo candidates:', backfillCollectedAtError);
-      } else {
-        console.log(`✅ Backfilled apollo_collected_at for ${existingCandidateIdsMissingCollectedAt.length} existing Apollo candidates`);
-      }
-    }
-
-    console.log(`📊 ${existingApolloIds.size} already collected, ${newApolloIds.length} new to enrich`);
-
-    // Handle already collected candidates - add to job if needed
-    const results: any[] = [];
-    
-    for (const existing of (existingCandidates || [])) {
-      if (job_id) {
-        // Check if association exists
-        const { data: existingAssoc } = await supabase
-          .from('job_candidate_associations')
-          .select('id')
-          .eq('candidate_id', existing.id)
-          .eq('job_id', job_id)
-          .maybeSingle();
-        
-        if (!existingAssoc) {
-          // Determine stage
-          let targetStageId = stage_id;
-          if (!targetStageId) {
-            const { data: firstStage } = await supabase
-              .from('job_hiring_stages')
-              .select('id')
-              .eq('job_id', job_id)
-              .order('position', { ascending: true })
-              .limit(1)
-              .single();
-            
-            targetStageId = firstStage?.id;
-          }
-          
-          await supabase
-            .from('job_candidate_associations')
-            .insert({
-              candidate_id: existing.id,
-              job_id: job_id,
-              current_stage_id: targetStageId,
-              status: 'active',
-              added_by: user_id
-            });
-        }
-      }
-
-      // Also ensure collected_at is set for this project
-      if (sourcing_project_id && existing.apollo_id) {
-        await supabase
-          .from('sourcing_preview_candidates')
-          .update({ collected_at: collectedAtIso })
-          .eq('apollo_id', existing.apollo_id)
-          .eq('sourcing_project_id', sourcing_project_id)
-          .is('collected_at', null);
-      }
-      
-      // Re-fetch the canonical (un-obfuscated) name + linkedin so the client can
-      // patch the row display optimistically without a full search refetch.
-      const { data: existingFull } = await supabase
-        .from('candidates')
-        .select('candidate_name, linkedin_url')
-        .eq('id', existing.id)
+    if (projectId) {
+      const { data: project } = await supabase
+        .from('sourcing_projects')
+        .select('organization_id, organizations!inner(tenant_id)')
+        .eq('id', projectId)
         .maybeSingle();
-
-      results.push({
-        apollo_id: existing.apollo_id,
-        candidate_id: existing.id,
-        already_collected: true,
-        candidate_name: existingFull?.candidate_name ?? null,
-        linkedin_url: existingFull?.linkedin_url ?? null,
-      });
-    }
-
-    // "Get phone" / "Collect with phone" for people we already have: ask
-    // Apollo for the phone only. It arrives later through
-    // apollo-phone-webhook, which fills it in.
-    let phoneRequests = 0;
-    const needPhone = withPhone
-      ? (existingCandidates || []).filter((c) => !c.phone && c.apollo_id).map((c) => c.apollo_id as string)
-      : [];
-    if (needPhone.length > 0) {
-      const phoneCredit = await checkCollectCredit(tenantId);
-      const phoneIds = needPhone.slice(0, Math.max(0, phoneCredit.remaining));
-      const phoneWebhook = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
-      for (const batch of chunkArray(phoneIds, APOLLO_BATCH_SIZE)) {
-        const res = await fetch(APOLLO_BULK_MATCH_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': APOLLO_API_KEY },
-          body: JSON.stringify({
-            details: batch.map((id) => ({ id })),
-            reveal_phone_number: true,
-            webhook_url: phoneWebhook,
-          }),
-        });
-        if (!res.ok) {
-          console.error('❌ Apollo phone request failed:', res.status, await res.text());
-          continue;
-        }
-        const body = await res.json();
-        const matched = (body.matches || []).filter(Boolean).length;
-        phoneRequests += matched;
-        for (const r of results) {
-          if (batch.includes(r.apollo_id)) r.phone_requested = true;
-        }
+      const projectTenant = (project as any)?.organizations?.tenant_id ?? null;
+      if (!project || !caller.memberOf(projectTenant) || (tenantId && tenantId !== projectTenant)) {
+        return json({ error: 'Sourcing project not found' }, 404, cors);
       }
-      if (phoneRequests > 0) await incrementCollectCredits(tenantId, phoneRequests);
+      tenantId = projectTenant;
+      organizationId = organizationId ?? project.organization_id;
+    }
+    if (!tenantId) {
+      const m = caller.memberships[0];
+      if (!m) return json({ error: 'You are not an active member of a workspace' }, 403, cors);
+      tenantId = m.tenant_id;
+      organizationId = m.organization_id;
     }
 
-    // If no new candidates to enrich, return early
-    if (newApolloIds.length === 0) {
-      return new Response(JSON.stringify({
-        results,
-        enriched_count: 0,
-        credits_used: phoneRequests,
-        phone_requested: phoneRequests,
-        message: phoneRequests > 0 ? 'Phone requested' : 'All candidates were already collected'
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...cors },
+    const status = await creditStatus(supabase, tenantId);
+    if (!status.configured) {
+      return json({ error: "Apollo credits aren't set up for this workspace", error_code: 'CREDITS_NOT_SET_UP', credits_remaining: 0 }, 403, cors);
+    }
+    let remaining = status.remaining;
+    let spent = 0;
+    const at = new Date().toISOString();
+    const results: any[] = [];
+
+    // ── People we already have: no charge ──
+    const { data: existing } = await supabase
+      .from('candidates')
+      .select('id, apollo_id, phone, candidate_name, linkedin_url, apollo_collected_at')
+      .eq('tenant_id', tenantId)
+      .is('deleted_at', null)
+      .is('merged_into', null)
+      .in('apollo_id', ids);
+    const have = new Map((existing ?? []).map((c: any) => [c.apollo_id as string, c]));
+
+    for (const c of have.values()) {
+      if (!c.apollo_collected_at) {
+        await supabase.from('candidates').update({ apollo_collected_at: at }).eq('id', c.id).is('apollo_collected_at', null);
+      }
+      if (jobId) await addToJob(supabase, jobId, c.id, stageId, userId);
+      if (projectId) await markCollected(supabase, projectId, c.apollo_id, c.id, userId, at);
+      results.push({
+        apollo_id: c.apollo_id,
+        candidate_id: c.id,
+        already_collected: true,
+        candidate_name: c.candidate_name ?? null,
+        linkedin_url: c.linkedin_url ?? null,
       });
     }
 
-    // Check credit availability
-    const creditCheck = await checkCollectCredit(tenantId);
-    
-    if (!creditCheck.available) {
-      console.warn('❌ Monthly contact reveal credit limit reached');
-      return new Response(JSON.stringify({
-        error: 'Monthly credit limit reached',
-        error_code: 'CREDITS_EXHAUSTED',
-        credits_remaining: 0,
-        results  // Return already-collected results
-      }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json', ...cors },
-      });
+    // "Get phone" / "Collect with phone" for people we have without one.
+    let phoneRequested = 0;
+    if (withPhone) {
+      const perPerson = PERSON_CREDITS + PHONE_CREDITS;
+      const needPhone = [...have.values()].filter((c: any) => !c.phone).map((c: any) => c.apollo_id as string)
+        .slice(0, Math.floor(remaining / perPerson));
+      const webhook = await phoneWebhookUrl(tenantId, userId, projectId);
+      for (const batch of chunk(needPhone, APOLLO_BATCH_SIZE)) {
+        const r = await bulkMatch(batch, webhook);
+        if (!r.ok) { console.error('Apollo phone request failed:', r.status, r.text); continue; }
+        const matched = (r.body?.matches || []).filter(Boolean).length;
+        const cost = creditsFromResponse(r.body, matched * PERSON_CREDITS);
+        await recordCredits(supabase, { tenantId, kind: 'phone', people: matched, credits: cost.credits, estimated: cost.estimated, userId, projectId, note: 'Phone requested; 8 more per phone when it arrives' });
+        spent += cost.credits;
+        remaining -= cost.credits;
+        phoneRequested += matched;
+        for (const res of results) if (batch.includes(res.apollo_id)) res.phone_requested = true;
+      }
     }
 
-    // Limit to available credits
-    const idsToProcess = newApolloIds.slice(0, creditCheck.remaining);
-    
-    if (idsToProcess.length < newApolloIds.length) {
-      console.warn(`⚠️ Only enriching ${idsToProcess.length} of ${newApolloIds.length} due to credit limit`);
+    // ── New people: pay Apollo, then save each one ──
+    const newIds = ids.filter((id) => !have.has(id));
+    if (newIds.length === 0) {
+      return json({
+        results, enriched_count: 0, credits_used: spent, credits_remaining: Math.max(0, remaining),
+        phone_requested: phoneRequested,
+        message: phoneRequested > 0 ? 'Phone requested' : 'All candidates were already collected',
+      }, 200, cors);
     }
 
-    console.log(`💳 Credits available: ${creditCheck.remaining}, processing ${idsToProcess.length} candidates`);
+    const perPerson = withPhone ? PERSON_CREDITS + PHONE_CREDITS : PERSON_CREDITS;
+    const affordable = Math.max(0, Math.floor(remaining / perPerson));
+    if (affordable === 0) {
+      return json({ error: 'Monthly credit limit reached', error_code: 'CREDITS_EXHAUSTED', credits_remaining: Math.max(0, remaining), results }, 429, cors);
+    }
+    const toCollect = newIds.slice(0, affordable);
+    const skipped = newIds.length - toCollect.length;
+    const webhook = withPhone ? await phoneWebhookUrl(tenantId, userId, projectId) : null;
 
-    // Call Apollo bulk_match API to enrich profiles
-    // Apollo bulk_match accepts an array of ID objects. The phone is asked
-    // for only with with_phone; it arrives later through the webhook.
-    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
-    console.log(withPhone ? `📞 Phone requested, webhook: ${webhookUrl}` : '📵 Collect without phone');
-    
-    // Split into batches of 10 (Apollo's limit per request)
-    const batches = chunkArray(idsToProcess, APOLLO_BATCH_SIZE);
-    console.log(`📦 Processing ${idsToProcess.length} candidates in ${batches.length} batch(es)`);
-
-    const allMatches: ApolloPerson[] = [];
-
-    for (let i = 0; i < batches.length; i++) {
-      const batch = batches[i];
-      console.log(`🔄 Processing batch ${i + 1}/${batches.length} (${batch.length} candidates)`);
-      
-      const apolloResponse = await fetch(APOLLO_BULK_MATCH_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'X-Api-Key': APOLLO_API_KEY
-        },
-        body: JSON.stringify({
-          details: batch.map(id => ({ id })),
-          ...(withPhone ? { reveal_phone_number: true, webhook_url: webhookUrl } : {})
-        })
-      });
-
-      if (!apolloResponse.ok) {
-        const errorText = await apolloResponse.text();
-        console.error(`❌ Apollo API Error (batch ${i + 1}):`, apolloResponse.status, errorText);
-        // Continue with other batches instead of failing completely
+    let enriched = 0;
+    let merged = 0;
+    for (const batch of chunk(toCollect, APOLLO_BATCH_SIZE)) {
+      const r = await bulkMatch(batch, webhook);
+      if (!r.ok) {
+        console.error('Apollo collect failed:', r.status, r.text);
+        for (const id of batch) results.push({ apollo_id: id, error: "Apollo didn't return this person", already_collected: false });
         continue;
       }
+      const matches: ApolloPerson[] = (r.body?.matches || []).filter(Boolean);
+      const cost = creditsFromResponse(r.body, matches.length * PERSON_CREDITS);
+      await recordCredits(supabase, { tenantId, kind: 'collect', people: matches.length, credits: cost.credits, estimated: cost.estimated, userId, projectId, note: withPhone ? 'Collect with phone' : 'Collect' });
+      spent += cost.credits;
+      remaining -= cost.credits;
 
-      const apolloData = await apolloResponse.json();
-      const batchMatches = apolloData.matches || [];
-      console.log(`✅ Batch ${i + 1} returned ${batchMatches.length} profiles`);
-      
-      allMatches.push(...batchMatches);
-    }
-
-    const matches = allMatches;
-    console.log(`✅ Apollo enrichment returned ${matches.length} total profiles from ${batches.length} batch(es)`);
-
-    // Increment credit usage for successful enrichments
-    if (matches.length > 0) {
-      await incrementCollectCredits(tenantId, matches.length);
-    }
-
-    // Process each enriched profile
-    for (const person of matches) {
-      if (!person) continue;
-      
-      // Build location string
-      const location = [person.city, person.state, person.country]
-        .filter(Boolean)
-        .join(', ');
-
-      // Extract primary phone number (first one for backward compatibility)
-      const phone = person.phone_numbers?.[0]?.sanitized_number || 
-                    person.phone_numbers?.[0]?.raw_number || null;
-
-      // Extract all phone numbers with types
-      const contactPhones = (person.phone_numbers || []).map((p: any) => ({
-        type: p.type || 'other',
-        number: p.sanitized_number || p.raw_number || '',
-        raw_number: p.raw_number || null
-      })).filter((p: any) => p.number);
-
-      // Extract all emails with types
-      // Apollo provides primary email + may have additional in contact info
-      const contactEmails: any[] = [];
-      if (person.email) {
-        contactEmails.push({
-          type: 'work',
-          email: person.email,
-          status: person.email_status || null
+      for (const person of matches) {
+        // Someone already here under another key (LinkedIn, email)?
+        const { data: matchId } = await supabase.rpc('find_tenant_candidate', {
+          p_tenant: tenantId, p_apollo_id: person.id, p_linkedin: person.linkedin_url ?? null, p_email: person.email ?? null,
         });
-      }
-      // Add any additional emails from Apollo's personal_emails array if present
-      if (person.personal_emails && Array.isArray(person.personal_emails)) {
-        person.personal_emails.forEach((e: string) => {
-          if (e && e !== person.email) {
-            contactEmails.push({
-              type: 'personal',
-              email: e,
-              status: null
-            });
-          }
-        });
-      }
+        let candidateId: string | null = (matchId as string | null) ?? null;
+        let wasExisting = !!candidateId;
 
-      // Create candidate record
-      const { data: newCandidate, error: candidateError } = await supabase
-        .from('candidates')
-        .insert({
-          apollo_id: person.id,
-          candidate_name: person.name || `${person.first_name} ${person.last_name}`.trim(),
-          email: person.email,
-          email_status: person.email_status,
-          phone: phone,
-          contact_phones: contactPhones,
-          contact_emails: contactEmails,
-          linkedin_url: person.linkedin_url,
-          role_current: person.title,
-          company_current: person.organization_name,
-          location_city: person.city,
-          location_state: person.state,
-          location_country: person.country,
-          bio: person.headline,
-          source: 'apollo',
-          organization_id: organizationId,
-          tenant_id: tenantId,
-          created_by: user_id,
-          apollo_collected_at: collectedAtIso
-        })
-        .select('id')
-        .single();
-
-      let candidateId: string | null = null;
-
-      if (candidateError) {
-        // Check if it's a duplicate — look up existing candidate
-        console.warn('Candidate insert failed, checking for existing:', candidateError.message);
-        const { data: existingCandidate } = await supabase
-          .from('candidates')
-          .select('id')
-          .eq('apollo_id', person.id)
-          .eq('tenant_id', tenantId)
-          .maybeSingle();
-        
-        if (existingCandidate) {
-          candidateId = existingCandidate.id;
-          console.log('✅ Found existing candidate:', candidateId);
+        if (candidateId) {
+          await fillExisting(supabase, candidateId, person, at);
+          merged++;
         } else {
-          console.error('Failed to create candidate and no existing found:', candidateError);
-          results.push({
-            apollo_id: person.id,
-            error: candidateError.message,
-            already_collected: false
-          });
-          continue;
-        }
-      } else {
-        candidateId = newCandidate.id;
-        console.log('✅ Candidate created:', candidateId);
-      }
-
-      // Mark as collected in the sourcing project — always runs
-      if (sourcing_project_id) {
-        const { error: previewUpdateError } = await supabase
-          .from('sourcing_preview_candidates')
-          .update({ collected_at: new Date().toISOString() })
-          .eq('apollo_id', person.id)
-          .eq('sourcing_project_id', sourcing_project_id);
-        
-        if (previewUpdateError) {
-          console.warn('Failed to update preview candidate collected_at:', previewUpdateError);
-        }
-      }
-
-      // Store work experience if available (only for newly created candidates)
-      if (newCandidate && person.employment_history && person.employment_history.length > 0) {
-        const experienceRecords = person.employment_history.map((exp: any) => ({
-          candidate_id: candidateId!,
-          company_name: exp.organization_name || 'Unknown Company',
-          job_title: exp.title || 'Unknown Title',
-          start_date: exp.start_date ? new Date(exp.start_date).toISOString().split('T')[0] : null,
-          end_date: exp.end_date ? new Date(exp.end_date).toISOString().split('T')[0] : null,
-          is_current: exp.current || false,
-          description: exp.description
-        }));
-
-        const { error: expError } = await supabase
-          .from('candidate_work_experience')
-          .insert(experienceRecords);
-
-        if (expError) {
-          console.warn('Failed to store work experience:', expError);
-        }
-      }
-
-      // If job_id provided, add to job pipeline
-      if (job_id) {
-        let targetStageId = stage_id;
-        
-        if (!targetStageId) {
-          const { data: firstStage } = await supabase
-            .from('job_hiring_stages')
+          const { phone, contactPhones } = phonesOf(person);
+          const { data: created, error: insertError } = await supabase
+            .from('candidates')
+            .insert({
+              apollo_id: person.id,
+              candidate_name: person.name || `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim(),
+              email: person.email,
+              email_status: person.email_status,
+              phone,
+              contact_phones: contactPhones,
+              contact_emails: emailsOf(person),
+              linkedin_url: person.linkedin_url,
+              role_current: person.title,
+              company_current: person.organization_name,
+              location_city: person.city,
+              location_state: person.state,
+              location_country: person.country,
+              bio: person.headline,
+              source: 'apollo',
+              organization_id: organizationId,
+              tenant_id: tenantId,
+              created_by: userId,
+              apollo_collected_at: at,
+            })
             .select('id')
-            .eq('job_id', job_id)
-            .order('position', { ascending: true })
-            .limit(1)
             .single();
-          
-          targetStageId = firstStage?.id;
+          if (insertError) {
+            // Two collects at once: the other one saved it first.
+            const { data: again } = await supabase
+              .from('candidates').select('id')
+              .eq('tenant_id', tenantId).eq('apollo_id', person.id)
+              .is('deleted_at', null).is('merged_into', null)
+              .maybeSingle();
+            if (!again) {
+              console.error('Saving the candidate failed:', insertError.message);
+              results.push({ apollo_id: person.id, error: "Couldn't save this person", already_collected: false });
+              continue;
+            }
+            candidateId = again.id;
+            wasExisting = true;
+          } else {
+            candidateId = created.id;
+            enriched++;
+            const history = Array.isArray(person.employment_history) ? person.employment_history : [];
+            if (history.length > 0) {
+              const { error: expError } = await supabase.from('candidate_work_experience').insert(history.map((exp: any) => ({
+                candidate_id: candidateId,
+                company_name: exp.organization_name || 'Unknown Company',
+                job_title: exp.title || 'Unknown Title',
+                start_date: exp.start_date ? new Date(exp.start_date).toISOString().split('T')[0] : null,
+                end_date: exp.end_date ? new Date(exp.end_date).toISOString().split('T')[0] : null,
+                is_current: exp.current || false,
+                description: exp.description,
+              })));
+              if (expError) console.warn('Saving work history failed:', expError.message);
+            }
+          }
         }
-        
-        const { error: assocError } = await supabase
-          .from('job_candidate_associations')
-          .insert({
-            candidate_id: candidateId!,
-            job_id: job_id,
-            current_stage_id: targetStageId,
-            status: 'active',
-            added_by: user_id
-          });
 
-        if (assocError) {
-          console.warn('Failed to add to job pipeline:', assocError);
-        }
+        if (jobId) await addToJob(supabase, jobId, candidateId!, stageId, userId);
+        if (projectId) await markCollected(supabase, projectId, person.id, candidateId!, userId, at);
+
+        const { phone } = phonesOf(person);
+        results.push({
+          apollo_id: person.id,
+          candidate_id: candidateId,
+          already_collected: wasExisting,
+          merged_into_existing: wasExisting,
+          candidate_name: person.name || `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim() || null,
+          linkedin_url: person.linkedin_url || null,
+          email: person.email,
+          phone,
+          headline: person.headline,
+          seniority: person.seniority,
+          departments: person.departments,
+          email_status: person.email_status,
+          employment_history: person.employment_history,
+          apollo_collected_at: at,
+          phone_requested: withPhone,
+        });
       }
-
-      results.push({
-        apollo_id: person.id,
-        candidate_id: candidateId,
-        already_collected: false,
-        candidate_name: person.name || `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim() || null,
-        linkedin_url: person.linkedin_url || null,
-        email: person.email,
-        phone: phone,
-        // Apollo signals passthrough — not persisted as discrete columns, surfaced in UI
-        headline: person.headline,
-        seniority: person.seniority,
-        departments: person.departments,
-        email_status: person.email_status,
-        employment_history: person.employment_history,
-        apollo_collected_at: collectedAtIso,
-        phone_requested: withPhone,
-      });
     }
 
-    const enrichedCount = results.filter(r => !r.already_collected && !r.error).length;
-
-    return new Response(JSON.stringify({
+    return json({
       results,
-      enriched_count: enrichedCount,
-      credits_used: enrichedCount + phoneRequests,
-      credits_remaining: creditCheck.remaining - enrichedCount - phoneRequests,
-      phone_requested: phoneRequests + (withPhone ? enrichedCount : 0)
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ...cors },
-    });
-
+      enriched_count: enriched,
+      merged_count: merged,
+      skipped_for_credits: skipped,
+      credits_used: spent,
+      credits_remaining: Math.max(0, remaining),
+      phone_requested: phoneRequested + (withPhone ? enriched + merged : 0),
+    }, 200, cors);
   } catch (error) {
-    console.error('❌ Apollo enrich error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...cors },
-    });
+    console.error('Collect error:', error);
+    return json({ error: "Couldn't collect right now. Try again in a moment." }, 500, cors);
   }
 });

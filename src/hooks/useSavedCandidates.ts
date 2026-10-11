@@ -33,31 +33,23 @@ export function useSavedCandidates({ projectId, enabled = true, status = 'active
     queryFn: async (): Promise<SavedCandidate[]> => {
       if (!projectId) return []
 
-      // Step 1: Get all apollo_ids from preview candidates that were ACTUALLY collected in this project
-      const { data: previewCandidates, error: previewError } = await supabase
-        .from('sourcing_preview_candidates')
-        .select('apollo_id')
+      // Step 1: who this project collected, from its state table (kept
+      // across search refreshes; 2026-10-11)
+      const { data: stateRows, error: stateError } = await supabase
+        .from('sourcing_project_candidates')
+        .select('candidate_id, apollo_id, collected_at')
         .eq('sourcing_project_id', projectId)
         .in('status', status === 'active' ? ['active', 'shortlisted'] : ['archived'])
-        .not('apollo_id', 'is', null)
-        .not('collected_at', 'is', null)  // Only include candidates actually collected in THIS project
+        .not('collected_at', 'is', null)
+        .not('candidate_id', 'is', null)
 
-      if (previewError) {
-        console.error('Error fetching preview candidates:', previewError)
-        throw previewError
-      }
+      if (stateError) throw stateError
+      const candidateIdsFromState = (stateRows || [])
+        .map(r => r.candidate_id)
+        .filter((id): id is string => !!id)
+      if (candidateIdsFromState.length === 0) return []
 
-      if (!previewCandidates || previewCandidates.length === 0) {
-        return []
-      }
-
-      const apolloIds = previewCandidates
-        .map(pc => pc.apollo_id)
-        .filter((id): id is string => id !== null)
-
-      if (apolloIds.length === 0) return []
-
-      // Step 2: Get collected candidates that match these apollo_ids
+      // Step 2: the candidates themselves (people since removed drop out)
       const { data: candidates, error: candidatesError } = await supabase
         .from('candidates')
         .select(`
@@ -74,8 +66,7 @@ export function useSavedCandidates({ projectId, enabled = true, status = 'active
           apollo_collected_at,
           apollo_id
         `)
-        .in('apollo_id', apolloIds)
-        .not('apollo_collected_at', 'is', null)
+        .in('id', candidateIdsFromState)
         .order('apollo_collected_at', { ascending: false })
 
       if (candidatesError) {
