@@ -102,6 +102,9 @@ serve(async (req) => {
     const candidateIds = requestBody.candidate_ids || 
                          (requestBody.candidate_id ? [requestBody.candidate_id] : []);
     const { user_id } = requestBody;
+    // Automatic enrichment (applications, the Chrome extension) never asks
+    // Apollo for the phone: it costs 8 credits more (2026-10-11).
+    const withPhone = requestBody.with_phone === true;
 
     const idsToEnrich = Array.isArray(candidateIds) ? candidateIds.filter(Boolean) : [candidateIds].filter(Boolean);
     
@@ -199,8 +202,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         details: toProcess.map(c => ({ linkedin_url: c.linkedin_url })),
-        reveal_phone_number: true,
-        webhook_url: webhookUrl
+        ...(withPhone ? { reveal_phone_number: true, webhook_url: webhookUrl } : {})
       })
     });
 

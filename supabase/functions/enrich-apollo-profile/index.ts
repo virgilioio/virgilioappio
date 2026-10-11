@@ -158,6 +158,10 @@ serve(async (req) => {
     const apollo_ids = requestBody.apollo_ids || 
                        (requestBody.apollo_id ? [requestBody.apollo_id] : []);
     const { job_id, stage_id, user_id, sourcing_project_id } = requestBody;
+    // Phones cost Apollo 8 credits each on top of the 1 for the person
+    // (2026-10-11), so Collect asks for them only when someone will call:
+    // "Collect with phone" and "Get phone" send with_phone: true.
+    const withPhone = requestBody.with_phone === true;
 
     // Ensure we have an array
     const idsToEnrich = Array.isArray(apollo_ids) ? apollo_ids.filter(Boolean) : [apollo_ids].filter(Boolean);
@@ -212,7 +216,7 @@ serve(async (req) => {
     // Check which candidates already exist
     const { data: existingCandidates } = await supabase
       .from('candidates')
-      .select('id, apollo_id, apollo_collected_at')
+      .select('id, apollo_id, apollo_collected_at, phone')
       .in('apollo_id', idsToEnrich)
       .eq('tenant_id', tenantId);
 
@@ -309,13 +313,49 @@ serve(async (req) => {
       });
     }
 
+    // "Get phone" / "Collect with phone" for people we already have: ask
+    // Apollo for the phone only. It arrives later through
+    // apollo-phone-webhook, which fills it in.
+    let phoneRequests = 0;
+    const needPhone = withPhone
+      ? (existingCandidates || []).filter((c) => !c.phone && c.apollo_id).map((c) => c.apollo_id as string)
+      : [];
+    if (needPhone.length > 0) {
+      const phoneCredit = await checkCollectCredit(tenantId);
+      const phoneIds = needPhone.slice(0, Math.max(0, phoneCredit.remaining));
+      const phoneWebhook = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
+      for (const batch of chunkArray(phoneIds, APOLLO_BATCH_SIZE)) {
+        const res = await fetch(APOLLO_BULK_MATCH_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': APOLLO_API_KEY },
+          body: JSON.stringify({
+            details: batch.map((id) => ({ id })),
+            reveal_phone_number: true,
+            webhook_url: phoneWebhook,
+          }),
+        });
+        if (!res.ok) {
+          console.error('❌ Apollo phone request failed:', res.status, await res.text());
+          continue;
+        }
+        const body = await res.json();
+        const matched = (body.matches || []).filter(Boolean).length;
+        phoneRequests += matched;
+        for (const r of results) {
+          if (batch.includes(r.apollo_id)) r.phone_requested = true;
+        }
+      }
+      if (phoneRequests > 0) await incrementCollectCredits(tenantId, phoneRequests);
+    }
+
     // If no new candidates to enrich, return early
     if (newApolloIds.length === 0) {
       return new Response(JSON.stringify({
         results,
         enriched_count: 0,
-        credits_used: 0,
-        message: 'All candidates were already collected'
+        credits_used: phoneRequests,
+        phone_requested: phoneRequests,
+        message: phoneRequests > 0 ? 'Phone requested' : 'All candidates were already collected'
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...cors },
@@ -348,10 +388,10 @@ serve(async (req) => {
     console.log(`💳 Credits available: ${creditCheck.remaining}, processing ${idsToProcess.length} candidates`);
 
     // Call Apollo bulk_match API to enrich profiles
-    // Apollo bulk_match accepts an array of ID objects
-    // Include reveal_phone_number to get phone data via webhook
+    // Apollo bulk_match accepts an array of ID objects. The phone is asked
+    // for only with with_phone; it arrives later through the webhook.
     const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
-    console.log(`📞 Phone webhook URL: ${webhookUrl}`);
+    console.log(withPhone ? `📞 Phone requested, webhook: ${webhookUrl}` : '📵 Collect without phone');
     
     // Split into batches of 10 (Apollo's limit per request)
     const batches = chunkArray(idsToProcess, APOLLO_BATCH_SIZE);
@@ -372,8 +412,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           details: batch.map(id => ({ id })),
-          reveal_phone_number: true,
-          webhook_url: webhookUrl
+          ...(withPhone ? { reveal_phone_number: true, webhook_url: webhookUrl } : {})
         })
       });
 
@@ -578,6 +617,7 @@ serve(async (req) => {
         email_status: person.email_status,
         employment_history: person.employment_history,
         apollo_collected_at: collectedAtIso,
+        phone_requested: withPhone,
       });
     }
 
@@ -586,8 +626,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       results,
       enriched_count: enrichedCount,
-      credits_used: enrichedCount,
-      credits_remaining: creditCheck.remaining - enrichedCount
+      credits_used: enrichedCount + phoneRequests,
+      credits_remaining: creditCheck.remaining - enrichedCount - phoneRequests,
+      phone_requested: phoneRequests + (withPhone ? enrichedCount : 0)
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...cors },

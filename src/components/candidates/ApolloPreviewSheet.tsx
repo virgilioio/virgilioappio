@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -340,6 +340,11 @@ export function ApolloPreviewSheet({
   const [showJobSelection, setShowJobSelection] = useState(false)
   const [enrichedData, setEnrichedData] = useState<EnrichedCandidateData | null>(null)
   const [phoneCheckStatus, setPhoneCheckStatus] = useState<'idle' | 'checking' | 'done'>('idle')
+  // Collect leaves the phone out (it costs Apollo 8 more credits); the phone
+  // is asked for only by "Collect with phone" or "Get phone" (2026-10-11).
+  const [phoneRequested, setPhoneRequested] = useState(false)
+  const [isRequestingPhone, setIsRequestingPhone] = useState(false)
+  const collectWithPhone = useRef(false)
   const [firstStageInfo, setFirstStageInfo] = useState<{ id: string; name: string } | null>(null)
   const { isCollectDisabled } = useSourcingCreditWarnings()
   const { shortlistCandidate, markNotAFit, isUpdating, currentApolloId } = useCandidatePreviewStatus()
@@ -371,6 +376,7 @@ export function ApolloPreviewSheet({
     setCollectedCandidateId(null)
     setCollectedJobId(null)
     setPhoneCheckStatus('idle')
+    setPhoneRequested(false)
     setEnrichedData(null)
   }, [apolloId])
 
@@ -434,7 +440,7 @@ export function ApolloPreviewSheet({
   }, [open, apolloId, enrichedData, apolloData?.current_role, apolloData?.current_company])
 
   useEffect(() => {
-    if (!enrichedData?.candidate_id || enrichedData?.phone || !apolloData?.has_phone) return
+    if (!phoneRequested || !enrichedData?.candidate_id || enrichedData?.phone) return
     setPhoneCheckStatus('checking')
     let attempts = 0
     const maxAttempts = 4
@@ -455,7 +461,7 @@ export function ApolloPreviewSheet({
       } catch { setPhoneCheckStatus('done') }
     }
     pollForPhone()
-  }, [enrichedData?.candidate_id, enrichedData?.phone, apolloData?.has_phone])
+  }, [phoneRequested, enrichedData?.candidate_id, enrichedData?.phone])
 
   const fitScore: FitScore = useMemo(() => {
     if (!apolloData) {
@@ -500,14 +506,17 @@ export function ApolloPreviewSheet({
     selectedStageName?: string
   ) => {
     if (!apolloId) return
+    const withPhone = collectWithPhone.current
+    collectWithPhone.current = false
     setIsCollecting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const jobIdToUse = selectedJobId || jobId
       const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
-        body: { apollo_id: apolloId, job_id: jobIdToUse, stage_id: selectedStageId, user_id: user?.id }
+        body: { apollo_id: apolloId, job_id: jobIdToUse, stage_id: selectedStageId, user_id: user?.id, with_phone: withPhone }
       })
       if (error) throw error
+      if (withPhone) setPhoneRequested(true)
       const collectedResult = data?.results?.[0]
       const candidateId = collectedResult?.candidate_id
       const wasAlreadyCollected = collectedResult?.already_collected
@@ -602,9 +611,34 @@ export function ApolloPreviewSheet({
   const handleShortlist = () => { if (apolloId && projectId) shortlistCandidate(apolloId, projectId) }
   const handleNotAFit = () => { if (apolloId && projectId) markNotAFit(apolloId, projectId) }
 
-  const triggerCollect = () => {
+  const triggerCollect = (withPhone = false) => {
+    collectWithPhone.current = withPhone
     if (!jobId) setShowJobSelection(true)
     else handleCollectProfile(jobId, jobTitle || undefined, firstStageInfo?.id, firstStageInfo?.name)
+  }
+
+  // Ask Apollo for the phone of someone already collected. It arrives
+  // through the phone webhook; the Mobile card waits for it.
+  const handleGetPhone = async () => {
+    if (!apolloId) return
+    setIsRequestingPhone(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
+        body: { apollo_id: apolloId, user_id: user?.id, with_phone: true }
+      })
+      if (error) throw error
+      if (!data?.phone_requested) {
+        toast({ title: "Couldn't ask Apollo for the phone", description: 'No collect credits are left this month.', variant: 'destructive' })
+        return
+      }
+      setPhoneRequested(true)
+      queryClient.invalidateQueries({ queryKey: ['sourcing-credits'] })
+    } catch {
+      toast({ title: "Couldn't ask Apollo for the phone", description: 'Try again in a moment.', variant: 'destructive' })
+    } finally {
+      setIsRequestingPhone(false)
+    }
   }
 
   const hasEmailAvailable = apolloData?.has_email ?? false
@@ -851,7 +885,7 @@ export function ApolloPreviewSheet({
         <GroupLabel>Person</GroupLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <AvailabilityFieldCard icon={Mail} label="Verified work email" available={hasEmailAvailable} />
-          <AvailabilityFieldCard icon={Phone} label="Direct mobile phone" sublabel="Delivered async via webhook" available={hasPhoneAvailable} />
+          <AvailabilityFieldCard icon={Phone} label="Direct mobile phone" sublabel="Only with Collect with phone · up to 8 more credits" available={hasPhoneAvailable} />
           <AvailabilityFieldCard icon={MapPin} label="Exact city + state" available={apolloData?.has_location ?? true} />
           <AvailabilityFieldCard icon={Globe} label="Country" available={true} />
         </div>
@@ -894,6 +928,7 @@ export function ApolloPreviewSheet({
         </Button>
         <p className="hidden sm:block text-[12px] text-text-tertiary">
           Uses <span className="text-text-primary font-medium">1 credit</span>
+          {hasPhoneAvailable && <>, the phone up to 8 more</>}
           {remainingCredits !== null && (
             <> · {remainingCredits} remaining this month</>
           )}
@@ -903,9 +938,20 @@ export function ApolloPreviewSheet({
         <Button variant="secondary" type="button" onClick={() => onOpenChange(false)}>
           Cancel
         </Button>
+        {hasPhoneAvailable && (
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() => triggerCollect(true)}
+            disabled={isCollecting || isCollectDisabled}
+            icon={Phone}
+          >
+            Collect with phone
+          </Button>
+        )}
         <Button
           type="button"
-          onClick={triggerCollect}
+          onClick={() => triggerCollect(false)}
           disabled={isCollecting || isCollectDisabled}
           loading={isCollecting}
           icon={Lock}
@@ -987,8 +1033,25 @@ export function ApolloPreviewSheet({
               <span className="h-1.5 w-1.5 bg-amber-500 rounded-full animate-pulse" />
               Checking for phone…
             </span>
+          ) : phoneRequested || phoneCheckStatus === 'done' ? (
+            <span className="text-[12.5px] text-text-tertiary">No phone from Apollo yet</span>
+          ) : apolloData && !hasPhoneAvailable ? (
+            <span className="text-[12.5px] text-text-tertiary">Apollo has no phone</span>
           ) : (
-            <span className="text-[12.5px] text-text-tertiary">Phone not available</span>
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                type="button"
+                icon={Phone}
+                onClick={handleGetPhone}
+                loading={isRequestingPhone}
+                disabled={isRequestingPhone || isCollectDisabled}
+              >
+                Get phone
+              </Button>
+              <div className="text-[11.5px] text-text-tertiary mt-1.5">Up to 9 credits</div>
+            </>
           )}
         </div>
 
