@@ -280,6 +280,72 @@ export type Database = {
           },
         ]
       }
+      apollo_credit_ledger: {
+        Row: {
+          candidate_id: string | null
+          created_at: string
+          credits: number
+          estimated: boolean
+          id: string
+          kind: string
+          note: string | null
+          people: number
+          sourcing_project_id: string | null
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          created_at?: string
+          credits: number
+          estimated?: boolean
+          id?: string
+          kind: string
+          note?: string | null
+          people?: number
+          sourcing_project_id?: string | null
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          created_at?: string
+          credits?: number
+          estimated?: boolean
+          id?: string
+          kind?: string
+          note?: string | null
+          people?: number
+          sourcing_project_id?: string | null
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      apollo_credit_plans: {
+        Row: {
+          cycle_day: number
+          monthly_credits: number
+          reserve_credits: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          cycle_day: number
+          monthly_credits: number
+          reserve_credits?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          cycle_day?: number
+          monthly_credits?: number
+          reserve_credits?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       application_fields: {
         Row: {
           accepted_file_types: string | null
@@ -7662,6 +7728,54 @@ export type Database = {
           },
         ]
       }
+      sourcing_project_candidates: {
+        Row: {
+          apollo_id: string | null
+          candidate_id: string | null
+          collected_at: string | null
+          collected_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          sourcing_project_id: string
+          status: string
+          status_changed_at: string | null
+          status_changed_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          apollo_id?: string | null
+          candidate_id?: string | null
+          collected_at?: string | null
+          collected_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          sourcing_project_id: string
+          status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          apollo_id?: string | null
+          candidate_id?: string | null
+          collected_at?: string | null
+          collected_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          sourcing_project_id?: string
+          status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sourcing_projects: {
         Row: {
           coresignal_cache_expires_at: string | null
@@ -9107,6 +9221,18 @@ export type Database = {
         Returns: string[]
       }
       ats_person: { Args: { p_user: string }; Returns: Json }
+      apollo_credit_status: {
+        Args: { p_tenant: string }
+        Returns: {
+          configured: boolean
+          cycle_end: string
+          cycle_start: string
+          monthly_credits: number
+          remaining: number
+          reserve_credits: number
+          used: number
+        }[]
+      }
       audit_platform_admin_access: {
         Args: never
         Returns: {
@@ -9547,6 +9673,15 @@ export type Database = {
         Args: { tenant_id_param: string }
         Returns: number
       }
+      find_tenant_candidate: {
+        Args: {
+          p_apollo_id: string
+          p_email: string
+          p_linkedin: string
+          p_tenant: string
+        }
+        Returns: string
+      }
       get_tenant_bonus_credits: {
         Args: { p_tenant_id: string }
         Returns: number
@@ -9634,6 +9769,7 @@ export type Database = {
         Returns: string
       }
       job_setup_checks: { Args: { p_job: string }; Returns: Json }
+      linkedin_slug: { Args: { p_url: string }; Returns: string }
       log_activity: {
         Args: {
           p_activity_type: Database["public"]["Enums"]["activity_type"]
