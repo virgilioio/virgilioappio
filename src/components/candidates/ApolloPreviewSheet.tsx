@@ -629,7 +629,7 @@ export function ApolloPreviewSheet({
       })
       if (error) throw error
       if (!data?.phone_requested) {
-        toast({ title: "Couldn't ask Apollo for the phone", description: 'No collect credits are left this month.', variant: 'destructive' })
+        toast({ title: "Couldn't ask Apollo for the phone", description: 'Apollo didn\'t accept the request, or no credits are left this month. Nothing was charged.', variant: 'destructive' })
         return
       }
       setPhoneRequested(true)
