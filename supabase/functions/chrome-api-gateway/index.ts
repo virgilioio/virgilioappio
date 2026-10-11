@@ -747,76 +747,6 @@ async function handleResume(params: ResumeUploadParams, user: any, member: any, 
 }
 
 // ============================================
-// CREDIT HELPERS (for enrich action)
-// ============================================
-async function checkCollectCredit(
-  tenantId: string
-): Promise<{ available: boolean; remaining: number; usage: any }> {
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-  
-  let { data: usage, error } = await supabase
-    .from('sourcing_credits_usage')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('billing_cycle_start', currentMonth)
-    .single();
-  
-  if (error && error.code === 'PGRST116') {
-    const { data: limits, error: limitsError } = await supabase
-      .rpc('get_tenant_credit_limits', { p_tenant_id: tenantId })
-      .single();
-    
-    if (limitsError) {
-      console.error('Error getting tenant credit limits:', limitsError);
-      throw limitsError;
-    }
-    
-    const { data: newUsage, error: insertError } = await supabase
-      .from('sourcing_credits_usage')
-      .insert({
-        tenant_id: tenantId,
-        billing_cycle_start: currentMonth,
-        search_credits_limit: limits.search_limit,
-        collect_credits_limit: limits.collect_limit
-      })
-      .select()
-      .single();
-    
-    if (insertError) throw insertError;
-    usage = newUsage;
-  } else if (error) {
-    throw error;
-  }
-  
-  const limit = usage.collect_credits_limit;
-  const used = usage.collect_credits_used || 0;
-  
-  return {
-    available: used < limit,
-    remaining: limit - used,
-    usage
-  };
-}
-
-async function incrementCollectCredits(tenantId: string, count: number): Promise<void> {
-  const now = new Date();
-  const billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  
-  for (let i = 0; i < count; i++) {
-    const { error } = await supabase.rpc('increment_sourcing_usage', {
-      p_tenant_id: tenantId,
-      p_billing_cycle_start: billingCycleStart,
-      p_credit_type: 'collect'
-    });
-    
-    if (error) {
-      console.error('Failed to increment collect credit usage:', error);
-      throw error;
-    }
-  }
-}
-
-// ============================================
 // ACTION: enrich - Enrich contact by LinkedIn URL
 // ============================================
 async function handleEnrich(body: any, user: any, member: any, corsHeaders: Record<string, string>) {
@@ -838,8 +768,7 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     );
   }
 
-  // Check credit availability
-  // Apollo plan and ledger (Find Phase 0, 2026-10-11)
+  // Check credit availability: Apollo plan and ledger (Find Phase 0, 2026-10-11)
   const status = await creditStatus(supabase, tenantId);
   const creditCheck = { available: status.configured && status.remaining > 0, remaining: status.remaining };
   
