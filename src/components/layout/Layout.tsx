@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
 import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
-import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
+import { PhoneShell } from '@/components/phone/PhoneShell'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { HeaderContextBands } from '@/components/layout/HeaderContextBands'
 
@@ -81,14 +81,14 @@ export function Layout() {
               className={
                 isReview
                   ? 'pt-0 pb-0 min-h-[100dvh]'
-                  : 'pt-0 sm:pt-16 pb-24 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)] sm:[--tbl-page-top:4rem]'
+                  : 'pt-[calc(env(safe-area-inset-top,0px)+68px)] sm:pt-16 pb-28 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)] sm:[--tbl-page-top:4rem]'
               }
             >
               <Outlet />
             </main>
           </div>
           <GlobalBulkUploadWidget />
-          {!isReview && <MobileBottomNav />}
+          {!isReview && <PhoneShell />}
         </BulkUploadProvider>
       </OrgGate>
     </AuthGate>
