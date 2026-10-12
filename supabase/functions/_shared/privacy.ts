@@ -171,7 +171,18 @@ export async function forgetCandidate(sb: SupabaseClient, candidateId: string, r
     .filter((p): p is string => Boolean(p));
   if (paths.length) await sb.storage.from("candidate-attachments").remove(paths);
 
-  // Their emails and chat (not removed by the candidate row's cascade).
+  // Their emails (with the attachment files Gmail sync saved) and chat
+  // (not removed by the candidate row's cascade).
+  const { data: mails } = await sb.from("email_logs").select("attachments").eq("candidate_id", candidateId);
+  const mailFiles = [...new Set(
+    (mails ?? [])
+      .flatMap((m: { attachments: unknown }) => (Array.isArray(m.attachments) ? m.attachments : []))
+      .map((a: { storagePath?: string }) => a?.storagePath)
+      .filter((p): p is string => typeof p === "string" && p.length > 0),
+  )];
+  for (let i = 0; i < mailFiles.length; i += 100) {
+    await sb.storage.from("email-attachments").remove(mailFiles.slice(i, i + 100));
+  }
   await sb.from("email_logs").delete().eq("candidate_id", candidateId);
   const { data: threads } = await sb.from("chat_threads").select("id").eq("candidate_id", candidateId);
   const threadIds = (threads ?? []).map((t: { id: string }) => t.id);
