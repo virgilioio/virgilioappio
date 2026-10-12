@@ -41,6 +41,7 @@ import { SoftPlane } from '@/components/ui/EmptyIllustrations'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { IconTip } from '@/components/ui/tooltip'
 
 interface SavedCandidatesTabProps {
   projectId: string
@@ -262,7 +263,7 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
                             <div className="flex-1 min-w-0 space-y-1.5">
                               {/* Badge row */}
                               <div className="flex items-center justify-between">
-                                <Badge variant="pastel-blue" className="text-[10px] px-1.5 py-0 h-4">Collected</Badge>
+                                <Badge variant="pastel-blue" className="text-[10.5px] px-1.5 py-0 h-4">Collected</Badge>
                                 <span className="text-[10px] text-muted-foreground">
                                   {format(new Date(candidate.apollo_collected_at), 'MMM d, yyyy')}
                                 </span>
@@ -323,16 +324,18 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
                             {/* Actions */}
                             {!selectionMode && (
                               <div className="flex items-center gap-1 pt-0.5 shrink-0">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={(e) => handleArchive(e, candidate)}
-                                  disabled={isArchiving}
-                                  title="Archive candidate"
-                                >
-                                  <Archive className="h-3.5 w-3.5" />
-                                </Button>
+                                <IconTip label="Archive from this project">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={(e) => handleArchive(e, candidate)}
+                                    disabled={isArchiving || !candidate.apollo_id}
+                                    aria-label="Archive from this project"
+                                  >
+                                    <Archive className="h-3.5 w-3.5" />
+                                  </Button>
+                                </IconTip>
                               </div>
                             )}
                           </div>

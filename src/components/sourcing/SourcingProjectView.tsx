@@ -4,13 +4,14 @@ import { Loader2, Sparkles } from 'lucide-react'
 import { CandidatesTab } from './CandidatesTab'
 import { ConversationTab } from './ConversationTab'
 import { SavedCandidatesTab } from './SavedCandidatesTab'
-import { ArchivedCandidatesTab } from './ArchivedCandidatesTab'
+import { ShortlistTab } from './ShortlistTab'
 import { AddCollectedToPipelineDialog } from './AddCollectedToPipelineDialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
 import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
 import { useSavedCandidates } from '@/hooks/useSavedCandidates'
+import { useProjectPeople } from '@/hooks/useProjectPeople'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types/sourcing'
 import { supabase } from '@/lib/supabaseClient'
@@ -70,12 +71,11 @@ export function SourcingProjectView({
     enabled: !!projectId
   })
   
-  const { data: archivedCandidates = [] } = useSavedCandidates({
-    projectId,
-    enabled: !!projectId,
-    status: 'archived'
-  })
-  
+  const { data: projectPeople = [] } = useProjectPeople(projectId)
+  const shortlistCount = projectPeople.filter((p) => p.status === 'shortlisted').length
+
+  // Results · Shortlist · Collected (Find Phase 2). Each tab stays mounted,
+  // so switching back keeps the results' scroll, selection and filters.
   const [activeTab, setActiveTab] = useState('candidates')
   
   const [showAddToPipelineDialog, setShowAddToPipelineDialog] = useState(false)
@@ -379,25 +379,51 @@ export function SourcingProjectView({
   
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
-      <CandidatesTab
-        project={project}
-        candidates={filteredCandidates as any}
-        // Before the first search answers there's no result yet: loading, not empty.
-        isLoading={candidatesLoading || (!matchingResult && !candidatesError)}
-        totalMatches={candidates.length}
-        onClearFilters={() => onFiltersChange({ matchTiers: [], minExperience: 0, maxExperience: 30, source: 'all' })}
-        onEditSearch={onEditSearch}
-        loadFailed={!!candidatesError}
-        onRetry={refetchCandidates}
-        jobId={project.job_id}
-        projectId={project.id}
-        searchCriteria={project.search_criteria}
-        sourceBreakdown={matchingResult?.source_breakdown}
-        onLinkToJob={handleLinkToJob}
-        onUnlinkJob={async () => { await linkProjectToJob(null) }}
-        savedCandidatesCount={savedCandidates?.length ?? 0}
-        onCandidatesChanged={refetchCandidates}
-      />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="px-4 pt-3 shrink-0">
+          <TabsList indicator="underline">
+            <TabsTrigger value="candidates">Results</TabsTrigger>
+            <TabsTrigger value="shortlist">
+              Shortlist
+              <span className="ml-1.5 text-[11px] tabular-nums text-text-tertiary">{shortlistCount}</span>
+            </TabsTrigger>
+            <TabsTrigger value="collected">
+              Collected
+              <span className="ml-1.5 text-[11px] tabular-nums text-text-tertiary">{savedCandidates.length}</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="candidates" forceMount className="mt-0 flex-1 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+          <CandidatesTab
+            project={project}
+            candidates={filteredCandidates as any}
+            // Before the first search answers there's no result yet: loading, not empty.
+            isLoading={candidatesLoading || (!matchingResult && !candidatesError)}
+            totalMatches={candidates.length}
+            onClearFilters={() => onFiltersChange({ matchTiers: [], minExperience: 0, maxExperience: 30, source: 'all' })}
+            onEditSearch={onEditSearch}
+            loadFailed={!!candidatesError}
+            onRetry={refetchCandidates}
+            jobId={project.job_id}
+            projectId={project.id}
+            searchCriteria={project.search_criteria}
+            sourceBreakdown={matchingResult?.source_breakdown}
+            onLinkToJob={handleLinkToJob}
+            onUnlinkJob={async () => { await linkProjectToJob(null) }}
+            savedCandidatesCount={savedCandidates?.length ?? 0}
+            onCandidatesChanged={refetchCandidates}
+          />
+        </TabsContent>
+
+        <TabsContent value="shortlist" className="mt-0 flex-1 min-h-0 overflow-hidden px-4 pb-4 pt-4">
+          <ShortlistTab projectId={project.id} jobId={project.job_id} onCollected={() => void refetchCandidates()} />
+        </TabsContent>
+
+        <TabsContent value="collected" className="mt-0 flex-1 min-h-0 overflow-hidden">
+          <SavedCandidatesTab projectId={project.id} jobId={project.job_id} />
+        </TabsContent>
+      </Tabs>
 
       {pendingJobId && (
         <AddCollectedToPipelineDialog
