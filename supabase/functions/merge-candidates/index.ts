@@ -18,6 +18,15 @@ const CANDIDATE_KEYS = [
   'salary_period', 'years_experience', 'profile_summary', 'source',
 ]
 
+/** The stage a candidate joins a job at when none was picked: the job's first. */
+async function firstStageOf(admin: any, jobId: string, stageId: string | null | undefined): Promise<string | null> {
+  if (stageId) return stageId
+  const { data } = await admin
+    .from('job_hiring_stages').select('id').eq('job_id', jobId)
+    .order('position', { ascending: true }).limit(1).maybeSingle()
+  return data?.id ?? null
+}
+
 const blank = (v: unknown) =>
   v === null || v === undefined || (typeof v === 'string' && v.trim() === '')
 
@@ -175,7 +184,7 @@ serve(async (req) => {
         await admin.from('job_candidate_associations').insert({
           job_id: body.job_id,
           candidate_id: created.id,
-          current_stage_id: body.stage_id ?? null,
+          current_stage_id: await firstStageOf(admin, body.job_id, body.stage_id),
           notes: body.notes ?? null,
           status: 'active',
           added_by: user.id,
@@ -219,7 +228,7 @@ serve(async (req) => {
         const { error: assocErr } = await admin.from('job_candidate_associations').insert({
           job_id: body.job_id,
           candidate_id: survivingId,
-          current_stage_id: body.stage_id ?? null,
+          current_stage_id: await firstStageOf(admin, body.job_id, body.stage_id),
           notes: body.notes ?? null,
           status: 'active',
           added_by: user.id,
