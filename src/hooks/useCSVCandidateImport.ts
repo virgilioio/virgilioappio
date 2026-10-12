@@ -1,3 +1,4 @@
+import { autoMergeIntoExisting, checkForDuplicateCandidate } from '@/lib/candidateHelpers'
 import { useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -80,19 +81,13 @@ export function useCSVCandidateImport() {
 
       const results = await Promise.allSettled(
         batch.map(async (candidate) => {
-          // Check for duplicate by email
-          if (candidate.email) {
-            const { data: existing } = await supabase
-              .from('candidates')
-              .select('id')
-              .eq('email', candidate.email)
-              .eq('organization_id', organizationId)
-              .is('deleted_at', null)
-              .maybeSingle()
-
-            if (existing) {
-              return 'duplicate'
-            }
+          // Already in Gio? (Find Phase 1, 2026-10-12) A strong match with
+          // nothing contradicting it fills the existing record instead of
+          // adding a second one; weaker matches go to the duplicates queue.
+          const match = await checkForDuplicateCandidate(candidate as any, organizationId, tenant.id)
+          if (match?.autoMergeable) {
+            await autoMergeIntoExisting(match.existingCandidate.id, candidate as any)
+            return 'duplicate'
           }
 
           // Insert candidate
@@ -154,8 +149,8 @@ export function useCSVCandidateImport() {
     setProgress(prev => ({ ...prev, isRunning: false }))
 
     toast({
-      title: 'CSV Import Complete',
-      description: `${created} created, ${duplicates} duplicates skipped, ${errors} errors`,
+      title: 'Import finished',
+      description: `${created} added, ${duplicates} already in Gio (their profiles were updated), ${errors} couldn't be imported.`,
     })
 
     return { created, duplicates, errors }
