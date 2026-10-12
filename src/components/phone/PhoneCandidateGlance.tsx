@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Linkedin, Mail, MapPin, MessageCircle, Monitor, Phone } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
+import { Linkedin, Mail, MapPin, MessageCircle, Monitor, Phone } from 'lucide-react'
 import { format } from 'date-fns'
 import { useIndependentCandidate } from '@/hooks/useIndependentCandidate'
 import { useCandidateJobAssociations, type CandidateJobAssociation } from '@/hooks/useCandidateJobAssociations'
@@ -10,7 +10,6 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { RATING_META, RATING_VALUES, coerceRating } from '@/lib/scorecardRatings'
 import { buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { ensureAbsoluteUrl } from '@/lib/utils'
-import { IconTip } from '@/components/ui/tooltip'
 import { AgendaRow } from './PhoneAgenda'
 import { Initials, PhoneCard, PhoneEmpty, PhonePage, PhoneSection, PhoneSkeletonRows, Pill } from './PhoneUI'
 
@@ -44,7 +43,6 @@ function statusTone(status: string | null): 'purple' | 'green' | 'red' | 'amber'
 
 export default function PhoneCandidateGlance() {
   const { candidateId = '' } = useParams()
-  const navigate = useNavigate()
   const permissions = usePermissions()
   const { candidate, isLoading } = useIndependentCandidate(candidateId)
   const { jobAssociations, isLoading: assocLoading } = useCandidateJobAssociations(candidateId || null)
@@ -62,7 +60,6 @@ export default function PhoneCandidateGlance() {
   if (!isLoading && !candidate) {
     return (
       <PhonePage>
-        <BackLink onBack={() => navigate(-1)} />
         <PhoneCard><PhoneEmpty>This candidate doesn’t exist or you don’t have access.</PhoneEmpty></PhoneCard>
       </PhonePage>
     )
@@ -83,7 +80,6 @@ export default function PhoneCandidateGlance() {
 
   return (
     <PhonePage>
-      <BackLink onBack={() => navigate(-1)} />
 
       {/* Who */}
       <div className="mb-5 flex items-start gap-3.5">
@@ -156,23 +152,6 @@ export default function PhoneCandidateGlance() {
         Résumé, emails and editing are on the computer.
       </p>
     </PhonePage>
-  )
-}
-
-function BackLink({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="mb-3 -ml-1">
-      <IconTip label="Back">
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={onBack}
-          className="gio-pressable inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0d0d09] active:bg-[#EDEAE2]"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-      </IconTip>
-    </div>
   )
 }
 

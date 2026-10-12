@@ -1659,3 +1659,49 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
 
 /* §12 Search: the clear (×) button fades in (120ms) when there's text. */
 button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
+
+/* ─────────────── Phone frame (2026-10-12) ───────────────
+ * Gio Docs' phone frame (PhoneShell.tsx): round top tabs, floating round
+ * buttons and a floating bottom bar. Safe areas keep them clear of the notch
+ * and the home indicator. */
+.gio-phone-float {
+  background: #fff;
+  border: 1px solid #F1F0EC;
+  box-shadow: 0 6px 20px rgba(13, 13, 9, 0.1);
+}
+.gio-phone-float.gio-phone-float-active {
+  background: #0d0d09;
+  border-color: #0d0d09;
+}
+.gio-phone-circle {
+  border: 1px solid #F1F0EC;
+  box-shadow: 0 4px 14px rgba(13, 13, 9, 0.08);
+}
+.gio-phone-tabs {
+  overflow-x: clip; /* the pills' fills reach past their tabs */
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+}
+.gio-phone-tab {
+  transition: color var(--dur-tabs) var(--ease-in-out);
+}
+/* A pill's fill: wider than its tab and clipped to it at rest, so a change of
+   tab can slide the clip's edges instead of jumping. */
+.gio-phone-tab-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -400px;
+  right: -400px;
+  clip-path: inset(0 400px 0 400px round 26px);
+  pointer-events: none;
+  transition: background-color var(--dur-tabs) var(--ease-in-out);
+}
+.gio-phone-bottom {
+  gap: 12px;
+  padding: 0 16px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.gio-phone-top {
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 0;
+}

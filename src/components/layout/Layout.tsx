@@ -81,7 +81,7 @@ export function Layout() {
               className={
                 isReview
                   ? 'pt-0 pb-0 min-h-[100dvh]'
-                  : 'pt-[calc(env(safe-area-inset-top,0px)+68px)] sm:pt-16 pb-28 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)] sm:[--tbl-page-top:4rem]'
+                  : 'pt-[calc(env(safe-area-inset-top,0px)+72px)] sm:pt-16 pb-28 sm:pb-0 min-h-screen sm:min-h-[calc(100vh-4rem)] sm:[--tbl-page-top:4rem]'
               }
             >
               <Outlet />

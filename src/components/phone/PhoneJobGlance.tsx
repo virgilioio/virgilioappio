@@ -1,11 +1,10 @@
 import { useMemo } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, MapPin, Monitor } from 'lucide-react'
+import { MapPin, Monitor } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useScheduledBookings } from '@/hooks/useScheduledBookings'
-import { IconTip } from '@/components/ui/tooltip'
 import { AgendaRow } from './PhoneAgenda'
 import { Initials, PhoneCard, PhoneEmpty, PhonePage, PhoneRow, PhoneSection, PhoneSkeletonRows, Pill } from './PhoneUI'
 
@@ -31,7 +30,6 @@ const daysSince = (iso: string | null) => (iso ? Math.max(0, Math.floor((Date.no
 export default function PhoneJobGlance() {
   const params = useParams()
   const jobId = params.jobId ?? params.id ?? ''
-  const navigate = useNavigate()
   const permissions = usePermissions()
 
   const job = useQuery({
@@ -91,7 +89,6 @@ export default function PhoneJobGlance() {
   if (job.isFetched && !job.data) {
     return (
       <PhonePage>
-        <Back onBack={() => navigate(-1)} />
         <PhoneCard><PhoneEmpty>This job doesn’t exist or you don’t have access.</PhoneEmpty></PhoneCard>
       </PhonePage>
     )
@@ -99,7 +96,6 @@ export default function PhoneJobGlance() {
 
   return (
     <PhonePage>
-      <Back onBack={() => navigate(-1)} />
       <div className="mb-5">
         {job.isLoading ? (
           <div className="space-y-2"><span className="gio-shimmer block h-6 w-3/4 rounded" /><span className="gio-shimmer block h-3.5 w-1/2 rounded" /></div>
@@ -186,17 +182,5 @@ export default function PhoneJobGlance() {
         Moving people and editing the job are on the computer.
       </p>
     </PhonePage>
-  )
-}
-
-function Back({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="mb-3 -ml-1">
-      <IconTip label="Back">
-        <button type="button" aria-label="Back" onClick={onBack} className="gio-pressable inline-flex h-9 w-9 items-center justify-center rounded-full text-[#0d0d09] active:bg-[#EDEAE2]">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-      </IconTip>
-    </div>
   )
 }

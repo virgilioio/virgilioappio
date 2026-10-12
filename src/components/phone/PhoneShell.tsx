@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Briefcase, CalendarDays, LogOut, Search, Settings, Sun, Users } from 'lucide-react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Briefcase, CalendarDays, LogOut, Search, Settings, Sun, Users, type LucideIcon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { IconTip } from '@/components/ui/tooltip'
 import { SearchResultsDialog } from '@/components/search/SearchResultsDialog'
+import { AtsGlyph, DashboardGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -12,18 +13,46 @@ import { cn } from '@/lib/utils'
 import { BookingLinkCard } from './BookingLinkCard'
 
 /**
- * The phone shell (2026-10-12): the desktop's dark pill top bar (logo,
- * search, you) and a matching dark tab bar for what a consultant needs on
- * the road — Today, Jobs, Candidates, Calendar. Analytics, Intelligence and
- * chat stay on the computer. Replaces the old bottom nav and its mascot.
+ * The phone shell (2026-10-12), in Gio Docs' phone frame so the two products
+ * feel like one family:
+ * - Section screens open with a row of round tabs at the top: you (account,
+ *   booking link, settings), then pills for the module's sections — the
+ *   current one names itself, the others show only their icon. Switching
+ *   slides the pills (clip-path + transform, --dur-tabs / --ease-in-out).
+ * - A record (a job, a candidate) runs under a floating round Back button.
+ * - At the bottom floats a bar: the module glyphs from the desktop rail
+ *   (Dashboard, ATS) as round buttons, then a wide Search pill.
+ * Analytics, Intelligence and chat stay on the computer.
  */
 
-const TABS = [
-  { href: '/dashboard', label: 'Today', Icon: Sun, match: (p: string) => p === '/' || p === '/dashboard', show: () => true },
-  { href: '/jobs', label: 'Jobs', Icon: Briefcase, match: (p: string) => p.startsWith('/jobs'), show: (perm: ReturnType<typeof usePermissions>) => perm.canViewJobs },
-  { href: '/candidates', label: 'Candidates', Icon: Users, match: (p: string) => p.startsWith('/candidates'), show: (perm: ReturnType<typeof usePermissions>) => perm.canViewCandidates },
-  { href: '/calendar', label: 'Calendar', Icon: CalendarDays, match: (p: string) => p.startsWith('/calendar'), show: () => true },
+type Perm = ReturnType<typeof usePermissions>
+type ModuleId = 'home' | 'ats'
+
+interface Section { id: string; href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean; show: (perm: Perm) => boolean }
+
+const SECTIONS: Record<ModuleId, Section[]> = {
+  home: [
+    { id: 'today', href: '/dashboard', label: 'Today', Icon: Sun, match: p => p === '/' || p === '/dashboard', show: () => true },
+  ],
+  ats: [
+    { id: 'jobs', href: '/jobs', label: 'Jobs', Icon: Briefcase, match: p => p === '/jobs', show: perm => perm.canViewJobs },
+    { id: 'candidates', href: '/candidates', label: 'Candidates', Icon: Users, match: p => p === '/candidates', show: perm => perm.canViewCandidates },
+    { id: 'calendar', href: '/calendar', label: 'Calendar', Icon: CalendarDays, match: p => p === '/calendar', show: () => true },
+  ],
+}
+
+const MODULES: { id: ModuleId; label: string; Glyph: ModuleGlyph }[] = [
+  { id: 'home', label: 'Dashboard', Glyph: DashboardGlyph },
+  { id: 'ats', label: 'ATS', Glyph: AtsGlyph },
 ]
+
+const ATS_PREFIXES = ['/jobs', '/candidates', '/calendar', '/pipeline', '/find']
+
+function moduleOf(pathname: string): ModuleId | null {
+  if (pathname === '/' || pathname === '/dashboard') return 'home'
+  if (ATS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'ats'
+  return null
+}
 
 function useMe() {
   const { user } = useAuth()
@@ -33,88 +62,211 @@ function useMe() {
     : profile?.first_name) || user?.email?.split('@')[0] || 'You'
   const initials = profile?.first_name && profile?.last_name
     ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
-    : user?.email?.[0]?.toUpperCase() || 'U'
+    : user?.email?.[0]?.toUpperCase() || '?'
   return { name, initials, email: user?.email ?? '', avatar: profile?.avatar_url ?? undefined }
 }
 
 export function PhoneShell() {
-  const location = useLocation()
+  const { pathname, key } = useLocation()
+  const navigate = useNavigate()
   const perm = usePermissions()
   const me = useMe()
   const [searchOpen, setSearchOpen] = useState(false)
   const [youOpen, setYouOpen] = useState(false)
-  const tabs = TABS.filter(t => t.show(perm))
+
+  const mod = moduleOf(pathname)
+  const sections = mod ? SECTIONS[mod].filter(s => s.show(perm)) : []
+  const current = sections.find(s => s.match(pathname))
+  const modules = MODULES.filter(m => SECTIONS[m.id].some(s => s.show(perm)))
+  const back = () => {
+    // Opened straight from a link (no history inside the app): go to the module.
+    if (key === 'default') navigate(mod === 'ats' ? (pathname.startsWith('/candidates') ? '/candidates' : '/jobs') : '/dashboard')
+    else navigate(-1)
+  }
 
   return (
     <>
-      {/* Top bar */}
-      <header
-        className="sm:hidden fixed left-3 right-3 z-50 flex h-12 items-center justify-between rounded-2xl pl-1 pr-1.5 ring-1 ring-white/[0.06] shadow-[0_2px_10px_-4px_rgba(0,0,0,0.35)]"
-        style={{ backgroundColor: '#0d0d09', top: 'calc(env(safe-area-inset-top, 0px) + 10px)' }}
-      >
-        <Link to="/dashboard" aria-label="Gio ATS, today" className="flex items-center">
-          <img src="/brand/gio-ats-logo.png" alt="Gio ATS" className="block h-11 w-auto" />
-        </Link>
-        <div className="flex items-center gap-1">
-          <IconTip label="Search">
-            <button
-              type="button"
-              aria-label="Search"
-              onClick={() => setSearchOpen(true)}
-              className="gio-pressable inline-flex h-9 w-9 items-center justify-center rounded-xl text-white/80 active:bg-white/[0.08]"
-            >
-              <Search className="h-[18px] w-[18px]" />
-            </button>
-          </IconTip>
-          <IconTip label="You, your booking link and settings">
-            <button
-              type="button"
-              aria-label="You, your booking link and settings"
-              onClick={() => setYouOpen(true)}
-              className="gio-pressable inline-flex h-9 w-9 items-center justify-center rounded-xl active:bg-white/[0.08]"
-            >
-              <Avatar className="h-7 w-7">
-                <AvatarImage src={me.avatar} alt="" />
-                <AvatarFallback className="bg-white/10 text-[11px] font-poppins font-semibold text-white">{me.initials}</AvatarFallback>
-              </Avatar>
-            </button>
-          </IconTip>
+      {current ? (
+        <PhoneTopTabs sections={sections} current={current.id} me={me} onAccount={() => setYouOpen(true)} />
+      ) : (
+        <div className="gio-phone-top sm:hidden pointer-events-none fixed inset-x-0 top-0 z-50 flex items-center">
+          <Circle label="Back" onClick={back} size={48}>
+            <ArrowLeft className="h-[22px] w-[22px]" strokeWidth={2} />
+          </Circle>
         </div>
-      </header>
+      )}
 
-      {/* Tab bar */}
-      <div
-        className="sm:hidden fixed bottom-0 left-0 right-0 z-50 px-3"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 10px)' }}
-      >
-        <nav
-          aria-label="Main"
-          className="flex h-[62px] items-center gap-1 rounded-2xl p-1.5 ring-1 ring-white/[0.06] shadow-[0_8px_24px_rgba(15,18,34,0.18)]"
-          style={{ backgroundColor: '#0d0d09' }}
-        >
-          {tabs.map(({ href, label, Icon, match }) => {
-            const active = match(location.pathname)
+      <div className="gio-phone-bottom sm:hidden pointer-events-none fixed inset-x-0 bottom-0 z-50 flex items-center">
+        <nav aria-label="Modules" className="flex items-center gap-3">
+          {modules.map(({ id, label, Glyph }) => {
+            const active = mod === id
+            const href = SECTIONS[id].find(s => s.show(perm))!.href
             return (
-              <Link
-                key={href}
-                to={href}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'gio-pressable flex h-full flex-1 flex-col items-center justify-center gap-0.5 rounded-xl font-poppins text-[11px] tracking-[-0.01em] transition-colors duration-150',
-                  active ? 'bg-[#fffcf9] font-semibold text-[#0d0d09]' : 'font-medium text-[rgba(255,252,249,0.72)]',
-                )}
-              >
-                <Icon className="h-[19px] w-[19px]" strokeWidth={2} />
-                {label}
-              </Link>
+              <IconTip key={id} label={label}>
+                <Link
+                  to={href}
+                  aria-label={label}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'gio-pressable gio-phone-float pointer-events-auto grid h-14 w-14 shrink-0 place-items-center rounded-full transition-colors duration-150',
+                    active ? 'gio-phone-float-active text-[#fffcf9] [&_.accent]:fill-[#D7C5FB]' : 'text-[#0d0d09]',
+                  )}
+                >
+                  <Glyph className="h-[34px] w-[34px]" />
+                </Link>
+              </IconTip>
             )
           })}
         </nav>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          aria-label="Search"
+          className="gio-pressable gio-phone-float pointer-events-auto flex h-14 min-w-0 flex-1 items-center gap-2.5 rounded-full px-5 font-inter text-[16px] text-[#5A6072]"
+        >
+          <Search className="h-[21px] w-[21px] shrink-0" strokeWidth={2} />
+          <span className="truncate">Search</span>
+        </button>
       </div>
 
       <SearchResultsDialog open={searchOpen} onOpenChange={setSearchOpen} initialQuery="" />
       <YouSheet open={youOpen} onOpenChange={setYouOpen} me={me} />
     </>
+  )
+}
+
+function Circle({ label, onClick, size = 56, children }: { label: string; onClick: () => void; size?: number; children: ReactNode }) {
+  return (
+    <IconTip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className="gio-pressable gio-phone-float pointer-events-auto grid shrink-0 place-items-center rounded-full text-[#0d0d09]"
+        style={{ width: size, height: size }}
+      >
+        {children}
+      </button>
+    </IconTip>
+  )
+}
+
+/* ────────────── Top tabs (Gio Docs' PhoneTopTabs) ────────────── */
+
+type TabRects = Record<string, { left: number; right: number; icon: number }>
+const FILL_REACH = 400 // how far a pill's fill reaches past its tab (clipped)
+const restClip = `inset(0 ${FILL_REACH}px 0 ${FILL_REACH}px round 26px)`
+
+function toMs(v: string): number | null {
+  const n = parseFloat(v)
+  if (!Number.isFinite(n)) return null
+  return /ms\s*$/.test(v) ? n : n * 1000
+}
+
+function readTabRects(nav: HTMLElement): TabRects {
+  const out: TabRects = {}
+  nav.querySelectorAll<HTMLElement>('[data-tab]').forEach(el => {
+    const r = el.getBoundingClientRect()
+    const icon = el.querySelector<HTMLElement>('[data-tab-icon]')?.getBoundingClientRect()
+    out[el.dataset.tab!] = { left: r.left, right: r.right, icon: icon ? icon.left : r.left }
+  })
+  return out
+}
+
+/** The pills slide to their new sizes: each fill's edges move from where they
+ *  were (clip-path), the icon glides (transform), the picked tab's name fades
+ *  in. Nothing animates layout; reduced motion keeps only the colours. */
+function slideTabs(nav: HTMLElement, from: TabRects) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  const css = getComputedStyle(document.documentElement)
+  const duration = toMs(css.getPropertyValue('--dur-tabs')) ?? 260
+  const easing = css.getPropertyValue('--ease-in-out').trim() || 'ease-in-out'
+  const to = readTabRects(nav)
+  nav.querySelectorAll<HTMLElement>('[data-tab]').forEach(el => {
+    const id = el.dataset.tab!
+    const a = from[id]
+    const b = to[id]
+    if (!a || !b) return
+    const fill = el.querySelector<HTMLElement>('[data-tab-fill]')
+    const icon = el.querySelector<HTMLElement>('[data-tab-icon]')
+    const label = el.querySelector<HTMLElement>('[data-tab-label]')
+    const stop = (x: Animation) => (typeof CSSTransition !== 'undefined' && x instanceof CSSTransition ? null : x.cancel())
+    fill?.getAnimations().forEach(stop)
+    icon?.getAnimations().forEach(stop)
+    const l = FILL_REACH + (a.left - b.left)
+    const r = FILL_REACH + (b.right - a.right)
+    fill?.animate([{ clipPath: `inset(0 ${r}px 0 ${l}px round 26px)` }, { clipPath: restClip }], { duration, easing })
+    const dx = a.icon - b.icon
+    if (dx) icon?.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration, easing })
+    label?.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1 }], { duration, easing: 'linear' })
+  })
+}
+
+function PhoneTopTabs({ sections, current, me, onAccount }: {
+  sections: Section[]
+  current: string
+  me: ReturnType<typeof useMe>
+  onAccount: () => void
+}) {
+  const navRef = useRef<HTMLElement | null>(null)
+  const before = useRef<TabRects | null>(null)
+  const ids = sections.map(s => s.id).join(',')
+  const capture = () => { if (navRef.current) before.current = readTabRects(navRef.current) }
+  useLayoutEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    // Only slide between tabs of the same row (a module switch just appears).
+    if (before.current && Object.keys(before.current).join(',') === ids) slideTabs(nav, before.current)
+    before.current = readTabRects(nav)
+  }, [current, ids])
+
+  return (
+    <nav
+      ref={navRef}
+      aria-label="Sections"
+      className="gio-phone-tabs sm:hidden fixed inset-x-0 top-0 z-50 flex items-center bg-[#F6F5F1]"
+      onPointerDownCapture={capture}
+      onClickCapture={capture}
+    >
+      <IconTip label="You, your booking link and settings">
+        <button
+          type="button"
+          onClick={onAccount}
+          aria-label="You, your booking link and settings"
+          className="gio-pressable gio-phone-circle grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-white"
+        >
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={me.avatar} alt="" />
+            <AvatarFallback className="bg-[#0d0d09] font-poppins font-semibold text-[13px] text-[#fffcf9]">{me.initials}</AvatarFallback>
+          </Avatar>
+        </button>
+      </IconTip>
+      {sections.map(({ id, href, label, Icon }) => {
+        const active = id === current
+        return (
+          <Link
+            key={id}
+            to={href}
+            aria-label={label}
+            aria-current={active ? 'page' : undefined}
+            data-tab={id}
+            className={cn(
+              'gio-pressable gio-phone-tab relative flex h-[52px] min-w-0 items-center justify-center gap-2.5',
+              active ? 'text-[#0d0d09]' : 'text-[#5A6072]',
+            )}
+            style={{ flex: active ? '2 1 0' : '1 1 0' }}
+          >
+            <span aria-hidden data-tab-fill className={cn('gio-phone-tab-fill', active ? 'bg-[#E5E3DA]' : 'bg-[#ECEAE3]')} />
+            <span data-tab-icon className="relative grid shrink-0 place-items-center">
+              <Icon className="h-[22px] w-[22px]" strokeWidth={2} />
+            </span>
+            {active && (
+              <span data-tab-label className="relative truncate font-poppins font-semibold text-[17px] tracking-[-0.01em]">{label}</span>
+            )}
+          </Link>
+        )
+      })}
+    </nav>
   )
 }
 
