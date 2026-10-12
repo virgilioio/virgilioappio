@@ -1411,6 +1411,13 @@ export default function PublicJobPosting() {
                       </div>
                     )}
 
+                    <p className="pt-4 text-[13px] leading-relaxed text-text-secondary">
+                      By applying, you let Virgilio, the recruiting firm running this search, use your information to
+                      consider you for this and similar roles, as our{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">Privacy Policy</a>{' '}
+                      explains. You can ask us to delete it at any time.
+                    </p>
+
                     <div className="pt-4">
                       <Button 
                         type="button" 

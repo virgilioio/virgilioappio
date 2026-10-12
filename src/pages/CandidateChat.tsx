@@ -1043,7 +1043,8 @@ function Composer({
 
       <div className="mt-[11px] flex items-center justify-center gap-1.5 font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>
         <GioWordmark height={11} />
-        <span>· Private to you and the hiring team</span>
+        <span>· Private to you and the hiring team ·</span>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2" style={{ color: '#6B7080' }}>Privacy</a>
       </div>
     </div>
   )

@@ -222,7 +222,10 @@ export function BookingConfirmationForm({
 
               {/* Privacy consent */}
               <p className="text-xs text-virgilio-muted leading-relaxed pt-2">
-                By scheduling, you agree to our terms and privacy policy. We'll send you email reminders about this meeting.
+                By scheduling, you agree to our{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Terms of Use</a> and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Privacy Policy</a>.
+                We'll send you email reminders about this meeting.
               </p>
 
               <Button
