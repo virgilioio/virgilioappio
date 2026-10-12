@@ -9750,6 +9750,13 @@ export type Database = {
         }
         Returns: string
       }
+      email_attachment_orphans: {
+        Args: { p_limit?: number }
+        Returns: {
+          name: string
+          size: number
+        }[]
+      }
       emit_notification: {
         Args: {
           _action_url: string
