@@ -221,6 +221,9 @@ async function runTenant(tenantId: string, opts: { dryRun: boolean; maxPeople: n
         if (k) perCompany.set(k, (perCompany.get(k) ?? 0) + 1);
       }
       report.picked = picked.length;
+      // The picks are what this run allocates; a person Apollo can't match
+      // costs nothing, so real spend is at most this.
+      left -= picked.length;
       if (opts.dryRun || picked.length === 0) continue;
 
       for (let j = 0; j < picked.length; j += COLLECT_CHUNK) {
@@ -235,7 +238,6 @@ async function runTenant(tenantId: string, opts: { dryRun: boolean; maxPeople: n
         report.merged += res?.merged_count ?? 0;
         report.credits += used;
         run.credits_used += used;
-        left -= used;
         if (res?.error_code === 'CREDITS_EXHAUSTED') { run.stopped_reason = 'Apollo credits ran out'; left = 0; break; }
       }
       run.collected += report.collected;
@@ -244,7 +246,7 @@ async function runTenant(tenantId: string, opts: { dryRun: boolean; maxPeople: n
       report.error = err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300);
     }
   }
-  if (!run.stopped_reason && allowance > 0 && left > 0 && !opts.dryRun) run.stopped_reason = 'No more new people above the fit bar';
+  if (!run.stopped_reason && allowance > 0 && left > 0) run.stopped_reason = 'No more new people above the fit bar';
 
   const { data: saved, error: saveError } = await admin.from('talent_pool_runs').insert(run).select('id').single();
   if (saveError) console.error('talent_pool_runs insert failed:', saveError.message);
