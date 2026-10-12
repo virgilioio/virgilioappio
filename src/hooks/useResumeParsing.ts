@@ -269,7 +269,27 @@ export function useResumeParsing() {
       console.log('[Resume Parsing] Update object to be sent:', update);
 
       if (Object.keys(update).length > 0) {
-        const { error: upErr } = await supabase.from('candidates').update(update).eq('id', candidateId);
+        // Profile facts go through the one path for outside data (Find
+        // Phase 3), so they're recorded as "from the résumé", not as a
+        // person's edit. The summary and contact lists are written directly.
+        const FACTS = ['candidate_name', 'linkedin_url', 'current_job_title', 'company_current', 'location_city', 'location_state', 'location_country'];
+        const facts: Record<string, string> = {};
+        const rest: Record<string, any> = {};
+        for (const [k, v] of Object.entries(update)) {
+          if (FACTS.includes(k)) facts[k] = v as string;
+          else rest[k] = v;
+        }
+        let upErr: unknown = null;
+        if (Object.keys(facts).length > 0) {
+          const { error } = await supabase.rpc('apply_candidate_update', {
+            p_candidate_id: candidateId, p_source: 'resume', p_fields: facts, p_mode: 'fill',
+          });
+          upErr = error;
+        }
+        if (!upErr && Object.keys(rest).length > 0) {
+          const { error } = await supabase.from('candidates').update(rest).eq('id', candidateId);
+          upErr = error;
+        }
         console.log('[Resume Parsing] Database update result:', { success: !upErr, error: upErr });
         if (upErr) {
           console.error('Failed to update candidate with parsed data:', upErr);

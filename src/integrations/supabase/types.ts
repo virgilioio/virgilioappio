@@ -326,6 +326,7 @@ export type Database = {
         Row: {
           cycle_day: number
           monthly_credits: number
+          refresh_cap_credits: number
           reserve_credits: number
           tenant_id: string
           updated_at: string
@@ -333,6 +334,7 @@ export type Database = {
         Insert: {
           cycle_day: number
           monthly_credits: number
+          refresh_cap_credits: number
           reserve_credits?: number
           tenant_id: string
           updated_at?: string
@@ -340,6 +342,7 @@ export type Database = {
         Update: {
           cycle_day?: number
           monthly_credits?: number
+          refresh_cap_credits?: number
           reserve_credits?: number
           tenant_id?: string
           updated_at?: string
@@ -1713,6 +1716,8 @@ export type Database = {
           email: string | null
           email_status: string | null
           enriched_at: string | null
+          field_provenance: Json
+          profile_refreshed_at: string | null
           enrichment_status: string | null
           external_application_id: string | null
           functional_area: string | null
@@ -1776,6 +1781,8 @@ export type Database = {
           email?: string | null
           email_status?: string | null
           enriched_at?: string | null
+          field_provenance?: Json
+          profile_refreshed_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
           functional_area?: string | null
@@ -1839,6 +1846,8 @@ export type Database = {
           email?: string | null
           email_status?: string | null
           enriched_at?: string | null
+          field_provenance?: Json
+          profile_refreshed_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
           functional_area?: string | null
@@ -10092,6 +10101,16 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_candidate_update: {
+        Args: {
+          p_actor?: string
+          p_candidate_id: string
+          p_fields: Json
+          p_mode?: string
+          p_source: string
+        }
+        Returns: Json
+      }
       job_entry_stage: { Args: { p_job: string }; Returns: string }
       pool_builder_secret_matches: {
         Args: { p_secret: string }
@@ -10240,6 +10259,7 @@ export type Database = {
         | "sequence_completed"
         | "client_dossier_viewed"
         | "client_dossier_decision"
+        | "candidate_job_changed"
       application_field_source: "library" | "custom"
       automation_action:
         | "email"
@@ -10365,6 +10385,7 @@ export type Database = {
         | "daily_digest"
         | "chat_message"
         | "talent_pool"
+        | "candidate_update"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -10618,6 +10639,7 @@ export const Constants = {
         "sequence_completed",
         "client_dossier_viewed",
         "client_dossier_decision",
+        "candidate_job_changed",
       ],
       application_field_source: ["library", "custom"],
       automation_action: [
@@ -10760,6 +10782,7 @@ export const Constants = {
         "daily_digest",
         "chat_message",
         "talent_pool",
+        "candidate_update",
       ],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
