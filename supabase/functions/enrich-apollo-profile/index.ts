@@ -17,7 +17,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
-import { callerFromRequest } from "../_shared/caller.ts";
+import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import {
   creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl,
@@ -88,7 +88,7 @@ async function addToJob(db: SupabaseClient, jobId: string, candidateId: string, 
 }
 
 /** Marks the person collected in the project (state table + cache row). */
-async function markCollected(db: SupabaseClient, projectId: string, apolloId: string, candidateId: string, userId: string, at: string) {
+async function markCollected(db: SupabaseClient, projectId: string, apolloId: string, candidateId: string, userId: string, at: string, pool = false) {
   const { data: row } = await db
     .from('sourcing_project_candidates')
     .select('id, collected_at')
@@ -109,6 +109,7 @@ async function markCollected(db: SupabaseClient, projectId: string, apolloId: st
       candidate_id: candidateId,
       collected_at: at,
       collected_by: userId,
+      added_by_pool: pool,
     });
     if (error) console.warn('Project state insert failed:', error.message);
   }
@@ -183,11 +184,15 @@ serve(async (req) => {
   try {
     if (!APOLLO_API_KEY) return json({ error: 'Apollo is not configured' }, 500, cors);
 
-    const caller = await callerFromRequest(req, supabase);
-    if (!caller) return json({ error: 'Sign in to collect' }, 401, cors);
-    const userId = caller.userId;
+    // The pool builder calls with the service key (Find Phase 2); everyone
+    // else signs in, and only reaches their own workspaces.
+    const service = isServiceCall(req);
+    const caller = service ? null : await callerFromRequest(req, supabase);
+    if (!service && !caller) return json({ error: 'Sign in to collect' }, 401, cors);
+    const memberOf = (tenant: string | null | undefined) => (service ? !!tenant : !!caller!.memberOf(tenant));
 
     const body = await req.json();
+    const pool = service && body.pool === true;
     const requested: string[] = (Array.isArray(body.apollo_ids) ? body.apollo_ids : body.apollo_id ? [body.apollo_id] : [])
       .filter((x: unknown): x is string => typeof x === 'string' && x.length > 0);
     const ids = Array.from(new Set(requested));
@@ -196,37 +201,45 @@ serve(async (req) => {
     const projectId: string | null = body.sourcing_project_id || null;
     // Phones cost Apollo 8 credits each on top of the 1 for the person, so
     // Collect asks for them only on "Collect with phone" and "Get phone".
-    const withPhone = body.with_phone === true;
+    const withPhone = body.with_phone === true && !pool;
     if (ids.length === 0) return json({ error: 'apollo_ids is required' }, 400, cors);
 
     // ── Workspace: from the job or project, checked against the caller ──
     let tenantId: string | null = null;
     let organizationId: string | null = null;
+    let projectOwner: string | null = null;
     if (jobId) {
       const { data: job } = await supabase.from('jobs').select('organization_id, tenant_id').eq('id', jobId).maybeSingle();
-      if (!job || !caller.memberOf(job.tenant_id)) return json({ error: 'Job not found' }, 404, cors);
+      if (!job || !memberOf(job.tenant_id)) return json({ error: 'Job not found' }, 404, cors);
       tenantId = job.tenant_id;
       organizationId = job.organization_id;
     }
     if (projectId) {
       const { data: project } = await supabase
         .from('sourcing_projects')
-        .select('organization_id, organizations!inner(tenant_id)')
+        .select('organization_id, created_by, organizations!inner(tenant_id)')
         .eq('id', projectId)
         .maybeSingle();
       const projectTenant = (project as any)?.organizations?.tenant_id ?? null;
-      if (!project || !caller.memberOf(projectTenant) || (tenantId && tenantId !== projectTenant)) {
+      if (!project || !memberOf(projectTenant) || (tenantId && tenantId !== projectTenant)) {
         return json({ error: 'Sourcing project not found' }, 404, cors);
       }
       tenantId = projectTenant;
       organizationId = organizationId ?? project.organization_id;
+      projectOwner = (project as any).created_by ?? null;
     }
+    if (!tenantId && service) return json({ error: 'sourcing_project_id is required' }, 400, cors);
     if (!tenantId) {
-      const m = caller.memberships[0];
+      const m = caller!.memberships[0];
       if (!m) return json({ error: 'You are not an active member of a workspace' }, 403, cors);
       tenantId = m.tenant_id;
       organizationId = m.organization_id;
     }
+
+    // Who did it: the signed-in user, or for the pool the project's owner.
+    const userId: string | null = caller?.userId
+      ?? (typeof body.acting_user_id === 'string' ? body.acting_user_id : projectOwner);
+    if (!userId) return json({ error: 'No one to record this collect against' }, 400, cors);
 
     const status = await creditStatus(supabase, tenantId);
     if (!status.configured) {
@@ -252,7 +265,7 @@ serve(async (req) => {
         await supabase.from('candidates').update({ apollo_collected_at: at }).eq('id', c.id).is('apollo_collected_at', null);
       }
       if (jobId) await addToJob(supabase, jobId, c.id, stageId, userId);
-      if (projectId) await markCollected(supabase, projectId, c.apollo_id, c.id, userId, at);
+      if (projectId) await markCollected(supabase, projectId, c.apollo_id, c.id, userId, at, pool);
       results.push({
         apollo_id: c.apollo_id,
         candidate_id: c.id,
@@ -312,7 +325,7 @@ serve(async (req) => {
       }
       const matches: ApolloPerson[] = (r.body?.matches || []).filter(Boolean);
       const cost = creditsFromResponse(r.body, matches.length * PERSON_CREDITS);
-      await recordCredits(supabase, { tenantId, kind: 'collect', people: matches.length, credits: cost.credits, estimated: cost.estimated, userId, projectId, note: withPhone ? 'Collect with phone' : 'Collect' });
+      await recordCredits(supabase, { tenantId, kind: 'collect', people: matches.length, credits: cost.credits, estimated: cost.estimated, userId, projectId, note: pool ? 'Talent pool' : withPhone ? 'Collect with phone' : 'Collect' });
       spent += cost.credits;
       remaining -= cost.credits;
 
@@ -394,7 +407,7 @@ serve(async (req) => {
         }
 
         if (jobId) await addToJob(supabase, jobId, candidateId!, stageId, userId);
-        if (projectId) await markCollected(supabase, projectId, person.id, candidateId!, userId, at);
+        if (projectId) await markCollected(supabase, projectId, person.id, candidateId!, userId, at, pool);
 
         const { phone } = phonesOf(person);
         results.push({
