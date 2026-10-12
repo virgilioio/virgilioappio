@@ -62,7 +62,7 @@ async function bulkMatch(ids: string[], webhook: string | null): Promise<{ ok: b
   return { ok: true, body: await res.json(), status: res.status };
 }
 
-/** Adds a candidate to the job's first stage unless already there. */
+/** Adds a candidate to the job's entry stage unless already there. */
 async function addToJob(db: SupabaseClient, jobId: string, candidateId: string, stageId: string | undefined, userId: string) {
   const { data: assoc } = await db
     .from('job_candidate_associations')
@@ -71,16 +71,11 @@ async function addToJob(db: SupabaseClient, jobId: string, candidateId: string, 
     .eq('job_id', jobId)
     .maybeSingle();
   if (assoc) return;
+  // Application Review when the job has it, else its first stage.
   let target = stageId;
   if (!target) {
-    const { data: first } = await db
-      .from('job_hiring_stages')
-      .select('id')
-      .eq('job_id', jobId)
-      .order('position', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    target = first?.id;
+    const { data: entry } = await db.rpc('job_entry_stage', { p_job: jobId });
+    target = entry ?? undefined;
   }
   const { error } = await db.from('job_candidate_associations').insert({
     candidate_id: candidateId,

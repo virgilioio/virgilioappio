@@ -1,9 +1,9 @@
 import { supabase } from '@/lib/supabaseClient'
 
 /**
- * Puts a candidate in a job's first stage, unless they're already in it
- * (2026-10-11). job_candidate_associations has no `stage` column: the stage
- * is current_stage_id, the job's first hiring stage, as Collect does.
+ * Puts a candidate in a job's entry stage, unless they're already in it.
+ * The stage is current_stage_id from job_entry_stage(): Application Review
+ * when the job has it, else its first stage, as Collect does (2026-10-12).
  * Returns false when they were already in the job.
  */
 export async function addCandidateToJob(jobId: string, candidateId: string): Promise<boolean> {
@@ -16,20 +16,15 @@ export async function addCandidateToJob(jobId: string, candidateId: string): Pro
   if (readError) throw readError
   if (existing) return false
 
-  const { data: firstStage, error: stageError } = await supabase
-    .from('job_hiring_stages')
-    .select('id')
-    .eq('job_id', jobId)
-    .order('position', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  // Application Review when the job has it, else its first stage (2026-10-12).
+  const { data: entryStage, error: stageError } = await supabase.rpc('job_entry_stage', { p_job: jobId })
   if (stageError) throw stageError
 
   const { data: { user } } = await supabase.auth.getUser()
   const { error } = await supabase.from('job_candidate_associations').insert({
     job_id: jobId,
     candidate_id: candidateId,
-    current_stage_id: firstStage?.id ?? null,
+    current_stage_id: entryStage ?? null,
     status: 'active',
     added_by: user?.id ?? null,
   })

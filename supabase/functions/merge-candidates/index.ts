@@ -21,10 +21,9 @@ const CANDIDATE_KEYS = [
 /** The stage a candidate joins a job at when none was picked: the job's first. */
 async function firstStageOf(admin: any, jobId: string, stageId: string | null | undefined): Promise<string | null> {
   if (stageId) return stageId
-  const { data } = await admin
-    .from('job_hiring_stages').select('id').eq('job_id', jobId)
-    .order('position', { ascending: true }).limit(1).maybeSingle()
-  return data?.id ?? null
+  // Application Review when the job has it, else its first stage (2026-10-12).
+  const { data } = await admin.rpc('job_entry_stage', { p_job: jobId })
+  return data ?? null
 }
 
 const blank = (v: unknown) =>
