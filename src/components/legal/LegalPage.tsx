@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { GioAtsLogo } from '@/components/brand/GioAtsLogo'
+import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { cn } from '@/lib/utils'
 
 /**
@@ -42,6 +43,9 @@ export function LegalPage({ title, metaTitle, description, path, children }: {
   children: ReactNode
 }) {
   useDocumentMeta(metaTitle, description, path)
+  // Public route: when the visitor is signed in to Gio, nothing else on this
+  // page clears the cold-load splash, so report ready here.
+  useReportSplashReady(true)
   return (
     <div className="min-h-screen bg-[#fffcf9] text-[#1F2230]">
       <header className="mx-auto flex max-w-[760px] items-center px-5 pt-5 sm:px-8 sm:pt-7">
