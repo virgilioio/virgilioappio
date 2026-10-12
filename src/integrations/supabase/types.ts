@@ -7794,6 +7794,14 @@ export type Database = {
           status_changed_by: string | null
           tenant_id: string
           updated_at: string
+          added_by_pool: boolean
+          ai_fit_at: string | null
+          ai_fit_basis: string | null
+          ai_fit_gaps: string[]
+          ai_fit_score: number | null
+          ai_fit_strengths: string[]
+          ai_fit_summary: string | null
+          snapshot: Json
         }
         Insert: {
           apollo_id?: string | null
@@ -7809,6 +7817,14 @@ export type Database = {
           status_changed_by?: string | null
           tenant_id?: string
           updated_at?: string
+          added_by_pool?: boolean
+          ai_fit_at?: string | null
+          ai_fit_basis?: string | null
+          ai_fit_gaps?: string[]
+          ai_fit_score?: number | null
+          ai_fit_strengths?: string[]
+          ai_fit_summary?: string | null
+          snapshot?: Json
         }
         Update: {
           apollo_id?: string | null
@@ -7824,6 +7840,14 @@ export type Database = {
           status_changed_by?: string | null
           tenant_id?: string
           updated_at?: string
+          added_by_pool?: boolean
+          ai_fit_at?: string | null
+          ai_fit_basis?: string | null
+          ai_fit_gaps?: string[]
+          ai_fit_score?: number | null
+          ai_fit_strengths?: string[]
+          ai_fit_summary?: string | null
+          snapshot?: Json
         }
         Relationships: []
       }
@@ -7852,6 +7876,7 @@ export type Database = {
           status: string
           total_candidates: number | null
           updated_at: string | null
+          pool_enabled: boolean
         }
         Insert: {
           coresignal_cache_expires_at?: string | null
@@ -7877,6 +7902,7 @@ export type Database = {
           status?: string
           total_candidates?: number | null
           updated_at?: string | null
+          pool_enabled?: boolean
         }
         Update: {
           coresignal_cache_expires_at?: string | null
@@ -7902,6 +7928,7 @@ export type Database = {
           status?: string
           total_candidates?: number | null
           updated_at?: string | null
+          pool_enabled?: boolean
         }
         Relationships: [
           {
@@ -8830,6 +8857,69 @@ export type Database = {
           trial_source?: string | null
           trial_started_at?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      talent_pool_runs: {
+        Row: {
+          budget_today: number
+          collected: number
+          credits_remaining: number
+          credits_used: number
+          cycle_end: string | null
+          details: Json
+          dry_run: boolean
+          id: string
+          merged: number
+          new_people: number
+          ran_at: string
+          reserve_applied: number
+          searched: number
+          skipped_company_cap: number
+          spent_before: number
+          stopped_reason: string | null
+          summary_sent: boolean
+          tenant_id: string
+        }
+        Insert: {
+          budget_today?: number
+          collected?: number
+          credits_remaining?: number
+          credits_used?: number
+          cycle_end?: string | null
+          details?: Json
+          dry_run?: boolean
+          id?: string
+          merged?: number
+          new_people?: number
+          ran_at?: string
+          reserve_applied?: number
+          searched?: number
+          skipped_company_cap?: number
+          spent_before?: number
+          stopped_reason?: string | null
+          summary_sent?: boolean
+          tenant_id: string
+        }
+        Update: {
+          budget_today?: number
+          collected?: number
+          credits_remaining?: number
+          credits_used?: number
+          cycle_end?: string | null
+          details?: Json
+          dry_run?: boolean
+          id?: string
+          merged?: number
+          new_people?: number
+          ran_at?: string
+          reserve_applied?: number
+          searched?: number
+          skipped_company_cap?: number
+          spent_before?: number
+          stopped_reason?: string | null
+          summary_sent?: boolean
+          tenant_id?: string
         }
         Relationships: []
       }
@@ -10002,6 +10092,11 @@ export type Database = {
         }
         Returns: Json
       }
+      job_entry_stage: { Args: { p_job: string }; Returns: string }
+      pool_builder_secret_matches: {
+        Args: { p_secret: string }
+        Returns: boolean
+      }
       search_candidates: {
         Args: {
           p_cities?: string[]
@@ -10269,6 +10364,7 @@ export type Database = {
         | "posting_status"
         | "daily_digest"
         | "chat_message"
+        | "talent_pool"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -10663,6 +10759,7 @@ export const Constants = {
         "posting_status",
         "daily_digest",
         "chat_message",
+        "talent_pool",
       ],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
