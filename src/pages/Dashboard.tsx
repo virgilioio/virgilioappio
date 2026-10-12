@@ -37,6 +37,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { PhoneToday } from '@/components/phone/PhoneToday'
 
 // ─── Color tokens (page-local; matches global tokens) ───────────────
 const C = {
@@ -226,6 +228,7 @@ export default function Dashboard() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const isPhone = useIsMobile()
 
   const { data: pending, isLoading: pendingLoading, markEmailAsRead } = usePendingActivities()
   const { data: stale } = useStaleCandidates()
@@ -339,6 +342,26 @@ export default function Dashboard() {
   const dateLine = format(today, 'EEEE, MMMM d')
 
   const queueLoading = pendingLoading || appsLoading
+
+  // Phones get the consulting view: agenda, booking link, what needs you.
+  if (isPhone) {
+    return (
+      <PhoneToday
+        greeting={`${greetingFor(today)}, ${firstName}`}
+        dateLine={dateLine}
+        scorecardCount={scorecardCount}
+        decisionCount={decisionCount}
+        digestLoading={queueLoading || bookingsLoading}
+        bookings={todayBookings ?? []}
+        bookingsLoading={bookingsLoading}
+        queue={queue}
+        queueLoading={queueLoading}
+        openJobs={openJobs}
+        jobCounts={new Map((jobMetrics ?? []).map(m => [m.job_id, m.active_candidates]))}
+        jobsLoading={jobsLoading}
+      />
+    )
+  }
 
   return (
     <div style={{ background: C.pageBg, minHeight: '100%', padding: '24px 28px' }}>

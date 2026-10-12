@@ -1,4 +1,5 @@
 import { installAutoTitle } from '@/lib/autoTitle'
+import { PhoneSwitch, DesktopOnly } from '@/components/phone/PhoneSwitch'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
 import {
@@ -82,6 +83,12 @@ const ReferenceTemplates = lazy(() => import('./pages/ReferenceTemplates'))
 const ReferenceTemplateEditor = lazy(() => import('./pages/ReferenceTemplateEditor'))
 
 const TalentIntelligence = lazy(() => import('./pages/TalentIntelligence'))
+// Phone versions (2026-10-12): the consulting tool for the road.
+const PhoneCalendar = lazy(() => import('./components/phone/PhoneCalendar'))
+const PhoneCandidates = lazy(() => import('./components/phone/PhoneCandidates'))
+const PhoneCandidateGlance = lazy(() => import('./components/phone/PhoneCandidateGlance'))
+const PhoneJobs = lazy(() => import('./components/phone/PhoneJobs'))
+const PhoneJobGlance = lazy(() => import('./components/phone/PhoneJobGlance'))
 const SharedList = lazy(() => import('./pages/SharedList'))
 const PublicDossier = lazy(() => import('./pages/PublicDossier'))
 const PublicPipeline = lazy(() => import('./pages/PublicPipeline'))
@@ -186,27 +193,27 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/find" element={<Find />} />
             <Route path="/find/:projectId" element={<Find />} />
-            <Route path="/jobs" element={<Jobs />} />
+            <Route path="/jobs" element={<PhoneSwitch phone={<PhoneJobs />}><Jobs /></PhoneSwitch>} />
             <Route path="/pipeline" element={<Pipeline />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/calendar" element={<PhoneSwitch phone={<PhoneCalendar />}><Calendar /></PhoneSwitch>} />
+            <Route path="/analytics" element={<PhoneSwitch phone={<DesktopOnly what="Analytics" />}><Analytics /></PhoneSwitch>} />
             <Route path="/insights" element={<Navigate to="/analytics" replace />} />
-            <Route path="/talent-intelligence" element={<TalentIntelligence />} />
-            <Route path="/jobs/:id" element={<JobDetail />} />
-            <Route path="/jobs/:jobId/pipeline" element={<JobDetail />} />
+            <Route path="/talent-intelligence" element={<PhoneSwitch phone={<DesktopOnly what="Intelligence" />}><TalentIntelligence /></PhoneSwitch>} />
+            <Route path="/jobs/:id" element={<PhoneSwitch phone={<PhoneJobGlance />}><JobDetail /></PhoneSwitch>} />
+            <Route path="/jobs/:jobId/pipeline" element={<PhoneSwitch phone={<PhoneJobGlance />}><JobDetail /></PhoneSwitch>} />
             <Route path="/jobs/:jobId/setup" element={<JobDetail />} />
             <Route path="/jobs/:jobId/review" element={<ApplicationReviewPage />} />
-            <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+            <Route path="/jobs/:jobId/candidates/:candidateId" element={<PhoneSwitch phone={<PhoneCandidateGlance />}><CandidateProfile /></PhoneSwitch>} />
             <Route path="/jobs/:jobId/suggested/:candidateId" element={<SuggestedCandidateProfile />} />
 
-            <Route path="/candidates" element={<Candidates />} />
-            <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
+            <Route path="/candidates" element={<PhoneSwitch phone={<PhoneCandidates />}><Candidates /></PhoneSwitch>} />
+            <Route path="/candidates/:candidateId" element={<PhoneSwitch phone={<PhoneCandidateGlance />}><IndependentCandidateProfile /></PhoneSwitch>} />
             <Route path="/lists/:id" element={<SharedList />} />
             <Route path="/members" element={<Members />} />
             <Route path="/crm/*" element={<Navigate to="/" replace />} />
             <Route path="/organizations" element={<Navigate to="/settings" replace />} />
-            <Route path="/chat" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
-            <Route path="/chat/:threadId" element={<ChatRouteGuard><Chat /></ChatRouteGuard>} />
+            <Route path="/chat" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
+            <Route path="/chat/:threadId" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
             <Route path="/references" element={<References />} />
             <Route path="/references/requests/:requestId" element={<ReferenceRequestDetail />} />
             <Route path="/candidates/:candidateId/references" element={<CandidateReferences />} />
