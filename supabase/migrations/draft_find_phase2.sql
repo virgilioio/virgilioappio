@@ -179,6 +179,24 @@ create policy "Workspace members read pool runs"
 
 alter type public.notification_category add value if not exists 'talent_pool';
 
+-- The schedule sends a key kept in Vault; the pool builder asks the database
+-- whether it matches, so the key lives in one place and never in the repo.
+create or replace function public.pool_builder_secret_matches(p_secret text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(length(p_secret) >= 32, false) and exists (
+    select 1 from vault.decrypted_secrets ds
+    where ds.name = 'pool_builder_secret' and ds.decrypted_secret = p_secret
+  )
+$$;
+
+revoke all on function public.pool_builder_secret_matches(text) from public, anon, authenticated;
+grant execute on function public.pool_builder_secret_matches(text) to service_role;
+
 -- ── 5. Virgilio's pool searches ────────────────────────────────────────────
 do $$
 declare
