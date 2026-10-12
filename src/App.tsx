@@ -70,6 +70,7 @@ const OnboardingPreview = lazy(() => import('./pages/dev/OnboardingPreview'))
 const TrialActivation = lazy(() => import('./pages/TrialActivation'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Terms = lazy(() => import('./pages/Terms'))
+const PrivacyChoice = lazy(() => import('./pages/PrivacyChoice'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const MailOAuthCallback = lazy(() => import('./pages/MailOAuthCallback'))
 const ChromeOAuthStart = lazy(() => import('./pages/ChromeOAuthStart'))
@@ -141,6 +142,7 @@ function AppContent() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy/choice/:token" element={<PrivacyChoice />} />
         <Route path="/p/:slug" element={<LegacyPostingRedirect />} />
         <Route path="/careers/:companySlug" element={<PublicCareersPage />} />
         <Route path="/careers/:companySlug/:postingSlug" element={<PublicJobPosting />} />
