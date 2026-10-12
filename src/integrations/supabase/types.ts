@@ -6237,6 +6237,33 @@ export type Database = {
         }
         Relationships: []
       }
+      person_identities: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          id: string
+          kind: string
+          tenant_id: string
+          value: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          tenant_id: string
+          value: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          tenant_id?: string
+          value?: string
+        }
+        Relationships: []
+      }
       platform_feature_flags: {
         Row: {
           description: string | null
@@ -9538,6 +9565,16 @@ export type Database = {
       execute_candidate_sync: { Args: never; Returns: undefined }
       extract_domain_from_email: { Args: { email: string }; Returns: string }
       extract_linkedin_slug: { Args: { raw_url: string }; Returns: string }
+      find_candidate_matches: {
+        Args: { p_exclude?: string; p_payload: Json; p_tenant: string }
+        Returns: {
+          candidate_id: string
+          conflict: boolean
+          conflict_reason: string
+          reasons: string[]
+          strength: string
+        }[]
+      }
       fit_queue_acquire_lease: { Args: { _seconds: number }; Returns: boolean }
       fit_queue_wake: { Args: never; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
@@ -9717,6 +9754,8 @@ export type Database = {
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_type: { Args: never; Returns: string }
       get_user_type_secure: { Args: never; Returns: string }
+      identity_email: { Args: { p: string }; Returns: string }
+      identity_phone: { Args: { p: string }; Returns: string }
       increment_coresignal_usage: {
         Args: {
           p_billing_cycle_start: string
@@ -9832,6 +9871,16 @@ export type Database = {
         Args: { org_id_param: string }
         Returns: boolean
       }
+      person_name_key: { Args: { p: string }; Returns: string }
+      possible_duplicate_pairs: {
+        Args: { p_tenant: string }
+        Returns: {
+          candidate_a: string
+          candidate_b: string
+          reasons: string[]
+          strength: string
+        }[]
+      }
       purge_expired_chat_threads: {
         Args: never
         Returns: {
@@ -9928,6 +9977,19 @@ export type Database = {
           _tenant_id: string
         }
         Returns: Json
+      }
+      search_candidates: {
+        Args: {
+          p_cities?: string[]
+          p_companies?: string[]
+          p_countries?: string[]
+          p_keywords?: string[]
+          p_limit?: number
+          p_seniorities?: string[]
+          p_tenant: string
+          p_titles?: string[]
+        }
+        Returns: { candidate_id: string; matched: string[]; score: number }[]
       }
       search_standard_terms: {
         Args: { p_limit?: number; p_query: string; p_table: string }
