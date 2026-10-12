@@ -1755,6 +1755,9 @@ export type Database = {
           years_experience: number | null
           years_in_leadership: number | null
           years_in_specialization: number | null
+          keep_until: string | null
+          privacy_notice_at: string | null
+          retention_checked_at: string | null
         }
         Insert: {
           apollo_collected_at?: string | null
@@ -1820,6 +1823,9 @@ export type Database = {
           years_experience?: number | null
           years_in_leadership?: number | null
           years_in_specialization?: number | null
+          keep_until?: string | null
+          privacy_notice_at?: string | null
+          retention_checked_at?: string | null
         }
         Update: {
           apollo_collected_at?: string | null
@@ -1885,6 +1891,9 @@ export type Database = {
           years_experience?: number | null
           years_in_leadership?: number | null
           years_in_specialization?: number | null
+          keep_until?: string | null
+          privacy_notice_at?: string | null
+          retention_checked_at?: string | null
         }
         Relationships: [
           {
@@ -6388,6 +6397,72 @@ export type Database = {
           },
         ]
       }
+      privacy_requests: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          candidate_id: string | null
+          created_at: string
+          email: string
+          id: string
+          purpose: string
+          sent_at: string | null
+          tenant_id: string
+          token_hash: string
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          purpose: string
+          sent_at?: string | null
+          tenant_id: string
+          token_hash: string
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          purpose?: string
+          sent_at?: string | null
+          tenant_id?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
+      privacy_suppressions: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          reason: string
+          tenant_id: string
+          value_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          reason?: string
+          tenant_id: string
+          value_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          reason?: string
+          tenant_id?: string
+          value_hash?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -9329,6 +9404,30 @@ export type Database = {
       }
     }
     Functions: {
+      privacy_hash: { Args: { p_kind: string; p_value: string }; Returns: string }
+      privacy_suppress_candidate: {
+        Args: { p_candidate_id: string; p_reason?: string }
+        Returns: number
+      }
+      candidates_due_for_notice: {
+        Args: { p_limit: number; p_tenant: string }
+        Returns: {
+          candidate_id: string
+          created_at: string
+          email: string
+          first_name: string
+          source: string
+        }[]
+      }
+      candidates_due_for_retention: {
+        Args: { p_limit: number; p_tenant: string }
+        Returns: {
+          candidate_id: string
+          email: string
+          first_name: string
+          last_contact: string
+        }[]
+      }
       _tenant_id_root: { Args: { _tenant_id: string }; Returns: string }
       accept_invitation: {
         Args: { new_user_id: string; token_input: string }
