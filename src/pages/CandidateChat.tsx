@@ -73,6 +73,8 @@ type BookingCardPart = {
 type ChatMessage = {
   id: string
   role: 'candidate' | 'recruiter'
+  /** Written by Gio, the AI assistant, on the recruiter's behalf. */
+  ai?: boolean
   text: string
   createdAt: number
   attachments?: Attachment[]
@@ -191,6 +193,7 @@ export default function CandidateChat() {
           body: string | null
           parts: unknown
           created_at: string
+          sender_type?: string
         }>).map((m) => {
           let parsedParts: { attachments?: Attachment[]; kind?: string } | null = null
           const raw = m.parts
@@ -206,6 +209,7 @@ export default function CandidateChat() {
           return {
             id: m.id,
             role: m.direction === 'in' ? 'candidate' : 'recruiter',
+            ai: m.sender_type === 'ai',
             text: bookingCard ? '' : m.body ?? '',
             createdAt: new Date(m.created_at).getTime(),
             attachments: parsedParts?.attachments ?? undefined,
@@ -640,6 +644,29 @@ function Conversation({
           </div>
         </div>
 
+        {/* Privacy (2026-10-12): say plainly when an AI assistant answers. */}
+        {ctx.mode === 'ai' || messages.some((m) => m.ai) ? (
+          <div
+            role="note"
+            className="mx-auto mb-[16px] flex max-w-[440px] items-start gap-2.5 font-inter"
+            style={{
+              backgroundColor: '#F6F5F1',
+              border: '1px solid #ECEAE3',
+              borderRadius: 14,
+              padding: '10px 14px',
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              color: '#3A3D48',
+            }}
+          >
+            <AiBadge />
+            <span>
+              You're chatting with Gio, Virgilio's AI assistant, on behalf of {recruiter?.firstName || 'the hiring team'}. Ask
+              for {recruiter?.firstName || 'a person'} anytime and they'll reply themselves.
+            </span>
+          </div>
+        ) : null}
+
         {/* Today separator */}
         <div className="mb-[16px] flex justify-center">
           <span
@@ -662,7 +689,7 @@ function Conversation({
           const prev = messages[i - 1]
           const isRecruiter = m.role === 'recruiter'
           const showAvatar =
-            isRecruiter && (!prev || prev.role !== 'recruiter')
+            isRecruiter && (!prev || prev.role !== 'recruiter' || Boolean(prev.ai) !== Boolean(m.ai))
           return (
             <MessageRow
               key={m.id}
@@ -672,6 +699,7 @@ function Conversation({
               recruiterColor={rColor}
               recruiterInitials={recruiter?.initials ?? 'R'}
               recruiterAvatarUrl={recruiter?.avatarUrl ?? null}
+              recruiterFirstName={recruiter?.firstName || 'the hiring team'}
             />
           )
         })}
@@ -737,8 +765,29 @@ function RecruiterAvatar({
 
 // ---------- MessageRow -----------------------------------------------------
 
+function AiBadge() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex shrink-0 items-center justify-center font-poppins"
+      style={{
+        height: 18,
+        padding: '0 6px',
+        borderRadius: 6,
+        backgroundColor: '#0d0d09',
+        color: '#fffcf9',
+        fontSize: 10.5,
+        fontWeight: 600,
+        letterSpacing: '0.02em',
+      }}
+    >
+      AI
+    </span>
+  )
+}
+
 function MessageRow({
-  message, isMobile, showAvatar, recruiterColor, recruiterInitials, recruiterAvatarUrl,
+  message, isMobile, showAvatar, recruiterColor, recruiterInitials, recruiterAvatarUrl, recruiterFirstName,
 }: {
   message: ChatMessage
   isMobile: boolean
@@ -746,6 +795,7 @@ function MessageRow({
   recruiterColor: { bg: string; fg: string }
   recruiterInitials: string
   recruiterAvatarUrl: string | null
+  recruiterFirstName: string
 }) {
   const isRecruiter = message.role === 'recruiter'
   const bubbleMax = isMobile ? '80%' : '72%'
@@ -761,18 +811,38 @@ function MessageRow({
     >
       {isRecruiter && (
         showAvatar ? (
-          <RecruiterAvatar
-            size={30}
-            initials={recruiterInitials}
-            color={recruiterColor}
-            avatarUrl={recruiterAvatarUrl}
-          />
+          message.ai ? (
+            <span
+              aria-hidden="true"
+              className="flex shrink-0 items-center justify-center rounded-full font-poppins"
+              style={{ width: 30, height: 30, backgroundColor: '#0d0d09', color: '#fffcf9', fontSize: 11, fontWeight: 600 }}
+            >
+              AI
+            </span>
+          ) : (
+            <RecruiterAvatar
+              size={30}
+              initials={recruiterInitials}
+              color={recruiterColor}
+              avatarUrl={recruiterAvatarUrl}
+            />
+          )
         ) : (
           <span style={{ width: 30, height: 30, flexShrink: 0 }} />
         )
       )}
 
       <div style={{ maxWidth: bubbleMax, minWidth: 0 }}>
+        {message.ai && showAvatar ? (
+          <div
+            className="mb-[5px] flex items-center gap-1.5 font-inter"
+            style={{ fontSize: 11.5, color: '#5A6072' }}
+          >
+            <span style={{ fontWeight: 600, color: '#0d0d09' }}>Gio</span>
+            <span>· AI assistant for {recruiterFirstName}</span>
+          </div>
+        ) : null}
+        {message.ai ? <span className="sr-only">Gio, AI assistant: </span> : null}
         {message.bookingCard ? (
           <BookingLinkCard
             data={message.bookingCard}

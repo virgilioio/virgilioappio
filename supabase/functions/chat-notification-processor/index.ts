@@ -342,6 +342,25 @@ async function buildEmail(
   const candidateFirst = (ctx.candidate_name || "").trim().split(/\s+/)[0] || "there";
   const bodyExcerpt = (excerpt ?? "").slice(0, 600);
 
+  // Privacy (2026-10-12): a reply written by the AI assistant is never shown
+  // as the recruiter's own. The email names Gio and who it answers for.
+  const { data: latestOut } = await sb
+    .from("chat_messages")
+    .select("sender_type")
+    .eq("thread_id", row.thread_id)
+    .eq("direction", "out")
+    .is("redacted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if ((latestOut as any)?.sender_type === "ai") {
+    const forWhom = recruiterId ? recruiterFirst : "the hiring team";
+    recruiterFull = `Gio · AI assistant for ${forWhom}`;
+    recruiterTitle = `Ask for ${forWhom} anytime and they'll reply themselves.`;
+    recruiterAvatar = null;
+    recruiterInitials = "AI";
+  }
+
   const rendered = renderChatInviteEmail({
     recruiter_first_name: recruiterFirst,
     recruiter_full_name: recruiterFull,
