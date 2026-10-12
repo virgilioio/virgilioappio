@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { IconTip } from '@/components/ui/tooltip'
 import { SearchResultsDialog } from '@/components/search/SearchResultsDialog'
-import { AtsGlyph, CalendarGlyph, CandidatesGlyph, DashboardGlyph, JobsGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
+import { AtsGlyph, DashboardGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -17,9 +17,9 @@ import { BookingLinkCard } from './BookingLinkCard'
  * The phone shell (2026-10-12), in Gio Docs' phone frame so the two products
  * feel like one family:
  * - Section screens open with a row of round tabs at the top: you (account,
- *   booking link, settings), then pills for the module's sections — the
- *   current one names itself, the others show only their icon. Switching
- *   slides the pills (clip-path + transform, --dur-tabs / --ease-in-out).
+ *   booking link, settings), then a pill per section of the module, named
+ *   in plain words like the desktop top bar (no icons). Switching slides the
+ *   selected fill (clip-path, --dur-tabs / --ease-in-out).
  * - A record (a job, a candidate) runs under a floating round Back button.
  * - At the bottom floats a bar: the module glyphs from the desktop rail
  *   (Dashboard, ATS) as round buttons, then a wide Search pill.
@@ -29,16 +29,16 @@ import { BookingLinkCard } from './BookingLinkCard'
 type Perm = ReturnType<typeof usePermissions>
 type ModuleId = 'home' | 'ats'
 
-interface Section { id: string; href: string; label: string; Icon: ModuleGlyph; match: (p: string) => boolean; show: (perm: Perm) => boolean }
+interface Section { id: string; href: string; label: string; match: (p: string) => boolean; show: (perm: Perm) => boolean }
 
 const SECTIONS: Record<ModuleId, Section[]> = {
   home: [
-    { id: 'today', href: '/dashboard', label: 'Today', Icon: DashboardGlyph, match: p => p === '/' || p === '/dashboard', show: () => true },
+    { id: 'today', href: '/dashboard', label: 'Today', match: p => p === '/' || p === '/dashboard', show: () => true },
   ],
   ats: [
-    { id: 'jobs', href: '/jobs', label: 'Jobs', Icon: JobsGlyph, match: p => p === '/jobs', show: perm => perm.canViewJobs },
-    { id: 'candidates', href: '/candidates', label: 'Candidates', Icon: CandidatesGlyph, match: p => p === '/candidates', show: perm => perm.canViewCandidates },
-    { id: 'calendar', href: '/calendar', label: 'Calendar', Icon: CalendarGlyph, match: p => p === '/calendar', show: () => true },
+    { id: 'jobs', href: '/jobs', label: 'Jobs', match: p => p === '/jobs', show: perm => perm.canViewJobs },
+    { id: 'candidates', href: '/candidates', label: 'Candidates', match: p => p === '/candidates', show: perm => perm.canViewCandidates },
+    { id: 'calendar', href: '/calendar', label: 'Calendar', match: p => p === '/calendar', show: () => true },
   ],
 }
 
@@ -154,7 +154,7 @@ function Circle({ label, onClick, size = 56, children }: { label: string; onClic
 
 /* ────────────── Top tabs (Gio Docs' PhoneTopTabs) ────────────── */
 
-type TabRects = Record<string, { left: number; right: number; icon: number }>
+type TabRects = Record<string, { left: number; right: number }>
 const FILL_REACH = 400 // how far a pill's fill reaches past its tab (clipped)
 const restClip = `inset(0 ${FILL_REACH}px 0 ${FILL_REACH}px round 26px)`
 
@@ -168,15 +168,14 @@ function readTabRects(nav: HTMLElement): TabRects {
   const out: TabRects = {}
   nav.querySelectorAll<HTMLElement>('[data-tab]').forEach(el => {
     const r = el.getBoundingClientRect()
-    const icon = el.querySelector<HTMLElement>('[data-tab-icon]')?.getBoundingClientRect()
-    out[el.dataset.tab!] = { left: r.left, right: r.right, icon: icon ? icon.left : r.left }
+    out[el.dataset.tab!] = { left: r.left, right: r.right }
   })
   return out
 }
 
-/** The pills slide to their new sizes: each fill's edges move from where they
- *  were (clip-path), the icon glides (transform), the picked tab's name fades
- *  in. Nothing animates layout; reduced motion keeps only the colours. */
+/** The selected fill slides: each pill's fill edges move from where they were
+ *  (clip-path) while the colours cross over. Nothing animates layout; reduced
+ *  motion keeps only the colours. */
 function slideTabs(nav: HTMLElement, from: TabRects) {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   const css = getComputedStyle(document.documentElement)
@@ -189,17 +188,11 @@ function slideTabs(nav: HTMLElement, from: TabRects) {
     const b = to[id]
     if (!a || !b) return
     const fill = el.querySelector<HTMLElement>('[data-tab-fill]')
-    const icon = el.querySelector<HTMLElement>('[data-tab-icon]')
-    const label = el.querySelector<HTMLElement>('[data-tab-label]')
     const stop = (x: Animation) => (typeof CSSTransition !== 'undefined' && x instanceof CSSTransition ? null : x.cancel())
     fill?.getAnimations().forEach(stop)
-    icon?.getAnimations().forEach(stop)
     const l = FILL_REACH + (a.left - b.left)
     const r = FILL_REACH + (b.right - a.right)
     fill?.animate([{ clipPath: `inset(0 ${r}px 0 ${l}px round 26px)` }, { clipPath: restClip }], { duration, easing })
-    const dx = a.icon - b.icon
-    if (dx) icon?.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration, easing })
-    label?.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1 }], { duration, easing: 'linear' })
   })
 }
 
@@ -242,28 +235,21 @@ function PhoneTopTabs({ sections, current, me, onAccount }: {
           </Avatar>
         </button>
       </IconTip>
-      {sections.map(({ id, href, label, Icon }) => {
+      {sections.map(({ id, href, label }) => {
         const active = id === current
         return (
           <Link
             key={id}
             to={href}
-            aria-label={label}
             aria-current={active ? 'page' : undefined}
             data-tab={id}
             className={cn(
-              'gio-pressable gio-phone-tab relative flex h-[52px] min-w-0 items-center justify-center gap-2',
-              active ? 'text-[#0d0d09] [&_.accent]:fill-[#D7C5FB]' : 'text-[#5A6072]',
+              'gio-pressable gio-phone-tab relative flex h-[52px] min-w-0 flex-auto items-center justify-center px-3',
+              active ? 'text-[#0d0d09]' : 'text-[#5A6072]',
             )}
-            style={{ flex: active ? '2 1 0' : '1 1 0' }}
           >
             <span aria-hidden data-tab-fill className={cn('gio-phone-tab-fill', active ? 'bg-[#E5E3DA]' : 'bg-[#ECEAE3]')} />
-            <span data-tab-icon className="relative grid shrink-0 place-items-center">
-              <Icon className="h-[28px] w-[28px]" />
-            </span>
-            {active && (
-              <span data-tab-label className="relative truncate font-poppins font-semibold text-[17px] tracking-[-0.01em]">{label}</span>
-            )}
+            <span data-tab-label className="relative truncate font-poppins font-semibold text-[15px] tracking-[-0.01em]">{label}</span>
           </Link>
         )
       })}
