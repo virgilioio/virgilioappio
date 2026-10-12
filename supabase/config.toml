@@ -303,3 +303,6 @@ verify_jwt = false
 
 [functions.pool-builder]
 verify_jwt = false
+
+[functions.shortlist-ai-fit]
+verify_jwt = true
