@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
+import { contactListsWithPrimary } from '@/lib/contactLists'
 import { CandidateProfileSkeleton } from './CandidateProfileSkeleton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -996,14 +997,8 @@ const stageHasAutomation = useMemo(() => {
         candidate_name: globalCandidateData.candidate_name,
         email: globalCandidateData.email,
         phone: globalCandidateData.phone,
-        // Sync contact arrays with primary values so Contact Information card updates
-        // These columns are text[] so we must store JSON strings
-        contact_emails: globalCandidateData.email 
-          ? [JSON.stringify({ type: 'work', email: globalCandidateData.email, status: 'verified' })]
-          : [],
-        contact_phones: globalCandidateData.phone 
-          ? [JSON.stringify({ type: 'other', number: globalCandidateData.phone, raw_number: globalCandidateData.phone })]
-          : [],
+        current_job_title: (globalCandidateData as Record<string, unknown>).current_job_title ?? (globalCandidateData as Record<string, unknown>).current_role,
+        company_current: (globalCandidateData as Record<string, unknown>).company_current ?? (globalCandidateData as Record<string, unknown>).current_company,
         location_country: globalCandidateData.location_country,
         location_state: globalCandidateData.location_state,
         location_city: globalCandidateData.location_city,
@@ -1015,6 +1010,11 @@ const stageHasAutomation = useMemo(() => {
         skills: globalCandidateData.skills
       }
       
+      // Primary email and phone go first; the other emails and phones on
+      // file (Apollo, résumés) are kept instead of being wiped by the edit.
+      Object.assign(allowedCandidateFields, await contactListsWithPrimary(
+        candidateId, globalCandidateData.email, globalCandidateData.phone))
+
       // Remove undefined values
       const filteredCandidateData = Object.fromEntries(
         Object.entries(allowedCandidateFields).filter(([_, value]) => value !== undefined)

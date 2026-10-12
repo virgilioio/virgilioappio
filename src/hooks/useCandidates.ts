@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { contactListsWithPrimary } from '@/lib/contactLists'
 import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -314,12 +315,8 @@ export function useCandidates(jobId: string) {
         candidate_name: globalCandidateData.candidate_name,
         email: globalCandidateData.email,
         phone: globalCandidateData.phone,
-        contact_emails: globalCandidateData.email
-          ? [JSON.stringify({ type: 'work', email: globalCandidateData.email, status: 'verified' })]
-          : [],
-        contact_phones: globalCandidateData.phone
-          ? [JSON.stringify({ type: 'other', number: globalCandidateData.phone, raw_number: globalCandidateData.phone })]
-          : [],
+        current_job_title: (globalCandidateData as Record<string, unknown>).current_job_title ?? (globalCandidateData as Record<string, unknown>).current_role,
+        company_current: (globalCandidateData as Record<string, unknown>).company_current ?? (globalCandidateData as Record<string, unknown>).current_company,
         location_country: globalCandidateData.location_country,
         location_state: globalCandidateData.location_state,
         location_city: globalCandidateData.location_city,
@@ -331,6 +328,12 @@ export function useCandidates(jobId: string) {
         skills: globalCandidateData.skills
       }
 
+      // Primary email and phone go first; the other emails and phones on
+      // file (Apollo, résumés) are kept instead of being wiped by the edit.
+      Object.assign(allowedCandidateFields, await contactListsWithPrimary(
+        id, globalCandidateData.email, globalCandidateData.phone))
+
+      // Remove undefined values
       const filteredCandidateData = Object.fromEntries(
         Object.entries(allowedCandidateFields).filter(([_, value]) => value !== undefined)
       )
