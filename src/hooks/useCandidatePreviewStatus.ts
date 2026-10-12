@@ -29,6 +29,7 @@ export function useCandidatePreviewStatus() {
       queryClient.invalidateQueries({ queryKey: ['sourcing-preview-candidates', projectId] })
       queryClient.invalidateQueries({ queryKey: ['saved-candidates', projectId] })
       queryClient.invalidateQueries({ queryKey: ['archived-candidates', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-people', projectId] })
       
       const messages: Record<PreviewStatus, string> = {
         active: 'Candidate restored',
