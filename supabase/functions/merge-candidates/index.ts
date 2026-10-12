@@ -18,7 +18,7 @@ const CANDIDATE_KEYS = [
   'salary_period', 'years_experience', 'profile_summary', 'source',
 ]
 
-/** The stage a candidate joins a job at when none was picked: the job's first. */
+/** The stage a candidate joins a job at when none was picked: its entry stage. */
 async function firstStageOf(admin: any, jobId: string, stageId: string | null | undefined): Promise<string | null> {
   if (stageId) return stageId
   // Application Review when the job has it, else its first stage (2026-10-12).
