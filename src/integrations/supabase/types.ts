@@ -10111,7 +10111,43 @@ export type Database = {
         }
         Returns: Json
       }
+      classify_job_title: {
+        Args: { p_title: string }
+        Returns: {
+          family: string
+          seniority: string
+          std_title: string
+        }[]
+      }
       job_entry_stage: { Args: { p_job: string }; Returns: string }
+      market_past_companies: {
+        Args: { p_tenant: string }
+        Returns: {
+          candidate_id: string
+          company: string
+        }[]
+      }
+      market_talent_rows: {
+        Args: { p_tenant: string }
+        Returns: {
+          base_currency: string
+          city: string
+          company: string
+          country: string
+          created_at: string
+          id: string
+          in_pipeline: boolean
+          role_family: string
+          salary_month_base: number
+          seniority: string
+          skills: string[]
+          source: string
+          specialization: string
+          state: string
+          title: string
+          years_experience: number
+        }[]
+      }
       pool_builder_secret_matches: {
         Args: { p_secret: string }
         Returns: boolean
