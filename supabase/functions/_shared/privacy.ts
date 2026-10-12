@@ -10,6 +10,11 @@ import { appBase } from "./referenceTokens.ts";
 export const VIRGILIO_TENANT_ID =
   Deno.env.get("PRIVACY_TENANT_ID") ?? "5ba7b145-f251-4b18-8900-724cb06028ab";
 export const PRIVACY_EMAIL = "privacy@virgilio.tech";
+// The Virgilio wordmark (black, 2000×600 PNG) as uploaded for the careers page.
+// The email comes from Virgilio, the company responsible for the data, so it
+// carries Virgilio's mark, not Gio's.
+const VIRGILIO_LOGO_URL =
+  "https://etrxjxstjfcozdjumfsj.supabase.co/storage/v1/object/public/careers-logos/5ba7b145-f251-4b18-8900-724cb06028ab/1776884137302.png";
 
 export function newToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -54,7 +59,10 @@ function shell(title: string, paragraphs: string[], button: { label: string; url
 <body style="margin:0;padding:0;background:#F6F5F1;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F5F1;padding:32px 12px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #ECEAE3;border-radius:16px;">
-<tr><td style="padding:32px 32px 8px 32px;">
+<tr><td style="padding:30px 32px 0 32px;">
+<img src="${VIRGILIO_LOGO_URL}" width="104" height="31" alt="Virgilio" style="display:block;border:0;outline:none;text-decoration:none;width:104px;height:31px;">
+</td></tr>
+<tr><td style="padding:24px 32px 8px 32px;">
 ${paragraphs.map(p).join("\n")}
 ${button ? `<p style="margin:6px 0 20px 0;"><a href="${button.url}" style="display:inline-block;background:#0d0d09;color:#fffcf9;text-decoration:none;font-family:Poppins,Inter,Arial,sans-serif;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;">${esc(button.label)}</a></p>` : ""}
 ${after.map(p).join("\n")}
