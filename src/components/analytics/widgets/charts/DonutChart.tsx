@@ -6,9 +6,11 @@ import type { SeriesPoint } from '../../model/types'
 interface Props {
   data: SeriesPoint[]
   size?: number
+  selected?: string[]
+  onSelect?: (label: string) => void
 }
 
-export function DonutChart({ data, size = 200 }: Props) {
+export function DonutChart({ data, size = 200, selected = [], onSelect }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const [containerW, setContainerW] = useState(0)
   useEffect(() => {
@@ -76,8 +78,9 @@ export function DonutChart({ data, size = 200 }: Props) {
               key={i}
               d={d}
               fill={PALETTE[i % PALETTE.length]}
-              opacity={hover === null || hover === i ? 1 : 0.45}
-              style={{ transition: 'opacity 120ms' }}
+              opacity={hover === i || (hover === null && (selected.length === 0 || selected.includes(row.label))) ? 1 : 0.45}
+              onClick={onSelect ? () => onSelect(row.label) : undefined}
+              style={{ transition: 'opacity 120ms', cursor: onSelect ? 'pointer' : undefined }}
               onMouseMove={e => {
                 setHover(i)
                 tip.show(e, { title: row.label, rows: [{ color: PALETTE[i % PALETTE.length], label: row.value.toLocaleString('en-US'), value: `${Math.round(frac * 100)}%` }] })
@@ -94,15 +97,23 @@ export function DonutChart({ data, size = 200 }: Props) {
         </text>
       </svg>
       <div className="flex-1 min-w-0 w-full flex flex-col gap-1.5">
-        {rows.map((row, i) => (
-          <div key={`${row.label}-${i}`} className="flex items-center gap-2 text-[11.5px] font-inter min-w-0">
+        {rows.map((row, i) => {
+          const Item = onSelect ? 'button' : 'div'
+          const on = selected.includes(row.label)
+          return (
+          <Item
+            key={`${row.label}-${i}`}
+            {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(row.label), 'aria-pressed': on } : {})}
+            className={`flex items-center gap-2 text-[11.5px] font-inter min-w-0 w-full text-left transition-opacity duration-150 ${selected.length > 0 && !on ? 'opacity-[0.45]' : ''}`}
+          >
             <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
             <span className="flex-1 truncate text-[#1F2230]" title={row.label}>{row.label}</span>
             <span className="font-poppins font-semibold tabular-nums text-[#0d0d09] flex-shrink-0">
               {Math.round((row.value / total) * 100)}%
             </span>
-          </div>
-        ))}
+          </Item>
+          )
+        })}
       </div>
       {tip.node}
     </div>

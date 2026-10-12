@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { GripVertical, Maximize2, Settings2, Trash2, X, Check } from 'lucide-react'
-import { METRICS, RECRUITING_METRICS, HYGIENE_METRICS } from '../model/metrics'
-import { DIMENSIONS, SPLITTABLE_DIMENSIONS } from '../model/dimensions'
-import { VIZ, vizFor, defaultSpan, nextSpan } from '../model/viz'
+import { METRICS } from '../model/metrics'
+import { DIMENSIONS } from '../model/dimensions'
+import { VIZ, defaultSpan, nextSpan } from '../model/viz'
 import { TONE_COLOR, TONE_TINT } from '../model/tokens'
-import { useWidgetData } from '../model/useWidgetData'
+import { useWidgetCatalog, type WidgetCatalog, type WidgetSelection } from './WidgetCatalog'
 import { KpiChart } from './charts/KpiChart'
 import { LineChart } from './charts/LineChart'
 import { BarsChart } from './charts/BarsChart'
@@ -14,6 +14,8 @@ import { FunnelChart } from './charts/FunnelChart'
 import { TableViz } from './charts/TableViz'
 import { AgingChart } from './charts/AgingChart'
 import { StuckList } from './charts/StuckList'
+import { SalaryRangeChart } from './charts/SalaryRangeChart'
+import { MapChart } from './charts/MapChart'
 import type { WidgetConfig, DimensionId, VizId, MetricId } from '../model/types'
 import { fmt } from '../model/format'
 import { Loadable } from '@/components/ui/loadable'
@@ -44,20 +46,24 @@ function subLine(cfg: WidgetConfig): string {
 }
 
 export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, isDragging, readonly }: Props) {
-  // Saved widgets may still reference removed CRM metrics/dimensions.
-  const cfg: WidgetConfig = METRICS[rawCfg.metric] && DIMENSIONS[rawCfg.groupBy]
+  const catalog = useWidgetCatalog()
+  // Saved widgets may still reference removed CRM metrics/dimensions, or
+  // belong to the other page's catalog.
+  const fallback = catalog.newWidget()
+  const cfg: WidgetConfig = METRICS[rawCfg.metric] && DIMENSIONS[rawCfg.groupBy] && catalog.owns(rawCfg.metric)
     ? rawCfg
-    : { ...rawCfg, metric: METRICS[rawCfg.metric] ? rawCfg.metric : 'applications', groupBy: DIMENSIONS[rawCfg.groupBy] ? rawCfg.groupBy : 'none', viz: 'kpi', scope: undefined, title: undefined }
+    : { ...rawCfg, metric: fallback.metric, groupBy: 'none', viz: 'kpi', scope: undefined, title: undefined }
   const meta = METRICS[cfg.metric] ?? METRICS.applications
   const Icon = meta.icon
   const tone = TONE_COLOR[meta.tone]
   const tint = TONE_TINT[meta.tone]
   const [configOpen, setConfigOpen] = useState(false)
-  const live = useWidgetData(cfg)
+  const live = catalog.useData(cfg)
+  const selection = catalog.useSelection(cfg)
   // §6: a period or filter change keeps the current numbers on screen until the new ones
   // arrive, so KPIs blend and bars morph instead of the widget dropping back to a skeleton.
   const settled = useRef<{ key: string; data: NormalizedData } | null>(null)
-  const key = `${cfg.metric}|${cfg.groupBy}|${cfg.viz}|${cfg.threshold ?? ''}|${cfg.scope?.value ?? ''}`
+  const key = `${cfg.metric}|${cfg.groupBy}|${cfg.viz}|${cfg.threshold ?? ''}|${cfg.scope?.value ?? ''}|${cfg.salaryPeriod ?? ''}|${cfg.salaryCurrency ?? ''}`
   if (!live.loading) settled.current = { key, data: live }
   const data = live.loading && settled.current?.key === key ? settled.current.data : live
 
@@ -110,12 +116,21 @@ export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, 
       <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         <Loadable loading={data.loading} skeleton={<WidgetSkeleton viz={cfg.viz} />}>
           {data.empty ? (
-            <div className="h-full min-h-[60px] flex items-center justify-center font-poppins font-semibold text-[22px] tracking-[-0.02em] text-[#8B8F9E] tabular-nums">
-              {fmt(0, data.format, data.currency)}
-            </div>
+            data.insight ? (
+              <div className="h-full min-h-[60px] flex items-center justify-center text-center px-4 text-[12.5px] font-inter text-[#5A6072]">
+                {data.insight}
+              </div>
+            ) : (
+              <div className="h-full min-h-[60px] flex items-center justify-center font-poppins font-semibold text-[22px] tracking-[-0.02em] text-[#8B8F9E] tabular-nums">
+                {fmt(0, data.format, data.currency)}
+              </div>
+            )
           ) : (
             <>
-              {renderViz(cfg, data)}
+              {data.insight && cfg.viz !== 'kpi' && (
+                <p className="mb-3 text-[12px] leading-[1.45] font-inter text-[#5A6072] line-clamp-2">{data.insight}</p>
+              )}
+              {renderViz(cfg, data, selection)}
               {data.note && <div className="mt-2 text-[10.5px] font-inter text-[#8B8F9E]">{data.note}</div>}
             </>
           )}
@@ -123,24 +138,25 @@ export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, 
       </div>
 
       {configOpen && (
-        <ConfigPopover cfg={cfg} onChange={onChange} onClose={() => setConfigOpen(false)} />
+        <ConfigPopover cfg={cfg} catalog={catalog} onChange={onChange} onClose={() => setConfigOpen(false)} />
       )}
     </div>
   )
 }
 
-function renderViz(cfg: WidgetConfig, data: ReturnType<typeof useWidgetData>) {
+function renderViz(cfg: WidgetConfig, data: NormalizedData, sel: WidgetSelection) {
+  const pick = { selected: sel.selected, onSelect: sel.onSelect }
   switch (cfg.viz) {
     case 'kpi':
       return <KpiChart widgetId={cfg.id} metricId={cfg.metric} data={data} />
     case 'line':
       return <LineChart metricId={cfg.metric} series={data.series} />
     case 'bars':
-      return <BarsChart widgetId={cfg.id} metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
+      return <BarsChart widgetId={cfg.id} metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} {...pick} />
     case 'columns':
-      return <ColumnsChart widgetId={cfg.id} data={data.breakdown} format={data.format} currency={data.currency} />
+      return <ColumnsChart widgetId={cfg.id} data={data.breakdown} format={data.format} currency={data.currency} {...pick} />
     case 'donut':
-      return <DonutChart data={data.breakdown} />
+      return <DonutChart data={data.breakdown} {...pick} />
     case 'funnel':
       return <FunnelChart widgetId={cfg.id} metricId={cfg.metric} data={data.breakdown} format={data.format} currency={data.currency} />
     case 'aging':
@@ -148,7 +164,11 @@ function renderViz(cfg: WidgetConfig, data: ReturnType<typeof useWidgetData>) {
     case 'list':
       return <StuckList rows={data.list ?? []} />
     case 'table':
-      return <TableViz dimensionLabel={(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label} data={data.breakdown} format={data.format} currency={data.currency} />
+      return <TableViz dimensionLabel={(DIMENSIONS[cfg.groupBy] ?? DIMENSIONS.none).label} data={data.breakdown} format={data.format} currency={data.currency} {...pick} />
+    case 'salary_range':
+      return <SalaryRangeChart widgetId={cfg.id} ranges={data.ranges ?? []} currency={data.currency ?? 'USD'} {...pick} />
+    case 'map':
+      return <MapChart data={data.breakdown} {...pick} />
   }
 }
 
@@ -181,7 +201,7 @@ function WidgetSkeleton({ viz }: { viz: VizId }) {
   }
 }
 
-function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange: (c: WidgetConfig) => void; onClose: () => void }) {
+function ConfigPopover({ cfg, catalog, onChange, onClose }: { cfg: WidgetConfig; catalog: WidgetCatalog; onChange: (c: WidgetConfig) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -191,22 +211,19 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  const isHygiene = (m: MetricId) => METRICS[m]?.group === 'hygiene'
-  const hygiene = isHygiene(cfg.metric)
-  const validViz = vizFor(cfg.groupBy, hygiene)
-  const dims = hygiene
-    ? SPLITTABLE_DIMENSIONS.filter(d => d.id === 'stage' || d.id === 'job' || d.id === 'recruiter')
-    : SPLITTABLE_DIMENSIONS
+  const hygiene = METRICS[cfg.metric]?.group === 'hygiene'
+  const validViz = catalog.vizFor(cfg.metric, cfg.groupBy)
+  const dims = catalog.dimensionsFor(cfg.metric)
 
   const setMetric = (id: MetricId) => {
-    const h = isHygiene(id)
-    const groupBy = h && !['none', 'stage', 'job', 'recruiter'].includes(cfg.groupBy) ? 'none' : cfg.groupBy
-    const allowed = vizFor(groupBy, h)
+    const allowedDims = catalog.dimensionsFor(id).map(d => d.id)
+    const groupBy = cfg.groupBy === 'none' || allowedDims.includes(cfg.groupBy) ? cfg.groupBy : 'none'
+    const allowed = catalog.vizFor(id, groupBy)
     const viz = allowed.includes(cfg.viz) ? cfg.viz : allowed[0]
     onChange({ ...cfg, metric: id, groupBy, viz, span: viz === cfg.viz ? cfg.span : defaultSpan(viz), scope: undefined })
   }
   const setGroup = (id: DimensionId) => {
-    const allowed = vizFor(id, hygiene)
+    const allowed = catalog.vizFor(cfg.metric, id)
     const nextViz = allowed.includes(cfg.viz) ? cfg.viz : allowed[0]
     const nextSp = allowed.includes(cfg.viz) ? cfg.span : defaultSpan(nextViz)
     onChange({ ...cfg, groupBy: id, viz: nextViz, span: nextSp, scope: undefined, title: undefined })
@@ -228,10 +245,7 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
       <Section label="Metric">
         <GroupedDropdown
           value={cfg.metric}
-          groups={[
-            { label: 'Recruiting', options: RECRUITING_METRICS.map(m => ({ value: m.id, label: m.label })) },
-            { label: 'Pipeline hygiene · current snapshot', options: HYGIENE_METRICS.map(m => ({ value: m.id, label: m.label })) },
-          ]}
+          groups={catalog.metricGroups.map(g => ({ label: g.label, options: g.metrics.map(m => ({ value: m.id, label: m.label })) }))}
           onChange={v => setMetric(v as MetricId)}
         />
       </Section>
@@ -241,7 +255,7 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
           value={cfg.groupBy}
           options={[
             { value: 'none', label: 'No split' },
-            ...dims.map(d => ({ value: d.id, label: `By ${d.label.toLowerCase()}` })),
+            ...dims.map(d => ({ value: d.id, label: d.kind === 'time' ? d.label : `By ${d.label.toLowerCase()}` })),
           ]}
           onChange={v => setGroup(v as DimensionId)}
         />
@@ -254,6 +268,25 @@ function ConfigPopover({ cfg, onChange, onClose }: { cfg: WidgetConfig; onChange
             options={[7, 14, 30, 60].map(n => ({ value: String(n), label: `${n} days in the same stage` }))}
             onChange={v => onChange({ ...cfg, threshold: Number(v) })}
           />
+        </Section>
+      )}
+
+      {cfg.metric === 'mkt_salary' && (
+        <Section label="Salary">
+          <div className="flex gap-1.5">
+            <Dropdown
+              value={cfg.salaryPeriod ?? 'month'}
+              options={[{ value: 'month', label: 'Per month' }, { value: 'year', label: 'Per year' }]}
+              onChange={v => onChange({ ...cfg, salaryPeriod: v as 'month' | 'year' })}
+            />
+            {(catalog.salaryCurrencies?.length ?? 0) > 1 && (
+              <Dropdown
+                value={cfg.salaryCurrency ?? catalog.salaryCurrencies![0]}
+                options={catalog.salaryCurrencies!.map(c => ({ value: c, label: c }))}
+                onChange={v => onChange({ ...cfg, salaryCurrency: v })}
+              />
+            )}
+          </div>
         </Section>
       )}
 

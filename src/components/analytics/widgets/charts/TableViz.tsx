@@ -6,9 +6,11 @@ interface Props {
   data: SeriesPoint[]
   format: Format
   currency?: string
+  selected?: string[]
+  onSelect?: (label: string) => void
 }
 
-export function TableViz({ dimensionLabel, data, format, currency }: Props) {
+export function TableViz({ dimensionLabel, data, format, currency, selected = [], onSelect }: Props) {
   const total = data.reduce((s, r) => s + r.value, 0)
   return (
     <div className="w-full overflow-hidden rounded-[8px] border border-[#F1F0EC]">
@@ -24,15 +26,21 @@ export function TableViz({ dimensionLabel, data, format, currency }: Props) {
         )}
         {data.map((r, i) => {
           const pct = total > 0 ? Math.round((r.value / total) * 100) : 0
+          const on = selected.includes(r.label)
+          const Row = onSelect ? 'button' : 'div'
           return (
-            <div key={`${r.label}-${i}`} className="grid grid-cols-[1fr_64px_1fr_44px] gap-3 px-3 py-1.5 items-center text-[12px] font-inter text-[#1F2230]">
+            <Row
+              key={`${r.label}-${i}`}
+              {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.label), 'aria-pressed': on } : {})}
+              className={`grid grid-cols-[1fr_64px_1fr_44px] gap-3 px-3 py-1.5 items-center text-[12px] font-inter text-[#1F2230] w-full text-left ${on ? 'bg-[#F5F0FF]' : ''}`}
+            >
               <div className="truncate" title={r.label}>{r.label}</div>
               <div className="text-right font-poppins font-semibold tabular-nums text-[#0d0d09]">{fmt(r.value, format, currency)}</div>
               <div className="h-1.5 rounded-full bg-[#F4F3EF] overflow-hidden">
                 <div className="h-full rounded-full bg-[#6F3FF5]" style={{ width: `${pct}%` }} />
               </div>
               <div className="text-right tabular-nums text-[#5A6072]">{pct}%</div>
-            </div>
+            </Row>
           )
         })}
       </div>

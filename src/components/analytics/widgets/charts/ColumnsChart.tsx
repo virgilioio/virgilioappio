@@ -10,9 +10,11 @@ interface Props {
   format: Format
   currency?: string
   height?: number
+  selected?: string[]
+  onSelect?: (label: string) => void
 }
 
-export function ColumnsChart({ widgetId, data, format, currency, height = 220 }: Props) {
+export function ColumnsChart({ widgetId, data, format, currency, height = 220, selected = [], onSelect }: Props) {
   const tip = useHoverTip()
   const rows = data.slice(0, 10)
   const max = Math.max(1, ...rows.map(r => r.value))
@@ -21,10 +23,13 @@ export function ColumnsChart({ widgetId, data, format, currency, height = 220 }:
       {rows.length === 0 && <div className="text-[12px] text-[#8B8F9E] font-inter">No data</div>}
       {rows.map((r, i) => {
         const h = (r.value / max) * (height - 50)
+        const on = selected.includes(r.label)
+        const Col = onSelect ? 'button' : 'div'
         return (
-          <div
+          <Col
             key={`${r.label}-${i}`}
-            className="flex-1 min-w-0 flex flex-col items-center gap-1"
+            {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.label), 'aria-pressed': on, 'aria-label': `${r.label}: ${fmt(r.value, format, currency)}` } : {})}
+            className={`flex-1 min-w-0 flex flex-col items-center gap-1 transition-opacity duration-150 ${selected.length > 0 && !on ? 'opacity-[0.45]' : ''}`}
             onMouseMove={e => tip.show(e, { title: r.label, rows: [{ color: PALETTE[i % PALETTE.length], label: 'Value', value: fmt(r.value, format, currency) }] })}
             onMouseLeave={tip.hide}
           >
@@ -37,7 +42,7 @@ export function ColumnsChart({ widgetId, data, format, currency, height = 220 }:
             <div className="text-[10.5px] font-inter text-[#5A6072] truncate w-full text-center" title={r.label}>
               {r.label}
             </div>
-          </div>
+          </Col>
         )
       })}
       {tip.node}

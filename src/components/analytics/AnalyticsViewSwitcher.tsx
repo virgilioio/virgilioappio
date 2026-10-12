@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Lock, Globe, Plus, Pencil, Copy, Trash2, Check, Star } from 'lucide-react'
-import { useSavedViews, type SavedView, type ViewVisibility } from '@/hooks/useSavedViews'
+import { useSavedViews, type PageContext, type SavedView, type ViewVisibility } from '@/hooks/useSavedViews'
 import { useAuth } from '@/contexts/AuthContext'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -10,11 +10,13 @@ interface Props {
   // current state to persist when user creates/duplicates
   currentFilters: Record<string, unknown>
   currentExtraState: Record<string, unknown>
+  /** Which page's views (Analytics by default; Intelligence passes 'talent-intelligence'). */
+  pageContext?: PageContext
 }
 
-export function AnalyticsViewSwitcher({ activeViewId, onActivate, currentFilters, currentExtraState }: Props) {
+export function AnalyticsViewSwitcher({ activeViewId, onActivate, currentFilters, currentExtraState, pageContext = 'analytics' }: Props) {
   const { user } = useAuth()
-  const { views, createView, updateView, deleteView } = useSavedViews('analytics')
+  const { views, createView, updateView, deleteView } = useSavedViews(pageContext)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const active = views.find(v => v.id === activeViewId) ?? null

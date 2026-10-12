@@ -22,7 +22,7 @@ import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
 import { SoftChart } from '@/components/ui/EmptyIllustrations'
 import { WidgetFrame } from './widgets/WidgetFrame'
 import { AddWidgetTile } from './widgets/AddWidgetTile'
-import { defaultSpan } from './model/viz'
+import { useWidgetCatalog } from './widgets/WidgetCatalog'
 import type { WidgetConfig } from './model/types'
 
 interface Props {
@@ -30,17 +30,8 @@ interface Props {
   onChange: (widgets: WidgetConfig[]) => void
 }
 
-function newWidget(): WidgetConfig {
-  return {
-    id: crypto.randomUUID(),
-    metric: 'applications',
-    groupBy: 'none',
-    viz: 'kpi',
-    span: defaultSpan('kpi'),
-  }
-}
-
 export function WidgetGrid({ widgets, onChange }: Props) {
+  const { newWidget } = useWidgetCatalog()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),

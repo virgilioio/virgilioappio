@@ -12,9 +12,12 @@ interface Props {
   format: Format
   currency?: string
   max?: number
+  /** Intelligence: values picked as page filters, and how to pick one. */
+  selected?: string[]
+  onSelect?: (label: string) => void
 }
 
-export function BarsChart({ widgetId, metricId, data, format, currency, max }: Props) {
+export function BarsChart({ widgetId, metricId, data, format, currency, max, selected = [], onSelect }: Props) {
   const color = TONE_COLOR[METRICS[metricId].tone]
   const tip = useHoverTip()
   const rows = data.slice(0, 10)
@@ -22,8 +25,16 @@ export function BarsChart({ widgetId, metricId, data, format, currency, max }: P
   return (
     <ChartMotion id={`analytics:${widgetId}`} axis="x" className="flex flex-col gap-2.5 py-1 w-full overflow-hidden">
       {rows.length === 0 && <div className="text-[12px] text-[#8B8F9E] font-inter">No data</div>}
-      {rows.map((r, i) => (
-        <div key={`${r.label}-${i}`} className="flex items-center gap-3 min-w-0">
+      {rows.map((r, i) => {
+        const on = selected.includes(r.label)
+        const dim = selected.length > 0 && !on
+        const Row = onSelect ? 'button' : 'div'
+        return (
+        <Row
+          key={`${r.label}-${i}`}
+          {...(onSelect ? { type: 'button' as const, onClick: () => onSelect(r.label), 'aria-pressed': on, 'aria-label': `${r.label}: ${fmt(r.value, format, currency)}. ${on ? 'Remove filter' : 'Filter by this'}` } : {})}
+          className={`flex items-center gap-3 min-w-0 w-full text-left transition-opacity duration-150 ${onSelect ? 'rounded-[6px] cursor-pointer' : ''} ${dim ? 'opacity-[0.45]' : ''}`}
+        >
           <div
             className="text-right text-[11.5px] font-inter text-[#1F2230] truncate flex-shrink-0"
             style={{ width: 'clamp(72px, 28%, 140px)' }}
@@ -49,8 +60,9 @@ export function BarsChart({ widgetId, metricId, data, format, currency, max }: P
           >
             {fmt(r.value, format, currency)}
           </div>
-        </div>
-      ))}
+        </Row>
+        )
+      })}
       {tip.node}
     </ChartMotion>
   )
