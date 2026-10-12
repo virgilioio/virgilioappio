@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
-import { checkForDuplicateCandidate, createCandidate, DuplicateCheckResult } from '@/lib/candidateHelpers'
+import { autoMergeIntoExisting, checkForDuplicateCandidate, createCandidate, DuplicateCheckResult } from '@/lib/candidateHelpers'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 export interface ContactPhone {
@@ -162,6 +162,18 @@ export function useIndependentCandidates() {
 
     try {
       const duplicateCheck = await checkForDuplicateCandidate(candidateData, organizationId, tenant?.id)
+
+      // Already in Gio and nothing contradicts it: fill their record instead
+      // of creating a second one (Find Phase 1, 2026-10-12).
+      if (duplicateCheck?.autoMergeable) {
+        const id = await autoMergeIntoExisting(duplicateCheck.existingCandidate.id, candidateData)
+        if (!options?.silent) {
+          toast({ title: 'Already in Gio', description: `${duplicateCheck.existingCandidate.candidate_name} was already a candidate (${duplicateCheck.reasons.join(', ').toLowerCase()}). Their profile was updated.` })
+        }
+        if (!options?.skipRefresh) queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
+        const { data: merged } = await supabase.from('candidates').select('*').eq('id', id).single()
+        return merged as IndependentCandidate
+      }
 
       if (duplicateCheck) {
         return {

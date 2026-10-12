@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
 import { creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl } from "../_shared/apolloCredits.ts";
+import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
@@ -378,38 +379,15 @@ async function handleCandidates(params: CreateCandidateParams, user: any, member
   let existingCandidate = null;
   let wasDuplicate = false;
 
-  if (email) {
-    const { data: byEmail } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('organization_id', organization_id)
-      .eq('email', email)
-      .is('deleted_at', null)
-      .maybeSingle();
-    
-    if (byEmail) {
-      existingCandidate = byEmail;
-      wasDuplicate = true;
-      console.log(`🔍 Found duplicate by email: ${email}`);
-    }
-  }
-
-  if (!existingCandidate && linkedin_url) {
-    const { data: byLinkedIn } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('organization_id', organization_id)
-      .eq('linkedin_url', linkedin_url)
-      .is('deleted_at', null)
-      .maybeSingle();
-    
-    if (byLinkedIn) {
-      existingCandidate = byLinkedIn;
-      wasDuplicate = true;
-      console.log(`🔍 Found duplicate by LinkedIn: ${linkedin_url}`);
-    }
+  // Same person already in the workspace? (Find Phase 1, 2026-10-12)
+  const match = await findExistingCandidate(supabase, tenantId, {
+    candidate_name, email: email || null, phone: phone || null,
+    linkedin_url: linkedin_url || null, company_current: company_current || null,
+  });
+  if (match) {
+    existingCandidate = { id: match.id };
+    wasDuplicate = true;
+    console.log(`🔍 Already in Gio (${match.reasons.join(', ')})`);
   }
 
   let candidateId: string;

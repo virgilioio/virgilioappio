@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
+import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -194,39 +195,16 @@ serve(async (req) => {
     let existingCandidate = null;
     let wasDuplicate = false;
 
-    // CRITICAL: Check for duplicates WITHIN TENANT (not just organization)
-    if (email) {
-      const { data: byEmail } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant_id first
-        .eq('organization_id', organization_id)
-        .eq('email', email)
-        .is('deleted_at', null)
-        .maybeSingle();
-      
-      if (byEmail) {
-        existingCandidate = byEmail;
-        wasDuplicate = true;
-        console.log(`🔍 Found duplicate by email within tenant: ${email}`);
-      }
-    }
-
-    if (!existingCandidate && linkedin_url) {
-      const { data: byLinkedIn } = await supabase
-        .from('candidates')
-        .select('id')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant_id first
-        .eq('organization_id', organization_id)
-        .eq('linkedin_url', linkedin_url)
-        .is('deleted_at', null)
-        .maybeSingle();
-      
-      if (byLinkedIn) {
-        existingCandidate = byLinkedIn;
-        wasDuplicate = true;
-        console.log(`🔍 Found duplicate by LinkedIn within tenant: ${linkedin_url}`);
-      }
+    // Same person already in the workspace? Apollo id, LinkedIn or email,
+    // matched by find_candidate_matches (Find Phase 1, 2026-10-12).
+    const match = await findExistingCandidate(supabase, tenantId, {
+      candidate_name, email: email || null, phone: phone || null,
+      linkedin_url: linkedin_url || null, company_current: company_current || null,
+    });
+    if (match) {
+      existingCandidate = { id: match.id };
+      wasDuplicate = true;
+      console.log(`🔍 Already in Gio (${match.reasons.join(', ')})`);
     }
 
     let candidateId: string;

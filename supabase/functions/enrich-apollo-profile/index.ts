@@ -6,7 +6,7 @@
  * - People we already have (same Apollo id) are never paid for again; they
  *   are added to the job and marked collected in the project.
  * - After Apollo answers, each person is matched again by LinkedIn and email
- *   (find_tenant_candidate), so someone added by hand, by the extension or
+ *   (find_candidate_matches), so someone added by hand, by the extension or
  *   through an application is filled in, not duplicated.
  * - Credits: the balance is apollo_credit_status(); every Apollo call writes
  *   what Apollo reported to apollo_credit_ledger. Collect costs 1 a person;
@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest } from "../_shared/caller.ts";
+import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import {
   creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl,
   PERSON_CREDITS, PHONE_CREDITS,
@@ -321,11 +322,17 @@ serve(async (req) => {
       remaining -= cost.credits;
 
       for (const person of matches) {
-        // Someone already here under another key (LinkedIn, email)?
-        const { data: matchId } = await supabase.rpc('find_tenant_candidate', {
-          p_tenant: tenantId, p_apollo_id: person.id, p_linkedin: person.linkedin_url ?? null, p_email: person.email ?? null,
+        // Someone already here under another key (LinkedIn, email)? A strong
+        // match with nothing contradicting it is filled in; anything weaker
+        // becomes its own record for the Possible duplicates queue.
+        const existingMatch = await findExistingCandidate(supabase, tenantId, {
+          candidate_name: person.name || `${person.first_name ?? ''} ${person.last_name ?? ''}`.trim(),
+          apollo_id: person.id,
+          linkedin_url: person.linkedin_url ?? null,
+          email: person.email ?? null,
+          company_current: person.organization_name ?? null,
         });
-        let candidateId: string | null = (matchId as string | null) ?? null;
+        let candidateId: string | null = existingMatch?.id ?? null;
         let wasExisting = !!candidateId;
 
         if (candidateId) {

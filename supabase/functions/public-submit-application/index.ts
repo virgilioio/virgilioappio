@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 import { issueCandidateChatToken } from "../_shared/chat-token.ts";
+import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -234,20 +235,18 @@ serve(withRequestCors(async (req) => {
     let globalCandidateId: string | null = null;
     const postingTenantId = posting.tenant_id;
 
-    console.log('📧 Looking for existing candidate by email+name within tenant:', candidateEmail, 'tenant:', postingTenantId);
-    const { data: existingCandidate, error: lookupErr } = await supabase
-      .from("candidates")
-      .select("id, candidate_name, email")
-      .eq("email", candidateEmail)
-      .eq("candidate_name", candidateName)  // Match exact unique constraint (email, candidate_name)
-      .eq("tenant_id", postingTenantId)  // CRITICAL: Filter by tenant_id
-      .maybeSingle();
-
-    if (lookupErr) {
-      console.error('❌ Error looking up existing candidate:', lookupErr);
-    } else if (existingCandidate) {
-      globalCandidateId = existingCandidate.id;
-      console.log(`🎯 Found existing candidate: ${existingCandidate.candidate_name} (${existingCandidate.email})`);
+    // Same person already in the workspace? (Find Phase 1, 2026-10-12)
+    // An applicant types their own details, so an email match also needs
+    // the name to match, unless their LinkedIn matched.
+    const match = await findExistingCandidate(supabase, postingTenantId, {
+      candidate_name: candidateName,
+      email: candidateEmail,
+      phone: body.phone?.slice(0, 80) || null,
+      linkedin_url: (body.linkedin_url?.trim() || body.linkedin_sync?.trim()) || null,
+    }, { requireName: true });
+    if (match) {
+      globalCandidateId = match.id;
+      console.log(`🎯 Already in Gio (${match.reasons.join(', ')})`);
     } else {
       console.log('👤 No existing candidate found, will create new one');
     }

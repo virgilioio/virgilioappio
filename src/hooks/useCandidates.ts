@@ -7,7 +7,7 @@ import { useTenant } from '@/hooks/useTenant'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { toast } from '@/hooks/use-toast'
 import { log } from '@/lib/logger'
-import { checkForDuplicateCandidate, createCandidate, createJobAssociation, mergeCandidate, smartMerge, DuplicateCheckResult } from '@/lib/candidateHelpers'
+import { autoMergeIntoExisting, checkForDuplicateCandidate, createCandidate, createJobAssociation, mergeCandidate, smartMerge, DuplicateCheckResult } from '@/lib/candidateHelpers'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 
 export interface ContactPhone {
@@ -222,6 +222,17 @@ export function useCandidates(jobId: string) {
       if (!jobData.organization_id) throw new Error('Job is not associated with an organization.')
 
       const duplicateCheck = await checkForDuplicateCandidate(candidateData, jobData.organization_id, tenant?.id)
+
+      // Same Apollo id, LinkedIn or email and nothing contradicts it: they're
+      // already in Gio. Fill what their record is missing and add them to the
+      // job, without asking (Find Phase 1, 2026-10-12).
+      if (duplicateCheck?.autoMergeable) {
+        const { assignedJobId: _a, assignedStageId, job_id: _j, notes, ...incoming } = candidateData as any
+        const id = await autoMergeIntoExisting(duplicateCheck.existingCandidate.id, incoming, jobId, assignedStageId ?? null, notes ?? null)
+        toast({ title: 'Already in Gio', description: `${duplicateCheck.existingCandidate.candidate_name} was already a candidate (${duplicateCheck.reasons.join(', ').toLowerCase()}). Their profile was updated and they were added to the job.` })
+        queryClient.invalidateQueries({ queryKey: ['job-candidates', jobId] })
+        return { id, wasMerged: true, existingData: null, mergedData: null }
+      }
 
       if (duplicateCheck) {
         return {

@@ -57,6 +57,14 @@ export interface DuplicateCheckResult {
   existingCandidate: ExistingCandidate
   incomingData: Partial<CandidateData>
   mergedData: any
+  /** strong: same Apollo id, LinkedIn or email; medium: same phone and name. */
+  strength: 'strong' | 'medium'
+  /** Why we think it's the same person ("Same email", ...). */
+  reasons: string[]
+  /** A strong match whose LinkedIn or Apollo id differs: always ask. */
+  conflict: boolean
+  /** Strong and no conflict: fill the existing record without asking. */
+  autoMergeable: boolean
 }
 
 /**
@@ -102,72 +110,84 @@ export const smartMerge = (existing: any, incoming: any): any => {
 }
 
 /**
- * Check for duplicate candidates and return merge info if found
- * CRITICAL: tenantId parameter ensures cross-tenant isolation
+ * Who in the workspace this person already is (Find Phase 1, 2026-10-12).
+ * Asks find_candidate_matches(), the same function Collect, applications
+ * and the extension use: Apollo id, LinkedIn or email = strong; phone and
+ * name = medium. Weak matches (name and company) aren't raised here.
  */
 export async function checkForDuplicateCandidate(
   candidateData: Partial<CandidateData>,
   organizationId: string,
-  tenantId?: string  // Optional for defense-in-depth tenant isolation
+  tenantId?: string
 ): Promise<DuplicateCheckResult | null> {
-  log.debug('Checking for duplicate candidate:', { 
-    email: candidateData.email, 
-    name: candidateData.candidate_name,
-    tenantId 
-  })
-
-  if (!candidateData.email && !candidateData.candidate_name) {
-    return null
+  let tenant = tenantId
+  if (!tenant) {
+    const { data: org } = await supabase.from('organizations').select('tenant_id').eq('id', organizationId).maybeSingle()
+    tenant = org?.tenant_id ?? undefined
   }
+  if (!tenant) return null
 
-  const duplicateQuery = candidateData.email 
-    ? async () => {
-        let query = supabase.from('candidates').select('*')
-          .eq('email', candidateData.email!)
-          .eq('organization_id', organizationId)
-        
-        // CRITICAL: Add tenant filter for proper cross-tenant isolation
-        if (tenantId) {
-          query = query.eq('tenant_id', tenantId)
-        }
-        
-        return await query.limit(1)
-      }
-    : async () => {
-        let query = supabase.from('candidates').select('*')
-          .eq('candidate_name', candidateData.candidate_name!)
-          .eq('organization_id', organizationId)
-          .is('email', null)
-        
-        // CRITICAL: Add tenant filter for proper cross-tenant isolation
-        if (tenantId) {
-          query = query.eq('tenant_id', tenantId)
-        }
-        
-        return await query.limit(1)
-      }
-  
-  const result = await withAuthRetry(duplicateQuery)
+  const payload = {
+    candidate_name: candidateData.candidate_name ?? null,
+    email: candidateData.email ?? null,
+    phone: candidateData.phone ?? null,
+    linkedin_url: candidateData.linkedin_url ?? null,
+    company_current: candidateData.company_current ?? candidateData.current_company ?? null,
+  }
+  if (!payload.email && !payload.phone && !payload.linkedin_url) return null
 
+  const result = await withAuthRetry(async () =>
+    await supabase.rpc('find_candidate_matches', { p_tenant: tenant!, p_payload: payload })
+  )
   if (result.error) {
     log.error('Error checking for duplicates:', result.error)
     return null
   }
-  
-  if (result.data && result.data.length > 0) {
-    const existingCandidate = result.data[0] as ExistingCandidate
-    const mergedData = smartMerge(existingCandidate, candidateData)
-    
-    log.debug('Duplicate candidate found:', existingCandidate.id)
-    return {
-      isDuplicate: true,
-      existingCandidate,
-      incomingData: candidateData,
-      mergedData
-    }
-  }
+  const match = (result.data || []).find((m: any) => m.strength === 'strong' || m.strength === 'medium')
+  if (!match) return null
 
-  return null
+  const { data: existing } = await supabase.from('candidates').select('*').eq('id', match.candidate_id).maybeSingle()
+  if (!existing) return null
+
+  log.debug('Duplicate candidate found:', match.candidate_id, match.reasons)
+  return {
+    isDuplicate: true,
+    existingCandidate: existing as ExistingCandidate,
+    incomingData: candidateData,
+    mergedData: smartMerge(existing, candidateData),
+    strength: match.strength as 'strong' | 'medium',
+    reasons: match.reasons ?? [],
+    conflict: !!match.conflict,
+    autoMergeable: match.strength === 'strong' && !match.conflict,
+  }
+}
+
+/**
+ * A strong match with no conflict: fill what the existing record is missing
+ * (its own values always win) and, when given, put them in the job. Goes
+ * through merge-candidates, so it is audited like any merge.
+ */
+export async function autoMergeIntoExisting(
+  existingCandidateId: string,
+  incoming: Partial<CandidateData>,
+  jobId?: string | null,
+  stageId?: string | null,
+  notes?: string | null,
+): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('merge-candidates', {
+    body: {
+      action: 'merge',
+      surviving_candidate_id: existingCandidateId,
+      incoming,
+      resolutions: {},
+      job_id: jobId ?? null,
+      stage_id: stageId ?? null,
+      notes: notes ?? null,
+    },
+  })
+  if (error) throw error
+  if (data?.error) throw new Error(String(data.error))
+  return (data?.candidate_id as string) ?? existingCandidateId
 }
 
 /**
