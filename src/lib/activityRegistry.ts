@@ -96,6 +96,8 @@ export const ACTIVITY_TYPES: Record<string, ActivityMeta> = {
   candidate_assigned_to_job: { category: 'other', icon: Briefcase, tone: 'purple' },
   candidate_updated: { category: 'other', icon: Pencil, tone: 'neutral' },
   candidate_profile_updated: { category: 'other', icon: Pencil, tone: 'neutral' },
+  // Find Phase 3: a source showed a new company or title.
+  candidate_job_changed: { category: 'other', icon: Briefcase, tone: 'blue' },
   candidate_status_changed: { category: 'other', icon: CircleDot, tone: 'neutral' },
   candidate_note_added: { category: 'other', icon: StickyNote, tone: 'yellow' },
   interview_scheduled: { category: 'other', icon: CalendarCheck, tone: 'blue' },

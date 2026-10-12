@@ -274,7 +274,7 @@ export function useResumeParsing() {
         // person's edit. The summary and contact lists are written directly.
         const FACTS = ['candidate_name', 'linkedin_url', 'current_job_title', 'company_current', 'location_city', 'location_state', 'location_country'];
         const facts: Record<string, string> = {};
-        const rest: Record<string, any> = {};
+        const rest: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(update)) {
           if (FACTS.includes(k)) facts[k] = v as string;
           else rest[k] = v;

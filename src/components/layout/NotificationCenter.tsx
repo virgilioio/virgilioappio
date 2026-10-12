@@ -36,6 +36,7 @@ const CATEGORY_META: Record<NotificationCategory, { label: string; icon: any; to
   daily_digest:        { label: 'DIGEST',            icon: CalendarDays,   tone: 'blue',   bg: '#DBEAFE', fg: '#1D4ED8' },
   chat_message:        { label: 'CHAT',              icon: MessageSquare,  tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
   talent_pool:         { label: 'TALENT POOL',       icon: UserPlus,       tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
+  candidate_update:    { label: 'JOB CHANGE',        icon: Briefcase,      tone: 'blue',   bg: '#DBEAFE', fg: '#1D4ED8' },
 }
 
 function relTime(iso: string): string {

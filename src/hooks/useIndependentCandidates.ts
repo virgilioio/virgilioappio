@@ -54,6 +54,10 @@ export interface IndependentCandidate {
   enrichment_status: string | null
   current_job_title: string | null
   company_current: string | null
+  /** Find Phase 3: loaded on the profile only. */
+  apollo_id?: string | null
+  field_provenance?: unknown
+  profile_refreshed_at?: string | null
 }
 
 export interface CreateIndependentCandidateData {

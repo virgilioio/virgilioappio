@@ -12,6 +12,7 @@ export type NotificationCategory =
   | 'daily_digest'
   | 'chat_message'
   | 'talent_pool'
+  | 'candidate_update'
 
 export interface NotificationRow {
   id: string

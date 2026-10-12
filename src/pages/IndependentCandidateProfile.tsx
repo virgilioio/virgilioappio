@@ -31,6 +31,7 @@ import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { ProfileSummaryCard } from '@/components/candidates/profile/ProfileSummaryCard'
+import { DataSourcesBlock } from '@/components/candidates/profile/DataSourcesBlock'
 import { ProfileSummaryMarkdown } from '@/components/candidates/ProfileSummaryMarkdown'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { experienceSummary, unionExperienceMonths } from '@/lib/experience/groupExperience'
@@ -390,6 +391,8 @@ export default function IndependentCandidateProfile() {
           <MetaRow icon={UserIcon} label="Added by" value={createdByName || null} />
         </div>
       </SidebarBlock>
+
+      <DataSourcesBlock candidate={candidate} onRefreshed={() => setProfileDataKey((k) => k + 1)} />
 
       {linksList.length > 0 && (
         <SidebarBlock label="Links">
