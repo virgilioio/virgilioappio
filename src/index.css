@@ -1156,6 +1156,12 @@ body[data-dup-open] [role="alertdialog"]:not([data-dup-dialog]) {
     transform: scale(0.97);
   }
 }
+/* A secondary choice next to the action (Later): text only, quieter. */
+.gio-toaster [data-sonner-toast][data-styled="true"] [data-button][data-cancel] {
+  border-color: transparent;
+  color: rgb(255 252 249 / 0.72);
+  margin-left: auto;
+}
 .gio-toaster [data-sonner-toast][data-styled="true"] [data-button]:focus-visible {
   outline: 2px solid #6f3ff5;
   outline-offset: 2px;

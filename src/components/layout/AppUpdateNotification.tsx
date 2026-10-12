@@ -1,44 +1,34 @@
-import { createPortal } from 'react-dom';
-import { RefreshCw, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAppVersionCheck } from '@/hooks/useAppVersionCheck';
 
+/**
+ * "A new version is ready" as one of our toasts (2026-10-12): the same ink
+ * Sonner toast as everything else, bottom-left and above the phone's bottom
+ * bar. It stays until you choose Refresh or Later (Later hides it for this
+ * version only). Sonner shows one toast at a time, so another toast briefly
+ * covers it and it comes back after.
+ */
+const TOAST_ID = 'gio-app-update';
+
 export function AppUpdateNotification() {
-  const { updateAvailable, refresh, dismiss } = useAppVersionCheck();
+  const { updateAvailable, version, refresh, dismiss } = useAppVersionCheck();
 
-  if (!updateAvailable) return null;
+  useEffect(() => {
+    if (!updateAvailable) {
+      toast.dismiss(TOAST_ID);
+      return;
+    }
+    toast('A new version of Gio ATS', {
+      id: TOAST_ID,
+      description: 'Refresh to load it. Save what you’re typing first.',
+      duration: Infinity,
+      action: { label: 'Refresh', onClick: refresh },
+      cancel: { label: 'Later', onClick: dismiss },
+      // A swipe away counts as Later.
+      onDismiss: dismiss,
+    });
+  }, [updateAvailable, version, refresh, dismiss]);
 
-  return createPortal(
-    <div className="fixed bottom-4 left-4 z-[9999] pointer-events-none animate-in slide-in-from-bottom-5 fade-in duration-300">
-      <div className="pointer-events-auto flex items-center gap-3 bg-background border border-border rounded-lg shadow-lg p-4 max-w-sm">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">
-            Update available
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            A new version of GoGio ATS is ready.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={dismiss}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            onClick={refresh}
-            className="gap-1.5"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
+  return null;
 }

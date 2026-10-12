@@ -5,6 +5,9 @@ import App from './App.tsx'
 import './index.css'
 import { GioSplash } from './components/ui/GioSplash'
 import { SplashReadyProvider, useSplashReady } from './contexts/SplashReadyContext'
+import { installStaleChunkReload } from './hooks/useAppVersionCheck'
+
+installStaleChunkReload()
 
 // Dynamically import and init Sentry only in production
 if (!import.meta.env.DEV && import.meta.env.VITE_SENTRY_DSN) {
