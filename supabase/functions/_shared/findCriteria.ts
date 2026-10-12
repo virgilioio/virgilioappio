@@ -37,7 +37,7 @@ const NAME_ALIASES: Record<string, string> = {
 export function normKey(s: string | null | undefined): string {
   return (s ?? '')
     .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z ]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
