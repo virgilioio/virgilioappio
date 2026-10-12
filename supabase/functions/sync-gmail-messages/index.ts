@@ -550,24 +550,28 @@ const handler = async (req: Request): Promise<Response> => {
         const candidateRelated =
           match !== null || (await threadHasCandidate(supabase, fullMessage.threadId));
 
-        // Process attachments only for candidate-related mail — non-candidate
-        // mail gets no Gmail attachment downloads and no storage writes.
-        let attachmentsMeta: AttachmentMeta[] = [];
-        if (candidateRelated) {
-          try {
-            attachmentsMeta = await processAttachments(
-              supabase,
-              accessToken,
-              msg.id,
-              identity.id,
-              fullMessage,
-            );
-            stats.attachments += attachmentsMeta.length;
-          } catch (attachErr) {
-            console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
-          }
-        } else {
+        // Privacy (2026-10-12): Gio keeps only candidate mail. Anything else in
+        // the mailbox is read in memory to check who it's with, then dropped —
+        // nothing about it is stored.
+        if (!candidateRelated) {
+          stats.skipped++;
           stats.attachmentsSkipped++;
+          continue;
+        }
+
+        // Attachments of candidate mail go to the private bucket.
+        let attachmentsMeta: AttachmentMeta[] = [];
+        try {
+          attachmentsMeta = await processAttachments(
+            supabase,
+            accessToken,
+            msg.id,
+            identity.id,
+            fullMessage,
+          );
+          stats.attachments += attachmentsMeta.length;
+        } catch (attachErr) {
+          console.log(`[Gmail Sync] Attachment processing error for ${msg.id}:`, attachErr);
         }
 
         // Prepare upsert data
@@ -581,7 +585,7 @@ const handler = async (req: Request): Promise<Response> => {
           cc_addresses: ccEmails.length > 0 ? ccEmails : null,
           subject: subject || '(No Subject)',
           body_text: text,
-          body_html: candidateRelated ? html : null,
+          body_html: html,
           thread_id: fullMessage.threadId,
           provider_message_id: msg.id,
           rfc822_message_id: rfc822MessageId,
@@ -591,16 +595,14 @@ const handler = async (req: Request): Promise<Response> => {
           is_read: !fullMessage.labelIds?.includes('UNREAD'),
           gmail_labels: fullMessage.labelIds || [],
           status: direction === 'sent' ? 'sent' : 'delivered',
-          raw_message_data: candidateRelated
-            ? {
-                headers: headers.reduce((acc: Record<string, string>, h) => {
-                  acc[h.name] = h.value;
-                  return acc;
-                }, {}),
-                labelIds: fullMessage.labelIds,
-                snippet: fullMessage.snippet,
-              }
-            : null,
+          raw_message_data: {
+            headers: headers.reduce((acc: Record<string, string>, h) => {
+              acc[h.name] = h.value;
+              return acc;
+            }, {}),
+            labelIds: fullMessage.labelIds,
+            snippet: fullMessage.snippet,
+          },
         };
 
         // Link the resolved candidate directly in the upsert (one statement,
@@ -639,11 +641,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         stats.upserted++;
-        if (candidateRelated) {
-          stats.full++;
-        } else {
-          stats.metadataOnly++;
-        }
+        stats.full++;
 
       } catch (error) {
         console.error(`[Gmail Sync] Error processing message ${msg.id}:`, error);
