@@ -300,3 +300,6 @@ verify_jwt = false
 
 [functions.sales-company-upsert]
 verify_jwt = false
+
+[functions.pool-builder]
+verify_jwt = false
