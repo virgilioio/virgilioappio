@@ -1562,6 +1562,30 @@ export type Database = {
           },
         ]
       }
+      candidate_transfers: {
+        Row: {
+          merged: boolean
+          source_candidate_id: string
+          target_candidate_id: string
+          target_tenant_id: string
+          transferred_at: string
+        }
+        Insert: {
+          merged: boolean
+          source_candidate_id: string
+          target_candidate_id: string
+          target_tenant_id: string
+          transferred_at?: string
+        }
+        Update: {
+          merged?: boolean
+          source_candidate_id?: string
+          target_candidate_id?: string
+          target_tenant_id?: string
+          transferred_at?: string
+        }
+        Relationships: []
+      }
       candidate_urls: {
         Row: {
           candidate_id: string
