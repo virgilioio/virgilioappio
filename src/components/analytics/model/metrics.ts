@@ -49,8 +49,14 @@ export const METRICS: Record<MetricId, MetricDef> = {
   avg_days_in_stage:    { id: 'avg_days_in_stage',    label: 'Avg days in stage',     tone: 'amber',   icon: Hourglass,     format: 'days',  deltaGood: 'down', group: 'hygiene' },
   stuck_candidates:     { id: 'stuck_candidates',     label: 'Stuck candidates',      tone: 'pink',    icon: AlertTriangle, format: 'count', deltaGood: 'down', group: 'hygiene' },
   days_in_pipeline:     { id: 'days_in_pipeline',     label: 'Avg days in pipeline',  tone: 'amber',   icon: Timer,         format: 'days',  deltaGood: 'down', group: 'hygiene' },
+
+  // Market (Intelligence): the whole talent database, not one period's pipeline
+  mkt_people:           { id: 'mkt_people',           label: 'People',                tone: 'purple',  icon: Users,         format: 'count', deltaGood: 'up',   group: 'market' },
+  mkt_salary:           { id: 'mkt_salary',           label: 'Median salary',         tone: 'green',   icon: Banknote,      format: 'money', deltaGood: 'up',   group: 'market' },
+  mkt_experience:       { id: 'mkt_experience',       label: 'Avg experience',        tone: 'blue',    icon: Briefcase,     format: 'years', deltaGood: 'up',   group: 'market' },
 }
 
 export const METRIC_LIST = Object.values(METRICS)
 export const RECRUITING_METRICS = METRIC_LIST.filter(m => m.group === 'recruiting')
 export const HYGIENE_METRICS = METRIC_LIST.filter(m => m.group === 'hygiene')
+export const MARKET_METRICS = METRIC_LIST.filter(m => m.group === 'market')

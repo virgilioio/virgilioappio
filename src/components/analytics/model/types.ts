@@ -1,6 +1,6 @@
 // Analytics widget grammar — types
 export type Tone = 'purple' | 'green' | 'blue' | 'pink' | 'amber' | 'neutral'
-export type Format = 'count' | 'days' | 'pct' | 'money' | 'ratio'
+export type Format = 'count' | 'days' | 'pct' | 'money' | 'ratio' | 'years'
 export type DeltaGood = 'up' | 'down'
 
 export type MetricId =
@@ -19,8 +19,12 @@ export type MetricId =
   | 'avg_days_in_stage'
   | 'stuck_candidates'
   | 'days_in_pipeline'
+  // Market (Intelligence): the whole talent database
+  | 'mkt_people'
+  | 'mkt_salary'
+  | 'mkt_experience'
 
-export type MetricGroup = 'recruiting' | 'hygiene'
+export type MetricGroup = 'recruiting' | 'hygiene' | 'market'
 
 export type DimensionId =
   | 'none'
@@ -33,8 +37,21 @@ export type DimensionId =
   | 'skills'
   | 'experience'
   | 'geography'
+  // Market (Intelligence): people in the whole talent database
+  | 'mkt_country'
+  | 'mkt_city'
+  | 'mkt_role_family'
+  | 'mkt_title'
+  | 'mkt_specialization'
+  | 'mkt_seniority'
+  | 'mkt_company'
+  | 'mkt_past_company'
+  | 'mkt_salary_band'
+  | 'mkt_experience'
+  | 'mkt_skills'
+  | 'mkt_source'
 
-export type VizId = 'kpi' | 'line' | 'bars' | 'columns' | 'donut' | 'funnel' | 'table' | 'aging' | 'list'
+export type VizId = 'kpi' | 'line' | 'bars' | 'columns' | 'donut' | 'funnel' | 'table' | 'aging' | 'list' | 'salary_range' | 'map'
 
 export interface WidgetScope {
   dimension: DimensionId
@@ -51,6 +68,19 @@ export interface WidgetConfig {
   scope?: WidgetScope
   /** Pipeline hygiene: days before a candidate counts as stuck (default 14) */
   threshold?: number
+  /** Market salary: per month (default) or per year */
+  salaryPeriod?: 'month' | 'year'
+  /** Market salary: the currency to show (default: the workspace's base currency) */
+  salaryCurrency?: string
+}
+
+/** A salary spread for one group (Intelligence). Groups under 5 salaries are never shown. */
+export interface SalaryRange {
+  label: string
+  p25: number
+  median: number
+  p75: number
+  n: number
 }
 
 export interface SeriesPoint {
@@ -76,4 +106,8 @@ export interface NormalizedData {
   list?: { id: string; href: string; name: string; job: string; stage: string; days: number; estimated: boolean }[]
   /** Small honesty note, e.g. estimated dates */
   note?: string
+  /** Market: salary spread per group */
+  ranges?: SalaryRange[]
+  /** Market: the answer in one line, with its number and sample size */
+  insight?: string
 }

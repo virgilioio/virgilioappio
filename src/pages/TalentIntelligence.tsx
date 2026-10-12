@@ -1,208 +1,324 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Download, LayoutGrid, MousePointerClick, Plus, RotateCcw, Upload, X } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Section } from '@/components/layout/Section'
-import { useTalentIntelligenceData, applyFilters } from '@/hooks/useTalentIntelligenceData'
-import { useTalentIntelligenceFilterOptions } from '@/hooks/useTalentIntelligenceFilterOptions'
-import { TalentIntelligenceFilterProvider, useTalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
-import { SummaryMetricsRow } from '@/components/talent-intelligence/SummaryMetricsRow'
-import { GeographyInsights } from '@/components/talent-intelligence/GeographyInsights'
-import { ExperienceDistribution } from '@/components/talent-intelligence/ExperienceDistribution'
-import { SkillsLandscape } from '@/components/talent-intelligence/SkillsLandscape'
-import { CompensationInsights } from '@/components/talent-intelligence/CompensationInsights'
-import { TalentPoolComposition } from '@/components/talent-intelligence/TalentPoolComposition'
-import { TalentOrigins } from '@/components/talent-intelligence/TalentOrigins'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTenant } from '@/hooks/useTenant'
+import { usePermissions } from '@/hooks/usePermissions'
+import { useSavedViews, type SavedView } from '@/hooks/useSavedViews'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { supabase } from '@/lib/supabaseClient'
+import { toast } from 'sonner'
+import { AnalyticsViewSwitcher } from '@/components/analytics/AnalyticsViewSwitcher'
+import { WidgetGrid } from '@/components/analytics/WidgetGrid'
+import { WidgetCatalogProvider } from '@/components/analytics/widgets/WidgetCatalog'
+import { MarketDataProvider, useMarketBundle } from '@/components/analytics/market/MarketDataContext'
+import { marketCatalog } from '@/components/analytics/market/marketCatalog'
+import { seedMarketWidgets } from '@/components/analytics/market/seedMarketView'
+import { applySelections, companyLabel, SENIORITY_LABEL, type MarketSelection } from '@/components/analytics/market/marketData'
+import { METRICS } from '@/components/analytics/model/metrics'
+import { DIMENSIONS } from '@/components/analytics/model/dimensions'
+import { VIZ, defaultSpan } from '@/components/analytics/model/viz'
+import type { DimensionId, MetricId, VizId, WidgetConfig } from '@/components/analytics/model/types'
 import { CandidatesEmpty } from '@/components/empty/CandidatesEmpty'
 import { EmptyCard } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
-import { useLoadTimeout } from '@/hooks/useLoadTimeout'
-import { usePermissions } from '@/hooks/usePermissions'
-import { useNavigate } from 'react-router-dom'
-import { RotateCcw, Upload } from 'lucide-react'
-import { TalentIntelligenceFilterBar } from '@/components/talent-intelligence/TalentIntelligenceFilterBar'
-import { SavedViewSelector } from '@/components/filters/SavedViewSelector'
-import { usePersistentFilters } from '@/hooks/usePersistentFilters'
-import { useSavedViews } from '@/hooks/useSavedViews'
-import type { TalentIntelligenceFilters } from '@/contexts/TalentIntelligenceFilterContext'
-import { Loadable } from '@/components/ui/loadable'
-import { Skeleton } from '@/components/ui/skeleton'
+import { IconTip } from '@/components/ui/tooltip'
 
-const EMPTY_TI_FILTERS: TalentIntelligenceFilters = {
-  roles: [], functionalAreas: [], specializations: [], seniorities: [],
-  skills: [], countries: [], states: [], cities: [], jobs: [],
-  candidateStatuses: [], pipelineStatuses: [], stages: [],
-  experienceMin: null, experienceMax: null,
-  salaryMin: null, salaryMax: null,
-  dateFrom: null, dateTo: null,
+/**
+ * Intelligence (Find Phase 4, 2026-10-12): the talent market, on the same
+ * widget grid as Analytics. Every widget reads the whole talent database
+ * (everyone Find, the talent pool, applications and imports brought in),
+ * not one period's pipeline. Click a bar, slice, row or country to filter
+ * the page; views save widgets and filters, and "Market" is seeded for the
+ * workspace.
+ */
+
+const SEED_NAME = 'Market'
+
+interface ViewFilters { selections?: MarketSelection[] }
+interface ExtraState { widgets?: WidgetConfig[] }
+
+function sanitizeSelections(value: unknown): MarketSelection[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((s): MarketSelection[] => {
+    if (!s || typeof s !== 'object') return []
+    const { dimension, value: v } = s as Partial<MarketSelection>
+    return typeof dimension === 'string' && dimension in DIMENSIONS && DIMENSIONS[dimension as DimensionId].group === 'market' && typeof v === 'string'
+      ? [{ dimension: dimension as DimensionId, value: v }]
+      : []
+  })
 }
 
-function TalentIntelligenceContent() {
-  const { filters, setArrayFilter, clearAll, hasActiveFilters, toggleArrayFilter, setNumericFilter } = useTalentIntelligenceFilters()
-  const { data, rawCandidates, associations, jobs, stageMappings, isLoading, error, refetch } = useTalentIntelligenceData(filters)
-  const navigate = useNavigate()
-  const { canManageCandidates } = usePermissions()
-  // §16: a failed or 15-second-slow first load is an inline error with Retry.
-  const [loadRetry, setLoadRetry] = useState(0)
-  const loadTimedOut = useLoadTimeout(isLoading, loadRetry)
-  const loadError: 'failed' | 'timeout' | null = error && !data ? 'failed' : loadTimedOut ? 'timeout' : null
-  const filterOptions = useTalentIntelligenceFilterOptions(rawCandidates, associations, jobs, stageMappings)
+function sanitizeWidgets(value: unknown): WidgetConfig[] | null {
+  if (!Array.isArray(value)) return null
+  return value.flatMap((raw): WidgetConfig[] => {
+    if (!raw || typeof raw !== 'object') return []
+    const w = raw as Partial<WidgetConfig>
+    const metric = typeof w.metric === 'string' && METRICS[w.metric as MetricId]?.group === 'market' ? (w.metric as MetricId) : null
+    if (!metric) return []
+    const groupBy = typeof w.groupBy === 'string' && w.groupBy in DIMENSIONS ? (w.groupBy as DimensionId) : 'none'
+    const viz = typeof w.viz === 'string' && w.viz in VIZ ? (w.viz as VizId) : 'kpi'
+    const span = typeof w.span === 'number' && Number.isFinite(w.span) && w.span > 0 ? Math.min(12, Math.max(1, Math.round(w.span))) : defaultSpan(viz)
+    return [{
+      id: typeof w.id === 'string' && w.id ? w.id : crypto.randomUUID(),
+      metric, groupBy, viz, span,
+      title: typeof w.title === 'string' ? w.title : undefined,
+      salaryPeriod: w.salaryPeriod === 'year' ? 'year' : w.salaryPeriod === 'month' ? 'month' : undefined,
+      salaryCurrency: typeof w.salaryCurrency === 'string' ? w.salaryCurrency : undefined,
+    }]
+  })
+}
 
-  // Saved views integration
-  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+function csvCell(v: unknown): string {
+  const s = v === null || v === undefined ? '' : String(v)
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
 
-  // We need a setter that maps to context
-  const setFiltersFromRecord = useCallback((record: Record<string, unknown>) => {
-    const f = record as unknown as TalentIntelligenceFilters
-    // Apply all array filters
-    const arrayKeys = ['roles', 'functionalAreas', 'specializations', 'seniorities', 'skills', 'countries', 'states', 'cities', 'jobs', 'candidateStatuses', 'pipelineStatuses', 'stages'] as const
-    for (const key of arrayKeys) {
-      setArrayFilter(key, (f[key] as string[]) ?? [])
-    }
-  }, [setArrayFilter])
-
-  const { setActiveViewId: persistViewId, getActiveViewId } = usePersistentFilters(
-    'talent-intelligence',
-    filters as unknown as Record<string, unknown>,
-    setFiltersFromRecord as any,
-    EMPTY_TI_FILTERS as unknown as Record<string, unknown>,
+export default function TalentIntelligence() {
+  return (
+    <AuthGate>
+      <PermissionGate permission="canViewCandidates">
+        <IntelligencePage />
+      </PermissionGate>
+    </AuthGate>
   )
+}
 
-  const { defaultView } = useSavedViews('talent-intelligence')
+function IntelligencePage() {
+  const { user } = useAuth()
+  const { tenant } = useTenant()
+  const { views, defaultView, createView, updateView } = useSavedViews('talent-intelligence')
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+  const [widgets, setWidgets] = useState<WidgetConfig[]>([])
+  const [selections, setSelections] = useState<MarketSelection[]>([])
+
+  // One shared "Market" view per workspace, seeded by whoever opens it first.
+  const seededRef = useRef(false)
+  useEffect(() => {
+    if (seededRef.current || !user || !tenant) return
+    seededRef.current = true
+    ;(async () => {
+      const { data: existing } = await supabase
+        .from('saved_views')
+        .select('id')
+        .eq('tenant_id', tenant.id)
+        .eq('page_context', 'talent-intelligence')
+        .eq('visibility', 'shared')
+        .eq('name', SEED_NAME)
+        .limit(1)
+      if (existing && existing.length > 0) return
+      createView.mutate({
+        name: SEED_NAME,
+        filters: { selections: [] },
+        extra_state: { widgets: seedMarketWidgets() },
+        is_default: true,
+        visibility: 'shared',
+      })
+    })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, tenant?.id])
+
+  const activateView = useCallback((v: SavedView) => {
+    setActiveViewId(v.id)
+    setSelections(sanitizeSelections((v.filters as ViewFilters | null)?.selections))
+    // Views saved before the rebuild have no widgets: they open as Market.
+    setWidgets(sanitizeWidgets((v.extra_state as ExtraState | null)?.widgets) ?? seedMarketWidgets())
+  }, [])
 
   useEffect(() => {
-    const storedViewId = getActiveViewId()
-    if (storedViewId) {
-      setActiveViewId(storedViewId)
-    } else if (defaultView) {
-      setActiveViewId(defaultView.id)
-      setFiltersFromRecord(defaultView.filters as Record<string, unknown>)
-    }
+    if (activeViewId) return
+    const market = views.find(v => v.name === SEED_NAME && v.visibility === 'shared')
+    const first = defaultView ?? market ?? views[0]
+    if (first) activateView(first)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultView?.id])
+  }, [defaultView?.id, views.length])
 
-  const handleActiveViewChange = useCallback((viewId: string | null) => {
-    setActiveViewId(viewId)
-    persistViewId(viewId)
-  }, [persistViewId])
+  // Save widgets and filters to the view (debounced; only views you own).
+  const persistTimer = useRef<number | null>(null)
+  useEffect(() => {
+    if (!activeViewId) return
+    const active = views.find(v => v.id === activeViewId)
+    if (!active || active.user_id !== user?.id) return
+    if (persistTimer.current) window.clearTimeout(persistTimer.current)
+    persistTimer.current = window.setTimeout(() => {
+      updateView.mutate({
+        id: activeViewId,
+        filters: { selections } as unknown as Record<string, unknown>,
+        extra_state: { widgets } as unknown as Record<string, unknown>,
+      })
+    }, 600)
+    return () => { if (persistTimer.current) window.clearTimeout(persistTimer.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgets, selections, activeViewId])
 
-  const handleApplyView = useCallback((viewFilters: Record<string, unknown>) => {
-    setFiltersFromRecord(viewFilters)
-  }, [setFiltersFromRecord])
-
-  // Job ID → title lookup for display in chips
-  const jobLookup = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const j of jobs) map.set(j.id, j.title)
-    return map
-  }, [jobs])
-
-  // Compute filtered candidate IDs for the TalentOrigins hook
-  const filteredCandidateIds = useMemo(() => {
-    if (!rawCandidates.length) return []
-    const filtered = applyFilters(rawCandidates, filters, associations, stageMappings)
-    return filtered.map(c => c.id)
-  }, [rawCandidates, filters, associations, stageMappings])
-
-  const handleFilterApply = (key: string, value: string) => {
-    const keyMap: Record<string, 'roles' | 'functionalAreas' | 'specializations' | 'seniorities' | 'skills' | 'countries' | 'states' | 'cities'> = {
-      role: 'roles',
-      functionalArea: 'functionalAreas',
-      specialization: 'specializations',
-      seniority: 'seniorities',
-      skill: 'skills',
-      country: 'countries',
-      state: 'states',
-      city: 'cities',
-    }
-    const filterKey = keyMap[key]
-    if (filterKey) toggleArrayFilter(filterKey, value)
-  }
-
-  const handleExperienceBandClick = (band: string) => {
-    const bandMap: Record<string, [number, number]> = {
-      '0–2 years': [0, 2],
-      '3–5 years': [3, 5],
-      '6–10 years': [6, 10],
-      '10+ years': [11, 99],
-    }
-    const range = bandMap[band]
-    if (range) {
-      setNumericFilter('experienceMin', range[0])
-      setNumericFilter('experienceMax', range[1] === 99 ? null : range[1])
-    }
-  }
+  const viewName = views.find(v => v.id === activeViewId)?.name ?? 'Intelligence'
 
   return (
-    <div className="min-h-screen bg-background">
-      <Section variant="default" banded container>
-        <PageHeader
-          title="Talent Intelligence"
-         
-        />
-      </Section>
+    <MarketDataProvider selections={selections} onSelectionsChange={setSelections}>
+      <IntelligenceBody
+        viewName={viewName}
+        activeViewId={activeViewId}
+        onActivate={activateView}
+        widgets={widgets}
+        setWidgets={setWidgets}
+        selections={selections}
+        setSelections={setSelections}
+      />
+    </MarketDataProvider>
+  )
+}
 
-      <Section container>
-        {/* §6: hold the filter bar's place while loading, so the page doesn't jump down. */}
-        {isLoading && (
-          <div className="mb-6 space-y-3" aria-hidden="true">
-            <Skeleton className="h-8 w-[98px] rounded-full" />
-            <div className="flex flex-wrap items-center gap-2">
-              {[70, 74, 102, 88, 97, 84, 98, 78].map((w, i) => (
-                <Skeleton key={i} className="h-9 rounded-[10px]" style={{ width: w }} />
-              ))}
+function IntelligenceBody({
+  viewName, activeViewId, onActivate, widgets, setWidgets, selections, setSelections,
+}: {
+  viewName: string
+  activeViewId: string | null
+  onActivate: (v: SavedView) => void
+  widgets: WidgetConfig[]
+  setWidgets: (next: WidgetConfig[] | ((prev: WidgetConfig[]) => WidgetConfig[])) => void
+  selections: MarketSelection[]
+  setSelections: (next: MarketSelection[]) => void
+}) {
+  const m = useMarketBundle()
+  const navigate = useNavigate()
+  const { canManageCandidates } = usePermissions()
+  const [retry, setRetry] = useState(0)
+  const timedOut = useLoadTimeout(m.loading, retry)
+  const loadError = m.error && m.rows.length === 0 ? 'failed' : timedOut ? 'timeout' : null
+
+  const currencies = useMemo(
+    () => [m.baseCurrency, ...(m.baseCurrency !== 'USD' && m.rates.USD ? ['USD'] : [])],
+    [m.baseCurrency, m.rates.USD],
+  )
+  const catalog = useMemo(() => marketCatalog(currencies), [currencies])
+
+  const matching = useMemo(() => applySelections(m.rows, selections, m.ctx), [m.rows, selections, m.ctx])
+  const withSalary = useMemo(() => matching.filter(r => typeof r.salary_month_base === 'number').length, [matching])
+
+  const exportCsv = () => {
+    const header = ['Country', 'State', 'City', 'Title', 'Role family', 'Seniority', 'Current company', 'Years of experience', `Salary per month (${m.baseCurrency})`, 'Source', 'Added']
+    const lines = matching.map(r => [
+      r.country, r.state, r.city, r.title, r.role_family,
+      r.seniority ? SENIORITY_LABEL[r.seniority] ?? r.seniority : '',
+      companyLabel(r.company), r.years_experience,
+      typeof r.salary_month_base === 'number' ? Math.round(r.salary_month_base) : '',
+      r.source, r.created_at.slice(0, 10),
+    ].map(csvCell).join(','))
+    const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `gio-talent-market-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast(`Exported ${matching.length.toLocaleString('en-US')} people`, { description: 'Market data only: no names or contact details.' })
+  }
+
+  const remove = (s: MarketSelection) => setSelections(selections.filter(x => !(x.dimension === s.dimension && x.value === s.value)))
+
+  return (
+    <div className="min-h-screen bg-[#F6F5F1]">
+      <div className="mx-auto" style={{ maxWidth: 1320, padding: '26px 32px 48px' }}>
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+          <div className="min-w-0">
+            <div className="text-[11px] font-inter font-semibold tracking-[0.12em] uppercase text-[#8B8F9E] mb-1">
+              INTELLIGENCE
+            </div>
+            <h1 className="font-poppins font-semibold text-[26px] tracking-[-0.045em] text-[#0d0d09] truncate">
+              {viewName}<span className="text-[#D7C5FB]">.</span>
+            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-inter text-[#5A6072] tabular-nums min-h-[18px]">
+              {!m.loading && (
+                <>
+                  <span>{m.rows.length.toLocaleString('en-US')} people in Gio</span>
+                  <span>Salaries for {m.rows.filter(r => typeof r.salary_month_base === 'number').length.toLocaleString('en-US')}</span>
+                </>
+              )}
+              <span className="inline-flex items-center gap-1.5"><LayoutGrid size={12} /> {widgets.length} widgets</span>
             </div>
           </div>
-        )}
-
-        {/* Filter bar + saved views */}
-        {rawCandidates.length > 0 && (
-          <div className="mb-6 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <SavedViewSelector
-                pageContext="talent-intelligence"
-                currentFilters={filters as unknown as Record<string, unknown>}
-                onApplyView={handleApplyView}
-                activeViewId={activeViewId}
-                onActiveViewChange={handleActiveViewChange}
-              />
-            </div>
-            <TalentIntelligenceFilterBar
-              roleOptions={filterOptions.roleOptions}
-              seniorityOptions={filterOptions.seniorityOptions}
-              countryOptions={filterOptions.countryOptions}
-              skillOptions={filterOptions.skillOptions}
-              functionalAreaOptions={filterOptions.functionalAreaOptions}
-              specializationOptions={filterOptions.specializationOptions}
-              stateOptions={filterOptions.stateOptions}
-              cityOptions={filterOptions.cityOptions}
-              jobOptions={filterOptions.jobOptions}
-              candidateStatusOptions={filterOptions.candidateStatusOptions}
-              pipelineStatusOptions={filterOptions.pipelineStatusOptions}
-              stageOptions={filterOptions.stageOptions}
-              experienceRange={filterOptions.experienceRange}
-              salaryRange={filterOptions.salaryRange}
-              jobLookup={jobLookup}
+          <div className="flex flex-wrap items-center gap-2">
+            <AnalyticsViewSwitcher
+              pageContext="talent-intelligence"
+              activeViewId={activeViewId}
+              onActivate={v => v && onActivate(v)}
+              currentFilters={{ selections } as unknown as Record<string, unknown>}
+              currentExtraState={{ widgets }}
             />
+            <button
+              onClick={exportCsv}
+              disabled={m.loading || matching.length === 0}
+              className="gio-pressable inline-flex items-center gap-1.5 h-9 px-3 rounded-[8px] border border-[#E7E8EE] bg-white hover:bg-[#FAFAF7] font-poppins font-medium text-[12.5px] text-[#0d0d09] disabled:opacity-50 whitespace-nowrap"
+            >
+              <Download size={13} />
+              Export CSV
+            </button>
+            <button
+              onClick={() => setWidgets(w => [...w, catalog.newWidget()])}
+              className="gio-pressable inline-flex items-center gap-1.5 h-9 px-3.5 rounded-[8px] bg-[#6F3FF5] hover:bg-[#5B21B6] text-white font-poppins font-semibold text-[12.5px] transition-colors whitespace-nowrap"
+            >
+              <Plus size={13} />
+              Add widget
+            </button>
           </div>
-        )}
+        </div>
 
-        {loadError && (
+        {/* Click-to-filter chips, in reserved space so nothing jumps. */}
+        <div className="mb-5 min-h-[32px] flex flex-wrap items-center gap-2">
+          {selections.length === 0 ? (
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-inter text-[#6B7080]">
+              <MousePointerClick size={13} />
+              Click any bar, slice, row or country to filter the whole page.
+            </span>
+          ) : (
+            <>
+              {selections.map(s => (
+                <span key={`${s.dimension}:${s.value}`} className="inline-flex items-center gap-1 h-7 pl-2.5 pr-1 rounded-full bg-[#EDE4FF] text-[#5B21B6] text-[12px] font-inter font-medium max-w-[280px]">
+                  <span className="truncate">{DIMENSIONS[s.dimension]?.label}: {s.value}</span>
+                  <IconTip label={`Remove ${s.value}`}>
+                    <button
+                      type="button"
+                      onClick={() => remove(s)}
+                      aria-label={`Remove ${s.value}`}
+                      className="gio-pressable h-5 w-5 inline-flex items-center justify-center rounded-full hover:bg-[#D7C5FB]"
+                    >
+                      <X size={12} />
+                    </button>
+                  </IconTip>
+                </span>
+              ))}
+              <span className="text-[12px] font-inter text-[#5A6072] tabular-nums">
+                {matching.length.toLocaleString('en-US')} of {m.rows.length.toLocaleString('en-US')} people · {withSalary.toLocaleString('en-US')} with a salary
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelections([])}
+                className="gio-pressable inline-flex items-center gap-1 h-7 px-2 rounded-[7px] text-[12px] font-inter font-medium text-[#5A6072] hover:bg-[#EDEAE2]"
+              >
+                <RotateCcw size={12} />
+                Clear filters
+              </button>
+            </>
+          )}
+        </div>
+
+        {loadError ? (
           <EmptyCard minHeight={360}>
             <LoadError
               what="your talent database"
               timedOut={loadError === 'timeout'}
-              onRetry={() => { setLoadRetry((n) => n + 1); refetch() }}
+              onRetry={() => { setRetry(n => n + 1); m.refetch() }}
             />
           </EmptyCard>
-        )}
-
-        {!loadError && data && rawCandidates.length === 0 && (
+        ) : !m.loading && m.rows.length === 0 ? (
           <EmptyCard minHeight={360}>
             <CandidatesEmpty
               onceKey="talent-db"
               title="Your talent database is empty"
-              body="Candidates you save from Find, or import in bulk, live here."
+              body="Everyone you save from Find, the talent pool and applications shows up here as market data."
               primary={
                 canManageCandidates
                   ? { label: 'Import candidates', icon: <Upload size={16} strokeWidth={2} />, onClick: () => navigate('/candidates?import=csv') }
@@ -210,101 +326,22 @@ function TalentIntelligenceContent() {
               }
             />
           </EmptyCard>
-        )}
-
-        {!loadError && data && rawCandidates.length > 0 && data.totalCandidates === 0 && (
+        ) : !m.loading && matching.length === 0 ? (
           <EmptyCard minHeight={360}>
             <CandidatesEmpty
               filtered
               onceKey="talent-db"
               title="No matches"
-              body={
-                <>
-                  Nothing fits these filters. The {rawCandidates.length.toLocaleString()}{' '}
-                  {rawCandidates.length === 1 ? 'candidate is' : 'candidates are'} still there, just hidden by your filters.
-                </>
-              }
-              primary={{ label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: clearAll }}
+              body={`Nobody fits these filters together. The ${m.rows.length.toLocaleString('en-US')} people are still there, just hidden.`}
+              primary={{ label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: () => setSelections([]) }}
             />
           </EmptyCard>
+        ) : (
+          <WidgetCatalogProvider catalog={catalog}>
+            <WidgetGrid widgets={widgets} onChange={setWidgets} />
+          </WidgetCatalogProvider>
         )}
-
-        {/* §6: a skeleton laid out like the page, then the content crossfades in over it. */}
-        {!loadError && (isLoading || (data && data.totalCandidates > 0)) && (
-          <Loadable loading={isLoading} skeleton={<TalentIntelligenceSkeleton />}>
-            {data && (
-              <div className="space-y-6">
-                <SummaryMetricsRow data={data} />
-                <GeographyInsights
-                  countryCounts={data.countryCounts}
-                  cityCounts={data.cityCounts}
-                  totalCandidates={data.totalCandidates}
-                  onCountryClick={(country) => handleFilterApply('country', country)}
-                />
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <ExperienceDistribution
-                    experienceBands={data.experienceBands}
-                    seniorityCounts={data.seniorityCounts}
-                    onBandClick={handleExperienceBandClick}
-                    onSeniorityClick={(s) => handleFilterApply('seniority', s)}
-                  />
-                  <SkillsLandscape
-                    topSkills={data.topSkills}
-                    onSkillClick={(skill) => handleFilterApply('skill', skill)}
-                  />
-                </div>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <CompensationInsights salaryStats={data.salaryStats} salaryValues={data.salaryValues} />
-                  <TalentPoolComposition
-                    functionalAreaCounts={data.functionalAreaCounts}
-                    titleCounts={data.titleCounts}
-                    specializationCounts={data.specializationCounts}
-                    onTitleClick={(t) => handleFilterApply('role', t)}
-                    onFunctionalAreaClick={(fa) => handleFilterApply('functionalArea', fa)}
-                    onSpecializationClick={(s) => handleFilterApply('specialization', s)}
-                  />
-                </div>
-                <TalentOrigins filteredCandidateIds={filteredCandidateIds} />
-              </div>
-            )}
-          </Loadable>
-        )}
-      </Section>
-    </div>
-  )
-}
-
-/** Same grid as the loaded page (KPI row, composition, geography, two chart rows). */
-function TalentIntelligenceSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Skeleton className="h-[78px] rounded-2xl" />
-          <Skeleton className="h-[78px] rounded-2xl" />
-          <Skeleton className="h-[78px] rounded-2xl" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Skeleton className="h-[222px] rounded-2xl" />
-        </div>
-      </div>
-      <Skeleton className="h-[467px] rounded-lg" />
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Skeleton className="h-[678px] rounded-lg" />
-        <Skeleton className="h-[678px] rounded-lg" />
       </div>
     </div>
-  )
-}
-
-export default function TalentIntelligence() {
-  return (
-    <AuthGate>
-      <PermissionGate permission="canViewCandidates">
-        <TalentIntelligenceFilterProvider>
-          <TalentIntelligenceContent />
-        </TalentIntelligenceFilterProvider>
-      </PermissionGate>
-    </AuthGate>
   )
 }
