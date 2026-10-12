@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { GoGioLogo } from '@/components/GoGioLogo'
+import { GioAtsLogo } from '@/components/brand/GioAtsLogo'
 import { PipelineProductGraphic } from '@/components/auth/PipelineProductGraphic'
 
 interface AuthLayoutProps {
@@ -17,8 +17,8 @@ export function AuthLayout({ children }: AuthLayoutProps) {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#fffcf9' }}>
       {/* Top-left logo */}
       <header className="px-6 sm:px-8 lg:px-12 pt-6">
-        <Link to="/" aria-label="Gio home" className="inline-flex">
-          <GoGioLogo size="2xl" />
+        <Link to="/" aria-label="Gio ATS home" className="inline-flex">
+          <GioAtsLogo height={96} />
         </Link>
       </header>
 

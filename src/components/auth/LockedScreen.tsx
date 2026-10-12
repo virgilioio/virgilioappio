@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { CreditCard, Mail, RotateCcw, Sparkles, Lock } from 'lucide-react'
-import { GoGioLogo } from '@/components/GoGioLogo'
+import { GioAtsLogo } from '@/components/brand/GioAtsLogo'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useCreateCheckout, useOpenBillingPortal } from '@/hooks/useBillingPortal'
 import { useAuth } from '@/contexts/AuthContext'
@@ -134,7 +134,7 @@ export function LockedScreen({ status }: LockedScreenProps) {
         style={{ padding: '26px 48px 32px' }}
       >
         <div className="flex items-center">
-          <GoGioLogo size="2xl" />
+          <GioAtsLogo height={96} />
         </div>
 
         <div className="flex-1 flex flex-col justify-center" style={{ paddingBottom: 30 }}>
