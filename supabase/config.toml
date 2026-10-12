@@ -320,3 +320,9 @@ verify_jwt = false
 
 [functions.calendar-event-action]
 verify_jwt = false
+
+[functions.privacy-notices]
+verify_jwt = false
+
+[functions.privacy-choice]
+verify_jwt = false
