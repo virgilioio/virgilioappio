@@ -201,7 +201,7 @@ serve(async (req) => {
       }
     }
 
-    const { data: result, error: mergeErr } = await admin.rpc('merge_candidate_payload', {
+    const { data: result, error: mergeErr } = await admin.rpc('merge_candidate_payload_tracked', {
       p_surviving: survivingId,
       p_incoming: incoming,
       p_resolutions: resolutions,

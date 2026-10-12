@@ -85,19 +85,20 @@ Deno.serve(async (req) => {
     if (existingCandidate) {
       // Update existing candidate
 
-      const updateData: any = {
-        updated_at: new Date().toISOString()
+      // The phone goes through the one path for outside data (Find Phase 3):
+      // it fills an empty phone or joins the contact list, never replacing.
+      if (applicant.phoneNumber) {
+        const { error: applyErr } = await supabase.rpc('apply_candidate_update', {
+          p_candidate_id: existingCandidate.id,
+          p_source: 'application',
+          p_fields: { phone: applicant.phoneNumber },
+          p_mode: 'refresh',
+          p_actor: null,
+        })
+        if (applyErr) console.error('apply_candidate_update failed:', applyErr.message)
       }
-      if (applicant.phoneNumber) updateData.phone = applicant.phoneNumber
 
-      const { data: updated } = await supabase
-        .from('candidates')
-        .update(updateData)
-        .eq('id', existingCandidate.id)
-        .select()
-        .single()
-
-      candidateId = updated.id
+      candidateId = existingCandidate.id
       console.log('Updated existing candidate:', candidateId)
 
     } else {

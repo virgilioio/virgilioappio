@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 import { creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl } from "../_shared/apolloCredits.ts";
-import { apolloCompany } from "../_shared/apolloPerson.ts";
+import { applyCandidateUpdate, apolloPersonFields, addHistoryIfEmpty } from "../_shared/candidateUpdate.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
@@ -187,119 +187,28 @@ serve(async (req) => {
         continue;
       }
 
-      // Extract primary phone number
-      const phone = person.phone_numbers?.[0]?.sanitized_number || 
-                    person.phone_numbers?.[0]?.raw_number || null;
+      // Through the one path for outside data (Find Phase 3): fills gaps,
+      // refreshes what a source set, never replaces a person's edit, keeps
+      // other emails and phones, and spots a job change. Work history is
+      // added only when there is none (a résumé's history is never wiped).
+      const fields = apolloPersonFields(person);
+      const applied = await applyCandidateUpdate(supabase, matchingCandidate.id, 'apollo', {
+        ...fields,
+        apollo_collected_at: true,
+      }, { mode: 'refresh', actor: user_id });
 
-      // Extract all phone numbers with types
-      const contactPhones = (person.phone_numbers || []).map((p: any) => ({
-        type: p.type || 'other',
-        number: p.sanitized_number || p.raw_number || '',
-        raw_number: p.raw_number || null
-      })).filter((p: any) => p.number);
-
-      // Extract all emails with types
-      const contactEmails: any[] = [];
-      if (person.email) {
-        contactEmails.push({
-          type: 'work',
-          email: person.email,
-          status: person.email_status || null
-        });
-      }
-      if (person.personal_emails && Array.isArray(person.personal_emails)) {
-        person.personal_emails.forEach((e: string) => {
-          if (e && e !== person.email) {
-            contactEmails.push({
-              type: 'personal',
-              email: e,
-              status: null
-            });
-          }
-        });
-      }
-
-      // Update existing candidate record
-      let { error: updateError } = await supabase
-        .from('candidates')
-        .update({
-          apollo_id: person.id,
-          email: person.email || undefined,
-          email_status: person.email_status,
-          phone: phone || undefined,
-          contact_phones: contactPhones.length > 0 ? contactPhones : undefined,
-          contact_emails: contactEmails.length > 0 ? contactEmails : undefined,
-          role_current: person.title || undefined,
-          company_current: apolloCompany(person) || undefined,
-          location_city: person.city || undefined,
-          location_state: person.state || undefined,
-          location_country: person.country || undefined,
-          bio: person.headline || undefined,
-          apollo_collected_at: new Date().toISOString()
-        })
-        .eq('id', matchingCandidate.id);
-
-      // Another candidate in the workspace already holds this Apollo id: keep
-      // the rest of the data and leave the id where it is (Phase 1 merges).
-      if (updateError && updateError.code === '23505') {
-        const retry = await supabase
-          .from('candidates')
-          .update({
-            email: person.email || undefined,
-            email_status: person.email_status,
-            phone: phone || undefined,
-            contact_phones: contactPhones.length > 0 ? contactPhones : undefined,
-            contact_emails: contactEmails.length > 0 ? contactEmails : undefined,
-            role_current: person.title || undefined,
-            company_current: apolloCompany(person) || undefined,
-            location_city: person.city || undefined,
-            location_state: person.state || undefined,
-            location_country: person.country || undefined,
-            bio: person.headline || undefined,
-            apollo_collected_at: new Date().toISOString()
-          })
-          .eq('id', matchingCandidate.id);
-        updateError = retry.error;
-      }
-
-      if (updateError) {
-        console.error('Failed to update candidate:', updateError);
+      if (!applied) {
         results.push({
           candidate_id: matchingCandidate.id,
-          error: updateError.message,
+          error: "Couldn't save what Apollo found",
           success: false
         });
         continue;
       }
 
       console.log('✅ Candidate enriched:', matchingCandidate.id);
-
-      // Store work experience if available
-      if (person.employment_history && person.employment_history.length > 0) {
-        // First, remove existing work experience to avoid duplicates
-        await supabase
-          .from('candidate_work_experience')
-          .delete()
-          .eq('candidate_id', matchingCandidate.id);
-
-        const experienceRecords = person.employment_history.map((exp: any) => ({
-          candidate_id: matchingCandidate.id,
-          company_name: exp.organization_name || 'Unknown Company',
-          job_title: exp.title || 'Unknown Title',
-          start_date: exp.start_date ? new Date(exp.start_date).toISOString().split('T')[0] : null,
-          end_date: exp.end_date ? new Date(exp.end_date).toISOString().split('T')[0] : null,
-          is_current: exp.current || false,
-          description: exp.description
-        }));
-
-        const { error: expError } = await supabase
-          .from('candidate_work_experience')
-          .insert(experienceRecords);
-
-        if (expError) {
-          console.warn('Failed to store work experience:', expError);
-        }
-      }
+      await addHistoryIfEmpty(supabase, matchingCandidate.id, person);
+      const phone = (fields.phone as string | null) ?? null;
 
       successCount++;
       results.push({

@@ -306,3 +306,6 @@ verify_jwt = false
 
 [functions.shortlist-ai-fit]
 verify_jwt = true
+
+[functions.refresh-candidate-profiles]
+verify_jwt = false

@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 import { issueCandidateChatToken } from "../_shared/chat-token.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
+import { applyCandidateUpdate } from "../_shared/candidateUpdate.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -348,58 +349,30 @@ serve(withRequestCors(async (req) => {
       }
     }
 
-    // Sync salary data to candidate profile if salary field was submitted
-    if (body.salary_sync && body.salary_sync.amount && globalCandidateId) {
-      console.log('💰 Syncing salary data to candidate profile:', body.salary_sync);
-      const { error: salaryErr } = await supabase
-        .from('candidates')
-        .update({
-          salary_amount: body.salary_sync.amount,
-          salary_currency: body.salary_sync.currency,
-          salary_period: body.salary_sync.period,
-        })
-        .eq('id', globalCandidateId);
-      if (salaryErr) {
-        console.error('⚠️ Warning: Failed to sync salary data:', salaryErr);
+    // What the applicant told us about salary, location and LinkedIn goes
+    // through the one path for outside data (Find Phase 3): it fills gaps and
+    // refreshes what a source set, but never replaces a recruiter's edit.
+    if (globalCandidateId) {
+      const fromApplication: Record<string, unknown> = {};
+      if (body.salary_sync && body.salary_sync.amount) {
+        fromApplication.salary_amount = String(body.salary_sync.amount);
+        fromApplication.salary_currency = body.salary_sync.currency;
+        fromApplication.salary_period = body.salary_sync.period;
       }
-    }
-
-    // Sync location data to candidate profile if location field was submitted
-    if (body.location_sync && globalCandidateId) {
-      console.log('📍 Syncing location data to candidate profile:', body.location_sync);
-      const locationUpdate: Record<string, string | null> = {};
-      if (body.location_sync.city !== undefined) locationUpdate.location_city = body.location_sync.city || null;
-      if (body.location_sync.state !== undefined) locationUpdate.location_state = body.location_sync.state || null;
-      if (body.location_sync.country !== undefined) locationUpdate.location_country = body.location_sync.country || null;
-      
-      if (Object.keys(locationUpdate).length > 0) {
-        const { error: locationErr } = await supabase
-          .from('candidates')
-          .update(locationUpdate)
-          .eq('id', globalCandidateId);
-        if (locationErr) {
-          console.error('⚠️ Warning: Failed to sync location data:', locationErr);
-        }
+      if (body.location_sync) {
+        if (body.location_sync.city) fromApplication.location_city = body.location_sync.city;
+        if (body.location_sync.state) fromApplication.location_state = body.location_sync.state;
+        if (body.location_sync.country) fromApplication.location_country = body.location_sync.country;
       }
-    }
-
-    // Sync LinkedIn URL to candidate profile.
-    // The LinkedIn Profile core field (body.linkedin_url) and any custom smart
-    // linkedin field (body.linkedin_sync) both feed into candidates.linkedin_url
-    // — for both new and returning candidates.
-    const linkedinSyncRaw = (body.linkedin_sync || body.linkedin_url || '').trim();
-    if (linkedinSyncRaw && globalCandidateId) {
-      const normalized = (() => {
+      // The LinkedIn Profile core field (body.linkedin_url) and any custom
+      // smart linkedin field (body.linkedin_sync) both feed linkedin_url.
+      const linkedinSyncRaw = String(body.linkedin_sync || body.linkedin_url || '').trim();
+      if (linkedinSyncRaw) {
         const u = linkedinSyncRaw.slice(0, 512);
-        return u.match(/^https?:\/\//i) ? u : `https://${u}`;
-      })();
-      console.log('🔗 Syncing LinkedIn URL to candidate profile:', normalized);
-      const { error: linkedinErr } = await supabase
-        .from('candidates')
-        .update({ linkedin_url: normalized })
-        .eq('id', globalCandidateId);
-      if (linkedinErr) {
-        console.error('⚠️ Warning: Failed to sync LinkedIn URL:', linkedinErr);
+        fromApplication.linkedin_url = u.match(/^https?:\/\//i) ? u : `https://${u}`;
+      }
+      if (Object.keys(fromApplication).length > 0) {
+        await applyCandidateUpdate(supabase, globalCandidateId, 'application', fromApplication, { mode: 'refresh' });
       }
     }
 

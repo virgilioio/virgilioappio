@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
+import { applyCandidateUpdate } from "../_shared/candidateUpdate.ts";
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -222,6 +223,14 @@ serve(async (req) => {
       candidateId = existingCandidate.id;
       console.log(`📋 Using existing candidate: ${candidateId}`);
 
+      // What their LinkedIn page shows now goes through the one path for
+      // outside data (Find Phase 3): gaps filled, stale source values
+      // refreshed, a recruiter's edits kept, a job change recorded.
+      await applyCandidateUpdate(supabase, candidateId, 'extension', {
+        candidate_name, email, phone, linkedin_url,
+        role_current, company_current, location_city, location_country,
+      }, { mode: 'refresh', actor: userId });
+
       // Fetch existing job associations for this candidate
       const { data: associations, error: assocFetchError } = await supabase
         .from('job_candidate_associations')
@@ -271,6 +280,7 @@ serve(async (req) => {
           linkedin_url: linkedin_url || null,
           company_current: company_current || null,
           role_current: role_current || null,
+          current_job_title: role_current || null,
           location_city: location_city || null,
           location_country: location_country || null,
           profile_summary: profile_summary || null,

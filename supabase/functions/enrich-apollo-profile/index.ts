@@ -20,6 +20,7 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import { apolloCompany } from "../_shared/apolloPerson.ts";
+import { applyCandidateUpdate, apolloPersonFields, addHistoryIfEmpty } from "../_shared/candidateUpdate.ts";
 import {
   creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl,
   PERSON_CREDITS, PHONE_CREDITS,
@@ -141,39 +142,17 @@ function emailsOf(person: ApolloPerson) {
   return list;
 }
 
-/** Fills only what the existing candidate is missing; never overwrites. */
-async function fillExisting(db: SupabaseClient, candidateId: string, person: ApolloPerson, at: string) {
-  const { data: c } = await db
-    .from('candidates')
-    .select('apollo_id, email, email_status, phone, contact_phones, contact_emails, linkedin_url, role_current, company_current, location_city, location_state, location_country, bio, apollo_collected_at')
-    .eq('id', candidateId)
-    .single();
-  if (!c) return;
-  const { phone, contactPhones } = phonesOf(person);
-  const emails = emailsOf(person);
-  const patch: Record<string, unknown> = {};
-  const fill = (col: string, value: unknown) => {
-    const cur = (c as any)[col];
-    const empty = cur == null || cur === '' || (Array.isArray(cur) && cur.length === 0);
-    if (empty && value != null && value !== '' && !(Array.isArray(value) && value.length === 0)) patch[col] = value;
-  };
-  fill('apollo_id', person.id);
-  fill('email', person.email);
-  fill('email_status', person.email_status);
-  fill('phone', phone);
-  fill('contact_phones', contactPhones);
-  fill('contact_emails', emails);
-  fill('linkedin_url', person.linkedin_url);
-  fill('role_current', person.title);
-  fill('company_current', apolloCompany(person));
-  fill('location_city', person.city);
-  fill('location_state', person.state);
-  fill('location_country', person.country);
-  fill('bio', person.headline);
-  fill('apollo_collected_at', at);
-  if (Object.keys(patch).length === 0) return;
-  const { error } = await db.from('candidates').update(patch).eq('id', candidateId);
-  if (error) console.warn('Filling existing candidate failed:', error.message);
+/**
+ * Someone we already have: Apollo's data goes through apply_candidate_update()
+ * (Find Phase 3), which fills gaps, refreshes what a source set, never
+ * replaces a person's edit, and records a job change if there is one.
+ */
+async function fillExisting(db: SupabaseClient, candidateId: string, person: ApolloPerson, actor: string | null) {
+  await applyCandidateUpdate(db, candidateId, 'apollo', {
+    ...apolloPersonFields(person),
+    apollo_collected_at: true,
+  }, { mode: 'refresh', actor });
+  await addHistoryIfEmpty(db, candidateId, person);
 }
 
 serve(async (req) => {
@@ -345,7 +324,7 @@ serve(async (req) => {
         let wasExisting = !!candidateId;
 
         if (candidateId) {
-          await fillExisting(supabase, candidateId, person, at);
+          await fillExisting(supabase, candidateId, person, pool ? null : userId);
           merged++;
         } else {
           const { phone, contactPhones } = phonesOf(person);
@@ -361,6 +340,7 @@ serve(async (req) => {
               contact_emails: emailsOf(person),
               linkedin_url: person.linkedin_url,
               role_current: person.title,
+              current_job_title: person.title,
               company_current: apolloCompany(person),
               location_city: person.city,
               location_state: person.state,

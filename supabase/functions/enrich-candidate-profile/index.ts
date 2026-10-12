@@ -6,6 +6,7 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { applyCandidateUpdate } from '../_shared/candidateUpdate.ts';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -333,7 +334,6 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       profile_summary: extracted.profile_summary,
       skills: rawSkillNames,
       standardized_skills: standardizedSkills,
-      current_job_title: extracted.current_job_title || null,
       standardized_title: finalStandardizedTitle,
       seniority_level: extracted.seniority_level || null,
       functional_area: extracted.functional_area || null,
@@ -343,7 +343,12 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       years_in_leadership: extracted.years_in_leadership || null,
       company_count: companyCount || null,
       avg_tenure_months: avgTenureMonths || null,
-      role_current: extracted.current_job_title || null,
+    };
+    // Title, company and location are profile facts: they go through the one
+    // path for outside data below (Find Phase 3), so a résumé never blanks
+    // them or replaces a recruiter's edit.
+    const fromResume = {
+      current_job_title: extracted.current_job_title || null,
       company_current: workExperience.find((w: any) => w.is_current)?.company_name || null,
       location_country: extracted.location_country || null,
       location_state: extracted.location_state || null,
@@ -359,6 +364,11 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
       .from('candidates')
       .update(candidateUpdate)
       .eq('id', candidateId);
+
+    if (!updateError) {
+      // deno-lint-ignore no-explicit-any
+      await applyCandidateUpdate(supabase as any, candidateId, 'resume', fromResume, { mode: 'refresh' });
+    }
 
     if (updateError) {
       console.error('[enrich] Failed to update candidate:', updateError);

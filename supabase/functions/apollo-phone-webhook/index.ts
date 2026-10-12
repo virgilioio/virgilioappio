@@ -13,6 +13,7 @@
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { applyCandidateUpdate } from "../_shared/candidateUpdate.ts";
 import { verifyPhoneWebhook, recordCredits, PHONE_CREDITS } from "../_shared/apolloCredits.ts";
 
 const headers = { 'Content-Type': 'application/json' };
@@ -65,15 +66,13 @@ serve(async (req) => {
         .is('merged_into', null)
         .maybeSingle();
       if (!candidate) { results.push({ apolloId, status: 'not_found' }); continue; }
-      if (candidate.phone) { results.push({ apolloId, status: 'already_has_phone' }); continue; }
 
-      const { error } = await supabase
-        .from('candidates')
-        .update({ phone, contact_phones: contactPhones, updated_at: new Date().toISOString() })
-        .eq('id', candidate.id)
-        .is('phone', null);
-      results.push({ apolloId, status: error ? 'update_error' : 'updated' });
-      if (error) console.error('Phone update failed:', error.message);
+      // Through the one path for outside data (Find Phase 3): the phone fills
+      // an empty one; otherwise it joins the contact list, never replacing.
+      const applied = await applyCandidateUpdate(supabase, candidate.id, 'apollo', {
+        phone, contact_phones: contactPhones,
+      }, { mode: 'fill', actor: signed.userId });
+      results.push({ apolloId, status: !applied ? 'update_error' : candidate.phone ? 'added_to_contacts' : 'updated' });
     }
 
     if (delivered > 0) {

@@ -4,6 +4,7 @@ import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
 import { creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl } from "../_shared/apolloCredits.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import { apolloCompany } from "../_shared/apolloPerson.ts";
+import { applyCandidateUpdate } from "../_shared/candidateUpdate.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
@@ -405,6 +406,14 @@ async function handleCandidates(params: CreateCandidateParams, user: any, member
     candidateId = existingCandidate.id;
     console.log(`📋 Using existing candidate: ${candidateId}`);
 
+    // What their LinkedIn page shows now goes through the one path for
+    // outside data (Find Phase 3): gaps filled, stale source values
+    // refreshed, a recruiter's edits kept, a job change recorded.
+    await applyCandidateUpdate(supabase, candidateId, 'extension', {
+      candidate_name, email, phone, linkedin_url,
+      role_current, company_current, location_city, location_country,
+    }, { mode: 'refresh', actor: userId });
+
     // Fetch existing job associations
     const { data: associations } = await supabase
       .from('job_candidate_associations')
@@ -451,6 +460,7 @@ async function handleCandidates(params: CreateCandidateParams, user: any, member
         linkedin_url: linkedin_url || null,
         company_current: company_current || null,
         role_current: role_current || null,
+        current_job_title: role_current || null,
         location_city: location_city || null,
         location_country: location_country || null,
         profile_summary: profile_summary || null,
