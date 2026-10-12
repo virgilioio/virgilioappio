@@ -288,6 +288,18 @@ async function processAttachments(
   return results;
 }
 
+// Every address that belongs to the team: connected inboxes and Gio users.
+async function loadTeamEmails(supabase: any, mailboxEmail: string): Promise<Set<string>> {
+  const team = new Set<string>([mailboxEmail]);
+  const [{ data: inboxes }, { data: profiles }] = await Promise.all([
+    supabase.from('user_mail_identities').select('email_address'),
+    supabase.from('profiles').select('email'),
+  ]);
+  for (const r of inboxes ?? []) if (r.email_address) team.add(normalizeEmail(r.email_address));
+  for (const r of profiles ?? []) if (r.email) team.add(normalizeEmail(r.email));
+  return team;
+}
+
 // Find candidate by email - checks multiple emails, returns first match
 // Uses tenant_id for scoping
 async function findCandidateByEmails(
@@ -414,6 +426,11 @@ const handler = async (req: Request): Promise<Response> => {
     const mailboxEmail = normalizeEmail(identity.email_address);
     console.log('[Gmail Sync] Mailbox email:', mailboxEmail);
 
+    // Team addresses never identify a candidate (2026-10-12). A test candidate
+    // saved with a teammate's address would otherwise pull in every email that
+    // teammate sends or is copied on, in everyone's inbox.
+    const teamEmails = await loadTeamEmails(supabase, mailboxEmail);
+
     // Check if token needs refresh
     let accessToken = identity.access_token;
     if (new Date(identity.token_expires_at) <= new Date()) {
@@ -535,10 +552,11 @@ const handler = async (req: Request): Promise<Response> => {
         //   received → match on the sender; sent → match on recipients.
         let match: { candidateId: string; organizationId: string | null } | null = null;
         try {
+          const notTeam = (e: string) => !teamEmails.has(e);
           if (direction === 'received') {
-            match = await findCandidateByEmails(supabase, [fromEmail], identity.tenant_id);
+            match = await findCandidateByEmails(supabase, [fromEmail].filter(notTeam), identity.tenant_id);
           } else {
-            match = await findCandidateByEmails(supabase, [...toEmails, ...ccEmails], identity.tenant_id);
+            match = await findCandidateByEmails(supabase, [...toEmails, ...ccEmails].filter(notTeam), identity.tenant_id);
           }
           if (match) stats.matched++;
         } catch (matchError) {
