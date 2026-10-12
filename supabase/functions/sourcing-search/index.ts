@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
+import { parseLocations, candidateSeniorities, targetCompanies, fitScore } from "../_shared/findCriteria.ts";
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -303,56 +304,142 @@ serve(async (req) => {
     }
 
 
-    // ── Pipeline filter: exclude Internal candidates already in the linked job ──
-    let pipelineCandidateIds = new Set<string>();
-    if (project.job_id) {
+    // ── Our own candidates first (Find Phase 1, 2026-10-12) ──
+    // search_candidates() runs the project's criteria over the workspace's
+    // candidates; Apollo results that are people we already have join them.
+    const loc = parseLocations(criteria.locations);
+    const seniorities = candidateSeniorities(criteria.seniorities);
+    const companies = targetCompanies(criteria);
+
+    const { data: internalHits, error: internalError } = await supabase.rpc('search_candidates', {
+      p_tenant: projectTenantId,
+      p_titles: criteria.title_keywords ?? null,
+      p_keywords: (criteria.keywords ?? []).length ? criteria.keywords : null,
+      p_companies: companies.length ? companies : null,
+      p_countries: loc.countries.length ? loc.countries : null,
+      p_cities: loc.cities.length ? loc.cities : null,
+      p_seniorities: seniorities.length ? seniorities : null,
+      p_limit: 300,
+    });
+    if (internalError) console.warn('⚠️ Internal search failed:', internalError.message);
+    const internalMatched = new Map<string, string[]>((internalHits || []).map((h: any) => [h.candidate_id, h.matched || []]));
+
+    // Everyone in the internal lane: search hits plus Apollo rows we already have.
+    const internalIds = new Set<string>([...internalMatched.keys()]);
+    for (const c of sameTenantMap.values()) internalIds.add(c.id);
+
+    const internalRows = new Map<string, any>();
+    const idList = [...internalIds];
+    for (let i = 0; i < idList.length; i += 200) {
+      const { data: rows } = await supabase
+        .from('candidates')
+        .select('id, apollo_id, candidate_name, email, phone, linkedin_url, location_city, location_state, location_country, company_current, role_current, current_job_title, seniority_level, skills, profile_summary, bio, years_experience, apollo_collected_at, source, updated_at')
+        .eq('tenant_id', projectTenantId)
+        .is('deleted_at', null)
+        .is('merged_into', null)
+        .in('id', idList.slice(i, i + 200));
+      for (const r of rows || []) internalRows.set(r.id, r);
+    }
+
+    // Pipeline history for the internal lane.
+    const pipelineByCandidate = new Map<string, any[]>();
+    for (let i = 0; i < idList.length; i += 200) {
       const { data: assocs } = await supabase
         .from('job_candidate_associations')
-        .select('candidate_id')
-        .eq('job_id', project.job_id);
-      pipelineCandidateIds = new Set((assocs || []).map((a: any) => a.candidate_id));
-      console.log(`🔍 Pipeline filter: ${pipelineCandidateIds.size} candidates already in job ${project.job_id}`);
+        .select('candidate_id, job_id, status, updated_at, jobs(title), job_hiring_stages(custom_stage_name, job_stages(stage_name))')
+        .in('candidate_id', idList.slice(i, i + 200));
+      for (const a of assocs || []) {
+        const list = pipelineByCandidate.get(a.candidate_id) || [];
+        list.push({
+          job_id: a.job_id,
+          job_title: (a as any).jobs?.title || 'Job',
+          stage_name: (a as any).job_hiring_stages?.custom_stage_name || (a as any).job_hiring_stages?.job_stages?.stage_name || null,
+          status: a.status,
+          updated_at: a.updated_at,
+        });
+        pipelineByCandidate.set(a.candidate_id, list);
+      }
+    }
+
+    // People already in the linked job's pipeline stay out of the results.
+    const inLinkedJob = (id: string) =>
+      !!project.job_id && (pipelineByCandidate.get(id) || []).some((p) => p.job_id === project.job_id);
+
+    const apolloByCandidate = new Map<string, any>();
+    for (const c of dedupedApollo) {
+      const m = c.apollo_id ? sameTenantMap.get(c.apollo_id) : null;
+      if (m) apolloByCandidate.set(m.id, c);
     }
 
     let internalCount = 0;
-    let apolloPreviewCount = 0;
-
-    const enrichedApollo = dedupedApollo.map((c: any) => {
-      const sameMatch = c.apollo_id ? sameTenantMap.get(c.apollo_id) : null;
-      if (sameMatch) {
-        // Skip Internal candidates already in the linked job's pipeline
-        if (pipelineCandidateIds.has(sameMatch.id)) {
-          return null;
-        }
-        internalCount++;
-        // Same-tenant → Internal: full candidate_id access
-        return {
-          ...c,
-          display_source: 'internal',
-          candidate_id: sameMatch.id,
-          candidate_name: sameMatch.candidate_name,
-          full_name: sameMatch.candidate_name,
-          email: sameMatch.email,
-          phone: sameMatch.phone,
-          linkedin_url: sameMatch.linkedin_url || c.linkedin_url,
-          location_city: sameMatch.location_city,
-          location_state: sameMatch.location_state,
-          location_country: sameMatch.location_country,
-          current_company: sameMatch.company_current || c.current_company,
-          current_role: sameMatch.role_current || c.current_role,
-          is_preview: false,
-          needs_enrichment: false,
-        };
-      }
-
-      apolloPreviewCount++;
-      return { ...c, display_source: 'apollo' };
-    }).filter(Boolean);
-
-    const pipelineFiltered = dedupedApollo.length - enrichedApollo.length;
-    if (pipelineFiltered > 0) {
-      console.log(`🚫 Filtered out ${pipelineFiltered} Internal candidates already in pipeline`);
+    const internalLane: any[] = [];
+    for (const id of internalIds) {
+      const r = internalRows.get(id);
+      if (!r || inLinkedJob(id)) continue;
+      const preview = apolloByCandidate.get(id);
+      const title = r.role_current || r.current_job_title || preview?.current_title || null;
+      const fit = fitScore({
+        title,
+        company: r.company_current,
+        country: r.location_country,
+        city: r.location_city,
+        seniority: r.seniority_level,
+        text: [r.bio, r.profile_summary, (r.skills || []).join(' ')].filter(Boolean).join(' '),
+      }, criteria, loc, seniorities, companies);
+      internalCount++;
+      internalLane.push({
+        ...(preview || {}),
+        id: r.id,
+        candidate_id: r.id,
+        apollo_id: r.apollo_id || preview?.apollo_id || null,
+        source: r.apollo_id || preview ? 'apollo' : 'local',
+        display_source: 'internal',
+        candidate_name: r.candidate_name,
+        full_name: r.candidate_name,
+        email: r.email,
+        phone: r.phone,
+        linkedin_url: r.linkedin_url,
+        location_city: r.location_city,
+        location_state: r.location_state,
+        location_country: r.location_country,
+        current_company: r.company_current,
+        current_role: title,
+        headline: title,
+        skills: r.skills || [],
+        years_experience: r.years_experience,
+        summary: r.profile_summary || r.bio,
+        is_preview: false,
+        needs_enrichment: false,
+        pipeline: (pipelineByCandidate.get(r.id) || []).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at))),
+        internal_match: internalMatched.get(r.id) || ['apollo'],
+        match_score: fit.score,
+        match_tier: fit.tier,
+        fit_reasons: fit.reasons,
+        created_at: r.updated_at,
+      });
     }
+    internalLane.sort((a, b) => (b.match_score - a.match_score));
+
+    // New people from Apollo: Apollo already applied the location and
+    // seniority filters, so those count as met.
+    let apolloPreviewCount = 0;
+    const enrichedApollo = dedupedApollo
+      .filter((c: any) => !(c.apollo_id && sameTenantMap.has(c.apollo_id)))
+      .map((c: any) => {
+        apolloPreviewCount++;
+        const fit = fitScore({
+          title: c.current_title || c.headline,
+          company: c.current_company,
+          country: loc.countries[0] ?? null,
+          city: loc.cities[0] ?? null,
+          seniority: seniorities[0] ?? null,
+          text: c.headline,
+        }, criteria, loc, seniorities, companies);
+        return { ...c, display_source: 'apollo', match_score: fit.score, match_tier: fit.tier, fit_reasons: fit.reasons };
+      })
+      .sort((a: any, b: any) => b.match_score - a.match_score);
+
+    console.log(`📊 Lanes: ${internalCount} already in Gio, ${apolloPreviewCount} new from Apollo`);
 
     // ── Project state (shortlist / not a fit / archive / collected) ──
     // Lives apart from the search cache, so it survives every refresh.
@@ -361,18 +448,19 @@ serve(async (req) => {
       .select('apollo_id, candidate_id, status, collected_at')
       .eq('sourcing_project_id', sourcing_project_id);
     const stateByApollo = new Map((stateRows || []).filter((r: any) => r.apollo_id).map((r: any) => [r.apollo_id, r]));
-    for (const c of enrichedApollo as any[]) {
-      const st = c.apollo_id ? stateByApollo.get(c.apollo_id) : null;
+    const stateByCandidate = new Map((stateRows || []).filter((r: any) => r.candidate_id).map((r: any) => [r.candidate_id, r]));
+    for (const c of [...internalLane, ...enrichedApollo] as any[]) {
+      const st = (c.candidate_id && stateByCandidate.get(c.candidate_id)) || (c.apollo_id ? stateByApollo.get(c.apollo_id) : null);
       if (!st) continue;
       c.project_status = st.status;
       c.project_collected_at = st.collected_at;
-      if (st.collected_at && !c.candidate_id && st.candidate_id) c.candidate_id = st.candidate_id;
     }
 
     // Tag PDL candidates with display_source
     const taggedPdl = pdlCandidates.map((c: any) => ({ ...c, display_source: 'pdl' }));
 
-    const allCandidates = [...taggedPdl, ...enrichedApollo];
+    // Lanes: already in Gio first, then PDL, then new from Apollo.
+    const allCandidates = [...internalLane, ...taggedPdl, ...enrichedApollo];
 
     const sourceBreakdown = {
       internal: internalCount,

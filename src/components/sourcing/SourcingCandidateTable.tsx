@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, ChevronDown, Download, Mail, Phone, X, Info, ArrowUpDown, Sparkles, Heart, Lock, RotateCcw, Search } from 'lucide-react'
@@ -83,6 +83,10 @@ interface MatchedCandidate {
   keyword_score?: number
   matched_keywords?: string[]
   created_at?: string
+  /** Jobs this person is or was in (internal lane only). */
+  pipeline?: Array<{ job_id: string; job_title: string; stage_name: string | null; status: string; updated_at: string }>
+  /** Why the rule-based fit score is what it is. */
+  fit_reasons?: string[]
 }
 
 interface SourcingCandidateTableProps {
@@ -193,10 +197,18 @@ export function SourcingCandidateTable({
   // Experience arrives as years_experience or experience_years depending on the source.
   const sortKey = sortMode === 'ai_fit' ? 'match_score' : sortMode === 'experience' ? 'sort_experience' : 'created_at'
   const sortable = segmentFiltered.map(c => ({ ...c, sort_experience: c.years_experience ?? c.experience_years ?? null }))
-  const { sortedData, sortConfig, requestSort } = useSortableTable(
+  const { sortedData: sortedRaw, sortConfig, requestSort } = useSortableTable(
     sortable,
     { key: sortKey as any, direction: 'desc' }
   )
+  // Lanes (Find Phase 1): people already in Gio first, then new ones, each
+  // in the chosen sort order.
+  const isInGioLane = (c: MatchedCandidate) => c.display_source === 'internal'
+  const sortedData = useMemo(
+    () => [...sortedRaw.filter(isInGioLane), ...sortedRaw.filter(c => !isInGioLane(c))],
+    [sortedRaw],
+  )
+  const inGioCount = useMemo(() => sortedData.filter(isInGioLane).length, [sortedData])
 
   // Pagination — client-side Load N more
   const totalCount = sortedData.length
@@ -974,9 +986,21 @@ export function SourcingCandidateTable({
                   .filter(s => !matchedSkills.includes(s))
                   .slice(0, Math.max(0, 5 - matchedSkills.length))
 
+                const laneStarts = pIdx === 0 || isInGioLane(paginatedData[pIdx - 1]) !== isInGioLane(candidate)
+                const laneLabel = isInGioLane(candidate)
+                  ? `Already in Gio · ${inGioCount}`
+                  : `New from Apollo · ${sortedData.length - inGioCount}`
+
                 return (
+                  <Fragment key={`${candidate.apollo_id || candidate.id}-${pIdx}`}>
+                  {laneStarts && inGioCount > 0 && (
+                    <TableRow className="hover:bg-transparent border-b border-border/60 bg-[#FAFAF7]">
+                      <TableCell colSpan={5} className="py-2 px-5 text-[11.5px] font-medium uppercase tracking-[0.06em] text-text-tertiary">
+                        {laneLabel}
+                      </TableCell>
+                    </TableRow>
+                  )}
                   <TableRow
-                    key={`${candidate.apollo_id || candidate.id}-${pIdx}`}
                     className={cn(
                       "cursor-pointer transition-colors border-b border-border/60",
                       "hover:bg-[#FAFAF7]",
@@ -1018,7 +1042,7 @@ export function SourcingCandidateTable({
                               <Badge tone="purple" size="xs" icon={Sparkles}>Top match</Badge>
                             )}
                             {isInternal && (
-                              <Badge tone="green" size="xs">Collected</Badge>
+                              <Badge tone="green" size="xs">In Gio</Badge>
                             )}
                             {isGio && (
                               <Badge tone="purple" size="xs">Gio</Badge>
@@ -1051,6 +1075,17 @@ export function SourcingCandidateTable({
                               {candidate.current_company && (
                                 <span className="text-text-primary font-medium">{candidate.current_company}</span>
                               )}
+                            </p>
+                          )}
+
+                          {/* Pipeline history (already in Gio) */}
+                          {isInternal && (candidate.pipeline?.length ?? 0) > 0 && (
+                            <p className="text-[11.5px] text-text-secondary truncate">
+                              {candidate.pipeline!.length === 1 ? 'In 1 job' : `In ${candidate.pipeline!.length} jobs`}
+                              {' · '}
+                              {candidate.pipeline![0].job_title}
+                              {candidate.pipeline![0].stage_name ? ` — ${candidate.pipeline![0].stage_name}` : ''}
+                              {candidate.pipeline![0].status && candidate.pipeline![0].status !== 'active' ? ` (${candidate.pipeline![0].status})` : ''}
                             </p>
                           )}
 
@@ -1178,6 +1213,7 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                   </TableRow>
+                  </Fragment>
                 )
               })}
             </TableBody>

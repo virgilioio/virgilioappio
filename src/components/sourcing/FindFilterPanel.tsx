@@ -924,9 +924,8 @@ export function FindFilterPanel({
         <GroupSection label="Candidate Source" count={sourceCount}>
           <div>
             {([
-              { value: 'internal' as const, label: 'Internal' },
-              { value: 'gio' as const, label: 'Gio' },
-              { value: 'external' as const, label: 'External' },
+              { value: 'internal' as const, label: 'Already in Gio' },
+              { value: 'external' as const, label: 'New from Apollo' },
             ]).map(opt => {
               const selected = resultFilters.candidateSource || []
               const checked = selected.includes(opt.value)
