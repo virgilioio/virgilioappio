@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, matchPath, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Briefcase, CalendarDays, LogOut, Search, Settings, Sun, Users, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, LogOut, Search } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { IconTip } from '@/components/ui/tooltip'
 import { SearchResultsDialog } from '@/components/search/SearchResultsDialog'
-import { AtsGlyph, DashboardGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
+import { AtsGlyph, CalendarGlyph, CandidatesGlyph, DashboardGlyph, JobsGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
+import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -28,16 +29,16 @@ import { BookingLinkCard } from './BookingLinkCard'
 type Perm = ReturnType<typeof usePermissions>
 type ModuleId = 'home' | 'ats'
 
-interface Section { id: string; href: string; label: string; Icon: LucideIcon; match: (p: string) => boolean; show: (perm: Perm) => boolean }
+interface Section { id: string; href: string; label: string; Icon: ModuleGlyph; match: (p: string) => boolean; show: (perm: Perm) => boolean }
 
 const SECTIONS: Record<ModuleId, Section[]> = {
   home: [
-    { id: 'today', href: '/dashboard', label: 'Today', Icon: Sun, match: p => p === '/' || p === '/dashboard', show: () => true },
+    { id: 'today', href: '/dashboard', label: 'Today', Icon: DashboardGlyph, match: p => p === '/' || p === '/dashboard', show: () => true },
   ],
   ats: [
-    { id: 'jobs', href: '/jobs', label: 'Jobs', Icon: Briefcase, match: p => p === '/jobs', show: perm => perm.canViewJobs },
-    { id: 'candidates', href: '/candidates', label: 'Candidates', Icon: Users, match: p => p === '/candidates', show: perm => perm.canViewCandidates },
-    { id: 'calendar', href: '/calendar', label: 'Calendar', Icon: CalendarDays, match: p => p === '/calendar', show: () => true },
+    { id: 'jobs', href: '/jobs', label: 'Jobs', Icon: JobsGlyph, match: p => p === '/jobs', show: perm => perm.canViewJobs },
+    { id: 'candidates', href: '/candidates', label: 'Candidates', Icon: CandidatesGlyph, match: p => p === '/candidates', show: perm => perm.canViewCandidates },
+    { id: 'calendar', href: '/calendar', label: 'Calendar', Icon: CalendarGlyph, match: p => p === '/calendar', show: () => true },
   ],
 }
 
@@ -251,14 +252,14 @@ function PhoneTopTabs({ sections, current, me, onAccount }: {
             aria-current={active ? 'page' : undefined}
             data-tab={id}
             className={cn(
-              'gio-pressable gio-phone-tab relative flex h-[52px] min-w-0 items-center justify-center gap-2.5',
-              active ? 'text-[#0d0d09]' : 'text-[#5A6072]',
+              'gio-pressable gio-phone-tab relative flex h-[52px] min-w-0 items-center justify-center gap-2',
+              active ? 'text-[#0d0d09] [&_.accent]:fill-[#D7C5FB]' : 'text-[#5A6072]',
             )}
             style={{ flex: active ? '2 1 0' : '1 1 0' }}
           >
             <span aria-hidden data-tab-fill className={cn('gio-phone-tab-fill', active ? 'bg-[#E5E3DA]' : 'bg-[#ECEAE3]')} />
             <span data-tab-icon className="relative grid shrink-0 place-items-center">
-              <Icon className="h-[22px] w-[22px]" strokeWidth={2} />
+              <Icon className="h-[28px] w-[28px]" />
             </span>
             {active && (
               <span data-tab-label className="relative truncate font-poppins font-semibold text-[17px] tracking-[-0.01em]">{label}</span>
@@ -297,7 +298,7 @@ function YouSheet({ open, onOpenChange, me }: { open: boolean; onOpenChange: (o:
 
         <div className="mt-3 overflow-hidden rounded-[14px] border border-[#E7E8EE] bg-white">
           <button type="button" onClick={() => go('/settings')} className="gio-pressable flex w-full items-center gap-3 border-b border-[#F1F0EC] px-4 py-3.5 text-left font-inter font-medium text-[14px] text-[#0d0d09]">
-            <Settings className="h-[18px] w-[18px] text-[#5A6072]" />
+            <span aria-hidden className="inline-flex"><SettingsGlyph size={18} color="#5A6072" accent="#5A6072" /></span>
             Settings
           </button>
           <button type="button" onClick={signOut} disabled={isLoggingOut} className="gio-pressable flex w-full items-center gap-3 px-4 py-3.5 text-left font-inter font-medium text-[14px] text-[#B91C1C] disabled:opacity-60">

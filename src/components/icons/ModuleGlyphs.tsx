@@ -50,3 +50,34 @@ export const AnalyticsGlyph: ModuleGlyph = ({ className }) => (
 )
 
 export const ReferencesModuleGlyph: ModuleGlyph = ({ className }) => <ReferencesGlyph className={className} />
+
+/* Section glyphs for the phone's top tabs (2026-10-12), drawn in the same
+ * family as the module glyphs above: solid rounded shapes on a 48×48 grid,
+ * one `.accent` shape that turns lilac when the tab is current. */
+
+export const JobsGlyph: ModuleGlyph = ({ className }) => (
+  <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+    <rect className="accent" x="18" y="8.5" width="12" height="7" rx="3.5" fill="currentColor" />
+    <rect x="8" y="18" width="32" height="22" rx="8" fill="currentColor" />
+  </svg>
+)
+
+export const CandidatesGlyph: ModuleGlyph = ({ className }) => (
+  <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+    <circle className="accent" cx="13.5" cy="15" r="5" fill="currentColor" />
+    <rect x="22" y="10.5" width="17" height="9" rx="4.5" fill="currentColor" />
+    <circle cx="13.5" cy="33" r="5" fill="currentColor" />
+    <rect x="22" y="28.5" width="12" height="9" rx="4.5" fill="currentColor" />
+  </svg>
+)
+
+export const CalendarGlyph: ModuleGlyph = ({ className }) => (
+  <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+    <rect x="9" y="9" width="30" height="9" rx="4.5" fill="currentColor" />
+    <circle cx="13.5" cy="27" r="4.5" fill="currentColor" />
+    <circle cx="24" cy="27" r="4.5" fill="currentColor" />
+    <circle cx="34.5" cy="27" r="4.5" fill="currentColor" />
+    <circle cx="13.5" cy="37.5" r="4.5" fill="currentColor" />
+    <circle className="accent" cx="24" cy="37.5" r="4.5" fill="currentColor" />
+  </svg>
+)
