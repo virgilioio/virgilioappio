@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
 import { creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl } from "../_shared/apolloCredits.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
+import { apolloCompany } from "../_shared/apolloPerson.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
@@ -836,7 +837,7 @@ async function handleEnrich(body: any, user: any, member: any, corsHeaders: Reco
     contact_phones: contactPhones,
     contact_emails: contactEmails,
     title: person.title || null,
-    company: person.organization_name || null,
+    company: apolloCompany(person),
     credits_used: cost.credits,
     credits_remaining: remaining
   }), {

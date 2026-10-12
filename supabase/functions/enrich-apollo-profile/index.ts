@@ -19,6 +19,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
+import { apolloCompany } from "../_shared/apolloPerson.ts";
 import {
   creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl,
   PERSON_CREDITS, PHONE_CREDITS,
@@ -164,7 +165,7 @@ async function fillExisting(db: SupabaseClient, candidateId: string, person: Apo
   fill('contact_emails', emails);
   fill('linkedin_url', person.linkedin_url);
   fill('role_current', person.title);
-  fill('company_current', person.organization_name);
+  fill('company_current', apolloCompany(person));
   fill('location_city', person.city);
   fill('location_state', person.state);
   fill('location_country', person.country);
@@ -338,7 +339,7 @@ serve(async (req) => {
           apollo_id: person.id,
           linkedin_url: person.linkedin_url ?? null,
           email: person.email ?? null,
-          company_current: person.organization_name ?? null,
+          company_current: apolloCompany(person),
         });
         let candidateId: string | null = existingMatch?.id ?? null;
         let wasExisting = !!candidateId;
@@ -360,7 +361,7 @@ serve(async (req) => {
               contact_emails: emailsOf(person),
               linkedin_url: person.linkedin_url,
               role_current: person.title,
-              company_current: person.organization_name,
+              company_current: apolloCompany(person),
               location_city: person.city,
               location_state: person.state,
               location_country: person.country,

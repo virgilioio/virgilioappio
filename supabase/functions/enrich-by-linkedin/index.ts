@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 import { creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl } from "../_shared/apolloCredits.ts";
+import { apolloCompany } from "../_shared/apolloPerson.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
 const APOLLO_BULK_MATCH_URL = 'https://api.apollo.io/api/v1/people/bulk_match';
@@ -229,7 +230,7 @@ serve(async (req) => {
           contact_phones: contactPhones.length > 0 ? contactPhones : undefined,
           contact_emails: contactEmails.length > 0 ? contactEmails : undefined,
           role_current: person.title || undefined,
-          company_current: person.organization_name || undefined,
+          company_current: apolloCompany(person) || undefined,
           location_city: person.city || undefined,
           location_state: person.state || undefined,
           location_country: person.country || undefined,
@@ -250,7 +251,7 @@ serve(async (req) => {
             contact_phones: contactPhones.length > 0 ? contactPhones : undefined,
             contact_emails: contactEmails.length > 0 ? contactEmails : undefined,
             role_current: person.title || undefined,
-            company_current: person.organization_name || undefined,
+            company_current: apolloCompany(person) || undefined,
             location_city: person.city || undefined,
             location_state: person.state || undefined,
             location_country: person.country || undefined,
