@@ -326,3 +326,6 @@ verify_jwt = false
 
 [functions.privacy-choice]
 verify_jwt = false
+
+[functions.email-attachments-sweep]
+verify_jwt = false
