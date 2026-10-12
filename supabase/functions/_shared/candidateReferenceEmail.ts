@@ -320,7 +320,7 @@ ${masthead(brand)}
     <td align="right" style="white-space:nowrap;font-family:${INTER};font-size:11px;">
       <a href="https://app.gogio.io/privacy" style="color:${PURPLE};text-decoration:none;">Privacy</a>
       <span style="color:#D1D0CB;padding:0 10px;">&bull;</span>
-      <a href="mailto:abuse@gogio.io?subject=Report%20this%20email" style="color:${TERTIARY};text-decoration:none;">Report this email</a>
+      <a href="mailto:support@virgilio.tech?subject=Report%20this%20email" style="color:${TERTIARY};text-decoration:none;">Report this email</a>
     </td>
   </tr></table>
 </td></tr>

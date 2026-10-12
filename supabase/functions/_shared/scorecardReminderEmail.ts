@@ -89,7 +89,7 @@ export function renderScorecardReminderEmail(
     cadence_word: escapeHtml(cadenceWord),
     scorecard_url: encodeURI(vars.scorecard_url),
     scorecard_url_text: escapeHtml(vars.scorecard_url),
-    support_email: escapeHtml(vars.support_email ?? "support@gogio.com"),
+    support_email: escapeHtml(vars.support_email ?? "support@virgilio.tech"),
   };
 
   const avatarBlock = `<div style="width:40px;height:40px;border-radius:9999px;background:${safe.candidate_color};color:#fffcf9;font-family:'Poppins','Helvetica Neue',Arial,sans-serif;font-weight:600;font-size:14px;line-height:40px;text-align:center;letter-spacing:-0.01em;">${safe.candidate_initials}</div>`;

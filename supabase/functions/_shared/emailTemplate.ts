@@ -206,13 +206,13 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
       ` : ''}
       <div class="email-footer">
         <p style="margin: 0 0 8px 0;">
-          <strong>GoGio</strong> - Modern Recruiting Platform
+          <strong>Gio ATS</strong> by Virgilio
         </p>
         <p style="margin: 0 0 16px 0;">
-          Need help? Contact us at <a href="mailto:support@gogio.io">support@gogio.io</a>
+          Need help? Contact us at <a href="mailto:support@virgilio.tech">support@virgilio.tech</a>
         </p>
         <p style="margin: 0; font-size: 12px;">
-          © ${new Date().getFullYear()} GoGio. All rights reserved.
+          © ${new Date().getFullYear()} Virgilio Technologies LLC. <a href="https://app.gogio.io/privacy">Privacy Policy</a>
         </p>
       </div>
     </div>

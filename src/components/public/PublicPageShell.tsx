@@ -101,7 +101,7 @@ export function PublicPageShell({
               Privacy
             </a>
             <a
-              href="mailto:support@gogio.com?subject=Report%20a%20reference%20link"
+              href="mailto:support@virgilio.tech?subject=Report%20a%20reference%20link"
               className="font-inter"
               style={{ fontSize: 11.5, color: '#8B8F9E', textDecoration: 'underline' }}
             >

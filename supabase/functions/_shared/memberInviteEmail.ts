@@ -16,7 +16,7 @@ export interface MemberInviteMergeVars {
   role_label: string;                // "Admin" | "Member" | "Sales" (already humanised)
   invite_url: string;                // full https://app.gogio.io/accept-invite/{token}
   expiry_date: string;               // pre-formatted, e.g. "Monday, July 15, 2026"
-  support_email?: string;            // defaults to support@gogio.com
+  support_email?: string;            // defaults to support@virgilio.tech
 }
 
 export interface RenderedMemberInviteEmail {
@@ -66,7 +66,7 @@ export function renderMemberInviteEmail(
     invite_url: encodeURI(vars.invite_url),
     invite_url_text: escapeHtml(vars.invite_url),
     expiry_date: escapeHtml(vars.expiry_date),
-    support_email: escapeHtml(vars.support_email ?? "support@gogio.com"),
+    support_email: escapeHtml(vars.support_email ?? "support@virgilio.tech"),
   };
 
   const avatarBlock = vars.inviter_avatar

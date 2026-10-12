@@ -17,7 +17,7 @@ export interface ChatInviteMergeVars {
   recruiter_message: string;
   chat_url: string;
   link_expiry: string;        // e.g. "14 days"
-  support_email?: string;     // defaults to support@gogio.com
+  support_email?: string;     // defaults to support@virgilio.tech
 }
 
 export interface RenderedChatInviteEmail {
@@ -70,7 +70,7 @@ export function renderChatInviteEmail(
     chat_url: encodeURI(vars.chat_url),
     chat_url_text: escapeHtml(vars.chat_url),
     link_expiry: escapeHtml(vars.link_expiry),
-    support_email: escapeHtml(vars.support_email ?? "support@gogio.com"),
+    support_email: escapeHtml(vars.support_email ?? "support@virgilio.tech"),
   };
 
   const avatarBlock = vars.recruiter_avatar

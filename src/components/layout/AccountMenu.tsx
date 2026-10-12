@@ -403,7 +403,7 @@ export function AccountMenu({ children }: AccountMenuProps) {
             icon={LifeBuoy}
             label="Help & support"
             onClick={() =>
-              window.open('mailto:support@gogio.io', '_blank', 'noopener')
+              window.open('mailto:support@virgilio.tech', '_blank', 'noopener')
             }
             closeMenu={close}
           />
