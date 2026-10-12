@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Bell, Check, CheckCheck, SlidersHorizontal, ArrowLeft, ChevronRight,
   AtSign, Users2, ClipboardCheck, CalendarCheck2, FileCheck2, Briefcase,
-  CalendarDays, Filter, Inbox, MessageSquare,
+  CalendarDays, Filter, Inbox, MessageSquare, UserPlus,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ const CATEGORY_META: Record<NotificationCategory, { label: string; icon: any; to
   posting_status:      { label: 'POSTING',           icon: Briefcase,      tone: 'orange', bg: '#FFE4D6', fg: '#9A3412' },
   daily_digest:        { label: 'DIGEST',            icon: CalendarDays,   tone: 'blue',   bg: '#DBEAFE', fg: '#1D4ED8' },
   chat_message:        { label: 'CHAT',              icon: MessageSquare,  tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
+  talent_pool:         { label: 'TALENT POOL',       icon: UserPlus,       tone: 'purple', bg: '#EDE4FF', fg: '#6F3FF5' },
 }
 
 function relTime(iso: string): string {

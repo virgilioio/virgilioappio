@@ -46,6 +46,8 @@ export interface SourcingProject {
   total_candidates: number
   last_search_at: string | null
   is_public: boolean
+  /** This search fills the talent pool with surplus credits (Find Phase 2). */
+  pool_enabled?: boolean
   created_at: string
   updated_at: string
   job_spec_data?: JobSpecData | null  // Full AI-generated job specification

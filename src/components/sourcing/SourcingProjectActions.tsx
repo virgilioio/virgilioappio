@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabaseClient'
+import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
 import {
   RefreshCw, MoreHorizontal, Archive, Trash2,
-  Globe, Lock, Link2, Briefcase, Plus, Eye
+  Globe, Lock, Link2, Briefcase, Plus, Eye, Users
 } from 'lucide-react'
 import { SourcingProjectCollaborators } from './SourcingProjectCollaborators'
 import { LinkToJobDialog } from './LinkToJobDialog'
@@ -42,6 +46,25 @@ export function SourcingProjectActions({
   const [showLinkJobDialog, setShowLinkJobDialog] = useState(false)
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false)
   const [showInterpretationDrawer, setShowInterpretationDrawer] = useState(false)
+  const queryClient = useQueryClient()
+  const [poolOn, setPoolOn] = useState(!!project.pool_enabled)
+  useEffect(() => { setPoolOn(!!project.pool_enabled) }, [project.id, project.pool_enabled])
+
+  // The talent pool (Find Phase 2): this search gets a share of the credits
+  // active searches don't need, collected without phones.
+  const togglePool = async (on: boolean) => {
+    setPoolOn(on)
+    const { error } = await supabase.from('sourcing_projects').update({ pool_enabled: on }).eq('id', project.id)
+    if (error) {
+      setPoolOn(!on)
+      toast.error("Couldn't change the talent pool setting", { description: 'Try again in a moment.' })
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: ['sourcing-project', project.id] })
+    toast(on ? 'This search now fills the talent pool' : 'This search no longer fills the talent pool', {
+      action: { label: 'Undo', onClick: () => void togglePool(!on) },
+    })
+  }
 
   const linkedJobLabel = project.jobs
     ? `${project.jobs.title}${project.jobs.organizations?.name ? ` - ${project.jobs.organizations.name}` : ''}`
@@ -50,6 +73,8 @@ export function SourcingProjectActions({
   return (
     <>
       <div className="flex items-center gap-2">
+        {poolOn && <Badge tone="purple" size="xs" icon={Users}>Talent pool</Badge>}
+
         {/* Collaborators */}
         <SourcingProjectCollaborators projectId={project.id} createdBy={project.created_by} />
 
@@ -131,6 +156,24 @@ export function SourcingProjectActions({
                 {project.is_public
                   ? 'Anyone in your organization can view this project'
                   : 'Only you can view this project'}
+              </p>
+            </div>
+
+            {/* Talent pool */}
+            <div className="p-3 border-b">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="pool-toggle-header" className="text-sm font-medium cursor-pointer">
+                    Fills the talent pool
+                  </Label>
+                </div>
+                <Switch id="pool-toggle-header" checked={poolOn} onCheckedChange={(v) => void togglePool(v)} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {poolOn
+                  ? 'Gets a share of the credits active searches don\'t need. New people only, no phones, 25 per company a month.'
+                  : 'Off. Turn on to collect new people from this search with spare credits.'}
               </p>
             </div>
 

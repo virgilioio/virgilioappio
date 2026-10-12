@@ -11,6 +11,7 @@ export type NotificationCategory =
   | 'posting_status'
   | 'daily_digest'
   | 'chat_message'
+  | 'talent_pool'
 
 export interface NotificationRow {
   id: string
