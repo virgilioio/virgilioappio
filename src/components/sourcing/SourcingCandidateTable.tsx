@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, ChevronDown, Download, Mail, Phone, X, Info, ArrowUpDown, Sparkles, Heart, Lock, RotateCcw, Search } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronRight, ChevronDown, Download, Mail, Phone, X, ArrowUpDown, Sparkles, Heart, Lock, RotateCcw, Search, MoreHorizontal, ThumbsDown, Users } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
@@ -30,6 +30,10 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { cn } from '@/lib/utils'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
+import { IconTip, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useProjectPeople, useProjectPeopleActions, statusLookup, type PersonChange } from '@/hooks/useProjectPeople'
+import { snapshotOf } from '@/lib/projectCandidateState'
+import { createSimilarSearch } from '@/lib/findSimilar'
 
 // Helper to safely resolve display name across PDL (full_name) and Apollo (candidate_name) candidates
 const getDisplayName = (c: { full_name?: string; candidate_name?: string }) =>
@@ -87,6 +91,8 @@ interface MatchedCandidate {
   pipeline?: Array<{ job_id: string; job_title: string; stage_name: string | null; status: string; updated_at: string }>
   /** Why the rule-based fit score is what it is. */
   fit_reasons?: string[]
+  /** What this project decided about them (server, at search time). */
+  project_status?: 'active' | 'shortlisted' | 'not_a_fit' | 'archived'
 }
 
 interface SourcingCandidateTableProps {
@@ -112,10 +118,12 @@ interface SourcingCandidateTableProps {
   /** §16: the search failed; shown instead of "no matches". */
   loadFailed?: boolean
   onRetry?: () => void
+  /** The project's organization, for "More like this" searches. */
+  organizationId?: string | null
 }
 
 export function SourcingCandidateTable({ 
-  candidates, 
+  candidates: allCandidates, 
   isLoading,
   jobId,
   projectId,
@@ -128,10 +136,27 @@ export function SourcingCandidateTable({
   onEditSearch,
   loadFailed = false,
   onRetry,
+  organizationId,
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { toast } = useToast()
+
+  // Shortlist and "not a fit" (Find Phase 2): the project's decisions,
+  // applied at once; "not a fit" and archived people leave the results.
+  const { data: projectPeople } = useProjectPeople(projectId)
+  const peopleActions = useProjectPeopleActions(projectId)
+  const statusOf = useMemo(() => statusLookup(projectPeople), [projectPeople])
+  const rowStatus = (c: MatchedCandidate) =>
+    statusOf({ apolloId: c.apollo_id, candidateId: c.display_source === 'internal' ? (c.candidate_id || c.id) : null }) ??
+    c.project_status ?? 'active'
+  const candidates = useMemo(
+    () => allCandidates.filter((c) => { const st = rowStatus(c); return st !== 'not_a_fit' && st !== 'archived' }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allCandidates, statusOf],
+  )
+  const hiddenCount = allCandidates.length - candidates.length
+  const [startingSimilar, setStartingSimilar] = useState<string | null>(null)
   const PAGE_STEP = 25
   const [visibleCount, setVisibleCount] = useState(PAGE_STEP)
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
@@ -679,6 +704,40 @@ export function SourcingCandidateTable({
     }
   }
 
+  const personKey = (c: MatchedCandidate) => {
+    const internal = c.display_source === 'internal' || (!!c.apollo_id && collectedApolloIds.has(c.apollo_id))
+    const mapped = c.apollo_id ? collectedCandidateIdByApollo.get(c.apollo_id) : undefined
+    return { apolloId: c.apollo_id ?? null, candidateId: internal ? (c.candidate_id || mapped || (c.display_source === 'internal' ? c.id : null)) : null }
+  }
+  const changeFor = (c: MatchedCandidate): PersonChange => ({
+    key: personKey(c),
+    snapshot: snapshotOf(c),
+    previous: rowStatus(c),
+  })
+  const canKeep = (c: MatchedCandidate) => { const k = personKey(c); return !!(k.apolloId || k.candidateId) }
+
+  const toggleShortlist = (c: MatchedCandidate) => {
+    if (rowStatus(c) === 'shortlisted') void peopleActions.restore([changeFor(c)])
+    else void peopleActions.shortlist([changeFor(c)])
+  }
+  const selectedRows = () => allCandidates.filter((c) => c.apollo_id && selectedApolloIds.has(c.apollo_id))
+  const bulkShortlist = () => { void peopleActions.shortlist(selectedRows().map(changeFor)); clearSelection() }
+  const bulkNotAFit = () => { void peopleActions.notAFit(selectedRows().map(changeFor)); clearSelection() }
+
+  const startSimilar = async (c: MatchedCandidate) => {
+    const candidateId = personKey(c).candidateId
+    if (!candidateId || !organizationId) return
+    setStartingSimilar(candidateId)
+    try {
+      const id = await createSimilarSearch(candidateId, organizationId)
+      navigate(`/find/${id}`)
+    } catch (error) {
+      toast({ title: "Couldn't start that search", description: error instanceof Error ? error.message : 'Try again in a moment.', variant: 'destructive' })
+    } finally {
+      setStartingSimilar(null)
+    }
+  }
+
   if (loadFailed && candidates.length === 0) {
     return (
       <EmptyCard>
@@ -696,7 +755,14 @@ export function SourcingCandidateTable({
     // found nothing → widen it.
     return (
       <EmptyCard>
-        {totalMatches > 0 ? (
+        {hiddenCount > 0 && totalMatches <= hiddenCount ? (
+          <AnimatedEmpty
+            scene="search"
+            onceKey="find-results"
+            title="Everyone here is marked not a fit"
+            body={`${hiddenCount.toLocaleString()} ${hiddenCount === 1 ? 'person is' : 'people are'} on the Shortlist tab under Not a fit.`}
+          />
+        ) : totalMatches > 0 ? (
           <AnimatedEmpty
             scene="search"
             onceKey="find-results"
@@ -767,10 +833,10 @@ export function SourcingCandidateTable({
                 ? 'Credits exhausted'
                 : `Collect ${selectedApolloIds.size} · ${selectedApolloIds.size} credit${selectedApolloIds.size === 1 ? '' : 's'}`}
             </Button>
-            <Button size="sm" variant="secondary" onDark icon={Heart}>
-              Save for later
+            <Button size="sm" variant="secondary" onDark icon={Heart} onClick={bulkShortlist} disabled={!projectId}>
+              Shortlist {selectedApolloIds.size}
             </Button>
-            <Button size="sm" variant="ghost" onDark>
+            <Button size="sm" variant="ghost" onDark onClick={bulkNotAFit} disabled={!projectId}>
               Not a fit
             </Button>
             <Button
@@ -957,6 +1023,8 @@ export function SourcingCandidateTable({
                     setSheetOpen(true)
                   }
                 }
+
+                const isShortlisted = rowStatus(candidate) === 'shortlisted'
 
                 // Fit score band → tone for right rail
                 const fitScore = candidate.match_score ?? 0
@@ -1181,9 +1249,18 @@ export function SourcingCandidateTable({
                                 {jobId ? 'Add to job' : 'Link a job first'}
                               </Button>
                             )}
-                            <Button size="sm" variant="secondary" icon={Mail}>
-                              Reach out
-                            </Button>
+                            {projectId && canKeep(candidate) && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                icon={Heart}
+                                aria-pressed={isShortlisted}
+                                className={cn(isShortlisted && '[&_svg]:fill-current text-virgilio-purple')}
+                                onClick={(e) => { e.stopPropagation(); toggleShortlist(candidate) }}
+                              >
+                                {isShortlisted ? 'Shortlisted' : 'Shortlist'}
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="ghost"
@@ -1192,24 +1269,60 @@ export function SourcingCandidateTable({
                             >
                               View profile
                             </Button>
+                            {projectId && canKeep(candidate) && (
+                              <DropdownMenu>
+                                <IconTip label="More actions">
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="ghost" iconOnly icon={MoreHorizontal} aria-label="More actions" />
+                                  </DropdownMenuTrigger>
+                                </IconTip>
+                                <DropdownMenuContent align="end" sideOffset={6}>
+                                  <DropdownMenuItem onSelect={() => void peopleActions.notAFit([changeFor(candidate)])}>
+                                    <ThumbsDown className="h-4 w-4 mr-2" />Not a fit
+                                  </DropdownMenuItem>
+                                  {isInternal && organizationId && (
+                                    <DropdownMenuItem
+                                      disabled={!!startingSimilar}
+                                      onSelect={() => void startSimilar(candidate)}
+                                    >
+                                      <Users className="h-4 w-4 mr-2" />
+                                      {startingSimilar === personKey(candidate).candidateId ? 'Starting search…' : 'Find people like this'}
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                         </div>
 
-                        {/* Right rail: AI FIT score */}
-                        <div
-                          className={cn(
-                            "shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-lg ring-1 px-3 py-2 min-w-[64px]",
-                            fitBand.bg,
-                            fitBand.ring
-                          )}
-                        >
-                          <span className="font-poppins text-[9px] uppercase tracking-[0.08em] text-text-tertiary">
-                            AI Fit
-                          </span>
-                          <span className={cn("font-poppins text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em]", fitBand.label)}>
-                            {fitScore}
-                          </span>
-                        </div>
+                        {/* Right rail: rule-based fit (title, location, level,
+                            keywords); AI fit is scored on the shortlist. */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              tabIndex={0}
+                              aria-label={`Fit ${fitScore}${candidate.fit_reasons?.length ? `: ${candidate.fit_reasons.join(', ')}` : ''}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className={cn(
+                                "shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-lg ring-1 px-3 py-2 min-w-[64px]",
+                                fitBand.bg,
+                                fitBand.ring
+                              )}
+                            >
+                              <span className="font-poppins text-[10.5px] uppercase tracking-[0.08em] text-text-tertiary">
+                                Fit
+                              </span>
+                              <span className={cn("font-poppins text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em]", fitBand.label)}>
+                                {fitScore}
+                              </span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            {candidate.fit_reasons?.length
+                              ? candidate.fit_reasons.join(' · ')
+                              : 'Scored on title, location, level and keywords'}
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1377,6 +1490,20 @@ export function SourcingCandidateTable({
                 </div>
                 {/* Actions */}
                 <div className="flex gap-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                  {projectId && canKeep(candidate) && (
+                    <IconTip label={rowStatus(candidate) === 'shortlisted' ? 'Remove from shortlist' : 'Shortlist'}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      iconOnly
+                      icon={Heart}
+                      aria-label={rowStatus(candidate) === 'shortlisted' ? 'Remove from shortlist' : 'Shortlist'}
+                      aria-pressed={rowStatus(candidate) === 'shortlisted'}
+                      className={cn(rowStatus(candidate) === 'shortlisted' && '[&_svg]:fill-current text-virgilio-purple')}
+                      onClick={(e) => { e.stopPropagation(); toggleShortlist(candidate) }}
+                    />
+                    </IconTip>
+                  )}
                   {isApollo ? (
                     <Button
                       size="sm"

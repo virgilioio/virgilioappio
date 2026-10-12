@@ -162,6 +162,7 @@ export function CandidatesTab({
           onEditSearch={onEditSearch}
           loadFailed={loadFailed}
           onRetry={onRetry}
+          organizationId={project.organization_id}
         />
       </div>
     </div>

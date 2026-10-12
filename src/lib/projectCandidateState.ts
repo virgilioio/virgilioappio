@@ -23,6 +23,7 @@ export interface PersonSnapshot {
 }
 
 /** Builds a snapshot from a Find result row (any lane). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- a Find row from any lane
 export function snapshotOf(c: Record<string, any>): PersonSnapshot {
   const location = c.location || [c.location_city, c.location_state, c.location_country].filter(Boolean).join(', ') || null
   return {
