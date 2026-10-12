@@ -143,7 +143,7 @@ export async function checkForDuplicateCandidate(
     log.error('Error checking for duplicates:', result.error)
     return null
   }
-  const match = (result.data || []).find((m: any) => m.strength === 'strong' || m.strength === 'medium')
+  const match = (result.data || []).find((m: { strength: string }) => m.strength === 'strong' || m.strength === 'medium')
   if (!match) return null
 
   const { data: existing } = await supabase.from('candidates').select('*').eq('id', match.candidate_id).maybeSingle()

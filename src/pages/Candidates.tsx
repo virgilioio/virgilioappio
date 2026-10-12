@@ -52,6 +52,8 @@ import { ShareListModal } from '@/components/candidates/bulk/ShareListModal'
 import { useTags, useAllCandidateTagsMap, useTagMutations, type Tag } from '@/hooks/useTags'
 import { recallValue, rememberValue, useScrollMemory } from '@/lib/scrollMemory'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { useTenant } from '@/hooks/useTenant'
+import { PossibleDuplicatesCard } from '@/components/candidates/duplicate/PossibleDuplicatesCard'
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
   all: {},
@@ -73,6 +75,7 @@ function stableHash(obj: unknown): string {
 }
 
 function CandidatesInner() {
+  const { tenant } = useTenant()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { hasRecruiterRole, isPrivileged, isLoading: rolesLoading } = useUserJobRoles()
@@ -542,6 +545,7 @@ function CandidatesInner() {
 
 
         <main ref={listRef} className="flex-1 min-w-0 overflow-y-auto space-y-4">
+          <PossibleDuplicatesCard tenantId={tenant?.id} />
           <section className="bg-surface-primary border border-virgilio-border rounded-2xl shadow-sm p-4 space-y-3">
             <SavedSearchToolbar
               activeView={activeView}

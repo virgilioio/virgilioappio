@@ -1,4 +1,4 @@
-import { autoMergeIntoExisting, checkForDuplicateCandidate } from '@/lib/candidateHelpers'
+import { autoMergeIntoExisting, checkForDuplicateCandidate, type CandidateData } from '@/lib/candidateHelpers'
 import { useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -84,9 +84,9 @@ export function useCSVCandidateImport() {
           // Already in Gio? (Find Phase 1, 2026-10-12) A strong match with
           // nothing contradicting it fills the existing record instead of
           // adding a second one; weaker matches go to the duplicates queue.
-          const match = await checkForDuplicateCandidate(candidate as any, organizationId, tenant.id)
+          const match = await checkForDuplicateCandidate(candidate as Partial<CandidateData>, organizationId, tenant.id)
           if (match?.autoMergeable) {
-            await autoMergeIntoExisting(match.existingCandidate.id, candidate as any)
+            await autoMergeIntoExisting(match.existingCandidate.id, candidate as Partial<CandidateData>)
             return 'duplicate'
           }
 

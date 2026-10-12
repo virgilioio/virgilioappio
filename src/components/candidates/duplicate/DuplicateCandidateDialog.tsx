@@ -23,6 +23,10 @@ interface DuplicateCandidateDialogProps {
   onMerge: (resolutions: Record<string, Resolution>) => void | Promise<void>
   onNotDuplicate: () => void | Promise<void>
   onOpenProfile?: () => void
+  /** Two records already in Gio (the Possible duplicates queue), not an add. */
+  mode?: 'add' | 'records'
+  /** Why the records look like one person ("Same LinkedIn", ...). */
+  matchReasons?: string[]
 }
 
 export function DuplicateCandidateDialog({
@@ -36,6 +40,8 @@ export function DuplicateCandidateDialog({
   onMerge,
   onNotDuplicate,
   onOpenProfile,
+  mode = 'add',
+  matchReasons = [],
 }: DuplicateCandidateDialogProps) {
   const { context, isLoading, error } = useDuplicateContext(existingCandidateId, incoming, isOpen)
   const [resolutions, setResolutions] = useState<Record<string, Resolution>>({})
@@ -163,13 +169,15 @@ export function DuplicateCandidateDialog({
                 className="font-inter uppercase text-dup-subtle"
                 style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.09em' }}
               >
-                Add candidate · Match found
+                {mode === 'records'
+                  ? `Possible duplicate${matchReasons.length ? ` · ${matchReasons.join(' · ')}` : ''}`
+                  : 'Add candidate · Match found'}
               </div>
               <h2
                 className="font-poppins text-dup-ink"
                 style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1.15 }}
               >
-                Duplicate candidate detected<span className="text-dup-purple-period">.</span>
+                {mode === 'records' ? 'Two records, one person?' : 'Duplicate candidate detected'}<span className="text-dup-purple-period">.</span>
               </h2>
             </div>
 

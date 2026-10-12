@@ -19,6 +19,8 @@ export interface MergeArgs {
   jobId?: string | null
   stageId?: string | null
   notes?: string | null
+  /** Record-to-record merge: this candidate's applications, notes and files move to the existing one. */
+  mergedCandidateId?: string | null
   resumeAttachment?: {
     file_name: string
     file_url: string
@@ -37,6 +39,16 @@ export function performMerge(args: MergeArgs) {
     stage_id: args.stageId ?? null,
     notes: args.notes ?? null,
     resume_attachment: args.resumeAttachment ?? null,
+    merged_candidate_id: args.mergedCandidateId ?? null,
+  })
+}
+
+/** Two records already in Gio are different people: never raise the pair again. */
+export function performNotDuplicatePair(args: { candidateId: string; otherCandidateId: string }) {
+  return invoke({
+    action: 'not_duplicate_pair',
+    existing_candidate_id: args.candidateId,
+    other_candidate_id: args.otherCandidateId,
   })
 }
 

@@ -93,6 +93,28 @@ serve(async (req) => {
 
     const incoming = normaliseIncoming(body.incoming ?? {})
 
+    // ── Two records already in Gio are different people (Possible duplicates
+    // queue, 2026-10-12): remember it so the pair is never raised again ──
+    if (action === 'not_duplicate_pair') {
+      const otherId: string | undefined = body.other_candidate_id
+      const { data: other } = otherId
+        ? await admin.from('candidates').select('id, tenant_id').eq('id', otherId).maybeSingle()
+        : { data: null }
+      if (!other || other.tenant_id !== existing.tenant_id) return json({ error: 'Candidate not found' }, 404)
+      const { error: decisionError } = await admin.from('candidate_duplicate_decisions').insert({
+        tenant_id: existing.tenant_id,
+        candidate_id: survivingId,
+        other_candidate_id: other.id,
+        decision: 'not_duplicate',
+        decided_by: user.id,
+      })
+      if (decisionError && decisionError.code !== '23505') {
+        console.error('[merge-candidates] not_duplicate_pair failed:', decisionError)
+        return json({ error: "Couldn't save the decision" }, 500)
+      }
+      return json({ candidate_id: survivingId, not_duplicate: true })
+    }
+
     // ── "Not the same person": create a separate candidate and suppress the pair ──
     if (action === 'not_duplicate') {
       const insertRow: Record<string, any> = {
