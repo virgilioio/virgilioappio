@@ -309,3 +309,14 @@ verify_jwt = true
 
 [functions.refresh-candidate-profiles]
 verify_jwt = false
+
+# Recorded 2026-10-12: these already run without JWT checks and authenticate
+# themselves (send-confirmation-email is the auth email hook).
+[functions.send-invitation]
+verify_jwt = false
+
+[functions.send-confirmation-email]
+verify_jwt = false
+
+[functions.calendar-event-action]
+verify_jwt = false
