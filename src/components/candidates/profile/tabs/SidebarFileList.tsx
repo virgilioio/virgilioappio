@@ -5,10 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { collapseRows, rowsById } from '@/lib/motion'
 import { AttachmentPreviewDialog } from '@/components/candidates/AttachmentPreviewDialog'
 import type { CandidateAttachment } from '@/hooks/useCandidateAttachments'
 
@@ -40,10 +39,28 @@ interface Props {
 
 export function SidebarFileList({ attachments, uploading, canDelete, onDownload, onDelete }: Props) {
   const [preview, setPreview] = useState<CandidateAttachment | null>(null)
-  const [confirm, setConfirm] = useState<CandidateAttachment | null>(null)
   const sorted = [...attachments].sort((a, b) =>
     a.is_resume === b.is_resume ? b.created_at.localeCompare(a.created_at) : a.is_resume ? -1 : 1,
   )
+  // C18 (Block B §16, Pattern 1): name the file; the row collapses once confirmed.
+  const confirmDelete = async (a: CandidateAttachment) => {
+    const ok = await confirmDestructive({
+      title: `Delete \u201c${a.file_name}\u201d?`,
+      description: a.is_resume
+        ? 'It\u2019s the résumé on file, and it\u2019s deleted for everyone. The details read from it stay on the profile. This can\u2019t be undone.'
+        : 'The file is deleted from this candidate for everyone. Their other files stay. This can\u2019t be undone.',
+      confirmLabel: 'Delete file',
+    })
+    if (!ok) return
+    const exit = collapseRows(rowsById([a.id]))
+    await exit.done
+    try {
+      await onDelete(a.id, a.file_url)
+    } catch {
+      exit.revert() // the hook already said it couldn't delete
+    }
+  }
+
   if (!sorted.length && !uploading.length) return null
 
   return (
@@ -59,7 +76,7 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
         const canPreview = PREVIEWABLE.test(a.file_type || '')
         const meta = [size(a.file_size_bytes), new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })].filter(Boolean).join(' · ')
         return (
-          <div key={a.id} className="group flex items-center gap-[9px] rounded-[9px] border border-[#E7E5DF] px-2.5 py-2 hover:bg-[#FAFAF7]">
+          <div key={a.id} data-row-id={a.id} className="group flex items-center gap-[9px] rounded-[9px] border border-[#E7E5DF] px-2.5 py-2 hover:bg-[#FAFAF7]">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F1F0EC] text-[#5A6072]">
               <Icon className="h-3.5 w-3.5" />
             </div>
@@ -75,9 +92,11 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
               <div className="mt-px font-inter text-[10.5px] text-[#8B8F9E]">{meta}</div>
             </button>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="File actions" />
-              </DropdownMenuTrigger>
+              <IconTip label="File actions">
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="xs" iconOnly icon={MoreHorizontal} aria-label="File actions" />
+                </DropdownMenuTrigger>
+              </IconTip>
               <DropdownMenuContent align="end" sideOffset={8}>
                 {canPreview && (
                   <DropdownMenuItem onClick={() => setPreview(a)}><Eye className="h-3.5 w-3.5" />Preview</DropdownMenuItem>
@@ -86,8 +105,8 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
                 {canDelete && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive" onClick={() => setConfirm(a)}>
-                      <Trash2 className="h-3.5 w-3.5" />Delete
+                    <DropdownMenuItem className="text-destructive" onClick={() => void confirmDelete(a)}>
+                      <Trash2 className="h-3.5 w-3.5" />Delete file
                     </DropdownMenuItem>
                   </>
                 )}
@@ -103,25 +122,6 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
         onClose={() => setPreview(null)}
         onDownload={() => preview && onDownload(preview.id, preview.file_name)}
       />
-      <AlertDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this file?</AlertDialogTitle>
-            <AlertDialogDescription>“{confirm?.file_name}” will be permanently removed from this candidate.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (confirm) await onDelete(confirm.id, confirm.file_url).catch(() => {})
-                setConfirm(null)
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }

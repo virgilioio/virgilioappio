@@ -151,6 +151,11 @@ export function useCandidateAttachments(candidateId: string) {
     }
   }
 
+  const fileLabel = (id: string) => {
+    const name = attachments.find((a) => a.id === id)?.file_name?.trim()
+    return name ? `\u201c${name}\u201d` : 'the file'
+  }
+
   const deleteAttachment = async (attachmentId: string, fileUrl: string) => {
     setIsLoading(true)
     try {
@@ -177,18 +182,15 @@ export function useCandidateAttachments(candidateId: string) {
         // Don't throw here as the database record is already deleted
       }
 
-      toast({
-        title: 'Success',
-        description: 'Attachment deleted successfully'
-      })
+      toast({ title: fileLabel(attachmentId) === 'the file' ? 'File deleted' : `${fileLabel(attachmentId)} deleted` })
 
       await getAttachments()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete attachment'
       console.error('Delete error:', err)
+      // Never a raw server error (Block B §16).
       toast({
-        title: 'Error',
-        description: errorMessage,
+        title: `Couldn\u2019t delete ${fileLabel(attachmentId)}`,
+        description: 'Nothing was removed; try again.',
         variant: 'destructive'
       })
       throw err
