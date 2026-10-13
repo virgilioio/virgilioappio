@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { toast } from '@/hooks/use-toast'
 import { useApplicationFields, ApplicationField } from '@/hooks/useApplicationFields'
 import { ApplicationFieldForm } from './ApplicationFieldForm'
 import { Plus, Copy, Pencil, Trash2, Loader2 } from 'lucide-react'
@@ -16,7 +18,24 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
   const { fields, isLoading, deleteField, refetch, copyPlatformTemplate } = useApplicationFields(context)
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<ApplicationField | null>(null)
-  const [toDelete, setToDelete] = useState<ApplicationField | null>(null)
+
+  // S10 (Block B §16): name the field; a failed delete says so (it used to fail silently).
+  const handleDelete = async (f: ApplicationField) => {
+    const label = f.field_label || f.field_name
+    const ok = await confirmDestructive({
+      title: `Delete the \u201c${label}\u201d field?`,
+      description: 'It\u2019s removed from your application form, so new applicants aren\u2019t asked it. Answers candidates already gave stay. This can\u2019t be undone.',
+      confirmLabel: 'Delete field',
+    })
+    if (!ok) return
+    try {
+      await deleteField(f.id)
+      await refetch()
+    } catch (e) {
+      console.error('Failed to delete application field:', e)
+      toast({ title: `Couldn\u2019t delete \u201c${label}\u201d`, description: 'Nothing was removed; try again.', variant: 'destructive' })
+    }
+  }
 
   const allPlatform = (fields || []).filter(f => f.source === 'platform')
   const coreFields = allPlatform
@@ -128,14 +147,16 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
               >
                 <Pencil size={13} />
               </button>
-              <button
-                type="button"
-                className="text-[#8B8F9E] hover:text-[#B91C1C] transition-colors"
-                onClick={() => setToDelete(f)}
-                aria-label="Delete"
-              >
-                <Trash2 size={13} />
-              </button>
+              <IconTip label={`Delete ${f.field_label || f.field_name}`}>
+                <button
+                  type="button"
+                  className="text-[#8B8F9E] hover:text-[#B91C1C] transition-colors"
+                  onClick={() => void handleDelete(f)}
+                  aria-label={`Delete ${f.field_label || f.field_name}`}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </IconTip>
             </SpecRow>
           ))
         )}
@@ -161,23 +182,6 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete field</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{toDelete?.field_label}"? This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => { if (toDelete) { await deleteField(toDelete.id); await refetch(); setToDelete(null) } }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
