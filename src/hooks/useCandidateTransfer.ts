@@ -48,9 +48,10 @@ export function useCandidateTransfer() {
     } catch (err) {
       const error = err as Error
       setError(error)
+      // Never a raw server error (Block B §16).
       toast({
-        title: "Failed to Add Candidate",
-        description: error.message,
+        title: `Couldn\u2019t add ${options.candidateName || 'the candidate'} to ${options.targetJobTitle || 'the job'}`,
+        description: 'Nothing changed; try again.',
         variant: "destructive"
       })
       return { success: false, error }
@@ -89,8 +90,8 @@ export function useCandidateTransfer() {
       const error = err as Error
       setError(error)
       toast({
-        title: "Transfer Failed",
-        description: error.message,
+        title: `Couldn\u2019t transfer ${options.candidateName || 'the candidate'}`,
+        description: `They\u2019re still in ${options.sourceJobTitle || 'their current job'}; try again.`,
         variant: "destructive"
       })
       return { success: false, error }

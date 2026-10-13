@@ -76,6 +76,8 @@ export function AddOrTransferCandidateDialog({
   const { loadHiringPlanInstances } = useJobHiringPlan()
   const { addToJob, transferCandidate, isTransferring } = useCandidateTransfer()
 
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  const displayName = (candidateName || '').trim() || 'this candidate'
   const firstName = useMemo(
     () => (candidateName || '').trim().split(/\s+/)[0] || candidateName || 'candidate',
     [candidateName]
@@ -89,8 +91,6 @@ export function AddOrTransferCandidateDialog({
       setStageOptions([])
       setAck(false)
       setQuery('')
-      // autofocus search
-      setTimeout(() => searchRef.current?.focus(), 40)
     }
   }, [open])
 
@@ -186,7 +186,7 @@ export function AddOrTransferCandidateDialog({
   const tileFg = isTransfer ? '#B45309' : '#6F3FF5'
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+    <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (o || !isTransferring) setOpen(o) }}>
       {!isControlled && (
         <DialogPrimitive.Trigger asChild>
           {trigger || (
@@ -198,11 +198,14 @@ export function AddOrTransferCandidateDialog({
       )}
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[60] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          className="fixed inset-0 z-[60] gio-dialog-overlay"
           style={{ background: 'rgba(13,13,9,0.34)' }}
         />
         <DialogPrimitive.Content
-          className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="fixed left-1/2 top-1/2 z-[70] [translate:-50%_-50%] focus:outline-none gio-dialog"
+          // Form pattern (Block B §16): Cancel has focus first; Esc waits while it saves.
+          onOpenAutoFocus={(e) => { e.preventDefault(); cancelRef.current?.focus() }}
+          onEscapeKeyDown={(e) => { if (isTransferring) e.preventDefault() }}
           style={{
             width: 600,
             maxWidth: 'calc(100vw - 32px)',
@@ -216,67 +219,40 @@ export function AddOrTransferCandidateDialog({
             overflow: 'hidden',
           }}
         >
-          <DialogPrimitive.Title className="sr-only">
-            Add or transfer {firstName}
-          </DialogPrimitive.Title>
-          <DialogPrimitive.Description className="sr-only">
-            Add {firstName} to another job or transfer them entirely.
-          </DialogPrimitive.Description>
-
-          {/* HEADER */}
+          {/* HEADER (Block B §16, C23): round badge, a title that names who and
+              where, what goes and what stays. Transfer is the destructive case. */}
           <header
-            className="flex items-start gap-3 shrink-0"
-            style={{
-              padding: '20px 24px 18px',
-              borderBottom: '1px solid #F1F0EC',
-            }}
+            className="flex items-start gap-[14px] shrink-0"
+            style={{ padding: '22px 24px 18px', borderBottom: '1px solid #F1F0EC' }}
           >
             <span
-              className="flex items-center justify-center shrink-0"
-              style={{
-                height: 38,
-                width: 38,
-                background: '#EDE4FF',
-                borderRadius: 11,
-                color: '#6F3FF5',
-              }}
+              aria-hidden="true"
+              className={
+                isTransfer
+                  ? 'grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-danger-tint)] text-[var(--color-danger)]'
+                  : 'grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#EDE4FF] text-[#6F3FF5]'
+              }
             >
-              <ArrowRightLeft style={{ height: 17, width: 17 }} strokeWidth={2} />
+              {isTransfer ? <ArrowRightLeft className="h-4 w-4" /> : <CopyPlus className="h-4 w-4" />}
             </span>
             <div className="flex-1 min-w-0">
-              <div
-                className="font-inter"
-                style={{
-                  fontSize: 10.5,
-                  fontWeight: 600,
-                  letterSpacing: '0.09em',
-                  color: '#8B8F9E',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Move candidate
-              </div>
-              <h2
-                className="font-poppins truncate"
-                style={{
-                  fontSize: 19,
-                  fontWeight: 600,
-                  letterSpacing: '-0.035em',
-                  color: '#0d0d09',
-                  marginTop: 2,
-                }}
-              >
-                Add or transfer {firstName}
-                <span style={{ color: '#D7C5FB' }}>.</span>
-              </h2>
+              <DialogPrimitive.Title className="mt-0.5 line-clamp-2 break-words font-poppins text-[17px] font-semibold leading-snug text-text-primary [text-wrap:pretty]">
+                {isTransfer
+                  ? `Transfer ${displayName} to ${selectedJob?.title || 'another job'}?`
+                  : `Add ${displayName} to ${selectedJob?.title || 'another job'}`}
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Description className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
+                {isTransfer ? (
+                  <>
+                    {firstName} leaves <span className="font-medium text-text-primary">{currentJobTitle}</span>. Their comments, emails, scorecards and activity move with them. This can’t be undone.
+                  </>
+                ) : (
+                  <>
+                    {firstName} stays in <span className="font-medium text-text-primary">{currentJobTitle}</span> and gets a second application. Nothing is copied between the two.
+                  </>
+                )}
+              </DialogPrimitive.Description>
             </div>
-            <DialogPrimitive.Close
-              className="flex items-center justify-center shrink-0 rounded-md transition-colors hover:bg-[#F6F5F1]"
-              style={{ height: 30, width: 30, color: '#8B8F9E', background: 'transparent' }}
-              aria-label="Close"
-            >
-              <X style={{ height: 17, width: 17 }} strokeWidth={2} />
-            </DialogPrimitive.Close>
           </header>
 
           {/* BODY */}
@@ -382,7 +358,7 @@ export function AddOrTransferCandidateDialog({
                         node: (
                           <>
                             Moves the <strong>entire history</strong> — comments, emails,
-                            scorecards, and activity travel with her.
+                            scorecards, and activity travel with them.
                           </>
                         ),
                       },
@@ -391,7 +367,7 @@ export function AddOrTransferCandidateDialog({
                         node: (
                           <>
                             Removes {firstName} from <strong>{currentJobTitle}</strong>. This
-                            can't be undone.
+                            can’t be undone.
                           </>
                         ),
                       },
@@ -746,7 +722,7 @@ export function AddOrTransferCandidateDialog({
                   style={{ fontSize: 12.5, color: '#7A5510', lineHeight: 1.45 }}
                 >
                   I understand {firstName} will be{' '}
-                  <strong>removed from {currentJobTitle}</strong> and this can't be undone.
+                  <strong>removed from {currentJobTitle}</strong> and this can’t be undone.
                 </span>
               </label>
             )}
@@ -771,13 +747,14 @@ export function AddOrTransferCandidateDialog({
                 Logged in activity · visible to the hiring team
               </span>
             </div>
-            <Button variant="ghost" size="md" onClick={() => setOpen(false)}>
+            <Button ref={cancelRef} variant="secondary" size="md" disabled={isTransferring} onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button
-              variant="primary"
+              variant={isTransfer ? 'dangerSolid' : 'primary'}
               size="md"
               icon={isTransfer ? ArrowRightLeft : CopyPlus}
+              loading={isTransferring}
               onClick={handleConfirm}
               style={
                 canConfirm
