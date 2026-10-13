@@ -90,11 +90,22 @@ export function AddToPipelineGroup({
     }
   }, [open])
 
+  const priorRef = React.useRef<{ id: string; current_stage_id: string | null; status: string | null } | null>(null)
+
   const add = async (stage: { jhsId: string; name: string }) => {
     setOpen(false)
     setBusy(true)
     // Optimistic: the confirmation appears before the write settles.
     onAdded(stage.name)
+    // Remember an earlier application so Undo restores it rather than deleting
+    // it with its history (2026-10-13).
+    const { data: before } = await supabase
+      .from('job_candidate_associations')
+      .select('id, current_stage_id, status')
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
+      .maybeSingle()
+    priorRef.current = before ?? null
     try {
       await createAssociationAndMove(jobId, candidateId, stage.jhsId)
     } catch {
@@ -107,11 +118,17 @@ export function AddToPipelineGroup({
 
   const undo = async () => {
     onUndo()
-    const { error } = await supabase
-      .from('job_candidate_associations')
-      .delete()
-      .eq('job_id', jobId)
-      .eq('candidate_id', candidateId)
+    const prior = priorRef.current
+    const { error } = prior
+      ? await supabase
+          .from('job_candidate_associations')
+          .update({ current_stage_id: prior.current_stage_id, status: prior.status } as any)
+          .eq('id', prior.id)
+      : await supabase
+          .from('job_candidate_associations')
+          .delete()
+          .eq('job_id', jobId)
+          .eq('candidate_id', candidateId)
     if (error) {
       toast({ title: 'Could not undo', description: 'The candidate is still in the pipeline.', variant: 'destructive' })
     }
