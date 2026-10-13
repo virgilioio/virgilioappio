@@ -12,7 +12,9 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
 import { formatDistanceToNow } from 'date-fns'
 import { AttachmentPreviewDialog } from './AttachmentPreviewDialog'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { collapseRows, rowsById } from '@/lib/motion'
 
 interface CandidateAttachmentsProps {
   candidateId: string
@@ -87,13 +89,22 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
     e.target.value = ''
   }
 
-  const handleDelete = async (attachmentId: string, fileUrl: string) => {
-    if (await confirmDialog({ title: 'Delete this attachment?', confirmLabel: 'Delete attachment', destructive: true })) {
-      try {
-        await deleteAttachment(attachmentId, fileUrl)
-      } catch (error) {
-        // Error handling is done in the hook
-      }
+  // C21 (Block B §16, Pattern 1): same dialog as the profile's file list (C18).
+  const handleDelete = async (attachment: typeof attachments[0]) => {
+    const ok = await confirmDestructive({
+      title: `Delete \u201c${attachment.file_name}\u201d?`,
+      description: attachment.is_resume
+        ? 'It\u2019s the résumé on file, and it\u2019s deleted for everyone. The details read from it stay on the profile. This can\u2019t be undone.'
+        : 'The file is deleted from this candidate for everyone. Their other files stay. This can\u2019t be undone.',
+      confirmLabel: 'Delete file',
+    })
+    if (!ok) return
+    const exit = collapseRows(rowsById([attachment.id]))
+    await exit.done
+    try {
+      await deleteAttachment(attachment.id, attachment.file_url)
+    } catch (error) {
+      exit.revert() // the hook says it couldn't delete
     }
   }
 
@@ -188,6 +199,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                       return (
                         <div
                           key={attachment.id}
+                          data-row-id={attachment.id}
                           className="flex items-center justify-between p-3 border border-warning/20 bg-warning/10 rounded-lg hover:scale-105 transition-transform duration-200"
                         >
                           <div 
@@ -218,14 +230,17 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                           </div>
                           
                           <div className="flex items-center gap-sm">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => downloadAttachment(attachment.id, attachment.file_name)}
-                              className="gap-sm h-8 px-2"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
+                            <IconTip label="Download">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label="Download"
+                                onClick={() => downloadAttachment(attachment.id, attachment.file_name)}
+                                className="gap-sm h-8 px-2"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </IconTip>
                             
                             {canManageCandidates && !attachment.is_resume && (
                               <Button
@@ -238,14 +253,17 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                               </Button>
                             )}
                             {canManageCandidates && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(attachment.id, attachment.file_url)}
-                                className="gap-sm h-8 px-2 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <IconTip label="Delete file">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  aria-label="Delete file"
+                                  onClick={() => void handleDelete(attachment)}
+                                  className="gap-sm h-8 px-2 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </IconTip>
                             )}
                           </div>
                         </div>
