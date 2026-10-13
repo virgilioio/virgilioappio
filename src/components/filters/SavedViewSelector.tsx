@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { SaveViewDialog } from './SaveViewDialog'
 import type { SavedView, PageContext } from '@/hooks/useSavedViews'
 import { useSavedViews } from '@/hooks/useSavedViews'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface SavedViewSelectorProps {
   pageContext: PageContext
@@ -76,7 +76,7 @@ export function SavedViewSelector({
   }, [updateView])
 
   const handleDelete = useCallback(async (view: SavedView) => {
-    if (!(await confirmDialog({ title: `Delete the view "${view.name}"?`, confirmLabel: 'Delete view', destructive: true }))) return
+    if (!(await confirmDestructive({ title: `Delete the view “${view.name}”?`, description: 'Only the saved filters and columns go. No records are touched.', confirmLabel: 'Delete view' }))) return
     deleteView.mutate(view.id, {
       onSuccess: () => {
         if (activeViewId === view.id) onActiveViewChange(null)

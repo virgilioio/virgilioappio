@@ -12,7 +12,7 @@ import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfir
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { User, UserMinus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface JobAssignmentsPanelProps {
   jobId: string
@@ -128,7 +128,14 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     const assignment = assignments.find(a => a.id === userId)
     if (!assignment) return
 
-    if (await confirmDialog({ title: 'Remove this person from the job?', confirmLabel: 'Remove', destructive: true })) {
+    const member = members.find(m => m.user_id === assignment.user_id)
+    const name = `${member?.user_first_name || ''} ${member?.user_last_name || ''}`.trim() || member?.user_email || 'this person'
+    if (await confirmDestructive({
+      variant: 'remove',
+      title: `Remove ${name} from ${jobTitle}?`,
+      description: 'They lose access to this job and stop getting its notifications. Their scorecards and notes stay.',
+      confirmLabel: 'Remove from job',
+    })) {
       try {
         await removeUserFromJob(assignment.id)
       } catch (error) {
