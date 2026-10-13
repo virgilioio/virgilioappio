@@ -1,3 +1,4 @@
+import { useRecordCount } from '@/hooks/useRecordCount'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Download, SlidersHorizontal } from 'lucide-react'
@@ -59,6 +60,8 @@ export default function Jobs() {
   const handleView = (job: Job) => navigate(`/jobs/${job.id}`)
   const handleEdit = (job: Job) => { setSelectedJob(job); setIsFormOpen(true) }
   const handleArchive = (id: string) => setArchiveJobId(id)
+  // Booked interviews block a delete in the database; say so up front (2026-10-13).
+  const jobBookings = useRecordCount('scheduled_bookings', 'job_id', deleteJobId)
   const handleConfirmArchive = async () => {
     if (archiveJobId) { await archiveJob(archiveJobId); setArchiveJobId(null) }
   }
@@ -205,20 +208,33 @@ export default function Jobs() {
           <AlertDialog open={!!deleteJobId} onOpenChange={(open) => !open && !isDeleting && setDeleteJobId(null)}>
             <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete job permanently?</AlertDialogTitle>
+                <AlertDialogTitle>{jobBookings ? "This job can't be deleted" : 'Delete job permanently?'}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.
+                  {jobBookings === null
+                    ? 'Checking for interviews booked on this job…'
+                    : jobBookings > 0
+                      ? `${jobBookings} interview${jobBookings === 1 ? ' was' : 's were'} booked for this job, and that history has to stay. Archive it instead to take it out of your active jobs.`
+                      : 'This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-col sm:flex-row gap-3">
                 <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={(e) => { e.preventDefault(); handleConfirmDelete() }}
-                  disabled={isDeleting}
-                  className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {isDeleting ? 'Deleting…' : 'Delete job'}
-                </AlertDialogAction>
+                {jobBookings ? (
+                  <AlertDialogAction
+                    onClick={() => { const id = deleteJobId; setDeleteJobId(null); if (id) setArchiveJobId(id) }}
+                    className="w-full sm:w-auto"
+                  >
+                    Archive job
+                  </AlertDialogAction>
+                ) : (
+                  <AlertDialogAction
+                    onClick={(e) => { e.preventDefault(); handleConfirmDelete() }}
+                    disabled={isDeleting || jobBookings === null}
+                    className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? 'Deleting…' : 'Delete job'}
+                  </AlertDialogAction>
+                )}
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

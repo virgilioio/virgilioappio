@@ -1,3 +1,4 @@
+import { useRecordCount } from '@/hooks/useRecordCount'
 import { ClientViewStrip } from '@/components/jobs/ClientViewStrip'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
@@ -946,6 +947,11 @@ export default function JobDetail() {
     return () => window.removeEventListener('job-detail:refresh', h)
   }, [refetch])
 
+  // A job with booked interviews can't be deleted: the database keeps that
+  // history (scheduled_bookings.job_id has no ON DELETE), so the dialog says so
+  // before anyone confirms (2026-10-13).
+  const jobBookings = useRecordCount('scheduled_bookings', 'job_id', confirmDelete ? id : null)
+
   const handleArchiveJob = async () => {
     if (!id || !(await confirmDialog({ title: 'Archive this job?', description: 'It leaves your active jobs. You can reopen it later.', confirmLabel: 'Archive job' }))) return
 
@@ -1515,16 +1521,26 @@ export default function JobDetail() {
         <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete job permanently?</AlertDialogTitle>
+              <AlertDialogTitle>{jobBookings ? `${job?.title ?? 'This job'} can't be deleted` : 'Delete job permanently?'}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.
+                {jobBookings === null
+                  ? 'Checking for interviews booked on this job…'
+                  : jobBookings > 0
+                    ? `${jobBookings} interview${jobBookings === 1 ? ' was' : 's were'} booked for this job, and that history has to stay. Archive it instead to take it out of your active jobs.`
+                    : 'This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.'}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Delete job
-              </AlertDialogAction>
+              {jobBookings ? (
+                <AlertDialogAction onClick={() => { setConfirmDelete(false); void handleArchiveJob() }}>
+                  Archive job
+                </AlertDialogAction>
+              ) : (
+                <AlertDialogAction disabled={jobBookings === null} onClick={handleDeleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete job
+                </AlertDialogAction>
+              )}
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
