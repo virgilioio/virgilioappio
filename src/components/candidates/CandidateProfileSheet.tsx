@@ -568,6 +568,10 @@ const openScheduleInterview = () => {
 // Offer delete warning dialog
 const [showOfferDeleteWarning, setShowOfferDeleteWarning] = useState(false)
 const [pendingStatusAction, setPendingStatusAction] = useState<(() => Promise<void>) | null>(null)
+// Rejecting from Offer: the offer letters go only once the rejection is
+// actually submitted, never when the reject form merely opens (2026-10-13).
+const deleteOffersOnReject = useRef(false)
+const [offerWarningForReject, setOfferWarningForReject] = useState(false)
 // Stage automations query for lightning icon
 
 // Stage automations query for lightning icon
@@ -1139,7 +1143,8 @@ const stageHasAutomation = useMemo(() => {
   }
   
   // Check for offer letters before status change and show warning if needed
-  const checkOfferAndProceed = async (action: () => Promise<void>) => {
+  const checkOfferAndProceed = async (action: () => Promise<void>, forReject = false) => {
+    setOfferWarningForReject(forReject)
     if (!candidateId) { await action(); return; }
     if (associationStatus !== 'offer' && associationStatus !== 'hired') { await action(); return; }
     
@@ -1158,8 +1163,26 @@ const stageHasAutomation = useMemo(() => {
     }
   }
 
+  const deleteOfferLetters = async () => {
+    if (!candidateId) return
+    await supabase
+      .from('offer_letters')
+      .delete()
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+  }
+
   const confirmOfferDeleteAndProceed = async () => {
     if (!candidateId) return
+    if (offerWarningForReject) {
+      // Deferred to handleRejectionSuccess.
+      deleteOffersOnReject.current = true
+      setOfferWarningForReject(false)
+      if (pendingStatusAction) await pendingStatusAction()
+      setShowOfferDeleteWarning(false)
+      setPendingStatusAction(null)
+      return
+    }
     // Delete offer letters
     await supabase
       .from('offer_letters')
@@ -1210,11 +1233,12 @@ const stageHasAutomation = useMemo(() => {
 
   const handleReject = () => {
     if (!associationId) return
+    deleteOffersOnReject.current = false
     if (associationStatus === 'offer') {
       // Check for offer data first
       checkOfferAndProceed(async () => {
         setRejectionDialogOpen(true)
-      })
+      }, true)
     } else {
       setRejectionDialogOpen(true)
     }
@@ -1320,6 +1344,10 @@ const stageHasAutomation = useMemo(() => {
   };
   
   const handleRejectionSuccess = async () => {
+    if (deleteOffersOnReject.current) {
+      deleteOffersOnReject.current = false
+      await deleteOfferLetters()
+    }
     await refetchAssociationStatus();
     onStageChanged?.();
   };
@@ -2413,13 +2441,16 @@ const stageHasAutomation = useMemo(() => {
       if (!open) {
         setShowOfferDeleteWarning(false)
         setPendingStatusAction(null)
+        setOfferWarningForReject(false)
       }
     }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Offer Details?</AlertDialogTitle>
           <AlertDialogDescription>
-            Moving this candidate away from the Offer status will permanently delete their offer details. This cannot be undone.
+            {offerWarningForReject
+              ? 'Rejecting this candidate deletes their offer details once you submit the rejection. If you cancel the rejection, nothing is deleted.'
+              : 'Moving this candidate away from the Offer status will permanently delete their offer details. This cannot be undone.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
