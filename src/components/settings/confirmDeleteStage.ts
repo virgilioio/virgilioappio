@@ -16,7 +16,8 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * What deleting a library stage touches (retire_tenant_job_stage /
  * retire_global_job_stage): every job using it loses the stage, candidates in
  * it move to the stage before on that job (the stage after when it was first),
- * and its scorecards, interviewers and automations on those jobs go with it
+ * with their scorecards and answers (carry_stage_history_internal); only its
+ * interviewers, unanswered questions and automations on those jobs go with it
  * (cascade from job_hiring_stages). Booked interviews block it.
  * Null when the counts couldn't be read.
  */
@@ -69,20 +70,25 @@ export async function confirmDeleteStage(
 
   let description: string
   if (!usage) {
-    description = `Every job${where} that uses it loses the stage. Candidates in it move to the stage before on their job (the stage after, if it was first), so nobody leaves a pipeline. Its scorecards, interviewers and automations on those jobs are deleted. This can’t be undone.`
+    description = `Every job${where} that uses it loses the stage. Candidates and scorecards in it move to the stage before on their job (the stage after, if it was first), so nothing leaves a pipeline. Its interviewers, unanswered questions and automations on those jobs are deleted. This can’t be undone.`
   } else if (usage.jobs === 0) {
     description = `No jobs${where} use it, so no candidates or scorecards are affected. It’s no longer offered when you build a pipeline. This can’t be undone.`
   } else {
     const moved = usage.candidates
       ? ` ${plural(usage.candidates, 'candidate')} in it move${usage.candidates === 1 ? 's' : ''} to the stage before on ${usage.candidates === 1 ? 'their' : 'each'} job (the stage after, if it was first) and stay${usage.candidates === 1 ? 's' : ''} in the pipeline.`
       : ''
-    const cards = usage.scorecards ? `${plural(usage.scorecards, 'scorecard')}, its` : 'Its'
-    description = `${plural(usage.jobs, 'job')}${where} lose${usage.jobs === 1 ? 's' : ''} this stage.${moved} ${cards} interviewers and automations on those jobs are deleted. This can’t be undone.`
+    const cards = usage.scorecards
+      ? ` ${plural(usage.scorecards, 'scorecard')} move${usage.scorecards === 1 ? 's' : ''} the same way, with ${usage.scorecards === 1 ? 'its' : 'their'} answers, marked as from ${name}.`
+      : ''
+    description = `${plural(usage.jobs, 'job')}${where} lose${usage.jobs === 1 ? 's' : ''} this stage.${moved}${cards} Its interviewers, unanswered questions and automations on those jobs are deleted. This can’t be undone.`
   }
 
   const typed = opts.global || !usage || usage.candidates > 0
   const friendly = (e: unknown) => {
     const msg = String((e as { message?: unknown } | null)?.message ?? '')
+    // The database stops it when a job would be left with nowhere to put them.
+    const only = msg.match(/It is the only stage on (.+), which has candidates or scorecards in it/)
+    if (only) return `${name} is the only stage on ${only[1]}, which has candidates or scorecards in it. Add another stage to that job first; nothing was removed.`
     return msg.includes('Only platform administrators') || msg.includes('Only workspace owners')
       ? `Only ${opts.global ? 'platform admins' : 'workspace owners'} can delete ${name}.`
       : `Couldn\u2019t delete ${name}. Nothing was removed; try again.`
