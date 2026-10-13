@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Edit, Trash2, ClipboardList } from 'lucide-react'
 import { useOfferForms, type OfferFormsContext } from '@/hooks/useOfferForms'
 import { OfferFormSheet } from './templates/OfferFormSheet'
+import { useRecordCount } from '@/hooks/useRecordCount'
 
 interface OfferFormsManagerProps {
   context?: OfferFormsContext
@@ -89,21 +90,7 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Form</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{form.name}"? This will also delete all associated fields. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteForm(form.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
+                            <DeleteFormBody id={form.id} name={form.name} onDelete={() => deleteForm(form.id)} />
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
@@ -125,5 +112,34 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
         updateForm={updateForm}
       />
     </Card>
+  )
+}
+
+/** Mounted only while the dialog is open. A form used by an offer can't be
+ *  deleted (offer_letters.form_id has no ON DELETE), so it says so up front
+ *  instead of failing after confirm (2026-10-13). */
+function DeleteFormBody({ id, name, onDelete }: { id: string; name: string; onDelete: () => void }) {
+  const usedBy = useRecordCount('offer_letters', 'form_id', id)
+  return (
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{usedBy ? `${name} can't be deleted` : `Delete ${name}?`}</AlertDialogTitle>
+        <AlertDialogDescription>
+          {usedBy === null
+            ? 'Checking which offers use it…'
+            : usedBy > 0
+              ? `${usedBy} offer${usedBy === 1 ? ' uses' : 's use'} this form, so it has to stay.`
+              : "Its fields are deleted with it. This can't be undone."}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>{usedBy ? 'Close' : 'Cancel'}</AlertDialogCancel>
+        {usedBy === 0 && (
+          <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Delete form
+          </AlertDialogAction>
+        )}
+      </AlertDialogFooter>
+    </>
   )
 }
