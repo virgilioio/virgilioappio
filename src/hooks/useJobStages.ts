@@ -184,12 +184,14 @@ export function useJobStages(context: JobStagesContext = 'organization') {
     setIsDeleting(true)
     try {
       console.log('[useJobStages.deleteStage] soft deleting stage via RPC:', id)
-      // Workspace stages go through retire_tenant_job_stage (workspace owners);
-      // platform stages through the platform-only RPC (2026-10-13).
+      // Workspace stages go through retire_tenant_job_stage (workspace owners),
+      // platform stages through retire_global_job_stage (platform admins). Both
+      // move candidates to the stage before on each job, or the stage after
+      // when it was first, so nobody leaves a pipeline (2026-10-13).
       const isTenantStage = stages.find(st => st.id === id)?.source === 'tenant'
       const { error } = isTenantStage
         ? await supabase.rpc('retire_tenant_job_stage', { p_stage_id: id })
-        : await supabase.rpc('soft_delete_job_stage', { stage_id_param: id })
+        : await supabase.rpc('retire_global_job_stage', { p_stage_id: id })
       if (error) throw error
 
       // Optimistically remove from local list
@@ -197,7 +199,7 @@ export function useJobStages(context: JobStagesContext = 'organization') {
 
       toast({
         title: 'Stage deleted',
-        description: 'Candidates were reassigned to the previous stage or moved to Application Review.'
+        description: 'Candidates in it moved to the stage before (or after, where it was first).'
       })
     } catch (error: any) {
       console.error('Error deleting job stage via RPC:', error)
@@ -206,7 +208,7 @@ export function useJobStages(context: JobStagesContext = 'organization') {
         title: 'Error',
         description: message.includes('Only platform administrators')
           ? 'Only platform administrators can delete job stages.'
-          : message,
+          : 'Couldn\u2019t delete the stage. Nothing was removed; try again.',
         variant: 'destructive'
       })
       throw error
