@@ -98,7 +98,6 @@ import { CandidateDetailsCollapsible } from './CandidateDetailsCollapsible'
 import { CandidateOfferDetails } from './CandidateOfferDetails'
 import { CandidateOfferApprovals } from './CandidateOfferApprovals'
 import { MarkHiredDialog } from './MarkHiredDialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUserDisplayName } from '@/hooks/useUserDisplayNames'
 
@@ -136,7 +135,7 @@ import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { checkScorecardGate } from '@/utils/scorecardGate'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -566,12 +565,11 @@ const openScheduleInterview = () => {
 }
 
 // Offer delete warning dialog
-const [showOfferDeleteWarning, setShowOfferDeleteWarning] = useState(false)
-const [pendingStatusAction, setPendingStatusAction] = useState<(() => Promise<void>) | null>(null)
 // Rejecting from Offer: the offer letters go only once the rejection is
 // actually submitted, never when the reject form merely opens (2026-10-13).
 const deleteOffersOnReject = useRef(false)
-const [offerWarningForReject, setOfferWarningForReject] = useState(false)
+// C7: rejecting from Offer folds the offer warning into the reject form.
+const [offerNoticeForReject, setOfferNoticeForReject] = useState(false)
 // Stage automations query for lightning icon
 
 // Stage automations query for lightning icon
@@ -1142,25 +1140,32 @@ const stageHasAutomation = useMemo(() => {
     }
   }
   
-  // Check for offer letters before status change and show warning if needed
-  const checkOfferAndProceed = async (action: () => Promise<void>, forReject = false) => {
-    setOfferWarningForReject(forReject)
-    if (!candidateId) { await action(); return; }
-    if (associationStatus !== 'offer' && associationStatus !== 'hired') { await action(); return; }
-    
+  const hasOfferLetters = async () => {
+    if (!candidateId) return false
+    if (associationStatus !== 'offer' && associationStatus !== 'hired') return false
     const { data: offers } = await supabase
       .from('offer_letters')
       .select('id')
       .eq('candidate_id', candidateId)
       .eq('job_id', jobId)
       .limit(1)
-    
-    if (offers && offers.length > 0) {
-      setPendingStatusAction(() => action)
-      setShowOfferDeleteWarning(true)
-    } else {
-      await action()
-    }
+    return !!offers?.length
+  }
+
+  // Moving someone out of Offer deletes this job's offer letters, so it asks
+  // first (Block B §16, Pattern 1). Rejecting says it inside the reject form.
+  const checkOfferAndProceed = async (action: () => Promise<void>) => {
+    if (!(await hasOfferLetters())) { await action(); return }
+    const first = (candidate?.candidate_name || '').trim().split(/\s+/)[0] || 'this candidate'
+    const ok = await confirmDestructive({
+      title: `Delete ${first}\u2019s offer letters?`,
+      description: `Moving ${first} out of Offer deletes their offer letters for ${job?.title || 'this job'}. Their profile and the rest of the application stay. This can\u2019t be undone.`,
+      confirmLabel: 'Delete offer letters',
+    })
+    if (!ok) return
+    await deleteOfferLetters()
+    await action()
+    if (activeTab === 'offer') setActiveTab('job')
   }
 
   const deleteOfferLetters = async () => {
@@ -1170,34 +1175,6 @@ const stageHasAutomation = useMemo(() => {
       .delete()
       .eq('candidate_id', candidateId)
       .eq('job_id', jobId)
-  }
-
-  const confirmOfferDeleteAndProceed = async () => {
-    if (!candidateId) return
-    if (offerWarningForReject) {
-      // Deferred to handleRejectionSuccess.
-      deleteOffersOnReject.current = true
-      setOfferWarningForReject(false)
-      if (pendingStatusAction) await pendingStatusAction()
-      setShowOfferDeleteWarning(false)
-      setPendingStatusAction(null)
-      return
-    }
-    // Delete offer letters
-    await supabase
-      .from('offer_letters')
-      .delete()
-      .eq('candidate_id', candidateId)
-      .eq('job_id', jobId)
-    
-    // Execute the pending action
-    if (pendingStatusAction) {
-      await pendingStatusAction()
-    }
-    setShowOfferDeleteWarning(false)
-    setPendingStatusAction(null)
-    // Reset tab if on offer tab
-    if (activeTab === 'offer') setActiveTab('job')
   }
 
   const doReturnToPipeline = async () => {
@@ -1231,17 +1208,13 @@ const stageHasAutomation = useMemo(() => {
     checkOfferAndProceed(doReturnToPipeline)
   }
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!associationId) return
-    deleteOffersOnReject.current = false
-    if (associationStatus === 'offer') {
-      // Check for offer data first
-      checkOfferAndProceed(async () => {
-        setRejectionDialogOpen(true)
-      }, true)
-    } else {
-      setRejectionDialogOpen(true)
-    }
+    const offers = associationStatus === 'offer' && (await hasOfferLetters())
+    // The letters go only when the rejection is submitted (handleRejectionSuccess).
+    deleteOffersOnReject.current = offers
+    setOfferNoticeForReject(offers)
+    setRejectionDialogOpen(true)
   }
   
   // Refetch association status and rejection/offer details
@@ -2386,6 +2359,7 @@ const stageHasAutomation = useMemo(() => {
           jobId={jobId}
           jobTitle={job?.title}
           onSuccess={handleRejectionSuccess}
+          notice={offerNoticeForReject ? 'Their offer letters for this job are deleted.' : undefined}
         />
       )}
 
@@ -2436,31 +2410,6 @@ const stageHasAutomation = useMemo(() => {
       )}
     </div>
 
-    {/* Offer Delete Warning Dialog */}
-    <AlertDialog open={showOfferDeleteWarning} onOpenChange={(open) => {
-      if (!open) {
-        setShowOfferDeleteWarning(false)
-        setPendingStatusAction(null)
-        setOfferWarningForReject(false)
-      }
-    }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete Offer Details?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {offerWarningForReject
-              ? 'Rejecting this candidate deletes their offer details once you submit the rejection. If you cancel the rejection, nothing is deleted.'
-              : 'Moving this candidate away from the Offer status will permanently delete their offer details. This cannot be undone.'}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmOfferDeleteAndProceed} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Continue & Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   </>
   )
 }
