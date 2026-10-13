@@ -130,3 +130,79 @@ export function useFirstLoadStagger(id: string, ready: boolean) {
       ? { className: 'gio-list-in', style: { animationDelay: `calc(${index} * var(--stagger))` } }
       : {}
 }
+
+/* ── Delete dialogs (Block B §16, 2026-10-13) ─────────────────────────────── */
+
+export interface RowExit {
+  /** Resolves when the rows have closed their gap (instantly under reduced motion). */
+  done: Promise<void>
+  /** Puts the rows back as they were (a failed delete). */
+  revert: () => void
+}
+
+/**
+ * After a delete: each row collapses (height and opacity to 0 over --dur-collapse,
+ * --ease-in-out) and the list closes the gap. With `stagger` (bulk) the rows first
+ * slide out 16px (--dur-exit, --stagger-exit apart). Rows stay in the DOM: remove
+ * them from state once `done` resolves. Reduced motion: nothing moves.
+ */
+export function collapseRows(els: Array<Element | null | undefined>, opts: { stagger?: boolean } = {}): RowExit {
+  const rows = els.filter((e): e is HTMLElement => e instanceof HTMLElement)
+  if (!rows.length || prefersReducedMotion() || typeof rows[0].animate !== 'function') {
+    return { done: Promise.resolve(), revert: () => {} }
+  }
+  const easeOut = motionToken('--ease-out', 'cubic-bezier(0.23, 1, 0.32, 1)')
+  const easeInOut = motionToken('--ease-in-out', 'cubic-bezier(0.77, 0, 0.175, 1)')
+  const exit = motionToken('--dur-exit', 180)
+  const stagger = motionToken('--stagger-exit', 40)
+  const collapse = motionToken('--dur-collapse', 240)
+  const anims: Animation[] = []
+  const done = Promise.all(
+    rows.map(async (el, i) => {
+      if (opts.stagger) {
+        const a = el.animate(
+          [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(16px)' }],
+          { duration: exit, delay: i * stagger, easing: easeOut, fill: 'forwards' },
+        )
+        anims.push(a)
+        await a.finished.catch(() => {})
+      }
+      const h = el.getBoundingClientRect().height
+      const cs = getComputedStyle(el)
+      el.style.overflow = 'hidden'
+      const b = el.animate(
+        [
+          { height: `${h}px`, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: opts.stagger ? 0 : 1 },
+          { height: '0px', paddingTop: '0px', paddingBottom: '0px', borderTopWidth: '0px', borderBottomWidth: '0px', opacity: 0 },
+        ],
+        { duration: collapse, easing: easeInOut, fill: 'forwards' },
+      )
+      anims.push(b)
+      await b.finished.catch(() => {})
+    }),
+  ).then(() => undefined)
+  return {
+    done,
+    revert: () => {
+      anims.forEach((a) => a.cancel())
+      rows.forEach((el) => { el.style.overflow = '' })
+    },
+  }
+}
+
+/** Undo: restored rows fade in from 4px above (--dur-dialog-in), --stagger apart. */
+export function restoreRows(els: Array<Element | null | undefined>) {
+  if (prefersReducedMotion()) return
+  const easeOut = motionToken('--ease-out', 'cubic-bezier(0.23, 1, 0.32, 1)')
+  const dur = motionToken('--dur-dialog-in', 220)
+  const stagger = motionToken('--stagger', 40)
+  els.filter((e): e is HTMLElement => e instanceof HTMLElement).forEach((el, i) => {
+    el.animate([{ opacity: 0, transform: 'translateY(-4px)' }, { opacity: 1, transform: 'none' }], {
+      duration: dur, delay: i * stagger, easing: easeOut, fill: 'backwards',
+    })
+  })
+}
+
+/** Rows by `data-row-id` (put it on the row element to collapse or restore). */
+export const rowsById = (ids: string[], scope: ParentNode = document) =>
+  ids.map((id) => scope.querySelector(`[data-row-id="${CSS.escape(id)}"]`))
