@@ -54,7 +54,7 @@ interface EventTypeSheetProps {
   onOpenChange: (open: boolean) => void;
   eventType: BookingEventType | null;
   onSave: (data: Partial<BookingEventType> & { title: string }) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => Promise<unknown> | void;
   isSaving: boolean;
   isDeleting?: boolean;
   parentTimezone?: string;
@@ -614,9 +614,17 @@ export function EventTypeSheet({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => {
-                        onDelete(eventType!.id);
-                        onOpenChange(false);
+                      disabled={isDeleting}
+                      onClick={async (e) => {
+                        // Close only once the delete has gone through, so a
+                        // failure is seen in place (2026-10-13).
+                        e.preventDefault();
+                        try {
+                          await onDelete(eventType!.id);
+                          onOpenChange(false);
+                        } catch {
+                          /* the hook shows the error toast; the sheet stays open */
+                        }
                       }}
                       className="bg-[#DC2626] text-white hover:bg-[#B91C1C]"
                     >

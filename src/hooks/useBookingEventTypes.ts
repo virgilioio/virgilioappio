@@ -162,6 +162,7 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
     createEventType: createMutation.mutate,
     updateEventType: updateMutation.mutate,
     deleteEventType: deleteMutation.mutate,
+    deleteEventTypeAsync: deleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,

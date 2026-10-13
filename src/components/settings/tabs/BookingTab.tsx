@@ -88,7 +88,7 @@ export function BookingTab() {
     refetch: refetchEventTypes,
     createEventType,
     updateEventType,
-    deleteEventType,
+    deleteEventTypeAsync,
     isCreating: isCreatingEventType,
     isUpdating: isUpdatingEventType,
     isDeleting: isDeletingEventType,
@@ -443,7 +443,7 @@ export function BookingTab() {
         onOpenChange={setSheetOpen}
         eventType={editingEventType}
         onSave={handleSave}
-        onDelete={(id) => deleteEventType(id)}
+        onDelete={(id) => deleteEventTypeAsync(id)}
         isSaving={isCreatingEventType || isUpdatingEventType}
         isDeleting={isDeletingEventType}
         parentTimezone={config?.timezone}
