@@ -289,7 +289,7 @@ export function CurrentStageCard({
       : null
     const what = (nextBooking as any).title || `${stageName} interview`
     const emailed = panel.length > 1
-      ? `${first}, the lead interviewer (${leadName}) and any guests are emailed, and the event comes off Google Calendar for all ${panel.length} panelists.`
+      ? `${first}, ${leadName} and any guests are emailed, and the event comes off Google Calendar for all ${panel.length} panelists.`
       : leadName
       ? `${first}, ${leadName} and any guests are emailed, and the event comes off Google Calendar.`
       : `${first} and any guests are emailed, and the event comes off Google Calendar.`
