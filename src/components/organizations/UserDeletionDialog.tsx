@@ -1,14 +1,9 @@
 
-import { useEffect, useRef, useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { AlertTriangle, Trash2, User, Shield } from 'lucide-react'
+import { useRef } from 'react'
+import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
-// Billing POC functionality removed
 
 interface UserDeletionDialogProps {
   isOpen: boolean
@@ -20,12 +15,21 @@ interface UserDeletionDialogProps {
     firstName?: string
     lastName?: string
     userStatus: string // to determine if it's an invited member
+    userType?: string  // a workspace owner can't be deleted here
   } | null
   organizationId?: string
   isBillingPoc?: boolean
   onUserDeleted: () => void
 }
 
+/**
+ * S3 (Block B §16, 2026-10-13): one type-to-confirm dialog replaces the old
+ * two-step "Next → Are you absolutely sure" flow. Its middle step (pick a new
+ * billing contact) had nothing to pick since the billing POC member list was
+ * removed, and the delete-user function ignores a reassignment, so the dialog
+ * now just says so. Deleting yourself or the workspace owner is blocked.
+ * A pending invitation (no account yet) is a plain single confirm.
+ */
 export function UserDeletionDialog({
   isOpen,
   onClose,
@@ -34,248 +38,105 @@ export function UserDeletionDialog({
   isBillingPoc = false,
   onUserDeleted
 }: UserDeletionDialogProps) {
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [newBillingPocUserId, setNewBillingPocUserId] = useState<string>('')
-  const [confirmationStep, setConfirmationStep] = useState<'initial' | 'confirm-billing-poc' | 'final-confirm'>('initial')
-  
-  const cancelRef = useRef<HTMLButtonElement>(null)
+  const { userId: currentUserId } = useAuth()
+  // Keep the last person through the exit animation (callers clear it on success).
+  const lastUser = useRef(userToDelete)
+  if (userToDelete) lastUser.current = userToDelete
+  userToDelete = userToDelete ?? lastUser.current
 
-  // Every opening starts at the first step, whoever is being deleted
-  // (2026-10-13: the step used to survive a delete, so the next person's
-  // Delete went straight to the final confirmation).
-  useEffect(() => {
-    if (isOpen) {
-      setConfirmationStep('initial')
-      setNewBillingPocUserId('')
-    }
-  }, [isOpen, userToDelete?.memberId])
+  const name = userToDelete
+    ? `${userToDelete.firstName || ''} ${userToDelete.lastName || ''}`.trim() || userToDelete.email || 'this member'
+    : ''
+  const first = userToDelete?.firstName?.trim() || name
+  const isInvite = !!userToDelete && !userToDelete.id
+  const isSelf = !!userToDelete?.id && userToDelete.id === currentUserId
+  const isOwner = userToDelete?.userType === 'workspace_owner'
 
-  // Billing POC functionality removed
-  const billingPocMembers: any[] = []
-  const membersLoading = false
+  const failMessage = `Couldn’t delete ${name}. Nothing was removed; try again.`
 
-  const handleDelete = async () => {
+  const deleteInvite = async () => {
     if (!userToDelete) return
-
-    setIsDeleting(true)
-    try {
-      // Handle members without user_id (never registered) vs registered members differently
-      if (!userToDelete.id) {
-        // For invited members, use admin_manage_member RPC to bypass RLS
-        const { data: deleteData, error: deleteError } = await supabase
-          .rpc('admin_manage_member', {
-            p_member_id: userToDelete.memberId,
-            p_changes: { _delete: true }
-          })
-
-        const result = deleteData as { success?: boolean; message?: string } | null
-        if (deleteError || (result && !result.success)) {
-          console.error('Error deleting invited member:', deleteError || result)
-          toast({
-            title: 'Error',
-            description: deleteError?.message || result?.message || 'Failed to delete invited member',
-            variant: 'destructive'
-          })
-          return
-        }
-
-        toast({
-          title: 'Success',
-          description: `Invited member ${userToDelete.email} has been removed from the system`
-        })
-      } else {
-        // For registered members, use the edge function
-        const requestBody: any = { userId: userToDelete.id }
-        
-        // If user is billing POC and we have a replacement, include it
-        if (isBillingPoc && organizationId) {
-          requestBody.reassignBillingPoc = {
-            organizationId,
-            newBillingPocUserId: newBillingPocUserId || null
-          }
-        }
-
-        const { data, error } = await supabase.functions.invoke('delete-user', {
-          body: requestBody
-        })
-
-        if (error) {
-          console.error('Error deleting user:', error)
-          toast({
-            title: 'Error',
-            description: error.message || 'Failed to delete user',
-            variant: 'destructive'
-          })
-          return
-        }
-
-        if (data.error) {
-          toast({
-            title: 'Error',
-            description: data.error,
-            variant: 'destructive'
-          })
-          return
-        }
-
-        toast({
-          title: 'Success',
-          description: `User ${userToDelete.email} has been completely deleted from the system`
-        })
-      }
-
-      onUserDeleted()
-      handleClose()
-      
-    } catch (err) {
-      console.error('Unexpected error:', err)
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred while deleting the user',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  const handleNext = () => {
-    if (confirmationStep === 'initial') {
-      if (isBillingPoc) {
-        setConfirmationStep('confirm-billing-poc')
-      } else {
-        setConfirmationStep('final-confirm')
-      }
-    } else if (confirmationStep === 'confirm-billing-poc') {
-      setConfirmationStep('final-confirm')
-    } else {
-      handleDelete()
+    // Invited members (never registered): admin_manage_member bypasses RLS.
+    const { data, error } = await supabase.rpc('admin_manage_member', {
+      p_member_id: userToDelete.memberId,
+      p_changes: { _delete: true },
+    })
+    const result = data as { success?: boolean; message?: string } | null
+    if (error || (result && !result.success)) {
+      console.error('Error deleting invited member:', error || result)
+      toast({ title: `Couldn’t delete the invitation for ${name}`, description: 'Nothing was removed; try again.', variant: 'destructive' })
       return
     }
-    // The red button changes meaning between steps, so move focus off it:
-    // two Enter presses must never delete someone.
-    requestAnimationFrame(() => cancelRef.current?.focus())
+    toast({ title: `Invitation for ${name} deleted` })
+    onUserDeleted()
   }
 
-  const handleClose = () => {
-    setConfirmationStep('initial')
-    setNewBillingPocUserId('')
-    onClose()
+  // Type to confirm: the dialog waits for this and shows a throw inline.
+  const deleteUser = async () => {
+    if (!userToDelete?.id) return
+    const requestBody: Record<string, unknown> = { userId: userToDelete.id }
+    if (isBillingPoc && organizationId) {
+      requestBody.reassignBillingPoc = { organizationId, newBillingPocUserId: null }
+    }
+    let failed = false
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', { body: requestBody })
+      if (error || data?.error) {
+        console.error('Error deleting user:', error || data?.error)
+        failed = true
+      }
+    } catch (err) {
+      console.error('Unexpected error deleting user:', err)
+      failed = true
+    }
+    if (failed) throw new Error(failMessage)
+    toast({ title: `${name} deleted` })
+    onUserDeleted()
   }
 
-  const getUserDisplayName = () => {
-    if (!userToDelete) return ''
-    const name = `${userToDelete.firstName || ''} ${userToDelete.lastName || ''}`.trim()
-    return name || userToDelete.email
+  if (isSelf || isOwner) {
+    return (
+      <ConfirmDestructiveDialog
+        open={isOpen}
+        onOpenChange={(o) => { if (!o) onClose() }}
+        variant="blocked"
+        title={isSelf ? 'You can’t delete your own account' : `${name} owns this workspace`}
+        description={
+          isSelf
+            ? 'Ask another workspace owner to delete your account, so the workspace is never left without someone who can manage it.'
+            : `The workspace owner can’t be deleted. Make someone else the owner first, then delete ${first}.`
+        }
+        confirmLabel=""
+      />
+    )
   }
 
-  const availableBillingPocMembers = billingPocMembers.filter(member => 
-    member.user_id !== userToDelete?.id
-  )
+  if (isInvite) {
+    return (
+      <ConfirmDestructiveDialog
+        open={isOpen}
+        onOpenChange={(o) => { if (!o) onClose() }}
+        title={`Delete the invitation for ${name}?`}
+        description={`The invite link stops working and ${name} can’t join with it. You can invite them again later.`}
+        confirmLabel="Delete invitation"
+        onConfirm={deleteInvite}
+      />
+    )
+  }
+
+  const billing = isBillingPoc
+    ? ` They’re this organization’s billing contact, and that isn’t reassigned for you.`
+    : ''
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <Trash2 className="h-5 w-5" />
-            Delete User
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {confirmationStep === 'initial' && (
-            <>
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>This action cannot be undone.</strong> This will permanently delete the {!userToDelete?.id ? 'member record' : 'user from all systems including authentication'}.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-2">
-                <Label>User to delete:</Label>
-                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                  <User className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">{getUserDisplayName()}</div>
-                    <div className="text-sm text-muted-foreground">{userToDelete?.email}</div>
-                  </div>
-                </div>
-              </div>
-
-              {isBillingPoc && (
-                <Alert>
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    This user is currently assigned as the billing point of contact. You'll need to reassign this role in the next step.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </>
-          )}
-
-          {confirmationStep === 'confirm-billing-poc' && (
-            <>
-              <Alert>
-                <Shield className="h-4 w-4" />
-                <AlertDescription>
-                  Select a new billing point of contact or leave empty to remove the assignment.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-2">
-                <Label>New Billing POC (Optional)</Label>
-                <Select value={newBillingPocUserId} onValueChange={setNewBillingPocUserId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={membersLoading ? "Loading..." : "Select a user or leave empty"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No billing POC assigned</SelectItem>
-                    {availableBillingPocMembers.map((member) => {
-                      const name = `${member.first_name || ''} ${member.last_name || ''}`.trim()
-                      const displayName = name || 'Unknown User'
-                      
-                      return (
-                        <SelectItem key={member.user_id} value={member.user_id!}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{displayName}</span>
-                            <span className="text-xs text-muted-foreground">{member.email}</span>
-                          </div>
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
-          )}
-
-          {confirmationStep === 'final-confirm' && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Final confirmation:</strong> Are you absolutely sure you want to permanently delete {userToDelete?.email}? This action cannot be undone.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button ref={cancelRef} variant="outline" onClick={handleClose} disabled={isDeleting}>
-            Cancel
-          </Button>
-          <Button 
-            variant="destructive" 
-            onClick={handleNext}
-            disabled={isDeleting}
-          >
-            {isDeleting ? 'Deleting...' : 
-             confirmationStep === 'final-confirm' ? 'Delete User' :
-             'Next'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDestructiveDialog
+      open={isOpen}
+      onOpenChange={(o) => { if (!o) onClose() }}
+      title={`Delete ${name}?`}
+      description={`${first} is removed from every workspace. Their login, job assignments, connected email and calendar, booking links and activity history are deleted. Candidates and jobs they added stay.${billing} This can’t be undone.`}
+      confirmLabel="Delete user"
+      typeToConfirm={name}
+      onConfirm={deleteUser}
+    />
   )
 }
