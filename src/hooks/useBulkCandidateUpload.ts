@@ -71,10 +71,16 @@ export function useBulkCandidateUpload() {
   const userRef = useRef(user)
   userRef.current = user
 
+  // C26: closing mid-upload really stops it — files not started yet are skipped
+  // (the ones being read finish). Checked between batches.
+  const runRef = useRef(0)
+  const cancelUpload = useCallback(() => { runRef.current += 1 }, [])
+
   const uploadCandidates = useCallback(async (
     filesToUpload: File[],
     options: BulkUploadOptions
   ) => {
+    const run = ++runRef.current
     setIsProcessing(true)
     const initialResults = filesToUpload.map(file => ({
       file,
@@ -163,12 +169,18 @@ export function useBulkCandidateUpload() {
     try {
       const CONCURRENT_UPLOADS = 2
       for (let i = 0; i < filesToUpload.length; i += CONCURRENT_UPLOADS) {
+        if (runRef.current !== run) break
         const chunk = filesToUpload.slice(i, i + CONCURRENT_UPLOADS)
         await Promise.all(chunk.map((file, chunkIndex) => processFileInner(file, i + chunkIndex, options, enrichmentQueue)))
         if (i + CONCURRENT_UPLOADS < filesToUpload.length) await delay(500)
       }
       const summary = calculateSummary(localResultsRef.current)
-      toast({ title: 'Upload Complete', description: `${summary.created} created, ${summary.merged} merged, ${summary.failed} failed` })
+      if (runRef.current !== run) {
+        const skipped = localResultsRef.current.filter(r => r.status === 'pending').length
+        toast({ title: 'Upload stopped', description: `${summary.created} created, ${summary.merged} merged, ${summary.failed} failed, ${skipped} not uploaded` })
+      } else {
+        toast({ title: 'Upload Complete', description: `${summary.created} created, ${summary.merged} merged, ${summary.failed} failed` })
+      }
       try { await getCandidatesRef.current() } catch (err) { console.warn('Post-bulk-upload refresh failed:', err) }
       if (enrichmentQueue.length > 0) {
         console.log(`🔄 Starting sequential enrichment for ${enrichmentQueue.length} candidates`)
@@ -199,6 +211,7 @@ export function useBulkCandidateUpload() {
 
   return {
     uploadCandidates,
+    cancelUpload,
     isProcessing,
     fileResults,
     progress: calculateOverallProgress(fileResults),

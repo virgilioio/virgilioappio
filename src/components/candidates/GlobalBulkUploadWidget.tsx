@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { X, Minimize2, Maximize2 } from "lucide-react"
+import { X, Minimize2, Maximize2, CircleStop } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Card } from "@/components/ui/card"
@@ -8,11 +8,12 @@ import { BulkUploadSummary } from "./BulkUploadSummary"
 import { useBulkCandidateUpload } from "@/hooks/useBulkCandidateUpload"
 import { useBulkUploadContext } from "@/contexts/BulkUploadContext"
 import { useNavigate } from "react-router-dom"
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
 
 export function GlobalBulkUploadWidget() {
   const { isUploadActive, isMinimized, files, options, closeUpload, setMinimized } = useBulkUploadContext()
-  const { uploadCandidates, isProcessing, fileResults, progress, resetUploadState } = useBulkCandidateUpload()
+  const { uploadCandidates, cancelUpload, isProcessing, fileResults, progress, resetUploadState } = useBulkCandidateUpload()
   const [step, setStep] = useState<"processing" | "summary">("processing")
   const [hasManuallyInteracted, setHasManuallyInteracted] = useState(false)
   const hasStartedRef = useRef(false)
@@ -67,14 +68,19 @@ export function GlobalBulkUploadWidget() {
 
   const handleClose = async () => {
     if (isProcessing) {
-      const confirmed = await confirmDialog({
-        title: 'Cancel the upload?',
-        description: 'It is still in progress. Closing now cancels it.',
-        confirmLabel: 'Cancel upload',
+      // C26 (Block B §16, Pattern 1): say how many are in and what stops.
+      const total = files.length
+      const done = fileResults.filter((r) => r.status === 'success' || r.status === 'duplicate' || r.status === 'error').length
+      const left = Math.max(total - done, 0)
+      const confirmed = await confirmDestructive({
+        icon: CircleStop,
+        title: left > 0 ? `Stop uploading the last ${left} r\u00e9sum\u00e9${left === 1 ? '' : 's'}?` : 'Stop the upload?',
+        description: `${done} of ${total} are done, and the candidates already added stay. Files being read right now finish; the rest aren\u2019t uploaded, and you can upload them again later.`,
+        confirmLabel: 'Stop upload',
         cancelLabel: 'Keep uploading',
-        destructive: true,
       })
       if (!confirmed) return
+      cancelUpload()
     }
     closeUpload()
     setStep("processing")
@@ -97,7 +103,9 @@ export function GlobalBulkUploadWidget() {
               <h3 className="font-semibold text-sm">Bulk Upload in Progress</h3>
             </div>
             <div className="flex gap-1">
+              <IconTip label="Expand upload">
               <Button
+                aria-label="Expand upload"
                 variant="ghost"
                 size="sm"
                 onClick={() => {
@@ -108,7 +116,10 @@ export function GlobalBulkUploadWidget() {
               >
                 <Maximize2 className="h-3 w-3" />
               </Button>
+              </IconTip>
+              <IconTip label="Close upload">
               <Button
+                aria-label="Close upload"
                 variant="ghost"
                 size="sm"
                 onClick={handleClose}
@@ -116,6 +127,7 @@ export function GlobalBulkUploadWidget() {
               >
                 <X className="h-3 w-3" />
               </Button>
+              </IconTip>
             </div>
           </div>
           <div className="space-y-2">
@@ -140,7 +152,9 @@ export function GlobalBulkUploadWidget() {
         </div>
         <div className="flex gap-1">
           {step === "processing" && (
+            <IconTip label="Minimize upload">
             <Button
+              aria-label="Minimize upload"
               variant="ghost"
               size="sm"
               onClick={() => {
@@ -151,8 +165,11 @@ export function GlobalBulkUploadWidget() {
             >
               <Minimize2 className="h-4 w-4" />
             </Button>
+            </IconTip>
           )}
+          <IconTip label="Close upload">
           <Button
+            aria-label="Close upload"
             variant="ghost"
             size="sm"
             onClick={handleClose}
@@ -160,6 +177,7 @@ export function GlobalBulkUploadWidget() {
           >
             <X className="h-4 w-4" />
           </Button>
+          </IconTip>
         </div>
       </div>
 

@@ -20,7 +20,7 @@ import { useJobs } from '@/hooks/useJobs'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateSources } from '@/hooks/useCandidateSources'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface BulkUploadDialogProps {
   isOpen: boolean
@@ -42,7 +42,7 @@ export function BulkUploadDialog({
   const [assignToStage, setAssignToStage] = useState<string>()
   const [source, setSource] = useState<string>('')
 
-  const { uploadCandidates, isProcessing, fileResults, progress } = useBulkCandidateUpload()
+  const { uploadCandidates, cancelUpload, isProcessing, fileResults, progress } = useBulkCandidateUpload()
   const { jobs } = useJobs()
   const { loadHiringPlanInstances } = useJobHiringPlan()
   const [stageOptions, setStageOptions] = useState<Array<{ id: string; name: string }>>([])
@@ -105,9 +105,19 @@ export function BulkUploadDialog({
 
   const handleClose = async () => {
     if (isProcessing) {
-      if (!(await confirmDialog({ title: 'Cancel the upload?', description: 'It is still in progress.', confirmLabel: 'Cancel upload', cancelLabel: 'Keep uploading', destructive: true }))) {
+      // C26: same honest confirm as the live upload widget (GlobalBulkUploadWidget).
+      const total = files.length
+      const done = fileResults.filter((r) => r.status === 'success' || r.status === 'duplicate' || r.status === 'error').length
+      const left = Math.max(total - done, 0)
+      if (!(await confirmDestructive({
+        title: left > 0 ? `Stop uploading the last ${left} r\u00e9sum\u00e9${left === 1 ? '' : 's'}?` : 'Stop the upload?',
+        description: `${done} of ${total} are done, and the candidates already added stay. Files being read right now finish; the rest aren\u2019t uploaded, and you can upload them again later.`,
+        confirmLabel: 'Stop upload',
+        cancelLabel: 'Keep uploading',
+      }))) {
         return
       }
+      cancelUpload()
     }
     onClose()
   }
