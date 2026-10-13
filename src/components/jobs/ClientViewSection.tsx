@@ -6,10 +6,7 @@ import { Check, ChevronRight, Copy, Eye, EyeOff, Globe, Link2, RefreshCw } from 
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { supabase } from '@/integrations/supabase/client'
 import { copyToClipboardSilent } from '@/utils/clipboard'
@@ -130,7 +127,17 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
   const stages = useJobStageCounts(jobId)
   const sectionCounts = useJobClientSectionCounts(jobId, stages)
   const [copied, setCopied] = useState(false)
-  const [confirmReset, setConfirmReset] = useState(false)
+  // J21 (Block B §16, Pattern 1): a reset can't be taken back, since the old
+  // token is gone, so it asks first and says who loses access.
+  const askReset = async () => {
+    const ok = await confirmDestructive({
+      icon: RefreshCw,
+      title: 'Reset the client link?',
+      description: 'The current link stops working right away for everyone who has it, and a new link replaces it with its view count back at 0. Send the new link to anyone who should still see this pipeline.',
+      confirmLabel: 'Reset link',
+    })
+    if (ok) void resetToken()
+  }
   const recruiting = useMemo(() => stages.filter((s) => !NON_RECRUITING_STAGE_TYPES.has(s.type)), [stages])
   const selectedIds = useMemo(() => new Set(share?.visible_stage_ids ?? []), [share?.visible_stage_ids])
   const visible = useMemo(() => recruiting.filter((s) => selectedIds.has(s.id)), [recruiting, selectedIds])
@@ -188,7 +195,7 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
           <div className="flex items-center flex-wrap" style={{ gap: 8 }}>
             <span className="truncate" style={{ flex: '1 1 220px', minWidth: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#5A6072', background: '#FBFAF7', border: '1px solid #EFEEE8', borderRadius: 7, padding: '7px 10px' }}>{url}</span>
             <Button variant="secondary" size="sm" icon={CopyCheckIcon} data-swapped={copied || undefined} onClick={async () => { if (await copyToClipboardSilent(url)) { setCopied(true); setTimeout(() => setCopied(false), 1600) } }}>{copied ? 'Copied' : 'Copy link'}</Button>
-            {!readOnly && <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => setConfirmReset(true)}>Reset link</Button>}
+            {!readOnly && <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => void askReset()}>Reset link</Button>}
             <Button variant="primary" size="sm" icon={Eye} onClick={() => window.open(url, '_blank', 'noopener')}>Preview as client</Button>
           </div>
           <div className="font-inter flex items-center" style={{ gap: 6, marginTop: 10, fontSize: 11, color: '#8B8F9E' }}><Eye size={12} />Opened {share.view_count} time{share.view_count === 1 ? '' : 's'}{share.last_viewed_at && ` · last ${formatDistanceToNowStrict(new Date(share.last_viewed_at), { addSuffix: true })}`} · Expires automatically when the job closes</div>
@@ -255,7 +262,6 @@ export function ClientViewSection({ jobId, readOnly, recruiterName }: { jobId: s
         <FormSection title="Not part of the client view" subtitle="Internal-only, whatever the settings above."><div className="flex flex-wrap" style={{ gap: 6 }}>{EXCLUDED.map((l) => <span key={l} className="font-inter inline-flex items-center" style={{ height: 26, padding: '0 10px', borderRadius: 7, background: '#FAFAF7', border: '1px solid #EFEEE8', fontSize: 11.5, color: '#5A6072' }}>{l}</span>)}</div></FormSection>
       </>}
 
-      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Reset the link?</AlertDialogTitle><AlertDialogDescription>Anyone using the current link will lose access.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => void resetToken()}>Reset link</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </section>
   )
 }
