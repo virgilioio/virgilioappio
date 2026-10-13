@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { confirmDestructive, type DestructiveOptions } from '@/components/ui/confirm-dialog'
 
 const inter = "'Inter', system-ui, sans-serif"
 const poppins = "'Poppins', system-ui, sans-serif"
@@ -21,6 +22,11 @@ export interface SelectionAction {
   /** Where the action sits: one primary, up to two secondary, rest overflow. */
   slot?: 'primary' | 'secondary' | 'overflow'
   destructive?: boolean
+  /**
+   * Block B §16 Pattern 3: ask with the bulk delete dialog before `onClick` runs.
+   * Put the count in `title` and `confirmLabel`, and the selected names in `items`.
+   */
+  confirm?: DestructiveOptions
   disabled?: boolean
   /**
    * Wraps the rendered pill — used when the action opens a popover and needs
@@ -68,6 +74,7 @@ export function SelectionBar({
   className,
 }: SelectionBarProps) {
   const [mounted, setMounted] = React.useState(false)
+  const confirming = React.useRef(false)
   // Keep rendering through the exit, with the count it had when it started leaving.
   const [present, setPresent] = React.useState(count > 0)
   const lastCount = React.useRef(count)
@@ -87,7 +94,8 @@ export function SelectionBar({
   React.useEffect(() => {
     if (count === 0) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClear()
+      // Esc in the confirm dialog closes the dialog, not the selection.
+      if (e.key === 'Escape' && !confirming.current) onClear()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -95,6 +103,17 @@ export function SelectionBar({
 
   if (count === 0 && !present) return null
   const shownCount = count > 0 ? count : lastCount.current
+
+  const run = async (action: SelectionAction) => {
+    if (action.confirm) {
+      confirming.current = true
+      const ok = await confirmDestructive(action.confirm)
+      // Let the Esc keydown that closed the dialog pass before re-arming.
+      window.setTimeout(() => (confirming.current = false), 0)
+      if (!ok) return
+    }
+    action.onClick?.()
+  }
 
   const primary = actions.find((a) => a.slot === 'primary')
   const secondary = actions.filter((a) => a.slot === 'secondary').slice(0, 2)
@@ -105,7 +124,7 @@ export function SelectionBar({
     const pill = (
       <button
         type="button"
-        onClick={action.onClick}
+        onClick={action.onClick || action.confirm ? () => void run(action) : undefined}
         disabled={busy || action.disabled}
         aria-label={action.label}
         style={{
@@ -220,9 +239,9 @@ export function SelectionBar({
                   disabled={busy || a.disabled}
                   onSelect={(e) => {
                     if (a.render) e.preventDefault()
-                    a.onClick?.()
+                    void run(a)
                   }}
-                  style={a.destructive ? { color: '#FA5252' } : undefined}
+                  style={a.destructive ? { color: 'var(--color-danger)' } : undefined}
                 >
                   {a.icon && <a.icon size={13} strokeWidth={2} />}
                   {a.label}
