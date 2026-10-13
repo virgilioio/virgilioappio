@@ -27,10 +27,6 @@ import { TableFooterSummary } from '@/components/ui/table-pagination'
 import { SaveSearchButton } from '@/components/candidates/list/SaveSearchButton'
 import { SaveSearchPopover, type SaveSearchPayload } from '@/components/candidates/list/SaveSearchPopover'
 import { deriveAutoName } from '@/lib/savedSearchAutoName'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -46,6 +42,7 @@ import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { undoToast } from '@/lib/undoToast'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
 import { Button } from '@/components/ui/button'
 import { Tag as TagIcon, Users as UsersIcon, Share2 as Share2Icon, Briefcase, Mail as MailIcon, BookmarkPlus as BookmarkPlusIcon, Archive as ArchiveIcon } from 'lucide-react'
@@ -105,8 +102,28 @@ function CandidatesInner() {
     setArrayFilter('tagIds', [tag.id])
     setBaselineFilters({ tagIds: [tag.id] })
   }, [clearAll, setArrayFilter])
-  const [deleteTagTarget, setDeleteTagTarget] = useState<Tag | null>(null)
-  const [isDeletingTag, setIsDeletingTag] = useState(false)
+  // C4: deleting a tag takes it off every candidate (candidate_tags cascade).
+  const handleDeleteTag = useCallback(async (tag: Tag) => {
+    const n = tag.usage_count ?? 0
+    const ok = await confirmDestructive({
+      title: `Delete the tag \u201c${tag.name}\u201d?`,
+      description: n
+        ? `It comes off ${n} candidate${n === 1 ? '' : 's'} and out of your Tags list. The candidates themselves stay. This can\u2019t be undone.`
+        : 'It goes from your Tags list. No candidates have it. This can\u2019t be undone.',
+      confirmLabel: 'Delete tag',
+    })
+    if (!ok) return
+    try {
+      await deleteTag.mutateAsync(tag.id)
+      if (activeTagId === tag.id) {
+        setArrayFilter('tagIds', [])
+        setActiveSmartList('all')
+      }
+      toast({ title: `Tag \u201c${tag.name}\u201d deleted` })
+    } catch {
+      toast({ title: `Couldn\u2019t delete \u201c${tag.name}\u201d`, description: 'Nothing was removed; try again.', variant: 'destructive' })
+    }
+  }, [deleteTag, activeTagId, setArrayFilter])
 
   // Search state
   const [mode, setMode] = useState<SearchMode>('everything')
@@ -129,8 +146,6 @@ function CandidatesInner() {
   const [saving, setSaving] = useState(false)
   const [justSavedId, setJustSavedId] = useState<string | null>(null)
   const [hasPulsed, setHasPulsed] = useState(false)
-  const [deleteSavedView, setDeleteSavedView] = useState<SavedView | null>(null)
-  const [isDeletingSavedView, setIsDeletingSavedView] = useState(false)
 
 
   const setFiltersFromRecord = useCallback((rec: Partial<CandidateFilters>) => {
@@ -449,12 +464,18 @@ function CandidatesInner() {
     }
   }
 
-  const handleConfirmDeleteSavedView = async () => {
-    if (!deleteSavedView) return
-    setIsDeletingSavedView(true)
+  // C3: a saved search is only the filters; deleting it never touches candidates.
+  // useSavedViews' deleteView toasts the result (and the failure) itself.
+  const handleDeleteSavedView = async (view: SavedView) => {
+    const ok = await confirmDestructive({
+      title: `Delete the saved search \u201c${view.name}\u201d?`,
+      description: 'It goes from your Searches list. The candidates it finds aren\u2019t touched. This can\u2019t be undone.',
+      confirmLabel: 'Delete search',
+    })
+    if (!ok) return
     try {
-      const wasActive = deleteSavedView.id === activeViewId
-      await deleteView.mutateAsync(deleteSavedView.id)
+      const wasActive = view.id === activeViewId
+      await deleteView.mutateAsync(view.id)
       if (wasActive) {
         setActiveViewId(null)
         setActiveSmartList('all')
@@ -462,13 +483,11 @@ function CandidatesInner() {
         setFiltersFromRecord(SMART_LIST_FILTERS.all as any)
         setBaselineFilters((SMART_LIST_FILTERS.all ?? {}) as Record<string, unknown>)
       }
-      setDeleteSavedView(null)
     } catch {
-      toast({ title: "Couldn't delete search", variant: 'destructive' })
-    } finally {
-      setIsDeletingSavedView(false)
+      // Already reported by deleteView's onError.
     }
   }
+
 
 
 
@@ -582,11 +601,11 @@ function CandidatesInner() {
             justSavedId={justSavedId}
             onEditView={handleSelectView}
             onDuplicateView={handleDuplicateSavedView}
-            onDeleteView={(v) => setDeleteSavedView(v)}
+            onDeleteView={(v) => void handleDeleteSavedView(v)}
             tags={tags}
             activeTagId={activeTagId}
             onSelectTag={handleSelectTag}
-            onDeleteTag={(t) => setDeleteTagTarget(t)}
+            onDeleteTag={(t) => void handleDeleteTag(t)}
           />
         </div>
 
@@ -818,67 +837,6 @@ function CandidatesInner() {
         candidateName={deleteTarget?.name ?? ''}
         onConfirm={handleDelete}
       />
-
-
-      <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => !open && !isDeletingSavedView && setDeleteSavedView(null)}>
-        <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete saved search permanently?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the saved search "{deleteSavedView?.name}". This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-            <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeletingSavedView}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); handleConfirmDeleteSavedView() }}
-              disabled={isDeletingSavedView}
-              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeletingSavedView ? 'Deleting…' : 'Delete search'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={!!deleteTagTarget} onOpenChange={(open) => !open && !isDeletingTag && setDeleteTagTarget(null)}>
-        <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete tag permanently?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {`This will permanently delete the tag "${deleteTagTarget?.name ?? ''}"`}
-              {deleteTagTarget?.usage_count
-                ? ` and remove it from ${deleteTagTarget.usage_count} candidate${deleteTagTarget.usage_count === 1 ? '' : 's'}.`
-                : '.'}
-              {' '}This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-            <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeletingTag}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async (e) => {
-                e.preventDefault()
-                if (!deleteTagTarget) return
-                setIsDeletingTag(true)
-                try {
-                  await deleteTag.mutateAsync(deleteTagTarget.id)
-                  if (activeTagId === deleteTagTarget.id) {
-                    setArrayFilter('tagIds', [])
-                    setActiveSmartList('all')
-                  }
-                  setDeleteTagTarget(null)
-                } finally {
-                  setIsDeletingTag(false)
-                }
-              }}
-              disabled={isDeletingTag}
-              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeletingTag ? 'Deleting…' : 'Delete tag'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
 
   )
