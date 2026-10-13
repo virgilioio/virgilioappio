@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabaseClient'
 import {
   DndContext,
   closestCenter,
@@ -166,6 +167,18 @@ export function InterviewQuestionsList({
   const [items, setItems] = useState(questions)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [questionToDelete, setQuestionToDelete] = useState<string | null>(null)
+  // Answers go with the question (the database deletes them), so say how many.
+  const [answerCount, setAnswerCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!questionToDelete) { setAnswerCount(null); return }
+    let alive = true
+    supabase
+      .from('scorecard_question_responses')
+      .select('id', { count: 'exact', head: true })
+      .eq('question_id', questionToDelete)
+      .then(({ count }) => { if (alive) setAnswerCount(count ?? 0) })
+    return () => { alive = false }
+  }, [questionToDelete])
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -269,7 +282,11 @@ export function InterviewQuestionsList({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Interview Question?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the interview question. Any responses to this question in existing scorecards will remain, but the question will not appear for new scorecards.
+              {answerCount === null
+                ? 'Checking for answers…'
+                : answerCount === 0
+                  ? "No scorecard has answered it yet. It won't appear on new scorecards. This can't be undone."
+                  : `The ${answerCount} answer${answerCount === 1 ? '' : 's'} already given to it in submitted scorecards ${answerCount === 1 ? 'is' : 'are'} deleted with it. This can't be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
