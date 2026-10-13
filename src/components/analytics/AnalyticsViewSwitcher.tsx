@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Lock, Globe, Plus, Pencil, Copy, Trash2, Check, Star } from 'lucide-react'
 import { useSavedViews, type PageContext, type SavedView, type ViewVisibility } from '@/hooks/useSavedViews'
 import { useAuth } from '@/contexts/AuthContext'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface Props {
   activeViewId: string | null
@@ -118,7 +118,16 @@ export function AnalyticsViewSwitcher({ activeViewId, onActivate, currentFilters
                       icon={Trash2}
                       label="Delete"
                       onClick={async () => {
-                        if (!(await confirmDialog({ title: `Delete the view "${active.name}"?`, description: 'Its widgets go with it.', confirmLabel: 'Delete view', destructive: true }))) return
+                        // O16 (Block B §16, Pattern 1): name the view, count what goes with it.
+                        const raw = (active.extra_state as { widgets?: unknown } | null)?.widgets
+                        const n = Array.isArray(raw) ? raw.length : 0
+                        const parts = n > 0 ? `Its ${n} widget${n === 1 ? '' : 's'} and filters go with it` : 'Its filters go with it'
+                        const sharedNote = active.visibility === 'shared' ? ', and nobody it\u2019s shared with sees it any more' : ''
+                        if (!(await confirmDestructive({
+                          title: `Delete the view \u201C${active.name}\u201D?`,
+                          description: `${parts}${sharedNote}. Your data isn\u2019t affected. This can\u2019t be undone.`,
+                          confirmLabel: 'Delete view',
+                        }))) return
                         deleteView.mutate(active.id, {
                           onSuccess: () => onActivate(views.find(v => v.id !== active.id) ?? null),
                         })
