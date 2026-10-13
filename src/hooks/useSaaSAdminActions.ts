@@ -311,8 +311,8 @@ export function useRevokeAccess() {
       log.error('Failed to revoke access:', error)
       toast({
         variant: 'destructive',
-        title: 'Revoke failed',
-        description: extractErrorMessage(error),
+        title: 'Couldn\u2019t revoke access',
+        description: 'The workspace still has access; try again.',
       })
     },
   })
