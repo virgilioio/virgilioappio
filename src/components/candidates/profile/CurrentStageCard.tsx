@@ -24,6 +24,8 @@ import { toast } from '@/hooks/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
 import AttendeeDetailsBlock from './primitives/AttendeeDetailsBlock'
 import EditAttendeeEmailDialog from '@/components/candidates/EditAttendeeEmailDialog'
 
@@ -176,8 +178,9 @@ export function CurrentStageCard({
 
   // --- Menu open state (one at a time) ---
   const [openMenu, setOpenMenu] = useState<null | 'link' | 'event'>(null)
-  const [renewConfirm, setRenewConfirm] = useState(false)
-  const [cancelConfirm, setCancelConfirm] = useState(false)
+  // C10/C11: the confirms are the shared dialog now; focus goes back to the trigger.
+  const linkTriggerRef = useRef<HTMLButtonElement>(null)
+  const eventTriggerRef = useRef<HTMLButtonElement>(null)
   const [linkFlash, setLinkFlash] = useState<null | 'copied' | 'renewed'>(null)
   const [flash, setFlash] = useState<string | null>(null)
   const [busy, setBusy] = useState<'copy' | 'renew' | 'cancel' | null>(null)
@@ -209,8 +212,6 @@ export function CurrentStageCard({
 
   const closeMenus = () => {
     setOpenMenu(null)
-    setRenewConfirm(false)
-    setCancelConfirm(false)
   }
 
   const handleCopyLink = async () => {
@@ -224,19 +225,30 @@ export function CurrentStageCard({
     }
   }
 
+  const firstName = (candidateName || '').trim().split(/\s+/)[0] || ''
+
+  // C11 (Block B §16, Pattern 1): renewing kills the link the candidate has.
   const handleRenew = async () => {
+    closeMenus()
+    linkTriggerRef.current?.focus()
+    const ok = await confirmDestructive({
+      icon: RefreshCw,
+      title: firstName ? `Renew ${firstName}\u2019s booking link?` : 'Renew this booking link?',
+      description: `You get a new link, copied for you. The current one stops working right away, so ${firstName || 'the candidate'} can\u2019t book with it. Interviews already booked stay. This can\u2019t be undone.`,
+      confirmLabel: 'Renew link',
+    })
+    if (!ok) return
     setBusy('renew')
     try {
       const url = await renewLink()
       if (url) {
         setLinkFlash('renewed')
-        toast({ title: 'Link renewed', description: 'A fresh booking link has been copied. The old one no longer works.' })
+        toast({ title: 'Link renewed', description: 'The new link is copied. The old one no longer works.' })
       } else {
-        toast({ variant: 'destructive', title: 'Renew failed', description: 'Please try again.' })
+        toast({ variant: 'destructive', title: 'Couldn\u2019t renew the link', description: 'The current link still works; try again.' })
       }
     } finally {
       setBusy(null)
-      closeMenus()
     }
   }
 
@@ -261,8 +273,34 @@ export function CurrentStageCard({
     closeMenus()
   }
 
+  // C10 (Block B §16, Pattern 1): cancel-booking emails the candidate, the lead
+  // interviewer and any guests, and deletes the Google event the panel is on.
   const handleCancelEvent = async () => {
     if (!nextBooking) return
+    closeMenus()
+    eventTriggerRef.current?.focus()
+    const name = (candidateName || '').trim()
+    const first = firstName || 'The candidate'
+    const panel = (nextBooking.interviewers || []) as Array<{ first_name: string | null; last_name: string | null; email: string | null; is_primary?: boolean }>
+    const lead = panel.find((i) => i.is_primary) ?? panel[0]
+    const leadName = lead ? [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim() || lead.email || 'the interviewer' : null
+    const when = nextEventDate
+      ? nextEventDate.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      : null
+    const what = (nextBooking as any).title || `${stageName} interview`
+    const emailed = panel.length > 1
+      ? `${first}, the lead interviewer (${leadName}) and any guests are emailed, and the event comes off Google Calendar for all ${panel.length} panelists.`
+      : leadName
+      ? `${first}, ${leadName} and any guests are emailed, and the event comes off Google Calendar.`
+      : `${first} and any guests are emailed, and the event comes off Google Calendar.`
+    const ok = await confirmDestructive({
+      icon: CalendarX,
+      title: name ? `Cancel the interview with ${name}?` : 'Cancel this interview?',
+      description: `${what}${when ? `, ${when}` : ''}. ${emailed} ${first} stays in ${stageName}. This can\u2019t be undone.`,
+      confirmLabel: 'Cancel interview',
+      cancelLabel: 'Keep interview',
+    })
+    if (!ok) return
     setBusy('cancel')
     try {
       const { error } = await supabase.functions.invoke('cancel-booking', {
@@ -272,16 +310,15 @@ export function CurrentStageCard({
         },
       })
       if (error) throw error
-      toast({ title: 'Event cancelled', description: 'Panelists have been notified.' })
+      toast({ title: 'Interview cancelled', description: 'Everyone on it has been told.' })
       queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] })
       queryClient.invalidateQueries({ queryKey: ['stage-bookings', jhsId, candidateId] })
-      setFlash('Event cancelled · panelists notified')
+      setFlash('Interview cancelled · panel notified')
       window.setTimeout(() => setFlash(null), 2200)
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Cancel failed', description: e?.message || 'Please try again.' })
+    } catch {
+      toast({ variant: 'destructive', title: 'Couldn\u2019t cancel the interview', description: 'It\u2019s still booked and nobody was emailed; try again.' })
     } finally {
       setBusy(null)
-      closeMenus()
     }
   }
 
@@ -335,6 +372,7 @@ export function CurrentStageCard({
             {hasBookingConfig && (
               <div className="relative">
                 <Button
+                  ref={linkTriggerRef}
                   variant={linkFlash ? 'secondary' : 'secondary'}
                   size="md"
                   icon={linkFlash ? Check : Link2}
@@ -351,53 +389,31 @@ export function CurrentStageCard({
                   <>
                     <div className="fixed inset-0 z-40" onClick={closeMenus} />
                     <div className={cn(menuPanelCls, 'right-0 w-[268px]')}>
-                      {!renewConfirm ? (
-                        <>
-                          <div className="px-2.5 py-2 border-b border-[#F1F0EC] mb-1">
-                            <div className="font-mono text-[10.5px] text-[#5A6072] truncate" style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}>
-                              {displayLink || 'Generating link…'}
-                            </div>
-                          </div>
-                          <MenuItem
-                            icon={Copy}
-                            label="Copy link"
-                            meta="Candidate + this stage"
-                            onClick={handleCopyLink}
-                            disabled={!contextualLink || busy === 'copy'}
-                          />
-                          <MenuItem
-                            icon={RefreshCw}
-                            label="Renew link"
-                            meta="Invalidate the current link"
-                            onClick={() => setRenewConfirm(true)}
-                            disabled={!contextualLink}
-                          />
-                          <MenuItem
-                            icon={ExternalLink}
-                            label="Open booking page"
-                            onClick={handleOpenBookingPage}
-                            disabled={!contextualLink}
-                          />
-                        </>
-                      ) : (
-                        <div className="p-2.5">
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className="h-9 w-9 rounded-lg bg-[#FEF3C7] flex items-center justify-center shrink-0">
-                              <RefreshCw className="h-4 w-4 text-[#B45309]" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="font-poppins font-semibold text-[13px] text-[#1F2230]">Renew booking link?</div>
-                              <p className="font-inter text-[11.5px] text-[#5A6072] mt-1">
-                                A new link is generated and the current one stops working immediately. Anyone with the old link can't book.
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => setRenewConfirm(false)}>Cancel</Button>
-                            <Button size="sm" loading={busy === 'renew'} onClick={handleRenew}>Renew &amp; copy</Button>
-                          </div>
+                      <div className="px-2.5 py-2 border-b border-[#F1F0EC] mb-1">
+                        <div className="font-mono text-[10.5px] text-[#5A6072] truncate" style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}>
+                          {displayLink || 'Generating link…'}
                         </div>
-                      )}
+                      </div>
+                      <MenuItem
+                        icon={Copy}
+                        label="Copy link"
+                        meta="Candidate + this stage"
+                        onClick={handleCopyLink}
+                        disabled={!contextualLink || busy === 'copy'}
+                      />
+                      <MenuItem
+                        icon={RefreshCw}
+                        label="Renew link"
+                        meta="Invalidate the current link"
+                        onClick={() => void handleRenew()}
+                        disabled={!contextualLink || busy === 'renew'}
+                      />
+                      <MenuItem
+                        icon={ExternalLink}
+                        label="Open booking page"
+                        onClick={handleOpenBookingPage}
+                        disabled={!contextualLink}
+                      />
                     </div>
                   </>
                 )}
@@ -426,7 +442,9 @@ export function CurrentStageCard({
               </div>
               {nextEventDate && nextBooking && hasUpcoming && (
                 <div className="relative">
+                  <IconTip label="Event options">
                   <button
+                    ref={eventTriggerRef}
                     type="button"
                     aria-label="Event options"
                     className="h-6 w-6 -mr-1 -mt-1 rounded-md text-[#8B8F9E] hover:bg-[#F1F0EC] flex items-center justify-center transition-colors"
@@ -434,41 +452,20 @@ export function CurrentStageCard({
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </button>
+                  </IconTip>
                   {openMenu === 'event' && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={closeMenus} />
                       <div className={cn(menuPanelCls, 'right-0 w-[210px]')}>
-                        {!cancelConfirm ? (
-                          <>
-                            <MenuItem
-                              icon={CalendarClock}
-                              label="Reschedule"
-                              onClick={() => { onReschedule?.(nextBooking.id as string); closeMenus() }}
-                            />
-                            <MenuItem icon={Copy} label="Copy invite details" onClick={handleCopyInviteDetails} />
-                            <MenuItem icon={ExternalLink} label="Open in calendar" onClick={handleOpenInCalendar} />
-                            <div className="my-1 border-t border-[#F1F0EC]" />
-                            <MenuItem icon={CalendarX} label="Cancel event" danger onClick={() => setCancelConfirm(true)} />
-                          </>
-                        ) : (
-                          <div className="p-2.5">
-                            <div className="flex items-start gap-3 mb-3">
-                              <div className="h-9 w-9 rounded-lg bg-[#FEECEC] flex items-center justify-center shrink-0">
-                                <CalendarX className="h-4 w-4 text-[#DC2626]" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-poppins font-semibold text-[13px] text-[#1F2230]">Cancel this event?</div>
-                                <p className="font-inter text-[11.5px] text-[#5A6072] mt-1">
-                                  {(nextBooking as any).title || 'Event'} on {nextEventDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} will be removed and {allInterviewers.length || 'all'} panelists notified. This can't be undone.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => setCancelConfirm(false)}>Keep event</Button>
-                              <Button variant="danger" size="sm" loading={busy === 'cancel'} onClick={handleCancelEvent}>Cancel event</Button>
-                            </div>
-                          </div>
-                        )}
+                        <MenuItem
+                          icon={CalendarClock}
+                          label="Reschedule"
+                          onClick={() => { onReschedule?.(nextBooking.id as string); closeMenus() }}
+                        />
+                        <MenuItem icon={Copy} label="Copy invite details" onClick={handleCopyInviteDetails} />
+                        <MenuItem icon={ExternalLink} label="Open in calendar" onClick={handleOpenInCalendar} />
+                        <div className="my-1 border-t border-[#F1F0EC]" />
+                        <MenuItem icon={CalendarX} label="Cancel interview" danger onClick={() => void handleCancelEvent()} disabled={busy === 'cancel'} />
                       </div>
                     </>
                   )}
