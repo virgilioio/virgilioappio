@@ -94,8 +94,32 @@ const formatSalaryValue = (value: string | null, config: SalaryFieldConfig | nul
   );
 };
 
-const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?: SalaryFieldConfig | null) => {
+/** Option label for a stored value (values are slugs; labels are what the candidate saw). */
+type OptionLabels = Record<string, string>;
+
+/** Multiple-choice answers are stored as a JSON array of option values. */
+function parseChoices(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [value];
+  } catch {
+    return [value];
+  }
+}
+
+const formatFieldValue = (value: string | null, fieldType: string, fieldConfig?: SalaryFieldConfig | null, optionLabels?: OptionLabels) => {
   if (!value) return "Not provided";
+
+  if (fieldType === 'select') return optionLabels?.[value] ?? value;
+  if (fieldType === 'checkbox_group') {
+    const picked = parseChoices(value).map((v) => optionLabels?.[v] ?? v);
+    if (!picked.length) return "Not provided";
+    return (
+      <ul className="list-disc space-y-0.5 pl-5 text-sm">
+        {picked.map((label, i) => <li key={i}>{label}</li>)}
+      </ul>
+    );
+  }
 
   if (fieldType === 'salary') return formatSalaryValue(value, fieldConfig ?? null);
 
@@ -147,6 +171,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
 }) => {
   const [responses, setResponses] = useState<ApplicationResponse[]>([]);
   const [fieldConfigs, setFieldConfigs] = useState<Record<string, SalaryFieldConfig>>({});
+  const [optionLabels, setOptionLabels] = useState<Record<string, OptionLabels>>({});
   const [loading, setLoading] = useState(true);
   const { coreFields } = useCoreFields();
 
@@ -201,6 +226,25 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
           setFieldConfigs(configMap);
         }
 
+        // Option labels for single-select and multiple-choice answers.
+        const choiceFieldNames = filteredResponses
+          .filter(r => r.field_type === 'select' || r.field_type === 'checkbox_group')
+          .map(r => r.field_name);
+        if (postingIds.length > 0 && choiceFieldNames.length > 0) {
+          const { data: choiceRows } = await supabase
+            .from('job_posting_application_fields')
+            .select('field_name, posting_field_select_options(option_value, option_label)')
+            .in('posting_id', postingIds)
+            .in('field_name', choiceFieldNames);
+          const labels: Record<string, OptionLabels> = {};
+          (choiceRows || []).forEach((row: any) => {
+            const map: OptionLabels = labels[row.field_name] ?? {};
+            (row.posting_field_select_options || []).forEach((o: any) => { map[o.option_value] = o.option_label; });
+            labels[row.field_name] = map;
+          });
+          setOptionLabels(labels);
+        }
+
         setResponses(filteredResponses);
       } catch (error) {
         console.error('Error fetching application responses:', error);
@@ -249,7 +293,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
                 <span className="font-medium text-sm">{response.field_label}</span>
               </div>
               <div className="text-sm text-muted-foreground break-words">
-                {formatFieldValue(response.field_value, response.field_type, fieldConfigs[response.field_name])}
+                {formatFieldValue(response.field_value, response.field_type, fieldConfigs[response.field_name], optionLabels[response.field_name])}
               </div>
             </div>
           </div>
