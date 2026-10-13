@@ -13,7 +13,7 @@ import {
   setupSummaryText,
 } from '@/lib/jobOpenings'
 import { useJobOpenings } from '@/hooks/useJobOpenings'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 const db = supabase as any
 
@@ -199,7 +199,19 @@ function SetupEditor({ jobId, readOnly }: SetupProps) {
   const remove = async (id: string) => {
     const row = rows.find((r) => r.id === id)
     if (!row) return
-    if (row.persisted && !(await confirmDialog({ title: 'Remove this opening?', description: 'Its Req ID, hire and start details go with it.', confirmLabel: 'Remove opening', destructive: true }))) return
+    // J15 (Block B §16, Pattern 1). Filled and offer-reserved openings can't
+    // get here (the button is disabled and the database refuses them), so what
+    // goes is the opening itself; candidates and past offers linked to it stay.
+    if (
+      row.persisted &&
+      !(await confirmDestructive({
+        title: row.req_id ? `Remove opening ${row.req_id}?` : 'Remove this opening?',
+        description:
+          'Its Req ID and target hire and start dates go with it, and the job’s target fill date updates. Candidates and past offers linked to it stay, just no longer tied to an opening. This can’t be undone.',
+        confirmLabel: 'Remove opening',
+      }))
+    )
+      return
     clearTimeout(timers.current[id])
     if (!row.persisted) {
       setRows((prev) => prev.filter((r) => r.id !== id))
@@ -376,7 +388,7 @@ function EditorShell({
                       </button>
                     </span>
                   </TooltipTrigger>
-                  {removeReason && <TooltipContent>{removeReason}</TooltipContent>}
+                  {(removeReason || !readOnly) && <TooltipContent>{removeReason ?? 'Remove opening'}</TooltipContent>}
                 </Tooltip>
               </div>
               {err && (
