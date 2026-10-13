@@ -207,13 +207,6 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
           { id: 'send-offer', label: 'Send offer', icon: FileText, slot: 'primary', onClick: h.onBulkSendOffer },
           email,
           { id: 'assign-approver', label: 'Assign approver', slot: 'overflow', onClick: h.onBulkAssignApprover },
-          {
-            id: 'withdraw',
-            label: 'Withdraw offer',
-            slot: 'overflow',
-            destructive: true,
-            onClick: h.onBulkWithdrawOffer,
-          },
         ],
       },
       empty: {
@@ -309,7 +302,6 @@ export function getSectionConfig(section: PSSection, h: PSHandlers): PSSectionCo
         email,
         { id: 'talent-pool', label: 'Add to talent pool', slot: 'overflow', onClick: h.onBulkTalentPool },
         { id: 'export', label: 'Export', slot: 'overflow', onClick: h.onBulkExport },
-        { id: 'delete', label: 'Delete', slot: 'overflow', destructive: true, onClick: h.onBulkDelete },
       ],
     },
     empty: {
