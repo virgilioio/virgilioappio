@@ -3,19 +3,12 @@ import { GioEmptyState } from '@/components/ui/GioEmptyState'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { confirmDestructive, confirmDialog } from '@/components/ui/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   CalendarCheck,
+  CalendarX,
+  UserX,
   ChevronDown,
   ChevronUp,
   ChevronLeft,
@@ -101,9 +94,6 @@ export function UpcomingActivities() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
-  const [bookingToCancel, setBookingToCancel] = useState<string | null>(null)
-  const [statusUpdateBooking, setStatusUpdateBooking] = useState<{ id: string; status: string } | null>(null)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()))
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -255,28 +245,45 @@ export function UpcomingActivities() {
     setDialogOpen(true)
   }
 
-  const handleCancelBooking = (bookingId: string) => {
-    setBookingToCancel(bookingId)
-    setCancelDialogOpen(true)
+  // O8/O9 (Block B §16): the dialogs name the candidate and the slot.
+  const describeBooking = (bookingId: string) => {
+    const b = bookings.find((x) => x.id === bookingId)
+    const name = (b?.candidate?.candidate_name || b?.candidate_name || '').trim()
+    const first = name.split(/\s+/)[0] || 'The candidate'
+    const when = b?.scheduled_start ? format(parseISO(b.scheduled_start), "EEE d MMM 'at' h:mm a") : null
+    const what = b?.stage?.stage_name ? `${b.stage.stage_name} interview` : 'interview'
+    return { name, first, when, what }
   }
 
-  const confirmCancel = () => {
-    if (bookingToCancel) {
-      cancelBooking(bookingToCancel)
-      setCancelDialogOpen(false)
-      setBookingToCancel(null)
-    }
+  const handleCancelBooking = async (bookingId: string) => {
+    const { name, first, when, what } = describeBooking(bookingId)
+    const ok = await confirmDestructive({
+      icon: CalendarX,
+      title: name ? `Cancel ${name}\u2019s interview?` : 'Cancel this interview?',
+      description: `The ${what}${when ? ` on ${when}` : ''} comes off the calendars, and ${first === 'The candidate' ? 'the candidate' : first}, the interviewer and any guests are emailed that it\u2019s cancelled. ${first} stays in the pipeline.`,
+      confirmLabel: 'Cancel interview',
+      cancelLabel: 'Keep interview',
+    })
+    if (ok) cancelBooking(bookingId)
   }
 
-  const handleStatusUpdate = (bookingId: string, status: string) => {
-    setStatusUpdateBooking({ id: bookingId, status })
-  }
-
-  const confirmStatusUpdate = () => {
-    if (statusUpdateBooking) {
-      updateStatus({ bookingId: statusUpdateBooking.id, status: statusUpdateBooking.status })
-      setStatusUpdateBooking(null)
-    }
+  const handleStatusUpdate = async (bookingId: string, status: string) => {
+    const { name, first, when, what } = describeBooking(bookingId)
+    const whose = name ? `${first}\u2019s` : 'The'
+    const ok =
+      status === 'no_show'
+        ? await confirmDestructive({
+            icon: UserX,
+            title: name ? `Mark ${name} as a no-show?` : 'Mark this candidate as a no-show?',
+            description: `${whose} ${what}${when ? ` on ${when}` : ''} is recorded as missed and moves to Past. Nobody is emailed, and the calendar event stays.`,
+            confirmLabel: 'Mark as no-show',
+          })
+        : await confirmDialog({
+            title: name ? `Mark ${whose} interview as completed?` : 'Mark this interview as completed?',
+            description: `The ${what}${when ? ` on ${when}` : ''} moves to Past. Nobody is emailed.`,
+            confirmLabel: 'Mark completed',
+          })
+    if (ok) updateStatus({ bookingId, status })
   }
 
   const handleCopyMeetingLink = (booking: ScheduledBooking) => {
@@ -507,45 +514,6 @@ export function UpcomingActivities() {
         onBookingUpdated={() => {}}
       />
 
-      {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Interview?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this interview? Both you and the candidate will
-              receive cancellation emails with updated calendar events.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No, keep it</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmCancel}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Yes, cancel interview
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Status Update Confirmation Dialog */}
-      <AlertDialog open={!!statusUpdateBooking} onOpenChange={() => setStatusUpdateBooking(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Update Booking Status?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {statusUpdateBooking?.status === 'completed'
-                ? 'Mark this interview as completed?'
-                : 'Mark candidate as no-show for this interview?'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmStatusUpdate}>Confirm</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
