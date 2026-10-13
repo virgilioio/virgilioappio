@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Bookmark, Users, ListChecks, Mail, Heart, Sparkles, Plus, ChevronRight, MoreHorizontal, Pencil, Copy, Trash2, Tag as TagIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { IconTip } from '@/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -92,17 +93,19 @@ function SavedSearchItem({
       </button>
       {hasMenu && (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="xs"
-              iconOnly
-              icon={MoreHorizontal}
-              aria-label={`Actions for ${view.name}`}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-            />
-          </DropdownMenuTrigger>
+          <IconTip label={`Actions for ${view.name}`}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="xs"
+                iconOnly
+                icon={MoreHorizontal}
+                aria-label={`Actions for ${view.name}`}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+              />
+            </DropdownMenuTrigger>
+          </IconTip>
           <DropdownMenuContent align="end" sideOffset={6}>
             {onEdit && (
               <DropdownMenuItem onSelect={() => onEdit()}>
@@ -121,7 +124,7 @@ function SavedSearchItem({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => onDelete()} className="text-destructive focus:text-destructive">
                   <Trash2 className="h-3.5 w-3.5 mr-2" />
-                  Delete
+                  Delete search
                 </DropdownMenuItem>
               </>
             )}
@@ -156,17 +159,19 @@ function TagRailItem({
         {(tag.usage_count ?? 0).toLocaleString()}
       </span>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="xs"
-            iconOnly
-            icon={MoreHorizontal}
-            aria-label={`Actions for ${tag.name}`}
-            onClick={(e) => e.stopPropagation()}
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-          />
-        </DropdownMenuTrigger>
+        <IconTip label={`Actions for ${tag.name}`}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="xs"
+              iconOnly
+              icon={MoreHorizontal}
+              aria-label={`Actions for ${tag.name}`}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+            />
+          </DropdownMenuTrigger>
+        </IconTip>
         <DropdownMenuContent align="end" sideOffset={6}>
           <DropdownMenuItem onSelect={() => onEdit()}>
             <Pencil className="h-3.5 w-3.5 mr-2" />
@@ -175,7 +180,7 @@ function TagRailItem({
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => onDelete()} className="text-destructive focus:text-destructive">
             <Trash2 className="h-3.5 w-3.5 mr-2" />
-            Delete
+            Delete tag
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
