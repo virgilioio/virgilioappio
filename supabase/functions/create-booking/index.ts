@@ -440,21 +440,23 @@ serve(async (req) => {
     // Bypassed only for internal scheduling (recruiter manually books).
     // ============================================================
     const isInternalScheduling = !!booked_by_user_id;
-    if (!isInternalScheduling) {
-      let eventType: any = null;
-      if (event_type_id) {
-        const { data: et } = await supabase
-          .from('booking_event_types')
-          .select('*')
-          .eq('id', event_type_id)
-          .eq('booking_config_id', booking_config_id)
-          .eq('is_active', true)
-          .maybeSingle();
-        eventType = et;
-        if (!eventType) {
-          console.warn('[create-booking] event_type_id provided but not found/active:', event_type_id);
-        }
+    // The event type the booker picked: its rules validate the slot, and on a
+    // general link its name (or custom title) names the meeting (2026-10-13).
+    let eventType: any = null;
+    if (event_type_id && !isGroupBooking) {
+      const { data: et } = await supabase
+        .from('booking_event_types')
+        .select('*')
+        .eq('id', event_type_id)
+        .eq('booking_config_id', booking_config_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      eventType = et;
+      if (!eventType) {
+        console.warn('[create-booking] event_type_id provided but not found/active:', event_type_id);
       }
+    }
+    if (!isInternalScheduling) {
 
       const effectiveTimezone = eventType?.timezone || config.timezone;
       const effectiveSchedule = (eventType?.weekly_schedule || config.weekly_schedule) as WeeklySchedule;
@@ -494,18 +496,6 @@ serve(async (req) => {
       console.log('[create-booking] Internal scheduling — skipping slot validation.');
     }
 
-    // Generate interview title based on booking type
-    let interviewTitle: string;
-    if (isJobSpecificBooking) {
-      // Job+stage specific booking - use contextual title
-      interviewTitle = `${stageName} with ${candidate_name}${jobTitle}`;
-    } else {
-      // Generic booking - priority: request override > config default > fallback
-      const titleTemplate = custom_event_title || config.custom_event_title || 'Interview with {candidate_name}';
-      interviewTitle = titleTemplate.replace(/{candidate_name}/g, candidate_name);
-    }
-    console.log('[create-booking] Interview title:', interviewTitle, '(job-specific:', isJobSpecificBooking, ', custom_event_title provided:', !!custom_event_title, ')');
-
     // Fetch profile separately
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -522,6 +512,57 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // ==========================================================
+    // TITLE and wording (2026-10-13). Interviews are scheduled from jobs;
+    // general booking links book meetings. A meeting is named by the event type
+    // the booker picked: its custom title when one was set on purpose, otherwise
+    // "{event type name} · {booker's name}". The title is never taken from the
+    // public request, and it is stored on the booking for later emails.
+    // ==========================================================
+    const isMeeting = !isJobSpecificBooking && !isInternalScheduling;
+    const kind = isMeeting ? 'meeting' : 'interview';
+    const Kind = isMeeting ? 'Meeting' : 'Interview';
+    const fillTitle = (t: string) => t.replace(/{candidate_name}/g, candidate_name);
+    let priorTitle: string | null = null;
+    if (reschedule_booking_id && isMeeting && !eventType) {
+      const { data: prior } = await supabase
+        .from('scheduled_bookings')
+        .select('event_title')
+        .eq('id', reschedule_booking_id)
+        .maybeSingle();
+      priorTitle = prior?.event_title || null;
+    }
+    const hostNames = isGroupBooking
+      ? [`${profile.first_name} ${profile.last_name}`, ...groupAttendeeProfiles
+          .filter(p => p.user_id !== config.user_id)
+          .map(p => `${p.first_name} ${p.last_name}`)]
+      : [`${profile.first_name} ${profile.last_name}`];
+    let interviewTitle: string;
+    if (isJobSpecificBooking) {
+      interviewTitle = `${stageName} with ${candidate_name}${jobTitle}`;
+    } else if (isInternalScheduling) {
+      // A recruiter scheduling from a profile can still name it.
+      interviewTitle = fillTitle(custom_event_title || config.custom_event_title || 'Interview with {candidate_name}');
+    } else {
+      const customTitle = (eventType?.custom_event_title || '').trim();
+      const typeName = (eventType?.title || '').trim();
+      const configTitle = (config.custom_event_title || '').trim();
+      interviewTitle = customTitle
+        ? fillTitle(customTitle)
+        : typeName
+          ? `${typeName} · ${candidate_name}`
+          : priorTitle
+            ? priorTitle
+            : configTitle
+              ? fillTitle(configTitle)
+              : `Meeting with ${hostNames.join(' & ')} · ${candidate_name}`;
+    }
+    // What the emails call it: the stage and job for a job interview, the title otherwise.
+    const headline = isJobSpecificBooking ? `${stageName}${jobTitle}` : interviewTitle;
+    const headlineWithName = isJobSpecificBooking ? `${stageName} with ${candidate_name}${jobTitle}` : interviewTitle;
+    const durationMinutes = Math.max(1, Math.round((new Date(scheduled_end).getTime() - new Date(scheduled_start).getTime()) / 60000));
+    console.log('[create-booking] Title:', interviewTitle, '(meeting:', isMeeting, ', event type:', eventType?.id || null, ')');
 
     // Resolve booker email (recruiter who manually scheduled). Included as
     // attendee on the interviewer event so they see the meeting on their own calendar.
@@ -710,8 +751,8 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              summary: `Interview: ${candidate_name}`,
-              description: `Interview scheduled via GoGio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}${transcriptIngestEmail ? `\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)` : ''}`,
+              summary: interviewTitle,
+              description: `${Kind} ${isMeeting ? 'booked' : 'scheduled'} via GoGio\n\n${isMeeting ? 'BOOKED BY' : 'CANDIDATE DETAILS'}:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}${transcriptIngestEmail ? `\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)` : ''}`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: config.timezone,
@@ -838,7 +879,7 @@ serve(async (req) => {
                   },
                   body: JSON.stringify({
                     summary: interviewTitle,
-                    description: `You have an interview scheduled with ${profile.first_name} ${profile.last_name}.\n\n${
+                    description: `You have ${isMeeting ? 'a meeting' : 'an interview'} scheduled with ${hostNames.join(' & ')}.\n\n${
                       googleMeetLink 
                         ? `Join via Google Meet: ${googleMeetLink}` 
                         : custom_meeting_location 
@@ -933,7 +974,9 @@ serve(async (req) => {
         candidate_timezone,
         scheduled_start,
         scheduled_end,
-        duration_minutes: config.duration_minutes,
+        duration_minutes: durationMinutes,
+        event_title: interviewTitle,
+        event_type_id: eventType?.id ?? null,
         meeting_location: meeting_type_preference === 'google_meet' 
           ? (googleMeetLink || config.meeting_location) 
           : custom_meeting_location,
@@ -1046,7 +1089,7 @@ serve(async (req) => {
       `DTSTART:${formatDateForICS(new Date(scheduled_start))}`,
       `DTEND:${formatDateForICS(new Date(scheduled_end))}`,
       `SUMMARY:${escapeICSText(interviewTitle)}`,
-      `DESCRIPTION:${escapeICSText(`Scheduled via GoGio\n\nCandidate Notes:\n${notes || 'None'}`)}`,
+      `DESCRIPTION:${escapeICSText(`Scheduled via GoGio\n\n${isMeeting ? 'Notes' : 'Candidate Notes'}:\n${notes || 'None'}`)}`,
       `LOCATION:${escapeICSText(
         meeting_type_preference === 'google_meet' 
           ? (googleMeetLink || config.meeting_location || '') 
@@ -1085,8 +1128,8 @@ serve(async (req) => {
 
         const meetingDetails = [
           `<strong>Date & Time:</strong> ${formattedDate}`,
-          `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
-          `<strong>${isGroupBooking ? 'Interviewers' : 'Interviewer'}:</strong> ${interviewersDisplay}`,
+          `<strong>Duration:</strong> ${durationMinutes} minutes`,
+          `<strong>${isMeeting ? (isGroupBooking ? 'Hosts' : 'Host') : (isGroupBooking ? 'Interviewers' : 'Interviewer')}:</strong> ${interviewersDisplay}`,
         ];
 
         if (googleMeetLink) {
@@ -1098,20 +1141,20 @@ serve(async (req) => {
         }
 
         let emailContent = `
-          <p>Your interview with <strong>${interviewersDisplay}</strong> has been confirmed!</p>
+          <p>Your ${kind} with <strong>${interviewersDisplay}</strong> has been confirmed${isMeeting ? '.' : '!'}</p>
           <div class="divider"></div>
-          <p><strong>Interview Details:</strong></p>
+          <p><strong>${Kind} Details:</strong></p>
           ${formatEmailList(meetingDetails)}
           ${notes ? `<p style="margin-top: 16px;"><strong>Your notes:</strong><br/>${notes}</p>` : ''}
           <p style="margin-top: 24px;">${candidateNeedsIcs
-            ? `A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.`
-            : `You've also received a separate calendar invitation for this interview — please accept it so it lands on your calendar.`}</p>
+            ? `A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the ${kind}.`
+            : `You've also received a separate calendar invitation for this ${kind} — please accept it so it lands on your calendar.`}</p>
         `;
 
         const candidateEmailBody = createEmailTemplate({
           recipientName: candidate_name,
-          preheaderText: `Your interview is confirmed for ${formattedDate}`,
-          title: `Interview Confirmed: ${stageName}${jobTitle}`,
+          preheaderText: `Your ${kind} is confirmed for ${formattedDate}`,
+          title: `${Kind} Confirmed: ${headline}`,
           content: emailContent,
           footerNote: 'If you need to reschedule, please contact us as soon as possible.'
         });
@@ -1120,12 +1163,12 @@ serve(async (req) => {
           body: {
             from_email: profile.email,
             to: [candidate_email],
-            subject: `Your Interview is Confirmed: ${stageName}${jobTitle}`,
+            subject: `Your ${Kind} is Confirmed: ${headline}`,
             body_html: candidateEmailBody,
             ...(candidateNeedsIcs
               ? {
                   attachments: [{
-                    filename: 'interview.ics',
+                    filename: `${kind}.ics`,
                     content: candidateIcsBase64,
                     content_type: 'text/calendar',
                   }],
@@ -1183,7 +1226,7 @@ serve(async (req) => {
       for (const recipient of interviewerRecipients) {
         const interviewDetails = [
           `<strong>Date & Time:</strong> ${formattedDateInterviewer}`,
-          `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
+          `<strong>Duration:</strong> ${durationMinutes} minutes`,
         ];
 
         if (isGroupBooking) {
@@ -1191,7 +1234,7 @@ serve(async (req) => {
             n => n !== `${recipient.first_name} ${recipient.last_name}`
           );
           if (coInterviewerNames.length > 0) {
-            interviewDetails.push(`<strong>Co-interviewers:</strong> ${formatNamesList(coInterviewerNames)}`);
+            interviewDetails.push(`<strong>${isMeeting ? 'Co-hosts' : 'Co-interviewers'}:</strong> ${formatNamesList(coInterviewerNames)}`);
           }
         }
 
@@ -1202,14 +1245,14 @@ serve(async (req) => {
         }
 
         const interviewerContent = `
-          <p>A candidate has scheduled an interview with you!</p>
+          <p>${isMeeting ? `${candidate_name} booked a meeting with you: <strong>${interviewTitle}</strong>.` : 'A candidate has scheduled an interview with you!'}</p>
           ${candidateNotificationNote}
           <div class="divider"></div>
-          <p><strong>Candidate Information:</strong></p>
+          <p><strong>${isMeeting ? 'Booked by' : 'Candidate Information'}:</strong></p>
           ${formatEmailList(candidateDetails)}
-          <p style="margin-top: 24px;"><strong>Interview Details:</strong></p>
+          <p style="margin-top: 24px;"><strong>${Kind} Details:</strong></p>
           ${formatEmailList(interviewDetails)}
-          ${notes ? `<p style="margin-top: 24px;"><strong>Candidate Notes:</strong><br/>${notes}</p>` : ''}
+          ${notes ? `<p style="margin-top: 24px;"><strong>${isMeeting ? 'Notes' : 'Candidate Notes'}:</strong><br/>${notes}</p>` : ''}
           ${candidateProfileUrl ? `
             <div style="margin-top: 24px; padding: 16px; background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
               <p style="margin: 0; color: #1e40af;"><strong>📝 Submit Scorecard:</strong></p>
@@ -1220,13 +1263,13 @@ serve(async (req) => {
               </p>
             </div>
           ` : ''}
-          <p style="margin-top: 24px;">The calendar invite is attached. ${googleEventId ? 'This interview has also been added to your Google Calendar.' : ''}</p>
+          <p style="margin-top: 24px;">The calendar invite is attached. ${googleEventId ? `This ${kind} has also been added to your Google Calendar.` : ''}</p>
         `;
 
         const interviewerEmailBody = createEmailTemplate({
           recipientName: recipient.first_name,
-          preheaderText: `New interview scheduled with ${candidate_name}`,
-          title: `New Interview: ${stageName} with ${candidate_name}${jobTitle}`,
+          preheaderText: isMeeting ? `${candidate_name} booked ${interviewTitle}` : `New interview scheduled with ${candidate_name}`,
+          title: isMeeting ? `New Meeting: ${interviewTitle}` : `New Interview: ${headlineWithName}`,
           content: interviewerContent,
           ctaText: candidateProfileUrl ? 'View Candidate Profile' : 'View in Dashboard',
           ctaUrl: candidateProfileUrl || `${frontendUrl}/settings`,
@@ -1236,10 +1279,10 @@ serve(async (req) => {
           body: {
             from_email: 'noreply@app.gogio.io',
             to: [recipient.email],
-            subject: `New Interview Scheduled: ${stageName} with ${candidate_name}${jobTitle}`,
+            subject: isMeeting ? `New Meeting Booked: ${interviewTitle}` : `New Interview Scheduled: ${headlineWithName}`,
             body_html: interviewerEmailBody,
             attachments: [{
-              filename: 'interview.ics',
+              filename: `${kind}.ics`,
               content: internalIcsBase64,
               content_type: 'text/calendar',
             }],
@@ -1269,9 +1312,9 @@ serve(async (req) => {
 
         const guestMeetingDetails = [
           `<strong>Date & Time:</strong> ${formattedDateGuest}`,
-          `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
-          `<strong>Candidate:</strong> ${candidate_name}`,
-          `<strong>Interviewer:</strong> ${profile.first_name} ${profile.last_name}`,
+          `<strong>Duration:</strong> ${durationMinutes} minutes`,
+          `<strong>${isMeeting ? 'Booked by' : 'Candidate'}:</strong> ${candidate_name}`,
+          `<strong>${isMeeting ? 'Host' : 'Interviewer'}:</strong> ${hostNames.join(' & ')}`,
         ];
 
         if (googleMeetLink) {
@@ -1283,9 +1326,9 @@ serve(async (req) => {
         }
 
         const guestEmailContent = `
-          <p>You've been invited to an interview.</p>
+          <p>You've been invited to ${isMeeting ? 'a meeting' : 'an interview'}${isMeeting ? `: <strong>${interviewTitle}</strong>` : ''}.</p>
           <div class="divider"></div>
-          <p><strong>Interview Details:</strong></p>
+          <p><strong>${Kind} Details:</strong></p>
           ${formatEmailList(guestMeetingDetails)}
           ${notes ? `<p style="margin-top: 16px;"><strong>Notes:</strong><br/>${notes}</p>` : ''}
           <p style="margin-top: 24px;">A calendar invite is attached to this email.</p>
@@ -1295,18 +1338,18 @@ serve(async (req) => {
           try {
             const guestEmailBody = createEmailTemplate({
               recipientName: 'there',
-              preheaderText: `Interview invite for ${formattedDateGuest}`,
-              title: `Interview Invite: ${stageName}${jobTitle}`,
+              preheaderText: `${Kind} invite for ${formattedDateGuest}`,
+              title: `${Kind} Invite: ${headline}`,
               content: guestEmailContent,
             });
 
             await supabase.functions.invoke('send-user-email', {
               body: {
                 to: [guestEmail],
-                subject: `Interview Invite: ${stageName} with ${candidate_name}${jobTitle}`,
+                subject: `${Kind} Invite: ${headlineWithName}`,
                 body_html: guestEmailBody,
                 attachments: [{
-                  filename: 'interview.ics',
+                  filename: `${kind}.ics`,
                   content: internalIcsBase64,
                   content_type: 'text/calendar',
                 }],
@@ -1346,7 +1389,11 @@ serve(async (req) => {
       const fmt = (iso: string | null) =>
         iso ? new Date(iso).toLocaleString() : 'the previous time';
 
-      const activityTitle = isReschedule
+      const activityTitle = isMeeting
+        ? isReschedule
+          ? `Meeting rescheduled by ${candidate_name}: ${interviewTitle}`
+          : `Meeting booked by ${candidate_name}: ${interviewTitle}`
+        : isReschedule
         ? booked_by_user_id
           ? `Interview rescheduled for ${candidate_name}`
           : `Interview rescheduled by ${candidate_name}`
@@ -1354,7 +1401,11 @@ serve(async (req) => {
           ? `Interview scheduled for ${candidate_name}`
           : `Interview scheduled with ${candidate_name}`;
 
-      const activityDescription = isReschedule
+      const activityDescription = isMeeting
+        ? isReschedule
+          ? `${interviewTitle} moved from ${fmt(rescheduledFromStart)} to ${fmt(scheduled_start)}`
+          : `${candidate_name} booked ${interviewTitle} for ${new Date(scheduled_start).toLocaleString()}`
+        : isReschedule
         ? `Interview moved from ${fmt(rescheduledFromStart)} to ${fmt(scheduled_start)}`
         : `Candidate ${candidate_name} booked an interview for ${new Date(scheduled_start).toLocaleString()}`;
 
@@ -1380,6 +1431,7 @@ serve(async (req) => {
       google_event_created: !!googleEventId,
       google_event_id: googleEventId,
       google_meet_link: googleMeetLink,
+      event_title: interviewTitle,
       warning: googleEventId ? null : 'Booking created but calendar event could not be created',
       confirmation_message: 'Booking confirmed! Check your email for details.',
     }), {
