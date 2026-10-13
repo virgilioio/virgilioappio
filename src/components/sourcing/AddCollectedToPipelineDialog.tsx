@@ -141,7 +141,7 @@ export function AddCollectedToPipelineDialog({
                 Adding...
               </>
             ) : (
-              `Yes, add ${candidateCount} to pipeline`
+              `Add ${candidateCount} to pipeline`
             )}
           </Button>
         </DialogFooter>
