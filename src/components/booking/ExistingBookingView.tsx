@@ -8,22 +8,12 @@ import {
   zoneAbbr,
   zoneCityLabel,
 } from '@/lib/timezoneFormat';
-import { Calendar, Clock, MapPin, Download, RefreshCw, X, AlertCircle } from 'lucide-react';
+import { Calendar, CalendarX, Clock, MapPin, Download, RefreshCw, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive';
 import { toast } from '@/hooks/use-toast';
 
 export interface ExistingBookingData {
@@ -71,6 +61,7 @@ export function ExistingBookingView({
 }: ExistingBookingViewProps) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const startTime = new Date(booking.scheduled_start);
   const displayTz = isValidTimeZone(booking.candidate_timezone)
@@ -100,15 +91,13 @@ export function ExistingBookingView({
         }
       );
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to cancel');
-      }
+      if (!response.ok) throw new Error('cancel_failed');
 
-      toast({ title: 'Interview Cancelled', description: 'Your interview has been cancelled successfully.' });
+      toast({ title: 'Interview cancelled', description: `${interviewerName} has been told. You can book a new time with this link.` });
       onCancelled();
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to cancel interview.' });
+    } catch {
+      // Never the raw server error (Block B §16).
+      toast({ variant: 'destructive', title: 'We couldn\u2019t cancel your interview', description: 'It\u2019s still booked. Try again.' });
     } finally {
       setIsCancelling(false);
     }
@@ -247,46 +236,46 @@ END:VCALENDAR`;
               <RefreshCw className="w-4 h-4 mr-2" />
               Reschedule
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10">
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel Interview
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-destructive" />
-                    Cancel Interview?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will cancel your interview on{' '}
-                    <strong>
-                      {formatInTimeZone(startTime, displayTz, { month: 'long', day: 'numeric' })} at{' '}
-                      {formatZoneTime(startTime, displayTz)}
-                    </strong>.
-                    The interviewer will be notified. You can rebook using the same link afterwards.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
+            <Button
+              variant="ghost"
+              className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+              disabled={isCancelling}
+              onClick={() => setConfirmOpen(true)}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel interview
+            </Button>
+            {/* O7 (Block B §16): the shared dialog; the optional reason stays. */}
+            <ConfirmDestructiveDialog
+              open={confirmOpen}
+              onOpenChange={setConfirmOpen}
+              icon={CalendarX}
+              title={`Cancel your interview with ${interviewerName}?`}
+              description={
+                <>
+                  Your interview on{' '}
+                  <strong className="font-semibold text-text-primary">
+                    {formatInTimeZone(startTime, displayTz, { weekday: 'long', month: 'long', day: 'numeric' })} at{' '}
+                    {formatZoneTime(startTime, displayTz)}
+                  </strong>{' '}
+                  is cancelled and {interviewerName} is emailed. You can book a new time with this link afterwards.
+                </>
+              }
+              confirmLabel="Cancel interview"
+              cancelLabel="Keep interview"
+              onConfirm={handleCancel}
+            >
+              <label className="flex flex-col gap-1.5 text-[12px] font-medium text-text-secondary">
+                Reason (optional)
                 <Textarea
-                  placeholder="Reason for cancellation (optional)"
+                  aria-label="Reason for cancelling (optional)"
+                  placeholder="Let them know why, if you like"
                   value={cancellationReason}
                   onChange={(e) => setCancellationReason(e.target.value)}
-                  className="mt-2"
+                  maxLength={500}
                 />
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Interview</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancel}
-                    disabled={isCancelling}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              </label>
+            </ConfirmDestructiveDialog>
           </div>
         </CardContent>
       </Card>
