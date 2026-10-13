@@ -16,6 +16,8 @@ import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
 import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
+import { toast } from '@/hooks/use-toast'
+import { confirmRemoveMember } from './confirmRemoveMember'
 
 interface HiringTeamManageDialogProps {
   open: boolean
@@ -57,6 +59,16 @@ export function HiringTeamManageDialog({
     { action: () => Promise<void>; memberName: string } | null
   >(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  // J13 (Block B §16, Pattern 1): Unassign asks first, with the shared copy.
+  const handleUnassign = async (assignmentId: string, name: string) => {
+    if (!(await confirmRemoveMember(name, jobTitle))) return
+    try {
+      await removeUserFromJob(assignmentId, { quiet: true })
+      toast({ title: `${name} removed from the hiring team` })
+    } catch {
+      toast({ title: `Couldn’t remove ${name}. Nothing changed; try again.`, variant: 'destructive' })
+    }
+  }
   const searchRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -593,7 +605,7 @@ export function HiringTeamManageDialog({
                             variant="ghost"
                             size="sm"
                             icon={UserMinus}
-                            onClick={() => removeUserFromJob(row.assignment.id)}
+                            onClick={() => void handleUnassign(row.assignment.id, row.name)}
                             disabled={assignmentsLoading}
                             className="text-[#5A6072] hover:text-[#B91C1C]"
                           >

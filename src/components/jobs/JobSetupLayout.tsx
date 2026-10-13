@@ -39,6 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useQueryClient } from '@tanstack/react-query'
 import { archiveJobWithUndo, closeJobWithUndo } from './jobStatusActions'
+import { confirmRemoveMember } from './confirmRemoveMember'
 import { useToast } from '@/hooks/use-toast'
 import { SectionCard, ToggleRow } from './wizard/_parts'
 import { HiringPlanTab } from './HiringPlanTab'
@@ -156,6 +157,18 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
       last,
     }
   })
+
+  // J12 (Block B §16, Pattern 1): asks before taking someone off the team.
+  const handleRemoveMember = async (m: (typeof teamMembers)[number]) => {
+    const ok = await confirmRemoveMember(m.name, jobTitle)
+    if (!ok) return
+    try {
+      await removeUserFromJob(m.assignmentId, { quiet: true })
+      toast({ title: `${m.name} removed from the hiring team` })
+    } catch {
+      toast({ title: `Couldn’t remove ${m.name}. Nothing changed; try again.`, variant: 'destructive' })
+    }
+  }
 
   // Local-only state for settings without dedicated columns yet.
   // TODO: persist into jobs.settings JSONB once column lands.
@@ -741,7 +754,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                             member={m}
                             readOnly={isReadOnly}
                             onRoleChange={(v) => handleRoleChange(m.assignmentId, v)}
-                            onRemove={() => removeUserFromJob(m.assignmentId)}
+                            onRemove={() => void handleRemoveMember(m)}
                             onPromotePrimary={() => updatePrimary('recruiter', m.userId)}
                             onPromoteHM={() => updatePrimary('hiring_manager', m.userId)}
                           />

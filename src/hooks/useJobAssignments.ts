@@ -111,7 +111,8 @@ export function useJobAssignments(jobId?: string) {
     }
   }
 
-  const removeUserFromJob = async (assignmentId: string) => {
+  /** `quiet`: the caller shows success and errors itself (the remove dialogs do). */
+  const removeUserFromJob = async (assignmentId: string, opts: { quiet?: boolean } = {}) => {
     setIsLoading(true)
     setError(null)
 
@@ -128,7 +129,7 @@ export function useJobAssignments(jobId?: string) {
       }
 
       console.log('Removed job assignment:', assignmentId)
-      toast({
+      if (!opts.quiet) toast({
         title: 'Success',
         description: 'User removed from job successfully'
       })
@@ -138,7 +139,7 @@ export function useJobAssignments(jobId?: string) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to remove user from job'
       console.error('Job assignment deletion error:', err)
       setError(errorMessage)
-      toast({
+      if (!opts.quiet) toast({
         title: 'Error',
         description: errorMessage,
         variant: 'destructive'
