@@ -523,6 +523,14 @@ export default function PublicJobPosting() {
       }
     }
     
+    // Phone and LinkedIn are required on applications (Allan, 2026-10-13).
+    if (!coreFieldValues.phone.trim()) missingFields.push('Phone')
+    if (!coreFieldValues.linkedin_url.trim()) {
+      missingFields.push('LinkedIn Profile')
+    } else if (!/linkedin\.com\//i.test(coreFieldValues.linkedin_url)) {
+      missingFields.push('LinkedIn Profile (a linkedin.com link)')
+    }
+
     // Validate resume upload (required)
     if (uploadedFiles.length === 0) {
       missingFields.push('Resume/CV')
@@ -533,7 +541,8 @@ export default function PublicJobPosting() {
     customFields.forEach(field => {
       if (field.is_required) {
         const fieldValue = customFieldResponses[field.id]
-        if (!fieldValue || (typeof fieldValue === 'string' && !fieldValue.trim())) {
+        // Multiple-choice answers are a JSON array; "[]" means nothing picked.
+        if (!fieldValue || (typeof fieldValue === 'string' && (!fieldValue.trim() || fieldValue.trim() === '[]'))) {
           missingCustomFields.push(field.field_label)
         }
       }
@@ -1098,7 +1107,9 @@ export default function PublicJobPosting() {
 
                         {/* Phone Field */}
                         <div>
-                          <label className="text-[13px] font-semibold text-text-primary">Phone</label>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            Phone<span className="text-destructive ml-1">*</span>
+                          </label>
                           <Input
                             type="tel"
                             placeholder="Your phone number"
@@ -1110,7 +1121,9 @@ export default function PublicJobPosting() {
 
                         {/* LinkedIn Field */}
                         <div>
-                          <label className="text-[13px] font-semibold text-text-primary">LinkedIn Profile</label>
+                          <label className="text-[13px] font-semibold text-text-primary">
+                            LinkedIn Profile<span className="text-destructive ml-1">*</span>
+                          </label>
                           <Input
                             type="url"
                             placeholder="https://linkedin.com/in/yourprofile"

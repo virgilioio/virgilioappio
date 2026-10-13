@@ -45,7 +45,7 @@ export const CORE_FIELDS: CoreField[] = [
     field_name: 'phone',
     field_label: 'Phone Number',
     field_type: 'text',
-    is_required: false,
+    is_required: true,
     placeholder_text: '+1 (555) 123-4567',
     display_order: 3
   },
@@ -53,7 +53,7 @@ export const CORE_FIELDS: CoreField[] = [
     field_name: 'linkedin_url',
     field_label: 'LinkedIn Profile',
     field_type: 'url',
-    is_required: false,
+    is_required: true,
     placeholder_text: 'https://linkedin.com/in/yourprofile',
     display_order: 4,
     is_smart: true,
