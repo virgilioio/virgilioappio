@@ -20,7 +20,7 @@ import {
   type SuggestedFilter,
 } from './suggestedFilters'
 import type { SuggestedSortKey } from './suggestedGrid'
-import { readDismissedSuggestions as readDismissed, writeDismissedSuggestions } from './suggestedDismissed'
+import { readDismissedSuggestions as readDismissed, writeDismissedSuggestions, SUGGESTED_DISMISSED_EVENT } from './suggestedDismissed'
 import { supabase } from '@/lib/supabaseClient'
 import { toast as sonner } from 'sonner'
 
@@ -65,6 +65,15 @@ export function JobSuggestedTab({
   React.useEffect(() => {
     setDismissed(readDismissed(jobId))
     setSelected(new Set())
+  }, [jobId])
+
+  // Undo of "Not a fit" on the suggested profile (C27) restores it here too.
+  React.useEffect(() => {
+    const onRestore = (e: Event) => {
+      if ((e as CustomEvent<{ jobId?: string }>).detail?.jobId === jobId) setDismissed(readDismissed(jobId))
+    }
+    window.addEventListener(SUGGESTED_DISMISSED_EVENT, onRestore)
+    return () => window.removeEventListener(SUGGESTED_DISMISSED_EVENT, onRestore)
   }, [jobId])
 
   const persistDismissed = (next: string[]) => {

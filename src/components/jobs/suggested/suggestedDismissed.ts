@@ -26,9 +26,17 @@ export function dismissSuggestion(jobId: string, candidateId: string) {
   writeDismissedSuggestions(jobId, [...readDismissedSuggestions(jobId), candidateId])
 }
 
+/** Fired after a restore so a mounted Suggested list re-reads (Undo from the profile, C27). */
+export const SUGGESTED_DISMISSED_EVENT = 'gio:suggested-dismissed'
+
 export function restoreSuggestion(jobId: string, candidateId: string) {
   writeDismissedSuggestions(
     jobId,
     readDismissedSuggestions(jobId).filter((id) => id !== candidateId),
   )
+  try {
+    window.dispatchEvent(new CustomEvent(SUGGESTED_DISMISSED_EVENT, { detail: { jobId } }))
+  } catch {
+    /* no window (tests) */
+  }
 }

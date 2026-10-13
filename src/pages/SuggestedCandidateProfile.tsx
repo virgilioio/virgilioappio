@@ -12,7 +12,6 @@ import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -41,7 +40,8 @@ import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { suggestedReasons, suggestedScore, suggestedCandidateId } from '@/components/jobs/suggested/suggestedFilters'
-import { dismissSuggestion } from '@/components/jobs/suggested/suggestedDismissed'
+import { dismissSuggestion, restoreSuggestion } from '@/components/jobs/suggested/suggestedDismissed'
+import { toast as sonner } from 'sonner'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
@@ -219,15 +219,37 @@ function SuggestedCandidateProfileInner() {
     if (id) navigate(`/jobs/${jobId}/suggested/${id}?tab=${activeTab}`)
   }
 
+  // C27 (Block B §16, Undo; mirrors J27): Not a fit hides the suggestion at once
+  // and offers Undo. The cached suggestion (and any dossier written for it) is
+  // deleted only once the toast goes without Undo — a delayed commit — so Undo
+  // brings it back exactly as it was.
   const handleDismiss = () => {
-    dismissSuggestion(jobId, candidateId)
-    // Not a fit for this job: the suggestion and any dossier written for it go together.
-    void supabase
-      .from('job_suggested_candidates_cache')
-      .delete()
-      .eq('job_id', jobId)
-      .eq('candidate_id', candidateId)
-    toast({ title: 'Suggestion dismissed', description: `${firstName} will not be suggested for this job again.` })
+    const job = jobId
+    const cand = candidateId
+    dismissSuggestion(job, cand)
+    let settled = false
+    const commit = () => {
+      if (settled) return
+      settled = true
+      void supabase
+        .from('job_suggested_candidates_cache')
+        .delete()
+        .eq('job_id', job)
+        .eq('candidate_id', cand)
+    }
+    sonner(`${name} dismissed`, {
+      description: 'They won\u2019t be suggested for this job again.',
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          if (settled) return
+          settled = true
+          restoreSuggestion(job, cand)
+        },
+      },
+      onAutoClose: commit,
+      onDismiss: commit,
+    })
     goBack()
   }
 
