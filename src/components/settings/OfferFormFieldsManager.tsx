@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { Plus, List, Link2, Trash2 } from 'lucide-react'
 import { FormField } from '@/components/ui/form-field'
 import { useOfferFormFields, type OfferFormField } from '@/hooks/useOfferFormFields'
@@ -56,7 +56,6 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
   const [newPhoneConfig, setNewPhoneConfig] = useState<PhoneFieldConfig>({ defaultCountryCode: '+1' })
 
   // Delete confirmation
-  const [deleteTarget, setDeleteTarget] = useState<OfferFormField | null>(null)
 
   // Drag
   const [orderedIds, setOrderedIds] = useState<string[]>([])
@@ -135,14 +134,20 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
     }
   }
 
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return
+  // S16 (Block B §16): offers keep the answers already given (offer_letters.field_values).
+  const handleDelete = async (field: OfferFormField) => {
+    const label = field.field_label || field.field_name
+    const ok = await confirmDestructive({
+      title: `Delete the \u201c${label}\u201d field?`,
+      description: 'It\u2019s removed from this offer form, along with its choices, so new offers won\u2019t ask for it. Offers already made keep the answers they have. This can\u2019t be undone.',
+      confirmLabel: 'Delete field',
+    })
+    if (!ok) return
     try {
-      await deleteField(deleteTarget.id)
+      await deleteField(field.id)
     } catch {
       // handled by hook
     }
-    setDeleteTarget(null)
   }
 
   const handleDragEnd = async (event: any) => {
@@ -201,7 +206,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
                           onUpdate={handleUpdateField}
                           onDelete={(id) => {
                             const f = fields.find(ff => ff.id === id)
-                            if (f) setDeleteTarget(f)
+                            if (f) void handleDelete(f)
                           }}
                           dragHandlers={{ attributes, listeners }}
                         />
@@ -391,23 +396,6 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
         </CardContent>
       </Card>
 
-      {/* Delete confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Field</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteTarget?.field_label}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
