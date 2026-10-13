@@ -126,7 +126,8 @@ export function useOfferForms(context: OfferFormsContext = 'organization') {
     }
   }
 
-  const deleteForm = async (id: string) => {
+  /** `quiet`: the caller shows the error itself (the delete dialog does). */
+  const deleteForm = async (id: string, opts: { quiet?: boolean } = {}) => {
     try {
       const { error } = await supabase
         .from('offer_forms')
@@ -139,7 +140,7 @@ export function useOfferForms(context: OfferFormsContext = 'organization') {
       await fetchForms()
     } catch (error) {
       console.error('Error deleting offer form:', error)
-      toast({ title: 'Error', description: 'Failed to delete offer form', variant: 'destructive' })
+      if (!opts.quiet) toast({ title: 'Error', description: 'Failed to delete offer form', variant: 'destructive' })
       throw error
     }
   }
