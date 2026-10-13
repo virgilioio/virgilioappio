@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
-import { Clock, Loader2, Send, ShieldOff } from 'lucide-react'
+import { Clock, Loader2, Send, ShieldOff, UserX } from 'lucide-react'
 
 import { PublicPageShell } from '@/components/public/PublicPageShell'
 import { QuestionInstrument } from '@/components/public/QuestionInstrument'
@@ -18,7 +18,8 @@ import {
   submitReferee,
   type RefereeResolve,
 } from '@/lib/references/publicApi'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { toast } from 'sonner'
 
 type Answers = Record<string, unknown>
 
@@ -108,14 +109,26 @@ export default function PublicReferenceAnswer() {
     }
   }
 
+  // O4 (Block B §16, Pattern 1): say what happens, for the referee's phone too.
+  const candidateName = data?.candidate_name?.trim() || ''
+  const recruiterName = data?.recruiter_name?.trim() || ''
   const handleDecline = useCallback(async () => {
-    if (!(await confirmDialog({ title: 'Decline this reference request?', description: "Nothing you've typed will be kept.", confirmLabel: 'Decline', destructive: true }))) return
+    const ok = await confirmDestructive({
+      icon: UserX,
+      title: candidateName ? `Decline to give a reference for ${candidateName}?` : 'Decline this reference request?',
+      description: `${recruiterName ? `We\u2019ll let ${recruiterName} know` : 'We\u2019ll let the hiring team know'}, and nothing you\u2019ve typed is kept. ${candidateName || 'The candidate'} isn\u2019t told who declined. This link stops working afterwards.`,
+      confirmLabel: 'Decline reference',
+    })
+    if (!ok) return
     try {
       await declineReference(token)
-    } finally {
       setTerminal('declined')
+    } catch (e) {
+      // Already declined (another tab, the email link): show the same end state.
+      if ((e as { code?: string })?.code === 'declined') setTerminal('declined')
+      else toast.error('We couldn\u2019t record that you declined. Nothing was sent; try again.')
     }
-  }, [token])
+  }, [token, candidateName, recruiterName])
 
   // The email's decline link lands here with ?decline=1 — open the confirm
   // straight away so declining really is one click.
