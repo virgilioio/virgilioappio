@@ -54,6 +54,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { copyToClipboard } from '@/utils/clipboard'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
 import { buildPostingPath, buildPostingUrl } from '@/lib/postingUrl'
 
@@ -230,7 +231,6 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly, organizationId, comp
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [languageFilter, setLanguageFilter] = useState<string[]>([])
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const enriched = useMemo(
     () =>
@@ -297,9 +297,21 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly, organizationId, comp
     refetch()
   }
 
-  const handleDelete = async (id: string) => {
-    await deletePosting(id)
-    setConfirmDeleteId(null)
+  // J24 (Block B §16, Pattern 1): deleting a posting takes down its public
+  // link and its application form (job_posting_application_fields cascade).
+  // Candidates who applied through it stay in the pipeline with their answers.
+  const handleDelete = async (p: JobPosting, applications: number) => {
+    const name = p.title?.trim() || 'this posting'
+    const applied = applications > 0
+      ? `${applications} ${applications === 1 ? 'person' : 'people'} applied through it; they stay in the pipeline with their answers.`
+      : 'No one has applied through it yet.'
+    const ok = await confirmDestructive({
+      title: `Delete ${name}?`,
+      description: `${applied} Its public link stops working and its application form is deleted. To take it offline but keep it, pause it instead. This can’t be undone.`,
+      confirmLabel: 'Delete posting',
+    })
+    if (!ok) return
+    await deletePosting(p.id)
     refetch()
   }
 
@@ -551,7 +563,7 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly, organizationId, comp
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => setConfirmDeleteId(p.id)}
+                                  onClick={() => void handleDelete(p, m.applications)}
                                   className="text-destructive focus:text-destructive"
                                 >
                                   <Trash className="h-3.5 w-3.5 mr-2" /> Delete
@@ -603,33 +615,6 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly, organizationId, comp
         />
       )}
 
-      {/* Delete confirm — simple inline */}
-      {confirmDeleteId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setConfirmDeleteId(null)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-xl p-6 w-[420px] max-w-[90vw]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-[15px] font-poppins font-semibold text-text-primary">
-              Delete posting?
-            </div>
-            <div className="text-[13px] text-text-tertiary mt-1">
-              This permanently removes the posting and breaks any public links.
-            </div>
-            <div className="flex justify-end gap-2 mt-5">
-              <Button variant="secondary" size="sm" onClick={() => setConfirmDeleteId(null)}>
-                Cancel
-              </Button>
-              <Button variant="danger" size="sm" onClick={() => handleDelete(confirmDeleteId)}>
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
