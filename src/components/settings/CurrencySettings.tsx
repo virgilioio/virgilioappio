@@ -12,7 +12,8 @@ import { useBaseCurrency } from '@/hooks/useBaseCurrency'
 import { useCurrencyRates, useCurrencyOverrides, useRefreshFxRates } from '@/hooks/useCurrencyRates'
 import { CURRENCIES } from '@/constants/currencies'
 import { formatDistanceToNow } from 'date-fns'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
 
 export function CurrencySettings() {
   const { baseCurrency, update: updateBase, isLoading } = useBaseCurrency()
@@ -146,17 +147,24 @@ export function CurrencySettings() {
                           onClick={() => openCreateOverride(quote, effectiveRate)}
                         />
                         {override && (
-                          <Button
-                            size="xs"
-                            variant="ghost"
-                            icon={Trash2}
-                            iconOnly
-                            aria-label={`Remove ${quote} override`}
-                            onClick={async () => {
-                              if (await confirmDialog({ title: `Remove the manual rate for ${quote}?`, description: 'The automatic rate will apply again.', confirmLabel: 'Remove override', destructive: true }))
-                                overrides.remove.mutate(override.id)
-                            }}
-                          />
+                          <IconTip label={`Remove ${quote} override`}>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              icon={Trash2}
+                              iconOnly
+                              aria-label={`Remove ${quote} override`}
+                              onClick={async () => {
+                                // S20 (Block B §16): the copy was already right; now the shared dialog.
+                                if (await confirmDestructive({
+                                  title: `Remove the manual rate for ${quote}?`,
+                                  description: `The automatic rate for ${quote} applies again, wherever amounts are converted to your base currency.`,
+                                  confirmLabel: 'Remove override',
+                                }))
+                                  overrides.remove.mutate(override.id)
+                              }}
+                            />
+                          </IconTip>
                         )}
                       </div>
                     </div>
