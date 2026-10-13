@@ -281,9 +281,11 @@ export function CalendarActionDialog({
 
   useEffect(() => {
     if (!open) return
-    const btn = primaryRef.current?.querySelector('button:last-of-type') as HTMLButtonElement | null
+    // Cancelling emails people and can't be taken back, so focus starts on
+    // "Keep …" there; moving and rescheduling focus the primary action.
+    const btn = primaryRef.current?.querySelector(isCancel ? 'button:first-of-type' : 'button:last-of-type') as HTMLButtonElement | null
     btn?.focus()
-  }, [open])
+  }, [open, isCancel])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
