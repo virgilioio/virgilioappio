@@ -7214,6 +7214,8 @@ export type Database = {
           created_at: string | null
           draft_scorecard_id: string | null
           duration_minutes: number | null
+          event_title: string | null
+          event_type_id: string | null
           google_calendar_cancelled: boolean | null
           google_event_id: string | null
           google_meet_link: string | null
@@ -7265,6 +7267,8 @@ export type Database = {
           created_at?: string | null
           draft_scorecard_id?: string | null
           duration_minutes?: number | null
+          event_title?: string | null
+          event_type_id?: string | null
           google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
           google_meet_link?: string | null
@@ -7316,6 +7320,8 @@ export type Database = {
           created_at?: string | null
           draft_scorecard_id?: string | null
           duration_minutes?: number | null
+          event_title?: string | null
+          event_type_id?: string | null
           google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
           google_meet_link?: string | null
