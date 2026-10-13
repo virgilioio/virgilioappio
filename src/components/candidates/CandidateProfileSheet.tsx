@@ -502,22 +502,35 @@ const scorecardStageGroups: ScorecardStageGroup[] = useMemo(() => {
 
 
 // Dismiss AI draft scorecard
+// C13 (Block B §16, Pattern 1): dismissing deletes the AI draft and its answers.
 const handleDismissAiDraft = async (scorecardId: string) => {
-  // Delete question responses first (FK constraint)
-  await (supabase as any)
-    .from('scorecard_question_responses')
-    .delete()
-    .eq('scorecard_id', scorecardId);
-  // Delete the AI draft scorecard
-  const { error } = await (supabase as any)
-    .from('job_stage_scorecards')
-    .delete()
-    .eq('id', scorecardId)
-    .eq('is_ai_draft', true);
-  if (error) throw error;
+  const name = (candidate?.candidate_name || '').trim()
+  const ok = await confirmDestructive({
+    title: name ? `Dismiss the AI draft scorecard for ${name}?` : 'Dismiss this AI draft scorecard?',
+    description: 'The draft and the answers it suggested are deleted. Submitted scorecards and the transcript it was drafted from stay. This can\u2019t be undone.',
+    confirmLabel: 'Dismiss draft',
+  })
+  if (!ok) return
+  try {
+    // Delete question responses first (FK constraint)
+    await (supabase as any)
+      .from('scorecard_question_responses')
+      .delete()
+      .eq('scorecard_id', scorecardId);
+    // Delete the AI draft scorecard
+    const { error } = await (supabase as any)
+      .from('job_stage_scorecards')
+      .delete()
+      .eq('id', scorecardId)
+      .eq('is_ai_draft', true);
+    if (error) throw error;
+  } catch {
+    toast({ variant: 'destructive', title: 'Couldn\u2019t dismiss the draft', description: 'It\u2019s still there; try again.' })
+    return
+  }
   await refetchScorecards();
   bumpScorecardsRefresh();
-  toast({ title: 'AI notes dismissed', description: 'The AI-generated notes have been removed.' });
+  toast({ title: 'AI draft dismissed' });
 };
 
 // Fetch scorecard template visibility for the active scorecard stage
