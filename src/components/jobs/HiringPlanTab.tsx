@@ -240,7 +240,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
     const targetName = target ? target.customStageName?.trim() || target.stage.stage_name : 'the first stage'
     const wasFirst = idx === 0
     const moves = candidates > 0
-      ? `${plural(candidates, 'candidate')} in it move${candidates === 1 ? 's' : ''} ${wasFirst ? `to ${targetName}, which becomes the first stage` : `back to ${targetName}`} and stay${candidates === 1 ? 's' : ''} in the pipeline. `
+      ? `${plural(candidates, 'candidate')} in it move${candidates === 1 ? 's' : ''} ${wasFirst ? `to ${targetName} (the new first stage)` : `back to ${targetName}`} and stay${candidates === 1 ? 's' : ''} in the pipeline. `
       : ''
     const goes = scorecards > 0
       ? `Its interviewers, scorecard questions and automations are deleted with it, and so ${scorecards === 1 ? 'is 1 submitted scorecard' : `are ${scorecards} submitted scorecards`}.`
