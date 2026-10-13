@@ -278,6 +278,14 @@
     --dur-switch: 200ms;
     --dur-countup: 700ms;
     --dur-shake: 300ms;
+    /* Delete dialogs (Block B §16, 2026-10-13) */
+    --dur-nudge: 280ms; /* type-to-confirm wrong-name nudge (4/4/2px) */
+    --dur-exit: 180ms; /* bulk row slide-out */
+    --dur-collapse: var(--dur-expand); /* row closes the gap after a delete */
+    --stagger-exit: var(--stagger); /* between bulk rows */
+    --color-danger: #c2372b; /* destructive button: white text 5.4:1 */
+    --color-danger-hover: #a82e23;
+    --color-danger-tint: #fbeae8; /* the dialog's icon badge */
     --dur-progress: 300ms;
     --dur-toast: 400ms;
     --stagger: 40ms;

@@ -63,7 +63,7 @@ const buttonVariants = cva(
         danger:
           "border border-virgilio-error/40 bg-background text-virgilio-error shadow-[var(--shadow-xs)] hover:bg-virgilio-error/[0.06] hover:border-virgilio-error/60 active:bg-virgilio-error/[0.10] active:shadow-inner",
         dangerSolid:
-          "bg-destructive !text-destructive-foreground [&_svg]:!text-destructive-foreground shadow-[var(--shadow-button)] hover:bg-destructive/90 active:bg-destructive/85 active:shadow-inner",
+          "bg-[var(--color-danger)] !text-white [&_svg]:!text-white shadow-[var(--shadow-button)] hover:bg-[var(--color-danger-hover)] active:bg-[var(--color-danger-hover)] active:shadow-inner",
         success:
           "bg-success !text-success-foreground [&_svg]:!text-success-foreground shadow-[var(--shadow-button)] hover:bg-success/90 active:bg-success/85 active:shadow-inner",
         link:
