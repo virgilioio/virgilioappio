@@ -223,14 +223,18 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
 
     const idx = planRows.findIndex((r) => r.instanceId === instanceId)
     const rest = planRows.filter((r) => r.instanceId !== instanceId)
-    // Candidates never leave the pipeline (Allan, 2026-10-13): they move to the
-    // stage before, or to the stage after when this one is first. A plan's only
-    // stage can't go while candidates sit in it.
-    if (!rest.length && candidates > 0) {
+    // Candidates and scorecards never leave the pipeline (Allan, 2026-10-13):
+    // they move to the stage before, or to the stage after when this one is
+    // first. A plan's only stage can't go while it holds either.
+    if (!rest.length && (candidates > 0 || scorecards > 0)) {
+      const holds = [
+        candidates > 0 ? plural(candidates, 'candidate') : '',
+        scorecards > 0 ? plural(scorecards, 'scorecard') : '',
+      ].filter(Boolean).join(' and ')
       await confirmDestructive({
         variant: 'blocked',
         title: `The ${name} stage can’t be deleted yet`,
-        description: `It’s the only stage in this plan and ${plural(candidates, 'candidate')} ${candidates === 1 ? 'is' : 'are'} in it. Add another stage first, so they have somewhere to go.`,
+        description: `It’s the only stage in this plan and it holds ${holds}. Add another stage first, so they have somewhere to go.`,
         confirmLabel: '',
       })
       return
@@ -242,9 +246,10 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
     const moves = candidates > 0
       ? `${plural(candidates, 'candidate')} in it move${candidates === 1 ? 's' : ''} ${wasFirst ? `to ${targetName} (the new first stage)` : `back to ${targetName}`} and stay${candidates === 1 ? 's' : ''} in the pipeline. `
       : ''
-    const goes = scorecards > 0
-      ? `Its interviewers, scorecard questions and automations are deleted with it, and so ${scorecards === 1 ? 'is 1 submitted scorecard' : `are ${scorecards} submitted scorecards`}.`
-      : 'Its interviewers, scorecard questions and automations are deleted with it.'
+    const cards = scorecards > 0
+      ? `${scorecards === 1 ? 'Its scorecard moves' : `Its ${scorecards} scorecards move`} to ${targetName} with ${scorecards === 1 ? 'its answers' : 'their answers'}, marked as from ${name}. `
+      : ''
+    const goes = `${cards}Its interviewers, unanswered scorecard questions and automations are deleted with it.`
     const unsaved = hasUnsavedChanges ? ' Your other unsaved changes to the plan are saved too.' : ''
 
     const remove = async () => {

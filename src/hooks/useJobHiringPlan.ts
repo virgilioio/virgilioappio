@@ -94,9 +94,11 @@ export function useJobHiringPlan() {
     jobId: string,
     entries: HiringPlanInput[],
     /**
-     * Where candidates in a removed stage go: removed jhsId → index in
-     * `entries`. Without it they go to the nearest kept stage before it, or
-     * after it when it was first. Candidates never leave the pipeline.
+     * Where a removed stage's candidates and scorecards go: removed jhsId →
+     * index in `entries`. Without it they go to the nearest kept stage before
+     * it, or after it when it was first. Nothing leaves the pipeline: the
+     * database moves candidates, scorecards and answered questions together
+     * (carry_stage_history).
      */
     opts: { moveTo?: Record<string, number> } = {},
   ) => {
@@ -212,12 +214,13 @@ export function useJobHiringPlan() {
             targetJhsId = (before ?? after)?.jhsId ?? finalOrderedJhsIds[0] ?? null
           }
 
-          const { error: moveErr } = await supabase
-            .from('job_candidate_associations')
-            .update({ current_stage_id: targetJhsId, pipeline_position: null })
-            .eq('job_id', jobId)
-            .eq('current_stage_id', removed.id)
-          if (moveErr) throw moveErr
+          if (targetJhsId) {
+            const { error: moveErr } = await supabase.rpc('carry_stage_history', {
+              p_from: removed.id,
+              p_to: targetJhsId,
+            })
+            if (moveErr) throw moveErr
+          }
         }
 
         const removedIds = toDelete.map((r) => r.id)
