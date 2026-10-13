@@ -277,7 +277,8 @@ export function useIndependentCandidates() {
     }
   }
 
-  const deleteCandidate = async (id: string) => {
+  /** `quiet`: the caller shows success and errors itself (the delete dialog does). */
+  const deleteCandidate = async (id: string, opts: { quiet?: boolean } = {}) => {
     try {
       // Upcoming interviews are cancelled properly first (emails, calendar
       // events), as the delete dialog promises; the delete itself only removes
@@ -307,20 +308,20 @@ export function useIndependentCandidates() {
         if (edgeFunctionError) throw edgeFunctionError
         if (!data?.success) throw new Error(data?.error || 'Failed to delete candidate')
 
-        toast({ title: 'Success', description: data.message || 'Candidate deleted successfully' })
+        if (!opts.quiet) toast({ title: 'Candidate deleted' })
       } else {
         const { error: deleteError } = await withAuthRetry(async () =>
           await supabase.from('candidates').delete().eq('id', id)
         )
         if (deleteError) throw deleteError
-        toast({ title: 'Success', description: 'Candidate deleted successfully' })
+        if (!opts.quiet) toast({ title: 'Candidate deleted' })
       }
 
       queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Independent candidate deletion error:', err)
-      toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
+      if (!opts.quiet) toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
       throw err
     }
   }
