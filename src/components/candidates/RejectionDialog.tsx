@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  UserRoundX, X, Plus, Mail, Send, Clock, Calendar as CalendarIcon,
-  Check, History, TriangleAlert, Loader2, EyeOff,
+  UserRoundX, Plus, Mail, Send, Clock, Calendar as CalendarIcon,
+  Check, History, TriangleAlert, EyeOff,
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,6 +30,8 @@ interface RejectionDialogProps {
   jobId?: string;
   jobTitle?: string;
   onSuccess?: () => void;
+  /** Extra consequence shown under the description (e.g. offer letters that go). */
+  notice?: React.ReactNode;
 }
 
 const STORAGE_KEY = 'rejection-dialog-prefs';
@@ -70,7 +72,7 @@ function resolvePresetDate(preset: SchedulePreset, custom?: string): Date | unde
 
 export function RejectionDialog({
   open, onOpenChange, associationId, candidateIds = [], candidateName = 'Candidate', candidateEmail = '',
-  candidateId, jobId, jobTitle, onSuccess,
+  candidateId, jobId, jobTitle, onSuccess, notice,
 }: RejectionDialogProps) {
   const isBulk = candidateIds.length > 0;
   const candidateCount = isBulk ? candidateIds.length : 1;
@@ -103,6 +105,9 @@ export function RejectionDialog({
   const rejectCandidate = useRejectCandidate();
   const bulkReject = useBulkRejectCandidates();
   const [bulkAssociationIds, setBulkAssociationIds] = useState<string[]>([]);
+  const [bulkNames, setBulkNames] = useState<string[]>([]);
+  const [upcoming, setUpcoming] = useState(0);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   const firstName = (candidateName || 'Candidate').trim().split(/\s+/)[0];
   const jobLabel = jobTitle || 'this job';
@@ -112,9 +117,10 @@ export function RejectionDialog({
     if (!open || !isBulk || !jobId) return;
     let active = true;
     setBulkAssociationIds([]);
+    setBulkNames([]);
     void supabase
       .from('job_candidate_associations')
-      .select('id')
+      .select('id, candidates(candidate_name)')
       .eq('job_id', jobId)
       .in('candidate_id', candidateIds)
       .not('status', 'eq', 'rejected')
@@ -126,9 +132,31 @@ export function RejectionDialog({
           return;
         }
         setBulkAssociationIds((data || []).map((row) => row.id));
+        setBulkNames((data || []).map((row) => {
+          const c = (row as { candidates?: { candidate_name?: string | null } | null }).candidates;
+          return c?.candidate_name?.trim() || 'Unnamed candidate';
+        }));
       });
     return () => { active = false; };
   }, [open, isBulk, jobId, candidateIds]);
+
+  // Rejecting cancels upcoming interviews for this job (with emails), so say so.
+  useEffect(() => {
+    if (!open || !jobId) return;
+    const ids = isBulk ? candidateIds : candidateId ? [candidateId] : [];
+    if (!ids.length) return;
+    let active = true;
+    setUpcoming(0);
+    void supabase
+      .from('scheduled_bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('job_id', jobId)
+      .in('candidate_id', ids.slice(0, 200))
+      .in('status', ['confirmed', 'rescheduled'])
+      .gt('scheduled_end', new Date().toISOString())
+      .then(({ count }) => { if (active) setUpcoming(count ?? 0); });
+    return () => { active = false; };
+  }, [open, isBulk, jobId, candidateId, candidateIds]);
 
   // Reset per-candidate state when opening
   useEffect(() => {
@@ -148,11 +176,10 @@ export function RejectionDialog({
     }
   }, [activeIdentities, fromEmail]);
 
-  // Esc to close
+  // ⌘Enter submits (Esc and the backdrop are handled by the dialog).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !mutationPending) onOpenChange(false);
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canSubmit && !mutationPending) {
         e.preventDefault();
         void handleSubmit();
@@ -248,65 +275,72 @@ export function RejectionDialog({
     }
   };
 
-  if (!open) return null;
-
   const progressPercent = bulkReject.progress.total > 0
     ? ((bulkReject.progress.completed + bulkReject.progress.failed) / bulkReject.progress.total) * 100
     : 0;
 
-  const dialog = (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-6"
-      style={{ backgroundColor: 'rgba(13,13,9,0.34)' }}
-      onClick={(e) => { if (e.target === e.currentTarget && !mutationPending) onOpenChange(false); }}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="flex flex-col bg-white w-[600px] max-w-full"
-        style={{
-          borderRadius: 18,
-          boxShadow: '0 28px 90px -14px rgba(13,13,9,0.42), 0 0 0 1px rgba(13,13,9,0.04)',
-          maxHeight: 'calc(100vh - 48px)',
-        }}
-      >
-        {/* Header */}
-        <div className="relative flex-shrink-0" style={{ padding: '20px 24px 18px', borderBottom: '1px solid #F1F0EC' }}>
-          <div className="flex items-start gap-3">
-            <div
-              className="flex items-center justify-center flex-shrink-0"
-              style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: '#FEECEC' }}
+  // A row's Reject goes through the bulk path with one id: still name the person.
+  const soloName = (isBulk ? bulkNames[0] ?? '' : candidateName).trim();
+  const soloFirst = soloName.split(/\s+/)[0] || 'This candidate';
+  const title = isBulk && many ? `Reject ${candidateCount} candidates?` : `Reject ${soloName || 'this candidate'}?`;
+  const whoStays = isBulk && many ? 'Their profiles and histories stay' : 'Their profile and history stay';
+  const interviews = upcoming > 0
+    ? ` ${upcoming} upcoming interview${upcoming === 1 ? ' is' : 's are'} cancelled and everyone on ${upcoming === 1 ? 'it' : 'them'} is emailed.`
+    : '';
+  const shownNames = bulkNames.slice(0, 3);
+  const moreNames = candidateCount - shownNames.length;
+
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (!o && !mutationPending) onOpenChange(false); }}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-[100] gio-dialog-overlay"
+          style={{ backgroundColor: 'rgba(13,13,9,0.34)' }}
+          onClick={() => { if (!mutationPending) onOpenChange(false); }}
+        />
+        <DialogPrimitive.Content
+          aria-describedby="rejection-dialog-desc"
+          className="fixed left-[50%] top-[50%] z-[100] [translate:-50%_-50%] flex flex-col bg-white w-[600px] max-w-[calc(100vw-32px)] gio-dialog"
+          style={{
+            borderRadius: 18,
+            boxShadow: '0 28px 90px -14px rgba(13,13,9,0.42), 0 0 0 1px rgba(13,13,9,0.04)',
+            maxHeight: 'calc(100vh - 48px)',
+          }}
+          onOpenAutoFocus={(e) => { e.preventDefault(); cancelRef.current?.focus(); }}
+          onEscapeKeyDown={(e) => { if (mutationPending) e.preventDefault(); }}
+          // Clicks on the backdrop close it (above); nothing else outside does.
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+        {/* Header (Block B §16: badge, the title names who, the description says what goes and what stays) */}
+        <div className="relative flex-shrink-0" style={{ padding: '22px 24px 18px', borderBottom: '1px solid #F1F0EC' }}>
+          <div className="flex items-start gap-[14px]">
+            <span
+              aria-hidden="true"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-danger-tint)] text-[var(--color-danger)]"
             >
-              <UserRoundX size={18} style={{ color: '#DC2626' }} />
-            </div>
+              <UserRoundX className="h-4 w-4" />
+            </span>
             <div className="flex-1 min-w-0">
-              <div
-                className="font-inter uppercase"
-                style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.09em', color: '#8B8F9E' }}
-              >
-                {isBulk && many ? `${candidateCount} CANDIDATES` : 'CANDIDATE'} · {jobLabel}
-              </div>
-              <div
-                className="font-poppins whitespace-nowrap overflow-hidden text-ellipsis"
-                style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.035em', color: '#0d0d09', marginTop: 2 }}
-              >
-                {isBulk && many ? `Reject ${candidateCount} candidates` : isBulk ? 'Reject 1 candidate' : `Reject ${candidateName}`}<span style={{ color: '#D7C5FB' }}>.</span>
-              </div>
+              <DialogPrimitive.Title className="mt-0.5 line-clamp-2 break-words font-poppins text-[17px] font-semibold leading-snug text-text-primary [text-wrap:pretty]">
+                {title}
+              </DialogPrimitive.Title>
+              <p id="rejection-dialog-desc" className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
+                {isBulk && many ? `They’re` : `${soloFirst} is`} removed from <span className="font-medium text-text-primary">{jobLabel}</span>.{interviews} {whoStays} in your talent pool, and you can reactivate them later.
+                {notice ? <> {notice}</> : null}
+              </p>
+              {isBulk && many && shownNames.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {shownNames.map((n, i) => (
+                    <span key={`${n}-${i}`} className="max-w-[180px] truncate rounded-full bg-[#F4F3EF] px-2.5 py-[3px] text-[12px] font-medium text-text-primary">{n}</span>
+                  ))}
+                  {moreNames > 0 && (
+                    <span className="rounded-full bg-[#F4F3EF] px-2.5 py-[3px] text-[12px] font-medium text-text-secondary">+{moreNames} more</span>
+                  )}
+                </div>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              disabled={mutationPending}
-              aria-label="Close"
-              className="flex items-center justify-center hover:bg-[#F1F0EC] rounded-md transition disabled:pointer-events-none disabled:opacity-45"
-              style={{ width: 30, height: 30, color: '#8B8F9E' }}
-            >
-              <X size={17} />
-            </button>
           </div>
-          <p className="font-inter" style={{ fontSize: 12.5, color: '#5A6072', lineHeight: 1.5, marginTop: 12 }}>
-            {isBulk && many ? `Removes all ${candidateCount} selected candidates` : isBulk ? 'Removes the selected candidate' : `Removes ${firstName}`} from <span style={{ color: '#1F2230', fontWeight: 600 }}>{jobLabel}</span>. Their {isBulk ? 'profiles and histories stay' : 'profile and history stays'} in your talent pool.
-          </p>
         </div>
 
         {/* Body */}
@@ -686,6 +720,7 @@ export function RejectionDialog({
             </span>
           </div>
           <Button
+            ref={cancelRef}
             type="button"
             variant="secondary"
             size="md"
@@ -699,12 +734,11 @@ export function RejectionDialog({
             variant="dangerSolid"
             size="md"
             onClick={handleSubmit}
-            disabled={!canSubmit || mutationPending}
-            className={cn((!canSubmit || mutationPending) && 'pointer-events-none')}
+            disabled={!canSubmit}
+            loading={mutationPending}
+            className={cn(!canSubmit && 'pointer-events-none')}
           >
-            {mutationPending ? (
-              <><Loader2 size={13} className="animate-spin" /> Rejecting…</>
-            ) : isScheduled ? (
+            {isScheduled ? (
               <><Clock size={13} /> Reject & schedule {isBulk ? 'emails' : 'email'}</>
             ) : sendEmail ? (
               <><Send size={13} /> Reject & send {isBulk ? 'emails' : 'email'}</>
@@ -713,11 +747,10 @@ export function RejectionDialog({
             )}
           </Button>
         </div>
-      </div>
-    </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
-
-  return createPortal(dialog, document.body);
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
