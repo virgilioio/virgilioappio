@@ -74,6 +74,8 @@ export function RejectionDialog({
 }: RejectionDialogProps) {
   const isBulk = candidateIds.length > 0;
   const candidateCount = isBulk ? candidateIds.length : 1;
+  // "Reject 1 candidates" read wrong; one selected reads as one (2026-10-13).
+  const many = candidateCount !== 1;
   const prefs = useMemo(readPrefs, [open]);
 
   const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>(prefs.rejectionReasonId);
@@ -282,13 +284,13 @@ export function RejectionDialog({
                 className="font-inter uppercase"
                 style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.09em', color: '#8B8F9E' }}
               >
-                {isBulk ? `${candidateCount} CANDIDATES` : 'CANDIDATE'} · {jobLabel}
+                {isBulk && many ? `${candidateCount} CANDIDATES` : 'CANDIDATE'} · {jobLabel}
               </div>
               <div
                 className="font-poppins whitespace-nowrap overflow-hidden text-ellipsis"
                 style={{ fontSize: 19, fontWeight: 600, letterSpacing: '-0.035em', color: '#0d0d09', marginTop: 2 }}
               >
-                {isBulk ? `Reject ${candidateCount} candidates` : `Reject ${candidateName}`}<span style={{ color: '#D7C5FB' }}>.</span>
+                {isBulk && many ? `Reject ${candidateCount} candidates` : isBulk ? 'Reject 1 candidate' : `Reject ${candidateName}`}<span style={{ color: '#D7C5FB' }}>.</span>
               </div>
             </div>
             <button
@@ -303,7 +305,7 @@ export function RejectionDialog({
             </button>
           </div>
           <p className="font-inter" style={{ fontSize: 12.5, color: '#5A6072', lineHeight: 1.5, marginTop: 12 }}>
-            {isBulk ? `Removes all ${candidateCount} selected candidates` : `Removes ${firstName}`} from <span style={{ color: '#1F2230', fontWeight: 600 }}>{jobLabel}</span>. Their {isBulk ? 'profiles and histories stay' : 'profile and history stays'} in your talent pool.
+            {isBulk && many ? `Removes all ${candidateCount} selected candidates` : isBulk ? 'Removes the selected candidate' : `Removes ${firstName}`} from <span style={{ color: '#1F2230', fontWeight: 600 }}>{jobLabel}</span>. Their {isBulk ? 'profiles and histories stay' : 'profile and history stays'} in your talent pool.
           </p>
         </div>
 
@@ -707,7 +709,7 @@ export function RejectionDialog({
             ) : sendEmail ? (
               <><Send size={13} /> Reject & send {isBulk ? 'emails' : 'email'}</>
             ) : (
-              <><UserRoundX size={13} /> Reject {isBulk ? `${candidateCount} candidates` : 'candidate'}</>
+              <><UserRoundX size={13} /> Reject {isBulk && many ? `${candidateCount} candidates` : 'candidate'}</>
             )}
           </Button>
         </div>
