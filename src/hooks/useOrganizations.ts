@@ -25,13 +25,6 @@ export interface Organization {
   owner_name?: string | null
   created_by_email?: string | null
   created_by_name?: string | null
-  billing_poc_user_id?: string | null
-  billing_poc_additional_email?: string | null
-  billing_poc_phone?: string | null
-  billing_poc_updated_by?: string | null
-  billing_poc_updated_at?: string | null
-  billing_poc_user_email?: string | null
-  billing_poc_user_name?: string | null
   default_currency?: string | null
   parent_organization_id?: string | null
   tenant_id?: string | null
@@ -66,11 +59,6 @@ export interface UpdateOrganizationData {
   name?: string
   status?: CompanyStatus
   owner_id?: string | null
-  billing_poc_user_id?: string | null
-  billing_poc_additional_email?: string | null
-  billing_poc_phone?: string | null
-  billing_poc_updated_by?: string | null
-  billing_poc_updated_at?: string | null
   parent_organization_id?: string | null
   website?: string | null
   logo_url?: string | null
@@ -175,12 +163,6 @@ export function useOrganizations() {
           owner_name: null,
           created_by_email: null,
           created_by_name: null,
-          billing_poc_additional_email: org.billing_poc_additional_email,
-          billing_poc_phone: org.billing_poc_phone,
-          billing_poc_updated_by: org.billing_poc_updated_by,
-          billing_poc_updated_at: org.billing_poc_updated_at,
-          billing_poc_user_email: null,
-          billing_poc_user_name: null,
           parent_organization_id: org.parent_organization_id || null,
           tenant_id: org.tenant_id || null,
           org_kind: org.org_kind || null,
@@ -300,10 +282,6 @@ export function useOrganizations() {
       log.debug('Updating organization:', id, data)
       
       const updateData = { ...data }
-      if (data.billing_poc_user_id !== undefined || data.billing_poc_additional_email !== undefined || data.billing_poc_phone !== undefined) {
-        updateData.billing_poc_updated_by = user?.id
-        updateData.billing_poc_updated_at = new Date().toISOString()
-      }
       
       const { data: updatedOrg, error: updateError } = await supabase
         .from('organizations')

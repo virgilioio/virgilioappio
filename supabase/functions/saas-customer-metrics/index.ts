@@ -47,7 +47,6 @@ interface CustomerMetrics {
   }
   subscription_plan?: string | null
   subscription_renewal_date?: string | null
-  billing_email?: string | null
   // Real activity logs
   recent_activities: ActivityLog[]
 }
@@ -247,7 +246,7 @@ Deno.serve(async (req) => {
             plan_type: subscription?.subscription_tier || tenant.subscription_plan,
             status: subscription?.billing_status || tenant.status,
             renewal_date: tenant.subscription_renewal_date,
-            billing_id: tenant.billing_email,
+            billing_id: null,
             owner_id: tenant.owner_id,
             organization_type: 'client',
             tenant_type: tenant.tenant_type,
@@ -268,7 +267,6 @@ Deno.serve(async (req) => {
             owner_details: ownerProfileResult.data || undefined,
             subscription_plan: tenant.subscription_plan,
             subscription_renewal_date: tenant.subscription_renewal_date,
-            billing_email: tenant.billing_email,
             // Real activity logs
             recent_activities: (recentActivitiesResult.data || []) as ActivityLog[],
           } as CustomerMetrics
@@ -281,7 +279,7 @@ Deno.serve(async (req) => {
             plan_type: subscription?.subscription_tier || tenant.subscription_plan,
             status: subscription?.billing_status || tenant.status,
             renewal_date: tenant.subscription_renewal_date,
-            billing_id: tenant.billing_email,
+            billing_id: null,
             owner_id: tenant.owner_id,
             organization_type: 'client',
             tenant_type: tenant.tenant_type,

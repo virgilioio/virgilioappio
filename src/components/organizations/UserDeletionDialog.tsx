@@ -17,25 +17,22 @@ interface UserDeletionDialogProps {
     userStatus: string // to determine if it's an invited member
     userType?: string  // a workspace owner can't be deleted here
   } | null
-  organizationId?: string
-  isBillingPoc?: boolean
   onUserDeleted: () => void
 }
 
 /**
  * S3 (Block B §16, 2026-10-13): one type-to-confirm dialog replaces the old
  * two-step "Next → Are you absolutely sure" flow. Its middle step (pick a new
- * billing contact) had nothing to pick since the billing POC member list was
- * removed, and the delete-user function ignores a reassignment, so the dialog
- * now just says so. Deleting yourself or the workspace owner is blocked.
+ * billing contact) had nothing to pick, and billing contacts are retired
+ * (2026-10-13). Deleting yourself or the workspace owner is blocked. When
+ * something still points at the person, delete-user refuses before removing
+ * anything and the reason shows inline.
  * A pending invitation (no account yet) is a plain single confirm.
  */
 export function UserDeletionDialog({
   isOpen,
   onClose,
   userToDelete,
-  organizationId,
-  isBillingPoc = false,
   onUserDeleted
 }: UserDeletionDialogProps) {
   const { userId: currentUserId } = useAuth()
@@ -74,22 +71,26 @@ export function UserDeletionDialog({
   // Type to confirm: the dialog waits for this and shows a throw inline.
   const deleteUser = async () => {
     if (!userToDelete?.id) return
-    const requestBody: Record<string, unknown> = { userId: userToDelete.id }
-    if (isBillingPoc && organizationId) {
-      requestBody.reassignBillingPoc = { organizationId, newBillingPocUserId: null }
-    }
+    let reason = ''
     let failed = false
     try {
-      const { data, error } = await supabase.functions.invoke('delete-user', { body: requestBody })
+      const { data, error } = await supabase.functions.invoke('delete-user', { body: { userId: userToDelete.id } })
       if (error || data?.error) {
         console.error('Error deleting user:', error || data?.error)
         failed = true
+        // A refusal (409) explains itself in plain words; show it as is.
+        try {
+          const body = await (error as { context?: { json?: () => Promise<{ message?: string }> } } | null)?.context?.json?.()
+          reason = body?.message || ''
+        } catch {
+          /* keep the generic message */
+        }
       }
     } catch (err) {
       console.error('Unexpected error deleting user:', err)
       failed = true
     }
-    if (failed) throw new Error(failMessage)
+    if (failed) throw new Error(reason || failMessage)
     toast({ title: `${name} deleted` })
     onUserDeleted()
   }
@@ -124,16 +125,12 @@ export function UserDeletionDialog({
     )
   }
 
-  const billing = isBillingPoc
-    ? ` They’re this organization’s billing contact, and that isn’t reassigned for you.`
-    : ''
-
   return (
     <ConfirmDestructiveDialog
       open={isOpen}
       onOpenChange={(o) => { if (!o) onClose() }}
       title={`Delete ${name}?`}
-      description={`${first} is removed from every workspace. Their login, job assignments, connected email and calendar, booking links and activity history are deleted. Candidates and jobs they added stay.${billing} This can’t be undone.`}
+      description={`${first} is removed from every workspace. Their login, job assignments, connected email and calendar, booking links and activity history are deleted. Candidates and jobs they added stay. This can’t be undone.`}
       confirmLabel="Delete user"
       typeToConfirm={name}
       onConfirm={deleteUser}

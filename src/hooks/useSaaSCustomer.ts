@@ -47,14 +47,6 @@ export interface SaaSCustomerDetail {
   // Extended tenant fields
   subscription_plan?: string | null
   subscription_renewal_date?: string | null
-  billing_email?: string | null
-  billing_contact_name?: string | null
-  billing_phone?: string | null
-  billing_address?: string | null
-  billing_city?: string | null
-  billing_state?: string | null
-  billing_postal_code?: string | null
-  billing_country?: string | null
   trial_starts_at?: string | null
   trial_ends_at?: string | null
   [key: string]: any // Allow other tenant fields
@@ -193,7 +185,7 @@ async function fallbackFetch(customerId: string): Promise<SaaSCustomerDetail | n
     tenant_id: tenant.id,
     plan_type: tenant.subscription_plan,
     renewal_date: tenant.subscription_renewal_date,
-    billing_id: tenant.billing_email,
+    billing_id: null,
     organization_type: 'client',
     jobs_total: totalJobs,
     candidates_total: totalCandidates,

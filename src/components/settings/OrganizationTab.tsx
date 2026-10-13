@@ -18,8 +18,6 @@ import { MessageSquareOff } from "lucide-react";
 interface TenantFormData {
   name: string;
   about: string;
-  billing_email: string;
-  billing_phone: string;
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -40,8 +38,6 @@ export default function OrganizationTab() {
   const [form, setForm] = useState<TenantFormData>({
     name: "",
     about: "",
-    billing_email: "",
-    billing_phone: "",
   });
 
   useEffect(() => {
@@ -49,8 +45,6 @@ export default function OrganizationTab() {
       setForm({
         name: tenant.name || "",
         about: stripHtmlToPlainText(tenant.about || ""),
-        billing_email: tenant.billing_email || "",
-        billing_phone: tenant.billing_phone || "",
       });
       setDirty(false);
     }
@@ -70,8 +64,6 @@ export default function OrganizationTab() {
       await updateTenant.mutateAsync({
         name: form.name,
         about: form.about,
-        billing_email: form.billing_email || null,
-        billing_phone: form.billing_phone || null,
       });
       setDirty(false);
     } catch (e) {
@@ -111,7 +103,7 @@ export default function OrganizationTab() {
     <div className="space-y-4">
       <SettingsCard
         title="Company"
-        description="Workspace identity — name, story, and billing contact."
+        description="Workspace identity — name and story."
         action={
           <Badge tone={statusTone as any} size="sm" dot>
             {tenant.status === "active" ? "Active" : tenant.status}
@@ -150,30 +142,6 @@ export default function OrganizationTab() {
             <p className="font-inter text-[11px] text-[#8B8F9E] mt-1.5">
               Feeds your careers page hero — keep it candidate-facing.
             </p>
-          </div>
-
-          {/* Billing contact row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <FieldLabel>Billing contact email</FieldLabel>
-              <Input
-                type="email"
-                value={form.billing_email}
-                onChange={(e) => update("billing_email", e.target.value)}
-                disabled={!canEdit}
-                placeholder="billing@company.com"
-              />
-            </div>
-            <div>
-              <FieldLabel>Billing contact phone</FieldLabel>
-              <Input
-                type="tel"
-                value={form.billing_phone}
-                onChange={(e) => update("billing_phone", e.target.value)}
-                disabled={!canEdit}
-                placeholder="+1 555 000 0000"
-              />
-            </div>
           </div>
 
           {/* Tenant ID — readonly mono */}
