@@ -24,6 +24,7 @@ interface BookingState {
     meeting_location?: string;
     ics_uid?: string;
     guest_emails?: string[];
+    event_title?: string;
   };
   config: {
     display_name: string;
@@ -97,14 +98,14 @@ UID:${booking.ics_uid || booking.id}
 DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
 DTSTART:${startTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
 DTEND:${endTime.toISOString().replace(/[-:]/g, '').split('.')[0]}Z
-SUMMARY:Interview with ${interviewerName}
+SUMMARY:${booking.event_title || `Meeting with ${interviewerName}`}
 LOCATION:${booking.meeting_location || ''}
 END:VEVENT
 END:VCALENDAR`;
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'interview.ics';
+    a.href = url; a.download = 'invite.ics';
     document.body.appendChild(a); a.click(); a.remove();
     window.URL.revokeObjectURL(url);
   };
@@ -121,7 +122,7 @@ END:VCALENDAR`;
             Booking Confirmed<span className="text-virgilio-purple">.</span>
           </h1>
           <p className="text-virgilio-muted">
-            Your interview has been scheduled. A calendar invitation is on its way to your inbox.
+            You’re booked. A calendar invitation is on its way to your inbox.
           </p>
         </main>
         <PublicBookingFooter />

@@ -386,6 +386,10 @@ export default function PublicBookingPage() {
             candidate_timezone: candidateTimezone,
             meeting_location: data.google_meet_link || config!.meeting_location || '',
             guest_emails: !hasContextualLink ? variables.guest_emails ?? [] : [],
+            // The title the invites went out with, and the same calendar UID, so a
+            // downloaded copy matches the emailed one (2026-10-13).
+            event_title: data.event_title ?? undefined,
+            ics_uid: data.ics_uid ?? undefined,
           },
           config: {
             display_name: config!.display_name,
@@ -471,7 +475,7 @@ export default function PublicBookingPage() {
             size="card"
             illustration={<SoftFlag />}
             title="This link has expired"
-            body="This booking link is no longer active. If you need to schedule an interview, please contact the person who sent you this link."
+            body="This booking link is no longer active. If you still need a time, contact the person who sent you this link."
           />
         </main>
         <PublicBookingFooter />

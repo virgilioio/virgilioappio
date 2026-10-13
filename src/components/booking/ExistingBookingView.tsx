@@ -117,7 +117,7 @@ UID:${booking.ics_uid || `booking-${booking.id}@gogio.io`}
 DTSTAMP:${formatDateForICS(new Date())}
 DTSTART:${formatDateForICS(startTime)}
 DTEND:${formatDateForICS(endTime)}
-SUMMARY:Interview with ${interviewerName}
+SUMMARY:${(booking as { event_title?: string | null }).event_title || `Interview with ${interviewerName}`}
 DESCRIPTION:Scheduled via GoGio
 LOCATION:${booking.meeting_location || ''}
 STATUS:CONFIRMED
