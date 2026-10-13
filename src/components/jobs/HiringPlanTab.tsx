@@ -11,16 +11,7 @@ import { toast } from '@/hooks/use-toast'
 import { DraggableStageItem } from './DraggableStageItem'
 import { useJobHiringPlan, type HiringPlanInput } from '@/hooks/useJobHiringPlan'
 import { supabase } from '@/lib/supabaseClient'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { ReadOnlyOverlay } from '@/components/ui/read-only-overlay'
 import { StageConfigSheet } from './StageConfigSheet'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -60,12 +51,6 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const { isSavingPlan, loadHiringPlanInstances, saveHiringPlan } = useJobHiringPlan()
-
-  // Delete confirmation dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [rowPendingDelete, setRowPendingDelete] = useState<PlanRow | null>(null)
-  const [pendingDeleteCount, setPendingDeleteCount] = useState<number | null>(null)
-  const [countLoading, setCountLoading] = useState(false)
 
   // Configuration sheet state
   const [configSheetOpen, setConfigSheetOpen] = useState(false)
@@ -202,67 +187,107 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
       return
     }
 
-    setRowPendingDelete(row)
-    setDeleteDialogOpen(true)
-    setPendingDeleteCount(null)
-    setCountLoading(true)
+    const name = row.customStageName?.trim() || row.stage.stage_name
+    // A row that was never saved has nothing behind it yet.
+    if (!row.jhsId) {
+      setPlanRows((prev) => prev.filter((r) => r.instanceId !== instanceId))
+      return
+    }
 
+    // J16 (Block B §16): what the stage holds decides the dialog. Candidates in
+    // it move back a stage (type to confirm); its interviewers, scorecard
+    // questions, automations and submitted scorecards are deleted with it;
+    // booked interviews block it, because the database keeps that history.
+    const count = (q: any) => q.then((r: { count: number | null; error: unknown }) => (r.error ? 0 : r.count ?? 0)) as Promise<number>
+    let candidates = 0, scorecards = 0, bookings = 0
     try {
-      if (row.jhsId) {
-        const { count, error } = await supabase
-          .from('job_candidate_associations')
-          .select('id', { count: 'exact', head: true })
-          .eq('job_id', jobId)
-          .eq('current_stage_id', row.jhsId)
-        setPendingDeleteCount(!error ? (count ?? 0) : 0)
-      } else {
-        setPendingDeleteCount(0)
+      ;[candidates, scorecards, bookings] = await Promise.all([
+        count(supabase.from('job_candidate_associations').select('id', { count: 'exact', head: true }).eq('job_id', jobId).eq('current_stage_id', row.jhsId)),
+        count(supabase.from('job_stage_scorecards').select('id', { count: 'exact', head: true }).eq('stage_instance_id', row.jhsId)),
+        count(supabase.from('scheduled_bookings').select('id', { count: 'exact', head: true }).eq('job_hiring_stage_id', row.jhsId)),
+      ])
+    } catch {
+      /* counted as 0; the database still refuses what it must */
+    }
+    const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
+
+    if (bookings > 0) {
+      await confirmDestructive({
+        variant: 'blocked',
+        title: `The ${name} stage can’t be deleted`,
+        description: `${plural(bookings, 'interview')} ${bookings === 1 ? 'was' : 'were'} booked in this stage, and that history has to stay. It stays in the plan; you can still rename it or change its settings from Edit.`,
+        confirmLabel: '',
+      })
+      return
+    }
+
+    const idx = planRows.findIndex((r) => r.instanceId === instanceId)
+    const rest = planRows.filter((r) => r.instanceId !== instanceId)
+    const prev = rest[Math.max(0, idx - 1)]
+    const prevName = prev ? prev.customStageName?.trim() || prev.stage.stage_name : 'the first stage'
+    const moves = candidates > 0 ? `${plural(candidates, 'candidate')} in it move${candidates === 1 ? 's' : ''} back to ${prevName}. ` : ''
+    const goes = scorecards > 0
+      ? `Its interviewers, scorecard questions and automations are deleted with it, and so ${scorecards === 1 ? 'is 1 submitted scorecard' : `are ${scorecards} submitted scorecards`}.`
+      : 'Its interviewers, scorecard questions and automations are deleted with it.'
+    const unsaved = hasUnsavedChanges ? ' Your other unsaved changes to the plan are saved too.' : ''
+
+    const remove = async () => {
+      await handleConfirmRemove(row, name, candidates, prevName)
+    }
+    const ok = await confirmDestructive({
+      title: `Delete the ${name} stage?`,
+      description: `${moves}${goes}${unsaved} This can’t be undone.`,
+      confirmLabel: 'Delete stage',
+      typeToConfirm: candidates > 0 ? name : undefined,
+      onConfirm: candidates > 0
+        ? async () => {
+            try {
+              await remove()
+            } catch {
+              throw new Error(`Couldn’t delete ${name}. Nothing was removed; try again.`)
+            }
+          }
+        : undefined,
+    })
+    if (ok && candidates === 0) {
+      try {
+        await remove()
+      } catch {
+        /* the hook shows the error */
       }
-    } catch (e) {
-      setPendingDeleteCount(0)
-    } finally {
-      setCountLoading(false)
     }
   }
 
   const buildSaveInput = (rows: PlanRow[]): HiringPlanInput[] =>
     rows.map((r) => ({ jhsId: r.jhsId, stage_id: r.stage.id, customStageName: r.customStageName ?? null }))
 
-  const handleConfirmRemove = async () => {
-    if (!rowPendingDelete) return
-    const row = rowPendingDelete
+  const handleConfirmRemove = async (row: PlanRow, name: string, moved: number, prevName: string) => {
     const newRows = planRows.filter((r) => r.instanceId !== row.instanceId)
+    await saveHiringPlan(jobId, buildSaveInput(newRows))
+    // Reload instances to get fresh jhsIds and the correct count of duplicates
+    const refreshed = await loadHiringPlanInstances(jobId)
+    const seenDefaultStageIds = new Set<string>()
+    const rebuilt: PlanRow[] = refreshed.map((inst) => {
+      let locked = false
+      if (inst.stage.is_default && !seenDefaultStageIds.has(inst.stage.id)) {
+        locked = true
+        seenDefaultStageIds.add(inst.stage.id)
+      }
+      return {
+        instanceId: inst.jhsId,
+        jhsId: inst.jhsId,
+        stage: inst.stage as JobStage,
+        customStageName: inst.customStageName,
+        locked,
+      }
+    })
+    setPlanRows(rebuilt)
+    setHasUnsavedChanges(false)
 
-    try {
-      await saveHiringPlan(jobId, buildSaveInput(newRows))
-      // Reload instances to get fresh jhsIds and the correct count of duplicates
-      const refreshed = await loadHiringPlanInstances(jobId)
-      const seenDefaultStageIds = new Set<string>()
-      const rebuilt: PlanRow[] = refreshed.map((inst) => {
-        let locked = false
-        if (inst.stage.is_default && !seenDefaultStageIds.has(inst.stage.id)) {
-          locked = true
-          seenDefaultStageIds.add(inst.stage.id)
-        }
-        return {
-          instanceId: inst.jhsId,
-          jhsId: inst.jhsId,
-          stage: inst.stage as JobStage,
-          customStageName: inst.customStageName,
-          locked,
-        }
-      })
-      setPlanRows(rebuilt)
-      setHasUnsavedChanges(false)
-
-      toast({
-        title: 'Stage Removed',
-        description: `${row.stage.stage_name} was removed.${(pendingDeleteCount ?? 0) > 0 ? ` ${(pendingDeleteCount ?? 0)} candidate${(pendingDeleteCount ?? 0) !== 1 ? 's' : ''} moved to the previous stage.` : ''}`,
-      })
-    } finally {
-      setDeleteDialogOpen(false)
-      setRowPendingDelete(null)
-    }
+    toast({
+      title: `${name} deleted`,
+      description: moved > 0 ? `${moved} candidate${moved !== 1 ? 's' : ''} moved back to ${prevName}.` : undefined,
+    })
   }
 
   const handleSaveHiringPlan = async () => {
@@ -422,33 +447,6 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
 
 
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove stage?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {rowPendingDelete && (
-                <div>
-                  Are you sure you want to remove "{rowPendingDelete.stage.stage_name}" from this hiring plan?
-                  {countLoading ? (
-                    <div className="mt-2">Checking candidates...</div>
-                  ) : (pendingDeleteCount ?? 0) > 0 ? (
-                    <div className="mt-2">
-                      {(pendingDeleteCount ?? 0)} candidate{(pendingDeleteCount ?? 0) !== 1 ? 's' : ''} currently in this stage will be moved to the previous stage.
-                    </div>
-                  ) : (
-                    <div className="mt-2">No candidates are currently in this stage.</div>
-                  )}
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmRemove}>Remove stage</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <StageConfigSheet
         open={configSheetOpen}
