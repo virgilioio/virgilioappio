@@ -150,7 +150,8 @@ export function useBookingEventTypes(bookingConfigId: string | undefined) {
       toast.success('Event type deleted');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete: ${error.message}`);
+      console.error('Failed to delete event type:', error);
+      toast.error('Couldn\u2019t delete the event type. Nothing was removed; try again.');
     },
   });
 

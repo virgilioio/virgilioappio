@@ -116,13 +116,27 @@ export function useCandidateSources(context: 'platform-defaults' | 'organization
 
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['candidate-sources'] })
-      toast.success('Candidate source deleted')
-    },
+    // The caller shows "{name} deleted · Undo" (Block B §16).
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['candidate-sources'] }),
     onError: (error) => {
       console.error('Failed to delete candidate source:', error)
-      toast.error('Failed to delete candidate source')
+      toast.error('Couldn\u2019t delete the candidate source. Nothing was changed; try again.')
+    }
+  })
+
+  // Undo for deleteSource (it's a soft delete).
+  const restoreSource = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('candidate_sources')
+        .update({ is_active: true })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['candidate-sources'] }),
+    onError: (error) => {
+      console.error('Failed to restore candidate source:', error)
+      toast.error('Couldn\u2019t bring the candidate source back; try again.')
     }
   })
 
@@ -137,6 +151,7 @@ export function useCandidateSources(context: 'platform-defaults' | 'organization
     createSource: createSource.mutateAsync,
     updateSource: updateSource.mutateAsync,
     deleteSource: deleteSource.mutateAsync,
+    restoreSource: restoreSource.mutateAsync,
     isCreating: createSource.isPending,
     isUpdating: updateSource.isPending,
     isDeleting: deleteSource.isPending

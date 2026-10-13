@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { undoToast } from '@/lib/undoToast'
+import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Plus, Edit, Trash2, FileX } from 'lucide-react';
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates';
@@ -15,7 +18,29 @@ interface RejectionEmailTemplatesManagerProps {
 }
 
 export function RejectionEmailTemplatesManager({ context }: RejectionEmailTemplatesManagerProps) {
-  const { templates, isLoading, deleteTemplate } = useRejectionEmailTemplates(context);
+  const { templates, isLoading, deleteTemplate, restoreTemplate } = useRejectionEmailTemplates(context);
+
+  // S18 (Block B §16): a soft delete, so it says what stays and offers Undo.
+  const handleDelete = async (template: { id: string; name: string }) => {
+    const ok = await confirmDestructive({
+      title: `Delete ${template.name}?`,
+      description: 'It\u2019s no longer offered when you reject someone. Rejection emails already sent with it stay.',
+      confirmLabel: 'Delete template',
+    });
+    if (!ok) return;
+    const exit = collapseRows(rowsById([template.id]));
+    await exit.done;
+    try {
+      await deleteTemplate(template.id);
+    } catch {
+      exit.revert();
+      return;
+    }
+    undoToast(`${template.name} deleted`, async () => {
+      await restoreTemplate(template.id);
+      requestAnimationFrame(() => restoreRows(rowsById([template.id])));
+    });
+  };
   const [sheetState, setSheetState] = useState({ open: false, templateId: undefined as string | undefined });
 
   const openCreateSheet = () => {
@@ -68,7 +93,7 @@ export function RejectionEmailTemplatesManager({ context }: RejectionEmailTempla
               </TableHeader>
               <TableBody>
                 {templates.map((template) => (
-                  <TableRow key={template.id}>
+                  <TableRow key={template.id} data-row-id={template.id}>
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{template.subject}</TableCell>
                     <TableCell>
@@ -91,34 +116,17 @@ export function RejectionEmailTemplatesManager({ context }: RejectionEmailTempla
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              disabled={context === 'organization' && template.source === 'platform'}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteTemplate(template.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <IconTip label={`Delete ${template.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Delete ${template.name}`}
+                            onClick={() => void handleDelete(template)}
+                            disabled={context === 'organization' && template.source === 'platform'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </IconTip>
                       </div>
                     </TableCell>
                   </TableRow>

@@ -28,7 +28,8 @@ import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
 import { ChangePlanDialog } from '@/components/settings/ChangePlanDialog'
 import { AssignCreditsDialog } from '@/components/settings/AssignCreditsDialog'
 import { GrantAccessDialog } from '@/components/settings/GrantAccessDialog'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
 
 // ─────────────────────────────────────────────────────────────────
 // design tokens
@@ -609,7 +610,19 @@ export function SaaSCustomerDetail() {
             onChange={() => setChangeOpen(true)}
             onSuspend={() => setSuspendOpen(true)}
             onGrantAccess={() => setGrantOpen(true)}
-            onRevokeAccess={() => revokeMutation.mutate({ tenantId: customer.tenant_id })}
+            onRevokeAccess={async () => {
+              // S29 (Block B §16): revoking re-locks the workspace at once.
+              const name = customer.name?.trim() || 'this workspace'
+              const until = activeGrant?.ends_at ? ` It was due to end on ${format(new Date(activeGrant.ends_at), 'MMM d, yyyy')}.` : ''
+              const ok = await confirmDestructive({
+                variant: 'remove',
+                icon: Unlock,
+                title: `Revoke ${name}\u2019s access?`,
+                description: `The temporary access ends now and the workspace locks again, so its members can\u2019t sign in until they pay or you grant access again.${until} Their data is kept.`,
+                confirmLabel: 'Revoke access',
+              })
+              if (ok) revokeMutation.mutate({ tenantId: customer.tenant_id })
+            }}
             onSwitchActivity={() => setTab('activity')}
           />
         )}
@@ -647,7 +660,7 @@ export function SaaSCustomerDetail() {
       <SuspendOrganizationDialog
         open={suspendOpen}
         onOpenChange={setSuspendOpen}
-        onConfirm={(reason) => { suspendMutation.mutate({ tenantId: customer.tenant_id, reason }); setSuspendOpen(false) }}
+        onConfirm={(reason) => suspendMutation.mutate({ tenantId: customer.tenant_id, reason }, { onSuccess: () => setSuspendOpen(false) })}
         organizationName={customer.name}
         isPending={suspendMutation.isPending}
       />
@@ -1292,21 +1305,27 @@ function BillingTab({
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            <IconTip label="Remove a seat">
             <button
+              aria-label="Remove a seat"
               disabled={seatVal <= 1 || seatMutation.isPending}
               onClick={() => { const n = seatVal - 1; setSeatVal(n); seatMutation.mutate(n) }}
               style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E7E8EE', background: '#FFFFFF', cursor: seatVal <= 1 ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: NOIR }}>
               <Minus size={12} />
             </button>
+            </IconTip>
             <div className="font-poppins tabular-nums" style={{ width: 40, height: 28, borderRadius: 8, border: '1px solid #E7E8EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: NOIR }}>
               {seatVal}
             </div>
+            <IconTip label="Add a seat">
             <button
+              aria-label="Add a seat"
               disabled={seatMutation.isPending}
               onClick={() => { const n = seatVal + 1; setSeatVal(n); seatMutation.mutate(n) }}
               style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #E7E8EE', background: '#FFFFFF', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: NOIR }}>
               <Plus size={12} />
             </button>
+            </IconTip>
           </div>
         </Row>
       </section>
@@ -1366,7 +1385,7 @@ function BillingTab({
       </section>
 
       {/* Fraud signals */}
-      <FraudSignalsSection tenantId={customer?.tenant_id} stripeCustomerId={sub?.stripe_customer_id} />
+      <FraudSignalsSection tenantId={customer?.tenant_id} stripeCustomerId={sub?.stripe_customer_id} customerName={customer?.name} />
     </div>
   )
 }
@@ -1486,7 +1505,7 @@ function StripeResyncButton({ stripeCustomerId, tenantId }: { stripeCustomerId: 
 // ─────────────────────────────────────────────────────────────────
 // Fraud signals section
 // ─────────────────────────────────────────────────────────────────
-function FraudSignalsSection({ tenantId, stripeCustomerId }: { tenantId?: string; stripeCustomerId?: string }) {
+function FraudSignalsSection({ tenantId, stripeCustomerId, customerName }: { tenantId?: string; stripeCustomerId?: string; customerName?: string }) {
   const qc = useQueryClient()
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -1506,31 +1525,66 @@ function FraudSignalsSection({ tenantId, stripeCustomerId }: { tenantId?: string
     enabled: !!tenantId,
   })
 
+  const callFraud = async (action: 'refund_and_suspend' | 'suspend_only' | 'clear', chargeId?: string) => {
+    const { data, error } = await supabase.functions.invoke('admin-stripe-handle-fraud', {
+      body: { tenantId, action, chargeId },
+    })
+    if (error) {
+      console.error('[admin-stripe-handle-fraud] failed', { error, data })
+      throw error
+    }
+    console.log('[admin-stripe-handle-fraud] outcome', data)
+    toast.success(data?.message || 'Fraud action completed')
+    qc.invalidateQueries({ queryKey: ['fraud-signals', tenantId] })
+    qc.invalidateQueries({ queryKey: ['tenant-subscription', tenantId] })
+    qc.invalidateQueries({ queryKey: ['saas-customer'] })
+  }
+
+  // S31/S32 (Block B §16). Both suspend the workspace and cancel its Stripe
+  // subscription (admin-stripe-handle-fraud); refund + suspend also refunds the
+  // latest charge, which can't be taken back, so it's type to confirm.
   const runAction = async (action: 'refund_and_suspend' | 'suspend_only' | 'clear', chargeId?: string) => {
     if (!tenantId) return
-    const confirmMsg = action === 'clear'
-      ? 'Clear fraud review and reactivate this tenant?'
-      : action === 'refund_and_suspend'
-      ? 'Refund the latest charge as fraudulent, cancel subscription, and suspend tenant?'
-      : 'Suspend tenant without refunding?'
-    if (!(await confirmDialog({ title: confirmMsg, confirmLabel: 'Confirm', destructive: true }))) return
+    const name = customerName?.trim() || 'this workspace'
+    const failed = `Couldn\u2019t finish that for ${name}. Check Stripe before trying again, in case part of it went through.`
+    if (action === 'refund_and_suspend') {
+      await confirmDestructive({
+        icon: ShieldAlert,
+        title: `Refund and suspend ${name}?`,
+        description: 'Their latest charge is refunded as fraudulent, their Stripe subscription is cancelled, and the workspace is suspended for fraud review. Their data is kept. The refund and the cancellation can\u2019t be undone.',
+        confirmLabel: 'Refund and suspend',
+        typeToConfirm: name,
+        onConfirm: async () => {
+          setBusy(action)
+          try {
+            await callFraud(action, chargeId)
+          } catch {
+            throw new Error(failed)
+          } finally {
+            setBusy(null)
+          }
+        },
+      })
+      return
+    }
+    const ok = action === 'clear'
+      ? await confirmDialog({
+          title: `Clear the fraud review for ${name}?`,
+          description: 'Open fraud signals are marked resolved. Billing and suspension don\u2019t change: if the workspace is suspended, it stays suspended until you grant access.',
+          confirmLabel: 'Clear fraud review',
+        })
+      : await confirmDestructive({
+          icon: Ban,
+          title: `Suspend ${name} without a refund?`,
+          description: 'Their Stripe subscription is cancelled and the workspace is suspended for fraud review, so members can\u2019t sign in. No charge is refunded and their data is kept. The cancellation can\u2019t be undone.',
+          confirmLabel: 'Suspend workspace',
+        })
+    if (!ok) return
     setBusy(action)
     try {
-      const { data, error } = await supabase.functions.invoke('admin-stripe-handle-fraud', {
-        body: { tenantId, action, chargeId },
-      })
-      if (error) {
-        const serverMsg = (data as any)?.error
-        console.error('[admin-stripe-handle-fraud] failed', { error, data })
-        throw new Error(serverMsg || error.message || 'Edge function error')
-      }
-      console.log('[admin-stripe-handle-fraud] outcome', data)
-      toast.success(data?.message || 'Fraud action completed')
-      qc.invalidateQueries({ queryKey: ['fraud-signals', tenantId] })
-      qc.invalidateQueries({ queryKey: ['tenant-subscription', tenantId] })
-      qc.invalidateQueries({ queryKey: ['saas-customer'] })
-    } catch (e) {
-      toast.error(`Action failed: ${e instanceof Error ? e.message : String(e)}`)
+      await callFraud(action, chargeId)
+    } catch {
+      toast.error(failed)
     } finally {
       setBusy(null)
     }

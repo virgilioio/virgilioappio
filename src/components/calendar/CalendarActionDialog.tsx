@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import { addDays, format, isSameDay, isWeekend, startOfDay } from 'date-fns'
+import { Button } from '@/components/ui/button'
 
 export type CalendarActionMode = 'move' | 'reschedule' | 'rebook' | 'resend' | 'confirm' | 'cancel'
 
@@ -289,11 +290,12 @@ export function CalendarActionDialog({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel()
+      // Not while the cancellation is going out.
+      if (e.key === 'Escape' && !submitting) onCancel()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel])
+  }, [onCancel, submitting])
 
   if (!open) return null
 
@@ -338,6 +340,19 @@ export function CalendarActionDialog({
     : isDebrief
     ? 'Cancel debrief'
     : 'Cancel interview'
+
+  // S27 (Block B §16): cancelling keeps its fields but gets the delete-dialog
+  // header (round badge, a title that names who, what goes and what stays)
+  // and footer (Keep … focused first, red verb + object on the right).
+  const who = candidate?.name?.trim()
+  const cancelTitle = isHold
+    ? who ? `Release the hold for ${who}?` : `Release ${eventTitle}?`
+    : isDebrief
+    ? who ? `Cancel the debrief for ${who}?` : `Cancel ${eventTitle}?`
+    : who ? `Cancel the interview with ${who}?` : `Cancel ${eventTitle}?`
+  const cancelDescription = `${slotText(start, end)}${jobTitle ? ` \u00b7 ${jobTitle}` : ''}. ${
+    isHold ? 'The held slot frees up' : 'The event comes off Google Calendar'
+  } for everyone on it${showCandidateCard || showInterviewerCard ? ', and the people you tick below are told' : ''}. This can\u2019t be undone.`
 
   const TileIcon = isCancel
     ? CalendarX
@@ -385,13 +400,23 @@ export function CalendarActionDialog({
     ((isMove || isReschedule) && (inPast || unchanged)) ||
     (mode === 'resend' && !anyChecked)
 
+  const payload = (): CalendarActionPayload => ({
+    newStart: isMove || isReschedule ? newStart : undefined,
+    newEnd: isMove || isReschedule ? newEnd : undefined,
+    notifyCandidate: showCandidateCard ? notifyCandidate : false,
+    notifyInterviewers: showInterviewerCard ? notifyInterviewers : false,
+    message: message.trim() || undefined,
+    reason: isCancel ? reason : undefined,
+    requeue: isCancel && !isHold && candidate ? requeue : undefined,
+  })
+
   const interviewerNames = interviewers.map(i => i.name).join(', ')
   const interviewerEmails = interviewers.map(i => i.email).filter(Boolean).join(', ')
 
   return (
     <div
       onPointerDown={e => {
-        if (e.target === e.currentTarget) onCancel()
+        if (e.target === e.currentTarget && !submitting) onCancel()
       }}
       style={{
         position: 'absolute',
@@ -407,6 +432,7 @@ export function CalendarActionDialog({
       <div
         role="dialog"
         aria-modal="true"
+        aria-labelledby={isCancel ? 'calendar-action-title' : undefined}
         style={{
           width: 460,
           maxWidth: '100%',
@@ -417,6 +443,27 @@ export function CalendarActionDialog({
         }}
       >
         {/* Header */}
+        {isCancel ? (
+          <div style={{ padding: '22px 22px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <span
+              aria-hidden="true"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-danger-tint)] text-[var(--color-danger)]"
+            >
+              <TileIcon className="h-4 w-4" />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                id="calendar-action-title"
+                className="mt-0.5 line-clamp-2 break-words font-poppins text-[17px] font-semibold leading-snug text-text-primary [text-wrap:pretty]"
+              >
+                {cancelTitle}
+              </div>
+              <p className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
+                {cancelDescription}
+              </p>
+            </div>
+          </div>
+        ) : (
         <div style={{ padding: '18px 20px 14px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <div
             style={{
@@ -466,6 +513,7 @@ export function CalendarActionDialog({
             <X size={15} strokeWidth={2.25} color={T.muted} />
           </button>
         </div>
+        )}
 
         {/* Body */}
         <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -719,16 +767,34 @@ export function CalendarActionDialog({
             gap: 10,
           }}
         >
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <RefreshCw size={12} strokeWidth={2} color={T.muted} />
-            <span style={{ fontFamily: INTER, fontWeight: 400, fontSize: 11, color: T.muted }}>
-              Updates Google Calendar for everyone on the event
-            </span>
-          </div>
-          <div ref={primaryRef} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {!isCancel && (
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <RefreshCw size={12} strokeWidth={2} color={T.muted} />
+              <span style={{ fontFamily: INTER, fontWeight: 400, fontSize: 11, color: T.muted }}>
+                Updates Google Calendar for everyone on the event
+              </span>
+            </div>
+          )}
+          <div ref={primaryRef} style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: isCancel ? 'auto' : undefined }}>
+            {isCancel ? (
+              <>
+                <Button variant="secondary" size="sm" disabled={submitting} onClick={onCancel}>
+                  {secondaryLabel}
+                </Button>
+                <Button
+                  variant="dangerSolid"
+                  size="sm"
+                  loading={submitting}
+                  onClick={() => onConfirm(payload())}
+                >
+                  {primaryLabel}
+                </Button>
+              </>
+            ) : (
+              <>
             <SmallButton variant="secondary" label={secondaryLabel} onClick={onCancel} />
             <SmallButton
-              variant={isCancel ? 'danger' : 'primary'}
+              variant="primary"
               label={primaryLabel}
               disabled={primaryDisabled}
               onClick={() =>
@@ -743,6 +809,8 @@ export function CalendarActionDialog({
                 })
               }
             />
+              </>
+            )}
           </div>
         </div>
       </div>

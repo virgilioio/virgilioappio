@@ -34,6 +34,7 @@ export function OrganizationDetailsDialog({
     firstName?: string
     lastName?: string
     userStatus: string
+    userType?: string
   } | null>(null)
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false)
   const [userIsBillingPoc, setUserIsBillingPoc] = useState(false)
@@ -97,7 +98,8 @@ export function OrganizationDetailsDialog({
       email: getMemberEmail(member),
       firstName: member.user_first_name,
       lastName: member.user_last_name,
-      userStatus: member.user_status
+      userStatus: member.user_status,
+      userType: member.user_type
     })
     setUserIsBillingPoc(isBillingPoc)
     setIsDeletionDialogOpen(true)

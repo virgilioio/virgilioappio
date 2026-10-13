@@ -25,17 +25,7 @@ import { cn } from '@/lib/utils';
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented';
 import { BookingEventType } from '@/hooks/useBookingEventTypes';
 import { WeeklySchedule, getDefaultWeeklySchedule } from '@/hooks/useBookingConfig';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { confirmDestructive } from '@/components/ui/confirm-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 const COLOR_OPTIONS = [
@@ -592,47 +582,32 @@ export function EventTypeSheet({
         >
           <div>
             {!isNew && onDelete && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={Trash2}
-                    className="text-[#DC2626] hover:text-[#B91C1C] hover:bg-[#FEE2E2]"
-                  >
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete event type?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently remove "{eventType?.title}". Candidates won't be
-                      able to book this event type anymore.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      disabled={isDeleting}
-                      onClick={async (e) => {
-                        // Close only once the delete has gone through, so a
-                        // failure is seen in place (2026-10-13).
-                        e.preventDefault();
-                        try {
-                          await onDelete(eventType!.id);
-                          onOpenChange(false);
-                        } catch {
-                          /* the hook shows the error toast; the sheet stays open */
-                        }
-                      }}
-                      className="bg-[#DC2626] text-white hover:bg-[#B91C1C]"
-                    >
-                      {isDeleting ? 'Deleting…' : 'Delete'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Trash2}
+                loading={isDeleting}
+                className="text-[#DC2626] hover:text-[#B91C1C] hover:bg-[#FEE2E2]"
+                onClick={async () => {
+                  // S25 (Block B §16). The sheet closes only once the delete
+                  // has gone through, so a failure is seen in place (2026-10-13).
+                  const name = eventType?.title?.trim() || 'this event type';
+                  const ok = await confirmDestructive({
+                    title: `Delete ${name}?`,
+                    description: 'Candidates can\u2019t book it any more and links to it stop working. Interviews already booked with it stay on the calendar. This can\u2019t be undone.',
+                    confirmLabel: 'Delete event type',
+                  });
+                  if (!ok) return;
+                  try {
+                    await onDelete(eventType!.id);
+                    onOpenChange(false);
+                  } catch {
+                    /* the hook shows the error toast; the sheet stays open */
+                  }
+                }}
+              >
+                Delete
+              </Button>
             )}
           </div>
           <div className="flex items-center gap-2">

@@ -120,7 +120,8 @@ export function MembersTab() {
       email: member.user_email || member.invited_email,
       firstName: member.user_first_name,
       lastName: member.user_last_name,
-      userStatus: member.user_status
+      userStatus: member.user_status,
+      userType: member.user_type
     })
     setIsDeleteDialogOpen(true)
   }

@@ -179,7 +179,8 @@ export function useJobStages(context: JobStagesContext = 'organization') {
     }
   }
 
-  const deleteStage = async (id: string) => {
+  /** `quiet`: the caller shows the error itself (the delete dialog does). */
+  const deleteStage = async (id: string, opts: { quiet?: boolean } = {}) => {
     setIsDeleting(true)
     try {
       console.log('[useJobStages.deleteStage] soft deleting stage via RPC:', id)
@@ -201,7 +202,7 @@ export function useJobStages(context: JobStagesContext = 'organization') {
     } catch (error: any) {
       console.error('Error deleting job stage via RPC:', error)
       const message = error?.message || 'Failed to delete job stage'
-      toast({
+      if (!opts.quiet) toast({
         title: 'Error',
         description: message.includes('Only platform administrators')
           ? 'Only platform administrators can delete job stages.'

@@ -3,7 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { undoToast } from '@/lib/undoToast'
+import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { Plus, Edit, Trash2, Check, X } from 'lucide-react'
 import { useCandidateSources, type CandidateSource } from '@/hooks/useCandidateSources'
@@ -25,8 +28,31 @@ export function CandidateSourcesManager({ context = 'organization' }: CandidateS
     createSource,
     updateSource,
     deleteSource,
+    restoreSource,
     isCreating
   } = useCandidateSources(context)
+
+  // S19 (Block B §16): a soft delete, so it says what stays and offers Undo.
+  const handleDelete = async (source: CandidateSource) => {
+    const ok = await confirmDestructive({
+      title: `Delete \u201c${source.name}\u201d?`,
+      description: 'It\u2019s no longer offered when you add a candidate. Candidates already tagged with it keep it.',
+      confirmLabel: 'Delete source',
+    })
+    if (!ok) return
+    const exit = collapseRows(rowsById([source.id]))
+    await exit.done
+    try {
+      await deleteSource(source.id)
+    } catch {
+      exit.revert()
+      return
+    }
+    undoToast(`\u201c${source.name}\u201d deleted`, async () => {
+      await restoreSource(source.id)
+      requestAnimationFrame(() => restoreRows(rowsById([source.id])))
+    })
+  }
 
   const handleCreate = async () => {
     if (!newSourceName.trim()) return
@@ -83,7 +109,7 @@ export function CandidateSourcesManager({ context = 'organization' }: CandidateS
             </TableHeader>
             <TableBody>
               {sourcesList.map((source) => (
-                <TableRow key={source.id}>
+                <TableRow key={source.id} data-row-id={source.id}>
                   <TableCell className="font-medium">
                     {editingId === source.id ? (
                       <Input
@@ -116,30 +142,11 @@ export function CandidateSourcesManager({ context = 'organization' }: CandidateS
                           <Button variant="ghost" size="sm" onClick={() => startEdit(source)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Source</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{source.name}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteSource(source.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <IconTip label={`Delete ${source.name}`}>
+                            <Button variant="ghost" size="sm" aria-label={`Delete ${source.name}`} onClick={() => void handleDelete(source)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </IconTip>
                         </div>
                       )}
                     </TableCell>

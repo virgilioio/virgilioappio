@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { supabase } from '@/lib/supabaseClient'
+import { toast } from '@/hooks/use-toast'
 import { Plus, Edit, Trash2, ClipboardList } from 'lucide-react'
 import { useOfferForms, type OfferFormsContext } from '@/hooks/useOfferForms'
 import { OfferFormSheet } from './templates/OfferFormSheet'
-import { useRecordCount } from '@/hooks/useRecordCount'
 
 interface OfferFormsManagerProps {
   context?: OfferFormsContext
@@ -20,6 +22,43 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
 
   const tenantForms = forms.filter(f => f.source === 'tenant')
   const displayForms = context === 'organization' ? tenantForms : forms
+
+  // S15 (Block B §16). A form used by an offer can't be deleted
+  // (offer_letters.form_id has no ON DELETE), so that is blocked up front
+  // (2026-10-13); otherwise type the form's name.
+  const handleDelete = async (form: { id: string; name: string }) => {
+    const { count, error } = await supabase
+      .from('offer_letters')
+      .select('id', { count: 'exact', head: true })
+      .eq('form_id', form.id)
+    if (error) {
+      toast({ title: `Couldn\u2019t check whether offers use ${form.name}`, description: 'Nothing was deleted; try again.', variant: 'destructive' })
+      return
+    }
+    const usedBy = count ?? 0
+    if (usedBy > 0) {
+      await confirmDestructive({
+        variant: 'blocked',
+        title: `${form.name} is in use`,
+        description: `${usedBy} offer${usedBy === 1 ? ' was' : 's were'} made with this form, and they need it to show their answers, so it stays.`,
+        confirmLabel: '',
+      })
+      return
+    }
+    await confirmDestructive({
+      title: `Delete ${form.name}?`,
+      description: 'No offer uses it. Its fields are deleted with it. This can\u2019t be undone.',
+      confirmLabel: 'Delete form',
+      typeToConfirm: form.name,
+      onConfirm: async () => {
+        try {
+          await deleteForm(form.id, { quiet: true })
+        } catch {
+          throw new Error(`Couldn\u2019t delete ${form.name}. Nothing was removed; try again.`)
+        }
+      },
+    })
+  }
 
   return (
     <Card>
@@ -83,16 +122,11 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <DeleteFormBody id={form.id} name={form.name} onDelete={() => deleteForm(form.id)} />
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <IconTip label={`Delete ${form.name}`}>
+                          <Button variant="ghost" size="sm" aria-label={`Delete ${form.name}`} onClick={() => void handleDelete({ id: form.id, name: form.name })}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </IconTip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -112,34 +146,5 @@ export function OfferFormsManager({ context = 'organization' }: OfferFormsManage
         updateForm={updateForm}
       />
     </Card>
-  )
-}
-
-/** Mounted only while the dialog is open. A form used by an offer can't be
- *  deleted (offer_letters.form_id has no ON DELETE), so it says so up front
- *  instead of failing after confirm (2026-10-13). */
-function DeleteFormBody({ id, name, onDelete }: { id: string; name: string; onDelete: () => void }) {
-  const usedBy = useRecordCount('offer_letters', 'form_id', id)
-  return (
-    <>
-      <AlertDialogHeader>
-        <AlertDialogTitle>{usedBy ? `${name} can't be deleted` : `Delete ${name}?`}</AlertDialogTitle>
-        <AlertDialogDescription>
-          {usedBy === null
-            ? 'Checking which offers use it…'
-            : usedBy > 0
-              ? `${usedBy} offer${usedBy === 1 ? ' uses' : 's use'} this form, so it has to stay.`
-              : "Its fields are deleted with it. This can't be undone."}
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>{usedBy ? 'Close' : 'Cancel'}</AlertDialogCancel>
-        {usedBy === 0 && (
-          <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Delete form
-          </AlertDialogAction>
-        )}
-      </AlertDialogFooter>
-    </>
   )
 }

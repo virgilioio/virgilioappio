@@ -10,16 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { CalendarX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -56,7 +48,6 @@ export function BookingDetailsDialog({
 }: BookingDetailsDialogProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
 
   const { data: booking, isLoading } = useQuery({
@@ -149,14 +140,32 @@ export function BookingDetailsDialog({
       onBookingUpdated?.()
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Failed to cancel booking'
+      console.error('Failed to cancel booking:', error)
       toast({
-        title: 'Error',
-        description: message,
+        title: 'Couldn\u2019t cancel the interview',
+        description: 'It\u2019s still booked and nobody was emailed; try again.',
         variant: 'destructive',
       })
     },
   })
+
+  // S26 (Block B §16): name who and when; Cancel reads "Keep interview" here.
+  const confirmCancel = async () => {
+    if (!booking) return
+    const name = booking.candidate_name?.trim() || 'the candidate'
+    const first = name.split(/\s+/)[0]
+    const isMeeting = !booking.job && !booking.candidate
+    const what = isMeeting ? 'meeting' : 'interview'
+    const when = format(parseISO(booking.scheduled_start), "EEE d MMM 'at' p")
+    const ok = await confirmDestructive({
+      icon: CalendarX,
+      title: `Cancel the ${what} with ${name}?`,
+      description: `${when}. ${first} and you get a cancellation email, and the calendar event is cancelled. It stays in the history as cancelled. This can\u2019t be undone.`,
+      confirmLabel: `Cancel ${what}`,
+      cancelLabel: `Keep ${what}`,
+    })
+    if (ok) cancelMutation.mutate()
+  }
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -475,7 +484,7 @@ export function BookingDetailsDialog({
               {booking.status !== 'cancelled' && booking.status !== 'completed' && (
                 <Button
                   variant="destructive"
-                  onClick={() => setShowCancelDialog(true)}
+                  onClick={() => void confirmCancel()}
                   disabled={cancelMutation.isPending}
                 >
                   <AlertTriangle className="h-4 w-4 mr-2" />
@@ -487,30 +496,6 @@ export function BookingDetailsDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Interview?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this interview? Both you and the candidate will
-              receive cancellation emails with updated calendar events.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No, keep it</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                cancelMutation.mutate()
-                setShowCancelDialog(false)
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Yes, cancel interview
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Email Composer */}
       {showEmailComposer && (

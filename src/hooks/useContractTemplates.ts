@@ -178,7 +178,7 @@ export function useContractTemplates(context: ContractTemplatesContext = 'organi
       console.error('Error deleting contract template:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete contract template',
+        description: 'Couldn\u2019t delete the contract template. Nothing was removed; try again.',
         variant: 'destructive',
       });
       throw error;

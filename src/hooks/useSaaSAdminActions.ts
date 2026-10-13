@@ -52,16 +52,16 @@ export function useSuspendOrganization() {
       queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
       
       toast({
-        title: 'Organization suspended',
-        description: 'The subscription has been suspended successfully.',
+        title: 'Workspace suspended',
+        description: 'Its members are locked out until you grant access.',
       })
     },
     onError: (error) => {
       log.error('Failed to suspend organization:', error)
       toast({
         variant: 'destructive',
-        title: 'Suspension failed',
-        description: extractErrorMessage(error),
+        title: 'Couldn\u2019t suspend the workspace',
+        description: 'Nothing was changed; try again.',
       })
     }
   })
@@ -311,8 +311,8 @@ export function useRevokeAccess() {
       log.error('Failed to revoke access:', error)
       toast({
         variant: 'destructive',
-        title: 'Revoke failed',
-        description: extractErrorMessage(error),
+        title: 'Couldn\u2019t revoke access',
+        description: 'The workspace still has access; try again.',
       })
     },
   })

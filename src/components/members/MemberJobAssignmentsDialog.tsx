@@ -14,6 +14,7 @@ import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
 import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftFlag } from '@/components/ui/EmptyIllustrations'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface MemberJobAssignmentsDialogProps {
   isOpen: boolean
@@ -123,8 +124,26 @@ export function MemberJobAssignmentsDialog({
 
   const hasChanges = pendingChanges.add.length > 0 || pendingChanges.remove.length > 0
 
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     if (!member?.user_id || !member?.organization_id) return
+
+    // S5 (Block B §16): unticking jobs removes assignments, so Save asks first.
+    const removing = pendingChanges.remove
+    if (removing.length > 0) {
+      const titles = removing.map(id => jobs.find(j => j.id === id)?.title || 'Untitled job')
+      const first = member.user_first_name?.trim() || memberName
+      const many = removing.length > 1
+      const adding = pendingChanges.add.length
+      const ok = await confirmDestructive({
+        variant: 'remove',
+        title: many ? `Remove ${memberName} from ${removing.length} jobs?` : `Remove ${memberName} from ${titles[0]}?`,
+        description: `${first} comes off ${many ? 'these jobs' : 'this job'}. Their notes and scorecards stay.${adding ? ` The ${adding === 1 ? 'job' : `${adding} jobs`} you ticked ${adding === 1 ? 'is' : 'are'} added at the same time.` : ''}`,
+        items: many ? titles.slice(0, 3) : undefined,
+        itemsTotal: many ? titles.length : undefined,
+        confirmLabel: many ? `Remove from ${removing.length} jobs` : 'Remove from job',
+      })
+      if (!ok) return
+    }
     
     // Check if this save would convert a free user to paid
     // The member currently has no recruiter assignments and is a 'member' system_role
@@ -272,7 +291,7 @@ export function MemberJobAssignmentsDialog({
             <Button variant="outline" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
-            <Button onClick={handleSaveClick} disabled={!hasChanges || isSaving}>
+            <Button onClick={() => void handleSaveClick()} disabled={!hasChanges || isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save Changes
             </Button>

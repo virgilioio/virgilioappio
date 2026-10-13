@@ -4,7 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { undoToast } from '@/lib/undoToast'
+import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { Plus, Edit, Trash2, UserX, UserMinus, Check, X } from 'lucide-react'
 import { useRejectionReasons, type RejectionCategory, type RejectionReason } from '@/hooks/useRejectionReasons'
@@ -28,8 +31,31 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
     createReason, 
     updateReason, 
     deleteReason,
+    restoreReason,
     isCreating 
   } = useRejectionReasons(context)
+
+  // S17 (Block B §16): a soft delete, so it says what stays and offers Undo.
+  const handleDelete = async (reason: RejectionReason) => {
+    const ok = await confirmDestructive({
+      title: `Delete \u201c${reason.name}\u201d?`,
+      description: 'It\u2019s no longer offered when you reject someone or record that they declined. Candidates already rejected with it keep it in their history.',
+      confirmLabel: 'Delete reason',
+    })
+    if (!ok) return
+    const exit = collapseRows(rowsById([reason.id]))
+    await exit.done
+    try {
+      await deleteReason(reason.id)
+    } catch {
+      exit.revert()
+      return
+    }
+    undoToast(`\u201c${reason.name}\u201d deleted`, async () => {
+      await restoreReason(reason.id)
+      requestAnimationFrame(() => restoreRows(rowsById([reason.id])))
+    })
+  }
 
   const filteredPlatformReasons = platformReasons.filter(r => r.category === category)
   const filteredTenantReasons = tenantReasons.filter(r => r.category === category)
@@ -99,7 +125,7 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
             </TableHeader>
             <TableBody>
               {reasonsList.map((reason) => (
-                <TableRow key={reason.id}>
+                <TableRow key={reason.id} data-row-id={reason.id}>
                   <TableCell className="font-medium">
                     {editingId === reason.id ? (
                       <Input
@@ -145,30 +171,11 @@ export function RejectionReasonsManager({ context = 'organization' }: RejectionR
                           <Button variant="ghost" size="sm" onClick={() => startEdit(reason)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Reason</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{reason.name}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteReason(reason.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <IconTip label={`Delete ${reason.name}`}>
+                            <Button variant="ghost" size="sm" aria-label={`Delete ${reason.name}`} onClick={() => void handleDelete(reason)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </IconTip>
                         </div>
                       )}
                     </TableCell>

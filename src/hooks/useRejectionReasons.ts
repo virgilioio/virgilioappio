@@ -135,13 +135,27 @@ export function useRejectionReasons(context: 'platform-defaults' | 'organization
 
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rejection-reasons'] })
-      toast.success('Rejection reason deleted')
-    },
+    // The caller shows "{name} deleted · Undo" (Block B §16).
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rejection-reasons'] }),
     onError: (error) => {
       console.error('Failed to delete rejection reason:', error)
-      toast.error('Failed to delete rejection reason')
+      toast.error('Couldn\u2019t delete the rejection reason. Nothing was changed; try again.')
+    }
+  })
+
+  // Undo for deleteReason (it's a soft delete).
+  const restoreReason = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('rejection_reasons')
+        .update({ is_active: true })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rejection-reasons'] }),
+    onError: (error) => {
+      console.error('Failed to restore rejection reason:', error)
+      toast.error('Couldn\u2019t bring the rejection reason back; try again.')
     }
   })
 
@@ -157,6 +171,7 @@ export function useRejectionReasons(context: 'platform-defaults' | 'organization
     createReason: createReason.mutateAsync,
     updateReason: updateReason.mutateAsync,
     deleteReason: deleteReason.mutateAsync,
+    restoreReason: restoreReason.mutateAsync,
     isCreating: createReason.isPending,
     isUpdating: updateReason.isPending,
     isDeleting: deleteReason.isPending

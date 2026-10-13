@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react'
 import { Plus, Pencil, Archive, ArchiveRestore } from 'lucide-react'
 import { useDepartments, type Department } from '@/hooks/useDepartments'
 import { supabase } from '@/lib/supabaseClient'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { undoToast } from '@/lib/undoToast'
+import { toast } from '@/hooks/use-toast'
 import { SpecCard } from '@/components/settings/shared/SpecCard'
 import { SpecChip } from '@/components/settings/shared/SpecChip'
 import { DepartmentFormDialog } from './DepartmentFormDialog'
@@ -37,6 +41,38 @@ export function DepartmentsManager() {
   const { data: counts } = useJobCountsByDepartment()
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Department | null>(null)
+  const queryClient = useQueryClient()
+
+  const setArchived = async (d: Department, is_archived: boolean) => {
+    const { error } = await supabase.from('departments').update({ is_archived }).eq('id', d.id)
+    if (error) {
+      toast({ title: `Couldn\u2019t ${is_archived ? 'archive' : 'restore'} ${d.name}`, description: 'Nothing was changed; try again.', variant: 'destructive' })
+      return false
+    }
+    await queryClient.invalidateQueries({ queryKey: ['departments'] })
+    return true
+  }
+
+  // S6 (Block B §16): archiving asks with the open-job count, then offers Undo.
+  const handleArchive = async (d: Department) => {
+    const open = counts?.[d.id]?.open ?? 0
+    const total = counts?.[d.id]?.total ?? 0
+    const jobsLine = total === 0
+      ? 'No jobs use it.'
+      : total === 1
+        ? `Its ${open ? 'open job' : 'one job'} keeps it as its department.`
+        : `Its ${total} jobs${open ? `, ${open} of them open,` : ''} keep it as their department.`
+    const ok = await confirmDestructive({
+      variant: 'archive',
+      title: `Archive ${d.name}?`,
+      description: `It\u2019s no longer offered when you create or edit a job. ${jobsLine} You can restore it from this list.`,
+      confirmLabel: 'Archive department',
+    })
+    if (!ok) return
+    if (await setArchived(d, true)) {
+      undoToast(`${d.name} archived`, () => { void setArchived(d, false) })
+    }
+  }
 
   const sorted = useMemo(() => {
     return [...departments].sort((a, b) => {
@@ -135,24 +171,28 @@ export function DepartmentsManager() {
                     <Pencil size={12} />
                   </button>
                   {d.is_archived ? (
-                    <button
-                      type="button"
-                      aria-label="Restore department"
-                      onClick={() => updateDepartment.mutate({ id: d.id, is_archived: false })}
-                      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC]"
-                    >
-                      <ArchiveRestore size={12} />
-                    </button>
+                    <IconTip label="Restore department">
+                      <button
+                        type="button"
+                        aria-label="Restore department"
+                        onClick={() => updateDepartment.mutate({ id: d.id, is_archived: false })}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC]"
+                      >
+                        <ArchiveRestore size={12} />
+                      </button>
+                    </IconTip>
                   ) : (
-                    <button
-                      type="button"
-                      aria-label="Archive department"
-                      onClick={() => updateDepartment.mutate({ id: d.id, is_archived: true })}
-                      disabled={d.is_system}
-                      className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC] disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <Archive size={12} />
-                    </button>
+                    <IconTip label="Archive department">
+                      <button
+                        type="button"
+                        aria-label="Archive department"
+                        onClick={() => void handleArchive(d)}
+                        disabled={d.is_system}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[#8B8F9E] hover:text-[#0d0d09] hover:bg-[#F1F0EC] disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Archive size={12} />
+                      </button>
+                    </IconTip>
                   )}
                 </div>
               </div>

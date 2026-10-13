@@ -148,21 +148,31 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
 
       if (error) throw error;
 
-      toast({
-        title: 'Success',
-        description: 'Rejection email template deleted successfully',
-      });
-
+      // The caller shows "{name} deleted · Undo" (Block B §16).
       await fetchTemplates();
     } catch (error: any) {
       console.error('Error deleting rejection email template:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete rejection email template',
+        title: 'Couldn\u2019t delete the rejection template',
+        description: 'Nothing was changed; try again.',
         variant: 'destructive',
       });
       throw error;
     }
+  };
+
+  // Undo for deleteTemplate (it's a soft delete).
+  const restoreTemplate = async (id: string) => {
+    const { error } = await supabase
+      .from('rejection_email_templates')
+      .update({ is_active: true })
+      .eq('id', id);
+    if (error) {
+      console.error('Error restoring rejection email template:', error);
+      toast({ title: 'Couldn\u2019t bring the rejection template back', description: 'Try again.', variant: 'destructive' });
+      return;
+    }
+    await fetchTemplates();
   };
 
   useEffect(() => {
@@ -175,6 +185,7 @@ export function useRejectionEmailTemplates(context: RejectionEmailTemplatesConte
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    restoreTemplate,
     refetchTemplates: fetchTemplates,
   };
 }

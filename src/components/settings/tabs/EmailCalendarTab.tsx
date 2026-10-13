@@ -1,4 +1,4 @@
-import { AlertTriangle, Lock } from 'lucide-react'
+import { AlertTriangle, Lock, Unplug } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Badge } from '@/components/ui/badge'
@@ -6,17 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { supabase } from '@/integrations/supabase/client'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { toast } from 'sonner'
@@ -141,7 +131,8 @@ export function GoogleWorkspaceConnection() {
       toast.success('Google Workspace disconnected')
     },
     onError: (error: Error) => {
-      toast.error(`Failed to disconnect Google Workspace: ${error.message}`)
+      console.error('Failed to disconnect Google Workspace:', error)
+      toast.error('Couldn\u2019t disconnect Google Workspace. Nothing was changed; try again.')
     },
   })
 
@@ -162,8 +153,17 @@ export function GoogleWorkspaceConnection() {
   if (hasMail) googleCapabilities.push('Mail · two-way')
   if (hasCalendar) googleCapabilities.push('Calendar · two-way')
 
-  const handleDisconnectGoogle = () => {
-    disconnectGoogleWorkspace.mutate()
+  // S22 (Block B §16): say what stops, including booking links.
+  const handleDisconnectGoogle = async () => {
+    const who = googleEmail || 'your Google account'
+    const ok = await confirmDestructive({
+      variant: 'remove',
+      icon: Unplug,
+      title: `Disconnect ${who}?`,
+      description: `Gio stops sending candidate email from ${googleEmail ? 'this address' : 'your address'} and stops reading your calendar. Your booking links stop offering times and new interviews can\u2019t go on your calendar until you reconnect. Emails already sent and events already booked stay.`,
+      confirmLabel: 'Disconnect Google',
+    })
+    if (ok) disconnectGoogleWorkspace.mutate()
   }
 
   return (
@@ -193,32 +193,9 @@ export function GoogleWorkspaceConnection() {
                         {connectGmail.isPending ? 'Connecting…' : 'Reconnect Google'}
                       </Button>
                     )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="secondary" size="sm" disabled={disconnectGoogleWorkspace.isPending}>
-                          Disconnect
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Disconnect Google Workspace</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            You won't be able to send candidate emails from your address or
-                            schedule interviews against your real calendar until you reconnect.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleDisconnectGoogle}
-                            disabled={disconnectGoogleWorkspace.isPending}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Disconnect
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button variant="secondary" size="sm" disabled={disconnectGoogleWorkspace.isPending} onClick={() => void handleDisconnectGoogle()}>
+                      Disconnect
+                    </Button>
                   </div>
                 ) : (
                   <Button

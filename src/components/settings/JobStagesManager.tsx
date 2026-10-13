@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDeleteStage } from './confirmDeleteStage'
 import { JobStageForm } from './JobStageForm'
 import { useJobStages, JobStage } from '@/hooks/useJobStages'
 import { Plus, Copy, Pencil, Trash2, Loader2 } from 'lucide-react'
@@ -39,8 +40,7 @@ const TYPE_TONE: Record<string, SpecChipTone> = {
 export function JobStagesManager({ context = 'organization' }: JobStagesManagerProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [editing, setEditing] = useState<JobStage | null>(null)
-  const [toDelete, setToDelete] = useState<JobStage | null>(null)
-  const { stages, isLoading, copyPlatformTemplate, deleteStage, isDeleting } = useJobStages(context)
+  const { stages, isLoading, copyPlatformTemplate, deleteStage } = useJobStages(context)
 
   const platformStages = (stages || []).filter(s => s.source === 'platform')
   const tenantStages = (stages || []).filter(s => s.source === 'tenant')
@@ -113,15 +113,17 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
               >
                 <Pencil size={13} />
               </button>
-              <button
-                type="button"
-                className="text-[#8B8F9E] hover:text-[#B91C1C] transition-colors"
-                onClick={() => setToDelete(s)}
-                aria-label="Delete"
-                disabled={context === 'organization' && s.source === 'platform'}
-              >
-                <Trash2 size={13} />
-              </button>
+              <IconTip label={`Delete ${s.stage_name}`}>
+                <button
+                  type="button"
+                  className="text-[#8B8F9E] hover:text-[#B91C1C] transition-colors"
+                  onClick={() => void confirmDeleteStage(s, { global: context === 'platform-defaults', onDelete: () => deleteStage(s.id, { quiet: true }) })}
+                  aria-label={`Delete ${s.stage_name}`}
+                  disabled={context === 'organization' && s.source === 'platform'}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </IconTip>
             </SpecRow>
           ))
         )}
@@ -151,24 +153,6 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete stage</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{toDelete?.stage_name}"? This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => { if (toDelete) { await deleteStage(toDelete.id); setToDelete(null) } }}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
