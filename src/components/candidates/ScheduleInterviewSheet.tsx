@@ -25,8 +25,8 @@ import {
   UserPlus,
   Users,
   Video,
-  Trash2,
   X,
+  CalendarX,
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO, format } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
@@ -62,7 +62,7 @@ import * as z from 'zod';
 import { Form } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented';
-import { confirmDialog } from '@/components/ui/confirm-dialog';
+import { confirmDestructive } from '@/components/ui/confirm-dialog';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -812,7 +812,7 @@ export function ScheduleInterviewSheet({
       const { data, error } = await supabase
         .from('scheduled_bookings')
         .select(
-          'id, interviewer_id, scheduled_start, scheduled_end, duration_minutes, meeting_type, meeting_location, notes, guest_emails',
+          'id, interviewer_id, scheduled_start, scheduled_end, duration_minutes, meeting_type, meeting_location, notes, guest_emails, scheduled_booking_attendees(user_id)',
         )
         .eq('id', oldBookingId!)
         .maybeSingle();
@@ -827,6 +827,7 @@ export function ScheduleInterviewSheet({
         meeting_location: string | null;
         notes: string | null;
         guest_emails: string[] | null;
+        scheduled_booking_attendees?: { user_id: string | null }[] | null;
       } | null;
     },
   });
@@ -1705,31 +1706,53 @@ export function ScheduleInterviewSheet({
             {isReschedule && (
               <Button
                 variant="ghost"
-                icon={Trash2}
+                icon={CalendarX}
                 loading={isDeleting}
                 onClick={async () => {
                   if (!oldBookingId) return;
-                  if (!(await confirmDialog({ title: 'Delete this interview?', description: 'Panelists will be notified and the event will be removed.', confirmLabel: 'Delete interview', destructive: true }))) return;
+                  // C12 (Block B §16, Pattern 1): this cancels the booking, as everywhere
+                  // else; cancel-booking emails the candidate, the lead interviewer and
+                  // any guests, and deletes the Google event the panel is on.
+                  const name = candidateName.trim();
+                  const first = name.split(/\s+/)[0] || 'The candidate';
+                  const panel = new Set(
+                    [oldBooking?.interviewer_id, ...(oldBooking?.scheduled_booking_attendees ?? []).map((a) => a.user_id)].filter(Boolean),
+                  ).size;
+                  const when = oldBooking?.scheduled_start
+                    ? format(parseISO(oldBooking.scheduled_start), "EEE d MMM 'at' h:mm a")
+                    : null;
+                  const guests = oldBooking?.guest_emails?.length ? ' and the guests' : '';
+                  const emailed = panel > 1
+                    ? `${first}, the lead interviewer${guests} are emailed, and the event comes off Google Calendar for all ${panel} panelists.`
+                    : `${first}, the interviewer${guests} are emailed, and the event comes off Google Calendar.`;
+                  const ok = await confirmDestructive({
+                    icon: CalendarX,
+                    title: name ? `Cancel the interview with ${name}?` : 'Cancel this interview?',
+                    description: `${stageName}${when ? `, ${when}` : ''}. ${emailed} ${first} stays in ${stageName}. This can\u2019t be undone.`,
+                    confirmLabel: 'Cancel interview',
+                    cancelLabel: 'Keep interview',
+                  });
+                  if (!ok) return;
                   setIsDeleting(true);
                   try {
                     const { error } = await supabase.functions.invoke('cancel-booking', {
-                      body: { booking_id: oldBookingId, reason: 'Interview deleted by recruiter' },
+                      body: { booking_id: oldBookingId, reason: 'Interview cancelled by recruiter' },
                     });
                     if (error) throw error;
-                    toast({ title: 'Interview deleted', description: 'Panelists have been notified.' });
+                    toast({ title: 'Interview cancelled', description: 'Everyone on it has been told.' });
                     queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });
                     queryClient.invalidateQueries({ queryKey: ['stage-bookings', jhsId, candidateId] });
                     onDeleted?.();
                     handleOpenChange(false);
-                  } catch (e: any) {
-                    toast({ variant: 'destructive', title: 'Delete failed', description: e?.message || 'Please try again.' });
+                  } catch {
+                    toast({ variant: 'destructive', title: 'Couldn\u2019t cancel the interview', description: 'It\u2019s still booked and nobody was emailed; try again.' });
                   } finally {
                     setIsDeleting(false);
                   }
                 }}
                 className="text-[#DC2626] hover:bg-[#FEF2F2]"
               >
-                Delete interview
+                Cancel interview
               </Button>
             )}
 
