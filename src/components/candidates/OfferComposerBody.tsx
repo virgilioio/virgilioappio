@@ -1,3 +1,4 @@
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { InlineEmpty } from '@/components/ui/empty-state'
@@ -188,6 +189,16 @@ export function OfferComposerBody({
           })
           
           if (hasRestartTrigger) {
+            const changed = restartFields
+              .filter(f => JSON.stringify(originalValues[f.field_name] ?? '') !== JSON.stringify(fieldValues[f.field_name] ?? ''))
+              .map(f => f.field_label)
+            const ok = await confirmDialog({
+              title: 'Restart approval for this offer?',
+              description: `Changing ${changed.join(', ') || 'these fields'} sends the offer back for approval. The current offer letter file for ${jobTitle || 'this job'} is removed, so a new one is made after approval.`,
+              confirmLabel: 'Save and restart approval',
+              destructive: true,
+            })
+            if (!ok) return
             // Recall the approval request if one exists
             if (approvalRequest && (approvalRequest.status === 'pending' || approvalRequest.status === 'approved')) {
               await recallApproval(approvalRequest.id)
@@ -199,12 +210,24 @@ export function OfferComposerBody({
                 .eq('id', editingOfferId)
             }
             
-            // Delete stale offer document
-            const { data: attachments } = await supabase
+            // Delete the stale offer document for THIS job only (2026-10-13:
+            // it used to remove every "Offer Letter" file the candidate had,
+            // across all their jobs). Files carry no job link, so match the
+            // job title in the name; with no title match, only clear them when
+            // this is the candidate's only offer.
+            const { data: allOfferFiles } = await supabase
               .from('candidate_attachments')
-              .select('id, file_url')
+              .select('id, file_url, file_name')
               .eq('candidate_id', candidateId)
               .like('file_name', 'Offer Letter%')
+            let attachments = (allOfferFiles ?? []).filter(a => jobTitle && a.file_name?.includes(` - ${jobTitle}`))
+            if (!attachments.length && allOfferFiles?.length) {
+              const { count: offerCount } = await supabase
+                .from('offer_letters')
+                .select('id', { count: 'exact', head: true })
+                .eq('candidate_id', candidateId)
+              if ((offerCount ?? 0) <= 1) attachments = allOfferFiles
+            }
             
             if (attachments && attachments.length > 0) {
               // Delete from storage
