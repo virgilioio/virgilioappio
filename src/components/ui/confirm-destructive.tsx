@@ -23,7 +23,8 @@ import { prefersReducedMotion, motionToken } from '@/lib/motion'
  * button for the action that fixes it (`confirmLabel` + `onConfirm`), or none.
  *
  * Built on Radix AlertDialog with the shared gio-dialog motion (220ms in, 150ms
- * out, from 0.96). The backdrop cancels, like Esc.
+ * out, from 0.96). The backdrop cancels, like Esc. It sits at z-90, above
+ * Dialogs (z-70) and sheets, because it is often opened from inside one.
  */
 export type DestructiveVariant = 'delete' | 'remove' | 'archive' | 'blocked'
 
@@ -144,12 +145,12 @@ export function ConfirmDestructiveDialog({
     <AlertDialogPrimitive.Root open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
       <AlertDialogPrimitive.Portal>
         <AlertDialogPrimitive.Overlay
-          className="fixed inset-0 z-50 bg-black/80 gio-dialog-overlay"
+          className="fixed inset-0 z-[90] bg-black/80 gio-dialog-overlay"
           onClick={close}
         />
         <AlertDialogPrimitive.Content
           className={cn(
-            'fixed left-[50%] top-[50%] z-50 [translate:-50%_-50%] w-[min(420px,calc(100vw-32px))]',
+            'fixed left-[50%] top-[50%] z-[90] [translate:-50%_-50%] w-[min(420px,calc(100vw-32px))]',
             'border bg-background shadow-lg gio-dialog rounded-lg',
           )}
           onOpenAutoFocus={(e) => {
