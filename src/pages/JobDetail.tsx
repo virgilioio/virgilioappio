@@ -1,8 +1,7 @@
-import { useRecordCount } from '@/hooks/useRecordCount'
 import { ClientViewStrip } from '@/components/jobs/ClientViewStrip'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -34,16 +33,6 @@ import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -83,7 +72,8 @@ import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 import { ApplicationReviewSheet } from '@/components/candidates/ApplicationReviewSheet'
 import { isPublishGateError } from '@/lib/jobTeam'
 import { inChunks } from '@/lib/fetchAllRows'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { DeleteJobDialog } from '@/components/jobs/DeleteJobDialog'
+import { archiveJobWithUndo, closeJobWithUndo } from '@/components/jobs/jobStatusActions'
 import { useScrollMemory } from '@/lib/scrollMemory'
 
 
@@ -473,10 +463,10 @@ export default function JobDetail() {
   }, [id])
 
   // Jobs hook for updating
-  const { updateJob, archiveJob, deleteJob, isLoading: jobUpdateLoading } = useJobs()
+  const { updateJob, deleteJob, isLoading: jobUpdateLoading } = useJobs()
+  const queryClient = useQueryClient()
   const [showDuplicateWizard, setShowDuplicateWizard] = useState(false)
   const [duplicateInitialData, setDuplicateInitialData] = useState<any>(null)
-  const [confirmCloseJob, setConfirmCloseJob] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Job assignments hook
@@ -947,59 +937,30 @@ export default function JobDetail() {
     return () => window.removeEventListener('job-detail:refresh', h)
   }, [refetch])
 
-  // A job with booked interviews can't be deleted: the database keeps that
-  // history (scheduled_bookings.job_id has no ON DELETE), so the dialog says so
-  // before anyone confirms (2026-10-13).
-  const jobBookings = useRecordCount('scheduled_bookings', 'job_id', confirmDelete ? id : null)
-
+  // J5/J8 (Block B §16, Pattern 1 + Undo): archiving is a status change; Undo
+  // puts the previous status back. The page goes back to Jobs once it's done.
   const handleArchiveJob = async () => {
-    if (!id || !(await confirmDialog({ title: 'Archive this job?', description: 'It leaves your active jobs. You can reopen it later.', confirmLabel: 'Archive job' }))) return
-
-    try {
-      const { error } = await supabase
-        .from('jobs')
-        .update({ status: 'archived' })
-        .eq('id', id)
-
-      if (error) throw error
-
-      toast({
-        title: 'Success',
-        description: 'Job archived successfully'
-      })
-
-      navigate('/jobs')
-    } catch (error) {
-      console.error('Error archiving job:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to archive job',
-        variant: 'destructive'
-      })
-    }
+    if (!id) return
+    await archiveJobWithUndo(
+      { id, title: job?.title, status: job?.status },
+      { queryClient, onDone: () => navigate('/jobs') },
+    )
   }
 
+  // J4/J7: closing stops new applications; Undo reopens it.
   const handleCloseJob = async () => {
     if (!id) return
-    try {
-      await updateJob(id, { status: 'closed' })
-      refetch()
-      setConfirmCloseJob(false)
-      toast({ title: 'Job closed', description: 'New applications are no longer accepted.' })
-    } catch (e) {
-      console.error('Error closing job:', e)
-    }
+    await closeJobWithUndo({ id, title: job?.title, status: job?.status }, { queryClient, onDone: () => refetch() })
   }
 
+  // J6 (Pattern 2): type the title to delete. A job with booked interviews
+  // can't be deleted (the database keeps that history); the dialog says so
+  // and offers Archive job instead (2026-10-13).
   const handleDeleteJob = async () => {
     if (!id) return
-    try {
-      await deleteJob(id)
-      setConfirmDelete(false)
-      navigate('/jobs')
-    } catch (e) {
-      console.error('Error deleting job:', e)
-    }
+    await deleteJob(id, { quiet: true })
+    toast({ title: `${job?.title?.trim() || 'Job'} deleted` })
+    navigate('/jobs')
   }
 
   const handleDuplicateJob = () => {
@@ -1232,9 +1193,9 @@ export default function JobDetail() {
                   onAddCandidate={() => setShowAddCandidate(true)}
                   onEdit={handleEditJob}
                   onDuplicate={handleDuplicateJob}
-                  onCloseJob={() => setConfirmCloseJob(true)}
+                  onCloseJob={() => void handleCloseJob()}
                   onArchive={() => void handleArchiveJob()}
-                  onDelete={() => setConfirmDelete(true)}
+                  onDelete={permissions.canDeleteJobs ? () => setConfirmDelete(true) : undefined}
                   canEdit={!isRestrictedViewer}
                 />
                 <TabsList indicator="underline" className="h-auto bg-transparent p-0 shadow-none border-0 rounded-none w-full justify-start gap-6 mt-4">
@@ -1485,7 +1446,7 @@ export default function JobDetail() {
           onPreviewPosting={() => {
             openActivePosting()
           }}
-          onCloseJob={() => { setShowEditJobModal(false); setConfirmCloseJob(true) }}
+          onCloseJob={() => { setShowEditJobModal(false); void handleCloseJob() }}
           onArchiveJob={async () => { setShowEditJobModal(false); await handleArchiveJob() }}
           onGoToSetup={(sub) => {
             setShowEditJobModal(false)
@@ -1501,49 +1462,14 @@ export default function JobDetail() {
           initialData={duplicateInitialData || undefined}
         />
 
-        {/* Confirm Close Job */}
-        <AlertDialog open={confirmCloseJob} onOpenChange={setConfirmCloseJob}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Close this job?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Closing stops new applications. Candidates already in the pipeline are unaffected.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleCloseJob}>Close job</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Confirm Delete Job */}
-        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{jobBookings ? `${job?.title ?? 'This job'} can't be deleted` : 'Delete job permanently?'}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {jobBookings === null
-                  ? 'Checking for interviews booked on this job…'
-                  : jobBookings > 0
-                    ? `${jobBookings} interview${jobBookings === 1 ? ' was' : 's were'} booked for this job, and that history has to stay. Archive it instead to take it out of your active jobs.`
-                    : 'This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.'}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              {jobBookings ? (
-                <AlertDialogAction onClick={() => { setConfirmDelete(false); void handleArchiveJob() }}>
-                  Archive job
-                </AlertDialogAction>
-              ) : (
-                <AlertDialogAction disabled={jobBookings === null} onClick={handleDeleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Delete job
-                </AlertDialogAction>
-              )}
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Delete job (J6) */}
+        <DeleteJobDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          job={job ? { id: job.id, title: job.title } : null}
+          onConfirm={handleDeleteJob}
+          onArchiveInstead={() => void handleArchiveJob()}
+        />
 
         {/* Manage Hiring Team Dialog */}
         {job && (
