@@ -782,9 +782,14 @@ export default function PublicJobPosting() {
   const eeoStatement: string | null = d.eeo_statement || null
   const eeoEnabled: boolean = !!d.eeo_enabled
 
+  // "MXN 40,000 – 60,000 per month": the range when there is one, else the single amount.
   const compensationLabel = (() => {
     if (!details.showSalary || !details.salaryAmount) return null
-    return `${details.salaryCurrency || ''} ${Number(details.salaryAmount).toLocaleString()}${
+    const { salaryMin: lo, salaryMax: hi } = details
+    const amount = lo && hi && Number(lo) !== Number(hi)
+      ? `${Number(lo).toLocaleString()} – ${Number(hi).toLocaleString()}`
+      : Number(details.salaryAmount).toLocaleString()
+    return `${details.salaryCurrency || ''} ${amount}${
       details.salaryPeriod ? ' ' + formatPeriod(details.salaryPeriod) : ''
     }`.trim()
   })()

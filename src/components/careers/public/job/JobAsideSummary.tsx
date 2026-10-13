@@ -33,7 +33,7 @@ export function JobAsideSummary({ rows }: Props) {
                   ))}
                 </span>
               ) : (
-                <span className="block max-w-[180px] truncate">{r.value}</span>
+                <span className="block max-w-[180px] line-clamp-2 break-words text-right">{r.value}</span>
               )}
             </dd>
           </div>
