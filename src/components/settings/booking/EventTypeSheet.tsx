@@ -237,7 +237,8 @@ export function EventTypeSheet({
   const [minNoticeHours, setMinNoticeHours] = useState(24);
   const [maxDaysAhead, setMaxDaysAhead] = useState(30);
   const [meetingLocation, setMeetingLocation] = useState('');
-  const [customEventTitle, setCustomEventTitle] = useState('Interview with {candidate_name}');
+  // Empty means the default: "{event name} · {their name}" (2026-10-13).
+  const [customEventTitle, setCustomEventTitle] = useState('');
 
   useEffect(() => {
     if (eventType) {
@@ -252,7 +253,7 @@ export function EventTypeSheet({
       setMinNoticeHours(eventType.min_notice_hours || 24);
       setMaxDaysAhead(eventType.max_days_ahead || 30);
       setMeetingLocation(eventType.meeting_location || '');
-      setCustomEventTitle(eventType.custom_event_title || 'Interview with {candidate_name}');
+      setCustomEventTitle(eventType.custom_event_title || '');
     } else {
       setTitle('');
       setDescription('');
@@ -265,7 +266,7 @@ export function EventTypeSheet({
       setMinNoticeHours(24);
       setMaxDaysAhead(30);
       setMeetingLocation('');
-      setCustomEventTitle('Interview with {candidate_name}');
+      setCustomEventTitle('');
     }
     setTab('weekly-hours');
   }, [eventType, open, defaultTz]);
@@ -284,7 +285,7 @@ export function EventTypeSheet({
       min_notice_hours: minNoticeHours,
       max_days_ahead: maxDaysAhead,
       meeting_location: meetingLocation || null,
-      custom_event_title: customEventTitle || null,
+      custom_event_title: customEventTitle.trim() || null,
     };
     if (eventType) data.id = eventType.id;
     onSave(data);
@@ -443,11 +444,11 @@ export function EventTypeSheet({
                     id="et-cal-title"
                     value={customEventTitle}
                     onChange={(e) => setCustomEventTitle(e.target.value)}
-                    placeholder="Interview with {candidate_name}"
+                    placeholder={`${title.trim() || 'Event name'} · {candidate_name}`}
                     className="h-9 font-inter"
                   />
                   <p className="mt-1.5 font-inter text-[11px] text-[#8B8F9E] leading-snug">
-                    Use{' '}
+                    Leave it empty to use the event name and the person’s name. Use{' '}
                     <code
                       className="inline-flex items-center px-1.5 py-0.5 rounded-[6px] font-mono text-[10.5px] text-[#5B21B6]"
                       style={{ background: '#F1F0EC' }}
