@@ -4929,6 +4929,33 @@ export type Database = {
           },
         ]
       }
+      job_suggestion_dismissals: {
+        Row: {
+          candidate_id: string
+          dismissed_at: string
+          dismissed_by: string | null
+          id: string
+          job_id: string
+          undone_at: string | null
+        }
+        Insert: {
+          candidate_id: string
+          dismissed_at?: string
+          dismissed_by?: string | null
+          id?: string
+          job_id: string
+          undone_at?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          dismissed_at?: string
+          dismissed_by?: string | null
+          id?: string
+          job_id?: string
+          undone_at?: string | null
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           additional_locations: string[]
@@ -9499,6 +9526,10 @@ export type Database = {
         Args: { _job_id: string; _tenant_id: string }
         Returns: boolean
       }
+      can_access_job_pipeline: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
       can_use_chat_module: { Args: never; Returns: boolean }
       can_view_eeo: {
@@ -10089,6 +10120,10 @@ export type Database = {
         }
         Returns: Json
       }
+      move_candidates_off_library_stage: {
+        Args: { p_stage_id: string }
+        Returns: number
+      }
       next_req_ids: {
         Args: { _count: number; _tenant_id: string }
         Returns: string[]
@@ -10183,6 +10218,10 @@ export type Database = {
           role: string
           user_type: string
         }[]
+      }
+      retire_global_job_stage: {
+        Args: { p_stage_id: string }
+        Returns: undefined
       }
       retire_tenant_job_stage: {
         Args: { p_stage_id: string }
