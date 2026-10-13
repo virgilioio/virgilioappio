@@ -167,6 +167,8 @@ export function DecisionDialog({
         zIndex: 120,
         background: 'rgba(13,13,9,0.35)',
         display: 'grid',
+        // One shrinkable column, so the panel never runs off a phone screen (O5, 390px check).
+        gridTemplateColumns: 'minmax(0, 1fr)',
         placeItems: 'center',
         padding: 16,
         overflowY: 'auto',
@@ -178,8 +180,8 @@ export function DecisionDialog({
         aria-modal="true"
         aria-label={accept ? 'Request an interview' : `Pass on ${candidateFirstName}`}
         style={{
-          width: 520,
-          maxWidth: '100%',
+          width: '100%',
+          maxWidth: 520,
           background: '#fff',
           border: '1px solid #E7E8EE',
           borderRadius: 16,
@@ -317,14 +319,15 @@ export function DecisionDialog({
               </p>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 24px 20px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '18px 24px 20px' }}>
               <span
                 className="font-inter"
-                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#8B8F9E' }}
+                style={{ flex: '1 1 140px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#8B8F9E' }}
               >
                 <Lock size={11} />
                 Shared with {workspaceName} only
               </span>
+              <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
               <Button ref={cancelRef} variant="secondary" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
               {accept ? (
                 <Button variant="primary" size="sm" icon={Calendar} loading={busy} onClick={() => void submit()}>
@@ -335,6 +338,7 @@ export function DecisionDialog({
                   {`Pass on ${candidateFirstName}`}
                 </Button>
               )}
+              </div>
             </div>
           </>
         )}
