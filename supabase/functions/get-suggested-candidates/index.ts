@@ -539,6 +539,14 @@ serve(async (req) => {
     
     const excludeIds = new Set((existingAssocs || []).map((a: any) => a.candidate_id));
 
+    // Candidates the team marked "Not a fit" for this job (shared since 2026-10-13).
+    const { data: dismissals } = await sb
+      .from("job_suggestion_dismissals")
+      .select("candidate_id")
+      .eq("job_id", job_id)
+      .is("undone_at", null);
+    for (const d of dismissals || []) excludeIds.add((d as any).candidate_id);
+
     // 3. Compute skills hash for cache
     const skillsHash = computeSkillsHash(job);
 
