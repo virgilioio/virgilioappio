@@ -22,6 +22,7 @@ import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { ScheduleDelaySelector, ScheduleDelayValue, resolveScheduleDate } from '@/components/candidates/ScheduleDelaySelector'
 import { useApplicationReview, RejectionConfig } from '@/hooks/useApplicationReview'
+import { undoToast } from '@/lib/undoToast'
 import { useRejectionEmailTemplates } from '@/hooks/useRejectionEmailTemplates'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import {
@@ -65,6 +66,27 @@ export function ApplicationReviewSheet({
       review.loadQueue()
     }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // C30 (Block B §16, Undo): the same Undo as the Application review page (C29).
+  // Each reject, pass or advance stays instant and gets a toast with Undo; Undo
+  // only acts while that action is still the latest one.
+  const lastActionRef = useRef(review.lastAction)
+  const undoRef = useRef(review.handleUndo)
+  undoRef.current = review.handleUndo
+  useEffect(() => {
+    const la = review.lastAction
+    if (la && la !== lastActionRef.current) {
+      const cfg = review.rejectionConfig
+      const emailed = la.type === 'reject' && cfg.sendEmail && !!cfg.rejectionEmailTemplateId && cfg.sendOption !== 'later'
+      const verb = la.type === 'reject' ? 'Rejected' : la.type === 'pass' ? 'Passed' : 'Advanced'
+      undoToast(
+        `${verb} ${la.candidate.candidateName || 'candidate'}`,
+        () => { if (lastActionRef.current === la) void undoRef.current() },
+        emailed ? 'Their rejection email has already been sent.' : undefined,
+      )
+    }
+    lastActionRef.current = la
+  }, [review.lastAction]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClose = () => {
     if (review.stats.rejected > 0 || review.stats.advanced > 0) {
