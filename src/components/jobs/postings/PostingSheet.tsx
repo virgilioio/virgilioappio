@@ -103,6 +103,9 @@ export function PostingSheet({
   const [salaryCurrency, setSalaryCurrency] = useState('USD')
   const [salaryMin, setSalaryMin] = useState<number | undefined>(undefined)
   const [salaryMax, setSalaryMax] = useState<number | undefined>(undefined)
+  // Pay period of the range: 'annually' | 'monthly' | 'hourly'. Left empty on
+  // older postings until someone picks one (never guessed).
+  const [salaryPeriod, setSalaryPeriod] = useState<string>('')
   const [showSalaryPublic, setShowSalaryPublic] = useState(false)
   const [includeEquity, setIncludeEquity] = useState(false)
   const [includeSigningBonus, setIncludeSigningBonus] = useState(false)
@@ -207,6 +210,7 @@ export function PostingSheet({
           const detailMin = d.salary_min != null ? Number(d.salary_min) : legacyAmount
           const detailMax = d.salary_max != null ? Number(d.salary_max) : legacyAmount
           setSalaryCurrency(pick(d.salary_currency, job?.currency, 'USD'))
+          setSalaryPeriod(typeof d.salary_period === 'string' ? d.salary_period : '')
           setSalaryMin(pick<number | undefined>(detailMin ?? undefined, job?.salary_min ?? undefined, undefined as any))
           setSalaryMax(pick<number | undefined>(detailMax ?? undefined, job?.salary_max ?? undefined, undefined as any))
           const detailShow =
@@ -269,6 +273,7 @@ export function PostingSheet({
         setLocationType(job?.work_mode || 'onsite')
         // Seed from parent job so a new posting inherits wizard compensation.
         setSalaryCurrency(job?.currency || 'USD')
+        setSalaryPeriod('annually')
         setSalaryMin(job?.salary_min ?? undefined)
         setSalaryMax(job?.salary_max ?? undefined)
         setShowSalaryPublic(!!job?.show_salary_public)
@@ -308,6 +313,7 @@ export function PostingSheet({
     employment_type: employmentType || null,
     location_type: locationType || null,
     salary_currency: salaryCurrency || null,
+    salary_period: salaryPeriod || null,
     salary_min: salaryMin ?? null,
     salary_max: salaryMax ?? null,
     show_salary_public: showSalaryPublic,
@@ -644,7 +650,7 @@ export function PostingSheet({
                     </Select>
                   </FormField>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <FormField label="Currency">
                     <CurrencySelect value={salaryCurrency} onChange={setSalaryCurrency} disabled={readOnly} />
                   </FormField>
@@ -672,7 +678,20 @@ export function PostingSheet({
                       />
                     </div>
                   </div>
+                  <FormField label="Pay period">
+                    <Select value={salaryPeriod || undefined} onValueChange={setSalaryPeriod} disabled={readOnly}>
+                      <SelectTrigger><SelectValue placeholder="Choose…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="annually">Per year</SelectItem>
+                        <SelectItem value="monthly">Per month</SelectItem>
+                        <SelectItem value="hourly">Per hour</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
                 </div>
+                {!salaryPeriod && (salaryMin != null || salaryMax != null) && (
+                  <FieldHint tone="error">Choose a pay period so candidates know if the range is per year, month or hour.</FieldHint>
+                )}
                 <div className="border-t border-virgilio-border pt-3 space-y-1">
                   <WizardToggleRow
                     label="Show salary on public posting"

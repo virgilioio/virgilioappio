@@ -364,6 +364,12 @@ export default function PublicJobPosting() {
   const bannerUrl = ((posting?.details as any)?.banner_url as string) || null
 
 
+  /** "annually" → "per year" etc.; anything else falls back to formatLabel. */
+  const formatPeriod = (val?: string | null) => {
+    const map: Record<string, string> = { annually: 'per year', yearly: 'per year', monthly: 'per month', hourly: 'per hour', weekly: 'per week', daily: 'per day' }
+    return val ? (map[val.toLowerCase()] ?? formatLabel(val)) : null
+  }
+
   const formatLabel = (val?: string | null) => {
     if (!val) return null
     return val
@@ -445,7 +451,7 @@ export default function PublicJobPosting() {
                   {details.salaryMin && details.salaryMax && details.salaryMin !== details.salaryMax
                     ? `${Number(details.salaryMin).toLocaleString()} – ${Number(details.salaryMax).toLocaleString()}`
                     : Number(details.salaryAmount ?? details.salaryMax ?? details.salaryMin).toLocaleString()}
-                  {details.salaryPeriod ? ` ${formatLabel(details.salaryPeriod)}` : ''}
+                  {details.salaryPeriod ? ` ${formatPeriod(details.salaryPeriod)}` : ''}
                 </div>
                 {details.hasCommissions && (
                   <div className="text-xs text-muted-foreground mt-1">
@@ -779,7 +785,7 @@ export default function PublicJobPosting() {
   const compensationLabel = (() => {
     if (!details.showSalary || !details.salaryAmount) return null
     return `${details.salaryCurrency || ''} ${Number(details.salaryAmount).toLocaleString()}${
-      details.salaryPeriod ? ' ' + formatLabel(details.salaryPeriod) : ''
+      details.salaryPeriod ? ' ' + formatPeriod(details.salaryPeriod) : ''
     }`.trim()
   })()
 

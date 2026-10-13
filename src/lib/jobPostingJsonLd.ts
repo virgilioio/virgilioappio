@@ -130,7 +130,8 @@ export function buildJobPostingJsonLd(input: JobPostingJsonLdInput): Record<stri
   const min = job?.salary_min ?? d.salary_min ?? null
   const max = job?.salary_max ?? d.salary_max ?? null
   const currency = job?.currency ?? d.salaryCurrency ?? null
-  const period = (d.salaryPeriod || 'year').toString().toUpperCase()
+  // Postings store salary_period ('annually' | 'monthly' | 'hourly').
+  const period = (d.salary_period || d.salaryPeriod || 'year').toString().toUpperCase()
   const unitText =
     period.includes('HOUR') ? 'HOUR'
     : period.includes('DAY') ? 'DAY'
