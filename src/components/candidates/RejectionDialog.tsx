@@ -32,6 +32,12 @@ interface RejectionDialogProps {
   onSuccess?: () => void;
   /** Extra consequence shown under the description (e.g. offer letters that go). */
   notice?: React.ReactNode;
+  /**
+   * The job is being closed or archived (2026-10-13): everyone still in its
+   * pipeline has to be rejected first, so the form says so and its button
+   * does both. The caller changes the job's status in `onSuccess`.
+   */
+  closingJob?: 'close' | 'archive';
 }
 
 const STORAGE_KEY = 'rejection-dialog-prefs';
@@ -72,7 +78,7 @@ function resolvePresetDate(preset: SchedulePreset, custom?: string): Date | unde
 
 export function RejectionDialog({
   open, onOpenChange, associationId, candidateIds = [], candidateName = 'Candidate', candidateEmail = '',
-  candidateId, jobId, jobTitle, onSuccess, notice,
+  candidateId, jobId, jobTitle, onSuccess, notice, closingJob,
 }: RejectionDialogProps) {
   const isBulk = candidateIds.length > 0;
   const candidateCount = isBulk ? candidateIds.length : 1;
@@ -282,7 +288,10 @@ export function RejectionDialog({
   // A row's Reject goes through the bulk path with one id: still name the person.
   const soloName = (isBulk ? bulkNames[0] ?? '' : candidateName).trim();
   const soloFirst = soloName.split(/\s+/)[0] || 'This candidate';
-  const title = isBulk && many ? `Reject ${candidateCount} candidates?` : `Reject ${soloName || 'this candidate'}?`;
+  const who = isBulk && many ? `${candidateCount} candidates` : soloName || 'this candidate';
+  const title = closingJob
+    ? `${closingJob === 'archive' ? 'Archive' : 'Close'} ${jobLabel} and reject ${who}?`
+    : isBulk && many ? `Reject ${candidateCount} candidates?` : `Reject ${soloName || 'this candidate'}?`;
   const whoStays = isBulk && many ? 'Their profiles and histories stay' : 'Their profile and history stay';
   const interviews = upcoming > 0
     ? ` ${upcoming} upcoming interview${upcoming === 1 ? ' is' : 's are'} cancelled and everyone on ${upcoming === 1 ? 'it' : 'them'} is emailed.`
@@ -325,10 +334,20 @@ export function RejectionDialog({
               <DialogPrimitive.Title className="mt-0.5 line-clamp-2 break-words font-poppins text-[17px] font-semibold leading-snug text-text-primary [text-wrap:pretty]">
                 {title}
               </DialogPrimitive.Title>
-              <p id="rejection-dialog-desc" className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
-                {isBulk && many ? `They’re` : `${soloFirst} is`} removed from <span className="font-medium text-text-primary">{jobLabel}</span>.{interviews} {whoStays} in your talent pool, and you can reactivate them later.
-                {notice ? <> {notice}</> : null}
-              </p>
+              {closingJob ? (
+                <p id="rejection-dialog-desc" className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
+                  {isBulk && many ? `The ${candidateCount} candidates still in its pipeline are` : `${soloFirst}, still in its pipeline, is`} rejected first.{interviews}{' '}
+                  <span className="font-medium text-text-primary">Rejecting can’t be undone.</span> {whoStays} in your talent pool.{' '}
+                  {closingJob === 'archive'
+                    ? 'The job moves to Jobs › Archived and its postings go offline.'
+                    : 'The job stops taking applications and its postings go offline; you can reopen it from Edit job › Status.'}
+                </p>
+              ) : (
+                <p id="rejection-dialog-desc" className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
+                  {isBulk && many ? `They’re` : `${soloFirst} is`} removed from <span className="font-medium text-text-primary">{jobLabel}</span>.{interviews} {whoStays} in your talent pool, and you can reactivate them later.
+                  {notice ? <> {notice}</> : null}
+                </p>
+              )}
               {isBulk && many && shownNames.length > 0 && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {shownNames.map((n, i) => (
@@ -738,7 +757,9 @@ export function RejectionDialog({
             loading={mutationPending}
             className={cn(!canSubmit && 'pointer-events-none')}
           >
-            {isScheduled ? (
+            {closingJob ? (
+              <><UserRoundX size={13} /> Reject {isBulk && many ? candidateCount : ''}{isBulk && many ? ' ' : ''}and {closingJob === 'archive' ? 'archive' : 'close'} job</>
+            ) : isScheduled ? (
               <><Clock size={13} /> Reject & schedule {isBulk ? 'emails' : 'email'}</>
             ) : sendEmail ? (
               <><Send size={13} /> Reject & send {isBulk ? 'emails' : 'email'}</>
