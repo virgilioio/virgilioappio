@@ -164,6 +164,20 @@ serve(withRequestCors(async (req) => {
       });
     }
 
+    // Phone and LinkedIn are required on applications (Allan, 2026-10-13).
+    if (!body.phone?.trim()) {
+      return new Response(JSON.stringify({ error: "Phone is required for application" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!(body.linkedin_url?.trim() || body.linkedin_sync?.trim())) {
+      return new Response(JSON.stringify({ error: "LinkedIn profile is required for application" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Validate resume upload is provided — handle both array and object formats
     const uploadedFilesCount = uploadedFilesCountInitial;
 
@@ -186,7 +200,8 @@ serve(withRequestCors(async (req) => {
       const missingFields: string[] = [];
       for (const field of requiredFields) {
         const fieldValue = body.custom_fields?.[field.field_name];
-        if (!fieldValue || (typeof fieldValue === 'string' && !fieldValue.trim())) {
+        const emptyList = Array.isArray(fieldValue) ? fieldValue.length === 0 : (typeof fieldValue === 'string' && fieldValue.trim() === '[]');
+        if (!fieldValue || emptyList || (typeof fieldValue === 'string' && !fieldValue.trim())) {
           missingFields.push(field.field_label);
         }
       }
