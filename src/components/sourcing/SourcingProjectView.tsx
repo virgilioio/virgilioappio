@@ -253,7 +253,7 @@ export function SourcingProjectView({
     const ok = await confirmDestructive({
       title: name ? `Delete ${name}?` : 'Delete this project?',
       description:
-        'Its search, results, saved list, shortlist and Gio chats are deleted, and anyone it\u2019s shared with loses access. The candidate profiles stay in your talent pool, and anyone you added to a job stays there. This can\u2019t be undone.',
+        'Its search, results, shortlist, collected people and Gio chats are deleted, and anyone it\u2019s shared with loses access. The candidate profiles stay in your talent pool, and anyone you added to a job stays there. This can\u2019t be undone.',
       confirmLabel: 'Delete project',
     })
     if (!ok) return
