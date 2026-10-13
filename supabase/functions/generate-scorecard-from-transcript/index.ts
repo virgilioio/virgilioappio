@@ -106,14 +106,18 @@ serve(async (req) => {
         .select(`
           id,
           questions:scorecard_interview_questions(
-            id, question_text, answer_type, is_required, display_order, select_options
+            id, question_text, answer_type, is_required, display_order, select_options, retired_at
           )
         `)
         .eq('job_hiring_stage_id', booking.job_hiring_stage.id)
         .single();
 
       if (template?.questions) {
-        scorecardQuestions = template.questions.sort((a: any, b: any) => a.display_order - b.display_order);
+        // Retired questions came with scorecards from a removed stage; they are
+        // not this stage's questions (2026-10-13).
+        scorecardQuestions = template.questions
+          .filter((q: any) => !q.retired_at)
+          .sort((a: any, b: any) => a.display_order - b.display_order);
       }
     }
 
