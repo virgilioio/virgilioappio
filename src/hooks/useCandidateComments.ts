@@ -129,19 +129,17 @@ export function useCandidateComments(candidateId?: string) {
       }
 
       console.log('Deleted comment:', commentId)
-      toast({
-        title: 'Success',
-        description: 'Comment deleted successfully'
-      })
+      toast({ title: 'Comment deleted' })
 
       await getComments()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete comment'
       console.error('Comment deletion error:', err)
       setError(errorMessage)
+      // Never a raw server error (Block B §16).
       toast({
-        title: 'Error',
-        description: errorMessage,
+        title: 'Couldn\u2019t delete the comment',
+        description: 'Nothing was removed; try again.',
         variant: 'destructive'
       })
       throw err

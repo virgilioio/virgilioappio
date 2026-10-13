@@ -10,7 +10,9 @@ import { useCandidateComments } from '@/hooks/useCandidateComments'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useSubmitShortcut } from '@/hooks/useSubmitShortcut'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { collapseRows, rowsById } from '@/lib/motion'
 
 interface CandidateCommentsProps {
   candidateId: string
@@ -56,9 +58,23 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
     }
   }
 
-  const handleDelete = async (commentId: string) => {
-    if (await confirmDialog({ title: 'Delete this comment?', confirmLabel: 'Delete comment', destructive: true })) {
-      await deleteComment(commentId)
+  // C19 (Block B §16, Pattern 1): quote the comment so it's clear which one goes.
+  const handleDelete = async (comment: { id: string; author_id?: string | null; author_email?: string | null; content?: string | null }) => {
+    const mine = comment.author_id === user?.id
+    const text = (comment.content || '').replace(/\s+/g, ' ').trim()
+    const quote = text.length > 90 ? `${text.slice(0, 90).trimEnd()}\u2026` : text
+    const ok = await confirmDestructive({
+      title: mine ? 'Delete your comment?' : comment.author_email ? `Delete ${comment.author_email}\u2019s comment?` : 'Delete this comment?',
+      description: `${quote ? `\u201c${quote}\u201d ` : 'It '}is deleted for everyone who can see this candidate. Other comments stay. This can\u2019t be undone.`,
+      confirmLabel: 'Delete comment',
+    })
+    if (!ok) return
+    const exit = collapseRows(rowsById([comment.id]))
+    await exit.done
+    try {
+      await deleteComment(comment.id)
+    } catch {
+      exit.revert() // the hook says it couldn't delete
     }
   }
 
@@ -119,7 +135,7 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
             <InlineEmpty text="No comments on this candidate." />
           ) : (
             comments.map((comment) => (
-              <div key={comment.id} className="bg-muted/20 rounded-lg p-4 space-y-2">
+              <div key={comment.id} data-row-id={comment.id} className="bg-muted/20 rounded-lg p-4 space-y-2">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -130,14 +146,17 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
                     <p className="mt-2 text-sm whitespace-pre-wrap">{comment.content}</p>
                   </div>
                   {canDelete(comment) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(comment.id)}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <IconTip label="Delete comment">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Delete comment"
+                        onClick={() => void handleDelete(comment)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </IconTip>
                   )}
                 </div>
               </div>
