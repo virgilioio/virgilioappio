@@ -29,6 +29,8 @@ export interface ScorecardWithAuthor {
   // AI draft fields
   is_ai_draft?: boolean;
   ai_suggested_rating?: string | null;
+  /** Set when the stage it was written in was removed and it moved here. */
+  moved_from_stage_name?: string | null;
   source_booking_id?: string | null;
   /** Per-criterion 1–5 scores derived from score_1_5 question responses. */
   criterion_scores?: ScorecardCriterionScore[];

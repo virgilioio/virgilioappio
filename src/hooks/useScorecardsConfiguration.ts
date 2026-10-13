@@ -147,10 +147,13 @@ export function useScorecardsConfiguration(jhsId: string | null) {
       }
 
       // Load questions
+      // Retired questions came with scorecards from a removed stage; they keep
+      // those answers readable but are not this stage's questions.
       const { data: questions, error: questionsError } = await supabase
         .from('scorecard_interview_questions')
         .select('*')
         .eq('scorecard_template_id', templateId)
+        .is('retired_at', null)
         .order('display_order', { ascending: true })
 
       if (questionsError) throw questionsError

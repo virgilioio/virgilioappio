@@ -249,7 +249,10 @@ export function ScorecardSheet({
   const [rating, setRating] = useState<ScoreRating>(existing?.rating || "yes");
   const [overview, setOverview] = useState<string>(existing?.general_overview || "");
   const [saving, setSaving] = useState(false);
-  const [editMode, setEditMode] = useState(!existing || isAuthor);
+  // A scorecard that moved here from a removed stage is a record of that
+  // stage's interview: it can be read, not edited against this stage's form.
+  const movedFrom = existing?.moved_from_stage_name ?? null;
+  const [editMode, setEditMode] = useState(!existing || (isAuthor && !movedFrom));
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, QuestionResponse>>({});
   const [loadingQuestions, setLoadingQuestions] = useState(true);
@@ -408,7 +411,7 @@ export function ScorecardSheet({
     }
     
     // Always set edit mode
-    setEditMode(!existing || isAuthor);
+    setEditMode(!existing || (isAuthor && !existing?.moved_from_stage_name));
     
     // For AI drafts, the overview starts empty so interviewer writes their own notes
     const effectiveBaseOverview = existing?.is_ai_draft ? "" : baseOverview;
@@ -570,11 +573,23 @@ export function ScorecardSheet({
         .maybeSingle();
 
       if (template) {
-        const { data: questionsData } = await supabase
+        const { data: allQuestions } = await supabase
           .from('scorecard_interview_questions')
           .select('*')
           .eq('scorecard_template_id', template.id)
           .order('display_order', { ascending: true });
+
+        // Retired questions came with scorecards from a removed stage: show them
+        // only on a scorecard that answered them, never as new questions.
+        let answered = new Set<string>();
+        if (existing && (allQuestions || []).some(q => q.retired_at)) {
+          const { data: own } = await supabase
+            .from('scorecard_question_responses')
+            .select('question_id')
+            .eq('scorecard_id', existing.id);
+          answered = new Set((own || []).map(r => r.question_id));
+        }
+        const questionsData = (allQuestions || []).filter(q => !q.retired_at || answered.has(q.id));
 
         if (questionsData) {
           const formattedQuestions: InterviewQuestion[] = questionsData.map(q => ({
@@ -1249,6 +1264,11 @@ export function ScorecardSheet({
                         AI-Generated Draft
                       </Badge>
                     )}
+                    {movedFrom && (
+                      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+                        From {movedFrom} · stage removed
+                      </Badge>
+                    )}
                     {hasDraft && (
                       <Badge variant="outline" className="text-xs text-[#0F8A56] bg-[#F4FBF6] border-[#BBE3C9] gap-1">
                         <Check className="h-3 w-3" /> Draft saved
@@ -1321,7 +1341,7 @@ export function ScorecardSheet({
                       Next Steps
                     </Button>
                   )}
-                  {existing && isAuthor && !editMode && (
+                  {existing && isAuthor && !editMode && !movedFrom && (
                     <Button variant="outline" onClick={() => setEditMode(true)}>Edit scorecard</Button>
                   )}
                   {existing && isAuthor && onDelete && (

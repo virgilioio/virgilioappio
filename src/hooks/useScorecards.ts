@@ -22,6 +22,8 @@ export interface ScorecardRow {
   source_booking_id?: string | null;
   // Gio suggestion inbox: questions the reviewer accepted from Gio's suggestions.
   gio_added_questions?: unknown;
+  /** Set when the stage it was written in was removed and it moved here (2026-10-13). */
+  moved_from_stage_name?: string | null;
 }
 
 export function useMyScorecards(associationId?: string | null) {

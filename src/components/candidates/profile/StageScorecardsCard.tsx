@@ -229,6 +229,11 @@ export function StageScorecardsCard({
                                 {name}
                               </span>
                               {isMine && <Badge tone="lilac" size="xs">You</Badge>}
+                              {s.moved_from_stage_name && (
+                                <span className="text-[11.5px] text-text-tertiary font-poppins">
+                                  From {s.moved_from_stage_name} · stage removed
+                                </span>
+                              )}
                               <span className="text-[12px] text-text-tertiary font-poppins ml-auto pl-2">
                                 {timeAgoConcise(s.created_at)}
                               </span>
