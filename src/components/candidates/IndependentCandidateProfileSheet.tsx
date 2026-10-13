@@ -43,7 +43,7 @@ import { Separator } from '@/components/ui/separator'
 import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 import { EeoResponseCard } from './EeoResponseCard'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
 
 interface IndependentCandidateProfileSheetProps {
   open: boolean
@@ -91,17 +91,23 @@ export function IndependentCandidateProfileSheet({
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
   
-  const handleReplaceResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // C17: a new résumé deletes the old one, so ask first when one is on file.
+  const handleReplaceResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      void uploadResume(file, true)
-    }
     e.currentTarget.value = ''
+    if (!file) return
+    const ok = await confirmReplaceResume({
+      candidateName: candidate?.candidate_name,
+      oldFileName: resumeAttachment?.file_name,
+      newFileName: file.name,
+      hasResume: !!resumeAttachment,
+    })
+    if (ok) void uploadResume(file, true).catch(() => {})
   }
   
   const handleDeleteResume = async () => {
     if (!resumeAttachment) return
-    if (!(await confirmDialog({ title: 'Delete this résumé?', description: 'The file is removed from the candidate. Parsed details stay on the profile.', confirmLabel: 'Delete résumé', destructive: true }))) return
+    if (!(await confirmDeleteResume({ candidateName: candidate?.candidate_name, fileName: resumeAttachment.file_name }))) return
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 

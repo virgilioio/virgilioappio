@@ -45,7 +45,7 @@ import { dismissSuggestion } from '@/components/jobs/suggested/suggestedDismisse
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
 
 const ordinal = (n: number) => {
   const rest = n % 100
@@ -135,6 +135,16 @@ function SuggestedCandidateProfileInner() {
   const { attachments, uploadAttachment, isUploading: isResumeUploading, deleteAttachment } =
     useCandidateAttachments(candidateId)
   const resume = attachments.find((a) => a.is_resume) || null
+  // C17: a new résumé deletes the old one, so ask first when one is on file.
+  const replaceResume = async (file: File) => {
+    const ok = await confirmReplaceResume({
+      candidateName: candidate?.candidate_name,
+      oldFileName: resume?.file_name,
+      newFileName: file.name,
+      hasResume: !!resume,
+    })
+    if (ok) void uploadAttachment(file, true).catch(() => {})
+  }
 
   // The suggestion list gives the match score, the reasons and the list order.
   const { candidates: suggestions } = useJobSuggestedCandidates({
@@ -425,7 +435,7 @@ function SuggestedCandidateProfileInner() {
                 uploadedDate={fmtDate(resume?.created_at)}
                 fallbackResumeUrl={(candidate as any)?.resume_url ?? null}
                 parsing={isResumeUploading}
-                onFile={(file) => { void uploadAttachment(file, true) }}
+                onFile={(file) => { void replaceResume(file) }}
                 viewerActions={
                   <>
                     <input
@@ -435,8 +445,8 @@ function SuggestedCandidateProfileInner() {
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                       onChange={(event) => {
                         const file = event.target.files?.[0]
-                        if (file) void uploadAttachment(file, true)
                         event.currentTarget.value = ''
+                        if (file) void replaceResume(file)
                       }}
                     />
                     <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
@@ -455,7 +465,7 @@ function SuggestedCandidateProfileInner() {
                   uploadedBy={(candidate as any)?.source ? `${(candidate as any).source} import` : null}
                   parsedFields={null}
                   onReplace={() => replaceResumeInputRef.current?.click()}
-                  onDelete={resume ? async () => { if (await confirmDialog({ title: 'Delete this résumé?', description: 'The file is removed from the candidate. Parsed details stay on the profile.', confirmLabel: 'Delete résumé', destructive: true })) void deleteAttachment(resume.id, resume.file_url) } : undefined}
+                  onDelete={resume ? async () => { if (await confirmDeleteResume({ candidateName: candidate?.candidate_name, fileName: resume.file_name })) void deleteAttachment(resume.id, resume.file_url).catch(() => {}) } : undefined}
                 />
 
                 <ProfileSidebar>

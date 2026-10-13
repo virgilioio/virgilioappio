@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { confirmReplaceResume } from '@/lib/removeOldResumes'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
@@ -198,6 +199,15 @@ export default function IndependentCandidateProfile() {
 
   const handleResumeUpload = async (file: File) => {
     if (!candidateId) return
+    // C17: a new résumé deletes the old one, so ask first when one is on file.
+    const current = attachments.find((a) => a.is_resume)
+    const ok = await confirmReplaceResume({
+      candidateName: (candidate as any)?.candidate_name,
+      oldFileName: current?.file_name,
+      newFileName: file.name,
+      hasResume: !!current,
+    })
+    if (!ok) return
     try {
       await uploadAttachment(file, true)
       enrichBaselineRef.current = (candidate as any)?.enriched_at ?? null

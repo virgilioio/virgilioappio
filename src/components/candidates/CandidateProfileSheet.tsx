@@ -135,7 +135,8 @@ import { ClipboardCheck as ClipboardCheckIconAlias } from 'lucide-react'
 import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { checkScorecardGate } from '@/utils/scorecardGate'
-import { confirmDialog, confirmDestructive } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
 import { closeJobWithUndo } from '@/components/jobs/jobStatusActions'
 
 interface StageScorecardProps {
@@ -614,17 +615,27 @@ const stageHasAutomation = useMemo(() => {
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
+  // C17: a new résumé deletes the old one, so ask first when one is on file.
+  const replaceResume = async (file: File) => {
+    const ok = await confirmReplaceResume({
+      candidateName: candidate?.candidate_name,
+      oldFileName: resumeAttachment?.file_name,
+      newFileName: file.name,
+      hasResume: !!resumeAttachment,
+    })
+    if (!ok) return false
+    try { await uploadResume(file, true) } catch { return false /* toast shown by hook */ }
+    return true
+  }
   const handleReplaceResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget
     const file = e.target.files?.[0]
-    if (file) {
-      await uploadResume(file, true)
-      if (candidateId) triggerFitAnalysis(candidateId, jobId)
-    }
-    e.currentTarget.value = ''
+    input.value = ''
+    if (file && (await replaceResume(file)) && candidateId) triggerFitAnalysis(candidateId, jobId)
   }
   const handleDeleteResume = async () => {
     if (!resumeAttachment) return
-    if (!(await confirmDialog({ title: 'Delete this résumé?', description: 'The file is removed from the candidate. Parsed details stay on the profile.', confirmLabel: 'Delete résumé', destructive: true }))) return
+    if (!(await confirmDeleteResume({ candidateName: candidate?.candidate_name, fileName: resumeAttachment.file_name }))) return
     await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
   }
 
@@ -1829,7 +1840,7 @@ const stageHasAutomation = useMemo(() => {
                           fileName={resumeAttachment?.file_name ?? null}
                           uploadedDate={resumeAttachment?.created_at ? new Date(resumeAttachment.created_at).toLocaleDateString() : null}
                           parsing={isResumeUploading}
-                          onFile={(file) => { void uploadResume(file, true) }}
+                          onFile={(file) => { void replaceResume(file) }}
                           viewerActions={
                             <>
                               <input
