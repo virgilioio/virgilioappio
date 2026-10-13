@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -38,6 +38,18 @@ export function UserDeletionDialog({
   const [newBillingPocUserId, setNewBillingPocUserId] = useState<string>('')
   const [confirmationStep, setConfirmationStep] = useState<'initial' | 'confirm-billing-poc' | 'final-confirm'>('initial')
   
+  const cancelRef = useRef<HTMLButtonElement>(null)
+
+  // Every opening starts at the first step, whoever is being deleted
+  // (2026-10-13: the step used to survive a delete, so the next person's
+  // Delete went straight to the final confirmation).
+  useEffect(() => {
+    if (isOpen) {
+      setConfirmationStep('initial')
+      setNewBillingPocUserId('')
+    }
+  }, [isOpen, userToDelete?.memberId])
+
   // Billing POC functionality removed
   const billingPocMembers: any[] = []
   const membersLoading = false
@@ -113,7 +125,7 @@ export function UserDeletionDialog({
       }
 
       onUserDeleted()
-      onClose()
+      handleClose()
       
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -138,7 +150,11 @@ export function UserDeletionDialog({
       setConfirmationStep('final-confirm')
     } else {
       handleDelete()
+      return
     }
+    // The red button changes meaning between steps, so move focus off it:
+    // two Enter presses must never delete someone.
+    requestAnimationFrame(() => cancelRef.current?.focus())
   }
 
   const handleClose = () => {
@@ -246,7 +262,7 @@ export function UserDeletionDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={handleClose} disabled={isDeleting}>
+          <Button ref={cancelRef} variant="outline" onClick={handleClose} disabled={isDeleting}>
             Cancel
           </Button>
           <Button 
