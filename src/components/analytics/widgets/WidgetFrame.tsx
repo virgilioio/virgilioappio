@@ -20,6 +20,7 @@ import type { WidgetConfig, DimensionId, VizId, MetricId } from '../model/types'
 import { fmt } from '../model/format'
 import { Loadable } from '@/components/ui/loadable'
 import { Skeleton } from '@/components/ui/skeleton'
+import { IconTip } from '@/components/ui/tooltip'
 import type { NormalizedData } from '../model/types'
 
 interface Props {
@@ -31,7 +32,7 @@ interface Props {
   readonly?: boolean
 }
 
-function autoTitle(cfg: WidgetConfig): string {
+export function autoTitle(cfg: WidgetConfig): string {
   if (cfg.title) return cfg.title
   const m = (METRICS[cfg.metric] ?? METRICS.applications).label
   if (cfg.groupBy === 'none') return m
@@ -75,18 +76,27 @@ export function WidgetFrame({ cfg: rawCfg, onChange, onRemove, dragHandleProps, 
       {/* Hover toolbar */}
       {!readonly && (
       <div className={`absolute top-2 right-2 ${configOpen ? 'flex' : 'hidden group-hover:flex'} items-center gap-0.5 bg-white border border-[#E7E8EE] rounded-[9px] p-0.5 shadow-[0_4px_12px_-4px_rgba(13,13,9,0.08)]`}>
-        <button {...(dragHandleProps ?? {})} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#5A6072] hover:bg-[#F1F0EC] cursor-grab active:cursor-grabbing" aria-label="Drag">
-          <GripVertical size={13} />
-        </button>
-        <button onClick={() => onChange({ ...cfg, span: nextSpan(cfg.viz, cfg.span) })} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#5A6072] hover:bg-[#F1F0EC]" aria-label="Resize">
-          <Maximize2 size={13} />
-        </button>
-        <button onClick={() => setConfigOpen(o => !o)} className={`h-6 w-6 inline-flex items-center justify-center rounded-[6px] hover:bg-[#F1F0EC] ${configOpen ? 'bg-[#EDE4FF] text-[#5B21B6]' : 'text-[#5A6072]'}`} aria-label="Configure">
-          <Settings2 size={13} />
-        </button>
-        <button onClick={onRemove} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#FA5252] hover:bg-[#FBE0E0]" aria-label="Remove">
-          <Trash2 size={13} />
-        </button>
+        <IconTip label="Drag to move">
+          <button {...(dragHandleProps ?? {})} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#5A6072] hover:bg-[#F1F0EC] cursor-grab active:cursor-grabbing" aria-label="Drag to move">
+            <GripVertical size={13} />
+          </button>
+        </IconTip>
+        <IconTip label="Resize">
+          <button onClick={() => onChange({ ...cfg, span: nextSpan(cfg.viz, cfg.span) })} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#5A6072] hover:bg-[#F1F0EC]" aria-label="Resize">
+            <Maximize2 size={13} />
+          </button>
+        </IconTip>
+        <IconTip label="Configure">
+          <button onClick={() => setConfigOpen(o => !o)} className={`h-6 w-6 inline-flex items-center justify-center rounded-[6px] hover:bg-[#F1F0EC] ${configOpen ? 'bg-[#EDE4FF] text-[#5B21B6]' : 'text-[#5A6072]'}`} aria-label="Configure">
+            <Settings2 size={13} />
+          </button>
+        </IconTip>
+        {/* O17: removing is instant; the grid offers Undo (Block B §16). */}
+        <IconTip label="Remove widget">
+          <button onClick={onRemove} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#FA5252] hover:bg-[#FBE0E0]" aria-label="Remove widget">
+            <Trash2 size={13} />
+          </button>
+        </IconTip>
       </div>
       )}
 

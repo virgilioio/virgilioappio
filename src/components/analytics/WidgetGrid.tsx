@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -20,7 +20,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { Plus } from 'lucide-react'
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
 import { SoftChart } from '@/components/ui/EmptyIllustrations'
-import { WidgetFrame } from './widgets/WidgetFrame'
+import { WidgetFrame, autoTitle } from './widgets/WidgetFrame'
+import { undoToast } from '@/lib/undoToast'
 import { AddWidgetTile } from './widgets/AddWidgetTile'
 import { useWidgetCatalog } from './widgets/WidgetCatalog'
 import type { WidgetConfig } from './model/types'
@@ -49,7 +50,25 @@ export function WidgetGrid({ widgets, onChange }: Props) {
   }
 
   const update = (id: string, next: WidgetConfig) => onChange(widgets.map(w => (w.id === id ? next : w)))
-  const remove = (id: string) => onChange(widgets.filter(w => w.id !== id))
+  // O17 (Block B §16): removing autosaves at once; Undo puts the widget back where
+  // it was, into whatever the grid holds by then.
+  const latest = useRef(widgets)
+  latest.current = widgets
+  const remove = (id: string) => {
+    const index = widgets.findIndex(w => w.id === id)
+    const removed = widgets[index]
+    const rest = widgets.filter(w => w.id !== id)
+    onChange(rest)
+    if (!removed) return
+    undoToast(`${autoTitle(removed)} removed`, () => {
+      const now = latest.current
+      if (now.some(w => w.id === removed.id)) return
+      // Another view is showing now: don't put the widget into it.
+      if (rest.length > 0 && !now.some(w => rest.some(r => r.id === w.id))) return
+      const at = Math.min(index, now.length)
+      onChange([...now.slice(0, at), removed, ...now.slice(at)])
+    })
+  }
   const add = () => onChange([...widgets, newWidget()])
 
   if (widgets.length === 0) {
