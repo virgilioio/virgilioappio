@@ -17,6 +17,7 @@ import { SpecCard } from './shared/SpecCard'
 import { SpecRow, SpecEmpty, NOIR_BTN } from './shared/SpecRow'
 import { SpecChip } from './shared/SpecChip'
 import { cn } from '@/lib/utils'
+import { useRecordCount } from '@/hooks/useRecordCount'
 
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -85,6 +86,8 @@ function OfferLettersSection({ context }: { context: 'platform-defaults' | 'orga
   const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
   const [fieldsId, setFieldsId] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null)
+  // Offer letters made from a template are deleted with it in the database, so a template in use can't go.
+  const usedBy = useRecordCount('offer_letters', 'template_id', toDelete?.id)
 
   const platformItems = (templates || []).filter(t => t.source === 'platform')
   const tenantItems = (templates || []).filter(t => t.source === 'tenant')
@@ -149,12 +152,20 @@ function OfferLettersSection({ context }: { context: 'platform-defaults' | 'orga
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete template</AlertDialogTitle>
-            <AlertDialogDescription>Delete "{toDelete?.name}"? This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{usedBy ? `${toDelete?.name} can't be deleted` : `Delete ${toDelete?.name}?`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {usedBy === null
+                ? 'Checking which offer letters use it…'
+                : usedBy > 0
+                  ? `${usedBy} offer letter${usedBy === 1 ? ' was' : 's were'} made from this template. Deleting it would delete ${usedBy === 1 ? 'that offer' : 'those offers'} too, so it stays.`
+                  : "No offer letter uses it. This can't be undone."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogCancel>{usedBy ? 'Close' : 'Cancel'}</AlertDialogCancel>
+            {usedBy === 0 && (
+              <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete template</AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
