@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { SoonBadge } from "@/components/ui/soon-badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
+import { confirmDestructive } from "@/components/ui/confirm-dialog";
+import { IconTip } from "@/components/ui/tooltip";
 import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy, Lock, Globe, Check, Info, RefreshCw } from "lucide-react";
 import { copyToClipboard } from "@/utils/clipboard";
 import { Input } from "@/components/ui/input";
@@ -261,9 +263,33 @@ export function ScorecardSheet({
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [isPolishing, setIsPolishing] = useState(false);
   const [showNextStepsDialog, setShowNextStepsDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // C14 (Block B §16, Pattern 1): only the author sees this; it deletes their
+  // scorecard (rating, notes and answers) for this stage.
+  const handleDeleteScorecard = async () => {
+    if (!onDelete || isDeleting) return;
+    const name = candidateName?.trim();
+    const ok = await confirmDestructive({
+      title: name
+        ? `Delete your ${stageName ? `${stageName} ` : ''}scorecard for ${name}?`
+        : `Delete your ${stageName ? `${stageName} ` : ''}scorecard?`,
+      description: 'Your rating, notes and answers are deleted. Other panelists\u2019 scorecards stay. This can\u2019t be undone.',
+      confirmLabel: 'Delete scorecard',
+    });
+    if (!ok) return;
+    setIsDeleting(true);
+    try {
+      await onDelete();
+      toast({ title: 'Scorecard deleted' });
+      onOpenChange(false);
+    } catch {
+      toast({ title: 'Couldn\u2019t delete your scorecard', description: 'Nothing was removed; try again.', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [loadingResume, setLoadingResume] = useState(true);
   const [hasDraft, setHasDraft] = useState(false);
@@ -1307,14 +1333,18 @@ export function ScorecardSheet({
                     <Button variant="outline" onClick={() => setEditMode(true)}>Edit scorecard</Button>
                   )}
                   {existing && isAuthor && onDelete && (
+                    <IconTip label="Delete scorecard">
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => setShowDeleteDialog(true)}
+                      aria-label="Delete scorecard"
+                      loading={isDeleting}
+                      onClick={() => void handleDeleteScorecard()}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    </IconTip>
                   )}
                 </div>
               </div>
@@ -1509,42 +1539,6 @@ export function ScorecardSheet({
           onReject={onReject}
         />
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Scorecard</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this scorecard? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={isDeleting}
-              onClick={async (e) => {
-                e.preventDefault();
-                if (!onDelete) return;
-                setIsDeleting(true);
-                try {
-                  await onDelete();
-                  toast({ title: 'Scorecard deleted', description: 'Your scorecard has been deleted.' });
-                  setShowDeleteDialog(false);
-                  onOpenChange(false);
-                } catch (err: any) {
-                  toast({ title: 'Delete failed', description: err?.message || 'Failed to delete scorecard', variant: 'destructive' });
-                } finally {
-                  setIsDeleting(false);
-                }
-              }}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Cancel Confirmation Dialog */}
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
