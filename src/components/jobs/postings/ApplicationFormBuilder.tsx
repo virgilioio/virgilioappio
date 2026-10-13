@@ -16,7 +16,7 @@ import {
   Sparkles, GripVertical, Lock, Trash2, Plus, Puzzle,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
-  Check, X, Settings2, Star,
+  Check, X, Settings2, Star, ListChecks, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,11 +35,12 @@ import { SectionCard, ToggleRow } from '@/components/jobs/wizard/_parts'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { cn } from '@/lib/utils'
 import { InlineEmpty } from '@/components/ui/empty-state'
+import { IconTip, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /* ---------------- shared types & constants ---------------- */
 
 export type FieldType =
-  | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext' | 'date'
+  | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'multiselect' | 'number' | 'longtext' | 'date'
   | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location' | 'score'
 
 export interface AppField {
@@ -52,7 +53,27 @@ export interface AppField {
   isSmart?: boolean
   icon: React.ComponentType<{ className?: string }>
   fieldConfig?: Record<string, any> | null
+  /** Choices for 'select' and 'multiselect'. `value` never changes once made,
+   *  so renaming an option keeps answers already submitted attached to it. */
+  options?: ChoiceOption[]
 }
+
+export interface ChoiceOption {
+  value: string
+  label: string
+}
+
+/** Question types whose answers are picked from a list of options. */
+export const CHOICE_TYPES = new Set<FieldType>(['select', 'multiselect'])
+
+/** A stable value for a new option: slug of its first label + a short suffix. */
+export function newOptionValue(label: string): string {
+  const base = label.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'option'
+  return `${base}_${Math.random().toString(36).slice(2, 7)}`
+}
+
+export const defaultChoiceOptions = (): ChoiceOption[] =>
+  ['Option 1', 'Option 2'].map((label) => ({ label, value: newOptionValue(label) }))
 
 interface SmartFieldDef {
   id: string
@@ -81,6 +102,7 @@ export const BASIC_TYPES: { type: FieldType; label: string; icon: React.Componen
   { type: 'url',      label: 'URL',           icon: Link2 },
   { type: 'date',     label: 'Date',          icon: CalendarIcon },
   { type: 'select',   label: 'Single select', icon: List },
+  { type: 'multiselect', label: 'Multiple choice', icon: ListChecks },
   { type: 'yesno',    label: 'Yes / No',      icon: ToggleLeft },
   { type: 'score',    label: 'Score (stars)', icon: Star },
   { type: 'file',     label: 'File upload',   icon: FileText },
@@ -90,7 +112,7 @@ export const SMART_FIELD_TYPES_SET = new Set<FieldType>(SMART_FIELDS.map((s) => 
 
 const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   text: Type, longtext: AlignLeft, textarea: AlignLeft, number: Hash, email: Mail, url: Link2,
-  date: CalendarIcon, select: List, yesno: ToggleLeft, checkbox: ToggleLeft, file: FileText, phone: Phone,
+  date: CalendarIcon, select: List, multiselect: ListChecks, checkbox_group: ListChecks, yesno: ToggleLeft, checkbox: ToggleLeft, file: FileText, phone: Phone,
   linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
   work_location: Building2, recruiter: Users, score: Star,
 }
@@ -136,6 +158,7 @@ interface ApplicationFormBuilderProps {
   onToggleRequired?: (id: string, next: boolean) => void
   onRemoveField?: (id: string) => void
   onUpdateFieldConfig?: (id: string, patch: Record<string, any>) => void
+  onUpdateOptions?: (id: string, options: ChoiceOption[]) => void
   onReorderFields?: (orderedIds: string[]) => void
 }
 
@@ -154,6 +177,7 @@ export function ApplicationFormBuilder({
   onToggleRequired,
   onRemoveField,
   onUpdateFieldConfig,
+  onUpdateOptions,
   onReorderFields,
 }: ApplicationFormBuilderProps) {
   const { fields: smartFieldsLibrary } = useApplicationFields()
@@ -200,6 +224,7 @@ export function ApplicationFormBuilder({
       required: false,
       icon: bt.icon,
       fieldConfig: bt.type === 'score' ? { max: 5 } : undefined,
+      options: CHOICE_TYPES.has(bt.type) ? defaultChoiceOptions() : undefined,
     }])
   }
   const addFromLibrary = (lf: { id: string; field_label: string; field_type: string; is_required: boolean; help_text?: string | null }) => {
@@ -233,6 +258,10 @@ export function ApplicationFormBuilder({
   const updateConfig = (id: string, patch: Record<string, any>) => {
     if (onUpdateFieldConfig) { onUpdateFieldConfig(id, patch); return }
     onChange(fields.map((x) => (x.id === id ? { ...x, fieldConfig: { ...(x.fieldConfig || {}), ...patch } } : x)))
+  }
+  const updateOptions = (id: string, options: ChoiceOption[]) => {
+    if (onUpdateOptions) { onUpdateOptions(id, options); return }
+    onChange(fields.map((x) => (x.id === id ? { ...x, options } : x)))
   }
 
 
@@ -317,6 +346,7 @@ export function ApplicationFormBuilder({
               onRemove={() => removeField(f.id)}
               onRename={(label) => renameField(f.id, label)}
               onConfigChange={(patch) => updateConfig(f.id, patch)}
+              onOptionsChange={(opts) => updateOptions(f.id, opts)}
               readOnly={readOnly}
             />
           ))
@@ -350,6 +380,7 @@ function FieldRow({
   onRemove,
   onRename,
   onConfigChange,
+  onOptionsChange,
   readOnly,
 }: {
   field: AppField
@@ -360,6 +391,7 @@ function FieldRow({
   onRemove: () => void
   onRename: (label: string) => void
   onConfigChange?: (patch: Record<string, any>) => void
+  onOptionsChange?: (options: ChoiceOption[]) => void
   readOnly?: boolean
 }) {
   const Icon = f.icon || iconForType(f.type)
@@ -416,13 +448,34 @@ function FieldRow({
             <Badge tone="lilac" size="xs" icon={Sparkles}>Syncs to profile</Badge>
           )}
           {f.locked && (
-            <span className="text-[10.5px] uppercase tracking-[0.08em] font-poppins font-semibold text-virgilio-purple bg-[#EDE4FF] rounded-full px-2 py-0.5">
-              Required by Gio
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  tabIndex={0}
+                  className="text-[10.5px] uppercase tracking-[0.08em] font-poppins font-semibold text-virgilio-purple bg-[#EDE4FF] rounded-full px-2 py-0.5"
+                >
+                  Built in
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Every application includes this field. It can't be removed.</TooltipContent>
+            </Tooltip>
           )}
         </div>
-        {f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>}
+        {CHOICE_TYPES.has(f.type) ? (
+          <p className="truncate text-[11.5px] text-text-tertiary">
+            {f.type === 'multiselect' ? 'Multiple choice' : 'Single select'}
+            {' · '}
+            {(f.options ?? []).length
+              ? (f.options ?? []).map((o) => o.label).join(', ')
+              : 'No options yet'}
+          </p>
+        ) : (
+          f.hint && <p className="text-[11.5px] text-text-tertiary">{f.hint}</p>
+        )}
       </div>
+      {CHOICE_TYPES.has(f.type) && onOptionsChange && (
+        <OptionsButton options={f.options ?? []} onSave={onOptionsChange} readOnly={readOnly} />
+      )}
       {f.type === 'score' && !readOnly && onConfigChange && (
         <Popover>
           <PopoverTrigger asChild>
@@ -543,6 +596,139 @@ function FieldRow({
           <Trash2 className="h-4 w-4" />
         </button>
       )}
+    </div>
+  )
+}
+
+/* ---------------- choice options ---------------- */
+
+const pillClass =
+  'h-7 gap-1.5 rounded-full px-2.5 text-[11px] font-poppins font-medium uppercase tracking-[0.06em]'
+
+function OptionsButton({
+  options,
+  onSave,
+  readOnly,
+}: {
+  options: ChoiceOption[]
+  onSave: (next: ChoiceOption[]) => void
+  readOnly?: boolean
+}) {
+  const tooFew = options.length < 2
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={readOnly}
+          className={cn(
+            pillClass,
+            tooFew ? 'bg-[#FFF4C7] text-[#856404] hover:bg-[#FCEBA8]' : 'bg-[#F1F0EC] text-text-secondary hover:bg-[#E8E6DE]',
+          )}
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          <span>{options.length === 0 ? 'Add options' : `${options.length} option${options.length === 1 ? '' : 's'}`}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-3">
+        <OptionsEditor options={options} onSave={onSave} />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+/** Edits a question's options. Saves on blur, Enter, add, remove and move;
+ *  empty rows are dropped when saved. */
+function OptionsEditor({ options, onSave }: { options: ChoiceOption[]; onSave: (next: ChoiceOption[]) => void }) {
+  const [rows, setRows] = useState<ChoiceOption[]>(() => (options.length ? options : [{ value: newOptionValue(''), label: '' }]))
+  const [focusIdx, setFocusIdx] = useState<number | null>(null)
+  const inputs = useRef<(HTMLInputElement | null)[]>([])
+  const lastSaved = useRef(JSON.stringify(options))
+
+  React.useEffect(() => {
+    if (focusIdx != null) inputs.current[focusIdx]?.focus()
+  }, [focusIdx, rows.length])
+
+  const save = (next: ChoiceOption[]) => {
+    const clean = next
+      .map((o) => ({ ...o, label: o.label.trim() }))
+      .filter((o) => o.label)
+    const key = JSON.stringify(clean)
+    if (key === lastSaved.current) return
+    lastSaved.current = key
+    onSave(clean)
+  }
+  const setLabel = (i: number, label: string) =>
+    setRows((r) => r.map((o, j) => (j === i ? { ...o, label } : o)))
+  const add = (at: number) => {
+    const next = [...rows.slice(0, at), { value: newOptionValue(''), label: '' }, ...rows.slice(at)]
+    setRows(next)
+    setFocusIdx(at)
+  }
+  const remove = (i: number) => {
+    const next = rows.filter((_, j) => j !== i)
+    setRows(next.length ? next : [{ value: newOptionValue(''), label: '' }])
+    save(next)
+  }
+  const move = (i: number, d: -1 | 1) => {
+    const j = i + d
+    if (j < 0 || j >= rows.length) return
+    const next = [...rows]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    setRows(next)
+    save(next)
+  }
+  const filled = rows.filter((o) => o.label.trim()).length
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-poppins font-medium uppercase tracking-[0.06em] text-text-tertiary">Options</p>
+      <div className="max-h-64 space-y-1.5 overflow-y-auto pr-0.5">
+        {rows.map((o, i) => (
+          <div key={o.value} className="flex items-center gap-1">
+            <input
+              ref={(el) => { inputs.current[i] = el }}
+              value={o.label}
+              placeholder={`Option ${i + 1}`}
+              aria-label={`Option ${i + 1}`}
+              onChange={(e) => setLabel(i, e.target.value)}
+              onBlur={() => save(rows)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); save(rows); add(i + 1) }
+              }}
+              className="gio-field h-8 min-w-0 flex-1 rounded-lg border border-virgilio-border px-2.5 text-[13px] outline-none"
+            />
+            <IconTip label="Move up">
+              <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}
+                className="rounded-md p-1 text-text-tertiary hover:bg-[#F1F0EC] disabled:opacity-30">
+                <ArrowUp className="h-3.5 w-3.5" />
+              </button>
+            </IconTip>
+            <IconTip label="Move down">
+              <button type="button" aria-label="Move down" disabled={i === rows.length - 1} onClick={() => move(i, 1)}
+                className="rounded-md p-1 text-text-tertiary hover:bg-[#F1F0EC] disabled:opacity-30">
+                <ArrowDown className="h-3.5 w-3.5" />
+              </button>
+            </IconTip>
+            <IconTip label="Remove option">
+              <button type="button" aria-label="Remove option" onClick={() => remove(i)}
+                className="rounded-md p-1 text-text-tertiary hover:bg-[#F1F0EC] hover:text-destructive">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </IconTip>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <Button type="button" variant="ghost" size="sm" icon={Plus} onClick={() => add(rows.length)}>
+          Add option
+        </Button>
+        <p className="min-h-[18px] text-[11.5px] text-text-tertiary">
+          {filled < 2 ? 'Add at least 2 options.' : ''}
+        </p>
+      </div>
     </div>
   )
 }

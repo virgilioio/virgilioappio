@@ -3,6 +3,7 @@ import {
   Sparkles, GripVertical, Lock, Trash2, Plus, ExternalLink, Eye, Copy, Search,
   User, Mail, Phone, FileText, Link2, Globe2, Briefcase, DollarSign, MessageSquare, Puzzle,
   Calendar as CalendarIcon, Hash, AlignLeft, ToggleLeft, List, Type, MapPin, Linkedin, Users, Building2,
+  ListChecks,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -30,7 +31,7 @@ import { CharCounterLine } from '@/components/ui/char-counter'
 import { AffixInput } from '@/components/ui/affix-input'
 import { useJobsWithPostings } from '@/hooks/useJobsWithPostings'
 import { useTenant } from '@/hooks/useTenant'
-import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, type AppField as SharedAppField, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
+import { ApplicationFormBuilder, SMART_FIELD_TYPES_SET as SMART_FIELD_TYPES_SHARED, newOptionValue, type AppField as SharedAppField, type ChoiceOption, type FieldType as SharedFieldType, iconForType as iconForTypeShared } from '@/components/jobs/postings/ApplicationFormBuilder'
 import { PostingChannelsCard, type ChannelsValue } from '@/components/jobs/postings/PostingChannelsCard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -57,7 +58,7 @@ const LANGUAGE_OPTIONS = [
 const BRAND_SWATCHES = ['#6F3FF5', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#0d0d09']
 
 type FieldType =
-  | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'number' | 'longtext' | 'date'
+  | 'text' | 'email' | 'phone' | 'file' | 'url' | 'yesno' | 'select' | 'multiselect' | 'number' | 'longtext' | 'date'
   | 'salary' | 'location' | 'linkedin' | 'recruiter' | 'employment_type' | 'work_location' | 'score'
 
 interface SmartFieldDef {
@@ -101,13 +102,14 @@ interface AppField {
   locked?: boolean
   isSmart?: boolean
   icon: React.ComponentType<{ className?: string }>
+  options?: ChoiceOption[]
 }
 
 const SMART_FIELD_TYPES = new Set<FieldType>(SMART_FIELDS.map((s) => s.type))
 
 const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   text: Type, longtext: AlignLeft, number: Hash, email: Mail, url: Link2,
-  date: CalendarIcon, select: List, yesno: ToggleLeft, file: FileText, phone: Phone,
+  date: CalendarIcon, select: List, multiselect: ListChecks, yesno: ToggleLeft, file: FileText, phone: Phone,
   linkedin: Linkedin, location: MapPin, salary: DollarSign, employment_type: Briefcase,
   work_location: Building2, recruiter: Users,
 }
@@ -117,8 +119,12 @@ const iconForType = (t: string) => TYPE_ICON[t] || MessageSquare
 function sharedTypeToDbType(t: FieldType): string {
   if (t === 'longtext') return 'textarea'
   if (t === 'yesno') return 'checkbox'
+  if (t === 'multiselect') return 'checkbox_group'
   return t
 }
+
+const NOTICE_PERIOD_OPTIONS: ChoiceOption[] = ['Immediately', '1 week', '2 weeks', '1 month', '2 months', '3+ months']
+  .map((label) => ({ label, value: newOptionValue(label) }))
 
 /** Generate a snake_case field_name suitable for the application_fields contract. */
 function sanitizeFieldName(label: string, index: number): string {
@@ -131,9 +137,9 @@ const DEFAULT_FIELDS: AppField[] = [
   { id: 'email', label: 'Email', type: 'email', hint: 'Email', required: true, locked: true, icon: Mail },
   { id: 'phone', label: 'Phone', type: 'phone', hint: 'Phone', required: true, locked: true, icon: Phone },
   { id: 'resume', label: 'Resume / CV', type: 'file', hint: 'File upload · PDF, DOC', required: true, locked: true, icon: FileText },
-  { id: 'linkedin', label: 'LinkedIn Profile', type: 'linkedin', hint: 'Profile URL · syncs to candidate', required: false, locked: true, isSmart: true, icon: Linkedin },
+  { id: 'linkedin', label: 'LinkedIn Profile', type: 'linkedin', hint: 'Profile URL · syncs to candidate', required: true, locked: true, isSmart: true, icon: Linkedin },
   { id: 'work_auth', label: 'Are you authorized to work in the US?', type: 'yesno', hint: 'Yes / No', required: true, icon: Globe2 },
-  { id: 'notice', label: 'Notice period', type: 'select', hint: 'Single-select · 6 options', required: false, icon: Briefcase },
+  { id: 'notice', label: 'Notice period', type: 'select', required: false, icon: Briefcase, options: NOTICE_PERIOD_OPTIONS },
   { id: 'salary', label: 'Salary expectations (optional)', type: 'number', hint: 'Number · currency-aware', required: false, icon: DollarSign },
   { id: 'why', label: 'Why are you interested in this role?', type: 'longtext', hint: 'Long text · 600 chars', required: true, icon: MessageSquare },
 ]
@@ -394,7 +400,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           show_in_search: showInSearch, show_response_badge: showResponseBadge,
           brand_color: brandColor, banner_name: bannerName || null, banner_url: bannerUrl || null,
           team_photos: teamPhotos, culture_video: cultureVideo,
-          application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type) })),
+          application_fields: fields.map((f) => ({ id: f.id, label: f.label, type: f.type, required: f.required, locked: !!f.locked, hint: f.hint, isSmart: !!f.isSmart || SMART_FIELD_TYPES.has(f.type), ...(f.options ? { options: f.options } : {}) })),
           eeo_survey: eeo,
           channels: Object.entries(channelOn).filter(([, v]) => v).map(([id]) => id),
           apply_experience: { send_confirm: sendConfirm, promise_48h: promise48, allow_message: allowMessage, enable_referral: enableReferral },
@@ -449,9 +455,26 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
               field_config: (f as any).fieldConfig ?? null,
               display_order: index,
             }))
-            const { error: fieldsErr } = await supabase
+            const { data: savedFields, error: fieldsErr } = await supabase
               .from('job_posting_application_fields')
               .insert(rows as any)
+              .select('id, field_name')
+            // Options for single-select and multiple-choice questions.
+            if (!fieldsErr && savedFields) {
+              const optionRows = customFields.flatMap((f, index) => {
+                const saved = savedFields.find((r: any) => r.field_name === rows[index].field_name)
+                const opts = (f.options ?? []).filter((o) => o.label.trim())
+                if (!saved || !opts.length || (f.type !== 'select' && f.type !== 'multiselect')) return []
+                return opts.map((o, i) => ({ posting_field_id: saved.id, option_value: o.value, option_label: o.label.trim(), display_order: i }))
+              })
+              if (optionRows.length) {
+                const { error: optErr } = await supabase.from('posting_field_select_options').insert(optionRows as any)
+                if (optErr) {
+                  console.error('Error saving question options:', optErr)
+                  toast.error('Posting created, but some question options failed to save — open the posting to add them.')
+                }
+              }
+            }
             if (fieldsErr) {
               console.error('Error saving custom application fields:', fieldsErr)
               toast.error('Posting created, but custom questions failed to save — open the posting to retry.')

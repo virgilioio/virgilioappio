@@ -20,7 +20,10 @@ import {
   ApplicationFormBuilder,
   iconForType,
   SMART_FIELD_TYPES_SET,
+  CHOICE_TYPES,
+  defaultChoiceOptions,
   type AppField,
+  type ChoiceOption,
   type FieldType as SharedFieldType,
 } from './ApplicationFormBuilder'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -37,7 +40,7 @@ const CORE_FIELD_ICONS: Record<string, any> = {
 function dbTypeToShared(t: DbFieldType): SharedFieldType {
   if (t === 'textarea') return 'longtext'
   if (t === 'checkbox') return 'yesno'
-  if (t === 'checkbox_group') return 'select'
+  if (t === 'checkbox_group') return 'multiselect'
   return t as SharedFieldType
 }
 
@@ -45,6 +48,7 @@ function dbTypeToShared(t: DbFieldType): SharedFieldType {
 function sharedTypeToDb(t: SharedFieldType): DbFieldType {
   if (t === 'longtext') return 'textarea'
   if (t === 'yesno') return 'checkbox'
+  if (t === 'multiselect') return 'checkbox_group'
   return t as DbFieldType
 }
 
@@ -60,8 +64,12 @@ function postingToAppField(pf: PostingField): AppField {
     icon: iconForType(pf.field_type),
     hint: pf.help_text || undefined,
     fieldConfig: (pf.field_config as Record<string, any> | null) || undefined,
+    options: (pf.select_options ?? []).map((o) => ({ value: o.option_value, label: o.option_label })),
   }
 }
+
+const toDbOptions = (opts: ChoiceOption[]) =>
+  opts.map((o, i) => ({ option_value: o.value, option_label: o.label, display_order: i }))
 
 interface Props {
   postingId: string
@@ -121,6 +129,7 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
           field_type: sharedTypeToDb(bt.type),
           is_required: false,
           field_config: bt.type === 'score' ? ({ max: 5 } as any) : undefined,
+          select_options: CHOICE_TYPES.has(bt.type) ? toDbOptions(defaultChoiceOptions()) : undefined,
         })
       }}
       onAddFromLibrary={(lf) => {
@@ -136,6 +145,9 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
         const current = posting.find((p) => p.id === id)
         const merged = { ...(current?.field_config as any || {}), ...patch }
         void updateField(id, { field_config: merged } as any)
+      }}
+      onUpdateOptions={(id, opts) => {
+        void updateField(id, { select_options: toDbOptions(opts) } as any)
       }}
       onRemoveField={async (id) => {
         const field = posting.find((p) => p.id === id) as { label?: string } | undefined

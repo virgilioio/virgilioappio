@@ -41,6 +41,8 @@ export interface PostingField {
   accepted_file_types?: string | null
   max_file_size_mb?: number | null
   field_config?: SalaryFieldConfig | LocationFieldConfig | null
+  /** Options for select / checkbox_group fields, in display order. */
+  select_options?: SelectOptionData[]
   created_at: string
   updated_at: string
 }
@@ -54,7 +56,7 @@ export function useJobPostingFields(postingId: string) {
     setIsLoading(true)
     const { data, error } = await supabase
       .from('job_posting_application_fields')
-      .select('*')
+      .select('*, posting_field_select_options(option_value, option_label, display_order)')
       .eq('posting_id', postingId)
       .order('display_order', { ascending: true })
     if (error) {
@@ -62,9 +64,12 @@ export function useJobPostingFields(postingId: string) {
       toast({ title: 'Error', description: 'Failed to load form fields', variant: 'destructive' })
       setFields([])
     } else {
-      const rows = (data || []).map((row: any) => ({
+      const rows = (data || []).map(({ posting_field_select_options: opts, ...row }: any) => ({
         ...row,
         column_span: row.column_span ?? 4,
+        select_options: ((opts || []) as SelectOptionData[])
+          .slice()
+          .sort((a, b) => a.display_order - b.display_order),
       }))
       setFields(rows as PostingField[])
     }
@@ -195,28 +200,40 @@ export function useJobPostingFields(postingId: string) {
 
   const updateField = useCallback(async (id: string, updates: Partial<PostingField> & { select_options?: SelectOptionData[] }) => {
     const { select_options, ...dbUpdates } = updates
-    const { error } = await supabase
-      .from('job_posting_application_fields')
-      .update(dbUpdates as any)
-      .eq('id', id)
+    const { error } = Object.keys(dbUpdates).length
+      ? await supabase
+          .from('job_posting_application_fields')
+          .update(dbUpdates as any)
+          .eq('id', id)
+      : { error: null }
     if (error) {
       console.error('Error updating field:', error)
       toast({ title: 'Error', description: 'Could not update field', variant: 'destructive' })
     } else {
       // Persist select options if provided (delete + re-insert)
+      // Values stay the same when an option is renamed, so answers already
+      // submitted keep pointing at it.
       if (select_options !== undefined) {
-        await supabase.from('posting_field_select_options').delete().eq('posting_field_id', id)
-        if (select_options.length > 0) {
+        const { error: delErr } = await supabase.from('posting_field_select_options').delete().eq('posting_field_id', id)
+        let insErr = null
+        if (!delErr && select_options.length > 0) {
           const rows = select_options.map((o, i) => ({
             posting_field_id: id,
             option_value: o.option_value,
             option_label: o.option_label,
             display_order: i
           }))
-          await supabase.from('posting_field_select_options').insert(rows as any)
+          ;({ error: insErr } = await supabase.from('posting_field_select_options').insert(rows as any))
+        }
+        if (delErr || insErr) {
+          console.error('Error saving options:', delErr || insErr)
+          toast({ title: "Couldn't save the options", description: 'Check your connection and try again.', variant: 'destructive' })
+          return
         }
       }
-      setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...dbUpdates } as PostingField : f)))
+      setFields((prev) => prev.map((f) => (f.id === id
+        ? { ...f, ...dbUpdates, ...(select_options !== undefined ? { select_options: select_options.map((o, i) => ({ ...o, display_order: i })) } : {}) } as PostingField
+        : f)))
     }
   }, [toast])
 
