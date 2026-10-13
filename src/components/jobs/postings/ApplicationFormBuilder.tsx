@@ -646,10 +646,17 @@ function OptionsEditor({ options, onSave }: { options: ChoiceOption[]; onSave: (
   const [focusIdx, setFocusIdx] = useState<number | null>(null)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
   const lastSaved = useRef(JSON.stringify(options))
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
 
   React.useEffect(() => {
     if (focusIdx != null) inputs.current[focusIdx]?.focus()
   }, [focusIdx, rows.length])
+
+  // Closing the popover (Esc, click outside) unmounts the editor without a
+  // blur, so save whatever is typed on the way out.
+  const saveRef = useRef<(next: ChoiceOption[]) => void>(() => {})
+  React.useEffect(() => () => saveRef.current(rowsRef.current), [])
 
   const save = (next: ChoiceOption[]) => {
     const clean = next
@@ -660,6 +667,7 @@ function OptionsEditor({ options, onSave }: { options: ChoiceOption[]; onSave: (
     lastSaved.current = key
     onSave(clean)
   }
+  saveRef.current = save
   const setLabel = (i: number, label: string) =>
     setRows((r) => r.map((o, j) => (j === i ? { ...o, label } : o)))
   const add = (at: number) => {
