@@ -68,7 +68,6 @@ export function AddOrTransferCandidateDialog({
   const [selectedStageId, setSelectedStageId] = useState<string>('')
   const [stageOptions, setStageOptions] = useState<HiringPlanStageOption[]>([])
   const [stagesLoading, setStagesLoading] = useState(false)
-  const [ack, setAck] = useState(false)
   const [query, setQuery] = useState('')
   const searchRef = useRef<HTMLInputElement | null>(null)
 
@@ -89,15 +88,10 @@ export function AddOrTransferCandidateDialog({
       setSelectedJobId('')
       setSelectedStageId('')
       setStageOptions([])
-      setAck(false)
       setQuery('')
     }
   }, [open])
 
-  // Reset ack when mode changes
-  useEffect(() => {
-    setAck(false)
-  }, [mode])
 
   // Load stages when job changes; always reset selection so user picks explicitly
   useEffect(() => {
@@ -143,8 +137,7 @@ export function AddOrTransferCandidateDialog({
   const canConfirm =
     !!selectedJobId &&
     !!selectedStageId &&
-    !isTransferring &&
-    (mode === 'add' || ack)
+    !isTransferring
 
   const handleConfirm = async () => {
     if (!canConfirm || !selectedJob) return
@@ -685,47 +678,6 @@ export function AddOrTransferCandidateDialog({
               </div>
             )}
 
-            {/* 4 · Transfer acknowledgment */}
-            {isTransfer && (
-              <label
-                className="flex items-start cursor-pointer"
-                style={{
-                  background: '#FFF9EE',
-                  border: '1px solid #F5E4BE',
-                  borderRadius: 10,
-                  padding: '11px 13px',
-                  gap: 10,
-                }}
-              >
-                <span
-                  className="flex items-center justify-center shrink-0"
-                  style={{
-                    height: 18,
-                    width: 18,
-                    borderRadius: 5,
-                    background: ack ? '#B45309' : '#ffffff',
-                    border: ack ? '1.5px solid #B45309' : '1.5px solid #D6B87A',
-                    color: '#ffffff',
-                    marginTop: 1,
-                  }}
-                >
-                  {ack && <Check style={{ height: 11, width: 11 }} strokeWidth={3} />}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={ack}
-                  onChange={(e) => setAck(e.target.checked)}
-                  className="sr-only"
-                />
-                <span
-                  className="font-inter"
-                  style={{ fontSize: 12.5, color: '#7A5510', lineHeight: 1.45 }}
-                >
-                  I understand {firstName} will be{' '}
-                  <strong>removed from {currentJobTitle}</strong> and this can’t be undone.
-                </span>
-              </label>
-            )}
           </div>
 
           {/* FOOTER */}
