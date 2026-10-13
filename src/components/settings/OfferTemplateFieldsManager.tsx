@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { Plus, Edit, Trash2, MoveUp, MoveDown, List } from 'lucide-react'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { useOfferTemplateFields, type OfferTemplateField } from '@/hooks/useOfferTemplateFields'
@@ -144,7 +145,15 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
     }
   }
 
+  // S14 (Block B §16): offer letters keep their own copy of filled values (field_values).
   const handleDeleteField = async (field: OfferTemplateField) => {
+    const label = field.field_label || field.field_name
+    const ok = await confirmDestructive({
+      title: `Delete the \u201c${label}\u201d field?`,
+      description: 'It\u2019s removed from this template, so new offer letters won\u2019t ask for it. Offer letters already made keep what was filled in. This can\u2019t be undone.',
+      confirmLabel: 'Delete field',
+    })
+    if (!ok) return
     try {
       await deleteField(field.id)
     } catch (error) {
@@ -316,30 +325,11 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Field</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete the field "{field.field_label}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteField(field)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <IconTip label={`Delete ${field.field_label || field.field_name}`}>
+                            <Button variant="ghost" size="sm" aria-label={`Delete ${field.field_label || field.field_name}`} onClick={() => void handleDeleteField(field)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </IconTip>
                         </div>
                       </TableCell>
                     </TableRow>
