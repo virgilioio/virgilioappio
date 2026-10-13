@@ -88,16 +88,7 @@ import { OverallRatingPills } from "./scorecard/OverallRatingPills";
 import { ScoreFivePills } from "./scorecard/ScoreFivePills";
 import { KeyTakeawaysCard } from "./scorecard/KeyTakeawaysCard";
 import { AiSuggestedRatingCard } from "./scorecard/AiSuggestedRatingCard";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { UnsavedGuard } from "@/components/ui/unsaved-guard";
 import { LinkedInFilled } from "@/components/icons/LinkedInFilled";
 import { useStageInterviewDefaults } from "@/hooks/useStageInterviewDefaults";
 
@@ -1508,7 +1499,7 @@ export function ScorecardSheet({
               </div>
             </div>
 
-            <div className="p-6 border-t border-[#E7E8EE] bg-white">
+            <div className="relative p-6 border-t border-[#E7E8EE] bg-white">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-[12.5px] text-[#5A6072] font-inter">
                   <Info className="h-3.5 w-3.5 text-[#8B8F9E]" />
@@ -1539,6 +1530,13 @@ export function ScorecardSheet({
                   )}
                 </div>
               </div>
+              {/* §13: unsaved notes guard the footer in place, never a second modal. */}
+              <UnsavedGuard
+                open={showCancelDialog}
+                onKeep={() => setShowCancelDialog(false)}
+                onDiscard={handleConfirmCancel}
+                detail="Your notes and answers in this scorecard are lost."
+              />
             </div>
           </div>
         </SheetContent>
@@ -1561,26 +1559,6 @@ export function ScorecardSheet({
         />
       )}
 
-      {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved notes in this scorecard. Are you sure you want to cancel? Your changes will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleConfirmCancel}
-            >
-              Discard Changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
