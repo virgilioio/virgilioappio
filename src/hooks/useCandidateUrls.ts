@@ -141,18 +141,15 @@ export function useCandidateUrls(candidateId: string) {
         throw error
       }
 
-      toast({
-        title: 'Success',
-        description: 'URL deleted successfully'
-      })
+      toast({ title: 'Link deleted' })
 
       await getUrls()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete URL'
       console.error('Delete URL error:', err)
+      // Never a raw server error (Block B §16).
       toast({
-        title: 'Error',
-        description: errorMessage,
+        title: 'Couldn\u2019t delete the link',
+        description: 'Nothing was removed; try again.',
         variant: 'destructive'
       })
       throw err

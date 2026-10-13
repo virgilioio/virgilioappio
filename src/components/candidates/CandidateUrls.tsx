@@ -15,7 +15,8 @@ import { Plus, ExternalLink, Trash2, Github, FileText } from 'lucide-react'
 import { InlineEmpty } from '@/components/ui/empty-state'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
 
 interface CandidateUrlsProps {
   candidateId: string
@@ -64,8 +65,13 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
     }
   }
 
-  const handleDelete = async (urlId: string, label: string) => {
-    if (await confirmDialog({ title: `Delete "${label}"?`, confirmLabel: 'Delete link', destructive: true })) {
+  // C22 (Block B §16, Pattern 1): name the link and say the page itself stays.
+  const handleDelete = async (urlId: string, label: string, href: string) => {
+    if (await confirmDestructive({
+      title: `Delete the link \u201c${label}\u201d?`,
+      description: `${href} comes off this candidate\u2019s profile for everyone. The page itself isn\u2019t touched. This can\u2019t be undone.`,
+      confirmLabel: 'Delete link',
+    })) {
       try {
         await deleteUrl(urlId)
       } catch (error) {
@@ -202,24 +208,30 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
                         </div>
                         
                         <div className="flex items-center gap-sm">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(url.url, '_blank')}
-                            className="gap-sm h-8 px-2"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          
-                          {canManageCandidates && !url.isResumeUrl && (
+                          <IconTip label="Open link">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(url.id, url.label)}
-                              className="gap-sm h-8 px-2 text-destructive hover:text-destructive"
+                              aria-label="Open link"
+                              onClick={() => window.open(url.url, '_blank')}
+                              className="gap-sm h-8 px-2"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <ExternalLink className="h-4 w-4" />
                             </Button>
+                          </IconTip>
+                          
+                          {canManageCandidates && !url.isResumeUrl && (
+                            <IconTip label="Delete link">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label="Delete link"
+                                onClick={() => void handleDelete(url.id, url.label, url.url)}
+                                className="gap-sm h-8 px-2 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </IconTip>
                           )}
                         </div>
                       </div>
