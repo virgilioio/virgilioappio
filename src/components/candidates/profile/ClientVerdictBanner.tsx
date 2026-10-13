@@ -79,7 +79,7 @@ export function ClientVerdictBanner({
           title: 'Client marked them not a fit',
           badge: 'Client passed',
           meta: `Answered ${ago(verdict.answeredAt)} from the link sent to ${addr}`,
-          action: onTalentPool ? { label: 'Move to talent pool', onClick: onTalentPool, primary: false } : null,
+          action: onTalentPool ? { label: 'Reject candidate', onClick: onTalentPool, primary: false } : null,
           bg: '#FBFAF7',
           border: '#E0DDD3',
           chipBg: '#F1F0EC',
