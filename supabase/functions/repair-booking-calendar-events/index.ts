@@ -147,9 +147,11 @@ async function repairOne(supabase: any, booking: any) {
     ? `${frontendUrl}/jobs/${booking.job_id}?candidate=${booking.candidate_id}`
     : null;
   const { stageName, jobTitle } = await getStageAndJob(supabase, booking);
+  // A meeting from a general link keeps the title it was booked with (2026-10-13).
+  const isMeeting = !booking.job_id && !booking.job_hiring_stage_id && !booking.booked_by;
   const interviewTitle = booking.job_id || booking.job_hiring_stage_id
     ? `${stageName} with ${booking.candidate_name}${jobTitle}`
-    : `Interview with ${booking.candidate_name}`;
+    : booking.event_title || (isMeeting ? `Meeting with ${booking.candidate_name}` : `Interview with ${booking.candidate_name}`);
   const timezone = config?.timezone || 'UTC';
   const guestEmails = Array.isArray(booking.guest_emails) ? booking.guest_emails : [];
 
@@ -162,8 +164,8 @@ async function repairOne(supabase: any, booking: any) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        summary: `Interview: ${booking.candidate_name}`,
-        description: `Interview scheduled via GoGio\n\nCANDIDATE DETAILS:\nName: ${booking.candidate_name}\nEmail: ${booking.candidate_email}${booking.candidate_phone ? `\nPhone: ${booking.candidate_phone}` : ''}${booking.notes ? `\n\nNOTES:\n${booking.notes}` : ''}${candidateProfileUrl ? `\n\nSUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}${booking.transcript_ingest_email ? `\n\nTRANSCRIPT EMAIL:\n${booking.transcript_ingest_email}\n(Add this to your note-taking app to auto-generate interview notes)` : ''}`,
+        summary: interviewTitle,
+        description: `${isMeeting ? 'Meeting booked' : 'Interview scheduled'} via GoGio\n\n${isMeeting ? 'BOOKED BY' : 'CANDIDATE DETAILS'}:\nName: ${booking.candidate_name}\nEmail: ${booking.candidate_email}${booking.candidate_phone ? `\nPhone: ${booking.candidate_phone}` : ''}${booking.notes ? `\n\nNOTES:\n${booking.notes}` : ''}${candidateProfileUrl ? `\n\nSUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}${booking.transcript_ingest_email ? `\n\nTRANSCRIPT EMAIL:\n${booking.transcript_ingest_email}\n(Add this to your note-taking app to auto-generate interview notes)` : ''}`,
         start: { dateTime: booking.scheduled_start, timeZone: timezone },
         end: { dateTime: booking.scheduled_end, timeZone: timezone },
         attendees: [

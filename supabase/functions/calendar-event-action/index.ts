@@ -220,9 +220,11 @@ serve(async (req) => {
     }
 
     // ── Emails (branded, with ICS) ──
-    const title = booking.candidate_name
-      ? `Interview · ${booking.candidate_name}`
-      : booking.notes || 'Interview';
+    // A meeting from a general link keeps the title it was booked with (2026-10-13).
+    const title = booking.event_title
+      || (booking.candidate_name
+        ? `${!booking.job_id && !booking.job_hiring_stage_id && !booking.booked_by ? 'Meeting' : 'Interview'} · ${booking.candidate_name}`
+        : booking.notes || 'Interview');
 
     const { data: hostProfile } = booking.interviewer_id
       ? await admin
