@@ -7,11 +7,11 @@
  */
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { Loader2, UserX } from 'lucide-react'
 
 import { GioAtsLogo } from '@/components/brand/GioAtsLogo'
 import { Button } from '@/components/ui/button'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { useReportSplashReady } from '@/contexts/SplashReadyContext'
 import { supabase } from '@/integrations/supabase/client'
 import { PRIVACY_EMAIL } from '@/components/legal/LegalPage'
@@ -52,11 +52,14 @@ export default function PrivacyChoice() {
 
   const act = async (action: 'remove' | 'keep') => {
     if (action === 'remove') {
-      const ok = await confirmDialog({
-        title: 'Remove your details?',
-        description: "We'll delete your profile and won't add it again. This can't be undone.",
+      // O6 (Block B §16, Pattern 1). Plain Cancel: on the 3-year check "Keep my
+      // details" is an answer of its own, so the dialog never says "Keep".
+      const ok = await confirmDestructive({
+        icon: UserX,
+        title: 'Remove your details from Virgilio?',
+        description:
+          'We\u2019ll delete your profile \u2014 your name, roles, location and work email \u2014 and won\u2019t add it again. This can\u2019t be undone.',
         confirmLabel: 'Remove my details',
-        destructive: true,
       })
       if (!ok) return
     }
@@ -66,7 +69,7 @@ export default function PrivacyChoice() {
       await call(token, action)
       setView(action === 'remove' ? 'removed' : 'kept')
     } catch {
-      setError(`That didn't go through. Try again, or email ${PRIVACY_EMAIL}.`)
+      setError(`That didn\u2019t go through. Nothing was removed; try again, or email ${PRIVACY_EMAIL}.`)
     } finally {
       setBusy(null)
     }
@@ -114,7 +117,7 @@ export default function PrivacyChoice() {
             </p>
             <p>If you'd rather we didn't keep it, we'll delete your details and won't add them again.</p>
             <Actions error={error}>
-              <Button variant="destructive" loading={busy === 'remove'} disabled={busy !== null} onClick={() => act('remove')}>
+              <Button variant="danger" loading={busy === 'remove'} disabled={busy !== null} onClick={() => act('remove')}>
                 Remove my details
               </Button>
             </Actions>
