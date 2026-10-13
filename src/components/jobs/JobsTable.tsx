@@ -510,6 +510,7 @@ export function JobsTable({
                 return (
                   <TableRow
                     key={job.id}
+                    data-row-id={job.id}
                     interactive
                     className="group cursor-pointer"
                     onClick={() => onView(job)}

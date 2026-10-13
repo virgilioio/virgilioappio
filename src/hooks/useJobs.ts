@@ -389,7 +389,8 @@ export function useJobs() {
     }
   }
 
-  const deleteJob = async (id: string) => {
+  /** `quiet`: the caller shows success and errors itself (the delete dialog does). */
+  const deleteJob = async (id: string, opts: { quiet?: boolean } = {}) => {
     try {
       if (userType === 'platform_admin') {
         const { data, error: edgeFunctionError } = await supabase.functions.invoke('admin-operations', {
@@ -399,13 +400,13 @@ export function useJobs() {
         if (edgeFunctionError) throw edgeFunctionError
         if (!data?.success) throw new Error(data?.error || 'Failed to delete job')
 
-        toast({ title: 'Success', description: data.message || 'Job deleted successfully' })
+        if (!opts.quiet) toast({ title: 'Success', description: data.message || 'Job deleted successfully' })
       } else {
         const { error: deleteError } = await withAuthRetry(async () =>
           await supabase.from('jobs').delete().eq('id', id)
         )
         if (deleteError) throw deleteError
-        toast({ title: 'Success', description: 'Job deleted successfully' })
+        if (!opts.quiet) toast({ title: 'Success', description: 'Job deleted successfully' })
       }
 
       await logActivity({
@@ -420,7 +421,7 @@ export function useJobs() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete job'
-      toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
+      if (!opts.quiet) toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
       throw err
     }
   }

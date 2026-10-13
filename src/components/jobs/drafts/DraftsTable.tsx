@@ -92,7 +92,7 @@ export function DraftsTable({ jobs, isLoading, memberById, onOpen, onSetup, onRe
                 const owner = job.created_by ? memberById.get(job.created_by) : undefined
                 const editor = firstName(job.last_edited_by)
                 return (
-                  <TableRow key={job.id} interactive className="group cursor-pointer" onClick={() => onOpen(job)}>
+                  <TableRow key={job.id} data-row-id={job.id} interactive className="group cursor-pointer" onClick={() => onOpen(job)}>
                     <TableCell className="w-[84px]">
                       <JobPriorityBadge priority={(job as any).priority} />
                     </TableCell>

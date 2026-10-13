@@ -1,11 +1,7 @@
-import { useRecordCount } from '@/hooks/useRecordCount'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Plus, Download, SlidersHorizontal } from 'lucide-react'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AuthGate } from '@/components/auth/AuthGate'
@@ -15,6 +11,11 @@ import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { useJobs, Job } from '@/hooks/useJobs'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { toast } from '@/hooks/use-toast'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { collapseRows, rowsById } from '@/lib/motion'
+import { DeleteJobDialog } from '@/components/jobs/DeleteJobDialog'
+import { archiveJobWithUndo } from '@/components/jobs/jobStatusActions'
 
 import type { StatusSegment } from '@/components/jobs/JobsTable'
 
@@ -23,12 +24,13 @@ export default function Jobs() {
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-  const [archiveJobId, setArchiveJobId] = useState<string | null>(null)
-  const [deleteJobId, setDeleteJobId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  // Kept after close so the dialog can play its exit with the title still in it.
+  const [deleteTarget, setDeleteTarget] = useState<Job | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusSegment>('active')
 
-  const { jobs, isLoading, error: jobsError, getJobs, createJob, updateJob, archiveJob, deleteJob } = useJobs()
+  const { jobs, isLoading, error: jobsError, getJobs, createJob, updateJob, deleteJob } = useJobs()
+  const queryClient = useQueryClient()
   // §16: an error with nothing loaded, or a first load past 15s, shows Retry — not "No open jobs".
   const [jobsRetry, setJobsRetry] = useState(0)
   const jobsTimedOut = useLoadTimeout(isLoading, jobsRetry)
@@ -47,34 +49,53 @@ export default function Jobs() {
   }, [jobs])
 
   const [resumeJobId, setResumeJobId] = useState<string | null>(null)
-  const [discardJob, setDiscardJob] = useState<Job | null>(null)
   const handleCreateNew = () => { setSelectedJob(null); setResumeJobId(null); setIsWizardOpen(true) }
   const handleResumeDraft = (job: Job) => { setResumeJobId(job.id); setIsWizardOpen(true) }
   const handleSetupDraft = (job: Job) => navigate(`/jobs/${job.id}/setup`)
   const handleAssignOwner = (job: Job) => navigate(`/jobs/${job.id}/setup#hiring-team`)
-  const handleConfirmDiscard = async () => {
-    if (!discardJob) return
-    setIsDeleting(true)
-    try { await deleteJob(discardJob.id); setDiscardJob(null) } finally { setIsDeleting(false) }
+  // J3 (Block B §16, Pattern 1): a draft is a real job row, so discarding it
+  // deletes what was set up on it so far. The row collapses while it goes.
+  const handleDiscardDraft = async (job: Job) => {
+    const title = job.title?.trim() || 'this draft'
+    const ok = await confirmDestructive({
+      title: `Discard ${title}?`,
+      description: 'The draft is deleted with everything set up on it so far: its hiring plan, hiring team, openings and any postings. This can’t be undone.',
+      confirmLabel: 'Discard draft',
+    })
+    if (!ok) return
+    const exit = collapseRows(rowsById([job.id]))
+    try {
+      await deleteJob(job.id, { quiet: true })
+      toast({ title: `${title === 'this draft' ? 'Draft' : title} discarded` })
+    } catch {
+      exit.revert()
+      toast({ title: `Couldn’t discard ${title}. Nothing was removed; try again.`, variant: 'destructive' })
+    }
   }
   const handleView = (job: Job) => navigate(`/jobs/${job.id}`)
   const handleEdit = (job: Job) => { setSelectedJob(job); setIsFormOpen(true) }
-  const handleArchive = (id: string) => setArchiveJobId(id)
-  // Booked interviews block a delete in the database; say so up front (2026-10-13).
-  const jobBookings = useRecordCount('scheduled_bookings', 'job_id', deleteJobId)
-  const handleConfirmArchive = async () => {
-    if (archiveJobId) { await archiveJob(archiveJobId); setArchiveJobId(null) }
+  // J1 (Pattern 1 + Undo): archiving is a status change. The row leaves the
+  // tabs that don't show archived jobs; Undo puts the previous status back.
+  const handleArchive = (id: string) => {
+    const job = jobs.find((j) => j.id === id)
+    if (!job) return
+    const leaves = statusFilter !== 'all' && statusFilter !== 'archived'
+    void archiveJobWithUndo(job, {
+      queryClient,
+      collapse: leaves ? () => collapseRows(rowsById([id])) : undefined,
+    })
   }
-  const handleDelete = (id: string) => setDeleteJobId(id)
+  // J2 (Pattern 2): type the title to delete; booked interviews block it.
+  const handleDelete = (id: string) => {
+    const job = jobs.find((j) => j.id === id)
+    if (!job) return
+    setDeleteTarget(job)
+    setDeleteOpen(true)
+  }
   const handleConfirmDelete = async () => {
-    if (!deleteJobId) return
-    setIsDeleting(true)
-    try {
-      await deleteJob(deleteJobId)
-      setDeleteJobId(null)
-    } finally {
-      setIsDeleting(false)
-    }
+    if (!deleteTarget) return
+    await deleteJob(deleteTarget.id, { quiet: true })
+    toast({ title: `${deleteTarget.title?.trim() || 'Job'} deleted` })
   }
   const handleFormSubmit = async (data: any) => {
     if (selectedJob) await updateJob(selectedJob.id, data)
@@ -153,7 +174,7 @@ export default function Jobs() {
                 onResumeDraft={handleResumeDraft}
                 onSetupDraft={handleSetupDraft}
                 onAssignOwner={handleAssignOwner}
-                onDiscardDraft={setDiscardJob}
+                onDiscardDraft={(j) => void handleDiscardDraft(j)}
                 loadError={jobsLoadError}
                 onRetry={() => { setJobsRetry((n) => n + 1); getJobs() }}
               />
@@ -162,24 +183,6 @@ export default function Jobs() {
 
           <JobWizard isOpen={isWizardOpen} resumeJobId={resumeJobId} onClose={() => { setIsWizardOpen(false); setResumeJobId(null) }} />
 
-          <AlertDialog open={!!discardJob} onOpenChange={(open) => !open && !isDeleting && setDiscardJob(null)}>
-            <AlertDialogContent className="mx-4 max-w-md">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Discard {discardJob?.title}?</AlertDialogTitle>
-                <AlertDialogDescription>This can't be undone.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-                <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={(e) => { e.preventDefault(); handleConfirmDiscard() }}
-                  disabled={isDeleting}
-                  className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {isDeleting ? 'Discarding…' : 'Discard draft'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
           <JobFormSheet
             isOpen={isFormOpen}
             onClose={() => { setIsFormOpen(false); setSelectedJob(null) }}
@@ -188,56 +191,13 @@ export default function Jobs() {
             isLoading={isLoading}
           />
 
-          <AlertDialog open={!!archiveJobId} onOpenChange={() => setArchiveJobId(null)}>
-            <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Archive Job</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to archive this job? It will be moved to archived status but can be reactivated later.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-                <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmArchive} className="w-full sm:w-auto">
-                  Archive
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <AlertDialog open={!!deleteJobId} onOpenChange={(open) => !open && !isDeleting && setDeleteJobId(null)}>
-            <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
-              <AlertDialogHeader>
-                <AlertDialogTitle>{jobBookings ? "This job can't be deleted" : 'Delete job permanently?'}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {jobBookings === null
-                    ? 'Checking for interviews booked on this job…'
-                    : jobBookings > 0
-                      ? `${jobBookings} interview${jobBookings === 1 ? ' was' : 's were'} booked for this job, and that history has to stay. Archive it instead to take it out of your active jobs.`
-                      : 'This will permanently remove the job, its postings, and detach related candidates. This action cannot be undone.'}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-                <AlertDialogCancel className="w-full sm:w-auto" disabled={isDeleting}>Cancel</AlertDialogCancel>
-                {jobBookings ? (
-                  <AlertDialogAction
-                    onClick={() => { const id = deleteJobId; setDeleteJobId(null); if (id) setArchiveJobId(id) }}
-                    className="w-full sm:w-auto"
-                  >
-                    Archive job
-                  </AlertDialogAction>
-                ) : (
-                  <AlertDialogAction
-                    onClick={(e) => { e.preventDefault(); handleConfirmDelete() }}
-                    disabled={isDeleting || jobBookings === null}
-                    className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isDeleting ? 'Deleting…' : 'Delete job'}
-                  </AlertDialogAction>
-                )}
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <DeleteJobDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            job={deleteTarget}
+            onConfirm={handleConfirmDelete}
+            onArchiveInstead={() => { if (deleteTarget) handleArchive(deleteTarget.id) }}
+          />
         </div>
       </PermissionGate>
     </AuthGate>
