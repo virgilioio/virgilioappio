@@ -7,16 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { collapseRows, rowsById } from '@/lib/motion'
 import { useMemberJobAssignments } from '@/hooks/useMemberJobAssignments'
 import { useWouldUpgradeSeat } from '@/hooks/useWouldUpgradeSeat'
 import { SeatUpgradeConfirmDialog } from '@/components/billing/SeatUpgradeConfirmDialog'
@@ -97,7 +90,6 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
   const { data: assignments, isLoading: assignmentsLoading } = useMemberJobAssignments(member?.user_id)
   const queryClient = useQueryClient()
   const { wouldUpgrade, paidSeatCount } = useWouldUpgradeSeat()
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; jobTitle: string } | null>(null)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
   const [seatConfirm, setSeatConfirm] = useState<{ assignmentId: string; newRole: string } | null>(null)
 
@@ -139,20 +131,32 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
     await executeRoleChange(assignmentId, newRole)
   }
 
-  const handleRemove = async () => {
-    if (!removeTarget) return
-    setIsUpdating(removeTarget.id)
+  // S4 (Block B §16): name the person and the job, then the row collapses.
+  const handleRemove = async (target: { id: string; jobTitle: string; role: string }) => {
+    const name = [member.user_first_name, member.user_last_name].filter(Boolean).join(' ') || member.user_email || member.invited_email || 'this member'
+    const first = member.user_first_name?.trim() || name
+    const roleLabel = ROLE_OPTIONS.find(r => r.value === target.role)?.label?.toLowerCase() || 'member'
+    const ok = await confirmDestructive({
+      variant: 'remove',
+      title: `Remove ${name} from ${target.jobTitle}?`,
+      description: `${first} is no longer on this job as ${roleLabel === 'interviewer' ? 'an' : 'a'} ${roleLabel}. Their notes and scorecards stay. If this was their last recruiter assignment, they may move to a free seat.`,
+      confirmLabel: 'Remove from job',
+    })
+    if (!ok) return
+    setIsUpdating(target.id)
+    const exit = collapseRows(rowsById([target.id]))
     try {
       const { error } = await supabase
         .from('job_assignments')
         .delete()
-        .eq('id', removeTarget.id)
+        .eq('id', target.id)
 
       if (error) throw error
 
+      await exit.done
       queryClient.invalidateQueries({ queryKey: ['member-job-assignments', member.user_id] })
       queryClient.invalidateQueries({ queryKey: ['recruiter-user-ids'] })
-      toast({ title: 'Assignment removed', description: `Removed from ${removeTarget.jobTitle}` })
+      toast({ title: `${first} removed from ${target.jobTitle}` })
 
       try {
         await supabase.functions.invoke('update-seat-quantity')
@@ -161,11 +165,11 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
         console.warn('Seat sync failed (non-fatal):', e)
       }
     } catch (err) {
+      exit.revert()
       console.error('Failed to remove assignment:', err)
-      toast({ title: 'Error', description: 'Failed to remove assignment', variant: 'destructive' })
+      toast({ title: `Couldn\u2019t remove ${first} from ${target.jobTitle}`, description: 'Nothing was changed; try again.', variant: 'destructive' })
     } finally {
       setIsUpdating(null)
-      setRemoveTarget(null)
     }
   }
 
@@ -259,7 +263,7 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
             ) : (
               <div className="space-y-2">
                 {allJobs.map(job => (
-                  <div key={job.id} className="group flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm">
+                  <div key={job.id} data-row-id={job.id} className="group flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{job.job_title}</div>
                       {job.organization_name && (
@@ -282,15 +286,18 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10 transition-opacity"
-                      onClick={() => setRemoveTarget({ id: job.id, jobTitle: job.job_title })}
-                      disabled={isUpdating === job.id}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <IconTip label={`Remove from ${job.job_title}`}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Remove from ${job.job_title}`}
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                        onClick={() => void handleRemove({ id: job.id, jobTitle: job.job_title, role: job.role })}
+                        disabled={isUpdating === job.id}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </IconTip>
                   </div>
                 ))}
               </div>
@@ -299,23 +306,6 @@ export function MemberDetailSheet({ member, open, onOpenChange, onManageJobs }: 
         </SheetContent>
       </Sheet>
 
-      {/* Remove confirmation */}
-      <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove job assignment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the member from <strong>{removeTarget?.jobTitle}</strong>. This may affect their seat type and billing.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Seat upgrade confirmation */}
       <SeatUpgradeConfirmDialog
