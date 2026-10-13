@@ -167,6 +167,28 @@ export function collapseRows(els: Array<Element | null | undefined>, opts: { sta
         anims.push(a)
         await a.finished.catch(() => {})
       }
+      if (el instanceof HTMLTableRowElement) {
+        // A table row can't shrink below its content, so it fades, leaves the
+        // layout, and the rows under it FLIP up into the gap.
+        if (!opts.stagger) {
+          const f = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: exit, easing: easeOut, fill: 'forwards' })
+          anims.push(f)
+          await f.finished.catch(() => {})
+        }
+        const below: HTMLElement[] = []
+        for (let n = el.nextElementSibling; n && below.length < 40; n = n.nextElementSibling) below.push(n as HTMLElement)
+        const before = below.map((n) => n.getBoundingClientRect().top)
+        el.style.display = 'none'
+        await Promise.all(
+          below.map((n, j) => {
+            const dy = before[j] - n.getBoundingClientRect().top
+            if (!dy) return Promise.resolve()
+            const m = n.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: collapse, easing: easeInOut })
+            return m.finished.catch(() => {})
+          }),
+        )
+        return
+      }
       const h = el.getBoundingClientRect().height
       const cs = getComputedStyle(el)
       el.style.overflow = 'hidden'
@@ -185,7 +207,7 @@ export function collapseRows(els: Array<Element | null | undefined>, opts: { sta
     done,
     revert: () => {
       anims.forEach((a) => a.cancel())
-      rows.forEach((el) => { el.style.overflow = '' })
+      rows.forEach((el) => { el.style.overflow = ''; if (el instanceof HTMLTableRowElement) el.style.display = '' })
     },
   }
 }
