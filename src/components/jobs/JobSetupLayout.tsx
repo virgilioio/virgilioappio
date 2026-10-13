@@ -371,7 +371,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
 
   // J10/J11 (Block B §16, Pattern 1 + Undo): close and archive are status
   // changes; each asks once and the toast offers Undo.
-  const jobRef = { id: jobId, title: jobTitle, status: job?.status }
+  const jobRef = { id: jobId, title: jobTitle, status: job?.status, organization_id: job?.organization_id }
   const doClose = () => void closeJobWithUndo(jobRef, { queryClient })
   const doArchive = () => void archiveJobWithUndo(jobRef, { queryClient })
 

@@ -942,7 +942,7 @@ export default function JobDetail() {
   const handleArchiveJob = async () => {
     if (!id) return
     await archiveJobWithUndo(
-      { id, title: job?.title, status: job?.status },
+      { id, title: job?.title, status: job?.status, organization_id: job?.organization_id },
       { queryClient, onDone: () => navigate('/jobs') },
     )
   }
@@ -950,7 +950,7 @@ export default function JobDetail() {
   // J4/J7: closing stops new applications; Undo reopens it.
   const handleCloseJob = async () => {
     if (!id) return
-    await closeJobWithUndo({ id, title: job?.title, status: job?.status }, { queryClient, onDone: () => refetch() })
+    await closeJobWithUndo({ id, title: job?.title, status: job?.status, organization_id: job?.organization_id }, { queryClient, onDone: () => refetch() })
   }
 
   // J6 (Pattern 2): type the title to delete. A job with booked interviews

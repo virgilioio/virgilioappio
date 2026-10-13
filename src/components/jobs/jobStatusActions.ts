@@ -21,6 +21,7 @@ interface JobRef {
   title?: string | null
   /** The status before the change; Undo restores it. */
   status?: string | null
+  organization_id?: string | null
 }
 
 interface Options {
@@ -67,6 +68,7 @@ async function change(job: JobRef, to: 'closed' | 'archived', opts: Options) {
     description: to === 'archived' ? 'Job moved to archived status' : 'Job closed to new applications',
     entityType: 'job',
     entityId: job.id,
+    organizationId: job.organization_id ?? undefined,
     metadata: { previous_status: from, updated_fields: ['status'] },
   })
   refresh(opts.queryClient)

@@ -13,7 +13,7 @@ import { useJobs, Job } from '@/hooks/useJobs'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { toast } from '@/hooks/use-toast'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
-import { collapseRows, rowsById } from '@/lib/motion'
+import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
 import { DeleteJobDialog } from '@/components/jobs/DeleteJobDialog'
 import { archiveJobWithUndo } from '@/components/jobs/jobStatusActions'
 
@@ -83,6 +83,14 @@ export default function Jobs() {
     void archiveJobWithUndo(job, {
       queryClient,
       collapse: leaves ? () => collapseRows(rowsById([id])) : undefined,
+      // If the row is still mounted when Undo lands, bring it back in place.
+      onUndone: leaves
+        ? () => {
+            const rows = rowsById([id])
+            rows.forEach((el) => { if (el instanceof HTMLElement) el.style.display = '' })
+            restoreRows(rows)
+          }
+        : undefined,
     })
   }
   // J2 (Pattern 2): type the title to delete; booked interviews block it.
