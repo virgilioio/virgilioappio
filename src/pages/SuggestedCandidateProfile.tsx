@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRightLeft, Calendar, Clock, DollarSign, Download, FileText, Globe, Mail, MapPin,
   PenLine, Phone, RefreshCw, Sparkles, ThumbsDown, Upload, UserPlus,
@@ -40,8 +40,9 @@ import { useWhatsAppEnabled } from '@/hooks/useWhatsAppEnabled'
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon'
 import { buildWhatsAppUrl } from '@/utils/phoneUtils'
 import { suggestedReasons, suggestedScore, suggestedCandidateId } from '@/components/jobs/suggested/suggestedFilters'
-import { dismissSuggestion, restoreSuggestion } from '@/components/jobs/suggested/suggestedDismissed'
-import { toast as sonner } from 'sonner'
+import { dismissSuggestions, restoreSuggestions } from '@/components/jobs/suggested/suggestedDismissed'
+import { toast } from '@/hooks/use-toast'
+import { undoToast } from '@/lib/undoToast'
 import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
@@ -76,6 +77,7 @@ const monthYear = (iso?: string | null) => {
  * the dossier and the résumé — and one decision: add them, or don't.
  */
 function SuggestedCandidateProfileInner() {
+  const queryClient = useQueryClient()
   const { jobId = '', candidateId = '' } = useParams<{ jobId: string; candidateId: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -219,37 +221,24 @@ function SuggestedCandidateProfileInner() {
     if (id) navigate(`/jobs/${jobId}/suggested/${id}?tab=${activeTab}`)
   }
 
-  // C27 (Block B §16, Undo; mirrors J27): Not a fit hides the suggestion at once
-  // and offers Undo. The cached suggestion (and any dossier written for it) is
-  // deleted only once the toast goes without Undo — a delayed commit — so Undo
-  // brings it back exactly as it was.
-  const handleDismiss = () => {
+  // C27 (Block B §16, Undo; mirrors J27): Not a fit is saved for the whole team
+  // and offers Undo, which makes the candidate suggestible for this job again.
+  const handleDismiss = async () => {
     const job = jobId
     const cand = candidateId
-    dismissSuggestion(job, cand)
-    let settled = false
-    const commit = () => {
-      if (settled) return
-      settled = true
-      void supabase
-        .from('job_suggested_candidates_cache')
-        .delete()
-        .eq('job_id', job)
-        .eq('candidate_id', cand)
+    try {
+      await dismissSuggestions(job, [cand], queryClient)
+    } catch {
+      toast({ title: `Couldn\u2019t dismiss ${name}. Nothing changed; try again.`, variant: 'destructive' })
+      return
     }
-    sonner(`${name} dismissed`, {
-      description: 'They won\u2019t be suggested for this job again.',
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          if (settled) return
-          settled = true
-          restoreSuggestion(job, cand)
-        },
-      },
-      onAutoClose: commit,
-      onDismiss: commit,
-    })
+    undoToast(`${name} dismissed`, async () => {
+      try {
+        await restoreSuggestions(job, [cand], queryClient)
+      } catch {
+        toast({ title: `Couldn\u2019t bring back ${name}. Try again.`, variant: 'destructive' })
+      }
+    }, 'They won\u2019t be suggested for this job again, for anyone on the team.')
     goBack()
   }
 

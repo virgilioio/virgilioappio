@@ -20,9 +20,9 @@ import {
   type SuggestedFilter,
 } from './suggestedFilters'
 import type { SuggestedSortKey } from './suggestedGrid'
-import { readDismissedSuggestions as readDismissed, writeDismissedSuggestions, SUGGESTED_DISMISSED_EVENT } from './suggestedDismissed'
-import { supabase } from '@/lib/supabaseClient'
-import { toast as sonner } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
+import { dismissSuggestions, restoreSuggestions, useSuggestionDismissals } from './suggestedDismissed'
+import { undoToast } from '@/lib/undoToast'
 
 
 export interface JobSuggestedTabProps {
@@ -58,32 +58,28 @@ export function JobSuggestedTab({
     key: 'match',
     dir: 'desc',
   })
-  const [dismissed, setDismissed] = React.useState<string[]>(() => readDismissed(jobId))
+  // Not a fit lives in the database (shared by the team); `hidden` covers what
+  // was just dismissed or added, until the list and the server catch up.
+  const queryClient = useQueryClient()
+  const { dismissedIds } = useSuggestionDismissals(jobId)
+  const [hidden, setHidden] = React.useState<string[]>([])
   const [addingId, setAddingId] = React.useState<string | null>(null)
   const [bulkBusy, setBulkBusy] = React.useState(false)
 
   React.useEffect(() => {
-    setDismissed(readDismissed(jobId))
+    setHidden([])
     setSelected(new Set())
   }, [jobId])
 
-  // Undo of "Not a fit" on the suggested profile (C27) restores it here too.
-  React.useEffect(() => {
-    const onRestore = (e: Event) => {
-      if ((e as CustomEvent<{ jobId?: string }>).detail?.jobId === jobId) setDismissed(readDismissed(jobId))
-    }
-    window.addEventListener(SUGGESTED_DISMISSED_EVENT, onRestore)
-    return () => window.removeEventListener(SUGGESTED_DISMISSED_EVENT, onRestore)
-  }, [jobId])
-
-  const persistDismissed = (next: string[]) => {
-    setDismissed(next)
-    writeDismissedSuggestions(jobId, next)
-  }
+  const hide = (ids: string[]) => setHidden((prev) => [...new Set([...prev, ...ids])])
+  const unhide = (ids: string[]) => setHidden((prev) => prev.filter((id) => !ids.includes(id)))
 
   const visible = React.useMemo(
-    () => candidates.filter((c) => !dismissed.includes(suggestedCandidateId(c))),
-    [candidates, dismissed],
+    () => {
+      const out = new Set([...dismissedIds, ...hidden])
+      return candidates.filter((c) => !out.has(suggestedCandidateId(c)))
+    },
+    [candidates, dismissedIds, hidden],
   )
 
   const ids = React.useMemo(() => visible.map((c) => suggestedCandidateId(c)).filter(Boolean), [visible])
@@ -177,7 +173,7 @@ export function JobSuggestedTab({
     setAddingId(id)
     try {
       await addToPipeline([id])
-      persistDismissed([...dismissed, id])
+      hide([id])
       setSelected((prev) => {
         const next = new Set(prev)
         next.delete(id)
@@ -191,56 +187,37 @@ export function JobSuggestedTab({
     }
   }
 
-  // J27/J28 (Block B §16, Undo): Not a fit hides the suggestion at once and
-  // offers Undo. The cached suggestion row (and any dossier written for the
-  // match) is deleted only once the toast has gone without Undo — a delayed
-  // commit, so Undo brings the suggestion back exactly as it was.
-  const dismissWithUndo = (ids: string[], label: string) => {
+  // J27/J28 (Block B §16, Undo): Not a fit hides the suggestion at once and is
+  // saved for the whole team; Undo makes it suggestible again. Nothing about
+  // the suggestion itself is removed, so Undo brings it back exactly as it was.
+  const dismissWithUndo = async (ids: string[], label: string) => {
     if (!ids.length) return
-    setDismissed((prev) => {
-      const next = [...new Set([...prev, ...ids])]
-      writeDismissedSuggestions(jobId, next)
-      return next
-    })
+    hide(ids)
     setSelected((prev) => {
       const next = new Set(prev)
       ids.forEach((id) => next.delete(id))
       return next
     })
-    let settled = false
-    const commit = () => {
-      if (settled) return
-      settled = true
-      for (let i = 0; i < ids.length; i += 200) {
-        void supabase
-          .from('job_suggested_candidates_cache')
-          .delete()
-          .eq('job_id', jobId)
-          .in('candidate_id', ids.slice(i, i + 200))
-      }
+    try {
+      await dismissSuggestions(jobId, ids, queryClient)
+    } catch {
+      unhide(ids)
+      toast({ title: `Couldn\u2019t dismiss ${label}. Nothing changed; try again.`, variant: 'destructive' })
+      return
     }
-    sonner(`${label} dismissed`, {
-      description: 'They won’t be suggested for this job again.',
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          if (settled) return
-          settled = true
-          setDismissed((prev) => {
-            const next = prev.filter((id) => !ids.includes(id))
-            writeDismissedSuggestions(jobId, next)
-            return next
-          })
-        },
-      },
-      onAutoClose: commit,
-      onDismiss: commit,
-    })
+    undoToast(`${label} dismissed`, async () => {
+      try {
+        await restoreSuggestions(jobId, ids, queryClient)
+        unhide(ids)
+      } catch {
+        toast({ title: `Couldn\u2019t bring back ${label}. Try again.`, variant: 'destructive' })
+      }
+    }, 'They won\u2019t be suggested for this job again, for anyone on the team.')
   }
 
   const handleDismiss = (candidate: any) => {
     const id = suggestedCandidateId(candidate)
-    dismissWithUndo([id], candidate.candidate_name?.trim() || 'Suggestion')
+    void dismissWithUndo([id], candidate.candidate_name?.trim() || 'Suggestion')
   }
 
   const handleBulkAdd = async () => {
@@ -248,7 +225,7 @@ export function JobSuggestedTab({
     setBulkBusy(true)
     try {
       await addToPipeline(chosen)
-      persistDismissed([...dismissed, ...chosen])
+      hide(chosen)
       setSelected(new Set())
       toast({ title: 'Added to pipeline', description: `${chosen.length} candidates added to the first stage.` })
     } catch {
@@ -260,7 +237,7 @@ export function JobSuggestedTab({
 
   const handleBulkDismiss = () => {
     const ids = [...selected]
-    dismissWithUndo(ids, ids.length === 1 ? '1 suggestion' : `${ids.length} suggestions`)
+    void dismissWithUndo(ids, ids.length === 1 ? '1 suggestion' : `${ids.length} suggestions`)
   }
 
   const handleRefresh = () => {
