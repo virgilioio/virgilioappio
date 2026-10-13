@@ -2,6 +2,7 @@ import { installAutoTitle } from '@/lib/autoTitle'
 import { PhoneSwitch, DesktopOnly } from '@/components/phone/PhoneSwitch'
 import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { ConfirmDialogHost } from '@/components/ui/confirm-dialog'
+import { CloseJobRejectHost } from '@/components/jobs/CloseJobRejectHost'
 import {
   BrowserRouter as Router,
   Routes,
@@ -231,6 +232,7 @@ function AppContent() {
       </Suspense>
       <Sonner />
       <ConfirmDialogHost />
+      <CloseJobRejectHost />
       <OfflineBanner />
       <AppUpdateNotification />
     </div>
