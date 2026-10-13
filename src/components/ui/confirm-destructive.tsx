@@ -82,6 +82,19 @@ export function ConfirmDestructiveDialog({
   const cancelRef = React.useRef<HTMLButtonElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
   const fieldRef = React.useRef<HTMLDivElement>(null)
+  // Focus goes back where it was when the dialog opened (usually the trigger).
+  // Radix sends it to its Trigger, and these dialogs are opened without one, so
+  // without this it fell to <body>. Layout effect: runs before the dialog's
+  // own focus moves to Cancel.
+  const returnFocusRef = React.useRef<HTMLElement | null>(null)
+  React.useLayoutEffect(() => {
+    const el = document.activeElement
+    if (!open || !(el instanceof HTMLElement) || el === document.body) return
+    // Opened from a menu item: the menu is closing, so go back to its trigger.
+    const menu = el.closest<HTMLElement>('[role="menu"][aria-labelledby]')
+    const trigger = menu ? document.getElementById(menu.getAttribute('aria-labelledby') || '') : null
+    returnFocusRef.current = trigger ?? el
+  }, [open])
 
   React.useEffect(() => {
     if (open) {
@@ -159,6 +172,12 @@ export function ConfirmDestructiveDialog({
           }}
           onEscapeKeyDown={(e) => {
             if (busy) e.preventDefault()
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault()
+            const el = returnFocusRef.current
+            returnFocusRef.current = null
+            if (el?.isConnected) el.focus({ preventScroll: true })
           }}
         >
           <div className="flex items-start gap-[14px] px-[22px] pt-[22px] pb-[18px]">
