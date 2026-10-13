@@ -647,7 +647,7 @@ export function SaaSCustomerDetail() {
       <SuspendOrganizationDialog
         open={suspendOpen}
         onOpenChange={setSuspendOpen}
-        onConfirm={(reason) => { suspendMutation.mutate({ tenantId: customer.tenant_id, reason }); setSuspendOpen(false) }}
+        onConfirm={(reason) => suspendMutation.mutate({ tenantId: customer.tenant_id, reason }, { onSuccess: () => setSuspendOpen(false) })}
         organizationName={customer.name}
         isPending={suspendMutation.isPending}
       />
