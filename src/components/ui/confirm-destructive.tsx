@@ -44,6 +44,8 @@ export interface ConfirmDestructiveProps {
   typeToConfirm?: string
   /** Names for a bulk delete (Pattern 3): 3 chips, then "+N more". */
   items?: string[]
+  /** How many are selected when `items` holds only the first few names. */
+  itemsTotal?: number
   /** Extra content under the description (rare). */
   children?: React.ReactNode
 }
@@ -67,6 +69,7 @@ export function ConfirmDestructiveDialog({
   onConfirm,
   typeToConfirm,
   items,
+  itemsTotal,
   children,
 }: ConfirmDestructiveProps) {
   const Icon = icon ?? ICONS[variant]
@@ -135,7 +138,7 @@ export function ConfirmDestructiveDialog({
   }
 
   const shown = (items ?? []).slice(0, 3)
-  const more = (items?.length ?? 0) - shown.length
+  const more = Math.max(itemsTotal ?? 0, items?.length ?? 0) - shown.length
 
   return (
     <AlertDialogPrimitive.Root open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>

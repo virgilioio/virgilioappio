@@ -36,6 +36,7 @@ export interface ConfirmOptions {
   icon?: LucideIcon
   typeToConfirm?: string
   items?: string[]
+  itemsTotal?: number
   /** Type to confirm: the dialog stays open, with a spinner, until this resolves. */
   onConfirm?: () => Promise<void>
 }
@@ -106,6 +107,7 @@ export function ConfirmDialogHost() {
         cancelLabel={current.cancelLabel}
         typeToConfirm={current.typeToConfirm}
         items={current.items}
+        itemsTotal={current.itemsTotal}
         onConfirm={async () => {
           if (current.onConfirm) await current.onConfirm()
           settle(true)
