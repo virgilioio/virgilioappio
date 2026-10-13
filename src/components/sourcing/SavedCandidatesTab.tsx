@@ -135,7 +135,7 @@ export function SavedCandidatesTab({ projectId, jobId }: SavedCandidatesTabProps
 
   const handleArchive = (e: React.MouseEvent, candidate: SavedCandidate) => {
     e.stopPropagation()
-    archiveCandidate({ apolloId: candidate.apollo_id!, projectId })
+    archiveCandidate({ apolloId: candidate.apollo_id!, projectId, name: candidate.candidate_name })
   }
 
   const formatLocation = (c: SavedCandidate) =>
