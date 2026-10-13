@@ -885,7 +885,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
           <AlertDialogHeader>
             <AlertDialogTitle>Close this job?</AlertDialogTitle>
             <AlertDialogDescription>
-              Closing stops new applications. You can reopen it later from the job actions menu.
+              Closing stops new applications. Candidates already in the pipeline stay. You can reopen it from Edit job › Status.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
