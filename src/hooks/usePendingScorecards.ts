@@ -184,7 +184,8 @@ export function usePendingScorecards() {
       // Fetch scorecards - for admins get all, for others just their own
       let scorecardsQuery = supabase
         .from('job_stage_scorecards')
-        .select('id, association_id, stage_instance_id, created_by');
+        .select('id, association_id, stage_instance_id, created_by')
+        .is('moved_from_stage_name', null);
       
       if (!isAdmin) {
         scorecardsQuery = scorecardsQuery.eq('created_by', user.id);

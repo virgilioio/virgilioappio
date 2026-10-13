@@ -90,6 +90,7 @@ export function usePipelineCandidateStatuses(jobId: string, associations: { id: 
         .eq('job_id', jobId)
         .eq('is_ai_draft', false)
         .in('association_id', associationIds)
+        .is('moved_from_stage_name', null)
       if (error) throw error
       return data || []
     },

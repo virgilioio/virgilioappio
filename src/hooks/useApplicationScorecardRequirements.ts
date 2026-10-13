@@ -149,6 +149,7 @@ export function useApplicationScorecardRequirements(
         .select('created_by, is_ai_draft, rating, stage_instance_id')
         .eq('association_id', associationId)
         .in('stage_instance_id', stageIds)
+        .is('moved_from_stage_name', null)
 
       const submittedByStage: Record<string, Set<string>> = {}
       for (const id of stageIds) submittedByStage[id] = new Set()

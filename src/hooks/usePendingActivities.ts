@@ -187,7 +187,8 @@ async function fetchPendingScorecards(userId: string, isAdmin: boolean): Promise
   // Fetch scorecards
   let scorecardsQuery = supabase
     .from('job_stage_scorecards')
-    .select('id, association_id, stage_instance_id, created_by');
+    .select('id, association_id, stage_instance_id, created_by')
+    .is('moved_from_stage_name', null);
   
   if (!isAdmin) {
     scorecardsQuery = scorecardsQuery.eq('created_by', userId);
@@ -277,7 +278,8 @@ async function fetchNeedsDecision(userId: string, isAdmin: boolean, assignedJobI
     .from('job_stage_scorecards')
     .select('id, association_id, stage_instance_id, created_at, is_ai_draft')
     .in('association_id', associationIds)
-    .eq('is_ai_draft', false);
+    .eq('is_ai_draft', false)
+    .is('moved_from_stage_name', null);
 
   if (!scorecards || scorecards.length === 0) return [];
 

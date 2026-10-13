@@ -151,6 +151,7 @@ export function useStageScorecardRequirement(
         .select('created_by, is_ai_draft, rating')
         .eq('stage_instance_id', stageInstanceId)
         .eq('association_id', associationId)
+        .is('moved_from_stage_name', null)
       const submittedIds = new Set(
         (submittedRows || [])
           .filter((s: any) => !s.is_ai_draft && !!s.rating)

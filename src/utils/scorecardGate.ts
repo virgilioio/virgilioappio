@@ -80,6 +80,7 @@ export async function checkScorecardGate(
     .select('created_by, is_ai_draft, rating')
     .eq('stage_instance_id', currentJhsId)
     .eq('association_id', associationId)
+    .is('moved_from_stage_name', null)
 
   const submittedIds = new Set(
     (submitted || [])

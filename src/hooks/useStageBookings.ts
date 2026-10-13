@@ -135,7 +135,8 @@ export function useStageBookings(
           .select('created_by, association_id, stage_instance_id')
           .in('association_id', associationIds as string[])
           .eq('stage_instance_id', jhsId)
-          .eq('is_ai_draft', false);
+          .eq('is_ai_draft', false)
+          .is('moved_from_stage_name', null);
         scorecardAuthors = new Set(
           (scorecards || []).map(s => s.created_by).filter(Boolean) as string[]
         );
