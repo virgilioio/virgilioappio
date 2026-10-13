@@ -8,6 +8,8 @@ import { toast } from '@/hooks/use-toast'
 import { Member } from '@/hooks/useMembers'
 import { MemberDetailSheet } from '@/components/members/MemberDetailSheet'
 import { MoreHorizontal, Send, UserCheck, UserX, UserPlus, Trash2, Copy, Briefcase, Search } from 'lucide-react'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { useAuth } from '@/contexts/AuthContext'
 
 export interface EnrichedMember extends Member {
   seatType?: 'paid' | 'free'
@@ -60,6 +62,43 @@ export function MembersTable({
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
   const [detailMember, setDetailMember] = useState<EnrichedMember | null>(null)
+  const { userId: currentUserId } = useAuth()
+
+  // S1/S2 (Block B §16): deactivating asks first, and is blocked for yourself
+  // and for the workspace's last active admin.
+  const isAdmin = (m: EnrichedMember) => m.system_role === 'admin' || m.user_type === 'workspace_owner'
+  const confirmDeactivate = async (m: EnrichedMember) => {
+    const name = getDisplayName(m)
+    const first = m.user_first_name?.trim() || name
+    if (m.user_id && m.user_id === currentUserId) {
+      await confirmDestructive({
+        variant: 'blocked',
+        title: 'You can\u2019t deactivate yourself',
+        description: 'Ask another admin to deactivate your account, so the workspace is never left without someone who can manage it.',
+        confirmLabel: '',
+      })
+      return
+    }
+    const activeAdmins = members.filter((x) => x.user_status === 'active' && isAdmin(x))
+    if (isAdmin(m) && activeAdmins.length <= 1) {
+      await confirmDestructive({
+        variant: 'blocked',
+        title: `${name} is the only active admin`,
+        description: `Make someone else an admin first, then deactivate ${first}. A workspace always needs one admin to manage members and billing.`,
+        confirmLabel: '',
+      })
+      return
+    }
+    const seat = m.seatType === 'paid' ? ' Their paid seat is freed.' : ''
+    const ok = await confirmDestructive({
+      variant: 'remove',
+      icon: UserX,
+      title: `Deactivate ${name}?`,
+      description: `${first} loses access to this workspace right away.${seat} Their jobs, candidates and history stay, and you can reactivate them from this list.`,
+      confirmLabel: 'Deactivate member',
+    })
+    if (ok) onDeactivate(m.id)
+  }
 
   const filtered = useMemo(() => members.filter(m => {
     const term = searchTerm.toLowerCase()
@@ -223,7 +262,7 @@ export function MembersTable({
                     {m.user_status === 'active' && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeactivate(m.id) }} className="gap-2">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); void confirmDeactivate(m) }} className="gap-2">
                           <UserX className="h-4 w-4" />Deactivate Member
                         </DropdownMenuItem>
                       </>

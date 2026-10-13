@@ -14,7 +14,6 @@ import { Section } from '@/components/layout/Section'
 export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
-  const [deactivateMemberId, setDeactivateMemberId] = useState<string | null>(null)
   const [reactivateMemberTarget, setReactivateMemberTarget] = useState<Member | null>(null)
   const [userToDelete, setUserToDelete] = useState<any>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -52,15 +51,9 @@ export default function Members() {
     setIsFormOpen(true)
   }
 
-  const handleDeactivate = (id: string) => {
-    setDeactivateMemberId(id)
-  }
-
-  const handleConfirmDeactivate = async () => {
-    if (deactivateMemberId) {
-      await deactivateMember(deactivateMemberId)
-      setDeactivateMemberId(null)
-    }
+  // MembersTable asks first (S2, Block B §16).
+  const handleDeactivate = async (id: string) => {
+    await deactivateMember(id)
   }
 
   const handleFormSubmit = async (data: any) => {
@@ -82,7 +75,8 @@ export default function Members() {
       email: member.user_email || member.invited_email,
       firstName: member.user_first_name,
       lastName: member.user_last_name,
-      userStatus: member.user_status
+      userStatus: member.user_status,
+      userType: member.user_type
     })
     setIsDeleteDialogOpen(true)
   }
@@ -130,23 +124,6 @@ export default function Members() {
               member={selectedMember}
               isLoading={isLoading}
             />
-
-            <AlertDialog open={!!deactivateMemberId} onOpenChange={() => setDeactivateMemberId(null)}>
-              <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Deactivate Member</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to deactivate this member? They will lose access to the organization but can be reactivated later.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-                  <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmDeactivate} className="w-full sm:w-auto">
-                    Deactivate
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
 
             <AlertDialog open={!!reactivateMemberTarget} onOpenChange={(open) => { if (!open) setReactivateMemberTarget(null) }}>
               <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
