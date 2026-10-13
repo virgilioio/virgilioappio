@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { CurrencySelect } from '@/components/ui/currency-select'
 import { DatePickerVirgilio } from '@/components/ui/date-picker-virgilio'
-import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge, SalaryInput, ChipInput } from './_parts'
+import { SectionCard, FieldLabel, FieldHint, ToggleRow, AiAssistedBadge, SalaryInput, ChipInput, currencySymbol, periodSuffix } from './_parts'
 import type { CreateJobData } from '@/hooks/useJobs'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
@@ -318,6 +318,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
     }
 
     /* --- application form --- */
+    // Pay period of the public salary range, saved on the posting.
+    const [salaryPeriod, setSalaryPeriod] = useState('annually')
     const [fields, setFields] = useState<AppField[]>(DEFAULT_FIELDS)
     const [eeo, setEeo] = useState(true)
     const dragIdx = useRef<number | null>(null)
@@ -413,6 +415,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
           additional_locations: additionalLocations,
           location_type: jobData.work_mode || null,
           employment_type: jobData.employment_type || null,
+          salary_period: salaryPeriod,
           compensation: {
             variable_enabled: variableEnabled,
             commission_currency: variableEnabled ? commissionCurrency : null,
@@ -600,7 +603,7 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
 
         {/* ---------- COMPENSATION ---------- */}
         <SectionCard title="Compensation">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
             <div>
               <FieldLabel required>Currency</FieldLabel>
               <div className="mt-2">
@@ -615,6 +618,8 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
               <div className="mt-2">
                 <SalaryInput
                   value={jobData.salary_min ?? undefined}
+                  symbol={currencySymbol(jobData.currency)}
+                  suffix={periodSuffix(salaryPeriod)}
                   onChange={(v) => setJob('salary_min', v)}
                   placeholder="80,000"
                   invalid={salaryInvalid}
@@ -627,9 +632,24 @@ export const JobPostingStep = React.forwardRef<JobPostingStepHandle, JobPostingS
               <div className="mt-2">
                 <SalaryInput
                   value={jobData.salary_max ?? undefined}
+                  symbol={currencySymbol(jobData.currency)}
+                  suffix={periodSuffix(salaryPeriod)}
                   onChange={(v) => setJob('salary_max', v)}
                   placeholder="120,000"
                 />
+              </div>
+            </div>
+            <div>
+              <FieldLabel>Pay period</FieldLabel>
+              <div className="mt-2">
+                <Select value={salaryPeriod} onValueChange={setSalaryPeriod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="annually">Per year</SelectItem>
+                    <SelectItem value="monthly">Per month</SelectItem>
+                    <SelectItem value="hourly">Per hour</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

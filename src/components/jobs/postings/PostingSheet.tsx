@@ -43,7 +43,7 @@ import {
   PostingBrandingCard,
   type BrandingValue,
 } from './PostingBrandingCard'
-import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint, ChipInput } from '@/components/jobs/wizard/_parts'
+import { ToggleRow as WizardToggleRow, SalaryInput, FieldLabel, FieldHint, ChipInput, currencySymbol, periodSuffix } from '@/components/jobs/wizard/_parts'
 import { CharCounterLine } from '@/components/ui/char-counter'
 import { AffixInput } from '@/components/ui/affix-input'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -659,6 +659,8 @@ export function PostingSheet({
                     <div className="mt-2">
                       <SalaryInput
                         value={salaryMin}
+                        symbol={currencySymbol(salaryCurrency)}
+                        suffix={periodSuffix(salaryPeriod)}
                         onChange={setSalaryMin}
                         placeholder="80,000"
                         invalid={salaryMin != null && salaryMax != null && salaryMin > salaryMax}
@@ -673,6 +675,8 @@ export function PostingSheet({
                     <div className="mt-2">
                       <SalaryInput
                         value={salaryMax}
+                        symbol={currencySymbol(salaryCurrency)}
+                        suffix={periodSuffix(salaryPeriod)}
                         onChange={setSalaryMax}
                         placeholder="120,000"
                       />

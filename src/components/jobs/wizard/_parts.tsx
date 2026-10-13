@@ -457,6 +457,24 @@ export function ChipInput({
 }
 
 /** Salary input — leading currency symbol + value + trailing /yr suffix */
+/** "MXN" → "$", "EUR" → "€"; the code itself when the browser has no symbol. */
+export function currencySymbol(code?: string | null): string {
+  if (!code) return '$'
+  try {
+    const part = new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(0)
+      .find((x) => x.type === 'currency')
+    return part?.value || code
+  } catch {
+    return code
+  }
+}
+
+/** Suffix for a salary amount: '/yr', '/mo', '/hr', or none until a period is chosen. */
+export function periodSuffix(period?: string | null): string {
+  return period === 'annually' ? '/yr' : period === 'monthly' ? '/mo' : period === 'hourly' ? '/hr' : ''
+}
+
 export function SalaryInput({
   symbol = '$',
   value,
