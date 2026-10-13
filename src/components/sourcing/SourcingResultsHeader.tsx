@@ -183,12 +183,12 @@ export function SourcingResultsHeader({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onArchive}>
                 <Archive className="h-4 w-4 mr-2" />
-                {project.status === 'active' ? 'Archive' : 'Unarchive'} Project
+                {project.status === 'active' ? 'Archive' : 'Unarchive'} project
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete Project
+                Delete project
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
