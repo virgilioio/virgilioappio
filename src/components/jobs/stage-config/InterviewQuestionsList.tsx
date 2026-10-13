@@ -22,16 +22,8 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive'
+import { IconTip } from '@/components/ui/tooltip'
 import { GripVertical, Edit, Trash2, Type, Link2, MessageSquare } from 'lucide-react'
 import type { InterviewQuestion } from '@/hooks/useScorecardsConfiguration'
 import { getScorecardTypeDef, SCORECARD_SMART_FIELD_TYPES } from '@/hooks/useScorecardsConfiguration'
@@ -137,22 +129,28 @@ function SortableQuestionItem({
       </div>
 
       <div className="flex gap-2 shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onEdit(question)}
-          className="hover:bg-virgilio-purple/10 hover:text-virgilio-purple"
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onDelete(question.id)}
-          className="hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <IconTip label="Edit question">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Edit question"
+            onClick={() => onEdit(question)}
+            className="hover:bg-virgilio-purple/10 hover:text-virgilio-purple"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        </IconTip>
+        <IconTip label="Delete question">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Delete question"
+            onClick={() => onDelete(question.id)}
+            className="hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </IconTip>
       </div>
     </div>
   )
@@ -213,12 +211,10 @@ export function InterviewQuestionsList({
   }
 
   const handleConfirmDelete = () => {
-    if (questionToDelete) {
-      onDelete(questionToDelete)
-      setQuestionToDelete(null)
-      setDeleteDialogOpen(false)
-    }
+    if (questionToDelete) onDelete(questionToDelete)
   }
+  // Kept while the dialog closes so its exit still shows the question.
+  const pendingQuestion = items.find((q) => q.id === questionToDelete)?.question_text?.trim()
 
   // Sync items with questions prop when it changes
   if (questions !== items) {
@@ -277,26 +273,22 @@ export function InterviewQuestionsList({
         </DragOverlay>
       </DndContext>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Interview Question?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {answerCount === null
-                ? 'Checking for answers…'
-                : answerCount === 0
-                  ? "No scorecard has answered it yet. It won't appear on new scorecards. This can't be undone."
-                  : `The ${answerCount} answer${answerCount === 1 ? '' : 's'} already given to it in submitted scorecards ${answerCount === 1 ? 'is' : 'are'} deleted with it. This can't be undone.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete Question
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* J19 (Block B §16, Pattern 1): answers go with the question (the
+          database cascades them), so the dialog says how many. */}
+      <ConfirmDestructiveDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={pendingQuestion ? `Delete “${pendingQuestion}”?` : 'Delete this question?'}
+        description={
+          answerCount === null
+            ? 'Checking for answers…'
+            : answerCount === 0
+              ? 'No scorecard has answered it yet. It stops appearing on new scorecards for this stage. This can’t be undone.'
+              : `The ${answerCount} answer${answerCount === 1 ? '' : 's'} already given to it in submitted scorecards ${answerCount === 1 ? 'is' : 'are'} deleted with it, and it stops appearing on new scorecards. The rest of each scorecard stays. This can’t be undone.`
+        }
+        confirmLabel="Delete question"
+        onConfirm={handleConfirmDelete}
+      />
     </>
   )
 }
