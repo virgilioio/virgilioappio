@@ -12,6 +12,8 @@ import { SettingsCard } from "@/components/settings/shared/SettingsCard";
 import { stripHtmlToPlainText } from "@/utils/templateUtils";
 import { useChatKillSwitch } from "@/hooks/chat/useChatKillSwitch";
 import { ChatChannelsCard } from "@/components/chat/ChatChannelsCard";
+import { confirmDestructive } from "@/components/ui/confirm-dialog";
+import { MessageSquareOff } from "lucide-react";
 
 interface TenantFormData {
   name: string;
@@ -236,7 +238,16 @@ function ChatKillSwitchCard({ canEdit }: { canEdit: boolean }) {
         <Switch
           checked={isPaused}
           disabled={!canEdit || setPaused.isPending}
-          onCheckedChange={(v) => setPaused.mutate(v)}
+          onCheckedChange={async (v) => {
+            // S21 (Block B §16, decision 5): pausing asks first; resuming is instant.
+            if (v && !(await confirmDestructive({
+              icon: MessageSquareOff,
+              title: "Pause all candidate chat?",
+              description: "Candidates can\u2019t send new messages anywhere in this workspace, and AI auto-replies stop until you resume. Recruiters see a banner on every conversation. Existing threads stay readable.",
+              confirmLabel: "Pause chat",
+            }))) return;
+            setPaused.mutate(v);
+          }}
           aria-label="Pause candidate chat workspace-wide"
         />
       </div>
