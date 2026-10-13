@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { confirmDestructive } from '@/components/ui/confirm-dialog';
 import { EmptyState, EmptyAction } from '@/components/ui/empty-state';
 import { SoftEnvelope } from '@/components/ui/EmptyIllustrations';
 import { menuItemDanger } from '@/lib/menu-classes';
@@ -35,7 +35,6 @@ export function AutomationsTab({ jhsId, jobId, stageName = 'This stage' }: Autom
   const [editing, setEditing] = useState<StageAutomation | null>(null);
   const [recipe, setRecipe] = useState<'screening' | null>(null);
   const [runsFor, setRunsFor] = useState<StageAutomation | null>(null);
-  const [deleting, setDeleting] = useState<{ automation: StageAutomation; scheduled: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -62,9 +61,21 @@ export function AutomationsTab({ jhsId, jobId, stageName = 'This stage' }: Autom
     reorder.mutate(arrayMove(ids, from, to));
   };
 
+  // J18 (Block B §16, Pattern 1): deleting an automation deletes its run
+  // history and cancels what it has scheduled (stage_automation_runs and its
+  // emails cascade). Emails it already sent stay in the email log.
   const askDelete = async (a: StageAutomation) => {
     const scheduled = await countScheduledRuns(a.id).catch(() => 0);
-    setDeleting({ automation: a, scheduled });
+    const name = a.name?.trim() ? `“${a.name.trim()}”` : 'this automation';
+    const cancels = scheduled
+      ? ` ${scheduled} scheduled ${scheduled === 1 ? 'run is' : 'runs are'} cancelled.`
+      : '';
+    const ok = await confirmDestructive({
+      title: `Delete ${name}?`,
+      description: `Its run history goes with it.${cancels} Emails it already sent stay in the email log. To stop it but keep its history, pause it instead. This can’t be undone.`,
+      confirmLabel: 'Delete automation',
+    });
+    if (ok) deleteAutomation.mutate(a.id);
   };
 
   const activeCount = automations.filter((a) => a.is_active).length;
@@ -157,27 +168,6 @@ export function AutomationsTab({ jhsId, jobId, stageName = 'This stage' }: Autom
 
       <AutomationRunsDialog automation={runsFor} onClose={() => setRunsFor(null)} />
 
-      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
-        <AlertDialogContent className="z-[80]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete "{deleting?.automation.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleting?.scheduled
-                ? `${deleting.scheduled} scheduled ${deleting.scheduled === 1 ? 'run' : 'runs'} will be cancelled. Past runs stay in the candidates' activity.`
-                : 'Past runs stay in the candidates\' activity. This can\'t be undone.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep it</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { if (deleting) deleteAutomation.mutate(deleting.automation.id); setDeleting(null); }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

@@ -269,7 +269,7 @@ export function useStageAutomations(jhsId: string | null, jobId?: string | null)
       if (error) throw error;
     },
     onSuccess: () => { toast.success('Automation deleted'); invalidate(); },
-    onError: (e: Error) => toast.error(`Couldn't delete: ${e.message}`),
+    onError: () => toast.error('Couldn’t delete the automation. Nothing was removed; try again.'),
   });
 
   /** How many scheduled runs a delete would cancel. */
