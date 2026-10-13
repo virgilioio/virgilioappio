@@ -30,6 +30,8 @@ import googleWorkspaceImg from '@/assets/integrations/google-workspace.png'
 import { useMailIdentities } from '@/hooks/useMailIdentities'
 import { useCalendarIdentities } from '@/hooks/useCalendarIdentities'
 import { useWorkspaceAutomation } from '@/hooks/useWorkspaceAutomation'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { Unplug } from 'lucide-react'
 
 export interface IntegrationEntry {
   id: string
@@ -180,23 +182,45 @@ function useIntegrationActions(integrationId: string | null) {
     }
   }
 
-  const uninstall = async () => {
+  // S23 (Block B §16): uninstalling asks first and resolves false if you
+  // cancel. The Chrome extension has nothing to uninstall here (you remove it
+  // in Chrome), so its dialog shows no Uninstall button.
+  const uninstall = async (): Promise<boolean> => {
     switch (integrationId) {
-      case 'whatsapp':
+      case 'whatsapp': {
+        const ok = await confirmDestructive({
+          variant: 'remove',
+          icon: Unplug,
+          title: 'Turn off WhatsApp shortcuts?',
+          description: 'The WhatsApp buttons next to candidate phone numbers go away for everyone in this workspace. Your pre-filled message is kept for when you turn it back on.',
+          confirmLabel: 'Turn off WhatsApp',
+        })
+        if (!ok) return false
         toggleWhatsApp(false)
-        break
-      case 'google-workspace':
-        {
-          const { error } = await supabase.functions.invoke('disconnect-google-workspace', { body: {} })
-          if (error) { toast.error(`Failed to disconnect Google Workspace: ${error.message}`); break }
-          queryClient.invalidateQueries({ queryKey: ['mail-identities'] })
-          queryClient.invalidateQueries({ queryKey: ['calendar-identities'] })
-          toast.success('Google Workspace disconnected')
+        return true
+      }
+      case 'google-workspace': {
+        const ok = await confirmDestructive({
+          variant: 'remove',
+          icon: Unplug,
+          title: 'Disconnect Google Workspace?',
+          description: 'Gio stops sending candidate email from your address and stops reading your calendar. Your booking links stop offering times and new interviews can\u2019t go on your calendar until you reconnect. Emails already sent and events already booked stay.',
+          confirmLabel: 'Disconnect Google',
+        })
+        if (!ok) return false
+        const { error } = await supabase.functions.invoke('disconnect-google-workspace', { body: {} })
+        if (error) {
+          console.error('Failed to disconnect Google Workspace:', error)
+          toast.error('Couldn\u2019t disconnect Google Workspace. Nothing was changed; try again.')
+          return false
         }
-        break
-      case 'chrome-extension':
-        // No server-side uninstall needed
-        break
+        queryClient.invalidateQueries({ queryKey: ['mail-identities'] })
+        queryClient.invalidateQueries({ queryKey: ['calendar-identities'] })
+        toast.success('Google Workspace disconnected')
+        return true
+      }
+      default:
+        return false
     }
   }
 
@@ -329,7 +353,7 @@ export function IntegrationsTab({ initialConfigureId }: IntegrationsTabProps) {
           images={dialogEntry.images}
           isConnected={statuses[dialogEntry.id] ?? false}
           onInstall={install}
-          onUninstall={uninstall}
+          onUninstall={dialogEntry.id === 'chrome-extension' ? undefined : uninstall}
           onConfigure={() => setConfigureId(dialogEntry.id)}
           isInstalling={isInstalling}
         />

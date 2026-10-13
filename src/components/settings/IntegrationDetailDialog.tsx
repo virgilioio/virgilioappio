@@ -22,7 +22,8 @@ interface IntegrationDetailDialogProps {
   images?: string[]
   isConnected: boolean
   onInstall: () => void
-  onUninstall: () => void
+  /** Omitted when there's nothing to uninstall here (no Uninstall button). Resolves false if cancelled. */
+  onUninstall?: () => Promise<boolean>
   onConfigure: () => void
   isInstalling?: boolean
 }
@@ -155,17 +156,18 @@ export function IntegrationDetailDialog({
           <div className="sm:w-[12.5%] p-4 sm:border-l border-border flex flex-col items-center justify-start gap-2">
             {isConnected ? (
               <>
-                <Button
-                  size="sm"
-                  className="w-full gap-1.5 bg-virgilio-rejected hover:bg-virgilio-rejected/90 text-white border-0 text-xs"
-                  onClick={() => {
-                    onUninstall()
-                    onOpenChange(false)
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Uninstall
-                </Button>
+                {onUninstall && (
+                  <Button
+                    size="sm"
+                    className="w-full gap-1.5 bg-virgilio-rejected hover:bg-virgilio-rejected/90 text-white border-0 text-xs"
+                    onClick={async () => {
+                      if (await onUninstall()) onOpenChange(false)
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Uninstall
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
