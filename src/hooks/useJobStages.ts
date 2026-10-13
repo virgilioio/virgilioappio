@@ -183,7 +183,12 @@ export function useJobStages(context: JobStagesContext = 'organization') {
     setIsDeleting(true)
     try {
       console.log('[useJobStages.deleteStage] soft deleting stage via RPC:', id)
-      const { error } = await supabase.rpc('soft_delete_job_stage', { stage_id_param: id })
+      // Workspace stages go through retire_tenant_job_stage (workspace owners);
+      // platform stages through the platform-only RPC (2026-10-13).
+      const isTenantStage = stages.find(st => st.id === id)?.source === 'tenant'
+      const { error } = isTenantStage
+        ? await supabase.rpc('retire_tenant_job_stage', { p_stage_id: id })
+        : await supabase.rpc('soft_delete_job_stage', { stage_id_param: id })
       if (error) throw error
 
       // Optimistically remove from local list

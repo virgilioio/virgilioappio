@@ -10184,6 +10184,10 @@ export type Database = {
           user_type: string
         }[]
       }
+      retire_tenant_job_stage: {
+        Args: { p_stage_id: string }
+        Returns: undefined
+      }
       safe_delete_user: {
         Args: { target_user_id: string }
         Returns: {
