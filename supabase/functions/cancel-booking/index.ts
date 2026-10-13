@@ -86,24 +86,27 @@ serve(async (req) => {
       });
     }
 
-    // Get job title and stage name for email context
-    let jobTitle = 'Position';
-    let stageName = 'Interview';
+    // What the emails call it (2026-10-13). A job interview is named by its
+    // stage and job; a meeting booked from a general link (no job, nobody from
+    // the team booked it) by the title stored when it was booked.
+    const isMeeting = !booking.job_id && !booking.job_hiring_stage_id && !booking.booked_by;
+    const Kind = isMeeting ? 'Meeting' : 'Interview';
+    let interviewTitle: string;
 
     if (booking.job_hiring_stage_id) {
+      // job_hiring_stages has no stage_name column; it was always missing here.
       const { data: stageData } = await supabase
         .from('job_hiring_stages')
-        .select('stage_name, job:jobs(title)')
+        .select('custom_stage_name, stage:job_stages(stage_name), job:jobs(title)')
         .eq('id', booking.job_hiring_stage_id)
         .maybeSingle();
-
-      if (stageData) {
-        jobTitle = stageData.job?.title || jobTitle;
-        stageName = stageData.stage_name || stageName;
-      }
+      const stageName = (stageData as any)?.custom_stage_name || (stageData as any)?.stage?.stage_name || 'Interview';
+      const jobTitle = (stageData as any)?.job?.title || 'Position';
+      interviewTitle = `${stageName} - ${jobTitle}`;
+    } else {
+      interviewTitle = booking.event_title
+        || (isMeeting ? `Meeting with ${booking.candidate_name}` : `Interview with ${booking.candidate_name}`);
     }
-
-    const interviewTitle = `${stageName} - ${jobTitle}`;
 
     // Delete Google Calendar event if exists
     if (booking.google_event_id || booking.candidate_google_event_id) {
@@ -246,7 +249,7 @@ serve(async (req) => {
       `DTSTART:${formatDateForICS(new Date(booking.scheduled_start))}`,
       `DTEND:${formatDateForICS(new Date(booking.scheduled_end))}`,
       `SUMMARY:${escapeICSText('CANCELLED: ' + interviewTitle)}`,
-      `DESCRIPTION:${escapeICSText('This interview has been cancelled.' + (reason ? '\n\nReason: ' + reason : ''))}`,
+      `DESCRIPTION:${escapeICSText(`This ${isMeeting ? 'meeting' : 'interview'} has been cancelled.` + (reason ? '\n\nReason: ' + reason : ''))}`,
       `ORGANIZER;CN=${escapeICSText(interviewerProfile ? `${interviewerProfile.first_name} ${interviewerProfile.last_name}` : 'Interviewer')}:mailto:${interviewerProfile?.email || 'no-reply@app.gogio.io'}`,
       `ATTENDEE;CN=${escapeICSText(booking.candidate_name)};RSVP=TRUE:mailto:${booking.candidate_email}`,
       // Add guest attendees to cancellation ICS
@@ -274,7 +277,7 @@ serve(async (req) => {
     });
 
     const cancellationDetails = [
-      `<strong>Interview:</strong> ${interviewTitle}`,
+      `<strong>${Kind}:</strong> ${interviewTitle}`,
       `<strong>Originally Scheduled:</strong> ${formattedDate}`,
     ];
 
@@ -283,7 +286,7 @@ serve(async (req) => {
     }
 
     const candidateContent = `
-      <p>We regret to inform you that your scheduled interview has been cancelled.</p>
+      <p>We regret to inform you that your scheduled ${isMeeting ? 'meeting' : 'interview'} has been cancelled.</p>
       <div class="divider"></div>
       ${formatEmailList(cancellationDetails)}
       <p style="margin-top: 24px;">A calendar cancellation has been sent to update your calendar. If you have any questions or would like to reschedule, please don't hesitate to contact us.</p>
@@ -291,8 +294,8 @@ serve(async (req) => {
 
     const candidateEmailHtml = createEmailTemplate({
       recipientName: booking.candidate_name,
-      preheaderText: `Your interview scheduled for ${formattedDate} has been cancelled`,
-      title: 'Interview Cancelled',
+      preheaderText: `Your ${isMeeting ? 'meeting' : 'interview'} scheduled for ${formattedDate} has been cancelled`,
+      title: `${Kind} Cancelled`,
       content: candidateContent,
       footerNote: 'We apologize for any inconvenience this may cause.'
     });
@@ -300,7 +303,7 @@ serve(async (req) => {
     await supabase.functions.invoke('send-user-email', {
       body: {
         to: [booking.candidate_email],
-        subject: `Interview Cancelled: ${interviewTitle}`,
+        subject: `${Kind} Cancelled: ${interviewTitle}`,
         html: candidateEmailHtml,
         attachments: [{
           filename: 'cancellation.ics',
@@ -314,8 +317,8 @@ serve(async (req) => {
     // Send cancellation email to interviewer if available
     if (interviewerProfile?.email) {
       const interviewerCancellationDetails = [
-        `<strong>Candidate:</strong> ${booking.candidate_name} (<a href="mailto:${booking.candidate_email}" style="color: #6366f1;">${booking.candidate_email}</a>)`,
-        `<strong>Interview:</strong> ${interviewTitle}`,
+        `<strong>${isMeeting ? 'Booked by' : 'Candidate'}:</strong> ${booking.candidate_name} (<a href="mailto:${booking.candidate_email}" style="color: #6366f1;">${booking.candidate_email}</a>)`,
+        `<strong>${Kind}:</strong> ${interviewTitle}`,
         `<strong>Originally Scheduled:</strong> ${formattedDate}`,
       ];
 
@@ -324,7 +327,7 @@ serve(async (req) => {
       }
 
       const interviewerContent = `
-        <p>An interview on your calendar has been cancelled.</p>
+        <p>${isMeeting ? 'A meeting' : 'An interview'} on your calendar has been cancelled.</p>
         <div class="divider"></div>
         ${formatEmailList(interviewerCancellationDetails)}
         <p style="margin-top: 24px;">A calendar cancellation has been sent to update your calendar automatically.</p>
@@ -332,15 +335,15 @@ serve(async (req) => {
 
       const interviewerEmailHtml = createEmailTemplate({
         recipientName: interviewerProfile.first_name,
-        preheaderText: `Interview with ${booking.candidate_name} has been cancelled`,
-        title: 'Interview Cancelled',
+        preheaderText: `${Kind} with ${booking.candidate_name} has been cancelled`,
+        title: `${Kind} Cancelled`,
         content: interviewerContent,
       });
 
       await supabase.functions.invoke('send-user-email', {
         body: {
           to: [interviewerProfile.email],
-          subject: `Interview Cancelled: ${interviewTitle}`,
+          subject: `${Kind} Cancelled: ${interviewTitle}`,
           html: interviewerEmailHtml,
           attachments: [{
             filename: 'cancellation.ics',
@@ -356,7 +359,7 @@ serve(async (req) => {
     const guestEmails = (booking.guest_emails || []) as string[];
     if (guestEmails.length > 0) {
       const guestCancellationDetails = [
-        `<strong>Interview:</strong> ${interviewTitle}`,
+        `<strong>${Kind}:</strong> ${interviewTitle}`,
         `<strong>Originally Scheduled:</strong> ${formattedDate}`,
       ];
 
@@ -365,7 +368,7 @@ serve(async (req) => {
       }
 
       const guestContent = `
-        <p>An interview you were invited to has been cancelled.</p>
+        <p>${isMeeting ? 'A meeting' : 'An interview'} you were invited to has been cancelled.</p>
         <div class="divider"></div>
         ${formatEmailList(guestCancellationDetails)}
         <p style="margin-top: 24px;">A calendar cancellation has been attached to update your calendar.</p>
@@ -375,15 +378,15 @@ serve(async (req) => {
         try {
           const guestEmailHtml = createEmailTemplate({
             recipientName: 'there',
-            preheaderText: `Interview scheduled for ${formattedDate} has been cancelled`,
-            title: 'Interview Cancelled',
+            preheaderText: `${Kind} scheduled for ${formattedDate} has been cancelled`,
+            title: `${Kind} Cancelled`,
             content: guestContent,
           });
 
           await supabase.functions.invoke('send-user-email', {
             body: {
               to: [guestEmail],
-              subject: `Interview Cancelled: ${interviewTitle}`,
+              subject: `${Kind} Cancelled: ${interviewTitle}`,
               html: guestEmailHtml,
               attachments: [{
                 filename: 'cancellation.ics',
@@ -405,7 +408,7 @@ serve(async (req) => {
         organization_id: booking.organization_id,
         activity_type: 'interview_cancelled',
         title: 'Interview cancelled',
-        description: `Cancelled ${stageName} interview${reason ? ': ' + reason : ''}`,
+        description: `Cancelled ${interviewTitle}${reason ? ': ' + reason : ''}`,
         entity_type: 'candidate',
         entity_id: booking.candidate_id,
         metadata: {
