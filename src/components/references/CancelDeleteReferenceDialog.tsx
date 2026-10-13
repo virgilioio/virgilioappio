@@ -1,25 +1,17 @@
 /**
- * Cancel or delete a reference check — one component, two modes.
+ * Cancel or delete a reference check — one component, two modes, on the shared
+ * delete dialog (Block B §16, 2026-10-13).
  *
- * The consequence list is COMPUTED from the request's referees. A recruiter
- * needs to know whether referees have already been emailed and whether answers
- * are at risk; a generic "this cannot be undone" tells them nothing.
+ * The copy is COMPUTED from the request's referees. A recruiter needs to know
+ * whether links are live and whether answers are at risk; a generic "this
+ * cannot be undone" tells them nothing. Cancelling (O1/O3) is Pattern 1.
+ * Deleting is Pattern 2 — type the referee's name — when someone has answered,
+ * otherwise Pattern 1 (O2).
  */
-import {
-  Archive,
-  Ban,
-  FileX,
-  Link2,
-  MailX,
-  ShieldAlert,
-  Trash2,
-  TriangleAlert,
-  Undo2,
-  UserRoundX,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Ban } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { ConfirmDestructiveDialog } from '@/components/ui/confirm-destructive'
+import type { DestructiveOptions } from '@/components/ui/confirm-dialog'
 import type { RefereeLike } from '@/lib/references/status'
 
 export type RefDestructiveMode = 'cancel' | 'delete'
@@ -27,207 +19,123 @@ export type RefDestructiveMode = 'cancel' | 'delete'
 const LIVE = ['invited', 'opened', 'in_progress']
 const SUBMITTED = ['submitted', 'logged']
 
-export interface CancelDeleteReferenceDialogProps {
-  mode: RefDestructiveMode
-  candidateName: string
-  candidateRole?: string | null
-  clientName?: string | null
-  referees: RefereeLike[]
-  busy?: boolean
-  onClose: () => void
-  onConfirm: () => void
-}
+type RefereeWithName = RefereeLike & { name?: string | null }
 
 function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`
 }
 
-export function CancelDeleteReferenceDialog({
-  mode,
-  candidateName,
-  candidateRole,
-  clientName,
-  referees,
-  busy,
-  onClose,
-  onConfirm,
-}: CancelDeleteReferenceDialogProps) {
+function firstNameOf(name?: string | null) {
+  return (name ?? '').trim().split(/\s+/)[0] || ''
+}
+
+function possessive(name: string) {
+  return `${name}’s`
+}
+
+/**
+ * The one copy for cancelling a reference check, used by the request list (O1)
+ * and the candidate's reference card (O3). The edge function revokes every
+ * link, stops reminders, discards unsent drafts, keeps submitted answers and
+ * emails nobody.
+ */
+export function referenceCancelCopy(candidateName: string | null | undefined, referees: RefereeLike[]): DestructiveOptions {
+  const name = (candidateName ?? '').trim()
+  const first = firstNameOf(name)
   const live = referees.filter((r) => LIVE.includes(r.status)).length
+  const drafting = referees.filter((r) => r.status === 'in_progress').length
   const submitted = referees.filter((r) => SUBMITTED.includes(r.status)).length
 
-  const lines: { icon: LucideIcon; text: string }[] =
-    mode === 'cancel'
-      ? [
-          {
-            icon: Link2,
-            text:
-              live > 0
-                ? `Revokes the candidate's link and ${plural(live, 'referee link', 'referee links')}`
-                : "Revokes the candidate's link",
-          },
-          { icon: MailX, text: 'Stops all reminders immediately' },
-          submitted > 0
-            ? {
-                icon: Archive,
-                text: `Keeps the ${plural(submitted, 'reference', 'references')} already submitted`,
-              }
-            : {
-                icon: UserRoundX,
-                text: "Nobody who hasn't answered will be contacted again",
-              },
-          { icon: Undo2, text: 'You can request references again at any time' },
-        ]
-      : [
-          {
-            icon: Trash2,
-            text:
-              submitted > 0
-                ? `Permanently deletes ${plural(
-                    submitted,
-                    'submitted reference',
-                    'submitted references',
-                  )} and every answer`
-                : 'Permanently deletes this request',
-          },
-          { icon: Link2, text: 'Revokes any link that is still live' },
-          { icon: FileX, text: "Removes it from the candidate's profile and from reporting" },
-          { icon: ShieldAlert, text: 'Keeps a minimal audit record of the deletion itself' },
-        ]
+  const whose = first ? `${possessive(first)} link` : 'The candidate link'
+  const links =
+    live > 0
+      ? `${whose} and ${plural(live, 'referee link', 'referee links')} stop working, and reminders stop.`
+      : `${whose} stops working, and reminders stop.`
+  const kept =
+    submitted > 0
+      ? ` The ${plural(submitted, 'reference', 'references')} already submitted ${submitted === 1 ? 'stays' : 'stay'}.`
+      : ''
+  const drafts = drafting > 0 ? ' Answers not yet sent are discarded.' : ''
 
-  const where = [candidateRole, clientName ? `at ${clientName}` : null].filter(Boolean).join(' ')
+  return {
+    icon: Ban,
+    title: name ? `Cancel ${possessive(name)} reference check?` : 'Cancel this reference check?',
+    description: `${links}${kept}${drafts} Nobody is emailed, and you can request references again at any time.`,
+    confirmLabel: 'Cancel check',
+    cancelLabel: 'Keep check',
+  }
+}
+
+/** Delete copy. `typeToConfirm` is set only when someone has answered (Pattern 2). */
+export function referenceDeleteCopy(
+  candidateName: string | null | undefined,
+  referees: RefereeWithName[],
+  { canCancelInstead = false }: { canCancelInstead?: boolean } = {},
+): DestructiveOptions {
+  const name = (candidateName ?? '').trim()
+  const answered = referees.filter((r) => SUBMITTED.includes(r.status))
+  const firstAnswered = answered.map((r) => (r.name ?? '').trim()).find(Boolean) ?? ''
+
+  let lost: string
+  if (answered.length === 0) {
+    lost = 'Nobody has answered yet. The request, its referees and its activity are deleted, and any live link stops working.'
+  } else {
+    const whose =
+      answered.length === 1
+        ? `${firstAnswered ? possessive(firstAnswered) : 'The referee’s'} answers are`
+        : `Answers from ${firstAnswered || 'a referee'} and ${plural(answered.length - 1, 'other referee', 'other referees')} are`
+    lost = `${whose} deleted with the request, its referees and its activity, and any live link stops working.`
+  }
+  const instead =
+    answered.length > 0 && canCancelInstead ? ' To keep their answers and stop all contact, cancel the check instead.' : ''
+
+  return {
+    title: name ? `Delete ${possessive(name)} reference check?` : 'Delete this reference check?',
+    description: `${lost} Only a note that it was deleted is kept. This can’t be undone.${instead}`,
+    confirmLabel: 'Delete check',
+    typeToConfirm: answered.length > 0 ? firstAnswered || name || undefined : undefined,
+  }
+}
+
+export interface CancelDeleteReferenceDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  mode: RefDestructiveMode
+  candidateName: string
+  referees: RefereeWithName[]
+  /** The check is still running and the user may cancel it: the delete copy suggests that. */
+  canCancelInstead?: boolean
+  /** Awaited only for a type-to-confirm delete; throw to show the error in the dialog. */
+  onConfirm: () => void | Promise<void>
+}
+
+export function CancelDeleteReferenceDialog({
+  open,
+  onOpenChange,
+  mode,
+  candidateName,
+  referees,
+  canCancelInstead,
+  onConfirm,
+}: CancelDeleteReferenceDialogProps) {
+  const copy =
+    mode === 'cancel'
+      ? referenceCancelCopy(candidateName, referees)
+      : referenceDeleteCopy(candidateName, referees, { canCancelInstead })
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        zIndex: 60,
-        background: 'rgba(13,13,9,0.28)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 460,
-          background: '#fff',
-          borderRadius: 16,
-          boxShadow: '0 24px 64px -12px rgba(13,13,9,0.28)',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ padding: '20px 22px 16px' }}>
-          <div
-            className="inline-flex items-center justify-center"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              marginBottom: 13,
-              background: mode === 'cancel' ? '#FFF7ED' : '#FEF2F2',
-              color: mode === 'cancel' ? '#B45309' : '#B42318',
-            }}
-          >
-            {mode === 'cancel' ? (
-              <Ban size={17} strokeWidth={2} />
-            ) : (
-              <Trash2 size={17} strokeWidth={2} />
-            )}
-          </div>
-
-          <h2
-            className="font-poppins"
-            style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.03em', color: '#0d0d09' }}
-          >
-            {mode === 'cancel'
-              ? 'Cancel this reference check?'
-              : 'Delete this reference check?'}
-          </h2>
-          <p
-            className="font-inter"
-            style={{ fontSize: 12.5, color: '#5A6072', lineHeight: 1.55, marginTop: 6 }}
-          >
-            {candidateName}
-            {where ? ` · ${where}` : ''}.{' '}
-            {mode === 'cancel' ? 'This stops the process now.' : 'This cannot be undone.'}
-          </p>
-
-          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {lines.map(({ icon: Icon, text }, i) => (
-              <div key={i} className="flex" style={{ gap: 9 }}>
-                <Icon
-                  size={13}
-                  color="#8B8F9E"
-                  style={{ flexShrink: 0, marginTop: 2 }}
-                />
-                <span
-                  className="font-inter"
-                  style={{ fontSize: 12, color: '#1F2230', lineHeight: 1.5 }}
-                >
-                  {text}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Offers the better action at the moment its cost becomes concrete —
-              never a block: the delete button below still works. */}
-          {mode === 'delete' && submitted > 0 && (
-            <div
-              className="flex font-inter"
-              style={{
-                marginTop: 14,
-                gap: 9,
-                padding: '11px 12px',
-                background: '#FEF2F2',
-                border: '1px solid #FECACA',
-                borderRadius: 9,
-                fontSize: 11.5,
-                color: '#B42318',
-                lineHeight: 1.5,
-              }}
-            >
-              <TriangleAlert size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>
-                These referees gave their time. Consider cancelling instead — it keeps their
-                answers and stops all contact.
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="flex items-center"
-          style={{
-            gap: 8,
-            padding: '12px 22px',
-            borderTop: '1px solid #F1F0EC',
-            background: '#FAFAF7',
-          }}
-        >
-          <div style={{ marginLeft: 'auto' }} className="flex items-center gap-2">
-            <Button variant="secondary" size="md" onClick={onClose} disabled={busy}>
-              Keep it
-            </Button>
-            <Button
-              variant="danger"
-              size="md"
-              icon={mode === 'cancel' ? Ban : Trash2}
-              loading={busy}
-              onClick={onConfirm}
-            >
-              {mode === 'cancel' ? 'Cancel check' : 'Delete permanently'}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ConfirmDestructiveDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      variant="delete"
+      icon={copy.icon}
+      title={copy.title}
+      description={copy.description}
+      confirmLabel={copy.confirmLabel}
+      cancelLabel={copy.cancelLabel}
+      typeToConfirm={copy.typeToConfirm}
+      onConfirm={onConfirm}
+    />
   )
 }
 

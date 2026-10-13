@@ -252,8 +252,13 @@ export function useCancelReferenceRequest() {
         description: 'Links revoked and reminders stopped. Submitted references were kept.',
       })
     },
-    onError: (e: any) =>
-      toast({ title: 'Could not cancel', description: e.message, variant: 'destructive' }),
+    // Never the raw server error (Block B §16).
+    onError: () =>
+      toast({
+        title: 'Couldn\u2019t cancel the reference check',
+        description: 'Nothing changed; try again.',
+        variant: 'destructive',
+      }),
   })
 }
 
@@ -282,8 +287,8 @@ export function useDeleteReferenceRequest() {
             : 'The record has been removed.',
       })
     },
-    onError: (e: any) =>
-      toast({ title: 'Could not delete', description: e.message, variant: 'destructive' }),
+    onError: () =>
+      toast({ title: 'Couldn\u2019t delete the reference check', description: 'Try again.', variant: 'destructive' }),
   })
 }
 

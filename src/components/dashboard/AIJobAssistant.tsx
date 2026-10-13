@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, ArrowRight, MessageSquare, Paperclip, Link2 } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, ArrowRight, MessageSquare, MessageSquareX, Paperclip, Link2 } from 'lucide-react'
 import gioAvatar from '@/assets/gio-avatar.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
@@ -25,7 +25,7 @@ import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useChatWithGio } from '@/hooks/useChatWithGio'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -468,7 +468,15 @@ export function AIJobAssistant({ onProjectCreated, onGeneratingChange, variant =
   const handleToggleChatMode = async (enabled: boolean) => {
     if (!enabled && chatMessages.length > 0) {
       // Show confirmation if user has active chat
-      if (await confirmDialog({ title: 'Discard this conversation?', confirmLabel: 'Discard', destructive: true })) {
+      // O15 (Block B §16, Pattern 1): the chat lives only in this view.
+      const n = chatMessages.length
+      if (await confirmDestructive({
+        icon: MessageSquareX,
+        title: 'Discard your chat with Gio?',
+        description: `The ${n} message${n === 1 ? '' : 's'} and the job details Gio gathered are cleared, and you go back to the prompt. Your prompt and any projects you\u2019ve created stay. This can\u2019t be undone.`,
+        confirmLabel: 'Discard chat',
+        cancelLabel: 'Keep chatting',
+      })) {
         resetConversation()
         setChatMode(false)
       }

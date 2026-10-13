@@ -28,7 +28,7 @@ import {
   CancelDeleteReferenceDialog,
   type RefDestructiveMode,
 } from '@/components/references/CancelDeleteReferenceDialog'
-import { refPredicates, type RefBucket } from '@/lib/references/status'
+import { isActiveRefState, refPredicates, type RefBucket } from '@/lib/references/status'
 
 const TABS: [RefBucket, string][] = [
   ['all', 'All'],
@@ -111,6 +111,12 @@ export default function ReferencesPage() {
   const [confirm, setConfirm] = useState<{ mode: RefDestructiveMode; row: ReferenceListRow } | null>(
     null,
   )
+  // Kept apart from `confirm` so the dialog keeps its content through its exit.
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const askFor = (mode: RefDestructiveMode, row: ReferenceListRow) => {
+    setConfirm({ mode, row })
+    setConfirmOpen(true)
+  }
 
   const resend = useResendCandidateLink()
   const cancelRequest = useCancelReferenceRequest()
@@ -347,8 +353,8 @@ export default function ReferencesPage() {
           onMenuChange={setMenuFor}
           onResend={(row) => resend.mutate(row.id)}
           onShare={(row) => setShareFor(row.id)}
-          onCancel={(row) => setConfirm({ mode: 'cancel', row })}
-          onDelete={(row) => setConfirm({ mode: 'delete', row })}
+          onCancel={(row) => askFor('cancel', row)}
+          onDelete={(row) => askFor('delete', row)}
           canCancel={canCancelReferences}
           canDelete={canDeleteReferences}
         />
@@ -362,19 +368,25 @@ export default function ReferencesPage() {
 
       {confirm && (
         <CancelDeleteReferenceDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
           mode={confirm.mode}
           candidateName={confirm.row.candidateName}
-          candidateRole={confirm.row.candidateRole}
-          clientName={confirm.row.clientName}
           referees={confirm.row.referees}
-          busy={cancelRequest.isPending || deleteRequest.isPending}
-          onClose={() => setConfirm(null)}
-          onConfirm={() => {
+          canCancelInstead={canCancelReferences && isActiveRefState(confirm.row.state)}
+          onConfirm={async () => {
             const { mode, row } = confirm
             if (mode === 'cancel') {
-              cancelRequest.mutate(row.id, { onSuccess: () => setConfirm(null) })
-            } else {
-              deleteRequest.mutate(row.id, { onSuccess: () => setConfirm(null) })
+              cancelRequest.mutate(row.id)
+              return
+            }
+            // With answers it's type to confirm: the dialog waits and shows a failure inline.
+            try {
+              await deleteRequest.mutateAsync(row.id)
+            } catch {
+              throw new Error(
+                `Couldn\u2019t delete ${row.candidateName ? `${row.candidateName}\u2019s` : 'this'} reference check. Try again.`,
+              )
             }
           }}
         />

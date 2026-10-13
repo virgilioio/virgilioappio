@@ -10,7 +10,7 @@
  * link, so the copy stays inside what the auth model can actually support.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Calendar, Check, Lock } from 'lucide-react'
+import { Calendar, Check, Lock, UserX } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
@@ -105,6 +105,13 @@ export function DecisionDialog({
   const [error, setError] = useState<string | null>(null)
   const [recorded, setRecorded] = useState(false)
   const panel = useRef<HTMLDivElement>(null)
+  const cancelRef = useRef<HTMLButtonElement>(null)
+
+  // O5 (Block B §16, Form): passing on someone starts on Cancel, like every
+  // destructive dialog. Requesting an interview starts on the first chip.
+  useEffect(() => {
+    if (!accept) cancelRef.current?.focus()
+  }, [accept])
 
   // Escape closes; Tab stays inside.
   useEffect(() => {
@@ -145,7 +152,7 @@ export function DecisionDialog({
     const ok = await onSubmit({ reasons, note: note.trim() })
     setBusy(false)
     if (ok) setRecorded(true)
-    else setError('Your response could not be recorded. Please try again.')
+    else setError('We couldn\u2019t record your answer. Nothing was sent; try again.')
   }
 
   return (
@@ -160,6 +167,8 @@ export function DecisionDialog({
         zIndex: 120,
         background: 'rgba(13,13,9,0.35)',
         display: 'grid',
+        // One shrinkable column, so the panel never runs off a phone screen (O5, 390px check).
+        gridTemplateColumns: 'minmax(0, 1fr)',
         placeItems: 'center',
         padding: 16,
         overflowY: 'auto',
@@ -169,10 +178,10 @@ export function DecisionDialog({
         ref={panel}
         role="dialog"
         aria-modal="true"
-        aria-label={accept ? 'Request an interview' : 'Not the right fit'}
+        aria-label={accept ? 'Request an interview' : `Pass on ${candidateFirstName}`}
         style={{
-          width: 520,
-          maxWidth: '100%',
+          width: '100%',
+          maxWidth: 520,
           background: '#fff',
           border: '1px solid #E7E8EE',
           borderRadius: 16,
@@ -215,19 +224,41 @@ export function DecisionDialog({
           </div>
         ) : (
           <>
-            <div style={{ padding: '20px 24px 0' }}>
-              <h2
-                className="font-poppins"
-                style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.03em', color: '#1F2230', margin: 0 }}
-              >
-                {accept ? `Request an interview with ${candidateFirstName}` : 'Not the right fit'}
-              </h2>
-              <p className="font-inter" style={{ fontSize: 12.5, lineHeight: 1.55, color: '#5A6072', margin: '6px 0 0' }}>
-                {accept
-                  ? `We will let ${recruiterName} know and they will come back to you with times.`
-                  : 'Telling us why takes ten seconds and makes the next shortlist better. Nothing here is shown to the candidate.'}
-              </p>
-            </div>
+            {accept ? (
+              <div style={{ padding: '20px 24px 0' }}>
+                <h2
+                  className="font-poppins"
+                  style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.03em', color: '#1F2230', margin: 0 }}
+                >
+                  {`Request an interview with ${candidateFirstName}`}
+                </h2>
+                <p className="font-inter" style={{ fontSize: 12.5, lineHeight: 1.55, color: '#5A6072', margin: '6px 0 0' }}>
+                  {`We will let ${recruiterName} know and they will come back to you with times.`}
+                </p>
+              </div>
+            ) : (
+              /* Block B §16 header: tint badge, the title names who, what happens and what stays. */
+              <div className="flex items-start gap-[14px]" style={{ padding: '22px 24px 0' }}>
+                <span
+                  aria-hidden="true"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-danger-tint)] text-[var(--color-danger)]"
+                >
+                  <UserX className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2
+                    id="decision-dialog-title"
+                    className="mt-0.5 line-clamp-2 break-words font-poppins text-[17px] font-semibold leading-snug text-text-primary [text-wrap:pretty]"
+                    style={{ margin: 0 }}
+                  >
+                    {`Pass on ${candidateFirstName}?`}
+                  </h2>
+                  <p className="mt-1 font-inter text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]" style={{ marginBottom: 0 }}>
+                    {`${recruiterName} is told you\u2019re passing, and you can\u2019t change your answer on this link. Telling us why takes ten seconds and sharpens the next shortlist. Nothing here is shown to ${candidateFirstName}.`}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div style={{ padding: '18px 24px 0' }}>
               <p style={LABEL}>
@@ -239,7 +270,7 @@ export function DecisionDialog({
                   <Chip
                     key={option}
                     label={option}
-                    autoFocus={index === 0}
+                    autoFocus={accept && index === 0}
                     selected={reasons.includes(option)}
                     onClick={() => toggle(option)}
                   />
@@ -288,24 +319,26 @@ export function DecisionDialog({
               </p>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 24px 20px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '18px 24px 20px' }}>
               <span
                 className="font-inter"
-                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#8B8F9E' }}
+                style={{ flex: '1 1 140px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#8B8F9E' }}
               >
                 <Lock size={11} />
                 Shared with {workspaceName} only
               </span>
-              <Button variant="secondary" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
-              <Button
-                variant="primary"
-                size="sm"
-                icon={accept ? Calendar : Check}
-                loading={busy}
-                onClick={() => void submit()}
-              >
-                {accept ? 'Request interview' : 'Submit'}
-              </Button>
+              <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
+              <Button ref={cancelRef} variant="secondary" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>
+              {accept ? (
+                <Button variant="primary" size="sm" icon={Calendar} loading={busy} onClick={() => void submit()}>
+                  Request interview
+                </Button>
+              ) : (
+                <Button variant="dangerSolid" size="sm" loading={busy} onClick={() => void submit()}>
+                  {`Pass on ${candidateFirstName}`}
+                </Button>
+              )}
+              </div>
             </div>
           </>
         )}

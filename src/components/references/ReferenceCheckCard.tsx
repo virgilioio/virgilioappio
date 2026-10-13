@@ -12,16 +12,8 @@ import { RefCardFooter, RefCardShell, RefDetailRow } from '@/components/referenc
 import { RefereeRow, type RefereeRowData } from '@/components/references/RefereeRow'
 import { GioSummaryBlock, type GioFlagCounts } from '@/components/references/GioSummaryBlock'
 import { ShareReportDialog } from '@/components/references/ShareReportDialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { referenceCancelCopy } from '@/components/references/CancelDeleteReferenceDialog'
 import { composeRequirementLine } from '@/lib/references/requestCopy'
 import {
   countReferees,
@@ -152,7 +144,10 @@ export function ReferenceCheckCard({
 }: ReferenceCheckCardProps) {
   const [open, setOpen] = useState(true)
   const [shareOpen, setShareOpen] = useState(false)
-  const [confirmCancel, setConfirmCancel] = useState(false)
+  // O3: the same cancel dialog and copy as the request list (Block B §16).
+  const askCancel = async () => {
+    if (await confirmDestructive(referenceCancelCopy(candidateName || candidateFirstName, referees))) onCancel?.()
+  }
   const [openRefereeId, setOpenRefereeId] = useState<string | null>(null)
 
   const cardState: RefCardState = resolveCardState(request, suggested, referees)
@@ -327,7 +322,7 @@ export function ReferenceCheckCard({
           Share report
         </Button>
         <div style={{ marginLeft: 'auto' }}>
-          <Button variant="danger" size="sm" onClick={() => setConfirmCancel(true)}>
+          <Button variant="danger" size="sm" onClick={() => void askCancel()}>
             Cancel request
           </Button>
         </div>
@@ -373,7 +368,7 @@ export function ReferenceCheckCard({
         </Button>
 
         <div style={{ marginLeft: 'auto' }}>
-          <Button variant="danger" size="sm" onClick={() => setConfirmCancel(true)}>
+          <Button variant="danger" size="sm" onClick={() => void askCancel()}>
             Cancel request
           </Button>
         </div>
@@ -538,28 +533,6 @@ export function ReferenceCheckCard({
         requestId={request?.id}
       />
 
-      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel this reference request?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The candidate and referee links stop working immediately. Anything already submitted
-              stays on the candidate's record.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep the request</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setConfirmCancel(false)
-                onCancel?.()
-              }}
-            >
-              Cancel request
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </RefCardShell>
   )
 }

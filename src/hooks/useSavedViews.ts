@@ -161,7 +161,7 @@ export function useSavedViews(pageContext: PageContext) {
       queryClient.invalidateQueries({ queryKey })
       toast({ title: 'View deleted' })
     },
-    onError: () => toast({ title: 'Failed to delete view', variant: 'destructive' }),
+    onError: () => toast({ title: 'Couldn\u2019t delete the view', description: 'Nothing was removed; try again.', variant: 'destructive' }),
   })
 
   return { views, defaultView, isLoading, createView, updateView, deleteView }
