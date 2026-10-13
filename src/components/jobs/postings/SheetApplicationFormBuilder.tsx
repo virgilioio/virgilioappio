@@ -26,7 +26,7 @@ import {
   type ChoiceOption,
   type FieldType as SharedFieldType,
 } from './ApplicationFormBuilder'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 const CORE_FIELD_ICONS: Record<string, any> = {
   resume: FileText,
@@ -151,7 +151,12 @@ export function SheetApplicationFormBuilder({ postingId, readOnly, eeoEnabled, o
       }}
       onRemoveField={async (id) => {
         const field = posting.find((p) => p.id === id) as { label?: string } | undefined
-        if (!(await confirmDialog({ title: field?.label ? `Remove "${field.label}" from the form?` : 'Remove this question from the form?', description: 'Answers already submitted are kept.', confirmLabel: 'Remove question', destructive: true }))) return
+        // J25 (Block B §16, Pattern 1): answers live apart from the field, so they stay.
+        if (!(await confirmDestructive({
+          title: field?.label ? `Remove “${field.label}” from the form?` : 'Remove this question from the form?',
+          description: 'New applicants won’t see it on this posting. Answers already submitted are kept.',
+          confirmLabel: 'Remove question',
+        }))) return
         void deleteField(id)
       }}
       onReorderFields={(orderedIds) => {
