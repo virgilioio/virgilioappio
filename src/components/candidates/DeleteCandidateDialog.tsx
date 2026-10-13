@@ -42,6 +42,7 @@ export function DeleteCandidateDialog({
         .select('*', { count: 'exact', head: true })
         .eq('candidate_id', candidateId)
         .in('status', ['confirmed', 'rescheduled'])
+        .gte('scheduled_start', new Date().toISOString())
 
       setInterviewCount(count ?? 0)
       setLoading(false)

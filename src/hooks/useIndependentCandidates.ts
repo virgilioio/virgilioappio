@@ -279,6 +279,26 @@ export function useIndependentCandidates() {
 
   const deleteCandidate = async (id: string) => {
     try {
+      // Upcoming interviews are cancelled properly first (emails, calendar
+      // events), as the delete dialog promises; the delete itself only removes
+      // the rows (2026-10-13). If one can't be cancelled, nothing is deleted.
+      const { data: upcoming } = await supabase
+        .from('scheduled_bookings')
+        .select('id')
+        .eq('candidate_id', id)
+        .in('status', ['confirmed', 'rescheduled'])
+        .gte('scheduled_start', new Date().toISOString())
+      let failed = 0
+      for (const b of (upcoming ?? []) as { id: string }[]) {
+        const { error } = await supabase.functions.invoke('cancel-booking', {
+          body: { booking_id: b.id, reason: 'Candidate removed from Gio' },
+        })
+        if (error) failed++
+      }
+      if (failed) {
+        throw new Error(`Couldn't cancel ${failed} upcoming interview${failed === 1 ? '' : 's'}, so the candidate wasn't deleted. Try again.`)
+      }
+
       if (userType === 'platform_admin') {
         const { data, error: edgeFunctionError } = await supabase.functions.invoke('admin-operations', {
           body: { action: 'delete-candidate', candidate_id: id }
