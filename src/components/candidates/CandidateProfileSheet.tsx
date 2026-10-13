@@ -136,6 +136,7 @@ import { useCandidateFitInsights } from '@/hooks/useCandidateFitInsights'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { checkScorecardGate } from '@/utils/scorecardGate'
 import { confirmDialog, confirmDestructive } from '@/components/ui/confirm-dialog'
+import { closeJobWithUndo } from '@/components/jobs/jobStatusActions'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -841,7 +842,7 @@ const stageHasAutomation = useMemo(() => {
       // Load job info
       const { data: jobData } = await supabase
         .from('jobs')
-        .select('id, title, description, skills, must_have_skills, department, department_id, location, additional_locations, status')
+        .select('id, title, description, skills, must_have_skills, department, department_id, location, additional_locations, status, organization_id')
         .eq('id', jobId)
         .maybeSingle()
       // If the denormalized department text is missing, resolve the name from departments
@@ -1357,19 +1358,20 @@ const stageHasAutomation = useMemo(() => {
     })
   }
 
+  // C9 (Block B §16, Pattern 1 + Undo): closing the req closes the whole job,
+  // so it asks with the same dialog as Jobs and offers Undo (jobStatusActions).
   const handleMarkReqClosed = async () => {
     if (!jobId) return
-    const { error } = await supabase
-      .from('jobs')
-      .update({ status: 'closed' } as any)
-      .eq('id', jobId)
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to close requisition', variant: 'destructive' })
-      return
-    }
-    toast({ title: 'Requisition closed', description: 'This job is now marked as closed.' })
-    onStageChanged?.()
+    await closeJobWithUndo(
+      { id: jobId, title: job?.title, status: job?.status, organization_id: job?.organization_id },
+      {
+        queryClient: summaryQueryClient,
+        onDone: () => { setJob((j: any) => (j ? { ...j, status: 'closed' } : j)); onStageChanged?.() },
+        onUndone: () => { setJob((j: any) => (j ? { ...j, status: job?.status ?? 'open' } : j)); onStageChanged?.() },
+      },
+    )
   }
+
 
   const getHeaderBgClass = (type: string) => {
     switch (type) {
@@ -1648,7 +1650,7 @@ const stageHasAutomation = useMemo(() => {
                         jobTitle={job?.title}
                         reqId={hiredDetails?.reqId || null}
                         onOpenOnboarding={() => setActiveTab('onboarding')}
-                        onMarkReqClosed={handleMarkReqClosed}
+                        onMarkReqClosed={job?.status === 'open' ? handleMarkReqClosed : undefined}
                       />
                     ) : associationStatus === 'rejected' && rejectionDetails ? (
                       <StatusBanner
