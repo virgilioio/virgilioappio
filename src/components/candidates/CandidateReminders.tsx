@@ -7,7 +7,7 @@ import { useCandidateReminders, type CandidateReminder } from '@/hooks/useCandid
 import { ReminderCard } from './ReminderCard'
 import { ReminderForm } from './ReminderForm'
 import { InlineEmpty } from '@/components/ui/empty-state'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 
 interface CandidateRemindersProps {
   candidateId: string
@@ -157,7 +157,15 @@ export function CandidateReminders({ candidateId, jobId }: CandidateRemindersPro
                 onComplete={() => completeReminder(reminder.id)}
                 onEdit={() => handleEdit(reminder)}
                 onDelete={async () => {
-                  if (await confirmDialog({ title: 'Delete this reminder?', confirmLabel: 'Delete reminder', destructive: true })) deleteReminder(reminder.id)
+                  // C20 (Block B §16, Pattern 1): name the reminder and who loses it.
+                  const ok = await confirmDestructive({
+                    title: `Delete the reminder \u201c${reminder.subject}\u201d?`,
+                    description: reminder.is_team_visible
+                      ? 'It\u2019s a team reminder, so it goes for everyone and nobody is reminded when it\u2019s due. This can\u2019t be undone.'
+                      : 'You won\u2019t be reminded when it\u2019s due. Your other reminders stay. This can\u2019t be undone.',
+                    confirmLabel: 'Delete reminder',
+                  })
+                  if (ok) deleteReminder(reminder.id)
                 }}
                 isEditing={editingReminder?.id === reminder.id}
               />

@@ -209,7 +209,7 @@ export function useCandidateReminders(candidateId: string | null | undefined, jo
     },
     onError: (error) => {
       console.error('Failed to delete reminder:', error)
-      toast({ title: 'Error', description: 'Failed to delete reminder', variant: 'destructive' })
+      toast({ title: 'Couldn\u2019t delete the reminder', description: 'Nothing was removed; try again.', variant: 'destructive' })
     }
   })
 

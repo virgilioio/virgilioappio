@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Bell, Check, Clock, Edit2, Lock, MoreVertical, Trash2, Users } from 'lucide-react'
+import { IconTip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { CandidateReminder } from '@/hooks/useCandidateReminders'
 
@@ -95,21 +96,25 @@ export function ReminderCard({
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onComplete}
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-success"
-            title="Mark as complete"
-          >
-            <Check className="h-4 w-4" />
-          </Button>
+          <IconTip label="Mark as complete">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onComplete}
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-success"
+              aria-label="Mark as complete"
+            >
+              <Check className="h-4 w-4" />
+            </Button>
+          </IconTip>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <IconTip label="Reminder actions">
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Reminder actions">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </IconTip>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onEdit}>
                 <Edit2 className="h-4 w-4 mr-2" />
@@ -122,7 +127,7 @@ export function ReminderCard({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+                Delete reminder
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
