@@ -13,7 +13,9 @@ import { ApplicationFieldForm } from '../ApplicationFieldForm'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDeleteStage } from '../confirmDeleteStage'
 
 type TopTab = 'stages' | 'fields' | 'templates' | 'automations'
 
@@ -96,9 +98,16 @@ function StagesTab() {
                 <button type="button" aria-label="Edit" onClick={() => setEditing(stage)} className="text-[#8B8F9E] hover:text-[#0d0d09]">
                   <Pencil size={12} />
                 </button>
-                <button type="button" aria-label="Delete" onClick={() => deleteStage(stage.id)} className="text-[#8B8F9E] hover:text-[#B91C1C]">
-                  <Trash2 size={12} />
-                </button>
+                <IconTip label={`Delete ${stage.stage_name}`}>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${stage.stage_name}`}
+                    onClick={() => void confirmDeleteStage(stage, { global: true, onDelete: () => deleteStage(stage.id, { quiet: true }) })}
+                    className="text-[#8B8F9E] hover:text-[#B91C1C]"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </IconTip>
               </SpecRow>
             )
           })
@@ -142,6 +151,22 @@ function FieldsTab() {
     [fields]
   )
 
+  // S9 (Block B §16): name the field, say what goes and what stays.
+  const handleDeleteField = async (field: ApplicationFieldWithRelations) => {
+    const label = field.field_label || field.field_name
+    const ok = await confirmDestructive({
+      title: `Delete the \u201c${label}\u201d field?`,
+      description: 'It\u2019s removed from the default application form that every organization inherits, and new postings stop asking it. Answers candidates already gave stay. This can\u2019t be undone.',
+      confirmLabel: 'Delete field',
+    })
+    if (!ok) return
+    try {
+      await deleteField(field.id)
+    } catch {
+      toast.error(`Couldn\u2019t delete \u201c${label}\u201d. Nothing was removed; try again.`)
+    }
+  }
+
   return (
     <>
       <SpecCard
@@ -169,9 +194,16 @@ function FieldsTab() {
                   <Pencil size={12} />
                 </button>
                 {!isCore && (
-                  <button type="button" aria-label="Delete" onClick={async () => { if (await confirmDialog({ title: `Delete the "${field.field_label || field.field_name}" field?`, description: 'It disappears from the default application form.', confirmLabel: 'Delete field', destructive: true })) deleteField(field.id) }} className="text-[#8B8F9E] hover:text-[#B91C1C]">
-                    <Trash2 size={12} />
-                  </button>
+                  <IconTip label={`Delete ${field.field_label || field.field_name}`}>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${field.field_label || field.field_name}`}
+                      onClick={() => void handleDeleteField(field)}
+                      className="text-[#8B8F9E] hover:text-[#B91C1C]"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </IconTip>
                 )}
               </SpecRow>
             )
