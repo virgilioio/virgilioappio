@@ -168,7 +168,8 @@ export function useOfferTemplates(context: OfferTemplatesContext = 'organization
     }
   }
 
-  const deleteTemplate = async (id: string) => {
+  /** `quiet`: the caller shows the error itself (the delete dialog does). */
+  const deleteTemplate = async (id: string, opts: { quiet?: boolean } = {}) => {
     try {
       const { error } = await supabase
         .from('offer_templates')
@@ -185,7 +186,7 @@ export function useOfferTemplates(context: OfferTemplatesContext = 'organization
       await fetchTemplates()
     } catch (error) {
       console.error('Error deleting offer template:', error)
-      toast({
+      if (!opts.quiet) toast({
         title: 'Error',
         description: 'Failed to delete offer template',
         variant: 'destructive'

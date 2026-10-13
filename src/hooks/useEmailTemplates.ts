@@ -166,7 +166,7 @@ export function useEmailTemplates(context: EmailTemplatesContext = 'organization
       console.error('Error deleting email template:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to delete email template',
+        description: 'Couldn\u2019t delete the email template. Nothing was removed; try again.',
         variant: 'destructive',
       });
       throw error;

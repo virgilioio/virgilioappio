@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Plus, Pencil, Trash2, Settings as SettingsIcon, Loader2, FilePlus2 } from 'lucide-react'
 import { useOfferTemplates } from '@/hooks/useOfferTemplates'
@@ -17,7 +16,30 @@ import { SpecCard } from './shared/SpecCard'
 import { SpecRow, SpecEmpty, NOIR_BTN } from './shared/SpecRow'
 import { SpecChip } from './shared/SpecChip'
 import { cn } from '@/lib/utils'
-import { useRecordCount } from '@/hooks/useRecordCount'
+import { supabase } from '@/lib/supabaseClient'
+import { toast } from '@/hooks/use-toast'
+import { IconTip } from '@/components/ui/tooltip'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+
+/** How many rows point at a template (null if the check failed). */
+async function countUses(table: 'offer_letters' | 'stage_automation_emails', column: string, id: string) {
+  const { count, error } = await (supabase.from(table) as any).select('id', { count: 'exact', head: true }).eq(column, id)
+  return error ? null : (count ?? 0)
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+const libraryLine = (context: 'platform-defaults' | 'organization') =>
+  context === 'platform-defaults' ? 'It\u2019s removed from the defaults every organization inherits.' : ''
+
+function DeleteIcon({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <IconTip label={label}>
+      <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C] disabled:opacity-40" onClick={onClick} disabled={disabled} aria-label={label}>
+        <Trash2 size={13} />
+      </button>
+    </IconTip>
+  )
+}
 
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -85,9 +107,38 @@ function OfferLettersSection({ context }: { context: 'platform-defaults' | 'orga
   const { templates, isLoading, deleteTemplate, copyPlatformTemplate } = useOfferTemplates(context)
   const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
   const [fieldsId, setFieldsId] = useState<string | null>(null)
-  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null)
-  // Offer letters made from a template are deleted with it in the database, so a template in use can't go.
-  const usedBy = useRecordCount('offer_letters', 'template_id', toDelete?.id)
+
+  // S11 (Block B §16): offer letters made from a template are deleted with it
+  // in the database, so a template in use is blocked; otherwise type the name.
+  const handleDelete = async (t: { id: string; name: string }) => {
+    const usedBy = await countUses('offer_letters', 'template_id', t.id)
+    if (usedBy === null) {
+      toast({ title: `Couldn\u2019t check whether offer letters use ${t.name}`, description: 'Nothing was deleted; try again.', variant: 'destructive' })
+      return
+    }
+    if (usedBy > 0) {
+      await confirmDestructive({
+        variant: 'blocked',
+        title: `${t.name} is in use`,
+        description: `${plural(usedBy, 'offer letter')} ${usedBy === 1 ? 'was' : 'were'} made from this template. Deleting it would delete ${usedBy === 1 ? 'that offer letter' : 'those offer letters'} too, so it stays.`,
+        confirmLabel: '',
+      })
+      return
+    }
+    await confirmDestructive({
+      title: `Delete ${t.name}?`,
+      description: `No offer letter uses it. Its template fields are deleted with it. ${libraryLine(context)} This can\u2019t be undone.`.replace('  ', ' '),
+      confirmLabel: 'Delete template',
+      typeToConfirm: t.name,
+      onConfirm: async () => {
+        try {
+          await deleteTemplate(t.id, { quiet: true })
+        } catch {
+          throw new Error(`Couldn\u2019t delete ${t.name}. Nothing was removed; try again.`)
+        }
+      },
+    })
+  }
 
   const platformItems = (templates || []).filter(t => t.source === 'platform')
   const tenantItems = (templates || []).filter(t => t.source === 'tenant')
@@ -134,7 +185,7 @@ function OfferLettersSection({ context }: { context: 'platform-defaults' | 'orga
               </div>
               <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setFieldsId(t.id)} aria-label="Fields"><SettingsIcon size={13} /></button>
               <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setSheet({ open: true, id: t.id })} aria-label="Edit"><Pencil size={13} /></button>
-              <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C]" onClick={() => setToDelete({ id: t.id, name: t.name })} aria-label="Delete"><Trash2 size={13} /></button>
+              <DeleteIcon label={`Delete ${t.name}`} onClick={() => void handleDelete({ id: t.id, name: t.name })} />
             </SpecRow>
           ))
         )}
@@ -149,26 +200,6 @@ function OfferLettersSection({ context }: { context: 'platform-defaults' | 'orga
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{usedBy ? `${toDelete?.name} can't be deleted` : `Delete ${toDelete?.name}?`}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {usedBy === null
-                ? 'Checking which offer letters use it…'
-                : usedBy > 0
-                  ? `${usedBy} offer letter${usedBy === 1 ? ' was' : 's were'} made from this template. Deleting it would delete ${usedBy === 1 ? 'that offer' : 'those offers'} too, so it stays.`
-                  : "No offer letter uses it. This can't be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{usedBy ? 'Close' : 'Cancel'}</AlertDialogCancel>
-            {usedBy === 0 && (
-              <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete template</AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
@@ -177,7 +208,31 @@ function OfferLettersSection({ context }: { context: 'platform-defaults' | 'orga
 function EmailTemplatesSection({ context }: { context: 'platform-defaults' | 'organization' }) {
   const { templates, isLoading, deleteTemplate } = useEmailTemplates(context)
   const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
-  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null)
+
+  // S12 (Block B §16): stage automations hold the template (the database
+  // refuses the delete), so a template in use is blocked.
+  const handleDelete = async (t: { id: string; name: string }) => {
+    const usedBy = await countUses('stage_automation_emails', 'email_template_id', t.id)
+    if (usedBy === null) {
+      toast({ title: `Couldn\u2019t check whether automations use ${t.name}`, description: 'Nothing was deleted; try again.', variant: 'destructive' })
+      return
+    }
+    if (usedBy > 0) {
+      await confirmDestructive({
+        variant: 'blocked',
+        title: `${t.name} is in use`,
+        description: `${plural(usedBy, 'stage automation')} ${usedBy === 1 ? 'sends' : 'send'} this template. Remove it from ${usedBy === 1 ? 'that automation' : 'those automations'} in the job\u2019s pipeline first, then delete it.`,
+        confirmLabel: '',
+      })
+      return
+    }
+    const ok = await confirmDestructive({
+      title: `Delete ${t.name}?`,
+      description: `It\u2019s no longer offered when you write an email. Emails already sent with it stay. ${libraryLine(context)} This can\u2019t be undone.`.replace('  ', ' '),
+      confirmLabel: 'Delete template',
+    })
+    if (ok) deleteTemplate(t.id).catch(() => {})
+  }
 
   return (
     <>
@@ -201,7 +256,7 @@ function EmailTemplatesSection({ context }: { context: 'platform-defaults' | 'or
                 </div>
                 {isPlatform && <SpecChip tone="gray">Inherited</SpecChip>}
                 <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09] disabled:opacity-40" onClick={() => setSheet({ open: true, id: t.id })} disabled={isPlatform} aria-label="Edit"><Pencil size={13} /></button>
-                <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C] disabled:opacity-40" onClick={() => setToDelete({ id: t.id, name: t.name })} disabled={isPlatform} aria-label="Delete"><Trash2 size={13} /></button>
+                <DeleteIcon label={`Delete ${t.name}`} onClick={() => void handleDelete({ id: t.id, name: t.name })} disabled={isPlatform} />
               </SpecRow>
             )
           })
@@ -210,18 +265,6 @@ function EmailTemplatesSection({ context }: { context: 'platform-defaults' | 'or
 
       <EmailTemplateSheet open={sheet.open} onOpenChange={(o) => setSheet({ open: o, id: undefined })} templateId={sheet.id} context={context} />
 
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete template</AlertDialogTitle>
-            <AlertDialogDescription>Delete "{toDelete?.name}"? This cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
@@ -230,7 +273,16 @@ function EmailTemplatesSection({ context }: { context: 'platform-defaults' | 'or
 function ContractTemplatesSection({ context }: { context: 'platform-defaults' | 'organization' }) {
   const { templates, isLoading, deleteTemplate, copyPlatformTemplate } = useContractTemplates(context)
   const [sheet, setSheet] = useState<{ open: boolean; id?: string }>({ open: false })
-  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null)
+
+  // S13 (Block B §16). Nothing references a contract template.
+  const handleDelete = async (t: { id: string; name: string }) => {
+    const ok = await confirmDestructive({
+      title: `Delete ${t.name}?`,
+      description: `It\u2019s removed from your contracts and can\u2019t be used again. ${libraryLine(context)} This can\u2019t be undone.`.replace('  ', ' '),
+      confirmLabel: 'Delete contract',
+    })
+    if (ok) deleteTemplate(t.id).catch(() => {})
+  }
 
   const platformItems = (templates || []).filter(t => t.source === 'platform')
   const tenantItems = (templates || []).filter(t => t.source === 'tenant')
@@ -269,7 +321,7 @@ function ContractTemplatesSection({ context }: { context: 'platform-defaults' | 
                 <div className="font-inter text-[#8B8F9E] truncate" style={{ fontSize: 11 }}>{t.description || `Updated ${new Date(t.created_at).toLocaleDateString()}`}</div>
               </div>
               <button type="button" className="text-[#8B8F9E] hover:text-[#0d0d09]" onClick={() => setSheet({ open: true, id: t.id })} aria-label="Edit"><Pencil size={13} /></button>
-              <button type="button" className="text-[#8B8F9E] hover:text-[#B91C1C]" onClick={() => setToDelete({ id: t.id, name: t.name })} aria-label="Delete"><Trash2 size={13} /></button>
+              <DeleteIcon label={`Delete ${t.name}`} onClick={() => void handleDelete({ id: t.id, name: t.name })} />
             </SpecRow>
           ))
         )}
@@ -277,18 +329,6 @@ function ContractTemplatesSection({ context }: { context: 'platform-defaults' | 
 
       <ContractTemplateSheet open={sheet.open} onOpenChange={(o) => setSheet({ open: o, id: undefined })} templateId={sheet.id} context={context} />
 
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete contract</AlertDialogTitle>
-            <AlertDialogDescription>Delete "{toDelete?.name}"? This cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (toDelete) { deleteTemplate(toDelete.id); setToDelete(null) } }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
