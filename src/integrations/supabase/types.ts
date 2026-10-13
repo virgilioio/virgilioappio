@@ -4741,6 +4741,8 @@ export type Database = {
           id: string
           is_ai_draft: boolean | null
           job_id: string
+          moved_at: string | null
+          moved_from_stage_name: string | null
           rating: Database["public"]["Enums"]["score_rating"]
           source_booking_id: string | null
           stage_instance_id: string
@@ -4757,6 +4759,8 @@ export type Database = {
           id?: string
           is_ai_draft?: boolean | null
           job_id: string
+          moved_at?: string | null
+          moved_from_stage_name?: string | null
           rating: Database["public"]["Enums"]["score_rating"]
           source_booking_id?: string | null
           stage_instance_id: string
@@ -4773,6 +4777,8 @@ export type Database = {
           id?: string
           is_ai_draft?: boolean | null
           job_id?: string
+          moved_at?: string | null
+          moved_from_stage_name?: string | null
           rating?: Database["public"]["Enums"]["score_rating"]
           source_booking_id?: string | null
           stage_instance_id?: string
@@ -7531,6 +7537,7 @@ export type Database = {
           is_required: boolean
           notes_for_interviewer: string | null
           question_text: string
+          retired_at: string | null
           salary_config: Json | null
           scorecard_template_id: string
           select_options: Json | null
@@ -7544,6 +7551,7 @@ export type Database = {
           is_required?: boolean
           notes_for_interviewer?: string | null
           question_text: string
+          retired_at?: string | null
           salary_config?: Json | null
           scorecard_template_id: string
           select_options?: Json | null
@@ -7557,6 +7565,7 @@ export type Database = {
           is_required?: boolean
           notes_for_interviewer?: string | null
           question_text?: string
+          retired_at?: string | null
           salary_config?: Json | null
           scorecard_template_id?: string
           select_options?: Json | null
@@ -9531,6 +9540,14 @@ export type Database = {
         Returns: boolean
       }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
+      carry_stage_history: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      carry_stage_history_internal: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       can_use_chat_module: { Args: never; Returns: boolean }
       can_view_eeo: {
         Args: { _tenant_id: string; _user_id: string }
