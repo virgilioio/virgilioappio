@@ -1233,7 +1233,7 @@ export default function JobDetail() {
                   onEdit={handleEditJob}
                   onDuplicate={handleDuplicateJob}
                   onCloseJob={() => setConfirmCloseJob(true)}
-                  onArchive={() => archiveJob(id!).then(() => navigate('/jobs'))}
+                  onArchive={() => void handleArchiveJob()}
                   onDelete={() => setConfirmDelete(true)}
                   canEdit={!isRestrictedViewer}
                 />
@@ -1486,7 +1486,7 @@ export default function JobDetail() {
             openActivePosting()
           }}
           onCloseJob={() => { setShowEditJobModal(false); setConfirmCloseJob(true) }}
-          onArchiveJob={async () => { setShowEditJobModal(false); await archiveJob(id!); navigate('/jobs') }}
+          onArchiveJob={async () => { setShowEditJobModal(false); await handleArchiveJob() }}
           onGoToSetup={(sub) => {
             setShowEditJobModal(false)
             setActiveTab('job-setup')
