@@ -73,7 +73,7 @@ import { ApplicationReviewSheet } from '@/components/candidates/ApplicationRevie
 import { isPublishGateError } from '@/lib/jobTeam'
 import { inChunks } from '@/lib/fetchAllRows'
 import { DeleteJobDialog } from '@/components/jobs/DeleteJobDialog'
-import { archiveJobWithUndo, closeJobWithUndo } from '@/components/jobs/jobStatusActions'
+import { archiveJob, closeJob } from '@/components/jobs/jobStatusActions'
 import { useScrollMemory } from '@/lib/scrollMemory'
 
 
@@ -937,20 +937,20 @@ export default function JobDetail() {
     return () => window.removeEventListener('job-detail:refresh', h)
   }, [refetch])
 
-  // J5/J8 (Block B §16, Pattern 1 + Undo): archiving is a status change; Undo
-  // puts the previous status back. The page goes back to Jobs once it's done.
+  // J5/J8: archiving rejects anyone still in the pipeline first
+  // (jobStatusActions). The page goes back to Jobs once it's done.
   const handleArchiveJob = async () => {
     if (!id) return
-    await archiveJobWithUndo(
+    await archiveJob(
       { id, title: job?.title, status: job?.status, organization_id: job?.organization_id },
       { queryClient, onDone: () => navigate('/jobs') },
     )
   }
 
-  // J4/J7: closing stops new applications; Undo reopens it.
+  // J4/J7: closing stops new applications; anyone still in the pipeline is rejected first.
   const handleCloseJob = async () => {
     if (!id) return
-    await closeJobWithUndo({ id, title: job?.title, status: job?.status, organization_id: job?.organization_id }, { queryClient, onDone: () => refetch() })
+    await closeJob({ id, title: job?.title, status: job?.status, organization_id: job?.organization_id }, { queryClient, onDone: () => refetch() })
   }
 
   // J6 (Pattern 2): type the title to delete. A job with booked interviews

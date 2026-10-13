@@ -13,9 +13,9 @@ import { useJobs, Job } from '@/hooks/useJobs'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { toast } from '@/hooks/use-toast'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
-import { collapseRows, restoreRows, rowsById } from '@/lib/motion'
+import { collapseRows, rowsById } from '@/lib/motion'
 import { DeleteJobDialog } from '@/components/jobs/DeleteJobDialog'
-import { archiveJobWithUndo } from '@/components/jobs/jobStatusActions'
+import { archiveJob } from '@/components/jobs/jobStatusActions'
 
 import type { StatusSegment } from '@/components/jobs/JobsTable'
 
@@ -74,23 +74,15 @@ export default function Jobs() {
   }
   const handleView = (job: Job) => navigate(`/jobs/${job.id}`)
   const handleEdit = (job: Job) => { setSelectedJob(job); setIsFormOpen(true) }
-  // J1 (Pattern 1 + Undo): archiving is a status change. The row leaves the
-  // tabs that don't show archived jobs; Undo puts the previous status back.
+  // J1: archiving rejects anyone still in the pipeline first (jobStatusActions).
+  // The row leaves the tabs that don't show archived jobs.
   const handleArchive = (id: string) => {
     const job = jobs.find((j) => j.id === id)
     if (!job) return
     const leaves = statusFilter !== 'all' && statusFilter !== 'archived'
-    void archiveJobWithUndo(job, {
+    void archiveJob(job, {
       queryClient,
       collapse: leaves ? () => collapseRows(rowsById([id])) : undefined,
-      // If the row is still mounted when Undo lands, bring it back in place.
-      onUndone: leaves
-        ? () => {
-            const rows = rowsById([id])
-            rows.forEach((el) => { if (el instanceof HTMLElement) el.style.display = '' })
-            restoreRows(rows)
-          }
-        : undefined,
     })
   }
   // J2 (Pattern 2): type the title to delete; booked interviews block it.

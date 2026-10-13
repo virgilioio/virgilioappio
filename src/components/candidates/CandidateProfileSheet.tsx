@@ -137,7 +137,7 @@ import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { checkScorecardGate } from '@/utils/scorecardGate'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
-import { closeJobWithUndo } from '@/components/jobs/jobStatusActions'
+import { closeJob } from '@/components/jobs/jobStatusActions'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -1382,16 +1382,15 @@ const stageHasAutomation = useMemo(() => {
     })
   }
 
-  // C9 (Block B §16, Pattern 1 + Undo): closing the req closes the whole job,
-  // so it asks with the same dialog as Jobs and offers Undo (jobStatusActions).
+  // C9: closing the req closes the whole job, so it goes through the same flow
+  // as Jobs (jobStatusActions): anyone still in the pipeline is rejected first.
   const handleMarkReqClosed = async () => {
     if (!jobId) return
-    await closeJobWithUndo(
+    await closeJob(
       { id: jobId, title: job?.title, status: job?.status, organization_id: job?.organization_id },
       {
         queryClient: summaryQueryClient,
         onDone: () => { setJob((j: any) => (j ? { ...j, status: 'closed' } : j)); onStageChanged?.() },
-        onUndone: () => { setJob((j: any) => (j ? { ...j, status: job?.status ?? 'open' } : j)); onStageChanged?.() },
       },
     )
   }

@@ -9,6 +9,7 @@ import { JobInfoStep, type JobInfoOpeningsProp } from './wizard/JobInfoStep'
 import { useNavigate } from 'react-router-dom'
 import { SectionCard, ToggleRow } from './wizard/_parts'
 import { cn } from '@/lib/utils'
+import { rejectRemainingBeforeStatus } from './jobStatusActions'
 
 interface JobFormSheetProps {
   isOpen: boolean
@@ -129,6 +130,16 @@ export function JobFormSheet({
       priority: src.priority || 'standard',
     }
     if (src.organization_id) payload.organization_id = src.organization_id
+
+    // J9: picking Closed or Archived here goes through the same rule as the
+    // Close and Archive buttons: anyone still in the pipeline is rejected first.
+    if (job?.id && (payload.status === 'closed' || payload.status === 'archived') && payload.status !== job.status) {
+      const ok = await rejectRemainingBeforeStatus(
+        { id: job.id, title: job.title, status: job.status, organization_id: (job as any).organization_id },
+        payload.status,
+      )
+      if (!ok) return
+    }
 
     try {
       await onSubmit(payload)

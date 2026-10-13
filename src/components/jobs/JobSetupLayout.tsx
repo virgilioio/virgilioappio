@@ -38,7 +38,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useQueryClient } from '@tanstack/react-query'
-import { archiveJobWithUndo, closeJobWithUndo } from './jobStatusActions'
+import { archiveJob, closeJob } from './jobStatusActions'
 import { confirmRemoveMember } from './confirmRemoveMember'
 import { useToast } from '@/hooks/use-toast'
 import { SectionCard, ToggleRow } from './wizard/_parts'
@@ -372,8 +372,8 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   // J10/J11 (Block B §16, Pattern 1 + Undo): close and archive are status
   // changes; each asks once and the toast offers Undo.
   const jobRef = { id: jobId, title: jobTitle, status: job?.status, organization_id: job?.organization_id }
-  const doClose = () => void closeJobWithUndo(jobRef, { queryClient })
-  const doArchive = () => void archiveJobWithUndo(jobRef, { queryClient })
+  const doClose = () => void closeJob(jobRef, { queryClient })
+  const doArchive = () => void archiveJob(jobRef, { queryClient })
 
   const lastEdited = job?.updated_at
     ? formatDistanceToNowStrict(new Date(job.updated_at), { addSuffix: false })
