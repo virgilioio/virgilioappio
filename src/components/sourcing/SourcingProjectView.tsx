@@ -17,7 +17,8 @@ import { SourcingProjectFilters, SearchCriteria, SourcingProject } from '@/types
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { undoToast } from '@/lib/undoToast'
 
 export interface SourcingProjectActions {
   onRefresh: () => Promise<void>
@@ -212,35 +213,60 @@ export function SourcingProjectView({
     }
   }
   
-  const handleArchive = async () => {
-    if (!project) return
-    
-    const newStatus = project.status === 'active' ? 'archived' : 'active'
+  const setProjectStatus = async (status: 'active' | 'archived') => {
+    if (!project) return false
     const { error } = await supabase
       .from('sourcing_projects')
-      .update({ status: newStatus })
+      .update({ status })
       .eq('id', project.id)
-    
-    if (error) {
-      toast.error('Failed to update status', { description: error.message })
-    } else {
-      toast.success(`Project ${newStatus === 'archived' ? 'archived' : 'unarchived'}`)
+    if (!error) {
       refetchProject()
+      queryClient.invalidateQueries({ queryKey: ['sourcing-projects'] })
     }
+    return !error
   }
-  
+
+  // O11 (Block B §16): archiving is instant and reversible, so Undo, not a confirm.
+  const handleArchive = async () => {
+    if (!project) return
+    const name = project.name?.trim() || 'Project'
+    const archiving = project.status === 'active'
+    if (!(await setProjectStatus(archiving ? 'archived' : 'active'))) {
+      toast.error(`Couldn\u2019t ${archiving ? 'archive' : 'unarchive'} ${name}. Try again.`)
+      return
+    }
+    if (!archiving) {
+      toast.success(`${name} unarchived`)
+      return
+    }
+    undoToast(`${name} archived`, async () => {
+      if (!(await setProjectStatus('active'))) toast.error(`Couldn\u2019t restore ${name}. Try again.`)
+    })
+  }
+
+  // O10 (Block B §16, Pattern 1): say what goes with the project. ai_conversations,
+  // preview results and collaborators cascade; candidate profiles and job
+  // pipelines are separate records and stay.
   const handleDelete = async () => {
-    if (!project || !(await confirmDialog({ title: 'Delete this project?', confirmLabel: 'Delete project', destructive: true }))) return
-    
+    if (!project) return
+    const name = project.name?.trim()
+    const ok = await confirmDestructive({
+      title: name ? `Delete ${name}?` : 'Delete this project?',
+      description:
+        'Its search, results, saved list, shortlist and Gio chats are deleted, and anyone it\u2019s shared with loses access. The candidate profiles stay in your talent pool, and anyone you added to a job stays there. This can\u2019t be undone.',
+      confirmLabel: 'Delete project',
+    })
+    if (!ok) return
+
     const { error } = await supabase
       .from('sourcing_projects')
       .delete()
       .eq('id', project.id)
-    
+
     if (error) {
-      toast.error('Failed to delete project', { description: error.message })
+      toast.error(`Couldn\u2019t delete ${name || 'the project'}. Nothing was removed; try again.`)
     } else {
-      toast.success('Project deleted')
+      toast.success(`${name || 'Project'} deleted`)
       queryClient.invalidateQueries({ queryKey: ['sourcing-projects'] })
       navigate('/find')
     }
