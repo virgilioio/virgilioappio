@@ -37,16 +37,8 @@ import { formatDistanceToNowStrict } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { useQueryClient } from '@tanstack/react-query'
+import { archiveJobWithUndo, closeJobWithUndo } from './jobStatusActions'
 import { useToast } from '@/hooks/use-toast'
 import { SectionCard, ToggleRow } from './wizard/_parts'
 import { HiringPlanTab } from './HiringPlanTab'
@@ -56,7 +48,6 @@ import { ClientViewSection } from './ClientViewSection'
 import { Eye } from 'lucide-react'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
-import { useJobs } from '@/hooks/useJobs'
 import { cn } from '@/lib/utils'
 import {
   Select,
@@ -123,7 +114,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   const { isAdmin, isWorkspaceOwner, isPlatformAdmin } = usePermissions()
   const isReadOnly = !(isAdmin || isWorkspaceOwner || isPlatformAdmin)
   const { toast } = useToast()
-  const { archiveJob, updateJob } = useJobs()
+  const queryClient = useQueryClient()
 
   const { assignments, updateAssignmentRole, removeUserFromJob, assignUserToJob, getAssignments } =
     useJobAssignments(jobId)
@@ -365,30 +356,11 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
   }
   const salesTeam = (job?.sales_team ?? null) as SalesTeam
 
-  // Close / Archive dialogs
-  const [showClose, setShowClose] = useState(false)
-  const [showArchive, setShowArchive] = useState(false)
-
-  const doClose = async () => {
-    try {
-      await updateJob(jobId, { status: 'closed' } as any)
-      toast({ title: 'Job closed', description: `${jobTitle} is no longer accepting applications.` })
-    } catch {
-      /* toast in hook */
-    } finally {
-      setShowClose(false)
-    }
-  }
-  const doArchive = async () => {
-    try {
-      await archiveJob(jobId)
-      toast({ title: 'Job archived', description: `${jobTitle} moved to archive.` })
-    } catch {
-      /* toast in hook */
-    } finally {
-      setShowArchive(false)
-    }
-  }
+  // J10/J11 (Block B §16, Pattern 1 + Undo): close and archive are status
+  // changes; each asks once and the toast offers Undo.
+  const jobRef = { id: jobId, title: jobTitle, status: job?.status }
+  const doClose = () => void closeJobWithUndo(jobRef, { queryClient })
+  const doArchive = () => void archiveJobWithUndo(jobRef, { queryClient })
 
   const lastEdited = job?.updated_at
     ? formatDistanceToNowStrict(new Date(job.updated_at), { addSuffix: false })
@@ -857,7 +829,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                         variant="secondary"
                         size="sm"
                         icon={XCircle}
-                        onClick={() => setShowClose(true)}
+                        onClick={doClose}
                       >
                         Close job
                       </Button>
@@ -865,7 +837,7 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
                         variant="danger"
                         size="sm"
                         icon={Archive}
-                        onClick={() => setShowArchive(true)}
+                        onClick={doArchive}
                       >
                         Archive
                       </Button>
@@ -880,35 +852,6 @@ export function JobSetupLayout({ jobId, jobTitle, job, onEdit, onAddTeamMember }
         </div>
       </div>
 
-      <AlertDialog open={showClose} onOpenChange={setShowClose}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Close this job?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Closing stops new applications. Candidates already in the pipeline stay. You can reopen it from Edit job › Status.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doClose}>Close job</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showArchive} onOpenChange={setShowArchive}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archive this job?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Archiving moves the job out of the active list. Candidates stay in the talent pool.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doArchive}>Archive</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
