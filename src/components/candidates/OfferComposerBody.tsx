@@ -1,4 +1,4 @@
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { InlineEmpty } from '@/components/ui/empty-state'
@@ -192,11 +192,13 @@ export function OfferComposerBody({
             const changed = restartFields
               .filter(f => JSON.stringify(originalValues[f.field_name] ?? '') !== JSON.stringify(fieldValues[f.field_name] ?? ''))
               .map(f => f.field_label)
-            const ok = await confirmDialog({
-              title: 'Restart approval for this offer?',
-              description: `Changing ${changed.join(', ') || 'these fields'} sends the offer back for approval. The current offer letter file for ${jobTitle || 'this job'} is removed, so a new one is made after approval.`,
-              confirmLabel: 'Save and restart approval',
-              destructive: true,
+            // C25 (Block B §16, Pattern 1): the shared dialog, named, verb + object.
+            const who = (candidateName || '').trim()
+            const ok = await confirmDestructive({
+              icon: RefreshCcw,
+              title: who ? `Restart approval for ${who}\u2019s offer?` : 'Restart approval for this offer?',
+              description: `Changing ${changed.join(', ') || 'these fields'} sends the offer back for approval, and approvals given so far are withdrawn. The current offer letter file for ${jobTitle || 'this job'} is deleted, so a new one is made after approval. This can\u2019t be undone.`,
+              confirmLabel: 'Restart approval',
             })
             if (!ok) return
             // Recall the approval request if one exists
