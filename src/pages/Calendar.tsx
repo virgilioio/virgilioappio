@@ -153,12 +153,14 @@ function classifyEvent(b: ScheduledBooking): EventType {
 
 function eventTitle(b: ScheduledBooking, type: EventType): string {
   if (type === 'busy') return b.notes || 'Busy'
+  // A meeting from a general link already carries its full title.
+  if (type === 'interview' && b.event_title && !b.job_id && !b.job_hiring_stage_id) return b.event_title
   const kind =
     type === 'debrief'
       ? 'Debrief'
       : type === 'hold'
       ? 'Hold'
-      : b.stage?.stage_name || 'Interview'
+      : b.stage?.stage_name || (!b.job_id && !b.booked_by ? 'Meeting' : 'Interview')
   const who = b.candidate_name || b.candidate?.candidate_name || ''
   return who ? `${kind} · ${who}` : kind
 }

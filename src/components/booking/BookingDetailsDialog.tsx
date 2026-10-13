@@ -193,7 +193,7 @@ export function BookingDetailsDialog({
 
     const icsContent = generateICS({
       uid: booking.id,
-      summary: `Interview with ${booking.candidate_name}`,
+      summary: (booking as any).event_title || `${!booking.job && !booking.candidate ? 'Meeting' : 'Interview'} with ${booking.candidate_name}`,
       description: booking.notes || 'Scheduled interview',
       location: booking.meeting_location || '',
       startTime: new Date(booking.scheduled_start),
@@ -259,7 +259,9 @@ export function BookingDetailsDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {/* Simple booking = Meeting, Pipeline booking = Interview */}
-              {!booking.job && !booking.candidate ? 'Meeting' : 'Interview'} with {booking.candidate_name}
+              {!booking.job && !booking.candidate && (booking as any).event_title
+                ? (booking as any).event_title
+                : `${!booking.job && !booking.candidate ? 'Meeting' : 'Interview'} with ${booking.candidate_name}`}
               <Badge variant={getStatusBadgeVariant(booking.status)}>
                 {booking.status}
               </Badge>

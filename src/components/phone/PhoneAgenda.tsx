@@ -47,7 +47,7 @@ export function AgendaRow({ b, next = false }: { b: ScheduledBooking; next?: boo
   const who = (
     <>
       <div className="truncate font-inter font-semibold text-[14px] text-[#0d0d09]">{name}</div>
-      <div className="mt-0.5 truncate font-inter text-[12.5px] text-[#5A6072]">{context || (b.isSimpleBooking ? 'Booked from your link' : 'Interview')}</div>
+      <div className="mt-0.5 truncate font-inter text-[12.5px] text-[#5A6072]">{context || b.event_title || (b.isSimpleBooking ? 'Booked from your link' : 'Interview')}</div>
       {where && (
         <div className="mt-0.5 flex items-center gap-1 truncate font-inter text-[12px] text-[#6B7080]">
           <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{where}</span>

@@ -25,6 +25,8 @@ export interface ScheduledBooking {
   job_id: string | null
   job_hiring_stage_id: string | null
   booked_by?: string | null
+  /** Title it was booked with; meetings from general links are named by their event type (2026-10-13). */
+  event_title?: string | null
   google_meet_link?: string | null
   last_synced_at?: string | null
   sync_source?: string | null
