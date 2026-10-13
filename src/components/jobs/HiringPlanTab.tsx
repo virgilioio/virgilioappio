@@ -223,16 +223,32 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
 
     const idx = planRows.findIndex((r) => r.instanceId === instanceId)
     const rest = planRows.filter((r) => r.instanceId !== instanceId)
-    const prev = rest[Math.max(0, idx - 1)]
-    const prevName = prev ? prev.customStageName?.trim() || prev.stage.stage_name : 'the first stage'
-    const moves = candidates > 0 ? `${plural(candidates, 'candidate')} in it move${candidates === 1 ? 's' : ''} back to ${prevName}. ` : ''
+    // Candidates never leave the pipeline (Allan, 2026-10-13): they move to the
+    // stage before, or to the stage after when this one is first. A plan's only
+    // stage can't go while candidates sit in it.
+    if (!rest.length && candidates > 0) {
+      await confirmDestructive({
+        variant: 'blocked',
+        title: `The ${name} stage can’t be deleted yet`,
+        description: `It’s the only stage in this plan and ${plural(candidates, 'candidate')} ${candidates === 1 ? 'is' : 'are'} in it. Add another stage first, so they have somewhere to go.`,
+        confirmLabel: '',
+      })
+      return
+    }
+    const targetIndex = idx > 0 ? idx - 1 : 0
+    const target = rest[targetIndex]
+    const targetName = target ? target.customStageName?.trim() || target.stage.stage_name : 'the first stage'
+    const wasFirst = idx === 0
+    const moves = candidates > 0
+      ? `${plural(candidates, 'candidate')} in it move${candidates === 1 ? 's' : ''} ${wasFirst ? `to ${targetName}, which becomes the first stage` : `back to ${targetName}`} and stay${candidates === 1 ? 's' : ''} in the pipeline. `
+      : ''
     const goes = scorecards > 0
       ? `Its interviewers, scorecard questions and automations are deleted with it, and so ${scorecards === 1 ? 'is 1 submitted scorecard' : `are ${scorecards} submitted scorecards`}.`
       : 'Its interviewers, scorecard questions and automations are deleted with it.'
     const unsaved = hasUnsavedChanges ? ' Your other unsaved changes to the plan are saved too.' : ''
 
     const remove = async () => {
-      await handleConfirmRemove(row, name, candidates, prevName)
+      await handleConfirmRemove(row, name, candidates, targetName, targetIndex, wasFirst)
     }
     const ok = await confirmDestructive({
       title: `Delete the ${name} stage?`,
@@ -261,9 +277,11 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
   const buildSaveInput = (rows: PlanRow[]): HiringPlanInput[] =>
     rows.map((r) => ({ jhsId: r.jhsId, stage_id: r.stage.id, customStageName: r.customStageName ?? null }))
 
-  const handleConfirmRemove = async (row: PlanRow, name: string, moved: number, prevName: string) => {
+  const handleConfirmRemove = async (
+    row: PlanRow, name: string, moved: number, targetName: string, targetIndex: number, wasFirst: boolean,
+  ) => {
     const newRows = planRows.filter((r) => r.instanceId !== row.instanceId)
-    await saveHiringPlan(jobId, buildSaveInput(newRows))
+    await saveHiringPlan(jobId, buildSaveInput(newRows), row.jhsId ? { moveTo: { [row.jhsId]: targetIndex } } : {})
     // Reload instances to get fresh jhsIds and the correct count of duplicates
     const refreshed = await loadHiringPlanInstances(jobId)
     const seenDefaultStageIds = new Set<string>()
@@ -286,7 +304,7 @@ export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: H
 
     toast({
       title: `${name} deleted`,
-      description: moved > 0 ? `${moved} candidate${moved !== 1 ? 's' : ''} moved back to ${prevName}.` : undefined,
+      description: moved > 0 ? `${moved} candidate${moved !== 1 ? 's' : ''} moved ${wasFirst ? 'to' : 'back to'} ${targetName}.` : undefined,
     })
   }
 

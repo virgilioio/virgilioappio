@@ -90,7 +90,16 @@ export function useJobHiringPlan() {
    * - Entries without `jhsId` are inserted as new rows (duplicates of the same `stage_id` allowed).
    * - Existing rows whose `jhsId` is not in `entries` are deleted (candidates reassigned to the previous stage).
    */
-  const saveHiringPlan = useCallback(async (jobId: string, entries: HiringPlanInput[]) => {
+  const saveHiringPlan = useCallback(async (
+    jobId: string,
+    entries: HiringPlanInput[],
+    /**
+     * Where candidates in a removed stage go: removed jhsId → index in
+     * `entries`. Without it they go to the nearest kept stage before it, or
+     * after it when it was first. Candidates never leave the pipeline.
+     */
+    opts: { moveTo?: Record<string, number> } = {},
+  ) => {
     setIsSavingPlan(true)
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -191,13 +200,17 @@ export function useJobHiringPlan() {
           .eq('job_id', jobId)
         if (delAllErr) throw delAllErr
       } else if (toDelete.length > 0) {
-        const finalWithPos = finalOrderedJhsIds.map((jhsId, idx) => ({ jhsId, pos: idx + 1 }))
+        // Old positions of the stages that stay, to find each removed stage's
+        // neighbours as the plan was (the final list may add new stages).
+        const keptOld = toKeep.map((k) => ({ jhsId: k.jhsId, pos: currentById.get(k.jhsId)?.position ?? 0 }))
         for (const removed of toDelete) {
-          const previous = finalWithPos
-            .filter((s) => s.pos < (removed.position ?? Number.MAX_SAFE_INTEGER))
-            .sort((a, b) => b.pos - a.pos)[0] || finalWithPos[0]
-
-          const targetJhsId = previous?.jhsId ?? null
+          const asked = opts.moveTo?.[removed.id]
+          let targetJhsId: string | null = asked != null ? finalOrderedJhsIds[asked] ?? null : null
+          if (!targetJhsId) {
+            const before = keptOld.filter((k) => k.pos < removed.position).sort((a, b) => b.pos - a.pos)[0]
+            const after = keptOld.filter((k) => k.pos > removed.position).sort((a, b) => a.pos - b.pos)[0]
+            targetJhsId = (before ?? after)?.jhsId ?? finalOrderedJhsIds[0] ?? null
+          }
 
           const { error: moveErr } = await supabase
             .from('job_candidate_associations')
