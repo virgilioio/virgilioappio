@@ -28,6 +28,7 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { IconTip } from '@/components/ui/tooltip'
 import type { UnifiedActivity } from '@/types/activity'
 import type { ScheduledBooking } from '@/hooks/useScheduledBookings'
 
@@ -239,11 +240,13 @@ export function ActivityRow({
         {/* Right side: Dropdown menu + Chevron */}
         <div className="flex items-center gap-1 shrink-0">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <IconTip label={isInterview ? 'Interview actions' : 'Reminder actions'}>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={isInterview ? 'Interview actions' : 'Reminder actions'}>
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </IconTip>
             <DropdownMenuContent align="end">
               {/* Interview actions */}
               {isInterview && booking && (
@@ -273,7 +276,7 @@ export function ActivityRow({
                           onClick={() => onMarkNoShow(booking.id)}
                           disabled={isUpdating}
                         >
-                          Mark as No-Show
+                          Mark as no-show
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
@@ -283,7 +286,7 @@ export function ActivityRow({
                           disabled={isCancelling}
                           className="text-destructive"
                         >
-                          Cancel Booking
+                          Cancel interview
                         </DropdownMenuItem>
                       )}
                     </>
