@@ -14,7 +14,8 @@ import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { User, UserPlus, Users, Trash2, Info, Loader2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
+import { IconTip } from '@/components/ui/tooltip'
 
 interface TeamTabProps {
   jhsId: string
@@ -115,9 +116,22 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
     setSelectedType('required')
   }
   
+  // J17 (Block B §16, Pattern 1): taking someone off this stage's interview
+  // panel. Nothing else references the assignment, so only that goes.
   const handleRemove = async (assignmentId: string, memberName: string) => {
-    if (await confirmDialog({ title: `Remove ${memberName} as an interviewer for this stage?`, confirmLabel: 'Remove', destructive: true })) {
+    const name = memberName?.trim() || 'this interviewer'
+    const first = name.split(/\s+/)[0]
+    const ok = await confirmDestructive({
+      variant: 'remove',
+      title: `Remove ${name} from this stage’s interviewers?`,
+      description: `${first} won’t be picked for new interviews in this stage. Interviews already booked, their scorecards and their place on the hiring team stay. You can add them back here at any time.`,
+      confirmLabel: 'Remove interviewer',
+    })
+    if (!ok) return
+    try {
       await removeInterviewer.mutateAsync({ assignmentId, jhsId })
+    } catch {
+      /* the hook shows the error */
     }
   }
   
@@ -370,15 +384,18 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
                         </SelectContent>
                       </Select>
                       
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemove(interviewer.id, interviewer.member_name)}
-                        disabled={removeInterviewer.isPending}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <IconTip label={`Remove ${interviewer.member_name || 'interviewer'}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Remove ${interviewer.member_name || 'interviewer'}`}
+                          onClick={() => handleRemove(interviewer.id, interviewer.member_name)}
+                          disabled={removeInterviewer.isPending}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </IconTip>
                     </div>
                   </div>
                 </div>
