@@ -1,6 +1,7 @@
 import { Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { IconTip } from '@/components/ui/tooltip'
 import type { GioAddedQuestion } from '@/hooks/useGioAddedQuestions'
 
 interface Props {
@@ -21,6 +22,7 @@ export function AddedFromGioBlock({ item, onAnswerChange, onRemove, readOnly }: 
           <p className="text-[13px] font-medium text-[#1F2230] leading-snug">{item.question}</p>
         </div>
         {!readOnly && (
+          <IconTip label="Remove from scorecard">
           <Button
             type="button"
             size="sm"
@@ -31,6 +33,7 @@ export function AddedFromGioBlock({ item, onAnswerChange, onRemove, readOnly }: 
           >
             <X className="h-4 w-4" />
           </Button>
+          </IconTip>
         )}
       </div>
       <Textarea

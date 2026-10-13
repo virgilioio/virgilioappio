@@ -13,6 +13,7 @@ import { SoonBadge } from "@/components/ui/soon-badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
 import { confirmDestructive } from "@/components/ui/confirm-dialog";
+import { toast as sonner } from "sonner";
 import { IconTip } from "@/components/ui/tooltip";
 import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText, DollarSign, ChevronDown, ChevronUp, Copy, Lock, Globe, Check, Info, RefreshCw } from "lucide-react";
 import { copyToClipboard } from "@/utils/clipboard";
@@ -1453,10 +1454,17 @@ export function ScorecardSheet({
                           readOnly={isReadOnly}
                           onAnswerChange={gioAdded.setAnswer}
                           onRemove={(idx) => {
+                            // C15 (Block B §16, Undo): the question and its answer leave
+                            // at once; the inbox decision is saved only once the toast
+                            // goes without Undo (delayed commit), so Undo puts it all back.
+                            const at = gioAdded.items.findIndex((x) => x.source_point_index === idx);
+                            const removed = gioAdded.items[at];
                             gioAdded.remove(idx);
-                            // Revert decision so it returns to the inbox.
-                            import('@/lib/supabaseClient').then(({ supabase }) =>
-                              supabase
+                            let settled = false;
+                            const commit = () => {
+                              if (settled) return;
+                              settled = true;
+                              void supabase
                                 .from('validation_point_resolutions')
                                 .upsert(
                                   {
@@ -1468,8 +1476,21 @@ export function ScorecardSheet({
                                     resolved_at: new Date().toISOString(),
                                   } as any,
                                   { onConflict: 'association_id,point_index' }
-                                )
-                            );
+                                );
+                            };
+                            sonner('Question removed from your scorecard', {
+                              description: removed?.answer?.trim() ? 'Its answer went with it.' : undefined,
+                              action: {
+                                label: 'Undo',
+                                onClick: () => {
+                                  if (settled) return;
+                                  settled = true;
+                                  if (removed) gioAdded.restore(removed, at);
+                                },
+                              },
+                              onAutoClose: commit,
+                              onDismiss: commit,
+                            });
                           }}
                         />
                       ))}

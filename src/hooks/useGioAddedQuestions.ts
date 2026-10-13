@@ -47,6 +47,16 @@ export function useGioAddedQuestions(initial?: unknown) {
     setItems(prev => prev.filter(p => p.source_point_index !== sourcePointIndex))
   }, [])
 
+  /** Undo of a remove: puts the question (and its answer) back where it was. */
+  const restore = useCallback((item: GioAddedQuestion, index: number) => {
+    setItems(prev => {
+      if (prev.some(p => p.source_point_index === item.source_point_index)) return prev
+      const next = [...prev]
+      next.splice(Math.min(Math.max(index, 0), next.length), 0, item)
+      return next
+    })
+  }, [])
+
   const setAnswer = useCallback((id: string, answer: string) => {
     setItems(prev => prev.map(p => (p.id === id ? { ...p, answer } : p)))
   }, [])
@@ -59,5 +69,5 @@ export function useGioAddedQuestions(initial?: unknown) {
     if (error) throw error
   }, [items])
 
-  return { items, add, remove, setAnswer, persist }
+  return { items, add, remove, restore, setAnswer, persist }
 }
