@@ -6,6 +6,7 @@ import { useOfferApprovalChain, ApprovalChainStep } from '@/hooks/useOfferApprov
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
+import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import {
   ApprovalCondition,
   ApprovalMode,
@@ -527,6 +528,20 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
   } = useOfferApprovalChain(jobId)
   const { members, isLoading: membersLoading } = useMembers(true)
   const permissions = usePermissions()
+
+  // J20 (Block B §16, Pattern 1): offers already sent for approval keep their
+  // own copy of the steps (offer_approval_request_steps), so only new offers change.
+  const handleRemoveApprover = async (step: ApprovalChainStep) => {
+    const name = step.approver_name?.trim() || 'this approver'
+    const first = name.split(/\s+/)[0]
+    const ok = await confirmDestructive({
+      variant: 'remove',
+      title: `Remove ${name} from the approval chain?`,
+      description: `${first} won’t be asked to approve new offers for ${jobTitle?.trim() || 'this job'}. Offers already sent for approval keep the approvers they started with. You can add them back at any time.`,
+      confirmLabel: 'Remove approver',
+    })
+    if (ok) removeApprover(step.id)
+  }
   const modeSegRef = useSegmentLayer<HTMLDivElement>()
 
   const canEdit = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin
@@ -705,7 +720,7 @@ export function OfferApprovalChainConfig({ jobId, jobTitle }: OfferApprovalChain
                       canEdit={canEdit}
                       onCondition={(c) => setStepCondition(step.id, c)}
                       onMove={(dir) => handleMove(index, dir)}
-                      onRemove={() => removeApprover(step.id)}
+                      onRemove={() => void handleRemoveApprover(step)}
                     />
                   ))}
                 </SortableContext>
