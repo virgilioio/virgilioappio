@@ -45,6 +45,7 @@ import { AddToJobPopover } from '@/components/candidates/bulk/AddToJobPopover'
 
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
+import { undoToast } from '@/lib/undoToast'
 import { AddTagPopover } from '@/components/candidates/tags/AddTagPopover'
 import { Button } from '@/components/ui/button'
 import { Tag as TagIcon, Users as UsersIcon, Share2 as Share2Icon, Briefcase, Mail as MailIcon, BookmarkPlus as BookmarkPlusIcon, Archive as ArchiveIcon } from 'lucide-react'
@@ -261,6 +262,8 @@ function CandidatesInner() {
 
   // Sheets & dialogs
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  // Kept after close so the dialog can play its exit with the name still in it.
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
@@ -287,8 +290,8 @@ function CandidatesInner() {
   const handleOpenCandidate = (id: string) => navigate(`/candidates/${id}`)
   const handleDelete = async () => {
     if (!deleteTarget) return
-    await deleteCandidate(deleteTarget.id)
-    setDeleteTarget(null)
+    await deleteCandidate(deleteTarget.id, { quiet: true })
+    toast({ title: `${deleteTarget.name.trim() || 'Candidate'} deleted` })
   }
 
   const handleAiSubmit = async () => {
@@ -470,13 +473,57 @@ function CandidatesInner() {
 
 
 
-  const archiveSelected = async () => {
-    if (selectedIds.length === 0) return
-    const { error } = await supabase.from('candidates').update({ status: 'inactive' }).in('id', selectedIds)
-    if (error) { toast({ title: 'Archive failed', variant: 'destructive' }); return }
-    toast({ title: `${selectedIds.length} archived` })
-    clearSelection(); getCandidates()
+  // C2 (Block B §16, Pattern 3 + Undo): archiving marks candidates Inactive. It
+  // asks first (count in the title, names as chips) and Undo puts back each
+  // candidate's own previous status. Ids go in chunks so "Select all" works.
+  const setStatuses = async (byStatus: Map<string, string[]>) => {
+    for (const [status, ids] of byStatus) {
+      for (let i = 0; i < ids.length; i += 200) {
+        const { error } = await supabase.from('candidates').update({ status }).in('id', ids.slice(i, i + 200))
+        if (error) throw error
+      }
+    }
   }
+  const archiveSelected = async () => {
+    const ids = selectedIds
+    if (ids.length === 0) return
+    const byId = new Map(candidates.map((c) => [c.id, c]))
+    const previous = new Map<string, string[]>()
+    for (const id of ids) {
+      const st = byId.get(id)?.status || 'active'
+      if (st === 'inactive') continue
+      previous.set(st, [...(previous.get(st) ?? []), id])
+    }
+    const label = ids.length === 1 ? (byId.get(ids[0])?.candidate_name?.trim() || '1 candidate') : `${ids.length} candidates`
+    try {
+      await setStatuses(new Map([['inactive', ids]]))
+    } catch {
+      toast({ title: `Couldn’t archive ${label}. Nothing changed; try again.`, variant: 'destructive' })
+      getCandidates()
+      return
+    }
+    clearSelection(); getCandidates()
+    undoToast(`${label} archived`, async () => {
+      try {
+        await setStatuses(previous)
+        getCandidates()
+      } catch {
+        toast({ title: `Couldn’t restore ${label}. Try again from Status.`, variant: 'destructive' })
+      }
+    })
+  }
+  const archiveConfirm = (() => {
+    const n = selectedIds.length
+    const names = candidates.filter((c) => selectedIds.includes(c.id)).slice(0, 4).map((c) => c.candidate_name?.trim() || 'Unnamed candidate')
+    return {
+      variant: 'archive' as const,
+      title: n === 1 ? `Archive ${names[0] ?? '1 candidate'}?` : `Archive ${n} candidates?`,
+      description: `${n === 1 ? 'They’re' : 'They’re all'} marked Inactive. Their applications, notes and files stay, and you can change the status back at any time.`,
+      confirmLabel: n === 1 ? 'Archive candidate' : `Archive ${n} candidates`,
+      items: n > 1 ? names : undefined,
+      itemsTotal: n,
+    }
+  })()
 
   // §16: a failed first load is an inline error with Retry, never the whole page
   // and never an empty list. With rows already on screen, they stay.
@@ -670,6 +717,7 @@ function CandidatesInner() {
                   icon: ArchiveIcon,
                   slot: 'overflow',
                   destructive: true,
+                  confirm: archiveConfirm,
                   onClick: archiveSelected,
                 },
               ]}
@@ -692,7 +740,7 @@ function CandidatesInner() {
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}
                 onOpenCandidate={handleOpenCandidate}
-                onDelete={(c) => setDeleteTarget({ id: c.id, name: c.candidate_name })}
+                onDelete={(c) => { setDeleteTarget({ id: c.id, name: c.candidate_name ?? '' }); setDeleteOpen(true) }}
                 onClearFilters={handleClearResultsFilters}
                 onAddCandidate={() => setIsFormOpen(true)}
               />
@@ -763,15 +811,13 @@ function CandidatesInner() {
       />
 
 
-      {deleteTarget && (
-        <DeleteCandidateDialog
-          open={!!deleteTarget}
-          onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}
-          candidateId={deleteTarget.id}
-          candidateName={deleteTarget.name}
-          onConfirm={handleDelete}
-        />
-      )}
+      <DeleteCandidateDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        candidateId={deleteTarget?.id ?? null}
+        candidateName={deleteTarget?.name ?? ''}
+        onConfirm={handleDelete}
+      />
 
 
       <AlertDialog open={!!deleteSavedView} onOpenChange={(open) => !open && !isDeletingSavedView && setDeleteSavedView(null)}>
