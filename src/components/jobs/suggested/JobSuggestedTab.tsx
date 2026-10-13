@@ -22,6 +22,7 @@ import {
 import type { SuggestedSortKey } from './suggestedGrid'
 import { readDismissedSuggestions as readDismissed, writeDismissedSuggestions } from './suggestedDismissed'
 import { supabase } from '@/lib/supabaseClient'
+import { toast as sonner } from 'sonner'
 
 
 export interface JobSuggestedTabProps {
@@ -181,20 +182,56 @@ export function JobSuggestedTab({
     }
   }
 
-  const handleDismiss = (candidate: any) => {
-    const id = suggestedCandidateId(candidate)
-    persistDismissed([...dismissed, id])
-    // The suggestion row hosts any dossier written for this match — both go.
-    void supabase
-      .from('job_suggested_candidates_cache')
-      .delete()
-      .eq('job_id', jobId)
-      .eq('candidate_id', id)
-    setSelected((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
+  // J27/J28 (Block B §16, Undo): Not a fit hides the suggestion at once and
+  // offers Undo. The cached suggestion row (and any dossier written for the
+  // match) is deleted only once the toast has gone without Undo — a delayed
+  // commit, so Undo brings the suggestion back exactly as it was.
+  const dismissWithUndo = (ids: string[], label: string) => {
+    if (!ids.length) return
+    setDismissed((prev) => {
+      const next = [...new Set([...prev, ...ids])]
+      writeDismissedSuggestions(jobId, next)
       return next
     })
+    setSelected((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => next.delete(id))
+      return next
+    })
+    let settled = false
+    const commit = () => {
+      if (settled) return
+      settled = true
+      for (let i = 0; i < ids.length; i += 200) {
+        void supabase
+          .from('job_suggested_candidates_cache')
+          .delete()
+          .eq('job_id', jobId)
+          .in('candidate_id', ids.slice(i, i + 200))
+      }
+    }
+    sonner(`${label} dismissed`, {
+      description: 'They won’t be suggested for this job again.',
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          if (settled) return
+          settled = true
+          setDismissed((prev) => {
+            const next = prev.filter((id) => !ids.includes(id))
+            writeDismissedSuggestions(jobId, next)
+            return next
+          })
+        },
+      },
+      onAutoClose: commit,
+      onDismiss: commit,
+    })
+  }
+
+  const handleDismiss = (candidate: any) => {
+    const id = suggestedCandidateId(candidate)
+    dismissWithUndo([id], candidate.candidate_name?.trim() || 'Suggestion')
   }
 
   const handleBulkAdd = async () => {
@@ -213,8 +250,8 @@ export function JobSuggestedTab({
   }
 
   const handleBulkDismiss = () => {
-    persistDismissed([...dismissed, ...selected])
-    setSelected(new Set())
+    const ids = [...selected]
+    dismissWithUndo(ids, ids.length === 1 ? '1 suggestion' : `${ids.length} suggestions`)
   }
 
   const handleRefresh = () => {
