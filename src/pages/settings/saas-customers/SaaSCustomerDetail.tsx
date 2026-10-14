@@ -6,7 +6,7 @@ import {
   ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock,
   Briefcase, Users, UserCheck, Lightbulb, Copy, Check, CalendarPlus, Sparkles, CreditCard, Ban,
   UserPlus, ArrowRightLeft, Video, Upload, FileText, Download, Minus, Plus,
-  CircleDollarSign, Mail, Eye, PencilLine, Unlock, RotateCcw, ShieldAlert,
+  CircleDollarSign, Mail, Eye, PencilLine, Unlock, RotateCcw, ShieldAlert, Trash2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { format, formatDistanceToNowStrict, differenceInCalendarDays, isToday, isYesterday } from 'date-fns'
@@ -17,8 +17,9 @@ import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
 import { useSaaSCustomerMembers } from '@/hooks/useSaaSCustomerMembers'
 import { useSaaSCustomerOnboarding } from '@/hooks/useSaaSCustomerOnboarding'
 import {
-  useSuspendOrganization, useExtendTrial, useGrantAccess, useRevokeAccess,
+  useSuspendOrganization, useRestoreOrganization, useExtendTrial, useGrantAccess, useRevokeAccess,
 } from '@/hooks/useSaaSAdminActions'
+import { requestRemoveWorkspace } from '@/components/settings/saas/removeWorkspace'
 import { useChangePlan } from '@/hooks/useChangePlan'
 import { useAssignTenantCredits } from '@/hooks/useAssignTenantCredits'
 import { calculateCustomerHealth, type CustomerHealthResult } from '@/utils/customerHealth'
@@ -276,6 +277,8 @@ export function SaaSCustomerDetail() {
   const [grantOpen, setGrantOpen] = useState(false)
 
   const suspendMutation = useSuspendOrganization()
+  const restoreMutation = useRestoreOrganization()
+  const [removing, setRemoving] = useState(false)
   const extendMutation = useExtendTrial()
   const changeMutation = useChangePlan()
   const assignMutation = useAssignTenantCredits()
@@ -609,6 +612,32 @@ export function SaaSCustomerDetail() {
             onGrant={() => setAssignOpen(true)}
             onChange={() => setChangeOpen(true)}
             onSuspend={() => setSuspendOpen(true)}
+            isLocked={sub?.billing_status === 'locked'}
+            reactivating={restoreMutation.isPending}
+            onReactivate={() => restoreMutation.mutate({ tenantId: customer.tenant_id })}
+            removing={removing}
+            onRemove={async () => {
+              // Kill switch (2026-10-13): only a deactivated workspace can go.
+              setRemoving(true)
+              try {
+                const name = customer.name?.trim() || 'this workspace'
+                const result = await requestRemoveWorkspace(customer.tenant_id, name, () => setRemoving(false))
+                if (!result) return
+                const kept = result.loginsKept.length
+                toast.success(`${result.removed.name} deleted`, {
+                  description: [
+                    result.removed.counts.candidates_moved
+                      ? `${result.removed.counts.candidates_moved.toLocaleString('en-US')} candidates moved to Virgilio.`
+                      : '',
+                    kept ? `${kept} ${kept === 1 ? 'login was' : 'logins were'} kept because ${kept === 1 ? 'it is' : 'they are'} still linked to other work.` : '',
+                  ].filter(Boolean).join(' ') || undefined,
+                })
+                queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
+                navigate('/settings?tab=platform-saas-customers')
+              } finally {
+                setRemoving(false)
+              }
+            }}
             onGrantAccess={() => setGrantOpen(true)}
             onRevokeAccess={async () => {
               // S29 (Block B §16): revoking re-locks the workspace at once.
@@ -713,6 +742,7 @@ function OverviewTab({
   customer, health, sub, ownerName, ownerEmail, isTrialing,
   firstGroupKey, groupedFeed, activeGrant,
   onExtend, onGrant, onChange, onSuspend, onGrantAccess, onRevokeAccess, onSwitchActivity,
+  isLocked, reactivating, onReactivate, removing, onRemove,
 }: any) {
   const onboarding = useSaaSCustomerOnboarding(customer.tenant_id)
   const queryClient = useQueryClient()
@@ -1052,27 +1082,53 @@ function OverviewTab({
         {/* Danger zone */}
         <section style={CARD}>
           <CardHeader title="Danger zone" />
-          <div className="flex items-center gap-3" style={{ padding: '12px 14px' }}>
-            <span className="font-inter flex-1" style={{ fontSize: 11, color: MUTED, lineHeight: 1.5 }}>
-              Suspending blocks all members immediately. Data is kept.
-            </span>
-            <button
-              type="button"
-              onClick={onSuspend}
-              className="font-inter inline-flex items-center justify-center gap-1.5"
-              style={{
-                height: 30, borderRadius: 9, fontSize: 11.5, fontWeight: 600,
-                background: '#FFFFFF', border: '1px solid #FCA5A5',
-                color: '#DC2626', cursor: 'pointer', padding: '0 12px',
-              }}>
-              <Ban size={12} color="#DC2626" />
-              Suspend
-            </button>
-          </div>
+          {!isLocked ? (
+            <div className="flex items-center gap-3" style={{ padding: '12px 14px' }}>
+              <span className="font-inter flex-1" style={{ fontSize: 11, color: MUTED, lineHeight: 1.5 }}>
+                Deactivating locks the workspace so its members can’t sign in. Data is kept, and you can reactivate it.
+              </span>
+              <button type="button" onClick={onSuspend} className="gio-pressable font-inter inline-flex items-center justify-center gap-1.5 whitespace-nowrap" style={DANGER_BTN}>
+                <Ban size={12} color="#DC2626" />
+                Deactivate
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3" style={{ padding: '12px 14px' }}>
+                <span className="font-inter flex-1" style={{ fontSize: 11, color: MUTED, lineHeight: 1.5 }}>
+                  Deactivated: members can’t sign in. Reactivating lets them back in with their data as it was.
+                </span>
+                <button type="button" onClick={onReactivate} disabled={reactivating} className="gio-pressable font-inter inline-flex items-center justify-center gap-1.5 whitespace-nowrap" style={{ ...SEC_DZ_BTN, minWidth: 104 }}>
+                  <RotateCcw size={12} />
+                  {reactivating ? 'Reactivating…' : 'Reactivate'}
+                </button>
+              </div>
+              <div className="flex items-center gap-3" style={{ padding: '12px 14px', borderTop: `1px solid ${HAIRLINE}` }}>
+                <span className="font-inter flex-1" style={{ fontSize: 11, color: MUTED, lineHeight: 1.5 }}>
+                  Deleting removes the workspace for good. Its candidates move to Virgilio; everything else is deleted.
+                </span>
+                <button type="button" onClick={onRemove} disabled={removing} className="gio-pressable font-inter inline-flex items-center justify-center gap-1.5 whitespace-nowrap" style={{ ...DANGER_BTN, minWidth: 128 }}>
+                  <Trash2 size={12} color="#DC2626" />
+                  {removing ? 'Checking…' : 'Delete workspace'}
+                </button>
+              </div>
+            </>
+          )}
         </section>
       </div>
     </div>
   )
+}
+
+const DANGER_BTN: CSSProperties = {
+  height: 30, borderRadius: 9, fontSize: 11.5, fontWeight: 600,
+  background: '#FFFFFF', border: '1px solid #FCA5A5',
+  color: '#DC2626', cursor: 'pointer', padding: '0 12px',
+}
+const SEC_DZ_BTN: CSSProperties = {
+  height: 30, borderRadius: 9, fontSize: 11.5, fontWeight: 600,
+  background: '#FFFFFF', border: '1px solid #E7E8EE',
+  color: '#3A3D48', cursor: 'pointer', padding: '0 12px',
 }
 
 function QuickBtn({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }) {
@@ -1570,7 +1626,7 @@ function FraudSignalsSection({ tenantId, stripeCustomerId, customerName }: { ten
     const ok = action === 'clear'
       ? await confirmDialog({
           title: `Clear the fraud review for ${name}?`,
-          description: 'Open fraud signals are marked resolved. Billing and suspension don\u2019t change: if the workspace is suspended, it stays suspended until you grant access.',
+          description: 'Open fraud signals are marked resolved. Billing and suspension don\u2019t change: if the workspace is deactivated, it stays deactivated until you reactivate it or grant access.',
           confirmLabel: 'Clear fraud review',
         })
       : await confirmDestructive({
@@ -1606,7 +1662,7 @@ function FraudSignalsSection({ tenantId, stripeCustomerId, customerName }: { ten
         </button>
         <button style={SEC_BTN} disabled={!!busy || !tenantId} onClick={() => runAction('clear')}>
           <Unlock size={12} />
-          {busy === 'clear' ? 'Working…' : 'Clear & reactivate'}
+          {busy === 'clear' ? 'Working…' : 'Clear fraud review'}
         </button>
       </div>
       <div>

@@ -215,7 +215,7 @@ export function SaaSCustomersList() {
                             }}
                             disabled={customer.status === 'suspended'}
                           >
-                            Suspend Account
+                            Deactivate workspace
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
                             Change Plan

@@ -75,18 +75,18 @@ export function SuspendOrganizationDialog({
             </span>
             <div className="min-w-0 flex-1">
               <DialogPrimitive.Title className="mt-0.5 line-clamp-2 break-words font-poppins text-[17px] font-semibold leading-snug text-text-primary [text-wrap:pretty]">
-                Suspend {name}?
+                Deactivate {name}?
               </DialogPrimitive.Title>
               <p id="suspend-org-desc" className="mt-1 text-[13px] leading-[1.5] text-text-secondary [text-wrap:pretty]">
                 Everyone in {name} loses access right away and sees a locked workspace. Their jobs, candidates and
-                billing history are kept. To let them back in later, use Grant access.
+                billing history are kept. To let them back in later, reactivate the workspace.
               </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5 px-[22px] pb-[18px]">
             <Label htmlFor="suspend-reason" className="text-[12px] font-medium text-text-secondary">
-              Reason for suspending
+              Reason for deactivating
             </Label>
             <Textarea
               id="suspend-reason"
@@ -110,7 +110,7 @@ export function SuspendOrganizationDialog({
               disabled={!reason.trim()}
               onClick={handleConfirm}
             >
-              Suspend workspace
+              Deactivate workspace
             </Button>
           </div>
         </DialogPrimitive.Content>

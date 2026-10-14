@@ -52,15 +52,15 @@ export function useSuspendOrganization() {
       queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
       
       toast({
-        title: 'Workspace suspended',
-        description: 'Its members are locked out until you grant access.',
+        title: 'Workspace deactivated',
+        description: 'Its members are locked out until you reactivate it or grant access.',
       })
     },
     onError: (error) => {
       log.error('Failed to suspend organization:', error)
       toast({
         variant: 'destructive',
-        title: 'Couldn\u2019t suspend the workspace',
+        title: 'Couldn\u2019t deactivate the workspace',
         description: 'Nothing was changed; try again.',
       })
     }
@@ -95,16 +95,16 @@ export function useRestoreOrganization() {
       queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
       
       toast({
-        title: 'Organization restored',
-        description: 'The subscription has been restored successfully.',
+        title: 'Workspace reactivated',
+        description: 'Its members can sign in again.',
       })
     },
     onError: (error) => {
       log.error('Failed to restore organization:', error)
       toast({
         variant: 'destructive',
-        title: 'Restoration failed',
-        description: extractErrorMessage(error),
+        title: 'Couldn\u2019t reactivate the workspace',
+        description: 'Nothing was changed; try again.',
       })
     }
   })
