@@ -1,5 +1,7 @@
 /**
- * 32×18 reference toggle. Deliberately not the shadcn Switch.
+ * 32×18 reference toggle. Deliberately not the shadcn Switch, but it moves like
+ * one (Motion & Feel §2): `gio-switch` gives the track colour its 150ms and the
+ * thumb its transform at --dur-switch and the 0.92 press scale.
  */
 export function RefToggle({
   checked,
@@ -23,6 +25,7 @@ export function RefToggle({
         if (disabled) return
         onChange(!checked)
       }}
+      className="gio-switch"
       style={{
         position: 'relative',
         width: 32,
@@ -32,21 +35,21 @@ export function RefToggle({
         flexShrink: 0,
         padding: 0,
         background: checked ? '#6F3FF5' : '#D1D0CB',
-        transition: 'background 140ms ease',
         cursor: disabled ? 'not-allowed' : 'pointer',
       }}
     >
       <span
+        className="gio-switch-thumb"
         style={{
           position: 'absolute',
           top: 2,
-          left: checked ? 16 : 2,
+          left: 2,
+          transform: checked ? 'translateX(14px)' : 'translateX(0)',
           width: 14,
           height: 14,
           borderRadius: 999,
           background: '#fff',
           boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-          transition: 'left 140ms ease',
         }}
       />
     </button>
