@@ -31,7 +31,7 @@ export function classifyCandidateSource(source: unknown, jobBoardSource?: unknow
   }
 
   if (
-    /sourc|outreach|chrome|extension|apollo|coresignal|pdl|manual|direct|linkedin|linked in|referral|headhunt|prospect|import|csv/.test(joined)
+    /sourc|outreach|chrome|extension|apollo|pdl|manual|direct|linkedin|linked in|referral|headhunt|prospect|import|csv/.test(joined)
   ) {
     return { kind: 'sourced', label: rawSource || rawBoard || 'Sourced', raw: rawSource || rawBoard };
   }

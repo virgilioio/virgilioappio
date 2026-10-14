@@ -23,11 +23,11 @@ interface NormalizedSpecs {
   standardized_title?: string;
   standardized_skills?: string[];
   standardized_location?: string;
-  standardized_locations?: string[]; // Array of CoreSignal-compatible location strings
+  standardized_locations?: string[]; // Location strings in the search format
   normalization_metadata: {
     title_mapping?: { original: string; canonical: string; synonyms_used?: string[] };
     skills_mapping?: Array<{ original: string; canonical: string; synonyms_used?: string[] }>;
-    location_mapping?: { original: string; canonical: string; coresignal_locations: string[]; synonyms_used?: string[] };
+    location_mapping?: { original: string; canonical: string; search_locations: string[]; synonyms_used?: string[] };
     ai_variations_used?: boolean;
     fallback_used?: boolean;
   };
@@ -150,15 +150,15 @@ serve(async (req) => {
       }
     }
 
-    // Normalize location - now returns CoreSignal-compatible locations
+    // Normalize location into the search format
     if (specs.location || specs.location_details) {
-      const locationResult = await normalizeLocationForCoresignal(specs.location || '', specs.location_details);
+      const locationResult = await normalizeLocationForSearch(specs.location || '', specs.location_details);
       normalized.standardized_location = locationResult.canonical;
-      normalized.standardized_locations = locationResult.coresignal_locations;
+      normalized.standardized_locations = locationResult.search_locations;
       normalized.normalization_metadata.location_mapping = {
         original: specs.location || '',
         canonical: locationResult.canonical,
-        coresignal_locations: locationResult.coresignal_locations,
+        search_locations: locationResult.search_locations,
         synonyms_used: locationResult.synonyms_used
       };
     }
@@ -289,15 +289,15 @@ async function normalizeSkill(supabaseClient: any, skill: string) {
   return { original: skill, canonical: skill }; // Keep original if no match
 }
 
-// Enhanced location normalization that returns CoreSignal-compatible formats
-async function normalizeLocationForCoresignal(
+// Location normalization into "City,State,CC" / region / country search strings
+async function normalizeLocationForSearch(
   location: string, 
   locationDetails?: JobSpecs['location_details']
-): Promise<{ canonical: string; coresignal_locations: string[]; synonyms_used?: string[] }> {
-  console.log('🌍 Normalizing location for CoreSignal:', location, locationDetails);
+): Promise<{ canonical: string; search_locations: string[]; synonyms_used?: string[] }> {
+  console.log('🌍 Normalizing location:', location, locationDetails);
   
   const locationLower = location.toLowerCase().trim();
-  let coresignalLocations: string[] = [];
+  let searchLocations: string[] = [];
   let canonical = location;
 
   // If we have structured location_details from AI, use that first
@@ -306,22 +306,22 @@ async function normalizeLocationForCoresignal(
       // Remote with region - expand to country codes
       const regionCodes = REGION_TO_COUNTRY_CODES[locationDetails.region];
       if (regionCodes) {
-        coresignalLocations = regionCodes;
+        searchLocations = regionCodes;
         canonical = `Remote - ${locationDetails.region}`;
-        console.log('📍 Used location_details region:', locationDetails.region, '→', coresignalLocations);
-        return { canonical, coresignal_locations: coresignalLocations };
+        console.log('📍 Used location_details region:', locationDetails.region, '→', searchLocations);
+        return { canonical, search_locations: searchLocations };
       }
     } else if (locationDetails.country_code) {
-      // Build CoreSignal format from structured data
+      // Build the search format from structured data
       if (locationDetails.city && locationDetails.state) {
-        coresignalLocations = [`${locationDetails.city},${locationDetails.state},${locationDetails.country_code}`];
+        searchLocations = [`${locationDetails.city},${locationDetails.state},${locationDetails.country_code}`];
       } else if (locationDetails.state) {
-        coresignalLocations = [`${locationDetails.state},${locationDetails.country_code}`];
+        searchLocations = [`${locationDetails.state},${locationDetails.country_code}`];
       } else {
-        coresignalLocations = [locationDetails.country_code];
+        searchLocations = [locationDetails.country_code];
       }
-      console.log('📍 Built from location_details:', coresignalLocations);
-      return { canonical: location, coresignal_locations: coresignalLocations };
+      console.log('📍 Built from location_details:', searchLocations);
+      return { canonical: location, search_locations: searchLocations };
     }
   }
 
@@ -332,21 +332,21 @@ async function normalizeLocationForCoresignal(
     const regionCodes = REGION_TO_COUNTRY_CODES[region];
     if (regionCodes) {
       console.log('📍 Matched Remote - Region pattern:', region, '→', regionCodes);
-      return { canonical: location, coresignal_locations: regionCodes };
+      return { canonical: location, search_locations: regionCodes };
     }
   }
 
   // Check for pure "Remote" (global search)
   if (/^remote$/i.test(locationLower) || /^remote\s+work$/i.test(locationLower)) {
     console.log('📍 Pure remote - global search');
-    return { canonical: 'Remote', coresignal_locations: [] };
+    return { canonical: 'Remote', search_locations: [] };
   }
 
   // Check for region keywords
   for (const [region, codes] of Object.entries(REGION_TO_COUNTRY_CODES)) {
     if (locationLower.includes(region.toLowerCase())) {
       console.log('📍 Matched region keyword:', region, '→', codes);
-      return { canonical: location, coresignal_locations: codes };
+      return { canonical: location, search_locations: codes };
     }
   }
 
@@ -354,7 +354,7 @@ async function normalizeLocationForCoresignal(
   for (const [alias, value] of Object.entries(CITY_ALIASES)) {
     if (locationLower.includes(alias)) {
       console.log('📍 Matched city alias:', alias, '→', value);
-      return { canonical: location, coresignal_locations: [value] };
+      return { canonical: location, search_locations: [value] };
     }
   }
 
@@ -369,20 +369,20 @@ async function normalizeLocationForCoresignal(
       if (countryCode) {
         if (parts.length === 3) {
           // City, State, Country
-          coresignalLocations = [`${parts[0]},${parts[1]},${countryCode}`];
+          searchLocations = [`${parts[0]},${parts[1]},${countryCode}`];
         } else if (parts.length === 2) {
           // Could be City, Country or State, Country
           // For major cities, use the city format
           const cityLower = parts[0].toLowerCase();
           if (CITY_ALIASES[cityLower]) {
-            coresignalLocations = [CITY_ALIASES[cityLower]];
+            searchLocations = [CITY_ALIASES[cityLower]];
           } else {
             // Assume it's a state/city and just use country code
-            coresignalLocations = [countryCode];
+            searchLocations = [countryCode];
           }
         }
-        console.log('📍 Parsed comma-separated location:', parts, '→', coresignalLocations);
-        return { canonical: location, coresignal_locations: coresignalLocations };
+        console.log('📍 Parsed comma-separated location:', parts, '→', searchLocations);
+        return { canonical: location, search_locations: searchLocations };
       }
     }
   }
@@ -391,21 +391,21 @@ async function normalizeLocationForCoresignal(
   for (const [countryName, code] of Object.entries(COUNTRY_NAME_TO_CODE)) {
     if (locationLower.includes(countryName)) {
       console.log('📍 Matched country name:', countryName, '→', code);
-      return { canonical: location, coresignal_locations: [code] };
+      return { canonical: location, search_locations: [code] };
     }
   }
 
-  console.log('⚠️ Could not normalize location to CoreSignal format:', location);
-  return { canonical: location, coresignal_locations: [], synonyms_used: ['no_match'] };
+  console.log('⚠️ Could not normalize location:', location);
+  return { canonical: location, search_locations: [], synonyms_used: ['no_match'] };
 }
 
 // Legacy function for backward compatibility
 async function normalizeLocation(supabaseClient: any, location: string) {
-  const result = await normalizeLocationForCoresignal(location);
+  const result = await normalizeLocationForSearch(location);
   return { 
     original: location, 
     canonical: result.canonical,
-    coresignal_locations: result.coresignal_locations,
+    search_locations: result.search_locations,
     synonyms_used: result.synonyms_used
   };
 }

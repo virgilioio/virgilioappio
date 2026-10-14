@@ -175,7 +175,6 @@ export function buildCandidateCorpus(candidate: any, workExperience: any[], educ
   if (candidate.standardized_skills?.length) parts.push(candidate.standardized_skills.join(' '));
   if (candidate.specialization) parts.push(candidate.specialization);
   if (candidate.functional_area) parts.push(candidate.functional_area);
-  if (candidate.coresignal_headline) parts.push(candidate.coresignal_headline);
 
   for (const we of workExperience) {
     if (we.job_title) parts.push(we.job_title);

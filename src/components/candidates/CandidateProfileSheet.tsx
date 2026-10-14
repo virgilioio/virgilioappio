@@ -858,8 +858,6 @@ const stageHasAutomation = useMemo(() => {
     return () => { cancelled = true }
   }, [open, autoOpenScorecardId, associationId, planStages, candidateId])
 
-  // Remove CoreSignal enrichment - work experience and education will be empty arrays for now
-
   useEffect(() => {
     const loadRelated = async () => {
       if (!open || !candidate || !jobId) return

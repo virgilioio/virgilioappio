@@ -31,7 +31,6 @@ export interface PlatformMetrics {
   activity: {
     recentActivities: number
   }
-  // CoreSignal API integration removed
   lastUpdated: string
 }
 

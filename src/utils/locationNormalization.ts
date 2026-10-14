@@ -404,6 +404,3 @@ export function normalizeLocationsArray(locations: string[]): string[] {
   return Array.from(normalized)
 }
 
-// Backwards compatibility exports
-export const normalizeLocationForCoresignal = normalizeLocationForSourcing
-export const isValidCoresignalLocation = isValidSourcingLocation

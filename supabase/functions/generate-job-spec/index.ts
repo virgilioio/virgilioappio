@@ -320,52 +320,10 @@ serve(async (req) => {
     const detectedLanguage = detectPromptLanguage(prompt);
     console.log('Detected prompt language:', detectedLanguage);
 
-    // First, get market salary data to enhance AI recommendations
-    let marketSalaryData = null;
-    let salaryInsights = '';
-    
-    // Try to extract job title and location from prompt for salary research
-    const jobTitleMatch = prompt.match(/(?:need|hire|looking for|want)\s+(?:a\s+)?([^,.!?]+?)(?:\s+(?:in|at|for|based))/i);
-    const locationMatch = prompt.match(/(?:in|at|based in|located in)\s+([^,.!?]+?)(?:\.|,|!|\?|$)/i);
-    
-    if (jobTitleMatch && locationMatch) {
-      const inferredJobTitle = jobTitleMatch[1].trim();
-      const inferredLocation = locationMatch[1].trim();
-      
-      console.log(`🔍 Researching salary for: ${inferredJobTitle} in ${inferredLocation}`);
-      
-      try {
-        // CoreSignal salary research removed
-        const salaryResponse: any = null;
-        const salaryError = 'CoreSignal integration removed';
-
-        if (!salaryError && salaryResponse?.salaryData) {
-          marketSalaryData = salaryResponse.salaryData;
-          const currency = marketSalaryData.currency;
-          const median = marketSalaryData.salary_median;
-          const min = marketSalaryData.percentile_25;
-          const max = marketSalaryData.percentile_75;
-          
-          salaryInsights = `
-
-MARKET SALARY INTELLIGENCE:
-- Role: ${inferredJobTitle} in ${inferredLocation}
-- Market Median: ${currency} ${median?.toLocaleString()} 
-- Market Range: ${currency} ${min?.toLocaleString()} - ${currency} ${max?.toLocaleString()}
-- Market Competitiveness: ${marketSalaryData.market_competitiveness}
-- Sample Size: ${marketSalaryData.sample_size} jobs analyzed
-- Data Source: ${salaryResponse.source}
-
-Use this market data to provide SPECIFIC salary recommendations instead of generic ranges. Compare any suggested salary range against this market data and provide insights about market positioning.`;
-          
-          console.log('✅ Market salary data obtained:', marketSalaryData);
-        } else {
-          console.log('❌ No market salary data available:', salaryError);
-        }
-      } catch (salaryError) {
-        console.error('Error getting salary data:', salaryError);
-      }
-    }
+    // There is no market salary feed; the model suggests ranges on its own.
+    // marketSalaryData stays null in the response, as before.
+    const marketSalaryData = null;
+    const salaryInsights = '';
 
     const response = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -474,8 +432,8 @@ The job_description should be structured HTML like:
 <h3>Requirements</h3>
 <ul><li>...</li></ul>
 
-🔍 CRITICAL - LOCATION FORMAT FOR CORESIGNAL COMPATIBILITY:
-Your location output MUST be in a format that can be mapped to CoreSignal's expected structure.
+🔍 CRITICAL - LOCATION FORMAT:
+Your location output MUST follow this structure so it can be normalized and searched.
 
 LOCATION OUTPUT RULES:
 1. For specific cities: Use format "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico", "San Francisco, California, United States")

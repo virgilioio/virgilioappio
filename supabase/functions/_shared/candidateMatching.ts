@@ -301,10 +301,8 @@ export interface CandidateMatchingSummary {
   breakdown: {
     salaryMatches: number;
     locationMatches: number;
-    coreSignalCandidates: number;
     localCandidates: number;
     creditsUsed: number;
-    coreSignalError?: string;
     searchStrategy: string;
     skillsAnalysis: {
       averageMatch: number;
@@ -327,7 +325,6 @@ export function buildCandidateMatchingSummary(
     breakdown: {
       salaryMatches: 0,
       locationMatches: 0,
-      coreSignalCandidates: 0,
       localCandidates: 0,
       creditsUsed: 0,
       searchStrategy: 'local-database',

@@ -181,7 +181,6 @@ export function SkillsEditor({
                 </div>
               </div>
 
-              {/* CoreSignal source breakdown removed */}
             </div>
           )}
         </div>

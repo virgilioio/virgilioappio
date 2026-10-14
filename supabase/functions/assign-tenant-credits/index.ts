@@ -73,7 +73,7 @@ serve(async (req) => {
 
     // Get most recent usage record for this tenant
     const { data: existingUsage } = await supabase
-      .from('coresignal_usage')
+      .from('sourcing_credits_usage')
       .select('*')
       .eq('tenant_id', tenant_id)
       .order('updated_at', { ascending: false })
@@ -85,7 +85,7 @@ serve(async (req) => {
     if (existingUsage) {
       // Update existing record
       const { data, error } = await supabase
-        .from('coresignal_usage')
+        .from('sourcing_credits_usage')
         .update(updates)
         .eq('id', existingUsage.id)
         .select()
@@ -109,7 +109,7 @@ serve(async (req) => {
       }
 
       const { data, error } = await supabase
-        .from('coresignal_usage')
+        .from('sourcing_credits_usage')
         .insert({
           tenant_id,
           billing_cycle_start: billingCycleStart.toISOString(),

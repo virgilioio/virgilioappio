@@ -149,8 +149,6 @@ serve(withRequestCors(async (req) => {
       ) || [])
     ].length || 0
 
-    // CoreSignal integration removed
-
     const metrics = {
       users: {
         active: activeUsers,
@@ -181,7 +179,6 @@ serve(withRequestCors(async (req) => {
       activity: {
         recentActivities: recentActivities
       },
-      // CoreSignal API integration removed
       lastUpdated: new Date().toISOString()
     }
 
