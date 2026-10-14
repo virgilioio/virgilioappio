@@ -10380,6 +10380,14 @@ export type Database = {
         Args: { org_id_param: string }
         Returns: boolean
       }
+      user_deletion_blockers: {
+        Args: { p_user_id: string }
+        Returns: {
+          column_name: string
+          row_count: number
+          table_name: string
+        }[]
+      }
       user_has_active_tenant_membership: {
         Args: { tenant_id_param: string }
         Returns: boolean
