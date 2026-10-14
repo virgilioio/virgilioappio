@@ -64,8 +64,8 @@ export const PIPELINE_FILTER_MENU: {
     group: 'Attention',
     options: [
       { key: 'fav', label: 'Favorites only', filter: { id: 'favorites', label: 'Favorites', value: 'only' } },
-      { key: 'fit70', label: 'AI fit ≥ 70', filter: { id: 'fit', label: 'AI fit', value: '≥ 70', min: 70 } },
-      { key: 'fit85', label: 'AI fit ≥ 85', filter: { id: 'fit', label: 'AI fit', value: '≥ 85', min: 85 } },
+      { key: 'fit75', label: 'Gio fit ≥ 75 (strong)', filter: { id: 'fit', label: 'Gio fit', value: '≥ 75', min: 75 } },
+      { key: 'fit90', label: 'Gio fit ≥ 90 (exceptional)', filter: { id: 'fit', label: 'Gio fit', value: '≥ 90', min: 90 } },
     ],
   },
   {

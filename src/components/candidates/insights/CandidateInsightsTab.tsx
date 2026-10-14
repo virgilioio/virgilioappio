@@ -31,6 +31,7 @@ import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
 import { buildNarrationSteps, stepProgress, useGioFitNarration } from './loading/GioFitNarration'
 import { useCandidateFitInsights, type FitDimension, type MustHave, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
+import { TRIGGER_LABEL, useFitScoreHistory, type FitScorePoint } from '@/hooks/useFitScoreHistory'
 import { SkillPriorityLegend } from '@/components/jobs/SkillPill'
 import { SKILL_PRIORITY, readSkillPriorities, sortByPriority } from '@/lib/skillPriority'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -213,6 +214,37 @@ function MustHaves({ items }: { items: MustHave[] }) {
   )
 }
 
+/** "72 → 69 → 81": how the score moved, with what moved it on hover. */
+function ScoreTrajectory({ points }: { points: FitScorePoint[] }) {
+  const shown = points.slice(-6)
+  return (
+    <p className="mt-2 flex flex-wrap items-center justify-end gap-1 text-[11px] text-fit-subtle">
+      {points.length > shown.length && <span>…</span>}
+      {shown.map((point, index) => {
+        const previous = shown[index - 1]
+        const delta = previous && typeof point.score === 'number' && typeof previous.score === 'number' ? point.score - previous.score : null
+        return (
+          <React.Fragment key={point.id}>
+            {index > 0 && <span className="text-fit-null">→</span>}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={cn('cursor-help tabular-nums', index === shown.length - 1 ? 'font-semibold text-fit-ink' : 'font-medium')}>
+                  {point.score ?? '—'}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px]">
+                <p className="text-[11px] font-medium">{TRIGGER_LABEL[point.trigger]} · {new Date(point.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{delta != null && delta !== 0 ? ` · ${delta > 0 ? '+' : ''}${delta}` : ''}</p>
+                {point.changesSinceLast && <p className="mt-1 text-[11px] leading-[1.45] opacity-80">{point.changesSinceLast}</p>}
+              </TooltipContent>
+            </Tooltip>
+          </React.Fragment>
+        )
+      })}
+      <span className="ml-1 text-fit-null">{points.length} assessments</span>
+    </p>
+  )
+}
+
 function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; clientReady: boolean }) {
   if (!points.length) return null
   const priorityTone = { high: 'red', medium: 'yellow', low: 'neutral' } as const
@@ -243,6 +275,8 @@ function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; 
 
 export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, candidate, workExperience, education, showScorecards = true, suggested = null, autoGenerate = true, renderEmpty, renderWaitStrip, onStateChange }: CandidateInsightsTabProps) {
   const { insights, isLoading, isRefreshing, isBlocked, generationError, refreshInsights, cancelRefresh, updateLanguagePreferences, invalidate } = useCandidateFitInsights(candidateId, jobId)
+  // The score's trajectory: every stored assessment, oldest first (2026-10-14).
+  const { data: scoreHistory = [] } = useFitScoreHistory(insights?.associationId ?? null)
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   const [openDimension, setOpenDimension] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'internal' | 'client'>('internal')
@@ -519,6 +553,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                 <p className="mt-0.5 text-[11px] capitalize text-fit-subtle">{analysis.confidence} confidence</p>
               </div>
             </div>
+            {!clientReady && scoreHistory.length > 1 && <ScoreTrajectory points={scoreHistory} />}
           </div>
         </div>
         <div className="mt-[18px] flex flex-wrap items-center gap-2.5 overflow-visible border-t border-fit-hairline pt-4">

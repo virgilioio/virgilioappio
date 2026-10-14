@@ -1,6 +1,7 @@
-// Prepares Gio Fit dossiers for candidates on live client pipelines.
-// Woken on enqueue (DB trigger) and when a client opens a candidate that is
-// still being prepared. Bounded: one lease holder, ≤5 items per run, a small
+// Prepares Gio Fit dossiers for candidates on live client pipelines, and
+// re-scores a pipeline when a scorecard is submitted (reason = 'rescore',
+// 2026-10-14). Woken on enqueue (DB trigger) and when a client opens a
+// candidate that is still being prepared. Bounded: one lease holder, ≤5 items per run, a small
 // hop budget, and it stops as soon as nothing is due.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -34,14 +35,16 @@ Deno.serve(async (req) => {
   let processed = 0;
   let rateLimited = 0;
   try {
-    const { data: items } = await sb.from("fit_analysis_queue").select("id, association_id, attempts")
+    const { data: items } = await sb.from("fit_analysis_queue").select("id, association_id, attempts, reason")
       .eq("status", "pending").lte("next_attempt_at", new Date().toISOString())
       .order("created_at").limit(BATCH);
 
     for (const item of items ?? []) {
       const { data: a } = await sb.from("job_candidate_associations")
         .select("candidate_id, job_id, status, ai_fit_analysis").eq("id", item.association_id).maybeSingle();
-      if (!a || a.ai_fit_analysis || ["rejected", "withdrawn"].includes(String(a.status ?? "").toLowerCase())) {
+      // An initial run is pointless once a dossier exists; a re-score is the point.
+      const rescore = item.reason === "rescore";
+      if (!a || (a.ai_fit_analysis && !rescore) || ["rejected", "withdrawn"].includes(String(a.status ?? "").toLowerCase())) {
         await sb.from("fit_analysis_queue").update({ status: "done", updated_at: new Date().toISOString() }).eq("id", item.id);
         continue;
       }
@@ -49,7 +52,7 @@ Deno.serve(async (req) => {
       const res = await fetch(`${URL_}/functions/v1/analyze-candidate-fit`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
-        body: JSON.stringify({ candidate_id: a.candidate_id, job_id: a.job_id }),
+        body: JSON.stringify({ candidate_id: a.candidate_id, job_id: a.job_id, trigger: rescore ? "scorecard" : "queue" }),
       }).catch(() => null);
       processed++;
       const status = res?.status ?? 0;

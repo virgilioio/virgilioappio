@@ -259,6 +259,7 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
         if (status === 'ok' || status === 'unchanged') {
           setIsDeferred(false)
           await queryClient.invalidateQueries({ queryKey })
+          void queryClient.invalidateQueries({ queryKey: ['fit-score-history'] })
           return
         }
         setIsDeferred(true)

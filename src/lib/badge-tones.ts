@@ -60,11 +60,12 @@ export const SCORECARD_TONE: Record<string, BadgeTone> = {
   strongNo: "red",
 }
 
-/** AI fit score → tone. Always render the numeric score next to the badge. */
+/** AI fit score → tone, on the dossier's own bands (90 exceptional, 75 strong,
+ *  60 mixed, 40 weak; aligned 2026-10-14). Always render the numeric score next to the badge. */
 export function aiFitTone(score: number): BadgeTone {
-  if (score >= 85) return "green"
-  if (score >= 70) return "blue"
-  if (score >= 50) return "yellow"
-  if (score >= 30) return "orange"
+  if (score >= 90) return "green"
+  if (score >= 75) return "blue"
+  if (score >= 60) return "yellow"
+  if (score >= 40) return "orange"
   return "red"
 }

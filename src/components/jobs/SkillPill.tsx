@@ -60,7 +60,7 @@ export function SkillPill({
           <DropdownMenuContent align="start" sideOffset={6} className="w-56" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">Priority</DropdownMenuLabel>
             {SKILL_PRIORITIES.map((option) => (
-              <DropdownMenuItem key={option} onSelect={() => onPriorityChange(option)} className="items-start gap-2.5 py-2">
+              <DropdownMenuItem key={option} onSelect={() => onPriorityChange(option)} className="h-auto items-start gap-2.5 py-2">
                 <span className={cn('mt-[5px] h-2 w-2 shrink-0 rounded-full', SKILL_PRIORITY[option].dot)} />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[13px] font-medium text-text-primary">{SKILL_PRIORITY[option].label}</span>

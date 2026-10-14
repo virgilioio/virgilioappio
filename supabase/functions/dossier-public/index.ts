@@ -72,6 +72,8 @@ function clientReadyAnalysis(raw: Record<string, unknown>) {
       status: entry?.status,
       evidence: typeof entry?.evidence === "string" ? entry.evidence : null,
       source: typeof entry?.source === "string" ? entry.source : null,
+      // The job's priority for the skill (must / nice / bonus), so the client sees the same colours.
+      priority: ["must", "nice", "bonus"].includes(entry?.priority) ? entry.priority : undefined,
     })).filter((entry: any) => entry.skill)
     : undefined;
 
@@ -164,7 +166,7 @@ Deno.serve(async (req) => {
 
     const { data: job } = await supabase
       .from("jobs")
-      .select("id, title, status, tenant_id, created_by, organization_id, must_have_skills, skills")
+      .select("id, title, status, tenant_id, created_by, organization_id, must_have_skills, skills, skill_priorities")
       .eq("id", assoc.job_id)
       .maybeSingle();
     if (!job) return NOT_FOUND();
@@ -475,11 +477,9 @@ Deno.serve(async (req) => {
       if (full) preparedBy = full;
     }
 
-    const requiredSkills = (Array.isArray(job.must_have_skills) && job.must_have_skills.length
-      ? job.must_have_skills
-      : Array.isArray(job.skills)
-      ? job.skills
-      : []).map(String);
+    // Every job skill, coloured by its priority on the client's page (2026-10-14).
+    const requiredSkills = (Array.isArray(job.skills) ? job.skills : []).map(String);
+    const skillPriorities = job.skill_priorities && typeof job.skill_priorities === "object" ? job.skill_priorities : {};
 
     const roleLine = [
       candidate?.role_current || candidate?.current_job_title,
@@ -526,6 +526,7 @@ Deno.serve(async (req) => {
         skills: Array.isArray(candidate?.skills) ? candidate!.skills.map(String) : [],
       },
       required_skills: requiredSkills,
+      skill_priorities: skillPriorities,
       salary_expectation: salaryExpectation,
       files,
       score: Number(assocFit.ai_fit_score),

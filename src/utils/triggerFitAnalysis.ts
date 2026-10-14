@@ -23,7 +23,8 @@ export async function requestFitAnalysis(
     },
     // `force` re-runs even when nothing changed (the Refresh button). Without
     // it the function hands back the stored dossier when inputs match.
-    body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, force: options.force === true }),
+    // `trigger` is recorded with the assessment: refresh = a person asked, auto = stale on open.
+    body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, force: options.force === true, trigger: options.force ? 'refresh' : 'auto' }),
   })
 
   const payload = await response.json().catch(() => null)

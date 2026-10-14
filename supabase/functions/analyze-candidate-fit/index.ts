@@ -27,6 +27,19 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+/** The role inside a Supabase JWT, without verifying it (the gateway already did). */
+function jwtRole(auth: string): string {
+  try {
+    const token = auth.replace(/^Bearer\s+/i, "");
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return String(payload?.role ?? "");
+  } catch {
+    return "";
+  }
+}
+
+const TRIGGERS = new Set(["refresh", "auto", "queue", "scorecard"]);
+
 async function sha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -231,7 +244,7 @@ ANTI-HALLUCINATION RULES
 
 MUST-HAVES (must_haves)
 
-Read the job description and list what it states as mandatory: "must", "required", "essential", "minimum N years", "must be based in", "fluent in", a specific certification or degree. At most 8. The SKILLS TO CHECK list is not a list of must-haves; a tool or method on it (a CRM, Slack, MEDDICC) is only a must-have when the description says it is required. For each one: met when the candidate data shows it, partial when adjacent experience supports it, not_met only when the candidate data explicitly contradicts it, unknown when there is no data either way. "Not mentioned" is unknown, never not_met.
+Read the job description and list what it states as mandatory: "must", "required", "essential", "minimum N years", "must be based in", "fluent in", a specific certification or degree. At most 8. The SKILLS TO CHECK list is not a list of must-haves: a skill tagged [must-have] there is handled separately by the system from its skill verdict, and a tool or method tagged [nice-to-have] or [extra] is only a must-have when the description says it is required. For each one: met when the candidate data shows it, partial when adjacent experience supports it, not_met only when the candidate data explicitly contradicts it, unknown when there is no data either way. "Not mentioned" is unknown, never not_met.
 
 HOW THE SCORE IS BOUNDED
 
@@ -312,7 +325,18 @@ serve(async (req) => {
   let suggestionRowId: string | null = null;
 
   try {
-    const { candidate_id, job_id, force } = await req.json();
+    // Signed-in members and our own queue only: the public key alone could
+    // otherwise spend AI credits (2026-10-14).
+    const role = jwtRole(req.headers.get("Authorization") ?? "");
+    if (role !== "authenticated" && role !== "service_role") {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...headers, "Content-Type": "application/json" },
+      });
+    }
+
+    const { candidate_id, job_id, force, trigger: rawTrigger } = await req.json();
+    const trigger = TRIGGERS.has(rawTrigger) ? String(rawTrigger) : (role === "service_role" ? "queue" : "unknown");
     if (!candidate_id || !job_id) {
       return new Response(JSON.stringify({ error: "candidate_id and job_id are required" }), {
         status: 400,
@@ -508,16 +532,24 @@ serve(async (req) => {
     // Job context
     let jobContext = `JOB: ${job.title}`;
     if (job.description) jobContext += `\nDescription: ${job.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()}`;
-    // The chips adjudicate this exact list, in this exact order, with this spelling.
-    const requiredSkills: string[] = (
-      Array.isArray(job.must_have_skills) && job.must_have_skills.length
-        ? job.must_have_skills
-        : Array.isArray(job.skills) ? job.skills : []
-    )
+    // The chips adjudicate this exact list, in this exact order, with this
+    // spelling. Each skill carries the priority set on the job (2026-10-14):
+    // must-have (counts toward the caps), nice-to-have (the skills match), or
+    // extra (lifts when present, never a gap).
+    const requiredSkills: string[] = (Array.isArray(job.skills) ? job.skills : [])
       .map((skill: unknown) => String(skill || "").trim())
       .filter((skill: string) => skill.length > 0);
+    const priorityMap: Record<string, string> = job.skill_priorities && typeof job.skill_priorities === "object" ? job.skill_priorities : {};
+    const priorityOf = (skill: string): "must" | "nice" | "bonus" => {
+      const direct = priorityMap[skill];
+      if (direct === "must" || direct === "nice" || direct === "bonus") return direct;
+      const hit = Object.entries(priorityMap).find(([name]) => name.trim().toLowerCase() === skill.trim().toLowerCase());
+      return hit && (hit[1] === "must" || hit[1] === "bonus") ? hit[1] : "nice";
+    };
+    const PRIORITY_LABEL = { must: "must-have", nice: "nice-to-have", bonus: "extra" } as const;
     if (requiredSkills.length) {
-      jobContext += `\nSKILLS TO CHECK (adjudicate each one, in this order, using this spelling; these are not must-haves unless the description says so): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill}`).join(" | ")}`;
+      jobContext += `\nSKILLS TO CHECK (adjudicate each one, in this order, using this spelling): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill} [${PRIORITY_LABEL[priorityOf(skill)]}]`).join(" | ")}`;
+      jobContext += `\nA [must-have] skill that is not evidenced is a missing must-have. A [nice-to-have] skill is part of the skills match. An [extra] skill lifts the score when evidenced and is never a gap.`;
     }
     if (job.min_years_experience != null || job.max_years_experience != null) {
       jobContext += `\nYears of experience wanted: ${job.min_years_experience ?? "?"} to ${job.max_years_experience ?? "?"}`;
@@ -641,13 +673,14 @@ serve(async (req) => {
       const source = typeof entry?.source === "string" && entry.source.trim().length > 0
         ? entry.source.trim()
         : null;
+      const priority = priorityOf(skill);
       if (status !== "not_evidenced" && !evidence) {
-        return { skill, status: "not_evidenced", evidence: null, source: null };
+        return { skill, status: "not_evidenced", evidence: null, source: null, priority };
       }
       if (status === "not_evidenced") {
-        return { skill, status, evidence: null, source: null };
+        return { skill, status, evidence: null, source: null, priority };
       }
-      return { skill, status, evidence, source };
+      return { skill, status, evidence, source, priority };
     });
     const droppedEvidence = returnedEvidence.length - canonicalAnalysis.skill_evidence.length;
     if (droppedEvidence !== 0) {
@@ -693,6 +726,21 @@ serve(async (req) => {
         evidence: typeof m.evidence === "string" && m.evidence.trim() ? m.evidence.trim() : null,
       }));
 
+    // Skills the recruiter marked must-have join the must-haves list with the
+    // skill verdict as their status, unless the model already listed them.
+    const SKILL_TO_MUST = { evidenced: "met", partial: "partial", not_evidenced: "not_met" } as const;
+    for (const entry of canonicalAnalysis.skill_evidence) {
+      if (entry.priority !== "must") continue;
+      const needle = entry.skill.toLowerCase();
+      const covered = canonicalAnalysis.must_haves.some((m: any) => String(m.requirement).toLowerCase().includes(needle));
+      if (covered || canonicalAnalysis.must_haves.length >= 12) continue;
+      canonicalAnalysis.must_haves.push({
+        requirement: `Skill: ${entry.skill}`,
+        status: SKILL_TO_MUST[entry.status as keyof typeof SKILL_TO_MUST] ?? "unknown",
+        evidence: entry.evidence,
+      });
+    }
+
     // Tenure: the band is computed, not judged. Clamp the model's score to it.
     const tenureDim = (canonicalAnalysis.dimensions || []).find((d: any) => /tenure/i.test(d.name || ""));
     if (tenureDim) {
@@ -737,6 +785,7 @@ serve(async (req) => {
     canonicalAnalysis.overall_score = overall;
     canonicalAnalysis.scoring = {
       version: PROMPT_VERSION,
+      trigger,
       model_score: modelScore,
       weighted_mean: weightedMean == null ? null : Math.round(weightedMean * 10) / 10,
       rules_applied: rules,
