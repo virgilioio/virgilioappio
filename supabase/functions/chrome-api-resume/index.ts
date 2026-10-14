@@ -153,6 +153,15 @@ serve(async (req) => {
       );
     }
 
+    // The name shown on the attachment: the uploaded name without path parts or
+    // control characters, at most 200 characters (was an undefined variable).
+    const sanitizedFilename = (String(filename).split(/[\\/]/).pop() || 'resume.pdf')
+      .split('')
+      .filter((ch) => ch.charCodeAt(0) >= 32 && ch.charCodeAt(0) !== 127)
+      .join('')
+      .trim()
+      .slice(0, 200) || 'resume.pdf';
+
     // Generate simple file path: {candidate_id}/{timestamp}-{random}.pdf
     const randomId = crypto.randomUUID().split('-')[0];
     const timestamp = Date.now();
