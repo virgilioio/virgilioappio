@@ -9426,6 +9426,13 @@ export type Database = {
         Returns: boolean
       }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
+      can_manage_job_team: {
+        Args: {
+          _job_id: string
+          _role: Database["public"]["Enums"]["job_assignment_role"]
+        }
+        Returns: boolean
+      }
       carry_stage_history: {
         Args: { p_from: string; p_to: string }
         Returns: Json
