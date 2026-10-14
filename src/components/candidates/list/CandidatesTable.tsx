@@ -18,11 +18,14 @@ import type { AssociationsMap, AssociationDetail } from '@/hooks/useCandidateJob
 import { Plus, RotateCcw, Search } from 'lucide-react'
 import { useTableWindow } from '@/lib/useTableWindow'
 import { useFirstLoadStagger } from '@/lib/motion'
+import { shortWhen } from '@/lib/candidateDates'
 
 interface CandidatesTableProps {
   candidates: IndependentCandidate[]
   totalCount: number
   associationsMap: AssociationsMap
+  /** The date column follows the sort: Added, Applied, Interview… (2026-10-14). */
+  dateColumn?: { label: string; value: (c: IndependentCandidate) => number | null }
   isLoading: boolean
   /** True while a boolean/AI search is being committed — show skeleton on top of existing rows. */
   isSearching?: boolean
@@ -134,21 +137,12 @@ function AiFitCell({ assocs }: { assocs: AssociationDetail[] | undefined }) {
   )
 }
 
-function relativeTime(iso: string): string {
-  const d = (Date.now() - new Date(iso).getTime()) / 86400000
-  if (d < 1) return 'today'
-  if (d < 7) return `${Math.floor(d)}d`
-  if (d < 30) return `${Math.floor(d / 7)}w`
-  if (d < 365) return `${Math.floor(d / 30)}mo`
-  return `${Math.floor(d / 365)}y`
-}
-
 function isNew(iso: string): boolean {
   return (Date.now() - new Date(iso).getTime()) / 86400000 <= 7
 }
 
 export function CandidatesTable({
-  candidates, totalCount, associationsMap, isLoading, isSearching, hasActiveFilters,
+  candidates, totalCount, associationsMap, dateColumn, isLoading, isSearching, hasActiveFilters,
   selectedIds, onToggleSelect, onToggleSelectAll, onOpenCandidate, onDelete, onClearFilters, onAddCandidate,
   baseCount = 0, filterSummary, onEditSearch, loadError, onRetry,
 }: CandidatesTableProps) {
@@ -233,7 +227,7 @@ export function CandidatesTable({
           <TableHead>AI Fit</TableHead>
           <TableHead>Location</TableHead>
           <TableHead>Source</TableHead>
-          <TableHead>Added</TableHead>
+          <TableHead>{dateColumn?.label ?? 'Added'}</TableHead>
           <TableHead className="w-12" />
         </TableRow>
       </TableHeader>
@@ -243,7 +237,8 @@ export function CandidatesTable({
           const enter = stagger(win.start + i)
           const skills = (c.standardized_skills?.length ? c.standardized_skills : c.skills) ?? []
           const assocs = associationsMap.get(c.id)
-          const isFav = !!(assocs?.some(a => (a as any).isFavorite))
+          const isFav = !!(assocs?.some(a => a.isFavorite))
+          const when = dateColumn ? dateColumn.value(c) : new Date(c.created_at).getTime()
           const loc = [c.location_city, c.location_country].filter(Boolean).join(', ') || '—'
           const selected = selectedIds.includes(c.id)
           return (
@@ -279,7 +274,9 @@ export function CandidatesTable({
               <TableCell><span className="text-[12.5px] text-text-secondary">{loc}</span></TableCell>
               <TableCell><SourceCell source={c.source} /></TableCell>
               <TableCell>
-                <span className="text-[12.5px] text-text-secondary tabular-nums">{relativeTime(c.created_at)}</span>
+                {when == null
+                  ? <span className="text-[12.5px] text-text-tertiary">—</span>
+                  : <span className="text-[12.5px] text-text-secondary tabular-nums">{shortWhen(when)}</span>}
               </TableCell>
               <TableCell onClick={(e) => e.stopPropagation()} className="w-[32px] text-right">
                 <ActionCell>

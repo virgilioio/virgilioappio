@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
+import type { DateRangeFilter } from '@/lib/candidateDates'
 
 export interface CandidateFilters {
   statuses: string[]
@@ -21,8 +22,11 @@ export interface CandidateFilters {
   experienceMax: number | null
   salaryMin: number | null
   salaryMax: number | null
+  /** Legacy: "added between" from older saved searches. New ones use dateRanges. */
   dateFrom: Date | null
   dateTo: Date | null
+  /** Date filters: added, applied, interview… (2026-10-14). */
+  dateRanges: DateRangeFilter[]
 }
 
 const EMPTY_FILTERS: CandidateFilters = {
@@ -48,6 +52,7 @@ const EMPTY_FILTERS: CandidateFilters = {
   salaryMax: null,
   dateFrom: null,
   dateTo: null,
+  dateRanges: [],
 }
 
 type ArrayFilterKey = 'statuses' | 'sources' | 'countries' | 'states' | 'cities' | 'companies' | 'seniorityLevels' | 'functionalAreas' | 'specializations' | 'skills' | 'enrichmentStatuses' | 'pipelineStatuses' | 'jobs' | 'stages' | 'rejectedAtStages' | 'tagIds'
@@ -61,6 +66,7 @@ interface CandidateFilterContextValue {
   removeArrayFilterValue: (key: ArrayFilterKey, value: string) => void
   setNumericFilter: (key: NumericFilterKey, value: number | null) => void
   setDateFilter: (key: DateFilterKey, value: Date | null) => void
+  setDateRanges: (ranges: DateRangeFilter[]) => void
   clearAll: () => void
   clearFilter: (key: keyof CandidateFilters) => void
   activeFilterCount: number
@@ -101,6 +107,10 @@ export function CandidateFilterProvider({ children }: { children: ReactNode }) {
     setFilters(prev => ({ ...prev, [key]: value }))
   }, [])
 
+  const setDateRanges = useCallback((ranges: DateRangeFilter[]) => {
+    setFilters(prev => ({ ...prev, dateRanges: ranges }))
+  }, [])
+
   const clearAll = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
   const clearFilter = useCallback((key: keyof CandidateFilters) => {
@@ -117,6 +127,7 @@ export function CandidateFilterProvider({ children }: { children: ReactNode }) {
     if (filters.salaryMax !== null) count++
     if (filters.dateFrom !== null) count++
     if (filters.dateTo !== null) count++
+    count += filters.dateRanges.length
     return count
   }, [filters])
 
@@ -127,11 +138,12 @@ export function CandidateFilterProvider({ children }: { children: ReactNode }) {
     removeArrayFilterValue,
     setNumericFilter,
     setDateFilter,
+    setDateRanges,
     clearAll,
     clearFilter,
     activeFilterCount,
     hasActiveFilters: activeFilterCount > 0,
-  }), [filters, setArrayFilter, toggleArrayFilter, removeArrayFilterValue, setNumericFilter, setDateFilter, clearAll, clearFilter, activeFilterCount])
+  }), [filters, setArrayFilter, toggleArrayFilter, removeArrayFilterValue, setNumericFilter, setDateFilter, setDateRanges, clearAll, clearFilter, activeFilterCount])
 
   return (
     <CandidateFilterContext.Provider value={value}>

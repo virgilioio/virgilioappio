@@ -10,7 +10,11 @@ import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 import { useCandidateKpis } from '@/hooks/useCandidateKpis'
 import { useCandidateJobAssociationsMap } from '@/hooks/useCandidateJobAssociations'
 import { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
-import { useCandidateFilteredData } from '@/hooks/useCandidateFilteredData'
+import { useCandidateFilteredData, useCandidateSearchTexts } from '@/hooks/useCandidateFilteredData'
+import { useCandidateInterviewDates } from '@/hooks/useCandidateInterviewDates'
+import { useQuery } from '@tanstack/react-query'
+import { SortMenu } from '@/components/candidates/list/SortMenu'
+import { SORTS, datesFor, isSortKey, latest, type DateRangeFilter, type SortKey } from '@/lib/candidateDates'
 import { useCandidateBooleanFilter } from '@/hooks/useCandidateBooleanFilter'
 import { useMinimumDuration } from '@/hooks/useMinimumDuration'
 import { useSavedViews, type SavedView } from '@/hooks/useSavedViews'
@@ -55,7 +59,8 @@ import { PossibleDuplicatesCard } from '@/components/candidates/duplicate/Possib
 
 const SMART_LIST_FILTERS: Record<SmartListKey, Partial<CandidateFilters>> = {
   all: {},
-  active: { pipelineStatuses: ['active', 'in_progress'] },
+  // Same people the header counts: still in a pipeline, offers included.
+  active: { pipelineStatuses: ['active', 'offer'] },
   awaiting: {},
   favorites: {},
   new: {},
@@ -90,8 +95,9 @@ function CandidatesInner() {
   const candidateIds = useMemo(() => candidates.map(c => c.id), [candidates])
   const { associationsMap, associations } = useCandidateJobAssociationsMap(candidateIds)
   const filterOptions = useCandidateFilterOptions(candidates, associations)
-  const { filters, setArrayFilter, setNumericFilter, setDateFilter, clearAll, activeFilterCount } = useCandidateFilters()
+  const { filters, setArrayFilter, setNumericFilter, setDateFilter, setDateRanges, clearAll, activeFilterCount } = useCandidateFilters()
   const { tags } = useTags()
+  const tagNames = useMemo(() => new Map(tags.map((t) => [t.id, t.name])), [tags])
   const { data: allCandidateTagsMap } = useAllCandidateTagsMap()
   const { deleteTag } = useTagMutations()
   const activeTagId = filters.tagIds?.[0] ?? null
@@ -133,6 +139,7 @@ function CandidatesInner() {
   const [searchRunTick, setSearchRunTick] = useState(0)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<SortKey>('added_desc')
 
   // Smart list / saved view
   const [activeSmartList, setActiveSmartList] = useState<SmartListKey | null>('all')
@@ -155,7 +162,8 @@ function CandidatesInner() {
     for (const k of numKeys) setNumericFilter(k, (rec[k] as number | null) ?? null)
     setDateFilter('dateFrom', rec.dateFrom ? new Date(rec.dateFrom as any) : null)
     setDateFilter('dateTo', rec.dateTo ? new Date(rec.dateTo as any) : null)
-  }, [setArrayFilter, setNumericFilter, setDateFilter])
+    setDateRanges(Array.isArray(rec.dateRanges) ? (rec.dateRanges as DateRangeFilter[]) : [])
+  }, [setArrayFilter, setNumericFilter, setDateFilter, setDateRanges])
 
   const handleSelectSmartList = useCallback((key: SmartListKey) => {
     setActiveSmartList(key)
@@ -173,6 +181,8 @@ function CandidatesInner() {
     const extra = (v.extra_state ?? {}) as any
     if (typeof extra.query === 'string') setQuery(extra.query)
     if (extra.mode) setMode(extra.mode as SearchMode)
+    const savedSort = (v.sort_state as { key?: unknown } | null)?.key
+    setSortKey(isSortKey(savedSort) ? savedSort : 'added_desc')
   }, [setFiltersFromRecord])
 
 
@@ -181,9 +191,12 @@ function CandidatesInner() {
   // - boolean mode    → only runs on commit (Enter)
   // - ai mode         → runs via edge function on Enter (separate flow)
   const everythingTerm = mode === 'everything' ? query : ''
-  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap, allCandidateTagsMap)
+  const searchTexts = useCandidateSearchTexts(candidates, allCandidateTagsMap, tagNames)
+  const needsInterviews = sortKey === 'interview' || (filters.dateRanges ?? []).some((r) => r.field === 'interview')
+  const { interviewsMap, isLoading: interviewsLoading } = useCandidateInterviewDates(needsInterviews)
+  const baseFiltered = useCandidateFilteredData(candidates, filters, everythingTerm, associationsMap, allCandidateTagsMap, searchTexts, interviewsMap)
   const booleanExpr = mode === 'boolean' ? committedQuery : ''
-  const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, booleanExpr, mode === 'boolean')
+  const { matches: booleanMatches, error: booleanError } = useCandidateBooleanFilter(baseFiltered, booleanExpr, mode === 'boolean', searchTexts)
   const finalCandidates = mode === 'boolean' ? booleanMatches : baseFiltered
 
   // Skeleton floor for boolean/ai commits so fast filters don't flash.
@@ -197,25 +210,65 @@ function CandidatesInner() {
   }, [searchRunTick])
   const isBooleanRunning = useMinimumDuration(searchRunning, 700)
   const isAiRunning = useMinimumDuration(aiLoading, 320)
-  const isSearching = isBooleanRunning || isAiRunning
+  const isSearching = isBooleanRunning || isAiRunning || interviewsLoading
+
+  // "Awaiting outreach": the same people the header counts (database side).
+  const { data: awaitingIds } = useQuery({
+    queryKey: ['candidates-awaiting-outreach', tenant?.id],
+    enabled: activeSmartList === 'awaiting' && !!tenant?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_candidates_awaiting_outreach', { _tenant_id: tenant!.id })
+      if (error) throw error
+      return new Set((data ?? []) as string[])
+    },
+  })
 
   // Smart list post-filter for the ones the filter context can't express
-  const finalAfterSmart = useMemo(() => {
+  const filteredAfterSmart = useMemo(() => {
     if (!activeSmartList) return finalCandidates
     if (activeSmartList === 'favorites') {
-      return finalCandidates.filter(c => associationsMap.get(c.id)?.some(a => (a as any).isFavorite))
+      return finalCandidates.filter(c => associationsMap.get(c.id)?.some(a => a.isFavorite))
+    }
+    if (activeSmartList === 'awaiting') {
+      return awaitingIds ? finalCandidates.filter(c => awaitingIds.has(c.id)) : []
     }
     if (activeSmartList === 'new') {
       const cutoff = Date.now() - 7 * 86400000
       return finalCandidates.filter(c => new Date(c.created_at).getTime() >= cutoff)
     }
     return finalCandidates
-  }, [activeSmartList, finalCandidates, associationsMap])
+  }, [activeSmartList, finalCandidates, associationsMap, awaitingIds])
+
+  // Sorting (2026-10-14). Date sorts put people without that date last.
+  const sortDef = SORTS.find((x) => x.key === sortKey) ?? SORTS[0]
+  const dateColumn = useMemo(() => {
+    const col = sortDef.column ?? SORTS[0].column!
+    return {
+      label: col.label,
+      value: (c: { id: string; created_at: string; updated_at?: string | null }) =>
+        latest(datesFor(col.field, c, associationsMap.get(c.id), interviewsMap?.get(c.id))),
+    }
+  }, [sortDef, associationsMap, interviewsMap])
+  const finalAfterSmart = useMemo(() => {
+    if (sortKey === 'added_desc') return filteredAfterSmart
+    const list = [...filteredAfterSmart]
+    if (sortKey === 'added_asc') return list.reverse()
+    if (sortKey === 'name') {
+      return list.sort((a, b) => (a.candidate_name?.trim() || '\uffff').localeCompare(b.candidate_name?.trim() || '\uffff', undefined, { sensitivity: 'base' }))
+    }
+    if (sortKey === 'experience') {
+      return list.sort((a, b) => (b.years_experience ?? -1) - (a.years_experience ?? -1))
+    }
+    const keyed = list.map((c) => ({ c, t: dateColumn.value(c) }))
+    keyed.sort((a, b) => (b.t ?? Number.NEGATIVE_INFINITY) - (a.t ?? Number.NEGATIVE_INFINITY))
+    return keyed.map((k) => k.c)
+  }, [filteredAfterSmart, sortKey, dateColumn])
 
   // Pagination
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [query, committedQuery, mode, filters, activeSmartList, activeViewId])
+  useEffect(() => { setPage(1) }, [query, committedQuery, mode, filters, activeSmartList, activeViewId, sortKey])
   useEffect(() => { setAiError(null) }, [mode, query])
   // Reset committed query when switching modes so the new mode starts clean.
   useEffect(() => { setCommittedQuery('') }, [mode])
@@ -244,7 +297,7 @@ function CandidatesInner() {
   // §9: coming back to this view (same list, search and filters) restores how many
   // pages were open and where the list was scrolled to.
   const listRef = useRef<HTMLElement>(null)
-  const viewKey = `candidates:${activeSmartList}:${activeViewId ?? ''}:${mode}:${committedQuery}:${JSON.stringify(filters)}`
+  const viewKey = `candidates:${activeSmartList}:${activeViewId ?? ''}:${mode}:${committedQuery}:${sortKey}:${JSON.stringify(filters)}`
   const [pendingPages, setPendingPages] = useState<number | null>(() => {
     const pages = recallValue(viewKey)
     return pages && pages > 1 ? pages : null
@@ -255,7 +308,6 @@ function CandidatesInner() {
       setPage(pages)
       setPendingPages(pages)
     } else setPendingPages(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewKey])
   useEffect(() => {
     rememberValue(viewKey, page)
@@ -295,6 +347,16 @@ function CandidatesInner() {
     }
   }, [searchParams, setSearchParams, navigate])
 
+  // ?view=… (a saved search picked in the top bar) opens that search here.
+  const viewParam = searchParams.get('view')
+  useEffect(() => {
+    if (!viewParam) return
+    const v = views.find((x) => x.id === viewParam)
+    if (!v) return
+    const next = new URLSearchParams(searchParams); next.delete('view'); setSearchParams(next, { replace: true })
+    handleSelectView(v)
+  }, [viewParam, views, searchParams, setSearchParams, handleSelectView])
+
   // ?import=csv (from the Talent Intelligence empty state) opens the CSV import.
   useEffect(() => {
     if (searchParams.get('import') !== 'csv') return
@@ -309,12 +371,15 @@ function CandidatesInner() {
     toast({ title: `${deleteTarget.name.trim() || 'Candidate'} deleted` })
   }
 
-  const handleAiSubmit = async () => {
-    if (!query.trim()) return
+  // "Ask in plain English" (2026-10-14): the AI turns the request into the
+  // page's own filters, date filters and a few keywords, then the list shows
+  // them as ordinary chips and an Everything search you can adjust.
+  const runAiSearch = async (prompt: string) => {
+    if (!prompt.trim()) return
     setAiLoading(true); setAiError(null)
     try {
       const { data, error } = await supabase.functions.invoke('candidates-nl-search', {
-        body: { prompt: query, options: {
+        body: { prompt, options: {
           skills: filterOptions.skillOptions,
           countries: filterOptions.countryOptions,
           cities: filterOptions.cityOptions,
@@ -325,28 +390,64 @@ function CandidatesInner() {
           stages: filterOptions.stageOptions,
           statuses: filterOptions.statusOptions,
           sources: filterOptions.sourceOptions,
+          pipelineStatuses: filterOptions.pipelineStatusOptions,
         }},
       })
-      if (error) throw error
+      if (error) {
+        const status = (error as { context?: Response }).context?.status
+        throw new Error(
+          status === 429 ? 'The AI is busy right now. Try again in a minute.'
+          : status === 402 ? 'The AI service is out of credits. Tell a platform admin.'
+          : status === 401 ? 'Your session ended. Sign in again to use this.'
+          : 'Couldn’t reach the AI search. Try again.',
+        )
+      }
+      const dates = (Array.isArray(data?.dates) ? data.dates : []) as DateRangeFilter[]
       const partial: Partial<CandidateFilters> = {
         skills: data.skills, countries: data.countries, cities: data.cities,
         companies: data.companies, seniorityLevels: data.seniorityLevels,
         functionalAreas: data.functionalAreas, jobs: data.jobs, stages: data.stages,
-        statuses: data.statuses, sources: data.sources,
+        statuses: data.statuses, sources: data.sources, pipelineStatuses: data.pipelineStatuses,
         experienceMin: data.experienceMin, experienceMax: data.experienceMax,
+        dateRanges: dates,
+      }
+      const keywords = typeof data?.query === 'string' ? data.query.trim() : ''
+      const understood = keywords.length > 0 || dates.length > 0
+        || data.experienceMin != null || data.experienceMax != null
+        || (['skills','countries','cities','companies','seniorityLevels','functionalAreas','jobs','stages','statuses','sources','pipelineStatuses'] as const)
+          .some((k) => Array.isArray(data?.[k]) && data[k].length > 0)
+      if (!understood) {
+        setAiError('That didn’t turn into a search. Name a skill, title, place, company, job or a time like “last 30 days”.')
+        return
       }
       clearAll()
       setFiltersFromRecord(partial)
-      setQuery('')
-      setCommittedQuery('')
+      setActiveSmartList('all')
+      setActiveViewId(null)
+      setBaselineFilters({})
       setMode('everything')
-      toast({ title: 'Filters applied from your prompt' })
-    } catch (e: any) {
-      setAiError(e?.message ?? 'Could not parse your query')
+      setQuery(keywords)
+      setCommittedQuery('')
+      toast({ title: 'Search set from your request', description: 'Adjust the filters below, or edit the keywords in the search bar.' })
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : 'Couldn’t reach the AI search. Try again.')
     } finally {
       setAiLoading(false)
     }
   }
+  const handleAiSubmit = () => runAiSearch(query)
+
+  // ?ask=… from the top-bar "Ask Gio": run that request here once the
+  // candidates (and so the filter options) have loaded.
+  const askParam = searchParams.get('ask')
+  useEffect(() => {
+    if (!askParam || isLoading || candidates.length === 0) return
+    const next = new URLSearchParams(searchParams); next.delete('ask'); setSearchParams(next, { replace: true })
+    setMode('ai')
+    setQuery(askParam)
+    void runAiSearch(askParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askParam, isLoading, candidates.length])
 
   const filtersDirty = stableHash(filters) !== baselineFiltersHash
 
@@ -388,6 +489,7 @@ function CandidatesInner() {
       const created = await createView.mutateAsync({
         name: payload.name,
         filters: filters as any,
+        sort_state: { key: sortKey },
         extra_state: {
           query,
           mode,
@@ -431,7 +533,7 @@ function CandidatesInner() {
 
   const handleSaveChanges = async () => {
     if (!activeViewId) return
-    await updateView.mutateAsync({ id: activeViewId, filters: filters as any, extra_state: { query, mode } })
+    await updateView.mutateAsync({ id: activeViewId, filters: filters as any, sort_state: { key: sortKey }, extra_state: { query, mode } })
     setBaselineFilters({ ...filters } as Record<string, unknown>)
   }
   const handleResetChanges = () => {
@@ -657,7 +759,7 @@ function CandidatesInner() {
               }
             />
             </div>
-            <FilterChipsRow filterOptions={filterOptions} />
+            <FilterChipsRow filterOptions={filterOptions} trailing={<SortMenu value={sortKey} onChange={setSortKey} />} />
           </section>
 
 
@@ -747,6 +849,7 @@ function CandidatesInner() {
                 candidates={visible}
                 totalCount={finalAfterSmart.length}
                 associationsMap={associationsMap}
+                dateColumn={dateColumn}
                 isLoading={isLoading}
                 isSearching={isSearching}
                 hasActiveFilters={activeFilterCount > 0 || !!query || (!!activeSmartList && activeSmartList !== 'all') || !!activeViewId}

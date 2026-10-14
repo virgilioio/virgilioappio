@@ -3,12 +3,16 @@ import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu'
 import { useCandidateFilters } from '@/contexts/CandidateFilterContext'
 import type { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { DateFilterChip } from './DateFilterChip'
+import type { DateRangeFilter } from '@/lib/candidateDates'
 
 type FilterOptions = ReturnType<typeof useCandidateFilterOptions>
 
 interface FilterChipsRowProps {
   filterOptions: FilterOptions
+  /** Rendered at the far right (the Sort menu). */
+  trailing?: ReactNode
 }
 
 type ChipKey =
@@ -24,7 +28,7 @@ const CHIP_LABELS: Record<ChipKey, string> = {
   companies: 'Company',
   seniorityLevels: 'Seniority',
   functionalAreas: 'Function',
-  pipelineStatuses: 'Stage',
+  pipelineStatuses: 'Pipeline status',
   stages: 'Stage name',
   jobs: 'Job',
   sources: 'Source',
@@ -49,8 +53,15 @@ const OPTION_KEY: Record<ChipKey, keyof FilterOptions> = {
 
 const PRIMARY_ORDER: ChipKey[] = ['skills', 'countries', 'pipelineStatuses', 'companies', 'jobs']
 
-export function FilterChipsRow({ filterOptions }: FilterChipsRowProps) {
-  const { filters, setArrayFilter, clearAll, activeFilterCount } = useCandidateFilters()
+export function FilterChipsRow({ filterOptions, trailing }: FilterChipsRowProps) {
+  const { filters, setArrayFilter, setDateRanges, clearAll, activeFilterCount } = useCandidateFilters()
+  const ranges = filters.dateRanges ?? []
+  // One chip per kind of date: setting a kind that's already there replaces it.
+  const putRange = (next: DateRangeFilter, at?: number) => {
+    const list = ranges.filter((r, i) => i !== at && r.field !== next.field)
+    if (at == null) setDateRanges([...list, next])
+    else setDateRanges([...list.slice(0, at), next, ...list.slice(at)])
+  }
   const [extraVisible, setExtraVisible] = useState<Set<ChipKey>>(new Set())
 
   const isVisible = (key: ChipKey) =>
@@ -77,6 +88,19 @@ export function FilterChipsRow({ filterOptions }: FilterChipsRowProps) {
           />
         )
       })}
+
+      {ranges.map((r, i) => (
+        <DateFilterChip
+          key={`${r.field}-${i}`}
+          value={r}
+          usedFields={ranges.map((x) => x.field)}
+          onChange={(next) => putRange(next, i)}
+          onRemove={() => setDateRanges(ranges.filter((_, j) => j !== i))}
+        />
+      ))}
+      {ranges.length < 3 && (
+        <DateFilterChip usedFields={ranges.map((x) => x.field)} onChange={(next) => putRange(next)} />
+      )}
 
       {hiddenChips.length > 0 && (
         <DropdownMenu>
@@ -109,6 +133,8 @@ export function FilterChipsRow({ filterOptions }: FilterChipsRowProps) {
           Reset
         </button>
       )}
+
+      {trailing && <div className="ml-auto">{trailing}</div>}
     </div>
   )
 }

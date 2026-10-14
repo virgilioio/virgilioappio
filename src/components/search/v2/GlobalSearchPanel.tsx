@@ -14,6 +14,7 @@ import { useGlobalSearch } from '@/hooks/useGlobalSearch'
 import { useRecentSearches } from './useRecentSearches'
 import { SearchResultRowV2, GlyphKind } from './SearchResultRowV2'
 import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
+import { chipLabel, type DateRangeFilter } from '@/lib/candidateDates'
 
 type Scope = 'all' | 'candidates' | 'jobs' | 'saved'
 
@@ -97,6 +98,7 @@ export function GlobalSearchPanel({
   // Ask Gio results
   const [askResult, setAskResult] = useState<null | {
     skills: string[]; cities: string[]; countries: string[]; seniorityLevels: string[]; stages: string[]; statuses: string[]; query: string
+    dates?: DateRangeFilter[]
   }>(null)
   const [askLoading, setAskLoading] = useState(false)
   const [askError, setAskError] = useState<string | null>(null)
@@ -114,12 +116,12 @@ export function GlobalSearchPanel({
         if (cancelled) return
         if (error) throw error
         setAskResult(data)
-      } catch (e: any) {
-        if (!cancelled) setAskError(e?.message || 'Ask Gio failed')
+      } catch {
+        if (!cancelled) setAskError('Couldn’t reach Gio. Try again, or open it in Candidates.')
       } finally {
         if (!cancelled) setAskLoading(false)
       }
-    }, 400)
+    }, 700)
     return () => { cancelled = true; clearTimeout(t) }
   }, [askMode, trimmed, hasQuery])
 
@@ -147,7 +149,8 @@ export function GlobalSearchPanel({
           title: `Open in Candidates`,
           sub: 'Apply Gio\u2019s interpretation',
           rightMeta: <CornerDownLeft className="h-3 w-3" />,
-          onSelect: () => { commit(trimmed, 'candidates'); navigate('/candidates'); onClose() },
+          // The Candidates page runs the request with its own filter options.
+          onSelect: () => { commit(trimmed, 'candidates'); navigate(`/candidates?ask=${encodeURIComponent(trimmed)}`); onClose() },
         })
       }
       return r
@@ -174,7 +177,7 @@ export function GlobalSearchPanel({
           title: v.name,
           sub: 'Saved search',
           rightMeta: <span>Searches</span>,
-          onSelect: () => { navigate('/candidates'); onClose() },
+          onSelect: () => { navigate(`/candidates?view=${v.id}`); onClose() },
         })
       }
       // Commands
@@ -231,7 +234,7 @@ export function GlobalSearchPanel({
           title: v.name,
           sub: 'Saved search',
           rightMeta: <span>Searches</span>,
-          onSelect: () => { commit(trimmed, 'saved'); navigate('/candidates'); onClose() },
+          onSelect: () => { commit(trimmed, 'saved'); navigate(`/candidates?view=${v.id}`); onClose() },
         })
       }
     }
@@ -370,6 +373,7 @@ export function GlobalSearchPanel({
                 ...askResult.skills.map(v => ({ k: 'Skill', v })),
                 ...askResult.stages.map(v => ({ k: 'Stage', v })),
                 ...askResult.statuses.map(v => ({ k: 'Status', v })),
+                ...(askResult.dates ?? []).map(d => ({ k: 'Date', v: chipLabel(d) })),
               ].slice(0, 8).map((chip, i) => (
                 <span key={i} className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-white border border-violet-200 text-[11.5px] font-inter text-violet-700">
                   <span className="text-violet-500">{chip.k}</span>
