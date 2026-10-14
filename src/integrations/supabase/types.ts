@@ -6543,6 +6543,69 @@ export type Database = {
           },
         ]
       }
+      os_sync_queue: {
+        Row: {
+          actor_user_id: string
+          app_key: string
+          attempts: number
+          created_at: string
+          done_at: string | null
+          id: string
+          last_error: string | null
+          outcome: string | null
+          role: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          actor_user_id: string
+          app_key: string
+          attempts?: number
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          last_error?: string | null
+          outcome?: string | null
+          role?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          actor_user_id?: string
+          app_key?: string
+          attempts?: number
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          last_error?: string | null
+          outcome?: string | null
+          role?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_sync_queue_app_key_fkey"
+            columns: ["app_key"]
+            isOneToOne: false
+            referencedRelation: "os_apps"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "os_sync_queue_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_reset_tokens: {
         Row: {
           created_at: string | null
@@ -9590,6 +9653,30 @@ export type Database = {
           _role: string | null
           _tenant_id: string
           _user_id: string
+        }
+        Returns: undefined
+      }
+      os_sync_enqueue: {
+        Args: {
+          _actor: string
+          _app: string
+          _role: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      os_sync_enqueue_existing: {
+        Args: { _app: string; _tenant_id: string }
+        Returns: number
+      }
+      os_sync_record: {
+        Args: {
+          _detail: string
+          _id: string
+          _ok: boolean
+          _outcome: string
+          _retry: boolean
         }
         Returns: undefined
       }
