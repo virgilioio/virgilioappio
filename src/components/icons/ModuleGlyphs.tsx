@@ -49,5 +49,14 @@ export const AnalyticsGlyph: ModuleGlyph = ({ className }) => (
   </svg>
 )
 
+export const PeopleGlyph: ModuleGlyph = ({ className }) => (
+  <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+    <circle cx="19" cy="17" r="7" fill="currentColor" />
+    <rect x="8" y="27.5" width="22" height="11" rx="5.5" fill="currentColor" />
+    <circle className="accent" cx="33.5" cy="20" r="4.5" fill="currentColor" />
+    <rect className="accent" x="31" y="28.5" width="10" height="9" rx="4.5" fill="currentColor" />
+  </svg>
+)
+
 export const ReferencesModuleGlyph: ModuleGlyph = ({ className }) => <ReferencesGlyph className={className} />
 

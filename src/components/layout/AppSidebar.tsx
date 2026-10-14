@@ -6,21 +6,23 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
-import { AnalyticsGlyph, AtsGlyph, ChatGlyph, DashboardGlyph, ReferencesModuleGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
+import { AnalyticsGlyph, AtsGlyph, ChatGlyph, DashboardGlyph, PeopleGlyph, ReferencesModuleGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 
 
-export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'settings' | 'my-profile' | null
+export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'people' | 'settings' | 'my-profile' | null
 
 const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar']
 const CRM_PREFIXES = ['/crm']
 const CHAT_PREFIXES = ['/chat']
 const REFERENCES_PREFIXES = ['/references']
 const ANALYTICS_PREFIXES = ['/analytics', '/talent-intelligence', '/insights']
+const PEOPLE_PREFIXES = ['/os']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
   if (ANALYTICS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'analytics'
+  if (PEOPLE_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'people'
   if (REFERENCES_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'references'
   if (CHAT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'chat'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
@@ -41,6 +43,7 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'
   { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: () => false }, // gated via useCanUseChat below
   { id: 'references', label: 'Reference checks', Icon: ReferencesGlyph, href: '/references', show: (p) => p.canViewReferences },
   { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/analytics', show: (p) => !p.isSalesUser },
+  { id: 'people', label: 'People & Access', Icon: PeopleGlyph, href: '/os/people', show: (p) => p.isPlatformAdmin || p.isAdmin },
 ]
 
 // Tile classes — state-aware. The accent shape inside the glyph receives lilac

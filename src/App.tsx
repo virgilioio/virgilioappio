@@ -25,6 +25,7 @@ import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
 import { NoWorkspaceWall } from '@/components/auth/NoWorkspaceWall'
+import { OsAdminOnly } from '@/components/os/OsAdminOnly'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
@@ -80,6 +81,10 @@ const SaaSCustomerDetail = lazy(() =>
 )
 const Analytics = lazy(() => import('./pages/Analytics'))
 const References = lazy(() => import('./pages/References'))
+const OsPeople = lazy(() => import('./pages/os/People'))
+const OsPersonDetail = lazy(() => import('./pages/os/PersonDetail'))
+const OsJobRoles = lazy(() => import('./pages/os/JobRoles'))
+const OsHistory = lazy(() => import('./pages/os/History'))
 const ReferenceTemplates = lazy(() => import('./pages/ReferenceTemplates'))
 const ReferenceTemplateEditor = lazy(() => import('./pages/ReferenceTemplateEditor'))
 
@@ -222,6 +227,12 @@ function AppContent() {
             <Route path="/candidates/:candidateId/references" element={<CandidateReferences />} />
             <Route path="/references/templates" element={<ReferenceTemplates />} />
             <Route path="/references/templates/:id" element={<ReferenceTemplateEditor />} />
+            {/* Gio OS: People & Access (admins and platform admins) */}
+            <Route path="/os" element={<Navigate to="/os/people" replace />} />
+            <Route path="/os/people" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPeople /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/os/people/:memberId" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPersonDetail /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/os/job-roles" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsJobRoles /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/os/history" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsHistory /></OsAdminOnly></PhoneSwitch>} />
 
           </Route>
         </Route>
