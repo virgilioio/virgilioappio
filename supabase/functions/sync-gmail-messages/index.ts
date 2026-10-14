@@ -69,6 +69,27 @@ function parseEmailAddresses(emailStr: string): string[] {
   return emailStr.split(',').map(e => normalizeEmail(e)).filter(Boolean);
 }
 
+/**
+ * Google refused this mailbox for good (revoked, expired or missing Gmail
+ * access). The sync marks the mailbox "expired" so Settings shows Reconnect
+ * and the 15-minute schedule stops retrying it (2026-10-14). Passing problems
+ * (Google 5xx, rate limits, network) are plain errors and are retried.
+ */
+class ReconnectRequired extends Error {}
+
+const RECONNECT_MESSAGE = 'Google access was revoked or expired. Please reconnect Google Workspace.';
+const NO_GMAIL_ACCESS_MESSAGE = 'Gmail access isn’t allowed for this account. Reconnect Google Workspace and allow email access.';
+
+/** Throws ReconnectRequired for a lasting 401/403 from Gmail, a plain Error otherwise. */
+async function gmailError(res: Response, what: string): Promise<never> {
+  const body = await res.text().catch(() => '');
+  if (res.status === 401) throw new ReconnectRequired(RECONNECT_MESSAGE);
+  if (res.status === 403 && !/rateLimitExceeded|userRateLimitExceeded|quotaExceeded|backendError/i.test(body)) {
+    throw new ReconnectRequired(NO_GMAIL_ACCESS_MESSAGE);
+  }
+  throw new Error(`${what}: ${res.status} ${res.statusText}`);
+}
+
 async function refreshAccessToken(supabase: any, identity: any): Promise<string> {
   console.log('[Gmail Sync] Refreshing access token for identity:', identity.id);
   
@@ -91,7 +112,13 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
   });
 
   if (!tokenResponse.ok) {
-    throw new Error('Failed to refresh access token');
+    const body = await tokenResponse.text().catch(() => '');
+    // invalid_grant: the person revoked access, changed their password or the
+    // grant expired. Only they can fix it, by reconnecting.
+    if (/invalid_grant|unauthorized_client/i.test(body) || tokenResponse.status === 401) {
+      throw new ReconnectRequired(RECONNECT_MESSAGE);
+    }
+    throw new Error(`Failed to refresh access token: ${tokenResponse.status}`);
   }
 
   const tokens = await tokenResponse.json();
@@ -367,10 +394,15 @@ const handler = async (req: Request): Promise<Response> => {
       attachmentsSkipped: 0,
     };
 
+  // Set once the mailbox is loaded, so a lasting Google refusal can mark it.
+  let reconnectIdentityId: string | null = null;
+  let supabaseForReconnect: any = null;
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    supabaseForReconnect = supabase;
 
     // Authenticate - support both user JWT and service role key
     const authHeader = req.headers.get('Authorization');
@@ -415,6 +447,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (identityError || !identity) {
       throw new Error('Mail identity not found');
     }
+    reconnectIdentityId = identity.id;
 
     // For service role calls, use the identity's user_id
     if (isServiceRole) {
@@ -458,7 +491,7 @@ const handler = async (req: Request): Promise<Response> => {
           console.log(`[Gmail Sync] HistoryId expired, falling back to full sync`);
           identity.history_id = null;
         } else {
-          throw new Error(`Gmail History API error: ${historyResponse.statusText}`);
+          await gmailError(historyResponse, 'Gmail History API error');
         }
       } else {
         const historyData = await historyResponse.json();
@@ -488,7 +521,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
 
       if (!messagesResponse.ok) {
-        throw new Error(`Gmail API error: ${messagesResponse.statusText}`);
+        await gmailError(messagesResponse, 'Gmail API error');
       }
 
       const messagesData = await messagesResponse.json();
@@ -671,7 +704,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Update last sync timestamp and historyId
     const updateData: Record<string, any> = { 
       last_sync_at: new Date().toISOString(),
-      sync_status: 'active'
+      sync_status: 'active',
+      sync_error: null,
     };
     
     if (newHistoryId) {
@@ -713,6 +747,17 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
   } catch (error: any) {
+    if (error instanceof ReconnectRequired && reconnectIdentityId) {
+      console.warn('[Gmail Sync] Needs reconnecting:', reconnectIdentityId, error.message);
+      await supabaseForReconnect
+        ?.from('user_mail_identities')
+        .update({ sync_status: 'expired', sync_error: error.message })
+        .eq('id', reconnectIdentityId);
+      return new Response(
+        JSON.stringify({ error: 'reconnect_required', message: error.message, stats }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     console.error('[Gmail Sync] Error:', error);
     return new Response(
       JSON.stringify({ error: error.message, stats }),

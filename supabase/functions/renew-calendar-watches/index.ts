@@ -51,7 +51,10 @@ serve(async (req) => {
       .select('*')
       .lt('webhook_expiration', tomorrow)
       .eq('is_active', true)
-      .not('webhook_channel_id', 'is', null);
+      .not('webhook_channel_id', 'is', null)
+      // Calendars already marked "needs reconnecting" wait for the person to
+      // reconnect; retrying them daily can't succeed (2026-10-14).
+      .or('sync_status.is.null,sync_status.neq.expired');
 
     if (fetchError) {
       console.error('[renew-calendar-watches] Error fetching expiring watches:', fetchError);
@@ -71,10 +74,26 @@ serve(async (req) => {
 
     console.log(`[renew-calendar-watches] Found ${expiringWatches.length} expiring watches`);
 
+    // Only people who are still active members: someone who left keeps the row,
+    // but Gio must not keep watching their calendar.
+    const { data: activeMembers, error: membersError } = await supabase
+      .from('members')
+      .select('user_id')
+      .eq('user_status', 'active')
+      .in('user_id', [...new Set(expiringWatches.map((w: any) => w.user_id).filter(Boolean))]);
+    if (membersError) throw membersError;
+    const activeUserIds = new Set((activeMembers ?? []).map((m: any) => m.user_id));
+
     let renewed = 0;
     let failed = 0;
+    let reconnect = 0;
+    let skipped = 0;
 
     for (const identity of expiringWatches) {
+      if (!activeUserIds.has(identity.user_id)) {
+        skipped++;
+        continue;
+      }
       try {
         // Call setup-calendar-watch directly via HTTP with service role key
         const functionUrl = `${supabaseUrl}/functions/v1/setup-calendar-watch`;
@@ -92,7 +111,10 @@ serve(async (req) => {
         
         const renewError = !response.ok ? await response.text() : null;
 
-        if (renewError) {
+        if (response.status === 409) {
+          console.warn(`[renew-calendar-watches] ${identity.id} needs reconnecting; marked and skipped from now on`);
+          reconnect++;
+        } else if (renewError) {
           console.error(`[renew-calendar-watches] Failed to renew watch for ${identity.id}:`, renewError);
           failed++;
         } else {
@@ -105,10 +127,10 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[renew-calendar-watches] Renewal complete: ${renewed} renewed, ${failed} failed`);
+    console.log(`[renew-calendar-watches] Renewal complete: ${renewed} renewed, ${failed} failed, ${reconnect} need reconnecting, ${skipped} skipped (not active members)`);
 
     return new Response(
-      JSON.stringify({ success: true, renewed, failed }),
+      JSON.stringify({ success: true, renewed, failed, reconnect, skipped }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

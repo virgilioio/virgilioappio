@@ -9,7 +9,7 @@ const corsHeaders = {
 interface SyncResult {
   identity_id: string;
   email: string;
-  status: 'success' | 'error';
+  status: 'success' | 'error' | 'reconnect_required' | 'skipped';
   synced?: number;
   error?: string;
 }
@@ -74,6 +74,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Only people who are still active members (2026-10-14): someone who left
+    // keeps their connected mailbox row, but Gio must not keep reading it.
+    const { data: activeMembers, error: membersError } = await supabase
+      .from('members')
+      .select('user_id')
+      .eq('user_status', 'active')
+      .in('user_id', [...new Set(identities.map((i) => i.user_id).filter(Boolean))]);
+    if (membersError) throw membersError;
+    const activeUserIds = new Set((activeMembers ?? []).map((m) => m.user_id));
+
     console.log(`[Cron] Found ${identities.length} active mail identities to sync`);
 
     const results: SyncResult[] = [];
@@ -81,6 +91,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Process each identity with a small delay to avoid rate limits
     for (const identity of identities) {
       try {
+        if (!activeUserIds.has(identity.user_id)) {
+          results.push({ identity_id: identity.id, email: identity.email_address, status: 'skipped' });
+          continue;
+        }
+
         // Skip if synced in the last 10 minutes to avoid duplicate syncs
         if (identity.last_sync_at) {
           const lastSync = new Date(identity.last_sync_at).getTime();
@@ -109,7 +124,16 @@ const handler = async (req: Request): Promise<Response> => {
           },
         });
 
-        if (syncError) {
+        const syncStatus = (syncError as { context?: Response } | null)?.context?.status;
+        if (syncError && syncStatus === 409) {
+          // sync-gmail-messages marked the mailbox "expired"; it won't be picked again.
+          console.warn(`[Cron] ${identity.email_address} needs reconnecting; marked and skipped from now on`);
+          results.push({
+            identity_id: identity.id,
+            email: identity.email_address,
+            status: 'reconnect_required',
+          });
+        } else if (syncError) {
           console.error(`[Cron] Error syncing ${identity.email_address}:`, syncError);
           results.push({
             identity_id: identity.id,
@@ -144,15 +168,19 @@ const handler = async (req: Request): Promise<Response> => {
     // Calculate summary
     const successful = results.filter(r => r.status === 'success').length;
     const failed = results.filter(r => r.status === 'error').length;
+    const reconnect = results.filter(r => r.status === 'reconnect_required').length;
+    const skipped = results.filter(r => r.status === 'skipped').length;
     const totalSynced = results.reduce((sum, r) => sum + (r.synced || 0), 0);
 
-    console.log(`[Cron] Sync complete: ${successful} successful, ${failed} failed, ${totalSynced} total emails synced`);
+    console.log(`[Cron] Sync complete: ${successful} successful, ${failed} failed, ${reconnect} need reconnecting, ${skipped} skipped (not active members), ${totalSynced} total emails synced`);
 
     return new Response(
       JSON.stringify({
         total: identities.length,
         successful,
         failed,
+        reconnect,
+        skipped,
         totalSynced,
         results,
       }),

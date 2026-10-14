@@ -92,7 +92,23 @@ serve(async (req) => {
       });
 
       if (!tokenResponse.ok) {
-        throw new Error('Token refresh failed');
+        const body = await tokenResponse.text().catch(() => '');
+        // A lasting refusal (revoked or expired grant): mark the calendar so
+        // Settings shows Reconnect and the daily renewal stops retrying it
+        // (2026-10-14). Passing problems stay plain errors.
+        if (/invalid_grant|unauthorized_client/i.test(body) || tokenResponse.status === 401) {
+          const message = 'Google access was revoked or expired. Please reconnect Google Workspace.';
+          await supabase
+            .from('calendar_identities')
+            .update({ sync_status: 'expired', sync_error_message: message })
+            .eq('id', calendar_identity_id);
+          console.warn('[setup-calendar-watch] Needs reconnecting:', calendar_identity_id);
+          return new Response(
+            JSON.stringify({ error: 'reconnect_required', message }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          );
+        }
+        throw new Error(`Token refresh failed: ${tokenResponse.status}`);
       }
 
       const refreshData = await tokenResponse.json();
