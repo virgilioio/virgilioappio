@@ -6320,6 +6320,229 @@ export type Database = {
           },
         ]
       }
+      os_app_grants: {
+        Row: {
+          app_key: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          role: string
+          status: string
+          sync_error: string | null
+          synced_at: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_key: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role: string
+          status?: string
+          sync_error?: string | null
+          synced_at?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_key?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: string
+          status?: string
+          sync_error?: string | null
+          synced_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_app_grants_app_key_fkey"
+            columns: ["app_key"]
+            isOneToOne: false
+            referencedRelation: "os_apps"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "os_app_grants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_apps: {
+        Row: {
+          created_at: string
+          key: string
+          name: string
+          roles: string[]
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          name: string
+          roles: string[]
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          name?: string
+          roles?: string[]
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      os_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          app_key: string | null
+          created_at: string
+          detail: Json
+          id: number
+          subject_user_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          app_key?: string | null
+          created_at?: string
+          detail?: Json
+          id?: number
+          subject_user_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          app_key?: string | null
+          created_at?: string
+          detail?: Json
+          id?: number
+          subject_user_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_bundles: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          grants: Json
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          grants?: Json
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          grants?: Json
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_bundles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      os_person_profile: {
+        Row: {
+          bundle_id: string | null
+          created_at: string
+          offboarded_at: string | null
+          offboarded_by: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          bundle_id?: string | null
+          created_at?: string
+          offboarded_at?: string | null
+          offboarded_by?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          bundle_id?: string | null
+          created_at?: string
+          offboarded_at?: string | null
+          offboarded_by?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_person_profile_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "os_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_person_profile_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_reset_tokens: {
         Row: {
           created_at: string | null
@@ -9948,6 +10171,7 @@ export type Database = {
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_in_quiet_hours: { Args: { _user_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
+      is_os_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_public_email_domain: { Args: { domain: string }; Returns: boolean }
       is_sourcing_project_creator: {

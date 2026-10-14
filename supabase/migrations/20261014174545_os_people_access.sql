@@ -1,5 +1,5 @@
 -- Gio OS: People & Access, Part B schema (design doc, 2026-10-14).
--- DRAFT FOR ALLAN'S REVIEW: not applied.
+-- Approved by Allan 2026-10-14.
 --
 -- One place to decide who works at Virgilio and what they can open. All
 -- tables are prefixed os_ so ATS code never touches them. Deny by default:
