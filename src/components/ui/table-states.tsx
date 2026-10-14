@@ -19,7 +19,7 @@ export function TableSkeleton({ rows = 5, columns }: { rows?: number; columns: n
           {Array.from({ length: columns }).map((_, c) => (
             <TableCell key={c}>
               <div
-                className="h-3 rounded-[4px] bg-[hsl(var(--tbl-divider-color))] animate-pulse"
+                className="h-3 rounded-[4px] gio-shimmer"
                 style={{ width: c === 0 ? "60%" : c === columns - 1 ? "30%" : "45%" }}
               />
             </TableCell>
