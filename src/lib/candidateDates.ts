@@ -134,7 +134,7 @@ export function inRange(dates: number[], r: DateRangeFilter, now = Date.now()): 
 
 export type SortKey =
   | 'added_desc' | 'added_asc' | 'applied' | 'interview' | 'stage_moved'
-  | 'updated' | 'name' | 'experience'
+  | 'updated' | 'furthest' | 'name' | 'experience'
 
 export const SORTS: { key: SortKey; label: string; column?: { field: DateField; label: string } }[] = [
   { key: 'added_desc', label: 'Newest added', column: { field: 'added', label: 'Added' } },
@@ -143,6 +143,7 @@ export const SORTS: { key: SortKey; label: string; column?: { field: DateField; 
   { key: 'interview', label: 'Latest interview', column: { field: 'interview', label: 'Interview' } },
   { key: 'stage_moved', label: 'Recently moved stage', column: { field: 'stage_moved', label: 'Moved stage' } },
   { key: 'updated', label: 'Recently updated', column: { field: 'updated', label: 'Updated' } },
+  { key: 'furthest', label: 'Furthest in pipeline' },
   { key: 'name', label: 'Name A–Z' },
   { key: 'experience', label: 'Most experience' },
 ]
@@ -166,4 +167,38 @@ export function shortWhen(t: number, now = Date.now()): string {
   if (days < 30) return `${Math.floor(days / 7)}w`
   if (days < 365) return `${Math.floor(days / 30)}mo`
   return `${Math.floor(days / 365)}y`
+}
+
+/* ── How far someone got ─────────────────────────────────────────────────── */
+
+export interface Reached {
+  /** Hired 3, offer 2, otherwise how far along the stages (0–1). */
+  score: number
+  /** "Hired", "Offer", "Final interview", "Panel (rejected)". */
+  label: string
+  jobTitle: string
+}
+
+/**
+ * The furthest anyone got in a pipeline (2026-10-14), across their jobs or only
+ * the given ones. Someone rejected at a late stage still counts as having got
+ * that far; at the same point, people still in the running come first.
+ */
+export function furthestReached(assocs: AssociationDetail[] | undefined, onlyJobs?: string[]): Reached | null {
+  let best: Reached | null = null
+  for (const a of assocs ?? []) {
+    if (onlyJobs?.length && !onlyJobs.includes(a.jobId)) continue
+    const status = a.pipelineStatus ?? ''
+    let score: number
+    let label: string
+    if (status === 'hired' || a.hiredAt) { score = 3; label = 'Hired' }
+    else if (status === 'offer') { score = 2; label = 'Offer' }
+    else {
+      score = (a.stageProgress ?? 0) + (status === 'rejected' ? 0 : 0.001)
+      label = a.stageLabel ?? a.stageName ?? 'In pipeline'
+      if (status === 'rejected') label = `${label} (rejected)`
+    }
+    if (!best || score > best.score) best = { score, label, jobTitle: a.jobTitle }
+  }
+  return best
 }

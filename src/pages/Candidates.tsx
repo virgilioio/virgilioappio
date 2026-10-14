@@ -14,7 +14,8 @@ import { useCandidateFilteredData, useCandidateSearchTexts } from '@/hooks/useCa
 import { useCandidateInterviewDates } from '@/hooks/useCandidateInterviewDates'
 import { useQuery } from '@tanstack/react-query'
 import { SortMenu } from '@/components/candidates/list/SortMenu'
-import { SORTS, datesFor, isSortKey, latest, type DateRangeFilter, type SortKey } from '@/lib/candidateDates'
+import { SORTS, datesFor, furthestReached, isSortKey, latest, type DateRangeFilter, type SortKey } from '@/lib/candidateDates'
+import { fold, matchesEverything, queryWords } from '@/lib/candidateSearch'
 import { useCandidateBooleanFilter } from '@/hooks/useCandidateBooleanFilter'
 import { useMinimumDuration } from '@/hooks/useMinimumDuration'
 import { useSavedViews, type SavedView } from '@/hooks/useSavedViews'
@@ -72,6 +73,13 @@ const SMART_LIST_LABEL: Record<SmartListKey, string> = {
   favorites: 'Favorites',
   new: 'New this week',
 }
+
+const AI_EXAMPLES = [
+  'Who made it the furthest in an Account Executive role?',
+  'Account Executives in Mexico with 5+ years',
+  'Who did we interview in the last 2 weeks?',
+  'Newest applicants this week',
+]
 
 function stableHash(obj: unknown): string {
   return JSON.stringify(obj, Object.keys(obj as any).sort())
@@ -243,13 +251,25 @@ function CandidatesInner() {
   // Sorting (2026-10-14). Date sorts put people without that date last.
   const sortDef = SORTS.find((x) => x.key === sortKey) ?? SORTS[0]
   const dateColumn = useMemo(() => {
+    if (sortKey === 'furthest') {
+      // With a Job filter on, "furthest" means furthest in those jobs.
+      const onlyJobs = filters.jobs.length ? filters.jobs : undefined
+      return {
+        label: 'Furthest stage',
+        value: (c: { id: string }) => furthestReached(associationsMap.get(c.id), onlyJobs)?.score ?? null,
+        display: (c: { id: string }) => {
+          const r = furthestReached(associationsMap.get(c.id), onlyJobs)
+          return r ? { text: r.label, title: `${r.label} · ${r.jobTitle}` } : null
+        },
+      }
+    }
     const col = sortDef.column ?? SORTS[0].column!
     return {
       label: col.label,
       value: (c: { id: string; created_at: string; updated_at?: string | null }) =>
         latest(datesFor(col.field, c, associationsMap.get(c.id), interviewsMap?.get(c.id))),
     }
-  }, [sortDef, associationsMap, interviewsMap])
+  }, [sortKey, sortDef, associationsMap, interviewsMap, filters.jobs])
   const finalAfterSmart = useMemo(() => {
     if (sortKey === 'added_desc') return filteredAfterSmart
     const list = [...filteredAfterSmart]
@@ -403,16 +423,27 @@ function CandidatesInner() {
         )
       }
       const dates = (Array.isArray(data?.dates) ? data.dates : []) as DateRangeFilter[]
+      // "in an Account Executive role": every job whose title has those words.
+      const jobTitle = typeof data?.jobTitle === 'string' ? data.jobTitle.trim() : ''
+      const jobWords = jobTitle ? queryWords(jobTitle) : []
+      const titleJobs = jobWords.length
+        ? filterOptions.jobOptions.filter((j) => matchesEverything({ text: fold(j.label), digits: '' }, jobWords)).map((j) => j.value)
+        : []
+      const sort: SortKey | null = isSortKey(data?.sort) ? data.sort : null
       const partial: Partial<CandidateFilters> = {
         skills: data.skills, countries: data.countries, cities: data.cities,
         companies: data.companies, seniorityLevels: data.seniorityLevels,
-        functionalAreas: data.functionalAreas, jobs: data.jobs, stages: data.stages,
+        functionalAreas: data.functionalAreas, stages: data.stages,
         statuses: data.statuses, sources: data.sources, pipelineStatuses: data.pipelineStatuses,
+        jobs: [...new Set([...(data.jobs ?? []), ...titleJobs])],
         experienceMin: data.experienceMin, experienceMax: data.experienceMax,
         dateRanges: dates,
       }
-      const keywords = typeof data?.query === 'string' ? data.query.trim() : ''
-      const understood = keywords.length > 0 || dates.length > 0
+      let keywords = typeof data?.query === 'string' ? data.query.trim() : ''
+      // No job by that name: look for people with that title instead.
+      const noSuchJob = jobTitle && titleJobs.length === 0
+      if (noSuchJob) keywords = [keywords, jobTitle].filter(Boolean).join(' ')
+      const understood = keywords.length > 0 || dates.length > 0 || titleJobs.length > 0 || !!sort
         || data.experienceMin != null || data.experienceMax != null
         || (['skills','countries','cities','companies','seniorityLevels','functionalAreas','jobs','stages','statuses','sources','pipelineStatuses'] as const)
           .some((k) => Array.isArray(data?.[k]) && data[k].length > 0)
@@ -428,7 +459,14 @@ function CandidatesInner() {
       setMode('everything')
       setQuery(keywords)
       setCommittedQuery('')
-      toast({ title: 'Search set from your request', description: 'Adjust the filters below, or edit the keywords in the search bar.' })
+      if (sort) setSortKey(sort)
+      const notes: string[] = []
+      if (titleJobs.length) notes.push(`Looking at ${titleJobs.length === 1 ? 'the job' : `${titleJobs.length} jobs`} matching “${jobTitle}”.`)
+      if (noSuchJob) notes.push(`No job is called “${jobTitle}”, so it’s searched as a title instead.`)
+      if (sort) notes.push(`Sorted by ${(SORTS.find((x) => x.key === sort)?.label ?? sort).toLowerCase()}.`)
+      const kw = Array.isArray(data?.keywordsFromFilters) ? (data.keywordsFromFilters as string[]) : []
+      if (kw.length) notes.push(`${kw.map((k) => `“${k}”`).join(', ')} ${kw.length === 1 ? 'isn’t a filter value, so it’s' : 'aren’t filter values, so they’re'} searched as ${kw.length === 1 ? 'a keyword' : 'keywords'}.`)
+      toast({ title: 'Search set from your request', description: notes.join(' ') || 'Adjust the filters below, or edit the keywords in the search bar.' })
     } catch (e: unknown) {
       setAiError(e instanceof Error ? e.message : 'Couldn’t reach the AI search. Try again.')
     } finally {
@@ -759,6 +797,21 @@ function CandidatesInner() {
               }
             />
             </div>
+            {mode === 'ai' && !query.trim() && !aiLoading && (
+              <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+                <span className="text-[11.5px] text-text-tertiary font-inter mr-0.5">Try</span>
+                {AI_EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => { setQuery(ex); void runAiSearch(ex) }}
+                    className="gio-pressable h-7 px-2.5 rounded-md border border-virgilio-border bg-white text-[12px] font-inter text-text-secondary hover:text-text-primary hover:bg-[#FAFAF7] transition-colors whitespace-nowrap"
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            )}
             <FilterChipsRow filterOptions={filterOptions} trailing={<SortMenu value={sortKey} onChange={setSortKey} />} />
           </section>
 

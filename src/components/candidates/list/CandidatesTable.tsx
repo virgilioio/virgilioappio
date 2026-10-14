@@ -25,7 +25,12 @@ interface CandidatesTableProps {
   totalCount: number
   associationsMap: AssociationsMap
   /** The date column follows the sort: Added, Applied, Interview… (2026-10-14). */
-  dateColumn?: { label: string; value: (c: IndependentCandidate) => number | null }
+  dateColumn?: {
+    label: string
+    value: (c: IndependentCandidate) => number | null
+    /** Text instead of a date ("Furthest stage": "Offer", "Panel (rejected)"). */
+    display?: (c: IndependentCandidate) => { text: string; title: string } | null
+  }
   isLoading: boolean
   /** True while a boolean/AI search is being committed — show skeleton on top of existing rows. */
   isSearching?: boolean
@@ -274,7 +279,12 @@ export function CandidatesTable({
               <TableCell><span className="text-[12.5px] text-text-secondary">{loc}</span></TableCell>
               <TableCell><SourceCell source={c.source} /></TableCell>
               <TableCell>
-                {when == null
+                {dateColumn?.display ? (() => {
+                  const shown = dateColumn.display(c)
+                  return shown
+                    ? <span className="block max-w-[140px] truncate text-[12.5px] text-text-secondary">{shown.text}</span>
+                    : <span className="text-[12.5px] text-text-tertiary">—</span>
+                })() : when == null
                   ? <span className="text-[12.5px] text-text-tertiary">—</span>
                   : <span className="text-[12.5px] text-text-secondary tabular-nums">{shortWhen(when)}</span>}
               </TableCell>

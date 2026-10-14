@@ -99,6 +99,7 @@ export function GlobalSearchPanel({
   const [askResult, setAskResult] = useState<null | {
     skills: string[]; cities: string[]; countries: string[]; seniorityLevels: string[]; stages: string[]; statuses: string[]; query: string
     dates?: DateRangeFilter[]
+    jobTitle?: string
   }>(null)
   const [askLoading, setAskLoading] = useState(false)
   const [askError, setAskError] = useState<string | null>(null)
@@ -373,6 +374,7 @@ export function GlobalSearchPanel({
                 ...askResult.skills.map(v => ({ k: 'Skill', v })),
                 ...askResult.stages.map(v => ({ k: 'Stage', v })),
                 ...askResult.statuses.map(v => ({ k: 'Status', v })),
+                ...(askResult.jobTitle ? [{ k: 'Job', v: askResult.jobTitle }] : []),
                 ...(askResult.dates ?? []).map(d => ({ k: 'Date', v: chipLabel(d) })),
               ].slice(0, 8).map((chip, i) => (
                 <span key={i} className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-white border border-violet-200 text-[11.5px] font-inter text-violet-700">

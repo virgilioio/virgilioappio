@@ -23,7 +23,7 @@ interface CandidateSearchBarProps {
 const PLACEHOLDERS: Record<SearchMode, string> = {
   everything: 'Search by name, email, skill, company…',
   boolean: 'e.g. Figma AND ("design systems" OR tokens) NOT junior — press Enter to run',
-  ai: 'Try: senior product designers in NYC who know Figma',
+  ai: 'Ask anything, e.g. who made it the furthest in the SDR job? — press Enter',
 }
 
 export function CandidateSearchBar({

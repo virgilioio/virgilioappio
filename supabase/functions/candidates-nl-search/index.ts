@@ -10,6 +10,10 @@
 // - It understands dates ("interviewed in the last two weeks", "applied since
 //   March") and pipeline status, and returns only keywords that must appear in
 //   a profile as `query`.
+// - It tells a job ("in an Account Executive role", "for the SDR job") apart
+//   from what people are ("Account Executives"), picks a sort ("made it the
+//   furthest", "newest", "most experienced"), and never drops a place or skill
+//   it can't match: those become keywords instead.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeadersFor, handlePreflight } from '../_shared/cors.ts'
 
@@ -23,6 +27,8 @@ type OptionsPayload = Partial<Record<OptionKey, FilterOptionLite[]>>
 
 const DATE_FIELDS = ['added', 'applied', 'added_to_job', 'interview', 'stage_moved', 'offer', 'hired', 'rejected', 'updated'] as const
 type DateField = typeof DATE_FIELDS[number]
+
+const SORTS = ['added_desc', 'added_asc', 'applied', 'interview', 'stage_moved', 'updated', 'furthest', 'name', 'experience'] as const
 
 const CAPS: Record<OptionKey, number> = {
   skills: 150, companies: 100, cities: 100, countries: 60, seniorityLevels: 30, functionalAreas: 40,
@@ -47,13 +53,35 @@ job's pipeline; interview = an interview (past or upcoming); stage_moved = moved
 offer / hired / rejected = when that happened; updated = profile last edited.
 "Recently" with no number means withinDays 30. "This week" means withinDays 7.
 
-"query" holds only words that must appear in the candidate's profile and aren't already covered
-by a filter, such as a job title ("account executive") or a keyword ("SaaS"). Leave out filler
-words ("candidates", "people", "who", "with", "show me"). Use "" when nothing is left.
+A job they were considered for is not the same as who they are:
+- "jobTitle" is the job/role/opening/search whose pipeline they're in: "in an Account Executive role",
+  "for the SDR job", "applied to the Backend opening", "our Head of Sales search". Just the job name.
+- "query" is what the person is or knows, words that must appear in their profile and aren't already
+  covered by a filter: "Account Executives" -> "account executive", "SaaS", "B2B". Singular is fine.
+Leave out filler words ("candidates", "people", "who", "with", "show me", "what are"). Use "" when nothing is left.
+
+"sort" orders the list, one of: ${SORTS.join(', ')}, or null.
+- furthest = made it the furthest / got closest to an offer / best progress in the pipeline
+- applied = newest applicants; interview = latest interviews; stage_moved = most recently moved stage
+- added_desc = newest; added_asc = oldest; updated = recently updated; experience = most experienced; name = alphabetical
+
+Examples:
+- "What are the candidates that made it the furthest in an Account Executive role?"
+  -> jobTitle "Account Executive", sort "furthest", query ""
+- "Show me Account Executives in Canada" -> query "account executive", countries ["Canada"] (or the
+  closest listed spelling); if Canada isn't listed, still put "Canada" in countries
+- "Who did we interview this week for the SDR job?" -> jobTitle "SDR", dates [{interview, withinDays 7}]
+- "Most experienced engineers in Mexico" -> query "engineer", countries ["Mexico"], sort "experience"
+- "People we rejected after an offer" -> pipelineStatuses ["rejected"] (if listed), query ""
+
+Places, skills, companies, seniority and functions the user names go in their list even when they
+aren't in available_options; they'll be searched as keywords.
 
 Return strict JSON:
 {
   "query": string,
+  "jobTitle": string,
+  "sort": string | null,
   "skills": string[], "countries": string[], "cities": string[], "companies": string[],
   "seniorityLevels": string[], "functionalAreas": string[], "jobs": string[], "stages": string[],
   "statuses": string[], "sources": string[], "pipelineStatuses": string[],
@@ -78,18 +106,29 @@ function buildOptionsHint(opts: OptionsPayload): string {
   return parts.join('\n')
 }
 
-/** Keeps only values the page offered, mapped to the exact stored value. */
-function pick(raw: unknown, offered: FilterOptionLite[] | undefined): string[] {
-  if (!Array.isArray(raw)) return []
-  const strings = raw.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+/**
+ * Maps the model's values to the exact stored values the page offered. Values
+ * that aren't offered come back in `missed` (the caller decides: keywords for
+ * places and skills, dropped for jobs and stages).
+ */
+function pick(raw: unknown, offered: FilterOptionLite[] | undefined): { values: string[]; missed: string[] } {
+  if (!Array.isArray(raw)) return { values: [], missed: [] }
+  const strings = raw.filter((s): s is string => typeof s === 'string' && s.trim().length > 0).map((s) => s.trim())
   // The top-bar preview sends no options: show the model's reading as is.
-  if (!offered?.length) return strings
+  if (!offered?.length) return { values: [...new Set(strings)], missed: [] }
   const byKey = new Map<string, string>()
   for (const o of offered) {
     byKey.set(fold(o.value), o.value)
     if (o.label) byKey.set(fold(o.label), o.value)
   }
-  return [...new Set(strings.map((s) => byKey.get(fold(s))).filter((v): v is string => !!v))]
+  const values: string[] = []
+  const missed: string[] = []
+  for (const s of strings) {
+    const hit = byKey.get(fold(s))
+    if (hit) values.push(hit)
+    else missed.push(s)
+  }
+  return { values: [...new Set(values)], missed: [...new Set(missed)] }
 }
 
 const isDay = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
@@ -167,19 +206,29 @@ Deno.serve(async (req: Request) => {
     let parsed: Record<string, unknown> = {}
     try { parsed = typeof raw === 'string' ? JSON.parse(raw) : raw } catch { parsed = {} }
 
+    // Places, skills, companies, seniority and functions nobody has as a
+    // stored value are still searched, as keywords ("Canada" in a summary).
+    const keywordKinds = ['skills', 'countries', 'cities', 'companies', 'seniorityLevels', 'functionalAreas'] as const
+    const strictKinds = ['jobs', 'stages', 'statuses', 'sources', 'pipelineStatuses'] as const
+    const out: Record<string, unknown> = {}
+    const extraKeywords: string[] = []
+    for (const k of keywordKinds) {
+      const r = pick(parsed[k], opts[k])
+      out[k] = r.values
+      extraKeywords.push(...r.missed)
+    }
+    for (const k of strictKinds) out[k] = pick(parsed[k], opts[k]).values
+
+    const query = [typeof parsed.query === 'string' ? parsed.query.trim() : '', ...extraKeywords]
+      .filter(Boolean).join(' ').slice(0, 200)
+    const sort = SORTS.find((x) => x === parsed.sort) ?? null
+
     return json({
-      query: typeof parsed.query === 'string' ? parsed.query.trim().slice(0, 200) : '',
-      skills: pick(parsed.skills, opts.skills),
-      countries: pick(parsed.countries, opts.countries),
-      cities: pick(parsed.cities, opts.cities),
-      companies: pick(parsed.companies, opts.companies),
-      seniorityLevels: pick(parsed.seniorityLevels, opts.seniorityLevels),
-      functionalAreas: pick(parsed.functionalAreas, opts.functionalAreas),
-      jobs: pick(parsed.jobs, opts.jobs),
-      stages: pick(parsed.stages, opts.stages),
-      statuses: pick(parsed.statuses, opts.statuses),
-      sources: pick(parsed.sources, opts.sources),
-      pipelineStatuses: pick(parsed.pipelineStatuses, opts.pipelineStatuses),
+      query,
+      jobTitle: typeof parsed.jobTitle === 'string' ? parsed.jobTitle.trim().slice(0, 120) : '',
+      sort,
+      ...out,
+      keywordsFromFilters: extraKeywords,
       experienceMin: num(parsed.experienceMin),
       experienceMax: num(parsed.experienceMax),
       dates: pickDates(parsed.dates, parsed.newWithinDays),
