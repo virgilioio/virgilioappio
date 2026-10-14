@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table-cells'
 import { TableSkeleton } from '@/components/ui/table-states'
 import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { ListTabs } from '@/components/ui/list-tabs'
 import { LoadError } from '@/components/empty/LoadError'
 import { Plus, RotateCcw } from 'lucide-react'
 import { TableFooterSummary } from '@/components/ui/table-pagination'
@@ -309,45 +310,25 @@ export function JobsTable({
     <div className="space-y-4">
       {/* Tabs + Filters card */}
       <div className="rounded-2xl border border-virgilio-border bg-white overflow-hidden">
-        {/* Tabs row */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-virgilio-border">
-          {tabs.map(t => {
-            const active = t.value === statusFilter
-            return (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => onStatusFilterChange(t.value)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg font-poppins text-[13.5px] tracking-[-0.01em] transition-colors',
-                  active
-                    ? 'bg-[#FAFAF7] text-text-primary font-semibold'
-                    : 'text-text-tertiary hover:text-text-primary font-medium'
-                )}
-              >
-                <span>{t.label}</span>
-                {t.dot && (
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#1F2230]" aria-label={t.dot} />
-                      </TooltipTrigger>
-                      <TooltipContent>{t.dot}</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                {t.count > 0 && (
-                  <span className={cn(
-                    'font-poppins text-[12.5px] tabular-nums',
-                    active ? 'text-text-secondary' : 'text-text-tertiary/70'
-                  )}>
-                    ({t.count})
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+        {/* Tabs row: one moving layer (Motion & Feel §2/§14) */}
+        <ListTabs
+          label="Job status"
+          value={statusFilter}
+          onChange={onStatusFilterChange}
+          tabs={tabs.map((t) => ({
+            value: t.value,
+            label: t.label,
+            count: t.count,
+            adornment: t.dot ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#1F2230]" aria-label={t.dot} />
+                </TooltipTrigger>
+                <TooltipContent>{t.dot}</TooltipContent>
+              </Tooltip>
+            ) : undefined,
+          }))}
+        />
 
         {/* Search + filters row */}
         <div className="flex flex-wrap items-center gap-3 p-3">
