@@ -5,6 +5,7 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { accessDenied, checkRecordAccess } from '../_shared/recordAccess.ts';
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -510,6 +511,9 @@ serve(async (req) => {
         status: 400, headers: { ...headers, "Content-Type": "application/json" },
       });
     }
+
+    const access = await checkRecordAccess(req, sb as any, { jobId: job_id }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, headers);
 
     // 1. Fetch job data
     const { data: job, error: jobError } = await sb

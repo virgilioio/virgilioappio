@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.20.1";
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { accessDenied, checkRecordAccess } from '../_shared/recordAccess.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,6 +59,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const access = await checkRecordAccess(req, supabase as any, { candidateId: candidate_id, jobId: job_id }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, corsHeaders);
 
     // Fetch candidate details
     const { data: candidate, error: candError } = await supabase

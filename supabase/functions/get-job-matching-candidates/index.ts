@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
+import { accessDenied, checkRecordAccess } from "../_shared/recordAccess.ts";
 import {
   calculateEnhancedCandidateScore,
   CandidateScore,
@@ -379,6 +380,9 @@ serve(withRequestCors(async (req) => {
       count_only = false,
       filters: requestFilters
     }: JobMatchingRequest = await req.json();
+
+    const access = await checkRecordAccess(req, supabase, { jobId: job_id, sourcingProjectId: sourcing_project_id }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, corsHeaders);
 
     let filters = requestFilters;
     let jobSkills: string[] = [];

@@ -9,6 +9,7 @@ import { openaiFetch, OpenAiTimeoutError } from '../_shared/openaiFetch.ts';
 const FIT_CALL_TIMEOUT_MS = 150_000;
 const TRANSLATION_CALL_TIMEOUT_MS = 120_000;
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { accessDenied, checkRecordAccess } from '../_shared/recordAccess.ts';
 import { loadResumeText } from '../_shared/resumeText.ts';
 import { mergeTranslatedProse } from './language-utils.ts';
 import { analyseTenure } from './tenure.ts';
@@ -345,6 +346,10 @@ serve(async (req) => {
     }
 
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // A signed-in caller must belong to the workspace that owns both records.
+    const access = await checkRecordAccess(req, sb as any, { candidateId: candidate_id, jobId: job_id }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, headers);
 
     // Fetch all data in parallel
     const [candidateRes, jobRes, workExpRes, educationRes, attachmentsRes, scorecardsRes, associationRes, suggestionRes] = await Promise.all([

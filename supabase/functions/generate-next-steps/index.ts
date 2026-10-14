@@ -4,6 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
+import { accessDenied, checkRecordAccess } from '../_shared/recordAccess.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
@@ -24,6 +25,9 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const access = await checkRecordAccess(req, supabase as any, { candidateId: candidate_id, jobId: job_id }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, corsHeaders);
 
     // Fetch candidate details
     const { data: candidate } = await supabase

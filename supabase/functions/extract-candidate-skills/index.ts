@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { accessDenied, checkRecordAccess } from '../_shared/recordAccess.ts';
 const corsHeaders = createSecureCorsHeaders();
 
 const supabase = createClient(
@@ -196,6 +197,10 @@ serve(withRequestCors(async (req) => {
 
   try {
     const { candidateId, batchSize = 10, dryRun = false }: SkillExtractionRequest = await req.json();
+
+    // One candidate: a member of its workspace. Batch over everyone: server or platform admin only.
+    const access = await checkRecordAccess(req, supabase, { candidateId }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, corsHeaders);
 
     console.log(`🔍 Starting skill extraction - Candidate: ${candidateId || 'ALL'}, Batch: ${batchSize}, DryRun: ${dryRun}`);
 

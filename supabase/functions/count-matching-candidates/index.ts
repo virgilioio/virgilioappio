@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createSecureCorsHeaders, handleSecureCorsPreFlight, withRequestCors } from "../_shared/cors.ts";
+import { accessDenied, checkRecordAccess } from "../_shared/recordAccess.ts";
 import {
   buildCandidateMatchingSummary,
   calculateEnhancedCandidateScore,
@@ -41,6 +42,13 @@ serve(withRequestCors(async (req) => {
   if (preflight) return preflight;
 
   try {
+    const access = await checkRecordAccess(req, supabase, {});
+    if (!access.ok) return accessDenied(access, corsHeaders);
+    // A signed-in caller only ever counts candidates in their own workspaces.
+    const callerTenants = access.caller && !access.platformAdmin
+      ? access.caller.memberships.map((m) => m.tenant_id)
+      : null;
+
     const body: RawRequest = await req.json();
     const criteriaPayload = body.criteria ?? body;
 
@@ -79,10 +87,11 @@ serve(withRequestCors(async (req) => {
       role_current
     `;
 
-    const { data: candidates, error } = await supabase
+    let candidateQuery = supabase
       .from('candidates')
-      .select(candidateFields)
-      .limit(200);
+      .select(candidateFields);
+    if (callerTenants) candidateQuery = candidateQuery.in('tenant_id', callerTenants);
+    const { data: candidates, error } = await candidateQuery.limit(200);
 
     if (error) {
       console.error('❌ Error fetching candidates:', error);
