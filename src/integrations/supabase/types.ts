@@ -3758,6 +3758,7 @@ export type Database = {
           id: string
           last_error: string | null
           next_attempt_at: string
+          reason: string
           status: string
           updated_at: string
         }
@@ -3768,6 +3769,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           next_attempt_at?: string
+          reason?: string
           status?: string
           updated_at?: string
         }
@@ -3778,6 +3780,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           next_attempt_at?: string
+          reason?: string
           status?: string
           updated_at?: string
         }
@@ -3814,6 +3817,65 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      fit_score_history: {
+        Row: {
+          association_id: string
+          candidate_id: string
+          changes_since_last: string | null
+          confidence: string | null
+          created_at: string
+          dimensions: Json
+          generated_at: string
+          id: string
+          job_id: string
+          must_haves: Json
+          score: number | null
+          scoring: Json | null
+          trigger: string
+          version: number
+        }
+        Insert: {
+          association_id: string
+          candidate_id: string
+          changes_since_last?: string | null
+          confidence?: string | null
+          created_at?: string
+          dimensions?: Json
+          generated_at: string
+          id?: string
+          job_id: string
+          must_haves?: Json
+          score?: number | null
+          scoring?: Json | null
+          trigger?: string
+          version: number
+        }
+        Update: {
+          association_id?: string
+          candidate_id?: string
+          changes_since_last?: string | null
+          confidence?: string | null
+          created_at?: string
+          dimensions?: Json
+          generated_at?: string
+          id?: string
+          job_id?: string
+          must_haves?: Json
+          score?: number | null
+          scoring?: Json | null
+          trigger?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fit_score_history_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       integration_inbox: {
         Row: {
@@ -4981,6 +5043,7 @@ export type Database = {
           max_years_experience: number | null
           min_years_experience: number | null
           must_have_skills: string[]
+          skill_priorities: Json
           normalization_metadata: Json | null
           organization_id: string
           output_language: string | null
@@ -5040,6 +5103,7 @@ export type Database = {
           max_years_experience?: number | null
           min_years_experience?: number | null
           must_have_skills?: string[]
+          skill_priorities?: Json
           normalization_metadata?: Json | null
           organization_id: string
           output_language?: string | null
@@ -5099,6 +5163,7 @@ export type Database = {
           max_years_experience?: number | null
           min_years_experience?: number | null
           must_have_skills?: string[]
+          skill_priorities?: Json
           normalization_metadata?: Json | null
           organization_id?: string
           output_language?: string | null
