@@ -1,6 +1,6 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabaseClient'
 
-export type FitAnalysisStatus = 'ok' | 'deferred' | 'no_job_description'
+export type FitAnalysisStatus = 'ok' | 'unchanged' | 'deferred' | 'no_job_description'
 
 /**
  * Calls the analyze-candidate-fit function. Uses fetch directly (rather than
@@ -10,6 +10,7 @@ export async function requestFitAnalysis(
   candidateId: string,
   jobId: string,
   signal?: AbortSignal,
+  options: { force?: boolean } = {},
 ): Promise<FitAnalysisStatus> {
   const { data: { session } } = await supabase.auth.getSession()
   const response = await fetch(`${supabaseUrl}/functions/v1/analyze-candidate-fit`, {
@@ -20,7 +21,9 @@ export async function requestFitAnalysis(
       apikey: supabaseAnonKey,
       Authorization: `Bearer ${session?.access_token || supabaseAnonKey}`,
     },
-    body: JSON.stringify({ candidate_id: candidateId, job_id: jobId }),
+    // `force` re-runs even when nothing changed (the Refresh button). Without
+    // it the function hands back the stored dossier when inputs match.
+    body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, force: options.force === true }),
   })
 
   const payload = await response.json().catch(() => null)
@@ -33,7 +36,7 @@ export async function requestFitAnalysis(
     throw new Error('The assessment took longer than expected and was stopped. Your previous assessment is unchanged.')
   }
   if (!response.ok) throw new Error(payload?.error || `The assessment failed (${response.status})`)
-  return 'ok'
+  return payload?.unchanged === true ? 'unchanged' : 'ok'
 }
 
 /**

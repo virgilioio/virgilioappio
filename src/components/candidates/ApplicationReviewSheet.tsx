@@ -493,7 +493,7 @@ function FitInsightsPanel({ candidateId, jobId }: { candidateId: string; jobId: 
       <InlineEmpty
         text="No fit analysis available."
         action={isRefreshing ? 'Generating…' : 'Generate'}
-        onAction={isRefreshing ? undefined : refreshInsights}
+        onAction={isRefreshing ? undefined : () => refreshInsights({ force: true })}
       />
     )
   }
@@ -513,7 +513,7 @@ function FitInsightsPanel({ candidateId, jobId }: { candidateId: string; jobId: 
           variant="ghost"
           size="icon"
           className="h-7 w-7"
-          onClick={refreshInsights}
+          onClick={() => refreshInsights({ force: true })}
           disabled={isRefreshing}
           title="Refresh analysis"
         >

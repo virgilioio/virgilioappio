@@ -14,6 +14,7 @@ import {
   Minus,
   RefreshCw,
   Share2,
+  ShieldCheck,
   Sparkles,
   StickyNote,
   UserRound,
@@ -28,7 +29,7 @@ import { GioFitColdSkeleton } from './loading/GioFitColdSkeleton'
 import { GioFitBlockedCard, GioFitErrorCard } from './loading/GioFitFailureCard'
 import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
 import { buildNarrationSteps, stepProgress, useGioFitNarration } from './loading/GioFitNarration'
-import { useCandidateFitInsights, type FitDimension, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
+import { useCandidateFitInsights, type FitDimension, type MustHave, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
@@ -172,6 +173,44 @@ function DimensionRow({ dimension, colorIndex, open, clientReady, onToggle }: { 
   )
 }
 
+const MUST_HAVE_STYLE: Record<MustHave['status'], { label: string; className: string; Icon: typeof Check | null }> = {
+  met: { label: 'Met', className: 'border-fit-skill-evidenced-border bg-fit-skill-evidenced-bg text-fit-skill-evidenced-text', Icon: Check },
+  partial: { label: 'Partly', className: 'border-fit-row-border bg-fit-paper text-fit-ink', Icon: CircleDashed },
+  not_met: { label: 'Not met', className: 'border-fit-risk-border bg-fit-warning-soft text-fit-risk-copy', Icon: Minus },
+  unknown: { label: 'Not verified', className: 'border-fit-row-border bg-surface-primary text-fit-subtle', Icon: null },
+}
+
+/** The requirements the job itself states as mandatory, each with the verdict that bounds the score (v4). */
+function MustHaves({ items }: { items: MustHave[] }) {
+  const counts = items.reduce((acc, item) => { acc[item.status] = (acc[item.status] || 0) + 1; return acc }, {} as Partial<Record<MustHave['status'], number>>)
+  return (
+    <div className="border-t border-fit-hairline p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className={sectionHeadingClass}><ShieldCheck className="h-3 w-3" /> Must-haves from the job</h3>
+        <span className="text-[11.5px] text-fit-subtle">
+          {[counts.met ? `${counts.met} met` : null, counts.partial ? `${counts.partial} partly` : null, counts.not_met ? `${counts.not_met} not met` : null, counts.unknown ? `${counts.unknown} to verify` : null].filter(Boolean).join(' · ')}
+        </span>
+      </div>
+      <div className="mt-4 divide-y divide-fit-chip">
+        {items.map((item) => {
+          const style = MUST_HAVE_STYLE[item.status] ?? MUST_HAVE_STYLE.unknown
+          return (
+            <div key={item.requirement} className="grid gap-1.5 py-2.5 first:pt-0 last:pb-0 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-3">
+              <span className={cn('inline-flex h-[22px] w-fit items-center gap-1 rounded-md border px-2 text-[11px] font-medium', style.className)}>
+                {style.Icon && <style.Icon className="h-3 w-3" />}{style.label}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-medium text-fit-ink">{item.requirement}</p>
+                {item.evidence && <p className="mt-0.5 text-[11.5px] leading-[1.5] text-fit-muted">“{item.evidence}”</p>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ValidationPoints({ points, clientReady }: { points: ValidationPoint[]; clientReady: boolean }) {
   if (!points.length) return null
   const priorityTone = { high: 'red', medium: 'yellow', low: 'neutral' } as const
@@ -308,10 +347,10 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   // no call is made. Once the description passes 30 characters the effect above
   // generates on the next visit without being asked.
   if (jdText.length < 30 || isBlocked) {
-    return <>{waitStrip('failed')}<GioFitBlockedCard jobId={jobId} onRetry={refreshInsights} isRetrying={isRefreshing} /></>
+    return <>{waitStrip('failed')}<GioFitBlockedCard jobId={jobId} onRetry={() => refreshInsights({ force: true })} isRetrying={isRefreshing} /></>
   }
   if (generationError && !hasStoredAnalysis) {
-    return <>{waitStrip('failed')}<GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} /></>
+    return <>{waitStrip('failed')}<GioFitErrorCard onRetry={() => refreshInsights({ force: true })} isRetrying={isRefreshing} /></>
   }
   // Nothing stored and nothing running: the caller decides what stands in its place
   // (a suggestion offers the assessment rather than starting it unasked).
@@ -354,6 +393,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const visibleDimensions = clientReady
     ? dimensions.filter((dimension) => !/salary|compensation/i.test(dimension.name))
     : dimensions
+  const scoring = analysis.scoring ?? null
+  const visibleMustHaves = (analysis.must_haves || []).filter((item) => !clientReady || !/salary|compensation|pay|remuneration/i.test(`${item.requirement} ${item.evidence ?? ''}`))
   const visibleValidationPoints = clientReady
     ? (analysis.validation_points || []).filter((point) => !/salary|compensation|pay|remuneration/i.test(`${point.question} ${point.reason}`))
     : (analysis.validation_points || [])
@@ -410,7 +451,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
         />
       )}
       {generationError && !isRescoring && (
-        <div className="mb-3.5"><GioFitErrorCard onRetry={refreshInsights} isRetrying={isRefreshing} /></div>
+        <div className="mb-3.5"><GioFitErrorCard onRetry={() => refreshInsights({ force: true })} isRetrying={isRefreshing} /></div>
       )}
       <div key={insights.generatedAt || 'dossier'} className={cn('space-y-3.5', isRescoring ? 'gf-rescore-dim' : 'gf-fade-in')}>
       <section className={cn(cardClass, 'p-[22px]')}>
@@ -496,7 +537,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
               <span className="text-[11.5px] text-fit-subtle">Refresh to update the skill read</span>
             )}
             <GioFitLanguageControl analysis={analysis} workspaceLanguage={insights.workspaceOutputLanguage} overrideLanguage={insights.outputLanguage} resolvedLanguage={insights.resolvedOutputLanguage} appliedLanguage={insights.appliedOutputLanguage} keepProperNouns={insights.keepProperNouns} isRewriting={isRefreshing} onApply={handleLanguageApply} />
-            <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={refreshInsights}>Refresh</Button>
+            <Button variant="secondary" size="sm" icon={RefreshCw} loading={isRefreshing} onClick={() => refreshInsights({ force: true })}>Refresh</Button>
             <Button variant="secondary" size="sm" icon={Download} onClick={() => setExportOpen(true)}>Export PDF</Button>
             {suggested ? suggested.actions : (
             /* Share is the terminal action of this row, and the only primary. */
@@ -543,6 +584,12 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
                     ) : (
                       <p className="text-[12.5px] leading-[1.6] text-fit-muted">{analysis.executive_summary}</p>
                     )}
+                    {!clientReady && analysis.changes_since_last && (
+                      <p className="mt-2.5 flex items-start gap-1.5 text-[11.5px] leading-[1.5] text-fit-subtle">
+                        <RefreshCw className="mt-[3px] h-[11px] w-[11px] shrink-0" />
+                        <span><span className="font-medium text-fit-muted">Since the last assessment{typeof scoring?.previous_score === 'number' ? ` (${scoring.previous_score})` : ''}:</span> {analysis.changes_since_last}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
                 {(experienceStats.length > 0 || analysis.detected_languages) && (
@@ -554,6 +601,8 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
               </div>
             </div>
           )}
+
+          {visibleMustHaves.length > 0 && <MustHaves items={visibleMustHaves} />}
 
           {(skillGroups.evidenced.length > 0 || skillGroups.partly.length > 0 || skillGroups.notEvidenced.length > 0 || skillGroups.additional.length > 0) && (
             <div className="border-t border-fit-hairline p-5 sm:p-6">
@@ -642,7 +691,17 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
               const payloadIndex = dimensions.indexOf(dimension)
               return <DimensionRow key={`${dimension.name}-${payloadIndex}`} dimension={dimension} colorIndex={payloadIndex} clientReady={clientReady} open={openDimension === payloadIndex} onToggle={() => setOpenDimension(openDimension === payloadIndex ? null : payloadIndex)} />
             })}</div>
-            {!clientReady && <div className="bg-fit-paper px-4 py-3.5">
+            {!clientReady && scoring && <div className="bg-fit-paper px-4 py-3.5">
+              {/* v4: the score is Gio's judgement of the whole case, held inside stated rules; the mean is context, not the answer. */}
+              <div className="flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Dimension mean</span><span className="text-[11.5px] tabular-nums text-fit-subtle">{contributionTotal.toFixed(1)} / {scoredWeight}</span><span className="w-8 text-right font-poppins text-[13px] font-semibold tabular-nums text-fit-muted">{scoring.weighted_mean == null ? '—' : Math.round(scoring.weighted_mean)}</span></div>
+              <div className="mt-1.5 flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Gio's judgement of the whole case</span><span className="w-8 text-right font-poppins text-[13px] font-semibold tabular-nums text-fit-muted">{scoring.model_score}</span></div>
+              {scoring.rules_applied.map((rule) => (
+                <p key={rule} className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-[1.45] text-fit-warning"><Minus className="mt-[3px] h-[10px] w-[10px] shrink-0" />{rule}</p>
+              ))}
+              <div className="mt-2 flex items-center gap-3 border-t border-fit-chip pt-2"><span className="min-w-0 flex-1 text-[11.5px] font-semibold text-fit-ink">Gio fit</span><span className="w-8 text-right font-poppins text-[15px] font-semibold tabular-nums text-virgilio-purple">{Math.round(score)}</span></div>
+              {nullDimensions.length > 0 && <p className="mt-2 text-[11px] leading-[1.45] text-fit-subtle">{nullDimensions.map((dimension) => `${dimension.name} is nulled — its ${dimension.weight} points are excluded rather than guessed.`).join(' ')}</p>}
+            </div>}
+            {!clientReady && !scoring && <div className="bg-fit-paper px-4 py-3.5">
               <div className="flex items-center gap-3"><span className="min-w-0 flex-1 text-[11.5px] font-medium text-fit-ink">Weighted mean of scored dimensions</span><span className="text-[11.5px] tabular-nums text-fit-subtle">{contributionTotal.toFixed(1)} / {scoredWeight}</span><span className="font-poppins text-[15px] font-semibold tabular-nums text-virgilio-purple">{Math.round(score)}</span></div>
               {!scoreReconciles && (
                 <p className="mt-2 rounded-md border border-fit-risk-border bg-fit-warning-soft px-2 py-1.5 text-[11px] leading-[1.45] text-fit-warning">

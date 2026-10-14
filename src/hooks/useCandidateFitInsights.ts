@@ -21,6 +21,21 @@ export interface ValidationPoint {
   status?: 'validated' | 'flagged' | null
 }
 
+export interface MustHave {
+  requirement: string
+  status: 'met' | 'partial' | 'not_met' | 'unknown'
+  evidence: string | null
+}
+
+export interface FitScoring {
+  version: number
+  model_score: number
+  weighted_mean: number | null
+  rules_applied: string[]
+  previous_score: number | null
+  tenure?: { flag: 'red' | 'yellow' | 'green' | 'best' | 'unknown'; label: string; band: [number, number] | null; short_stints: number; promotions: number }
+}
+
 export interface FitAnalysis {
   overall_score: number
   confidence: 'low' | 'medium' | 'high'
@@ -31,6 +46,14 @@ export interface FitAnalysis {
   validation_points: ValidationPoint[]
   data_sources_used: string[]
   data_sources_missing: string[]
+  /** v4 (2026-10-14): requirements the job states as mandatory, each with a verdict. */
+  must_haves?: MustHave[]
+  /** v4: what a re-score found had changed, or null on a first run. */
+  changes_since_last?: string | null
+  /** v4: how the stored score was reached. */
+  scoring?: FitScoring
+  /** v4: when the inputs were last compared against this dossier. */
+  inputs_checked_at?: string
   detected_languages?: {
     summary: string
     confidence: 'low' | 'medium' | 'high'
@@ -138,7 +161,9 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
       let staleReason: string | null = null
       const generatedAt = assoc.ai_fit_generated_at
       if (assoc.ai_fit_analysis && generatedAt) {
-        const generatedMs = new Date(generatedAt).getTime()
+        // A check that found the inputs unchanged counts as fresh as a run.
+        const checkedAt = (assoc.ai_fit_analysis as { inputs_checked_at?: string } | null)?.inputs_checked_at
+        const generatedMs = Math.max(new Date(generatedAt).getTime(), checkedAt ? new Date(checkedAt).getTime() : 0)
         const newer = (value: string | null | undefined) =>
           Boolean(value) && new Date(value as string).getTime() > generatedMs
 
@@ -200,7 +225,12 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
     refetchOnMount: false,
   })
 
-  const refreshInsights = useCallback(async () => {
+  /**
+   * Re-assesses the candidate. Without `force`, the function hands back the
+   * stored dossier when nothing about the candidate or job changed, so the
+   * automatic run after a stage move costs nothing and never moves the score.
+   */
+  const refreshInsights = useCallback(async (options: { force?: boolean } = {}) => {
     if (!candidateId || !jobId) return
     abortRef.current?.abort()
     const controller = new AbortController()
@@ -221,12 +251,12 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
       // The server budget for one assessment is ~150s, so keep the narrated
       // loader alive across the whole window instead of giving up after 24s.
       for (let attempt = 0; attempt < 27; attempt += 1) {
-        const status = await requestFitAnalysis(candidateId, jobId, controller.signal)
+        const status = await requestFitAnalysis(candidateId, jobId, controller.signal, { force: options.force === true })
         if (status === 'no_job_description') {
           setIsBlocked(true)
           return
         }
-        if (status === 'ok') {
+        if (status === 'ok' || status === 'unchanged') {
           setIsDeferred(false)
           await queryClient.invalidateQueries({ queryKey })
           return
@@ -263,7 +293,7 @@ export function useCandidateFitInsights(candidateId: string | null, jobId: strin
       .update({ output_language: outputLanguage, ai_fit_keep_proper_nouns: keepProperNouns })
       .eq('id', data.associationId)
     if (error) throw error
-    await refreshInsights()
+    await refreshInsights({ force: true })
   }
 
   const invalidate = () => {
