@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
+import { shakeFirstInvalid } from '@/lib/motion'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMembers } from '@/hooks/useMembers'
 import { useOrgContext } from '@/contexts/OrgContext'
@@ -61,6 +62,7 @@ export function AddPersonDialog({
     const value = email.trim().toLowerCase()
     if (!EMAIL.test(value)) {
       setError('Enter a work email, like name@virgilio.tech.')
+      shakeFirstInvalid(e.currentTarget as Element)
       return
     }
     if (!organizationId) {
