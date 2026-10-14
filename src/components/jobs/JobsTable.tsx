@@ -261,7 +261,15 @@ export function JobsTable({
     all: { title: 'No jobs', body: 'Create a job to start routing applicants into a pipeline.' },
   }
   const renderEmpty = () =>
-    jobs.length === 0 ? (
+    jobs.length === 0 && !permissions.canCreateJobs ? (
+      // Job-based access: someone who can't create jobs sees only the jobs they're on.
+      <AnimatedEmpty
+        scene="jobs"
+        onceKey="jobs-list"
+        title="You're not on any jobs yet"
+        body="An admin adds you to a job's hiring team. Its pipeline shows up here as soon as they do."
+      />
+    ) : jobs.length === 0 ? (
       <AnimatedEmpty
         scene="jobs"
         onceKey="jobs-list"

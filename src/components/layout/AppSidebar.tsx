@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
+import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
 import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
 import { AnalyticsGlyph, AtsGlyph, ChatGlyph, DashboardGlyph, PeopleGlyph, ReferencesModuleGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
@@ -61,7 +62,11 @@ export function AppSidebar() {
   const { profile } = useUserProfile()
   const permissions = usePermissions()
   const canUseChat = useCanUseChat()
-  const items = allItems.filter((item) => (item.id === 'chat' ? canUseChat : item.show(permissions)))
+  const talentPool = useTalentPoolAccess() !== false
+  const items = allItems
+    .filter((item) => (item.id === 'chat' ? canUseChat : item.show(permissions)))
+    // Job-based access: references and analytics work on the talent pool.
+    .filter((item) => talentPool || (item.id !== 'references' && item.id !== 'analytics'))
   const { data: chatUnread = 0 } = useChatUnreadCount()
 
   const initials = (() => {

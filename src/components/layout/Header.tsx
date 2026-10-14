@@ -46,6 +46,7 @@ import { useMembers } from '@/hooks/useMembers'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
 import { useUserJobRoles } from '@/hooks/useUserJobRoles'
 
 type NavItem = {
@@ -80,6 +81,8 @@ export function Header() {
   const { hasRecruiterRole, isPrivileged } = useUserJobRoles()
 
   const canSeeRecruiterTools = isPrivileged || hasRecruiterRole
+  // Job-based access: Find, Candidates, references and analytics need the talent pool.
+  const talentPool = useTalentPoolAccess() !== false
 
   const handleLogout = async () => {
     await logout()
@@ -138,7 +141,7 @@ export function Header() {
       icon: Sparkles,
       label: 'Find',
       show:
-        canSeeRecruiterTools &&
+        canSeeRecruiterTools && talentPool &&
         (isPlatformAdmin || isWorkspaceOwner || isAdmin || isMember),
       section: 'ats',
     },
@@ -147,7 +150,7 @@ export function Header() {
       href: '/candidates',
       icon: Users,
       label: 'Candidates',
-      show: canSeeRecruiterTools && canViewCandidatesNavigation,
+      show: canSeeRecruiterTools && talentPool && canViewCandidatesNavigation,
       section: 'ats',
     },
     { href: '/calendar', icon: CalendarIcon, label: 'Calendar', show: canSeeRecruiterTools, section: 'ats' },
@@ -170,14 +173,14 @@ export function Header() {
       href: '/references',
       icon: Inbox,
       label: 'Requests',
-      show: canViewReferences,
+      show: canViewReferences && talentPool,
       section: 'references',
     },
     {
       href: '/references/templates',
       icon: Settings2,
       label: 'Templates',
-      show: canViewReferences,
+      show: canViewReferences && talentPool,
       section: 'references',
       matchPrefix: true,
     },

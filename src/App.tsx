@@ -26,6 +26,7 @@ import { lazy, Suspense, useRef, useEffect } from 'react'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
 import { NoWorkspaceWall } from '@/components/auth/NoWorkspaceWall'
 import { OsAdminOnly } from '@/components/os/OsAdminOnly'
+import { TalentPoolOnly } from '@/components/auth/TalentPoolOnly'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
@@ -199,14 +200,14 @@ function AppContent() {
           <Route element={<BillingGuard requireActive={false} />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/find" element={<Find />} />
+            <Route path="/find" element={<TalentPoolOnly what="Find"><Find /></TalentPoolOnly>} />
             <Route path="/find/:projectId" element={<Find />} />
             <Route path="/jobs" element={<PhoneSwitch phone={<PhoneJobs />}><Jobs /></PhoneSwitch>} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/calendar" element={<PhoneSwitch phone={<PhoneCalendar />}><Calendar /></PhoneSwitch>} />
-            <Route path="/analytics" element={<PhoneSwitch phone={<DesktopOnly what="Analytics" />}><Analytics /></PhoneSwitch>} />
+            <Route path="/analytics" element={<PhoneSwitch phone={<DesktopOnly what="Analytics" />}><TalentPoolOnly what="Analytics"><Analytics /></TalentPoolOnly></PhoneSwitch>} />
             <Route path="/insights" element={<Navigate to="/analytics" replace />} />
-            <Route path="/talent-intelligence" element={<PhoneSwitch phone={<DesktopOnly what="Intelligence" />}><TalentIntelligence /></PhoneSwitch>} />
+            <Route path="/talent-intelligence" element={<PhoneSwitch phone={<DesktopOnly what="Intelligence" />}><TalentPoolOnly what="Intelligence"><TalentIntelligence /></TalentPoolOnly></PhoneSwitch>} />
             <Route path="/jobs/:id" element={<PhoneSwitch phone={<PhoneJobGlance />}><JobDetail /></PhoneSwitch>} />
             <Route path="/jobs/:jobId/pipeline" element={<PhoneSwitch phone={<PhoneJobGlance />}><JobDetail /></PhoneSwitch>} />
             <Route path="/jobs/:jobId/setup" element={<JobDetail />} />
@@ -214,7 +215,7 @@ function AppContent() {
             <Route path="/jobs/:jobId/candidates/:candidateId" element={<PhoneSwitch phone={<PhoneCandidateGlance />}><CandidateProfile /></PhoneSwitch>} />
             <Route path="/jobs/:jobId/suggested/:candidateId" element={<SuggestedCandidateProfile />} />
 
-            <Route path="/candidates" element={<PhoneSwitch phone={<PhoneCandidates />}><Candidates /></PhoneSwitch>} />
+            <Route path="/candidates" element={<TalentPoolOnly what="Candidates"><PhoneSwitch phone={<PhoneCandidates />}><Candidates /></PhoneSwitch></TalentPoolOnly>} />
             <Route path="/candidates/:candidateId" element={<PhoneSwitch phone={<PhoneCandidateGlance />}><IndependentCandidateProfile /></PhoneSwitch>} />
             <Route path="/lists/:id" element={<SharedList />} />
             <Route path="/members" element={<Members />} />
@@ -222,7 +223,7 @@ function AppContent() {
             <Route path="/organizations" element={<Navigate to="/settings" replace />} />
             <Route path="/chat" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
             <Route path="/chat/:threadId" element={<PhoneSwitch phone={<DesktopOnly what="Chat" />}><ChatRouteGuard><Chat /></ChatRouteGuard></PhoneSwitch>} />
-            <Route path="/references" element={<References />} />
+            <Route path="/references" element={<TalentPoolOnly what="Reference checks"><References /></TalentPoolOnly>} />
             <Route path="/references/requests/:requestId" element={<ReferenceRequestDetail />} />
             <Route path="/candidates/:candidateId/references" element={<CandidateReferences />} />
             <Route path="/references/templates" element={<ReferenceTemplates />} />

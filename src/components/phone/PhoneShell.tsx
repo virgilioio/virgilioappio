@@ -12,6 +12,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
 import { BookingLinkCard } from './BookingLinkCard'
+import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
 
 /**
  * The phone shell (2026-10-12), in Gio Docs' phone frame so the two products
@@ -26,7 +27,7 @@ import { BookingLinkCard } from './BookingLinkCard'
  * Analytics, Intelligence and chat stay on the computer.
  */
 
-type Perm = ReturnType<typeof usePermissions>
+type Perm = ReturnType<typeof usePermissions> & { talentPool: boolean }
 type ModuleId = 'home' | 'ats'
 
 interface Section { id: string; href: string; label: string; match: (p: string) => boolean; show: (perm: Perm) => boolean }
@@ -37,7 +38,7 @@ const SECTIONS: Record<ModuleId, Section[]> = {
   ],
   ats: [
     { id: 'jobs', href: '/jobs', label: 'Jobs', match: p => p === '/jobs', show: perm => perm.canViewJobs },
-    { id: 'candidates', href: '/candidates', label: 'Candidates', match: p => p === '/candidates', show: perm => perm.canViewCandidates },
+    { id: 'candidates', href: '/candidates', label: 'Candidates', match: p => p === '/candidates', show: perm => perm.canViewCandidates && perm.talentPool },
     { id: 'calendar', href: '/calendar', label: 'Calendar', match: p => p === '/calendar', show: () => true },
   ],
 }
@@ -70,7 +71,9 @@ function useMe() {
 export function PhoneShell() {
   const { pathname, key } = useLocation()
   const navigate = useNavigate()
-  const perm = usePermissions()
+  // Job-based access: Candidates needs the talent pool.
+  const talentPool = useTalentPoolAccess() !== false
+  const perm = { ...usePermissions(), talentPool }
   const me = useMe()
   const [searchOpen, setSearchOpen] = useState(false)
   const [youOpen, setYouOpen] = useState(false)
