@@ -7707,7 +7707,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "coresignal_usage_tenant_id_fkey"
+            foreignKeyName: "sourcing_credits_usage_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -7865,7 +7865,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "coresignal_preview_candidates_sourcing_project_id_fkey"
+            foreignKeyName: "sourcing_preview_candidates_sourcing_project_id_fkey"
             columns: ["sourcing_project_id"]
             isOneToOne: false
             referencedRelation: "sourcing_projects"
@@ -9397,7 +9397,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "coresignal_usage_tenant_id_fkey"
+            foreignKeyName: "sourcing_credits_usage_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
