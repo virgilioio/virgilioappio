@@ -15,6 +15,16 @@ serve(withRequestCors(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
+  // Gio is invite-only (2026-10-14): nobody creates a new workspace from the
+  // app any more. Server-to-server calls keep working for platform tooling.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!serviceKey || req.headers.get("Authorization") !== `Bearer ${serviceKey}`) {
+    return new Response(
+      JSON.stringify({ error: "New workspaces can't be created. Gio is invite-only: ask an admin at Virgilio to invite you." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
+    );
+  }
+
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
   
