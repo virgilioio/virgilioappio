@@ -10176,6 +10176,7 @@ export type Database = {
       get_user_organization_id: { Args: never; Returns: string }
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_type: { Args: never; Returns: string }
+      google_token_key: { Args: never; Returns: string }
       get_user_type_secure: { Args: never; Returns: string }
       identity_email: { Args: { p: string }; Returns: string }
       identity_phone: { Args: { p: string }; Returns: string }
