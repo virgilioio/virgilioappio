@@ -31,7 +31,6 @@ const BLOCKER_LABELS: Record<string, [string, string]> = {
   'job_openings.sourcer_user_id': ['opening they source for', 'openings they source for'],
   'jobs.last_edited_by': ['job they last edited', 'jobs they last edited'],
   'offer_letters.created_by': ['offer letter', 'offer letters'],
-  'organizations.billing_poc_updated_by': ['workspace billing record', 'workspace billing records'],
   'organizations.created_by': ['organization they created', 'organizations they created'],
   'rejection_email_templates.created_by': ['rejection email template', 'rejection email templates'],
   'rejection_reasons.created_by': ['rejection reason', 'rejection reasons'],
@@ -153,7 +152,7 @@ Deno.serve(withRequestCors(async (req) => {
     }
 
     // Step 1: Use the safe delete function to remove from public tables
-    const { data: deleteResult, error: deleteError } = await supabaseClient
+    const { data: deleteResult, error: deleteError } = await supabaseAdmin
       .rpc('safe_delete_user', { target_user_id: body.userId })
 
     if (deleteError) {
