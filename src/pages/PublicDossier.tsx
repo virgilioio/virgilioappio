@@ -7,6 +7,7 @@
  * response is written, so there is nothing here to toggle back on.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { readSkillPriorities } from '@/lib/skillPriority'
 import { useParams } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 
@@ -60,6 +61,7 @@ export interface PublicDossierPayload {
     skills: string[]
   }
   required_skills: string[]
+  skill_priorities?: Record<string, string>
   salary_expectation: string | null
   files?: { id: string; name: string; type: string | null; size: number | null; created_at: string; url: string }[]
   score: number
@@ -274,6 +276,7 @@ export default function PublicDossier({ pipeline }: { pipeline?: PipelineContext
       location: live.candidate.location,
       contactItems: [],
       requiredSkills: live.required_skills,
+      skillPriorities: readSkillPriorities(live.skill_priorities),
       candidateSkills: live.candidate.skills,
       workExperience: live.work_experience,
       education: live.education,

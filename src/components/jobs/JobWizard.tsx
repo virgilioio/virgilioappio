@@ -26,7 +26,7 @@ interface JobWizardProps {
 
 const JOB_DATA_KEYS = [
   'title', 'description', 'location', 'department', 'salary_min', 'salary_max', 'currency', 'status',
-  'skills', 'auto_generated_skills', 'last_skills_generation', 'hiring_team', 'organization_id',
+  'skills', 'skill_priorities', 'auto_generated_skills', 'last_skills_generation', 'hiring_team', 'organization_id',
   'department_id', 'internal_title', 'job_level', 'work_mode', 'employment_type', 'additional_locations',
   'show_salary_public', 'include_equity', 'include_signing_bonus', 'min_years_experience',
   'max_years_experience', 'priority',

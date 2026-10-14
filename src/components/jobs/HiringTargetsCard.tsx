@@ -1,5 +1,6 @@
 import { useEffect, useState, KeyboardEvent } from 'react'
-import { Target, X, Edit, Save } from 'lucide-react'
+import { SkillPill } from '@/components/jobs/SkillPill'
+import { Target, Edit, Save } from 'lucide-react'
 import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,7 +40,6 @@ export function HiringTargetsCard({ jobId }: { jobId: string }) {
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState<Targets>(DEFAULTS)
   const [draft, setDraft] = useState<Targets>(DEFAULTS)
-  const [skillInput, setSkillInput] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -65,8 +65,8 @@ export function HiringTargetsCard({ jobId }: { jobId: string }) {
     return () => { cancelled = true }
   }, [jobId])
 
-  const startEdit = () => { setDraft(data); setSkillInput(''); setEditing(true) }
-  const cancel = () => { setDraft(data); setSkillInput(''); setEditing(false) }
+  const startEdit = () => { setDraft(data); setEditing(true) }
+  const cancel = () => { setDraft(data); setEditing(false) }
 
   const save = async () => {
     if (draft.budget_salary_min != null && draft.budget_salary_max != null && draft.budget_salary_min > draft.budget_salary_max) {
@@ -82,7 +82,7 @@ export function HiringTargetsCard({ jobId }: { jobId: string }) {
         budget_currency: draft.budget_currency,
         budget_period: draft.budget_period,
         target_fill_date: draft.target_fill_date,
-        must_have_skills: draft.must_have_skills,
+        // must_have_skills is derived from the skills' priority on the job; the database keeps it in sync.
         location_requirement: draft.location_requirement,
       } as any)
       .eq('id', jobId)
@@ -94,21 +94,6 @@ export function HiringTargetsCard({ jobId }: { jobId: string }) {
     setData(draft)
     setEditing(false)
     toast({ title: 'Hiring targets saved' })
-  }
-
-  const addSkill = (raw: string) => {
-    const v = raw.trim()
-    if (!v) return
-    if (draft.must_have_skills.some(s => s.toLowerCase() === v.toLowerCase())) { setSkillInput(''); return }
-    setDraft({ ...draft, must_have_skills: [...draft.must_have_skills, v] })
-    setSkillInput('')
-  }
-  const removeSkill = (s: string) => setDraft({ ...draft, must_have_skills: draft.must_have_skills.filter(x => x !== s) })
-  const onSkillKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill(skillInput) }
-    else if (e.key === 'Backspace' && !skillInput && draft.must_have_skills.length) {
-      setDraft({ ...draft, must_have_skills: draft.must_have_skills.slice(0, -1) })
-    }
   }
 
   const fmtMoney = (n: number | null) => (n == null ? '—' : n.toLocaleString())
@@ -162,7 +147,7 @@ export function HiringTargetsCard({ jobId }: { jobId: string }) {
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {data.must_have_skills.map(s => (
-                      <Badge key={s} tone="lilac" size="sm">{s}</Badge>
+                      <SkillPill key={s} skill={s} priority="must" size="sm" />
                     ))}
                   </div>
                 )}
@@ -230,29 +215,15 @@ export function HiringTargetsCard({ jobId }: { jobId: string }) {
               </div>
             </div>
 
-            {/* Skills */}
+            {/* Skills: read-only here. The priority lives on each skill pill in Edit job (2026-10-14). */}
             <div>
               <label className="text-form-label text-virgilio-text">Must-have skills</label>
-              <div className="mt-2 rounded-lg border border-virgilio-border bg-white p-2 flex flex-wrap gap-1.5">
-                {draft.must_have_skills.map(s => (
-                  <Badge key={s} tone="lilac" size="sm" className="gap-1">
-                    {s}
-                    <button type="button" onClick={() => removeSkill(s)} className="hover:text-virgilio-purple" aria-label={`Remove ${s}`}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                <input
-                  type="text"
-                  value={skillInput}
-                  onChange={e => setSkillInput(e.target.value)}
-                  onKeyDown={onSkillKey}
-                  onBlur={() => addSkill(skillInput)}
-                  placeholder={draft.must_have_skills.length === 0 ? 'Type a skill and press Enter' : ''}
-                  className="flex-1 min-w-[160px] bg-transparent outline-none text-sm px-1"
-                />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {draft.must_have_skills.length === 0
+                  ? <span className="text-sm text-virgilio-muted">None marked yet</span>
+                  : draft.must_have_skills.map(s => <SkillPill key={s} skill={s} priority="must" size="sm" />)}
               </div>
-              <p className="mt-1.5 text-xs text-virgilio-muted">Press Enter or comma to add. These are used by the briefing to gauge candidate fit.</p>
+              <p className="mt-1.5 text-xs text-virgilio-muted">Mark a skill as a must-have from its pill in Edit job. Gio Fit caps the score when a must-have is missing.</p>
             </div>
           </div>
         )}

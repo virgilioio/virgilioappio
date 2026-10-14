@@ -1,4 +1,5 @@
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
+import { isSkillPriority, priorityOf, type SkillPriorities, type SkillPriority } from '@/lib/skillPriority'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { companyKey, unionExperienceMonths } from '@/lib/experience/groupExperience'
 
@@ -81,6 +82,8 @@ export interface SkillVerdict {
   status: SkillStatus
   evidence: string | null
   source: string | null
+  /** Must-have / nice-to-have / extra, as set on the job (2026-10-14). */
+  priority: SkillPriority
 }
 
 export interface SkillGroups {
@@ -93,7 +96,7 @@ export interface SkillGroups {
 }
 
 /** Reads the per-skill verdicts stored on the analysis, if they are present and well formed. */
-export function readSkillEvidence(analysis: unknown): SkillVerdict[] | null {
+export function readSkillEvidence(analysis: unknown, priorities?: SkillPriorities | null): SkillVerdict[] | null {
   const raw = (analysis as Record<string, unknown> | null | undefined)?.skill_evidence
   if (!Array.isArray(raw) || raw.length === 0) return null
   const entries = raw
@@ -105,7 +108,9 @@ export function readSkillEvidence(analysis: unknown): SkillVerdict[] | null {
       if (status !== 'evidenced' && status !== 'partial' && status !== 'not_evidenced') return null
       const evidence = typeof record?.evidence === 'string' && record.evidence.trim() ? record.evidence.trim() : null
       const source = typeof record?.source === 'string' && record.source.trim() ? record.source.trim() : null
-      return { skill, status, evidence, source } as SkillVerdict
+      // New dossiers carry the priority the job had when they were scored; older ones take the job's current one.
+      const priority = isSkillPriority(record?.priority) ? record.priority : priorityOf(priorities, skill)
+      return { skill, status, evidence, source, priority } as SkillVerdict
     })
     .filter((entry): entry is SkillVerdict => entry !== null)
   return entries.length > 0 ? entries : null
@@ -115,6 +120,7 @@ export function buildSkillGroups(
   requiredSkills: string[],
   candidateSkills: string[],
   skillEvidence?: SkillVerdict[] | null,
+  priorities?: SkillPriorities | null,
 ): SkillGroups {
   const requiredMap = new Map(requiredSkills.map((skill) => [normalizeSkill(skill), skill]))
   const additional = candidateSkills.filter((skill) => !requiredMap.has(normalizeSkill(skill)))
@@ -132,7 +138,7 @@ export function buildSkillGroups(
   // Legacy analyses carry no verdicts. The literal comparison is only a holding
   // pattern until the analysis is regenerated.
   const candidateMap = new Map(candidateSkills.map((skill) => [normalizeSkill(skill), skill]))
-  const asVerdict = (skill: string, status: SkillStatus): SkillVerdict => ({ skill, status, evidence: null, source: null })
+  const asVerdict = (skill: string, status: SkillStatus): SkillVerdict => ({ skill, status, evidence: null, source: null, priority: priorityOf(priorities, skill) })
   return {
     evidenced: requiredSkills.filter((skill) => candidateMap.has(normalizeSkill(skill))).map((skill) => asVerdict(skill, 'evidenced')),
     partly: [],

@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { useDepartments } from '@/hooks/useDepartments'
 import { DepartmentFormDialog } from '@/components/settings/DepartmentFormDialog'
 import { JobPriorityPicker } from '@/components/jobs/JobPriorityPicker'
+import { SkillPriorityLegend } from '@/components/jobs/SkillPill'
 import { DEFAULT_JOB_PRIORITY } from '@/lib/job-priority'
 
 export type JobInfoOpeningsProp =
@@ -535,9 +536,12 @@ We're hiring a…
               onChange={(next) => set('skills', next)}
               placeholder="Add skill…"
               tone="purple"
+              priorities={jobData.skill_priorities || {}}
+              onPriorityChange={(skill, next) => set('skill_priorities', { ...(jobData.skill_priorities || {}), [skill]: next })}
             />
           </div>
-          <FieldHint>Used for AI matching when sourcing and reviewing applications. Press Enter to add.</FieldHint>
+          <FieldHint>Press Enter to add. Open a skill's chevron to mark it as a must-have, nice-to-have or extra; Gio Fit scores against that.</FieldHint>
+          <SkillPriorityLegend className="mt-2" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

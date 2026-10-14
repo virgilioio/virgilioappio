@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { SKILL_PRIORITY, sortByPriority, type SkillPriorities } from '@/lib/skillPriority'
 import type { FitAnalysis, FitDimension, ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { GioAtsLogo } from '@/components/brand/GioAtsLogo'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
@@ -31,6 +32,8 @@ export interface DossierPrintProps {
   location: string | null
   contactItems: string[]
   requiredSkills: string[]
+  /** Must / nice / extra per job skill; colours the chips (2026-10-14). */
+  skillPriorities?: SkillPriorities | null
   candidateSkills: string[]
   workExperience: CandidateWorkExperience[]
   education: CandidateEducation[]
@@ -200,6 +203,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
     location,
     contactItems,
     requiredSkills,
+    skillPriorities,
     candidateSkills,
     workExperience,
     education,
@@ -215,7 +219,7 @@ function buildBlocks(data: DossierPrintProps): Block[] {
   const blocks: Block[] = []
   const executiveSplit = splitExecutiveSummary(analysis.executive_summary)
   const stats = computeExperienceStats(workExperience, salaryExpectation)
-  const skills = buildSkillGroups(requiredSkills, candidateSkills, readSkillEvidence(analysis))
+  const skills = buildSkillGroups(requiredSkills, candidateSkills, readSkillEvidence(analysis, skillPriorities), skillPriorities)
   const dimensions = analysis.dimensions || []
   const visibleDimensions = clientReady ? dimensions.filter((dimension) => !/salary|compensation/i.test(dimension.name)) : dimensions
   const scored = dimensions.filter((dimension) => dimension.score !== null)
@@ -299,9 +303,9 @@ function buildBlocks(data: DossierPrintProps): Block[] {
   }
 
   const skillRows = [
-    { label: 'Required and evidenced', items: skills.evidenced, chip: 'evidenced' },
-    { label: 'Required, partly evidenced', items: skills.partly, chip: 'partial' },
-    { label: 'Required, not evidenced', items: skills.notEvidenced, chip: 'gap' },
+    { label: 'Evidenced', items: skills.evidenced, chip: 'evidenced' },
+    { label: 'Partly evidenced', items: skills.partly, chip: 'partial' },
+    { label: 'Not evidenced', items: skills.notEvidenced, chip: 'gap' },
   ].filter((row) => row.items.length > 0)
 
   if (skillRows.length > 0 || skills.additional.length > 0) {
@@ -313,9 +317,9 @@ function buildBlocks(data: DossierPrintProps): Block[] {
           <div className="gio-block gio-skill-row">
             <span className="gio-skill-label">{row.label}</span>
             <span className="gio-skill-chips">
-              {row.items.map((entry) => (
+              {sortByPriority(row.items, (entry) => entry.priority).map((entry) => (
                 <span className="gio-skill-verdict" key={`${row.label}-${entry.skill}`}>
-                  <span className={`gio-chip ${row.chip}`.trim()}>{entry.skill}</span>
+                  <span className={`gio-chip ${row.chip} priority-${entry.priority}`.trim()} title={SKILL_PRIORITY[entry.priority].label}>{entry.skill}</span>
                   {entry.evidence && (
                     <span className="gio-skill-evidence">
                       “{entry.evidence}”{entry.source ? ` — ${entry.source}` : ''}

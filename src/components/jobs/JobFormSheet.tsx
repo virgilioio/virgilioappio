@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { readSkillPriorities } from '@/lib/skillPriority'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -71,6 +72,7 @@ export function JobFormSheet({
         organization_id: job.organization_id,
         department_id: (job as any).department_id ?? null,
         skills: job.skills || [],
+        skill_priorities: readSkillPriorities((job as any).skill_priorities),
         internal_title: job.internal_title || undefined,
         job_level: job.job_level || undefined,
         work_mode: job.work_mode || undefined,
@@ -117,6 +119,7 @@ export function JobFormSheet({
       employment_type: emptyToNull(src.employment_type),
       additional_locations: Array.isArray(src.additional_locations) ? src.additional_locations : [],
       skills: Array.isArray(src.skills) ? src.skills : [],
+      skill_priorities: readSkillPriorities(src.skill_priorities),
       currency: src.currency || 'USD',
       salary_min: numOrNull(src.salary_min),
       salary_max: numOrNull(src.salary_max),

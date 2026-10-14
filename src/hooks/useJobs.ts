@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { readSkillPriorities, type SkillPriorities } from '@/lib/skillPriority'
 import { refreshOnboardingProgress } from '@/utils/refreshOnboardingProgress'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -26,6 +27,8 @@ export interface Job {
   currency: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
   skills: string[] | null
+  skill_priorities?: SkillPriorities | null
+  must_have_skills?: string[] | null
   auto_generated_skills?: any
   last_skills_generation?: string | null
   hiring_team: any[] | null
@@ -71,6 +74,7 @@ export interface CreateJobData {
   currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
   skills?: string[]
+  skill_priorities?: SkillPriorities
   auto_generated_skills?: any
   last_skills_generation?: string
   hiring_team?: any[]
@@ -100,6 +104,7 @@ export interface UpdateJobData {
   currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
   skills?: string[]
+  skill_priorities?: SkillPriorities
   auto_generated_skills?: any
   last_skills_generation?: string
   hiring_team?: any[]
@@ -204,6 +209,7 @@ export function useJobs() {
 
     return {
       ...data,
+      skill_priorities: readSkillPriorities(data.skill_priorities),
       hiring_team: Array.isArray(data.hiring_team) ? data.hiring_team : [],
       hiring_team_names: [],
       organization_name: organizationName

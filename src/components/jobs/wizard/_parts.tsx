@@ -3,6 +3,8 @@ import { useChipMotion } from '@/lib/chipMotion'
 import { cn } from '@/lib/utils'
 import { Sparkles, X, Info } from 'lucide-react'
 import { AffixInput } from '@/components/ui/affix-input'
+import { SkillPill } from '@/components/jobs/SkillPill'
+import { priorityOf, type SkillPriorities, type SkillPriority } from '@/lib/skillPriority'
 
 /** Round avatar with initials — tone cycle by name hash. */
 const AVATAR_TONES = [
@@ -334,6 +336,8 @@ export function ChipInput({
   inputClassName,
   maxChips,
   disabled = false,
+  priorities,
+  onPriorityChange,
 }: {
   values: string[]
   onChange: (next: string[]) => void
@@ -343,6 +347,9 @@ export function ChipInput({
   inputClassName?: string
   maxChips?: number
   disabled?: boolean
+  /** Skills only: colour each chip by priority and let the chevron change it. */
+  priorities?: SkillPriorities
+  onPriorityChange?: (skill: string, next: SkillPriority) => void
 }) {
   const [draft, setDraft] = React.useState('')
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -397,7 +404,18 @@ export function ChipInput({
       )}
       onClick={() => !disabled && inputRef.current?.focus()}
     >
-      {values.map((v, i) => (
+      {values.map((v, i) => onPriorityChange ? (
+        <SkillPill
+          key={v}
+          data-chip={v}
+          data-armed={armed && i === values.length - 1 ? '' : undefined}
+          skill={v}
+          priority={priorityOf(priorities, v)}
+          onPriorityChange={disabled ? undefined : (next) => onPriorityChange(v, next)}
+          onRemove={disabled ? undefined : () => onChange(values.filter((x) => x !== v))}
+          className="data-[armed]:ring-2 data-[armed]:ring-virgilio-purple/40"
+        />
+      ) : (
         <span
           key={v}
           data-chip={v}

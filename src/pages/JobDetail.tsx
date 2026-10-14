@@ -1,4 +1,5 @@
 import { ClientViewStrip } from '@/components/jobs/ClientViewStrip'
+import { readSkillPriorities } from '@/lib/skillPriority'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -1439,6 +1440,7 @@ export default function JobDetail() {
           onSubmit={handleJobFormSubmit}
           job={job ? {
             ...job,
+            skill_priorities: readSkillPriorities((job as any).skill_priorities),
             hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : []
           } : null}
           isLoading={jobUpdateLoading}

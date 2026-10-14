@@ -109,7 +109,7 @@ function SuggestedCandidateProfileInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, title, description, skills, must_have_skills, location, department, status, organization:organizations(name)')
+        .select('id, title, description, skills, skill_priorities, must_have_skills, location, department, status, organization:organizations(name)')
         .eq('id', jobId)
         .maybeSingle()
       if (error) throw error

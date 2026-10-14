@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { SkillPill, SkillPriorityLegend } from '@/components/jobs/SkillPill'
+import { priorityOf, readSkillPriorities, sortByPriority } from '@/lib/skillPriority'
 import DOMPurify from 'dompurify'
 
 const SAFE_HTML_CONFIG = {
@@ -148,6 +150,7 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
 
   // Required skills
   const skills: string[] = Array.isArray(job?.skills) ? job.skills : []
+  const skillPriorities = readSkillPriorities((job as any)?.skill_priorities)
   const minYears = job?.min_years_experience ?? null
   const maxYears = job?.max_years_experience ?? null
   const yearsLabel =
@@ -293,12 +296,13 @@ export function JobOverviewTab({ jobId, job, onEdit, onNavigate }: JobOverviewTa
                   No skills set yet — add them from the Edit Job sheet.
                 </p>
               ) : (
-                <div className="flex flex-wrap" style={{ gap: 6 }}>
-                  {skills.map((s) => (
-                    <Badge key={s} tone="lilac" size="sm">
-                      {s}
-                    </Badge>
-                  ))}
+                <div>
+                  <div className="flex flex-wrap" style={{ gap: 6 }}>
+                    {sortByPriority(skills, (s) => priorityOf(skillPriorities, s)).map((s) => (
+                      <SkillPill key={s} skill={s} priority={priorityOf(skillPriorities, s)} size="sm" />
+                    ))}
+                  </div>
+                  <SkillPriorityLegend className="mt-2.5" />
                 </div>
               )}
               <div

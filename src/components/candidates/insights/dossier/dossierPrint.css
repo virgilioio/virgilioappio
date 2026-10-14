@@ -428,6 +428,24 @@
   color: #1f2230;
 }
 
+.gio-chip.priority-must {
+  border-color: #b7f0b7;
+  background: #e0ffe0;
+  color: #008000;
+}
+
+.gio-chip.priority-nice {
+  border-color: #c7dcfb;
+  background: #e8f0fe;
+  color: #04367a;
+}
+
+.gio-chip.priority-bonus {
+  border-color: #dccbff;
+  background: #f5f0ff;
+  color: #5a2fc9;
+}
+
 .gio-skill-verdict {
   display: inline-flex;
   flex-direction: column;

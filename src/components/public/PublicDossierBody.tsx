@@ -6,6 +6,8 @@
  * in-app dossier: one sheet at 1080 with a 360 rail that stacks below 900px.
  */
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
+import { SKILL_PRIORITY, readSkillPriorities, sortByPriority } from '@/lib/skillPriority'
 import { Calendar, ChevronDown, FileSignature, FileText, GraduationCap, Info, Languages, MapPin, PartyPopper, X } from 'lucide-react'
 import { differenceInDays, format } from 'date-fns'
 
@@ -122,10 +124,12 @@ export function PublicDossierBody({
 
   const summary = splitExecutiveSummary(analysis.executive_summary ?? '')
   const stats = computeExperienceStats(payload.work_experience, payload.salary_expectation)
+  const skillPriorities = readSkillPriorities(payload.skill_priorities)
   const skillGroups = buildSkillGroups(
     payload.required_skills,
     candidate.skills,
-    readSkillEvidence(analysis),
+    readSkillEvidence(analysis, skillPriorities),
+    skillPriorities,
   )
   const profileSummary = analysis.profile_summary || candidate.profile_summary || ''
   const strongestSignal = summary?.strongest ?? ''
@@ -134,7 +138,7 @@ export function PublicDossierBody({
   const skillSections = [
     { title: 'Evidenced', items: skillGroups.evidenced },
     { title: 'Partly evidenced', items: skillGroups.partly },
-    { title: 'Required, not evidenced', items: skillGroups.notEvidenced },
+    { title: 'Not evidenced', items: skillGroups.notEvidenced },
   ].filter((section) => section.items.length > 0)
 
   const outputLanguageCode = payload.output_language || 'en'
@@ -311,19 +315,12 @@ export function PublicDossierBody({
                 <div key={group.title} style={{ marginTop: 12 }}>
                   <p className="font-inter" style={{ fontSize: 11.5, fontWeight: 600, color: '#5A6072', margin: 0 }}>{group.title}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
-                    {group.items.map((item) => (
+                    {sortByPriority(group.items, (item) => item.priority).map((item) => (
                       <span
                         key={item.skill}
-                        title={item.evidence ?? undefined}
-                        className="font-inter"
-                        style={{
-                          fontSize: 11.5,
-                          padding: '4px 9px',
-                          borderRadius: 999,
-                          background: '#F6F5F1',
-                          border: '1px solid #EDEBE3',
-                          color: '#1F2230',
-                        }}
+                        title={[SKILL_PRIORITY[item.priority].label, item.evidence].filter(Boolean).join(' — ')}
+                        className={cn('font-inter inline-flex items-center rounded-full font-medium', SKILL_PRIORITY[item.priority].pill)}
+                        style={{ fontSize: 11.5, padding: '4px 9px' }}
                       >
                         {item.skill}
                       </span>

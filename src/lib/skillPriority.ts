@@ -1,0 +1,74 @@
+/**
+ * Skill priority on a job (Allan, 2026-10-14). Stored on `jobs.skill_priorities`
+ * as skill → priority; a skill with no entry is nice-to-have. The database keeps
+ * `jobs.must_have_skills` in sync with the green ones.
+ *
+ * Gio Fit reads it: must-haves count toward the must-have caps, nice-to-haves
+ * are what Skills Alignment is scored on, extras can lift but never lower.
+ */
+export type SkillPriority = 'must' | 'nice' | 'bonus'
+export type SkillPriorities = Record<string, SkillPriority>
+
+export const SKILL_PRIORITIES: SkillPriority[] = ['must', 'nice', 'bonus']
+
+export const SKILL_PRIORITY: Record<SkillPriority, {
+  label: string
+  short: string
+  hint: string
+  /** Pill background + text, the same tones as the badges. */
+  pill: string
+  /** Outline variant for places where the pill sits on a tinted surface. */
+  dot: string
+}> = {
+  must: {
+    label: 'Must-have',
+    short: 'Must',
+    hint: 'Counts against the Gio Fit score when it is missing.',
+    pill: 'bg-pastel-green text-pastel-green-foreground',
+    dot: 'bg-pastel-green-foreground',
+  },
+  nice: {
+    label: 'Nice-to-have',
+    short: 'Nice',
+    hint: 'Part of the skills match; missing it is a gap, not a cap.',
+    pill: 'bg-pastel-blue text-pastel-blue-foreground',
+    dot: 'bg-pastel-blue-foreground',
+  },
+  bonus: {
+    label: 'Extra points',
+    short: 'Extra',
+    hint: 'Lifts the score when present; never lowers it.',
+    pill: 'bg-badge-lilac text-badge-lilac-foreground',
+    dot: 'bg-badge-lilac-foreground',
+  },
+}
+
+export const isSkillPriority = (v: unknown): v is SkillPriority => v === 'must' || v === 'nice' || v === 'bonus'
+
+/** Reads a priorities map off a job row (jsonb → typed, unknown values dropped). */
+export function readSkillPriorities(raw: unknown): SkillPriorities {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: SkillPriorities = {}
+  for (const [skill, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isSkillPriority(value)) out[skill] = value
+  }
+  return out
+}
+
+/** The priority of one skill; matching ignores case so "hubspot" finds "HubSpot". */
+export function priorityOf(priorities: SkillPriorities | null | undefined, skill: string): SkillPriority {
+  if (!priorities) return 'nice'
+  const direct = priorities[skill]
+  if (direct) return direct
+  const key = skill.trim().toLowerCase()
+  for (const [name, value] of Object.entries(priorities)) {
+    if (name.trim().toLowerCase() === key) return value
+  }
+  return 'nice'
+}
+
+/** Must-haves first, then nice-to-haves, then extras; stable within a group. */
+export function sortByPriority<T>(items: T[], priority: (item: T) => SkillPriority): T[] {
+  const rank: Record<SkillPriority, number> = { must: 0, nice: 1, bonus: 2 }
+  return items.map((item, index) => ({ item, index })).sort((a, b) => rank[priority(a.item)] - rank[priority(b.item)] || a.index - b.index).map((x) => x.item)
+}

@@ -864,7 +864,7 @@ const stageHasAutomation = useMemo(() => {
       // Load job info
       const { data: jobData } = await supabase
         .from('jobs')
-        .select('id, title, description, skills, must_have_skills, department, department_id, location, additional_locations, status, organization_id')
+        .select('id, title, description, skills, skill_priorities, must_have_skills, department, department_id, location, additional_locations, status, organization_id')
         .eq('id', jobId)
         .maybeSingle()
       // If the denormalized department text is missing, resolve the name from departments

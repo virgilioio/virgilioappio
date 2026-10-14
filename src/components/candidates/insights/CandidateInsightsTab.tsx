@@ -31,6 +31,8 @@ import { GioFitRescoringBar } from './loading/GioFitRescoringBar'
 import { buildNarrationSteps, stepProgress, useGioFitNarration } from './loading/GioFitNarration'
 import { useCandidateFitInsights, type FitDimension, type MustHave, type ValidationPoint } from '@/hooks/useCandidateFitInsights'
 import { useDossierShare } from '@/hooks/useDossierShare'
+import { SkillPriorityLegend } from '@/components/jobs/SkillPill'
+import { SKILL_PRIORITY, readSkillPriorities, sortByPriority } from '@/lib/skillPriority'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAssociationScorecards } from '@/hooks/useAssociationScorecards'
 import { useApplicationScorecardRequirements } from '@/hooks/useApplicationScorecardRequirements'
@@ -260,15 +262,15 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
   const hasTriggered = useRef(false)
   const jdText = stripHtml(jobDescription)
 
-  const requiredSkills = useMemo(() => {
-    const mustHave = asStringArray(job?.must_have_skills)
-    return mustHave.length ? mustHave : asStringArray(job?.skills)
-  }, [job])
+  // Every job skill is checked; its priority (must / nice / extra) colours the chip
+  // and decides what a missing one costs (2026-10-14).
+  const requiredSkills = useMemo(() => asStringArray(job?.skills), [job])
+  const skillPriorities = useMemo(() => readSkillPriorities(job?.skill_priorities), [job])
   const candidateSkills = useMemo(() => asStringArray(candidate?.skills), [candidate])
-  const skillEvidence = useMemo(() => readSkillEvidence(insights?.analysis), [insights?.analysis])
+  const skillEvidence = useMemo(() => readSkillEvidence(insights?.analysis, skillPriorities), [insights?.analysis, skillPriorities])
   const skillGroups = useMemo(
-    () => buildSkillGroups(requiredSkills, candidateSkills, skillEvidence),
-    [candidateSkills, requiredSkills, skillEvidence],
+    () => buildSkillGroups(requiredSkills, candidateSkills, skillEvidence, skillPriorities),
+    [candidateSkills, requiredSkills, skillEvidence, skillPriorities],
   )
 
   // An analysis produced before per-skill adjudication has no verdicts. That is a
@@ -420,6 +422,7 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
     location: location || null,
     contactItems,
     requiredSkills,
+    skillPriorities,
     candidateSkills,
     workExperience,
     education,
@@ -609,34 +612,38 @@ export function CandidateInsightsTab({ candidateId, jobId, jobDescription, job, 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className={sectionHeadingClass}><Sparkles className="h-3 w-3" /> Identified skills</h3>
                 {requiredSkills.length > 0 && (
-                  <span className="text-[11.5px] text-fit-subtle">
-                    {skillGroups.hasVerdicts
-                      ? `${skillGroups.evidenced.length} evidenced · ${skillGroups.partly.length} partly · ${skillGroups.notEvidenced.length} not evidenced`
-                      : `${skillGroups.evidenced.length} of ${requiredSkills.length} required skills evidenced`}
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-fit-subtle">
+                    <SkillPriorityLegend />
+                    <span>
+                      {skillGroups.hasVerdicts
+                        ? `${skillGroups.evidenced.length} evidenced · ${skillGroups.partly.length} partly · ${skillGroups.notEvidenced.length} not evidenced`
+                        : `${skillGroups.evidenced.length} of ${requiredSkills.length} job skills evidenced`}
+                    </span>
                   </span>
                 )}
               </div>
               <div className="mt-4 space-y-3">
                 {[
-                  { label: 'Required and evidenced', items: skillGroups.evidenced, className: 'border-fit-skill-evidenced-border bg-fit-skill-evidenced-bg text-fit-skill-evidenced-text', Icon: Check },
-                  { label: 'Required, partly evidenced', items: skillGroups.partly, className: 'border-fit-row-border bg-fit-paper text-fit-ink', Icon: CircleDashed },
-                  { label: 'Required, not evidenced', items: skillGroups.notEvidenced, className: 'border-fit-risk-border bg-fit-warning-soft text-fit-risk-copy', Icon: Minus },
+                  { label: 'Evidenced', items: skillGroups.evidenced, Icon: Check },
+                  { label: 'Partly evidenced', items: skillGroups.partly, Icon: CircleDashed },
+                  { label: 'Not evidenced', items: skillGroups.notEvidenced, Icon: Minus },
                 ].filter((group) => group.items.length > 0).map((group) => (
                   <div key={group.label} className="grid gap-2 sm:grid-cols-[190px_minmax(0,1fr)] sm:gap-3">
                     <p className="pt-1 text-[11.5px] font-medium text-fit-muted">{group.label}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {group.items.map((entry) => {
+                      {sortByPriority(group.items, (entry) => entry.priority).map((entry) => {
+                        // Colour is the job's priority; the icon and row are the verdict.
                         const chip = (
-                          <span className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium', group.className)}>
+                          <span className={cn('inline-flex h-[22px] items-center gap-1 rounded-full px-2 text-[11px] font-medium', SKILL_PRIORITY[entry.priority].pill, entry.status === 'not_evidenced' && 'opacity-80 ring-1 ring-inset ring-fit-risk-border')}>
                             {group.Icon && <group.Icon className="h-3 w-3" />}{entry.skill}
                           </span>
                         )
-                        if (!entry.evidence) return <span key={`${group.label}-${entry.skill}`}>{chip}</span>
                         return (
                           <Tooltip key={`${group.label}-${entry.skill}`}>
-                            <TooltipTrigger asChild><span className="cursor-help">{chip}</span></TooltipTrigger>
+                            <TooltipTrigger asChild><span className={entry.evidence ? 'cursor-help' : undefined}>{chip}</span></TooltipTrigger>
                             <TooltipContent className="max-w-[280px]">
-                              <p className="text-[11.5px] leading-relaxed">“{entry.evidence}”</p>
+                              <p className="text-[10.5px] font-semibold uppercase tracking-wide opacity-70">{SKILL_PRIORITY[entry.priority].label} · {group.label.toLowerCase()}</p>
+                              {entry.evidence && <p className="mt-1 text-[11.5px] leading-relaxed">“{entry.evidence}”</p>}
                               {entry.source && <p className="mt-1 text-[10.5px] opacity-70">{entry.source}</p>}
                             </TooltipContent>
                           </Tooltip>
