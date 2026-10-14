@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -374,31 +375,30 @@ export function TemplateEditor({ template, clients, saving, onBack, onSave, onDu
 
       </div>
 
-      {previewOpen && (
-        <CandidatePreview template={draft} onClose={() => setPreviewOpen(false)} />
-      )}
+      <CandidatePreview template={draft} open={previewOpen} onOpenChange={setPreviewOpen} />
     </div>
   )
 }
 
 /** Read-only look at what the candidate is asked for. */
-function CandidatePreview({ template, onClose }: { template: ReferenceTemplate; onClose: () => void }) {
+function CandidatePreview({
+  template,
+  open,
+  onOpenChange,
+}: {
+  template: ReferenceTemplate
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const asked = template.questions.filter((q) => q.ask_candidate_too)
+  // A real Dialog (focus trap, Esc, focus returns, §2 motion) instead of a hand-rolled overlay.
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center p-6" style={{ background: 'rgba(13,13,9,0.45)' }}>
-      <Card className="w-full max-w-[560px] max-h-[80vh] overflow-auto p-5 space-y-4 bg-[#fffcf9]">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3
-              className="font-poppins font-semibold text-[#0d0d09]"
-              style={{ fontSize: 18, letterSpacing: '-0.04em' }}
-            >
-              Preview as candidate
-            </h3>
-            <p className="font-inter text-[12.5px] text-[#5A6072]">{template.name}</p>
-          </div>
-          <Button variant="ghost" size="xs" icon={X} iconOnly aria-label="Close preview" onClick={onClose} />
-        </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[560px] max-h-[80vh] overflow-auto space-y-4">
+        <DialogHeader>
+          <DialogTitle>Preview as candidate</DialogTitle>
+          <DialogDescription>{template.name || 'Untitled template'}</DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-1.5">
           <p className="font-poppins font-medium text-[#0d0d09]" style={{ fontSize: 13 }}>
@@ -444,7 +444,7 @@ function CandidatePreview({ template, onClose }: { template: ReferenceTemplate; 
             {template.consent_text}
           </p>
         )}
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

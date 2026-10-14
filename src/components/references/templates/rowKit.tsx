@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Lock, Trash2 } from 'lucide-react'
 
 import { RefToggle } from '@/components/references/RefToggle'
+import { IconTip } from '@/components/ui/tooltip'
 
 /** Shared list row for sections 1–3: grip · body · bin (or lock, when locked). */
 export function RowShell({
@@ -65,13 +66,16 @@ export function RowShell({
       {children}
 
       {locked ? (
-        <span
-          className="grid place-items-center shrink-0"
-          title="This field is always asked and can't be removed"
-          style={{ width: 26, height: 26, color: '#D1D0CB' }}
-        >
-          <Lock size={13} />
-        </span>
+        <IconTip label="This field is always asked and can't be removed">
+          <span
+            tabIndex={0}
+            aria-label="This field is always asked and can't be removed"
+            className="grid place-items-center shrink-0 rounded-md"
+            style={{ width: 26, height: 26, color: '#D1D0CB' }}
+          >
+            <Lock size={13} aria-hidden />
+          </span>
+        </IconTip>
       ) : (
         <button
           type="button"
@@ -115,9 +119,8 @@ export function TrailingToggle({
   accent?: boolean
   title?: string
 }) {
-  return (
+  const row = (
     <span
-      title={title}
       className="inline-flex items-center justify-end shrink-0"
       style={{
         gap: 7,
@@ -139,6 +142,8 @@ export function TrailingToggle({
       <RefToggle checked={checked} onChange={onChange} disabled={disabled} ariaLabel={label} />
     </span>
   )
+  // A styled tooltip, never a native title (Motion & Feel §2).
+  return title ? <IconTip label={title}>{row}</IconTip> : row
 }
 
 /** White card chrome each editor section supplies for itself. */

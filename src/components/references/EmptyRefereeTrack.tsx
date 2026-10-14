@@ -24,7 +24,7 @@ export function EmptyRefereeTrack({
       {Array.from({ length: n }).map((_, i) => (
         <span
           key={i}
-          title="Referee not yet added"
+          aria-hidden
           style={{ flex: 1, height: 5, borderRadius: 999, background: '#E7E8EE' }}
         />
       ))}

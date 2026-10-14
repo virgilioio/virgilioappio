@@ -57,7 +57,7 @@ export function RefereeTrack({ referees, requiredCount, width = 90, className }:
       {Array.from({ length: placeholders }).map((_, i) => (
         <span
           key={`empty-${i}`}
-          title="Referee not yet added"
+          aria-hidden
           style={{ flex: 1, height: 5, borderRadius: 999, background: SEG_COLOR.pending }}
         />
       ))}
