@@ -4,6 +4,22 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
+/** Asks the database whether this person may change a seat with this role on this job. */
+async function assertCanManage(jobId: string, role: JobAssignmentRole) {
+  const { data, error } = await supabase.rpc('can_manage_job_team', { _job_id: jobId, _role: role })
+  if (!error && data === false) throw { code: '42501' }
+}
+
+/** Job-team writes refused by the database (42501) get a message that says why. */
+function jobTeamError(err: unknown, fallback: string): string {
+  const code = (err as { code?: string } | null)?.code
+  if (code === '42501') {
+    return 'Only admins can add, change or remove a job\'s TA and Sourcers. A TA on the job can add its hiring managers and interviewers.'
+  }
+  return err instanceof Error ? err.message : fallback
+}
+
+
 export type JobAssignmentRole = 'sourcer' | 'recruiter' | 'hiring_manager' | 'interviewer'
 
 export interface JobAssignment {
@@ -97,7 +113,7 @@ export function useJobAssignments(jobId?: string) {
       await getAssignments(data.job_id)
       return newAssignment
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to assign user to job'
+      const errorMessage = jobTeamError(err, 'Failed to assign user to job')
       console.error('Job assignment creation error:', err)
       setError(errorMessage)
       toast({
@@ -118,6 +134,10 @@ export function useJobAssignments(jobId?: string) {
 
     try {
       console.log('Removing job assignment:', assignmentId)
+      // The database silently removes nothing it doesn't allow, so ask first.
+      const target = assignments.find((a) => a.id === assignmentId)
+      if (target) await assertCanManage(target.job_id, target.role)
+
       const { error: deleteError } = await supabase
         .from('job_assignments')
         .delete()
@@ -136,7 +156,7 @@ export function useJobAssignments(jobId?: string) {
 
       await getAssignments()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to remove user from job'
+      const errorMessage = jobTeamError(err, 'Failed to remove user from job')
       console.error('Job assignment deletion error:', err)
       setError(errorMessage)
       if (!opts.quiet) toast({
@@ -155,6 +175,12 @@ export function useJobAssignments(jobId?: string) {
     setError(null)
 
     try {
+      const current = assignments.find((a) => a.id === assignmentId)
+      if (current) {
+        await assertCanManage(current.job_id, current.role)
+        await assertCanManage(current.job_id, role)
+      }
+
       const { error: updateError } = await supabase
         .from('job_assignments')
         .update({ role } as any)
@@ -169,7 +195,7 @@ export function useJobAssignments(jobId?: string) {
 
       await getAssignments()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update assignment role'
+      const errorMessage = jobTeamError(err, 'Failed to update assignment role')
       setError(errorMessage)
       toast({
         title: 'Error',
