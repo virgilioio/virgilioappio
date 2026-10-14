@@ -10577,6 +10577,7 @@ export type Database = {
         }[]
       }
       whoami: { Args: never; Returns: string }
+      wwa_memo: { Args: { _tenant_id: string }; Returns: boolean }
     }
     Enums: {
       activity_type:
