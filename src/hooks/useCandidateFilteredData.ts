@@ -2,6 +2,24 @@ import { useMemo } from 'react'
 import type { IndependentCandidate } from './useIndependentCandidates'
 import type { CandidateFilters } from '@/contexts/CandidateFilterContext'
 import type { AssociationsMap } from './useCandidateJobAssociations'
+import { buildSearchText, matchesEverything, queryWords, type SearchText } from '@/lib/candidateSearch'
+import { datesFor, inRange } from '@/lib/candidateDates'
+
+/** One searchable text per candidate (name, emails, phones, title, skills, summary, tags…). */
+export function useCandidateSearchTexts(
+  candidates: IndependentCandidate[],
+  candidateTagsMap?: Map<string, string[]>,
+  tagNames?: Map<string, string>,
+) {
+  return useMemo(() => {
+    const map = new Map<string, SearchText>()
+    for (const c of candidates) {
+      const names = (candidateTagsMap?.get(c.id) ?? []).map((id) => tagNames?.get(id)).filter((n): n is string => !!n)
+      map.set(c.id, buildSearchText(c as any, names))
+    }
+    return map
+  }, [candidates, candidateTagsMap, tagNames])
+}
 
 function normalizeAnnualSalary(amount: number, period?: string | null): number {
   switch (period?.toLowerCase()) {
@@ -19,8 +37,13 @@ export function useCandidateFilteredData(
   searchTerm: string,
   associationsMap?: AssociationsMap,
   candidateTagsMap?: Map<string, string[]>,
+  searchTexts?: Map<string, SearchText>,
+  interviewsMap?: Map<string, number[]>,
 ) {
   return useMemo(() => {
+    // Every word has to appear somewhere: "SDR Mexico" finds an SDR in Mexico.
+    const words = searchTerm.trim() ? queryWords(searchTerm) : []
+    const now = Date.now()
     return candidates.filter(c => {
       // Tag filter — candidate must have at least one selected tag
       if (filters.tagIds && filters.tagIds.length > 0) {
@@ -29,26 +52,10 @@ export function useCandidateFilteredData(
       }
 
 
-      // Text search — name, email, skills, current company, title, location
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase()
-        const skills = c.standardized_skills?.length ? c.standardized_skills : c.skills
-        const haystacks: (string | null | undefined)[] = [
-          c.candidate_name,
-          c.email,
-          c.company_current,
-          c.current_job_title,
-          c.standardized_title,
-          c.functional_area,
-          c.specialization,
-          c.seniority_level,
-          c.location_city,
-          c.location_state,
-          c.location_country,
-          ...(skills ?? []),
-        ]
-        const matchesSearch = haystacks.some(v => v && v.toLowerCase().includes(term))
-        if (!matchesSearch) return false
+      // Text search (Everything mode)
+      if (words.length > 0) {
+        const text = searchTexts?.get(c.id)
+        if (!text || !matchesEverything(text, words)) return false
       }
 
 
@@ -116,7 +123,13 @@ export function useCandidateFilteredData(
         if (created > filters.dateTo) return false
       }
 
+      // Date filters: any date of that kind inside the range.
+      for (const r of filters.dateRanges ?? []) {
+        const dates = datesFor(r.field, c, associationsMap?.get(c.id), interviewsMap?.get(c.id))
+        if (!inRange(dates, r, now)) return false
+      }
+
       return true
     })
-  }, [candidates, filters, searchTerm, associationsMap, candidateTagsMap])
+  }, [candidates, filters, searchTerm, associationsMap, candidateTagsMap, searchTexts, interviewsMap])
 }
