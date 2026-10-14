@@ -120,7 +120,10 @@ export function useStageInterviewerAssignments(jhsId?: string) {
           .insert({
             job_id: jobId,
             user_id: member.user_id,
-            organization_id: organizationId
+            organization_id: organizationId,
+            // A stage interviewer joins the job team as an interviewer. The
+            // column defaults to recruiter, which would grant the talent pool.
+            role: 'interviewer'
           })
         
         if (jobError) throw jobError
