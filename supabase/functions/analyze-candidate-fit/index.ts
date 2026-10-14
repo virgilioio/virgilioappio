@@ -11,10 +11,26 @@ const TRANSLATION_CALL_TIMEOUT_MS = 120_000;
 import { AI_MODELS } from '../_shared/aiModels.ts';
 import { loadResumeText } from '../_shared/resumeText.ts';
 import { mergeTranslatedProse } from './language-utils.ts';
+import { analyseTenure } from './tenure.ts';
 import { formatMoney, loadCurrencyRates, normaliseSalary } from '../_shared/salary.ts';
+
+// Bump when the prompt, the dimensions or the scoring rules change, so a
+// stored dossier from an older recipe is re-scored even if its inputs match.
+//
+// v4 (2026-10-14): the model's holistic score is kept and bounded by rules
+// instead of being replaced with a weighted mean; must-haves come from the
+// job description, not the skills list; Tenure & Progression replaces Company
+// Pedigree; years-of-experience bounds and additional locations are sent;
+// unchanged inputs are not re-scored; a re-score explains what changed.
+const PROMPT_VERSION = 4;
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 const SUPPORTED_LANGUAGES: Record<string, string> = {
   en: "English", es: "Spanish", pt: "Portuguese", fr: "French",
@@ -40,12 +56,30 @@ const TOOL_SCHEMA = {
       properties: {
         overall_score: {
           type: "integer", minimum: 0, maximum: 100,
-          description: "Overall fit score 0-100. Scoring bands: 90-100 exceptional (3+ strong matches, no major gaps), 75-89 strong (most core reqs met), 60-74 mixed (meaningful concerns), 40-59 weak (multiple important gaps), 0-39 poor (lacks core reqs). 2+ missing must-haves = cap at 70. Scores above 80 require 3+ cited strong matches with no unresolved must-have gaps. Missing data penalizes score.",
+          description: "Your holistic fit judgement, 0-100. Bands: 90-100 exceptional (3+ strong matches, no must-have gaps), 75-89 strong (most core requirements met), 60-74 mixed (meaningful concerns), 40-59 weak (multiple important gaps), 0-39 poor (lacks core requirements). Not a weighted average of the dimensions: a single dealbreaker (location, salary, language) or an unmet must-have pulls the score down regardless of other strengths.",
         },
         confidence: { type: "string", enum: ["low", "medium", "high"] },
         confidence_reason: { type: "string", description: "Why this confidence level" },
         profile_summary: { type: "string", description: "A concise evidence-based candidate profile summary" },
         executive_summary: { type: "string", description: "1-2 sentences only: strongest fit signal AND biggest hiring risk. No generic statements." },
+        must_haves: {
+          type: "array",
+          description: "The requirements the job description itself states as mandatory (must, required, essential, minimum years, location, language). At most 8. Nothing inferred, and never a tool from the skills list unless the description says it is required.",
+          items: {
+            type: "object",
+            properties: {
+              requirement: { type: "string", description: "The requirement in a few words, as the job states it." },
+              status: { type: "string", enum: ["met", "partial", "not_met", "unknown"], description: "met = candidate data shows it; partial = adjacent evidence; not_met = candidate data explicitly contradicts it; unknown = no data either way (never not_met without explicit evidence)." },
+              evidence: { type: ["string", "null"], description: "The candidate datum relied on, or null for unknown." },
+            },
+            required: ["requirement", "status", "evidence"],
+            additionalProperties: false,
+          },
+        },
+        changes_since_last: {
+          type: ["string", "null"],
+          description: "Only when a PREVIOUS ASSESSMENT was supplied: one or two sentences naming the new evidence (a scorecard, a new résumé, changed requirements) and how it moved the score, or stating that nothing material changed. Null otherwise.",
+        },
         dimensions: {
           type: "array",
           items: {
@@ -125,7 +159,7 @@ const TOOL_SCHEMA = {
           additionalProperties: false,
         },
       },
-      required: ["overall_score", "confidence", "confidence_reason", "profile_summary", "executive_summary", "dimensions", "validation_points", "skill_evidence", "data_sources_used", "data_sources_missing", "detected_languages"],
+      required: ["overall_score", "confidence", "confidence_reason", "profile_summary", "executive_summary", "must_haves", "changes_since_last", "dimensions", "validation_points", "skill_evidence", "data_sources_used", "data_sources_missing", "detected_languages"],
       additionalProperties: false,
     },
   },
@@ -192,8 +226,29 @@ ANTI-HALLUCINATION RULES
 6. For salary alignment, judge the expectation against the band symmetrically, using the figures exactly as given (both sides are already on the same currency and period): inside the band = aligned; up to 25% above the maximum = negotiable, no penalty; more than 25% above the maximum = mismatch, above budget; up to 25% below the minimum = a POSITIVE signal (the candidate comes in under budget, leaving headroom on the offer) — never describe it as a concern, a risk, or a red flag; more than 25% below the minimum = a negative signal worth understanding, phrased as a question to ask (it may point to a different market or industry, or to someone who does not yet know what this role pays), never as a disqualification. If salary data is missing on either side, or the candidate figure is marked NOT COMPARABLE, return null for this dimension and do not mention salary anywhere in the analysis.
 7. Every gap, mismatch, or concern must explicitly reference: (a) the exact job requirement or job datum, and (b) the exact candidate datum, or explicitly state that the data is unavailable.
 8. When evidence is ambiguous, incomplete, or missing, prefer a neutral assessment over a negative inference.
-7. The executive_summary must be 1-2 sentences ONLY, and must mention the candidate's strongest fit signal AND biggest hiring risk.
-8. Weights must sum to 100.
+9. The executive_summary must be 1-2 sentences ONLY, and must mention the candidate's strongest fit signal AND biggest hiring risk.
+10. Weights must sum to 100.
+
+MUST-HAVES (must_haves)
+
+Read the job description and list what it states as mandatory: "must", "required", "essential", "minimum N years", "must be based in", "fluent in", a specific certification or degree. At most 8. The SKILLS TO CHECK list is not a list of must-haves; a tool or method on it (a CRM, Slack, MEDDICC) is only a must-have when the description says it is required. For each one: met when the candidate data shows it, partial when adjacent experience supports it, not_met only when the candidate data explicitly contradicts it, unknown when there is no data either way. "Not mentioned" is unknown, never not_met.
+
+HOW THE SCORE IS BOUNDED
+
+overall_score is your holistic judgement of the whole case, not an average of the dimensions. After you return it, the system enforces these rules, so apply them yourself first:
+- A dealbreaker dimension (Location, Salary or Language at 30 or below) caps the score at 55.
+- Two or more must-haves not_met cap it at 70; one not_met caps it at 79.
+- A score above 80 needs at least three strong matches (must-haves met plus skills evidenced) and no must-have not_met.
+- A red tenure flag caps it at 69.
+- The score never sits more than 10 points above the weighted mean of the scored dimensions.
+
+INTERVIEW EVIDENCE
+
+Scorecards, when supplied, are first-hand evidence and outrank the résumé on the same point. A scorecard that contradicts a CV claim lowers that skill; a "no" or "strong_no" rating is a material risk to name in the executive summary; a "strong_yes" with specifics strengthens the matching dimension. A validation point that a scorecard already answers must not be asked again: leave it out.
+
+RE-SCORING
+
+When a PREVIOUS ASSESSMENT is supplied, compare against it. If new evidence arrived (a scorecard, a new résumé, changed requirements), say in changes_since_last what it was and how it moved the score. If nothing material changed, keep each dimension within 3 points of the previous one and say so. Scores must not drift without a reason.
 
 SCORE COMPRESSION GUARDRAILS
 
@@ -214,22 +269,20 @@ Before finalizing the score, ask yourself:
 - Have I applied enough penalty for missing must-haves, uncertainty, and risk?
 If the answer suggests doubt, lower the score.
 
-DIMENSIONS TO EVALUATE (use these exact names):
-- Skills Alignment (weight ~30): Match candidate skills/tools against job requirements. List specific matches and gaps.
-- Experience Level (weight ~20): Years of experience, seniority level, career trajectory.
-- Role & Title Fit (weight ~15): How well current/past titles align with the target role.
-- Location Compatibility (weight ~10): Remote/onsite/hybrid alignment, timezone, relocation.
-- Salary Alignment (weight ~10): Compare using the exact numeric values given; both sides are already expressed in the same currency and period, so never re-convert, approximate or paraphrase them. Score the band symmetrically: inside the band = aligned (high score); up to 25% above the maximum = negotiable, no penalty; more than 25% above the maximum = mismatch above budget (low score); up to 25% below the minimum = a positive signal, under budget with offer headroom (high score, stated as good news); more than 25% below the minimum = negative signal (lower score) raised as a question to explore, not a disqualification. If salary data is missing on either side, or the candidate figure is marked NOT COMPARABLE, return null for this dimension and do not infer a mismatch.
-- Company Pedigree (weight ~5): Quality and relevance of past employers.
-- Language & Communication (weight ~10): Language proficiency vs job requirements.
-
-Adjust weights only if the role makes a dimension unusually important. If adjusted, explain why.
+DIMENSIONS TO EVALUATE (use these exact names and weights; they sum to 100):
+- Skills Alignment (weight 30): Match candidate skills/tools against job requirements. List specific matches and gaps.
+- Experience Level (weight 20): Years of experience against the job's stated range when one is given, seniority level, career trajectory, and the relevance of past employers (do not reward prestige that is not relevant to the role).
+- Role & Title Fit (weight 15): How well current/past titles align with the target role.
+- Tenure & Progression (weight 10): The user message supplies TENURE & PROGRESSION facts computed from dated work history, with a flag and a score band. Score inside that band and write the verdict from the facts: name the short stints, the settling, or the promotion. If the flag is unknown, return null.
+- Location Compatibility (weight 10): Remote/onsite/hybrid alignment, timezone, relocation, including any additional locations the job lists.
+- Salary Alignment (weight 10): Compare using the exact numeric values given; both sides are already expressed in the same currency and period, so never re-convert, approximate or paraphrase them. Score the band symmetrically: inside the band = aligned (high score); up to 25% above the maximum = negotiable, no penalty; more than 25% above the maximum = mismatch above budget (low score); up to 25% below the minimum = a positive signal, under budget with offer headroom (high score, stated as good news); more than 25% below the minimum = negative signal (lower score) raised as a question to explore, not a disqualification. If salary data is missing on either side, or the candidate figure is marked NOT COMPARABLE, return null for this dimension and do not infer a mismatch.
+- Language & Communication (weight 5): Language proficiency vs job requirements.
 
 For each validation_point, suggest the best interview stage to verify (Phone Screen, Technical Interview, Culture Fit, Final Round, etc.).
 
 PER-SKILL ADJUDICATION (skill_evidence)
 
-The user message lists the job's REQUIRED SKILLS. Return exactly one skill_evidence entry per listed skill, in the same order, with the skill string copied verbatim from that list. Do not add skills the job did not list, do not drop one, do not merge two, do not rename or reword one.
+The user message lists the job's SKILLS TO CHECK. Return exactly one skill_evidence entry per listed skill, in the same order, with the skill string copied verbatim from that list. Do not add skills the job did not list, do not drop one, do not merge two, do not rename or reword one.
 
 Rule for each skill:
 - evidenced: the candidate data directly supports it. Read everything supplied — listed skills, profile summary, work experience, résumé and scorecards — not just the skills array. Cross-language equivalents count ("Ventas" = "Sales"), as do close variants of the same thing ("Outbound Sales" evidences "Outbound", "B2B sales" evidences "B2B").
@@ -259,7 +312,7 @@ serve(async (req) => {
   let suggestionRowId: string | null = null;
 
   try {
-    const { candidate_id, job_id } = await req.json();
+    const { candidate_id, job_id, force } = await req.json();
     if (!candidate_id || !job_id) {
       return new Response(JSON.stringify({ error: "candidate_id and job_id are required" }), {
         status: 400,
@@ -277,8 +330,8 @@ serve(async (req) => {
       sb.from("candidate_education").select("*").eq("candidate_id", candidate_id),
       sb.from("candidate_attachments").select("*").eq("candidate_id", candidate_id).eq("is_resume", true).limit(1),
       sb.from("job_stage_scorecards").select("id, rating, general_overview, is_ai_draft, created_at, scorecard_question_responses(answer_text, answer_options, question:scorecard_interview_questions(question_text))").eq("job_id", job_id).eq("candidate_id", candidate_id),
-      sb.from("job_candidate_associations").select("id, ai_fit_version, output_language, ai_fit_keep_proper_nouns").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
-      sb.from("job_suggested_candidates_cache").select("id").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
+      sb.from("job_candidate_associations").select("id, ai_fit_version, output_language, ai_fit_keep_proper_nouns, ai_fit_analysis, ai_fit_score, ai_fit_generated_at").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
+      sb.from("job_suggested_candidates_cache").select("id, ai_fit_analysis, ai_fit_score, ai_fit_generated_at").eq("candidate_id", candidate_id).eq("job_id", job_id).maybeSingle(),
     ]);
 
     const candidate = candidateRes.data;
@@ -421,11 +474,20 @@ serve(async (req) => {
     if (resumeText) {
       candidateContext += `\n\nRESUME TEXT (verbatim, primary evidence for experience and skills):\n${resumeText.slice(0, 12000)}`;
     }
-    if (candidate.resume_url || attachmentsRes.data?.length) {
+    if (resumeText) {
       dataSources.push("resume");
+    } else if (attachmentsRes.data?.length) {
+      // A file is on record but nothing readable came out of it: say so rather
+      // than claim the résumé was used.
+      candidateContext += `\n\nRESUME: a file is on record but its text could not be read, so it is not available as evidence.`;
+      dataMissing.push("resume_unreadable");
     } else {
       dataMissing.push("resume");
     }
+
+    // Tenure & progression, computed from the dated work history (tenure.ts).
+    const tenure = analyseTenure(workExp);
+    candidateContext += `\n\nTENURE & PROGRESSION (computed from dated work history):\nFlag: ${tenure.flag}${tenure.band ? ` — score this dimension between ${tenure.band[0]} and ${tenure.band[1]}` : " — return null for this dimension"}\n${tenure.facts}`;
 
     // Scorecards (submitted only)
     const scorecards = (scorecardsRes.data || []).filter((sc: any) => !sc.is_ai_draft);
@@ -455,12 +517,18 @@ serve(async (req) => {
       .map((skill: unknown) => String(skill || "").trim())
       .filter((skill: string) => skill.length > 0);
     if (requiredSkills.length) {
-      jobContext += `\nREQUIRED SKILLS (adjudicate each one, in this order, using this spelling): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill}`).join(" | ")}`;
+      jobContext += `\nSKILLS TO CHECK (adjudicate each one, in this order, using this spelling; these are not must-haves unless the description says so): ${requiredSkills.map((skill, index) => `${index + 1}. ${skill}`).join(" | ")}`;
+    }
+    if (job.min_years_experience != null || job.max_years_experience != null) {
+      jobContext += `\nYears of experience wanted: ${job.min_years_experience ?? "?"} to ${job.max_years_experience ?? "?"}`;
     }
     if (bandMin != null || bandMax != null) {
       jobContext += `\nSalary Band (${bandCurrency}, ${bandPeriod}): min ${bandMin ?? "?"} - max ${bandMax ?? "?"}`;
     }
     if (job.location) jobContext += `\nLocation: ${job.location}`;
+    if (Array.isArray(job.additional_locations) && job.additional_locations.length) {
+      jobContext += `\nAlso acceptable locations: ${job.additional_locations.filter(Boolean).join(", ")}`;
+    }
     if (job.department) jobContext += `\nDepartment: ${job.department}`;
 
     // Freshness guard: if the candidate row has essentially no data yet
@@ -480,6 +548,37 @@ serve(async (req) => {
 
     const allowedLabels = [...new Set(dataSources.map((source) => SOURCE_LABELS[source]).filter(Boolean))];
 
+    // Same inputs, same recipe: hand back the stored dossier instead of paying
+    // for a run that could only differ by model noise. A stage move alone
+    // therefore never moves the score. `force` (the Refresh button) overrides.
+    const inputHash = await sha256(JSON.stringify({ v: PROMPT_VERSION, candidateContext, jobContext, outputLanguage, keepProperNouns }));
+    const stored = (association?.ai_fit_analysis ?? suggestion?.ai_fit_analysis ?? null) as Record<string, any> | null;
+    if (!force && stored && stored.input_hash === inputHash) {
+      const checked = { ...stored, inputs_checked_at: new Date().toISOString() };
+      if (association) {
+        await sb.from("job_candidate_associations").update({ ai_fit_analysis: checked }).eq("id", association.id);
+      } else {
+        await sb.from("job_suggested_candidates_cache").update({ ai_fit_analysis: checked, dossier_status: "ready", dossier_error: null }).eq("id", suggestion!.id);
+      }
+      return new Response(JSON.stringify({ success: true, unchanged: true, analysis: checked }), {
+        headers: { ...headers, "Content-Type": "application/json" },
+      });
+    }
+
+    // A re-score sees what it said last time, so it can explain a change and
+    // cannot drift without one.
+    let previousBlock = "";
+    const previousScore = typeof (association?.ai_fit_score ?? suggestion?.ai_fit_score) === "number"
+      ? Number(association?.ai_fit_score ?? suggestion?.ai_fit_score) : null;
+    if (stored && Array.isArray(stored.dimensions)) {
+      const when = association?.ai_fit_generated_at ?? suggestion?.ai_fit_generated_at ?? null;
+      const dims = stored.dimensions.map((d: any) => `${d.name}: ${d.score ?? "null"}`).join("; ");
+      const musts = Array.isArray(stored.must_haves) && stored.must_haves.length
+        ? stored.must_haves.map((m: any) => `${m.requirement} (${m.status})`).join("; ")
+        : "not recorded";
+      previousBlock = `\n\nPREVIOUS ASSESSMENT${when ? ` (${String(when).slice(0, 10)})` : ""}: overall ${previousScore ?? "?"}. Dimensions: ${dims}. Must-haves: ${musts}.`;
+    }
+
     // Call OpenAI
     const aiResponse = await openaiFetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -491,7 +590,7 @@ serve(async (req) => {
         model: AI_MODELS.reasoning,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}\n\nLANGUAGE DETECTION: Report source languages separately. Use only these exact source labels because they correspond to inputs actually supplied: ${allowedLabels.join(", ")}. Never report an absent source.` },
+          { role: "user", content: `${candidateContext}\n\n---\n\n${jobContext}${previousBlock}\n\nLANGUAGE DETECTION: Report source languages separately. Use only these exact source labels because they correspond to inputs actually supplied: ${allowedLabels.join(", ")}. Never report an absent source.` },
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "submit_fit_analysis" } },
@@ -583,20 +682,70 @@ serve(async (req) => {
       }
     }
 
-    // Recalculate overall_score excluding null dimensions
-    if (canonicalAnalysis.dimensions) {
-      let totalWeight = 0;
-      let weightedSum = 0;
-      for (const dim of canonicalAnalysis.dimensions) {
-        if (dim.score !== null && dim.score !== undefined) {
-          totalWeight += dim.weight || 0;
-          weightedSum += (dim.score * (dim.weight || 0));
-        }
+    // Must-haves: keep only well-formed entries; `unknown` is the default.
+    const MUST_STATUS = new Set(["met", "partial", "not_met", "unknown"]);
+    canonicalAnalysis.must_haves = (Array.isArray(canonicalAnalysis.must_haves) ? canonicalAnalysis.must_haves : [])
+      .filter((m: any) => typeof m?.requirement === "string" && m.requirement.trim())
+      .slice(0, 8)
+      .map((m: any) => ({
+        requirement: m.requirement.trim(),
+        status: MUST_STATUS.has(m.status) ? m.status : "unknown",
+        evidence: typeof m.evidence === "string" && m.evidence.trim() ? m.evidence.trim() : null,
+      }));
+
+    // Tenure: the band is computed, not judged. Clamp the model's score to it.
+    const tenureDim = (canonicalAnalysis.dimensions || []).find((d: any) => /tenure/i.test(d.name || ""));
+    if (tenureDim) {
+      if (!tenure.band) {
+        tenureDim.score = null;
+        tenureDim.insight = tenureDim.insight || tenure.facts;
+      } else if (typeof tenureDim.score === "number") {
+        tenureDim.score = Math.max(tenure.band[0], Math.min(tenure.band[1], Math.round(tenureDim.score)));
+      } else {
+        tenureDim.score = tenure.band[0];
       }
-      if (totalWeight > 0) {
-        canonicalAnalysis.overall_score = Math.round(weightedSum / totalWeight);
+      tenureDim.verdict = tenureDim.verdict || tenure.label;
+    }
+
+    // The overall score is the model's holistic judgement, bounded by the
+    // rules the prompt states. The old code replaced it with the weighted mean
+    // of the dimensions, which let a dealbreaker average away (2026-10-14).
+    const dims: any[] = canonicalAnalysis.dimensions || [];
+    let totalWeight = 0, weightedSum = 0;
+    for (const dim of dims) {
+      if (typeof dim.score === "number") { totalWeight += dim.weight || 0; weightedSum += dim.score * (dim.weight || 0); }
+    }
+    const weightedMean = totalWeight > 0 ? weightedSum / totalWeight : null;
+    const modelScore = Math.max(0, Math.min(100, Math.round(Number(canonicalAnalysis.overall_score) || 0)));
+    const rules: string[] = [];
+    let overall = modelScore;
+    const cap = (limit: number, why: string) => { if (overall > limit) { overall = limit; rules.push(why); } };
+    if (weightedMean != null) cap(Math.round(weightedMean + 10), `Held within 10 points of the dimension mean (${weightedMean.toFixed(0)}).`);
+    for (const dim of dims) {
+      if (/location|salary|language/i.test(dim.name || "") && typeof dim.score === "number" && dim.score <= 30) {
+        cap(55, `${dim.name} is a dealbreaker at ${dim.score}; capped at 55.`);
       }
     }
+    const notMet = canonicalAnalysis.must_haves.filter((m: any) => m.status === "not_met").length;
+    const met = canonicalAnalysis.must_haves.filter((m: any) => m.status === "met").length;
+    if (notMet >= 2) cap(70, `${notMet} must-haves not met; capped at 70.`);
+    else if (notMet === 1) cap(79, `One must-have not met; capped at 79.`);
+    const evidencedSkills = canonicalAnalysis.skill_evidence.filter((e: any) => e.status === "evidenced").length;
+    const strongMatches = met + evidencedSkills;
+    if (strongMatches < 3) cap(80, `Above 80 needs three strong matches: must-haves met plus skills evidenced (${strongMatches} found).`);
+    if (tenure.flag === "red") cap(69, `Job-hopping pattern; capped at 69.`);
+    canonicalAnalysis.overall_score = overall;
+    canonicalAnalysis.scoring = {
+      version: PROMPT_VERSION,
+      model_score: modelScore,
+      weighted_mean: weightedMean == null ? null : Math.round(weightedMean * 10) / 10,
+      rules_applied: rules,
+      previous_score: previousScore,
+      tenure: { flag: tenure.flag, label: tenure.label, band: tenure.band, short_stints: tenure.shortStints, promotions: tenure.promotions, median_stint_months: tenure.medianStintMonths, median_role_months: tenure.medianRoleMonths },
+    };
+    canonicalAnalysis.changes_since_last = stored ? (typeof canonicalAnalysis.changes_since_last === "string" && canonicalAnalysis.changes_since_last.trim() ? canonicalAnalysis.changes_since_last.trim() : null) : null;
+    canonicalAnalysis.input_hash = inputHash;
+    canonicalAnalysis.inputs_checked_at = new Date().toISOString();
 
     // Score first, then translate prose only. Invariant values are always copied
     // back from the canonical analysis so output language cannot affect scoring.

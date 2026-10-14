@@ -6,6 +6,12 @@ export function mergeTranslatedProse(canonical: FitAnalysisRecord, translated: F
     confidence_reason: translated.confidence_reason ?? canonical.confidence_reason,
     profile_summary: translated.profile_summary ?? canonical.profile_summary,
     executive_summary: translated.executive_summary ?? canonical.executive_summary,
+    changes_since_last: canonical.changes_since_last == null ? null : (translated.changes_since_last ?? canonical.changes_since_last),
+    must_haves: (canonical.must_haves || []).map((item: FitAnalysisRecord, index: number) => ({
+      ...item,
+      requirement: translated.must_haves?.[index]?.requirement ?? item.requirement,
+      evidence: item.evidence == null ? null : (translated.must_haves?.[index]?.evidence ?? item.evidence),
+    })),
     dimensions: (canonical.dimensions || []).map((dimension: FitAnalysisRecord, index: number) => ({
       ...dimension,
       verdict: translated.dimensions?.[index]?.verdict ?? dimension.verdict,
@@ -32,6 +38,7 @@ export function invariantSnapshot(analysis: FitAnalysisRecord) {
   return JSON.stringify({
     overall_score: analysis.overall_score,
     confidence: analysis.confidence,
+    must_have_status: (analysis.must_haves || []).map((item: FitAnalysisRecord) => item.status),
     dimensions: (analysis.dimensions || []).map((dimension: FitAnalysisRecord) => ({
       name: dimension.name,
       score: dimension.score,
