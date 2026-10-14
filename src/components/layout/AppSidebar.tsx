@@ -44,7 +44,6 @@ const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'
   { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: () => false }, // gated via useCanUseChat below
   { id: 'references', label: 'Reference checks', Icon: ReferencesGlyph, href: '/references', show: (p) => p.canViewReferences },
   { id: 'analytics', label: 'Analytics', Icon: AnalyticsGlyph, href: '/analytics', show: (p) => !p.isSalesUser },
-  { id: 'people', label: 'People & Access', Icon: PeopleGlyph, href: '/os/people', show: (p) => p.isPlatformAdmin || p.isAdmin },
 ]
 
 // Tile classes — state-aware. The accent shape inside the glyph receives lilac
@@ -54,7 +53,8 @@ const tileBase =
 const tileActive =
   'bg-[#fffcf9] text-[#0d0d09] [&_.accent]:fill-[#D7C5FB]'
 const tileInactive =
-  'text-[rgba(255,252,249,0.72)] hover:bg-white/[0.08] hover:text-[#fffcf9] hover:[&_.accent]:fill-[#D7C5FB]'
+  // gio-rail-tile: the signal turns lilac on hover (rule in index.css, mouse only).
+  'gio-rail-tile text-[rgba(255,252,249,0.72)] hover:bg-white/[0.08] hover:text-[#fffcf9]'
 
 export function AppSidebar() {
   const { pathname, search } = useLocation()
@@ -133,6 +133,31 @@ export function AppSidebar() {
             </div>
           )
         })}
+
+        {/* Workspace tools: People & Access sits apart from the hiring modules, after a divider. */}
+        {(permissions.isPlatformAdmin || permissions.isAdmin) && (
+          <>
+            <div
+              aria-hidden
+              style={{ width: 28, height: 1, backgroundColor: 'rgba(255,252,249,0.14)', marginTop: 2, marginBottom: 2 }}
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/os/people"
+                  aria-current={active === 'people' ? 'page' : undefined}
+                  aria-label="People & Access"
+                  className={cn(tileBase, active === 'people' ? tileActive : tileInactive)}
+                >
+                  <PeopleGlyph className="h-6 w-6" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                People &amp; Access
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
 
         {/* Bottom group: Settings + user avatar */}
         <div className="mt-auto flex flex-col items-center" style={{ rowGap: 6 }}>

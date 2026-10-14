@@ -1719,3 +1719,8 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   gap: 10px;
   padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 0;
 }
+
+/* Rail: a module glyph's signal shape turns lilac while its tile is hovered (mouse only). */
+@media (hover: hover) and (pointer: fine) {
+  .gio-rail-tile:hover .accent { fill: #D7C5FB; }
+}

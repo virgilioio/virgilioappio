@@ -49,14 +49,33 @@ export const AnalyticsGlyph: ModuleGlyph = ({ className }) => (
   </svg>
 )
 
+/**
+ * People & Access (Circle): three equal dots in a triangle; the top dot is the
+ * signal. Exact geometry from the brand spec (Allan, 2026-10-14). Don't redraw.
+ */
 export const PeopleGlyph: ModuleGlyph = ({ className }) => (
   <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
-    <circle cx="19" cy="17" r="7" fill="currentColor" />
-    <rect x="8" y="27.5" width="22" height="11" rx="5.5" fill="currentColor" />
-    <circle className="accent" cx="33.5" cy="20" r="4.5" fill="currentColor" />
-    <rect className="accent" x="31" y="28.5" width="10" height="9" rx="4.5" fill="currentColor" />
+    <circle cx="15.5" cy="30.5" r="7" fill="currentColor" />
+    <circle cx="32.5" cy="30.5" r="7" fill="currentColor" />
+    <circle className="accent" cx="24" cy="15.5" r="7" fill="currentColor" />
   </svg>
 )
+
+/** The same glyph with explicit colours, for surfaces that set them directly (headers, crumbs). */
+export function GlyphPeopleAccess({
+  size = 24,
+  color = 'currentColor',
+  accent = '#D7C5FB',
+  ...props
+}: { size?: number; color?: string; accent?: string } & React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" {...props}>
+      <circle cx="15.5" cy="30.5" r="7" fill={color} />
+      <circle cx="32.5" cy="30.5" r="7" fill={color} />
+      <circle cx="24" cy="15.5" r="7" fill={accent} />
+    </svg>
+  )
+}
 
 export const ReferencesModuleGlyph: ModuleGlyph = ({ className }) => <ReferencesGlyph className={className} />
 
