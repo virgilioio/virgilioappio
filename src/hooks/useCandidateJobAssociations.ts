@@ -106,7 +106,11 @@ export interface AssociationDetail {
   bookingLinkSentAt: string | null
   rejectedAt: string | null
   offeredAt: string | null
+  hiredAt: string | null
   createdAt: string
+  /** Who put them in this job's pipeline; null when they applied themselves. */
+  addedBy: string | null
+  isFavorite: boolean
 }
 
 export type AssociationsMap = Map<string, AssociationDetail[]>
@@ -142,7 +146,10 @@ export function useCandidateJobAssociationsMap(candidateIds: string[]) {
               booking_link_sent_at,
               rejected_at,
               offered_at,
+              hired_at,
               created_at,
+              added_by,
+              is_favorite,
               jobs!inner(id, title),
               job_hiring_stages!job_candidate_associations_current_stage_id_fkey(
                 id,
@@ -169,7 +176,10 @@ export function useCandidateJobAssociationsMap(candidateIds: string[]) {
           bookingLinkSentAt: a.booking_link_sent_at,
           rejectedAt: a.rejected_at,
           offeredAt: a.offered_at,
+          hiredAt: a.hired_at ?? null,
           createdAt: a.created_at,
+          addedBy: a.added_by ?? null,
+          isFavorite: a.is_favorite === true,
         }))
 
         setAssociations(mapped)
