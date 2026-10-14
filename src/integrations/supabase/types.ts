@@ -1704,11 +1704,6 @@ export type Database = {
           contact_emails: string[] | null
           contact_phone: string | null
           contact_phones: string[] | null
-          coresignal_collected_at: string | null
-          coresignal_connections_count: number | null
-          coresignal_headline: string | null
-          coresignal_profile_id: string | null
-          coresignal_search_score: number | null
           created_at: string
           created_by: string | null
           current_job_title: string | null
@@ -1772,11 +1767,6 @@ export type Database = {
           contact_emails?: string[] | null
           contact_phone?: string | null
           contact_phones?: string[] | null
-          coresignal_collected_at?: string | null
-          coresignal_connections_count?: number | null
-          coresignal_headline?: string | null
-          coresignal_profile_id?: string | null
-          coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
           current_job_title?: string | null
@@ -1840,11 +1830,6 @@ export type Database = {
           contact_emails?: string[] | null
           contact_phone?: string | null
           contact_phones?: string[] | null
-          coresignal_collected_at?: string | null
-          coresignal_connections_count?: number | null
-          coresignal_headline?: string | null
-          coresignal_profile_id?: string | null
-          coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
           current_job_title?: string | null
@@ -6140,10 +6125,6 @@ export type Database = {
         Row: {
           account_owner_id: string | null
           billing_id: string | null
-          billing_poc_additional_email: string | null
-          billing_poc_phone: string | null
-          billing_poc_updated_at: string | null
-          billing_poc_updated_by: string | null
           company_size: string | null
           country: string | null
           created_at: string
@@ -6178,10 +6159,6 @@ export type Database = {
         Insert: {
           account_owner_id?: string | null
           billing_id?: string | null
-          billing_poc_additional_email?: string | null
-          billing_poc_phone?: string | null
-          billing_poc_updated_at?: string | null
-          billing_poc_updated_by?: string | null
           company_size?: string | null
           country?: string | null
           created_at?: string
@@ -6216,10 +6193,6 @@ export type Database = {
         Update: {
           account_owner_id?: string | null
           billing_id?: string | null
-          billing_poc_additional_email?: string | null
-          billing_poc_phone?: string | null
-          billing_poc_updated_at?: string | null
-          billing_poc_updated_by?: string | null
           company_size?: string | null
           country?: string | null
           created_at?: string
@@ -7045,72 +7018,6 @@ export type Database = {
         }
         Relationships: []
       }
-      salary_market_data: {
-        Row: {
-          cached_at: string
-          created_at: string
-          currency: string
-          data_source: string
-          experience_level: string | null
-          expires_at: string
-          id: string
-          job_title: string
-          location_city: string | null
-          location_country: string
-          market_competitiveness: string | null
-          percentile_25: number | null
-          percentile_75: number | null
-          percentile_90: number | null
-          salary_max: number | null
-          salary_median: number | null
-          salary_min: number | null
-          sample_size: number | null
-          updated_at: string
-        }
-        Insert: {
-          cached_at?: string
-          created_at?: string
-          currency?: string
-          data_source?: string
-          experience_level?: string | null
-          expires_at?: string
-          id?: string
-          job_title: string
-          location_city?: string | null
-          location_country: string
-          market_competitiveness?: string | null
-          percentile_25?: number | null
-          percentile_75?: number | null
-          percentile_90?: number | null
-          salary_max?: number | null
-          salary_median?: number | null
-          salary_min?: number | null
-          sample_size?: number | null
-          updated_at?: string
-        }
-        Update: {
-          cached_at?: string
-          created_at?: string
-          currency?: string
-          data_source?: string
-          experience_level?: string | null
-          expires_at?: string
-          id?: string
-          job_title?: string
-          location_city?: string | null
-          location_country?: string
-          market_competitiveness?: string | null
-          percentile_25?: number | null
-          percentile_75?: number | null
-          percentile_90?: number | null
-          salary_max?: number | null
-          salary_median?: number | null
-          salary_min?: number | null
-          sample_size?: number | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       saved_views: {
         Row: {
           created_at: string
@@ -7725,8 +7632,6 @@ export type Database = {
           company_url: string | null
           company_website: string | null
           connections_count: number | null
-          coresignal_id: string | null
-          coresignal_score: number | null
           country: string | null
           created_at: string | null
           current_company: string | null
@@ -7774,8 +7679,6 @@ export type Database = {
           company_url?: string | null
           company_website?: string | null
           connections_count?: number | null
-          coresignal_id?: string | null
-          coresignal_score?: number | null
           country?: string | null
           created_at?: string | null
           current_company?: string | null
@@ -7823,8 +7726,6 @@ export type Database = {
           company_url?: string | null
           company_website?: string | null
           connections_count?: number | null
-          coresignal_id?: string | null
-          coresignal_score?: number | null
           country?: string | null
           created_at?: string | null
           current_company?: string | null
@@ -7979,10 +7880,6 @@ export type Database = {
       }
       sourcing_projects: {
         Row: {
-          coresignal_cache_expires_at: string | null
-          coresignal_candidate_count: number | null
-          coresignal_last_searched_at: string | null
-          coresignal_search_id: string | null
           created_at: string | null
           created_by: string
           description: string | null
@@ -8005,10 +7902,6 @@ export type Database = {
           pool_enabled: boolean
         }
         Insert: {
-          coresignal_cache_expires_at?: string | null
-          coresignal_candidate_count?: number | null
-          coresignal_last_searched_at?: string | null
-          coresignal_search_id?: string | null
           created_at?: string | null
           created_by: string
           description?: string | null
@@ -8031,10 +7924,6 @@ export type Database = {
           pool_enabled?: boolean
         }
         Update: {
-          coresignal_cache_expires_at?: string | null
-          coresignal_candidate_count?: number | null
-          coresignal_last_searched_at?: string | null
-          coresignal_search_id?: string | null
           created_at?: string | null
           created_by?: string
           description?: string | null
@@ -9052,14 +8941,6 @@ export type Database = {
       tenants: {
         Row: {
           about: string | null
-          billing_address: string | null
-          billing_city: string | null
-          billing_contact_name: string | null
-          billing_country: string | null
-          billing_email: string | null
-          billing_phone: string | null
-          billing_postal_code: string | null
-          billing_state: string | null
           chat_ai_daily_token_cap: number
           chat_hard_delete_days: number
           chat_inactivity_soft_delete_days: number
@@ -9084,14 +8965,6 @@ export type Database = {
         }
         Insert: {
           about?: string | null
-          billing_address?: string | null
-          billing_city?: string | null
-          billing_contact_name?: string | null
-          billing_country?: string | null
-          billing_email?: string | null
-          billing_phone?: string | null
-          billing_postal_code?: string | null
-          billing_state?: string | null
           chat_ai_daily_token_cap?: number
           chat_hard_delete_days?: number
           chat_inactivity_soft_delete_days?: number
@@ -9116,14 +8989,6 @@ export type Database = {
         }
         Update: {
           about?: string | null
-          billing_address?: string | null
-          billing_city?: string | null
-          billing_contact_name?: string | null
-          billing_country?: string | null
-          billing_email?: string | null
-          billing_phone?: string | null
-          billing_postal_code?: string | null
-          billing_state?: string | null
           chat_ai_daily_token_cap?: number
           chat_hard_delete_days?: number
           chat_inactivity_soft_delete_days?: number
@@ -9355,56 +9220,6 @@ export type Database = {
       }
     }
     Views: {
-      coresignal_usage: {
-        Row: {
-          billing_cycle_start: string | null
-          collect_credits_limit: number | null
-          collect_credits_used: number | null
-          created_at: string | null
-          id: string | null
-          last_collect_at: string | null
-          last_search_at: string | null
-          search_credits_limit: number | null
-          search_credits_used: number | null
-          tenant_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          billing_cycle_start?: string | null
-          collect_credits_limit?: number | null
-          collect_credits_used?: number | null
-          created_at?: string | null
-          id?: string | null
-          last_collect_at?: string | null
-          last_search_at?: string | null
-          search_credits_limit?: number | null
-          search_credits_used?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          billing_cycle_start?: string | null
-          collect_credits_limit?: number | null
-          collect_credits_used?: number | null
-          created_at?: string | null
-          id?: string | null
-          last_collect_at?: string | null
-          last_search_at?: string | null
-          search_credits_limit?: number | null
-          search_credits_used?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sourcing_credits_usage_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       job_openings_with_status: {
         Row: {
           cancel_reason: string | null
@@ -9713,11 +9528,6 @@ export type Database = {
       cleanup_expired_cache_rows: { Args: never; Returns: Json }
       cleanup_expired_draft_conversations: { Args: never; Returns: undefined }
       cleanup_expired_invitations: { Args: never; Returns: number }
-      cleanup_expired_salary_data: { Args: never; Returns: number }
-      consolidate_coresignal_usage: {
-        Args: { p_tenant_id: string }
-        Returns: Json
-      }
       consume_bonus_credits: {
         Args: { p_credits_to_consume: number; p_tenant_id: string }
         Returns: number
@@ -10039,14 +9849,6 @@ export type Database = {
       get_user_type_secure: { Args: never; Returns: string }
       identity_email: { Args: { p: string }; Returns: string }
       identity_phone: { Args: { p: string }; Returns: string }
-      increment_coresignal_usage: {
-        Args: {
-          p_billing_cycle_start: string
-          p_credit_type: string
-          p_tenant_id: string
-        }
-        Returns: undefined
-      }
       increment_sourcing_usage: {
         Args: {
           p_billing_cycle_start: string
@@ -10159,6 +9961,10 @@ export type Database = {
         Returns: boolean
       }
       person_name_key: { Args: { p: string }; Returns: string }
+      platform_remove_workspace: {
+        Args: { p_actor: string; p_apply?: boolean; p_tenant_id: string }
+        Returns: Json
+      }
       possible_duplicate_pairs: {
         Args: { p_tenant: string }
         Returns: {
