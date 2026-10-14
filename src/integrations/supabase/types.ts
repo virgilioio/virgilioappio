@@ -9549,6 +9549,19 @@ export type Database = {
       }
     }
     Functions: {
+      can_see_job: { Args: { _job_id: string }; Returns: boolean }
+      has_talent_pool_seat: {
+        Args: { _tenant_id: string; _user_id?: string }
+        Returns: boolean
+      }
+      has_workspace_wide_access: {
+        Args: { _tenant_id: string }
+        Returns: boolean
+      }
+      is_active_member: { Args: { _tenant_id: string }; Returns: boolean }
+      is_ats_admin: { Args: { _tenant_id: string }; Returns: boolean }
+      job_access_enforced: { Args: { _tenant_id: string }; Returns: boolean }
+      my_job_ids: { Args: never; Returns: string[] }
       os_people: {
         Args: { _tenant_id: string }
         Returns: {
