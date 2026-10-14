@@ -1,21 +1,18 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Plus, Search, Settings2 } from 'lucide-react'
+import { Plus, RotateCcw, Search, Settings2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
-import { SegmentLayer, useSegmentLayer } from '@/components/ui/segmented'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { EmptyState, EmptyAction } from '@/components/ui/empty-state'
-import { SoftPaper } from '@/components/ui/EmptyIllustrations'
+import { Input } from '@/components/ui/input'
+import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
+import { ListTabs } from '@/components/ui/list-tabs'
+import { ListPage, MetaDot } from '@/components/layout/ListPage'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
-import { ReferencesShell, ReferencesNoAccess } from '@/components/references/ReferencesShell'
+import { ReferencesNoAccess } from '@/components/references/ReferencesShell'
 import { ReferenceRequestsTable } from '@/components/references/ReferenceRequestsTable'
 import { useTenantReferenceRequests, type ReferenceListRow } from '@/hooks/useReferenceList'
 import {
@@ -38,75 +35,29 @@ const TABS: [RefBucket, string][] = [
   ['cancelled', 'Cancelled'],
 ]
 
-const ALL = '__all__'
-
-function FilterPill({
-  label,
-  value,
-  options,
-  onSelect,
-}: {
-  label: string
-  value: string
-  options: { id: string; label: string }[]
-  onSelect: (id: string) => void
-}) {
-  const active = value !== ALL
-  const current = options.find((o) => o.id === value)?.label ?? 'All'
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex items-center font-inter"
-          style={{
-            gap: 6,
-            height: 30,
-            padding: '0 11px',
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 500,
-            border: `1px solid ${active ? '#0d0d09' : '#E0DDD3'}`,
-            background: active ? '#0d0d09' : '#fff',
-            color: active ? '#fffcf9' : '#1F2230',
-          }}
-        >
-          <span style={{ color: active ? 'rgba(255,252,249,0.6)' : '#8B8F9E' }}>{label}:</span>
-          <span className="truncate" style={{ maxWidth: 140 }}>
-            {current}
-          </span>
-          <ChevronDown size={12} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        <DropdownMenuItem onClick={() => onSelect(ALL)}>All</DropdownMenuItem>
-        {options
-          .filter((o) => o.id !== ALL)
-          .map((o) => (
-            <DropdownMenuItem key={o.id} onClick={() => onSelect(o.id)}>
-              {o.label}
-            </DropdownMenuItem>
-          ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+const TAB_EMPTY: Record<RefBucket, { title: string; body: string }> = {
+  all: { title: 'No reference checks', body: 'Request references from a candidate\'s profile.' },
+  needsAttention: { title: 'Nothing needs attention', body: 'Checks with overdue or flagged referees show up here.' },
+  waiting: { title: 'Nothing waiting', body: 'Checks waiting on a candidate or referee show up here.' },
+  complete: { title: 'No complete checks', body: 'Checks with every reference in show up here.' },
+  cancelled: { title: 'No cancelled checks', body: 'Cancelled checks stay here until you delete them.' },
 }
 
-/** /references — the request list (Flow E.1). */
+/** /references — the request list (Flow E.1), laid out like the Jobs list. */
 export default function ReferencesPage() {
   const navigate = useNavigate()
   const { canViewReferences, canCancelReferences, canDeleteReferences } = usePermissions()
   const { user } = useAuth()
-  const { requests, isLoading } = useTenantReferenceRequests()
+  const { requests, isLoading, isError, refetch } = useTenantReferenceRequests()
+  const [retry, setRetry] = useState(0)
+  const timedOut = useLoadTimeout(isLoading, retry)
+  const loadError: 'failed' | 'timeout' | null = isError ? 'failed' : timedOut ? 'timeout' : null
 
   const [tab, setTab] = useState<RefBucket>('all')
-  const segRef = useSegmentLayer<HTMLDivElement>()
-  const [job, setJob] = useState(ALL)
-  const [client, setClient] = useState(ALL)
-  const [recruiter, setRecruiter] = useState(ALL)
+  const [jobs, setJobs] = useState<string[]>([])
+  const [clients, setClients] = useState<string[]>([])
+  const [recruiters, setRecruiters] = useState<string[]>([])
   const [search, setSearch] = useState('')
-  const [menuFor, setMenuFor] = useState<string | null>(null)
   const [shareFor, setShareFor] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<{ mode: RefDestructiveMode; row: ReferenceListRow } | null>(
     null,
@@ -122,60 +73,51 @@ export default function ReferencesPage() {
   const cancelRequest = useCancelReferenceRequest()
   const deleteRequest = useDeleteReferenceRequest()
 
-  const jobOptions = useMemo(
-    () =>
-      dedupe(
-        requests
-          .filter((r) => r.jobId)
-          .map((r) => ({ id: r.jobId!, label: r.jobTitle ?? 'Job' })),
-      ),
-    [requests],
-  )
-  const clientOptions = useMemo(
-    () =>
-      dedupe(
-        requests
-          .filter((r) => r.clientId)
-          .map((r) => ({ id: r.clientId!, label: r.clientName ?? 'Client' })),
-      ),
-    [requests],
-  )
+  const options = (pick: (r: ReferenceListRow) => [string | null | undefined, string]) => {
+    const map = new Map<string, { value: string; label: string; count: number }>()
+    for (const r of requests) {
+      const [id, label] = pick(r)
+      if (!id) continue
+      const hit = map.get(id)
+      if (hit) hit.count++
+      else map.set(id, { value: id, label, count: 1 })
+    }
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }
+  const jobOptions = useMemo(() => options((r) => [r.jobId, r.jobTitle ?? 'Job']), [requests]) // eslint-disable-line react-hooks/exhaustive-deps
+  const clientOptions = useMemo(() => options((r) => [r.clientId, r.clientName ?? 'Client']), [requests]) // eslint-disable-line react-hooks/exhaustive-deps
   const recruiterOptions = useMemo(
-    () =>
-      dedupe(
-        requests
-          .filter((r) => r.requestedBy)
-          .map((r) => ({
-            id: r.requestedBy!,
-            label:
-              r.recruiterName ?? (r.requestedBy === user?.id ? 'Me' : 'Recruiter'),
-          })),
-      ),
-    [requests, user?.id],
+    () => options((r) => [r.requestedBy, r.recruiterName ?? (r.requestedBy === user?.id ? 'Me' : 'Recruiter')]),
+    [requests, user?.id], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  /** Pills and search narrow the pool; the tab predicate then decides. */
+  /** Chips and search narrow the pool; the tab predicate then decides. */
   const pool = useMemo(() => {
     const q = search.trim().toLowerCase()
     return requests.filter((r) => {
-      if (job !== ALL && r.jobId !== job) return false
-      if (client !== ALL && r.clientId !== client) return false
-      if (recruiter !== ALL && r.requestedBy !== recruiter) return false
+      if (jobs.length && !jobs.includes(r.jobId ?? '')) return false
+      if (clients.length && !clients.includes(r.clientId ?? '')) return false
+      if (recruiters.length && !recruiters.includes(r.requestedBy ?? '')) return false
       if (!q) return true
-      // Referee names are searchable too — recruiters look for a referee
+      // Referee names are searchable too: recruiters look for a referee
       // they already have somewhere else in the workspace.
       return (
         r.candidateName.toLowerCase().includes(q) ||
         r.referees.some((ref) => (ref.name ?? '').toLowerCase().includes(q))
       )
     })
-  }, [requests, job, client, recruiter, search])
+  }, [requests, jobs, clients, recruiters, search])
 
   // ONE predicate object drives both the tab counts and the rows.
-  const tabs = TABS.map(
-    ([id, label]) => [id, label, pool.filter(refPredicates[id]).length] as const,
-  )
   const rows = pool.filter(refPredicates[tab])
+  const filtered = jobs.length > 0 || clients.length > 0 || recruiters.length > 0 || search.trim() !== ''
+  const hidden = requests.filter(refPredicates[tab]).length - rows.length
+  const clearFilters = () => {
+    setJobs([])
+    setClients([])
+    setRecruiters([])
+    setSearch('')
+  }
 
   const visible = requests.filter(refPredicates.all)
   const jobsCount = new Set(visible.map((r) => r.jobId).filter(Boolean)).size
@@ -183,174 +125,109 @@ export default function ReferencesPage() {
 
   if (!canViewReferences) return <ReferencesNoAccess />
 
+  const emptyState = loadError ? (
+    <LoadError
+      what="reference checks"
+      timedOut={loadError === 'timeout'}
+      onRetry={() => {
+        setRetry((n) => n + 1)
+        void refetch()
+      }}
+    />
+  ) : requests.length === 0 ? (
+    <AnimatedEmpty
+      scene="candidates"
+      onceKey="references-list"
+      title="No reference checks yet"
+      body="Request references from a candidate's profile. Checks live with the candidate and follow them across jobs."
+      primary={{ label: 'New request', icon: <Plus size={16} />, onClick: () => navigate('/candidates') }}
+      secondary={{ label: 'Manage templates', icon: <Settings2 size={16} strokeWidth={2} />, onClick: () => navigate('/references/templates') }}
+    />
+  ) : filtered && hidden > 0 ? (
+    <AnimatedEmpty
+      scene="search"
+      onceKey="references-list"
+      title="No reference checks match these filters"
+      body={`${hidden} ${hidden === 1 ? 'check is' : 'checks are'} hidden by your filters.`}
+      primary={{ label: 'Clear filters', icon: <RotateCcw size={16} strokeWidth={2} />, onClick: clearFilters }}
+    />
+  ) : (
+    <AnimatedEmpty scene="candidates" onceKey="references-list" title={TAB_EMPTY[tab].title} body={TAB_EMPTY[tab].body} />
+  )
+
   return (
-    <ReferencesShell>
-      <div style={{ position: 'relative' }} onClick={() => setMenuFor(null)}>
-      <PageHeader
-        title="Reference checks"
-        kicker
-        count={visible.length}
-        meta={
-          <>
-            <span>Across {jobsCount} jobs</span>
-            {attentionCount > 0 ? (
-              <span style={{ color: '#B45309' }}>{attentionCount} need attention</span>
-            ) : (
-              <span>Nothing needs attention</span>
-            )}
-          </>
-        }
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="md"
-              icon={Settings2}
-              onClick={() => navigate('/references/templates')}
+    <ListPage
+      title="Reference checks"
+      count={visible.length}
+      meta={
+        <>
+          <MetaDot color="#B5B9C4">
+            Across {jobsCount} {jobsCount === 1 ? 'job' : 'jobs'}
+          </MetaDot>
+          {attentionCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setTab('needsAttention')}
+              className="inline-flex items-center gap-1.5 text-[#B45309] transition-colors duration-hover hover:text-text-primary"
             >
-              Templates
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              icon={Plus}
-              onClick={() => navigate('/candidates')}
-            >
-              New request
-            </Button>
-          </>
-        }
-      />
-
-      {requests.length > 0 && (
-        <div
-          className="flex items-center"
-          style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}
-        >
-          <div
-            ref={segRef}
-            className="gio-seg inline-flex"
-            style={{ gap: 3, padding: 3, background: '#F1F0EC', borderRadius: 9 }}
-          >
-            {tabs.map(([id, label, count]) => {
-              const active = tab === id
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  data-seg-option
-                  data-active={active || undefined}
-                  onClick={() => setTab(id)}
-                  className="inline-flex items-center font-poppins"
-                  style={{
-                    gap: 6,
-                    padding: '6px 11px',
-                    borderRadius: 7,
-                    border: 'none',
-                    fontSize: 12,
-                    fontWeight: active ? 600 : 500,
-                    color: active ? '#1F2230' : '#5A6072',
-                    background: 'transparent',
-                    transition: 'color var(--dur-hover) ease',
-                  }}
-                >
-                  {label}
-                  <span
-                    className="font-inter tabular-nums"
-                    style={{
-                      fontSize: 10.5,
-                      padding: '0 5px',
-                      borderRadius: 999,
-                      color: '#5A6072',
-                      background: active ? '#F1F0EC' : 'rgba(13,13,9,0.06)',
-                    }}
-                  >
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
-            <SegmentLayer fill="#fff" shadow="0 1px 2px rgba(13,13,9,0.06)" />
-          </div>
-
-          <span aria-hidden style={{ width: 1, height: 22, background: '#E0DDD3' }} />
-
-          <FilterPill label="Job" value={job} options={jobOptions} onSelect={setJob} />
-          <FilterPill label="Client" value={client} options={clientOptions} onSelect={setClient} />
-          <FilterPill
-            label="Recruiter"
-            value={recruiter}
-            options={recruiterOptions}
-            onSelect={setRecruiter}
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+              {attentionCount} need attention
+            </button>
+          ) : (
+            <MetaDot color="#12B886">Nothing needs attention</MetaDot>
+          )}
+        </>
+      }
+      actions={
+        <>
+          <Button variant="secondary" size="md" icon={Settings2} onClick={() => navigate('/references/templates')}>
+            Templates
+          </Button>
+          <Button variant="primary" size="md" icon={Plus} onClick={() => navigate('/candidates')}>
+            New request
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {/* Tabs + filters card */}
+        <div className="rounded-2xl border border-virgilio-border bg-white overflow-hidden">
+          <ListTabs
+            label="Status"
+            value={tab}
+            onChange={(v) => setTab(v as RefBucket)}
+            tabs={TABS.map(([id, label]) => ({ value: id, label, count: pool.filter(refPredicates[id]).length }))}
           />
-
-          <div
-            className="inline-flex items-center"
-            style={{
-              marginLeft: 'auto',
-              gap: 7,
-              height: 30,
-              padding: '0 11px',
-              background: '#fff',
-              border: '1px solid #E0DDD3',
-              borderRadius: 8,
-              minWidth: 200,
-            }}
-          >
-            <Search size={13} color="#8B8F9E" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search candidate or referee…"
-              className="font-inter bg-transparent outline-none flex-1 min-w-0"
-              style={{ fontSize: 12, color: '#1F2230' }}
-            />
+          <div className="flex flex-wrap items-center gap-3 p-3">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search aria-hidden className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search candidate or referee…"
+                aria-label="Search reference checks"
+                className="h-10 pl-10 pr-3 bg-[#FAFAF7] border-transparent rounded-xl text-[13.5px] focus-visible:bg-white"
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <FilterChipPopover label="Job" options={jobOptions} selectedValues={jobs} onSelectionChange={setJobs} searchable />
+              <FilterChipPopover label="Client" options={clientOptions} selectedValues={clients} onSelectionChange={setClients} searchable />
+              <FilterChipPopover
+                label="Recruiter"
+                options={recruiterOptions}
+                selectedValues={recruiters}
+                onSelectionChange={setRecruiters}
+                searchable
+              />
+            </div>
           </div>
         </div>
-      )}
 
-      {requests.length === 0 ? (
-        isLoading ? null : (
-          <EmptyState
-            illustration={<SoftPaper />}
-            title="No reference checks yet"
-            body="Request references from a candidate's profile — checks live with the candidate and follow them across jobs."
-            secondary={
-              <EmptyAction variant="secondary" onClick={() => navigate('/references/templates')}>
-                Manage templates
-              </EmptyAction>
-            }
-          />
-        )
-      ) : rows.length === 0 ? (
-        <div
-          style={{
-            marginTop: 14,
-            padding: '28px 22px',
-            textAlign: 'center',
-            background: '#fff',
-            border: '1px solid #E7E8EE',
-            borderRadius: 12,
-          }}
-        >
-          <p
-            className="font-poppins"
-            style={{ fontSize: 13.5, fontWeight: 600, color: '#1F2230', letterSpacing: '-0.02em' }}
-          >
-            {tab === 'cancelled' ? 'No cancelled checks' : 'Nothing here'}
-          </p>
-          <p className="font-inter" style={{ fontSize: 12, color: '#8B8F9E', marginTop: 4 }}>
-            {tab === 'cancelled'
-              ? 'Cancelled checks stay here until you delete them.'
-              : 'Try a different filter.'}
-          </p>
-        </div>
-      ) : (
         <ReferenceRequestsTable
-          rows={rows}
+          rows={loadError ? [] : rows}
+          loading={isLoading && !loadError}
+          emptyState={emptyState}
           onOpen={(row: ReferenceListRow) => navigate(`/references/requests/${row.id}`)}
-          menuFor={menuFor}
-          onMenuChange={setMenuFor}
           onResend={(row) => resend.mutate(row.id)}
           onShare={(row) => setShareFor(row.id)}
           onCancel={(row) => askFor('cancel', row)}
@@ -358,7 +235,7 @@ export default function ReferencesPage() {
           canCancel={canCancelReferences}
           canDelete={canDeleteReferences}
         />
-      )}
+      </div>
 
       <ShareReportDialog
         open={!!shareFor}
@@ -391,13 +268,6 @@ export default function ReferencesPage() {
           }}
         />
       )}
-      </div>
-    </ReferencesShell>
+    </ListPage>
   )
-}
-
-function dedupe(items: { id: string; label: string }[]) {
-  const map = new Map<string, string>()
-  for (const i of items) if (!map.has(i.id)) map.set(i.id, i.label)
-  return Array.from(map, ([id, label]) => ({ id, label }))
 }
