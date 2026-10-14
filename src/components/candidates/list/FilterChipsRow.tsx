@@ -1,10 +1,11 @@
-import { Plus } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel } from '@/components/ui/dropdown-menu'
 import { useCandidateFilters } from '@/contexts/CandidateFilterContext'
 import type { useCandidateFilterOptions } from '@/hooks/useCandidateFilterOptions'
 import { useState, type ReactNode } from 'react'
 import { DateFilterChip } from './DateFilterChip'
+import { IconTip } from '@/components/ui/tooltip'
 import type { DateRangeFilter } from '@/lib/candidateDates'
 
 type FilterOptions = ReturnType<typeof useCandidateFilterOptions>
@@ -54,7 +55,13 @@ const OPTION_KEY: Record<ChipKey, keyof FilterOptions> = {
 const PRIMARY_ORDER: ChipKey[] = ['skills', 'countries', 'pipelineStatuses', 'companies', 'jobs']
 
 export function FilterChipsRow({ filterOptions, trailing }: FilterChipsRowProps) {
-  const { filters, setArrayFilter, setDateRanges, clearAll, activeFilterCount } = useCandidateFilters()
+  const { filters, setArrayFilter, setDateRanges, setNumericFilter, clearAll, activeFilterCount } = useCandidateFilters()
+  // Experience and salary can be set by "Ask in plain English" or a saved
+  // search; show them so they can be seen and removed (2026-10-14).
+  const span = (min: number | null, max: number | null, unit: (n: number) => string) =>
+    min != null && max != null ? `${unit(min)}–${unit(max)}` : min != null ? `${unit(min)}+` : max != null ? `up to ${unit(max)}` : null
+  const expLabel = span(filters.experienceMin, filters.experienceMax, (n) => `${n}`)
+  const salaryLabel = span(filters.salaryMin, filters.salaryMax, (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`))
   const ranges = filters.dateRanges ?? []
   // One chip per kind of date: setting a kind that's already there replaces it.
   const putRange = (next: DateRangeFilter, at?: number) => {
@@ -88,6 +95,13 @@ export function FilterChipsRow({ filterOptions, trailing }: FilterChipsRowProps)
           />
         )
       })}
+
+      {expLabel && (
+        <RemovableChip label={`Experience · ${expLabel} years`} onRemove={() => { setNumericFilter('experienceMin', null); setNumericFilter('experienceMax', null) }} />
+      )}
+      {salaryLabel && (
+        <RemovableChip label={`Salary · ${salaryLabel} a year`} onRemove={() => { setNumericFilter('salaryMin', null); setNumericFilter('salaryMax', null) }} />
+      )}
 
       {ranges.map((r, i) => (
         <DateFilterChip
@@ -136,5 +150,23 @@ export function FilterChipsRow({ filterOptions, trailing }: FilterChipsRowProps)
 
       {trailing && <div className="ml-auto">{trailing}</div>}
     </div>
+  )
+}
+
+function RemovableChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center h-9 rounded-lg border border-virgilio-border bg-[#FAFAF7] text-[13px] font-poppins font-medium whitespace-nowrap">
+      <span className="pl-3.5 pr-1 text-virgilio-purple">{label}</span>
+      <IconTip label={`Remove ${label}`}>
+        <button
+          type="button"
+          aria-label={`Remove ${label}`}
+          onClick={onRemove}
+          className="gio-pressable h-full px-2 rounded-r-lg text-text-tertiary hover:text-text-primary hover:bg-[hsl(var(--menu-hover))]"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </IconTip>
+    </span>
   )
 }
