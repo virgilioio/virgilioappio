@@ -804,6 +804,7 @@ function CandidatesInner() {
                   <button
                     key={ex}
                     type="button"
+                    data-ai-example
                     onClick={() => { setQuery(ex); void runAiSearch(ex) }}
                     className="gio-pressable h-7 px-2.5 rounded-md border border-virgilio-border bg-white text-[12px] font-inter text-text-secondary hover:text-text-primary hover:bg-[#FAFAF7] transition-colors whitespace-nowrap"
                   >
