@@ -9549,6 +9549,37 @@ export type Database = {
       }
     }
     Functions: {
+      os_people: {
+        Args: { _tenant_id: string }
+        Returns: {
+          active_jobs: number
+          avatar_url: string | null
+          bundle_id: string | null
+          closed_jobs: number
+          email: string | null
+          first_name: string | null
+          google_email: string | null
+          google_status: string
+          grants: Json
+          last_name: string | null
+          last_sign_in_at: string | null
+          member_id: string
+          member_status: string
+          profile_status: string
+          system_role: string
+          user_id: string | null
+          user_type: string | null
+        }[]
+      }
+      os_set_app_role: {
+        Args: {
+          _app: string
+          _role: string | null
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       privacy_hash: { Args: { p_kind: string; p_value: string }; Returns: string }
       privacy_suppress_candidate: {
         Args: { p_candidate_id: string; p_reason?: string }
