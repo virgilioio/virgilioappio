@@ -1,129 +1,134 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Plus, X } from 'lucide-react'
+import { BookOpen, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ListPage, MetaDot } from '@/components/layout/ListPage'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useReferenceTemplates } from '@/hooks/useReferenceTemplates'
 import { useClientOrganizations } from '@/components/references/templates/useClientOrganizations'
 import { TemplateListTable } from '@/components/references/templates/TemplateListTable'
-import { ReferencesShell, ReferencesNoAccess } from '@/components/references/ReferencesShell'
+import { ReferencesNoAccess } from '@/components/references/ReferencesShell'
 import { QUESTION_TYPES } from '@/lib/references/templateModel'
 
-const MUTED = '#8B8F9E'
-
-function QuestionLibraryDialog({ onClose }: { onClose: () => void }) {
+/** The answer types a template can use. A real Dialog: focus trap, Esc, §2 motion. */
+function QuestionLibraryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const families: { key: 'standard' | 'reference'; label: string }[] = [
     { key: 'standard', label: 'Standard question types' },
     { key: 'reference', label: 'Reference-specific types' },
   ]
   return (
-    <div
-      className="fixed inset-0 z-[70] grid place-items-center p-6"
-      style={{ background: 'rgba(13,13,9,0.45)' }}
-    >
-      <Card className="w-full max-w-[520px] max-h-[80vh] overflow-auto p-5 space-y-4 bg-[#fffcf9]">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3
-              className="font-poppins font-semibold text-[#0d0d09]"
-              style={{ fontSize: 18, letterSpacing: '-0.04em' }}
-            >
-              Question library
-            </h3>
-            <p className="font-inter text-[12.5px] text-[#5A6072]">
-              The answer types available inside a reference template.
-            </p>
-          </div>
-          <Button variant="ghost" size="xs" icon={X} iconOnly aria-label="Close" onClick={onClose} />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[520px] max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle>Question library</DialogTitle>
+          <DialogDescription>The answer types available inside a reference template.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {families.map((f) => (
+            <div key={f.key} className="space-y-1.5">
+              <p className="font-inter text-[10.5px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">{f.label}</p>
+              {QUESTION_TYPES.filter((q) => q.family === f.key).map((q) => (
+                <div key={q.type} className="rounded-lg border border-[#E7E8EE] bg-white px-2.5 py-2">
+                  <p className="font-poppins text-[12.5px] font-medium text-text-primary">{q.label}</p>
+                  {q.hint && <p className="font-inter text-[11.5px] text-text-tertiary">{q.hint}</p>}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
-
-        {families.map((f) => (
-          <div key={f.key} className="space-y-1.5">
-            <p
-              className="font-inter font-semibold uppercase"
-              style={{ fontSize: 10, letterSpacing: '0.06em', color: MUTED }}
-            >
-              {f.label}
-            </p>
-            {QUESTION_TYPES.filter((q) => q.family === f.key).map((q) => (
-              <div
-                key={q.type}
-                className="rounded-lg bg-white px-2.5 py-2"
-                style={{ border: '1px solid #E7E8EE' }}
-              >
-                <p className="font-poppins font-medium text-[#0d0d09]" style={{ fontSize: 12.5 }}>
-                  {q.label}
-                </p>
-                {q.hint && (
-                  <p className="font-inter" style={{ fontSize: 11.5, color: MUTED }}>
-                    {q.hint}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
-/** /references/templates — the template list. */
+/** /references/templates — the template list, laid out like the Jobs list. */
 export default function ReferenceTemplatesPage() {
   const navigate = useNavigate()
   const { canViewReferences } = usePermissions()
-  const { templates, isLoading, createTemplate } = useReferenceTemplates()
+  const { templates, isLoading, isError, refetch, createTemplate } = useReferenceTemplates()
   const { clients } = useClientOrganizations()
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [retry, setRetry] = useState(0)
+  const timedOut = useLoadTimeout(isLoading, retry)
+  const loadError: 'failed' | 'timeout' | null = isError ? 'failed' : timedOut ? 'timeout' : null
 
   if (!canViewReferences) return <ReferencesNoAccess />
 
+  // §13: the button keeps its width with a spinner, and double clicks are blocked.
   const handleNew = async () => {
-    const created = await createTemplate.mutateAsync(undefined)
-    navigate(`/references/templates/${created.id}`)
+    if (createTemplate.isPending) return
+    try {
+      const created = await createTemplate.mutateAsync(undefined)
+      navigate(`/references/templates/${created.id}`)
+    } catch {
+      toast("Couldn't create a template. Try again.")
+    }
   }
 
+  const live = templates.filter((t) => t.is_live).length
+
   return (
-    <ReferencesShell>
-      <PageHeader
-        title="Templates"
-        kicker
-        count={templates.length}
-        meta={
-          <>
-            <span>Owned by this tenant — never shared</span>
-            <span>Also reachable from Settings → Recruiting</span>
-          </>
-        }
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="md"
-              icon={BookOpen}
-              onClick={() => setLibraryOpen(true)}
-            >
-              Question library
-            </Button>
-            <Button variant="primary" size="md" icon={Plus} onClick={handleNew}>
-              New template
-            </Button>
-          </>
-        }
-      />
-
+    <ListPage
+      title="Templates"
+      count={templates.length}
+      meta={
+        <>
+          <MetaDot color="#12B886">{live} live</MetaDot>
+          <MetaDot color="#B5B9C4">{templates.length - live} drafts</MetaDot>
+          <span>Owned by this workspace, never shared</span>
+        </>
+      }
+      actions={
+        <>
+          <Button variant="secondary" size="md" icon={BookOpen} onClick={() => setLibraryOpen(true)}>
+            Question library
+          </Button>
+          <Button variant="primary" size="md" icon={Plus} loading={createTemplate.isPending} onClick={handleNew}>
+            New template
+          </Button>
+        </>
+      }
+    >
       <TemplateListTable
-        templates={templates}
+        templates={loadError ? [] : templates}
         clients={clients}
-        isLoading={isLoading}
+        isLoading={isLoading && !loadError}
         onOpen={(t) => navigate(`/references/templates/${t.id}`)}
-        onNew={handleNew}
+        emptyState={
+          loadError ? (
+            <LoadError
+              what="templates"
+              timedOut={loadError === 'timeout'}
+              onRetry={() => {
+                setRetry((n) => n + 1)
+                void refetch()
+              }}
+            />
+          ) : (
+            <AnimatedEmpty
+              scene="candidates"
+              onceKey="reference-templates"
+              title="No reference templates yet"
+              body="A template defines which referees you need, the questions they answer and the emails that go out."
+              primary={{ label: 'New template', icon: <Plus size={16} />, onClick: () => void handleNew() }}
+            />
+          )
+        }
       />
 
-      {libraryOpen && <QuestionLibraryDialog onClose={() => setLibraryOpen(false)} />}
-    </ReferencesShell>
+      <QuestionLibraryDialog open={libraryOpen} onOpenChange={setLibraryOpen} />
+    </ListPage>
   )
 }
