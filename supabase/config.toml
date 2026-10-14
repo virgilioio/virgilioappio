@@ -329,3 +329,6 @@ verify_jwt = false
 
 [functions.email-attachments-sweep]
 verify_jwt = false
+
+[functions.admin-remove-workspace]
+verify_jwt = true
