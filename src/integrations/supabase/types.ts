@@ -9724,6 +9724,10 @@ export type Database = {
           total: number
         }[]
       }
+      get_candidates_awaiting_outreach: {
+        Args: { _tenant_id: string }
+        Returns: string[]
+      }
       get_candidate_tenant_id: {
         Args: { candidate_id_param: string }
         Returns: string
