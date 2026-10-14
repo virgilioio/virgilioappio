@@ -5,13 +5,13 @@ import { ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 /**
- * The page frame for People & Access, laid out like the Jobs list (Allan,
- * 2026-10-14): full-height scroll area on cream, the same container and
+ * The list-page frame, laid out like the Jobs list (Allan, 2026-10-14). Used by
+ * People & Access and Reference checks: full-height scroll area on cream, the same container and
  * padding, a 28/32px title with its purple period and count chip, a meta row
  * of dotted counts underneath, and the action buttons on the right. The list
  * (a ListTabs + filters card, then the table card) goes in `children`.
  */
-export function OsPage({
+export function ListPage({
   title,
   count,
   meta,

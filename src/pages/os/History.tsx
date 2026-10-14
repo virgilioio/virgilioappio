@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableSkeleton } from '@/components/ui/table-states'
 import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
-import { OsPage } from '@/components/os/OsPage'
+import { ListPage } from '@/components/layout/ListPage'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { useTenant } from '@/hooks/useTenant'
 import { appName, describeAudit, personName, useAudit, usePeople } from '@/lib/os/peopleAccess'
@@ -37,7 +37,7 @@ export default function AccessHistoryPage() {
   const loadError: 'failed' | 'timeout' | null = audit.isError ? 'failed' : timedOut ? 'timeout' : null
 
   return (
-    <OsPage
+    <ListPage
       title="History"
       count={audit.data ? rows.length : undefined}
       meta={<span>Every access change in People &amp; Access, recorded by the database. The latest 300 are shown.</span>}
@@ -92,6 +92,6 @@ export default function AccessHistoryPage() {
           </TableBody>
         </Table>
       </div>
-    </OsPage>
+    </ListPage>
   )
 }

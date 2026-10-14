@@ -23,7 +23,7 @@ import {
 } from '@/lib/os/peopleAccess'
 import { AccessChips, GoogleStatus, JobCounts, PersonAvatar, PersonStateBadge } from '@/components/os/PeopleBits'
 import { AddPersonDialog } from '@/components/os/AddPersonDialog'
-import { MetaDot, OsPage } from '@/components/os/OsPage'
+import { MetaDot, ListPage } from '@/components/layout/ListPage'
 
 const NO_ROLE = '__none__'
 const COLS = 6
@@ -104,7 +104,7 @@ export default function PeoplePage() {
   const open = (p: Person) => navigate(`/os/people/${p.member_id}`)
 
   return (
-    <OsPage
+    <ListPage
       title="People"
       count={counts.active}
       meta={
@@ -268,6 +268,6 @@ export default function PeoplePage() {
       </div>
 
       <AddPersonDialog open={adding} onOpenChange={setAdding} bundles={bundles.data ?? []} />
-    </OsPage>
+    </ListPage>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MoreHorizontal, Pencil, Plus, Archive } from 'lucide-react'
 
-import { OsPage } from '@/components/os/OsPage'
+import { ListPage } from '@/components/layout/ListPage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -233,7 +233,7 @@ export default function JobRolesPage() {
   }
 
   return (
-    <OsPage
+    <ListPage
         title="Job roles"
         count={bundles.data?.length}
         meta={<span>Each job role grants a set of apps. Apply one to a person from their page.</span>}
@@ -359,6 +359,6 @@ export default function JobRolesPage() {
       </div>
 
       <BundleDialog open={open} onOpenChange={setOpen} bundle={editing} tenantId={tenant?.id} />
-    </OsPage>
+    </ListPage>
   )
 }

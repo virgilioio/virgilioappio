@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { undoToast } from '@/lib/undoToast'
 
-import { OsPage } from '@/components/os/OsPage'
+import { ListPage } from '@/components/layout/ListPage'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -77,21 +77,21 @@ export default function PersonDetailPage() {
 
   if (people.isLoading) {
     return (
-      <OsPage title={<Skeleton className="inline-block h-9 w-64 align-middle" />} breadcrumb={[{ label: 'People', to: '/os/people' }]}>
+      <ListPage title={<Skeleton className="inline-block h-9 w-64 align-middle" />} breadcrumb={[{ label: 'People', to: '/os/people' }]}>
         <Skeleton className="h-48 w-full" />
-      </OsPage>
+      </ListPage>
     )
   }
   if (!person) {
     return (
-      <OsPage title="Not found" breadcrumb={[{ label: 'People', to: '/os/people' }]}>
+      <ListPage title="Not found" breadcrumb={[{ label: 'People', to: '/os/people' }]}>
         <p className="font-inter text-[13px] text-text-secondary">
           This person isn't in your workspace.{' '}
           <Link to="/os/people" className="text-virgilio-purple">
             Back to People
           </Link>
         </p>
-      </OsPage>
+      </ListPage>
     )
   }
 
@@ -147,7 +147,7 @@ export default function PersonDetailPage() {
         : null
 
   return (
-    <OsPage
+    <ListPage
         breadcrumb={[{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
         title={
           <span className="inline-flex min-w-0 items-center gap-3 align-middle">
@@ -330,7 +330,7 @@ export default function PersonDetailPage() {
           </Card>
         </div>
       </div>
-    </OsPage>
+    </ListPage>
   )
 }
 
