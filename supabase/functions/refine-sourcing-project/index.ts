@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 
 import { openaiFetch } from '../_shared/openaiFetch.ts';
+import { accessDenied, checkRecordAccess } from '../_shared/recordAccess.ts';
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const supabase = createClient(
@@ -27,6 +28,10 @@ serve(async (req) => {
         headers: { ...cors, 'Content-Type': 'application/json' }
       });
     }
+
+    // Only a member who may use this project's talent pool (2026-10-14).
+    const access = await checkRecordAccess(req, supabase as any, { sourcingProjectId: project_id }, { requireRefs: true });
+    if (!access.ok) return accessDenied(access, cors);
 
     console.log('Refining sourcing project:', project_id);
 

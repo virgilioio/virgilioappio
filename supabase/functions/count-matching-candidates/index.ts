@@ -46,7 +46,7 @@ serve(withRequestCors(async (req) => {
     if (!access.ok) return accessDenied(access, corsHeaders);
     // A signed-in caller only ever counts candidates in their own workspaces.
     const callerTenants = access.caller && !access.platformAdmin
-      ? access.caller.memberships.map((m) => m.tenant_id)
+      ? access.caller.memberships.filter((m) => m.talent_pool).map((m) => m.tenant_id)
       : null;
 
     const body: RawRequest = await req.json();

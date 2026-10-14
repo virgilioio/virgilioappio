@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
+import { talentPoolFor, TALENT_POOL_REFUSED } from '../_shared/caller.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -66,6 +67,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'job_id is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Job-based access (2026-10-14): Find works on the talent pool.
+    {
+      const { data: owner } = await supabase.from('jobs').select('tenant_id').eq('id', body.job_id).maybeSingle();
+      const ownerTenant = (owner as { tenant_id?: string } | null)?.tenant_id;
+      if (!ownerTenant || !(await talentPoolFor(supabase as any, user.id, ownerTenant))) {
+        return new Response(JSON.stringify({ error: ownerTenant ? TALENT_POOL_REFUSED : 'Job not found' }), {
+          status: ownerTenant ? 403 : 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Idempotency — return existing active project if one already exists

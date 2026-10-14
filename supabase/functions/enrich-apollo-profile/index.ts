@@ -210,8 +210,10 @@ serve(async (req) => {
     }
     if (!tenantId && service) return json({ error: 'sourcing_project_id is required' }, 400, cors);
     if (!tenantId) {
-      const m = caller!.memberships[0];
-      if (!m) return json({ error: 'You are not an active member of a workspace' }, 403, cors);
+      const m = caller!.memberships.find((x) => x.talent_pool);
+      if (!m) {
+        return json({ error: caller!.memberships.length ? 'Finding people needs a TA or Sourcer seat on an open job.' : 'You are not an active member of a workspace' }, 403, cors);
+      }
       tenantId = m.tenant_id;
       organizationId = m.organization_id;
     }

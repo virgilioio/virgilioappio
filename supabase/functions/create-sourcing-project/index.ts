@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
+import { talentPoolFor, TALENT_POOL_REFUSED } from '../_shared/caller.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -102,6 +103,20 @@ serve(async (req) => {
         JSON.stringify({ error: 'Either job_id or organization_id must be provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Job-based access (2026-10-14): Find works on the talent pool.
+    {
+      const { data: owner } = job_id
+        ? await supabase.from('jobs').select('tenant_id').eq('id', job_id).maybeSingle()
+        : await supabase.from('organizations').select('tenant_id').eq('id', organization_id).maybeSingle();
+      const ownerTenant = (owner as { tenant_id?: string } | null)?.tenant_id;
+      if (!ownerTenant || !(await talentPoolFor(supabase as any, user.id, ownerTenant))) {
+        return new Response(
+          JSON.stringify({ error: ownerTenant ? TALENT_POOL_REFUSED : 'Job or organization not found' }),
+          { status: ownerTenant ? 403 : 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const hasMeaningfulCriteria = search_criteria && (

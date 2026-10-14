@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { handlePreflight, corsHeadersFor } from "../_shared/cors.ts";
+import { talentPoolFor, TALENT_POOL_REFUSED } from '../_shared/caller.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -88,6 +89,14 @@ serve(async (req) => {
     }
 
     const tenantId = member.tenant_id;
+
+    // Job-based access (2026-10-14): the extension works on the talent pool.
+    if (!(await talentPoolFor(supabase as any, userId, tenantId))) {
+      return new Response(
+        JSON.stringify({ error: TALENT_POOL_REFUSED }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Verify candidate exists and belongs to user's tenant
     const { data: candidate, error: candidateError } = await supabase

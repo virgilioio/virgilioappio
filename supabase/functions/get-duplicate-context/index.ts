@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { talentPoolFor, TALENT_POOL_REFUSED } from '../_shared/caller.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -106,6 +107,10 @@ serve(async (req) => {
     const isOwner = tenantRow?.owner_id === user.id
     if (!isOwner && (!member || member.user_status !== 'active')) {
       return json({ error: 'Forbidden' }, 403)
+    }
+    // Job-based access (2026-10-14): duplicates come from the whole talent pool.
+    if (!isOwner && !(await talentPoolFor(admin, user.id, candidate.tenant_id))) {
+      return json({ error: TALENT_POOL_REFUSED }, 403)
     }
     const canMerge =
       isOwner ||
