@@ -1,11 +1,15 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/table-states'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
+import { OsPage } from '@/components/os/OsPage'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { useTenant } from '@/hooks/useTenant'
 import { appName, describeAudit, personName, useAudit, usePeople } from '@/lib/os/peopleAccess'
+
+const COLS = 4
 
 function when(iso: string) {
   return new Date(iso).toLocaleString('en-US', {
@@ -22,62 +26,72 @@ export default function AccessHistoryPage() {
   const { tenant } = useTenant()
   const audit = useAudit(tenant?.id)
   const people = usePeople(tenant?.id)
+  const [retry, setRetry] = useState(0)
+  const timedOut = useLoadTimeout(audit.isLoading, retry)
   const nameOf = useMemo(() => {
     const map = new Map((people.data ?? []).filter((p) => p.user_id).map((p) => [p.user_id!, personName(p)]))
     return (id: string | null) => (id ? map.get(id) ?? 'Someone' : 'Gio')
   }, [people.data])
 
   const rows = audit.data ?? []
+  const loadError: 'failed' | 'timeout' | null = audit.isError ? 'failed' : timedOut ? 'timeout' : null
 
   return (
-    <div className="mx-auto w-full max-w-[1080px]">
-      <PageHeader
-        title="History"
-        kicker
-        meta={<span>Every access change in People &amp; Access, recorded by the database. The latest 300 are shown.</span>}
-      />
-      <div className="overflow-clip rounded-[12px] border border-[#E7E8EE] bg-white">
-        {audit.isLoading ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-8 w-full" />
-            ))}
-          </div>
-        ) : audit.isError ? (
-          <div className="px-5 py-8 text-center">
-            <p className="font-poppins text-[13.5px] font-semibold text-[#1F2230]">Couldn't load the history</p>
-            <Button className="mt-3" variant="secondary" size="sm" onClick={() => audit.refetch()}>
-              Retry
-            </Button>
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="px-5 py-10 text-center">
-            <p className="font-poppins text-[13.5px] font-semibold text-[#1F2230]">No changes yet</p>
-            <p className="mt-1 font-inter text-[12px] text-[#6B7080]">Grants, role changes and job roles show up here.</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[180px]">When</TableHead>
-                <TableHead>What happened</TableHead>
-                <TableHead className="w-[140px]">App</TableHead>
-                <TableHead className="w-[180px]">By</TableHead>
+    <OsPage
+      title="History"
+      count={audit.data ? rows.length : undefined}
+      meta={<span>Every access change in People &amp; Access, recorded by the database. The latest 300 are shown.</span>}
+    >
+      <div className="rounded-2xl border border-virgilio-border bg-white overflow-clip">
+        <Table density="comfortable">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[190px]">When</TableHead>
+              <TableHead>What happened</TableHead>
+              <TableHead className="w-[140px]">App</TableHead>
+              <TableHead className="w-[180px]">By</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {audit.isLoading && !loadError ? (
+              <TableSkeleton rows={8} columns={COLS} />
+            ) : loadError ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={COLS} style={{ padding: '56px 24px' }}>
+                  <LoadError
+                    what="the history"
+                    timedOut={loadError === 'timeout'}
+                    onRetry={() => {
+                      setRetry((n) => n + 1)
+                      void audit.refetch()
+                    }}
+                  />
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
+            ) : rows.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={COLS} style={{ padding: '48px 24px' }}>
+                  <AnimatedEmpty
+                    scene="scheduling"
+                    onceKey="os-history"
+                    title="No changes yet"
+                    body="Grants, role changes and job roles show up here."
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="whitespace-nowrap text-[12px] text-[#6B7080]">{when(r.created_at)}</TableCell>
-                  <TableCell className="text-[12.5px] text-[#1F2230]">{describeAudit(r, nameOf)}</TableCell>
-                  <TableCell className="text-[12px] text-[#1F2230]">{r.app_key ? appName(r.app_key) : '—'}</TableCell>
-                  <TableCell className="truncate text-[12px] text-[#1F2230]">{nameOf(r.actor_id)}</TableCell>
+                  <TableCell className="whitespace-nowrap text-[12px] text-text-tertiary">{when(r.created_at)}</TableCell>
+                  <TableCell className="text-[12.5px] text-text-primary">{describeAudit(r, nameOf)}</TableCell>
+                  <TableCell className="text-[12px] text-text-primary">{r.app_key ? appName(r.app_key) : '—'}</TableCell>
+                  <TableCell className="max-w-[180px] truncate text-[12px] text-text-primary">{nameOf(r.actor_id)}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
-    </div>
+    </OsPage>
   )
 }

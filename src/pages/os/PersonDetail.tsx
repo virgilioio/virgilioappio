@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { undoToast } from '@/lib/undoToast'
 
-import { PageHeader } from '@/components/layout/PageHeader'
+import { OsPage } from '@/components/os/OsPage'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -76,20 +77,21 @@ export default function PersonDetailPage() {
 
   if (people.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-[1080px] space-y-4">
-        <Skeleton className="h-16 w-full" />
+      <OsPage title={<Skeleton className="inline-block h-9 w-64 align-middle" />} breadcrumb={[{ label: 'People', to: '/os/people' }]}>
         <Skeleton className="h-48 w-full" />
-      </div>
+      </OsPage>
     )
   }
   if (!person) {
     return (
-      <div className="mx-auto w-full max-w-[1080px] py-16 text-center">
-        <p className="font-poppins text-[15px] font-semibold text-[#1F2230]">This person isn't in your workspace</p>
-        <Link to="/os/people" className="mt-2 inline-block font-inter text-[13px] text-[#6F3FF5]">
-          Back to People
-        </Link>
-      </div>
+      <OsPage title="Not found" breadcrumb={[{ label: 'People', to: '/os/people' }]}>
+        <p className="font-inter text-[13px] text-text-secondary">
+          This person isn't in your workspace.{' '}
+          <Link to="/os/people" className="text-virgilio-purple">
+            Back to People
+          </Link>
+        </p>
+      </OsPage>
     )
   }
 
@@ -106,8 +108,17 @@ export default function PersonDetailPage() {
     setSavingApp(app)
     setError(null)
     try {
-      await setRole.mutateAsync({ userId: person.user_id, app, role })
-      toast(role ? `${appName(app)}: ${roleLabel(app, role)}` : `${appName(app)} access removed`)
+      const previous = grants.find((g) => g.app === app)?.role ?? null
+      const userId = person.user_id
+      await setRole.mutateAsync({ userId, app, role })
+      // §5 Undo over confirm: a role change is reversible.
+      undoToast(role ? `${appName(app)}: ${roleLabel(app, role)}` : `${appName(app)} access removed`, async () => {
+        try {
+          await setRole.mutateAsync({ userId, app, role: previous })
+        } catch (err) {
+          setError(accessErrorMessage(err))
+        }
+      })
     } catch (err) {
       setError(accessErrorMessage(err))
     } finally {
@@ -136,17 +147,12 @@ export default function PersonDetailPage() {
         : null
 
   return (
-    <div className="mx-auto w-full max-w-[1080px]">
-      <PageHeader
-        title={personName(person)}
-        breadcrumb={[{ label: 'People', to: '/os/people' }, personName(person)]}
-        titleNode={
-          <span className="flex min-w-0 items-center gap-3">
+    <OsPage
+        breadcrumb={[{ label: 'People', to: '/os/people' }, { label: personName(person) }]}
+        title={
+          <span className="inline-flex min-w-0 items-center gap-3 align-middle">
             <PersonAvatar person={person} size={36} />
-            <span className="truncate font-poppins text-[26px] font-semibold tracking-[-0.045em] text-[#0d0d09]">
-              {personName(person)}
-              <span className="text-[#D7C5FB]">.</span>
-            </span>
+            <span className="truncate">{personName(person)}</span>
           </span>
         }
         meta={
@@ -156,7 +162,7 @@ export default function PersonDetailPage() {
             {person.user_type === 'platform_admin' && <Badge tone="ink">Platform admin</Badge>}
           </>
         }
-      />
+      >
 
       {(notEditableReason || error) && (
         <p
@@ -324,7 +330,7 @@ export default function PersonDetailPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </OsPage>
   )
 }
 

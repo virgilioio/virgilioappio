@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MoreHorizontal, Pencil, Plus, Archive } from 'lucide-react'
 
-import { PageHeader } from '@/components/layout/PageHeader'
+import { OsPage } from '@/components/os/OsPage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { FormField } from '@/components/ui/form-field'
-import { Skeleton } from '@/components/ui/skeleton'
+import { UnsavedGuard } from '@/components/ui/unsaved-guard'
+import { shakeFirstInvalid } from '@/lib/motion'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/table-states'
+import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
+import { LoadError } from '@/components/empty/LoadError'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { IconTip } from '@/components/ui/tooltip'
 import {
   Dialog,
@@ -59,6 +65,7 @@ function BundleDialog({
   const [roles, setRoles] = useState<Record<AppKey, string>>({ ats: 'member', sales: NO_ACCESS, docs: NO_ACCESS })
   const [nameError, setNameError] = useState<string | undefined>()
   const [formError, setFormError] = useState<string | null>(null)
+  const [guard, setGuard] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -69,13 +76,32 @@ function BundleDialog({
     setRoles(next)
     setNameError(undefined)
     setFormError(null)
+    setGuard(false)
   }, [open, bundle])
+
+  // §13: a dirty dialog intercepts close and asks inline.
+  const dirty = (() => {
+    if (!open) return false
+    const base: Record<AppKey, string> = { ats: 'member', sales: NO_ACCESS, docs: NO_ACCESS }
+    for (const g of bundle?.grants ?? []) base[g.app] = g.role
+    return (
+      name !== (bundle?.name ?? '') ||
+      description !== (bundle?.description ?? '') ||
+      APPS.some((a) => roles[a.key] !== base[a.key])
+    )
+  })()
+  const requestClose = () => {
+    if (save.isPending) return
+    if (dirty) setGuard(true)
+    else onOpenChange(false)
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (save.isPending) return
     if (!name.trim()) {
       setNameError('Give the job role a name.')
+      shakeFirstInvalid(e.currentTarget as Element)
       return
     }
     const grants: BundleGrant[] = APPS.filter((a) => roles[a.key] !== NO_ACCESS).map((a) => ({
@@ -95,7 +121,7 @@ function BundleDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !save.isPending && onOpenChange(next)}>
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : requestClose())}>
       <DialogContent className="sm:max-w-[480px]">
         <form onSubmit={submit} noValidate>
           <DialogHeader>
@@ -160,13 +186,14 @@ function BundleDialog({
               {formError}
             </p>
           </div>
-          <DialogFooter className="mt-2">
-            <Button type="button" variant="secondary" size="md" disabled={save.isPending} onClick={() => onOpenChange(false)}>
+          <DialogFooter className="relative mt-2">
+            <Button type="button" variant="secondary" size="md" disabled={save.isPending} onClick={requestClose}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" size="md" loading={save.isPending}>
               {bundle ? 'Save job role' : 'Create job role'}
             </Button>
+            <UnsavedGuard open={guard} onKeep={() => setGuard(false)} onDiscard={() => onOpenChange(false)} />
           </DialogFooter>
         </form>
       </DialogContent>
@@ -175,9 +202,14 @@ function BundleDialog({
 }
 
 /** /os/job-roles — the bundles that decide a new person's apps and roles. */
+const COLS = APPS.length + 3
+
 export default function JobRolesPage() {
   const { tenant } = useTenant()
   const bundles = useBundles(tenant?.id)
+  const [retry, setRetry] = useState(0)
+  const timedOut = useLoadTimeout(bundles.isLoading, retry)
+  const loadError: 'failed' | 'timeout' | null = bundles.isError ? 'failed' : timedOut ? 'timeout' : null
   const people = usePeople(tenant?.id)
   const archive = useArchiveBundle(tenant?.id)
   const [editing, setEditing] = useState<Bundle | null>(null)
@@ -201,10 +233,8 @@ export default function JobRolesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1080px]">
-      <PageHeader
+    <OsPage
         title="Job roles"
-        kicker
         count={bundles.data?.length}
         meta={<span>Each job role grants a set of apps. Apply one to a person from their page.</span>}
         actions={
@@ -220,88 +250,115 @@ export default function JobRolesPage() {
             New job role
           </Button>
         }
-      />
+      >
 
-      {bundles.isLoading ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-[132px] w-full rounded-[12px]" />
-          ))}
-        </div>
-      ) : bundles.isError ? (
-        <div className="rounded-[12px] border border-[#E7E8EE] bg-white px-5 py-8 text-center">
-          <p className="font-poppins text-[13.5px] font-semibold text-[#1F2230]">Couldn't load job roles</p>
-          <Button className="mt-3" variant="secondary" size="sm" onClick={() => bundles.refetch()}>
-            Retry
-          </Button>
-        </div>
-      ) : (bundles.data ?? []).length === 0 ? (
-        <div className="rounded-[12px] border border-[#E7E8EE] bg-white px-5 py-10 text-center">
-          <p className="font-poppins text-[13.5px] font-semibold text-[#1F2230]">No job roles yet</p>
-          <p className="mt-1 font-inter text-[12px] text-[#6B7080]">Create one to give new people the right apps in one step.</p>
-        </div>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {(bundles.data ?? []).map((b) => {
-            const count = usage.get(b.id) ?? 0
-            return (
-              <article key={b.id} className="rounded-[12px] border border-[#E7E8EE] bg-white p-4">
-                <header className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="truncate font-poppins text-[14px] font-semibold tracking-[-0.02em] text-[#1F2230]">
-                      {b.name}
-                    </h2>
-                    {b.description && (
-                      <p className="mt-0.5 line-clamp-2 font-inter text-[12px] text-[#6B7080]">{b.description}</p>
-                    )}
-                  </div>
-                  <DropdownMenu>
-                    <IconTip label={`${b.name} actions`}>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" iconOnly aria-label={`${b.name} actions`}>
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </IconTip>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEditing(b)
-                          setOpen(true)
-                        }}
-                      >
-                        <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => doArchive(b)}>
-                        <Archive className="mr-2 h-3.5 w-3.5" /> Archive
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </header>
-                <ul className="mt-3 space-y-1">
-                  {APPS.map((app) => {
-                    const g = b.grants.find((x) => x.app === app.key)
-                    const role = g?.role ?? (app.key === 'ats' ? 'member' : null)
-                    return (
-                      <li key={app.key} className="flex justify-between gap-3 font-inter text-[12px]">
-                        <span className="text-[#1F2230]">{appName(app.key)}</span>
-                        <span className={role ? 'text-[#1F2230]' : 'text-[#6B7080]'}>
-                          {role ? roleLabel(app.key, role) : 'No access'}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-                <p className="mt-3 font-inter text-[11.5px] tabular-nums text-[#6B7080]">
-                  {count === 0 ? 'No one has this job role yet' : `${count} ${count === 1 ? 'person' : 'people'}`}
-                </p>
-              </article>
-            )
-          })}
-        </div>
-      )}
+      <div className="rounded-2xl border border-virgilio-border bg-white overflow-clip">
+        <Table density="comfortable">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[34%]">Job role</TableHead>
+              {APPS.map((app) => (
+                <TableHead key={app.key}>{app.name}</TableHead>
+              ))}
+              <TableHead className="text-right">People</TableHead>
+              <TableHead className="w-[32px] text-right" aria-label="Actions" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {bundles.isLoading && !loadError ? (
+              <TableSkeleton rows={5} columns={COLS} />
+            ) : loadError ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={COLS} style={{ padding: '56px 24px' }}>
+                  <LoadError
+                    what="job roles"
+                    timedOut={loadError === 'timeout'}
+                    onRetry={() => {
+                      setRetry((n) => n + 1)
+                      void bundles.refetch()
+                    }}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (bundles.data ?? []).length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={COLS} style={{ padding: '48px 24px' }}>
+                  <AnimatedEmpty
+                    scene="candidates"
+                    onceKey="os-job-roles"
+                    title="No job roles yet"
+                    body="Create one to give new people the right apps in one step."
+                    primary={{ label: 'New job role', icon: <Plus size={16} />, onClick: () => { setEditing(null); setOpen(true) } }}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : (
+              (bundles.data ?? []).map((b) => {
+                const count = usage.get(b.id) ?? 0
+                return (
+                  <TableRow
+                    key={b.id}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setEditing(b)
+                      setOpen(true)
+                    }}
+                  >
+                    <TableCell>
+                      <span className="block truncate font-inter text-[13px] font-medium text-text-primary">{b.name}</span>
+                      {b.description && (
+                        <span className="block truncate font-inter text-[11.5px] text-text-tertiary">{b.description}</span>
+                      )}
+                    </TableCell>
+                    {APPS.map((app) => {
+                      const g = b.grants.find((x) => x.app === app.key)
+                      const role = g?.role ?? (app.key === 'ats' ? 'member' : null)
+                      return (
+                        <TableCell key={app.key} className="whitespace-nowrap font-inter text-[12.5px]">
+                          {role ? (
+                            <span className="text-text-primary">{roleLabel(app.key, role)}</span>
+                          ) : (
+                            <span className="text-text-tertiary">No access</span>
+                          )}
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell className="text-right font-inter text-[12.5px] tabular-nums text-text-primary">
+                      {count === 0 ? <span className="text-text-tertiary">—</span> : count}
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <IconTip label={`${b.name} actions`}>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" iconOnly aria-label={`${b.name} actions`}>
+                              <MoreHorizontal />
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </IconTip>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditing(b)
+                              setOpen(true)
+                            }}
+                          >
+                            <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => doArchive(b)}>
+                            <Archive className="mr-2 h-3.5 w-3.5" /> Archive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       <BundleDialog open={open} onOpenChange={setOpen} bundle={editing} tenantId={tenant?.id} />
-    </div>
+    </OsPage>
   )
 }
