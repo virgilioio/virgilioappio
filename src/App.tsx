@@ -24,6 +24,7 @@ import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
 import { lazy, Suspense, useRef, useEffect } from 'react'
 import { DeactivatedWall } from '@/components/auth/DeactivatedWall'
+import { NoWorkspaceWall } from '@/components/auth/NoWorkspaceWall'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppUpdateNotification } from '@/components/layout/AppUpdateNotification'
@@ -43,7 +44,6 @@ const Candidates = lazy(() => import('./pages/Candidates'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Login = lazy(() => import('./pages/Login'))
-const SignUp = lazy(() => import('./pages/SignUp'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const AcceptInvite = lazy(() => import('./pages/AcceptInvite'))
@@ -66,7 +66,6 @@ const CandidateChat = lazy(() => import('./pages/CandidateChat'))
 const PublicReferenceSubmit = lazy(() => import('./pages/PublicReferenceSubmit'))
 const PublicReferenceAnswer = lazy(() => import('./pages/PublicReferenceAnswer'))
 const PublicReferenceReport = lazy(() => import('./pages/PublicReferenceReport'))
-const Onboarding = lazy(() => import('./pages/Onboarding'))
 const OnboardingPreview = lazy(() => import('./pages/dev/OnboardingPreview'))
 const TrialActivation = lazy(() => import('./pages/TrialActivation'))
 const Privacy = lazy(() => import('./pages/Privacy'))
@@ -135,7 +134,8 @@ function AppContent() {
         {/* Public routes - no authentication required */}
         <Route path="/auth" element={<Login />} />
         <Route path="/login" element={<Navigate to="/auth" replace />} />
-        <Route path="/signup" element={<SignUp />} />
+        {/* Invite-only since 2026-10-14: no public sign-up. */}
+        <Route path="/signup" element={<Navigate to="/auth" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
@@ -169,8 +169,8 @@ function AppContent() {
         <Route path="/cp/:token/:slug" element={<PublicPipeline />} />
 
 
-        {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
-        <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+        {/* Signed in without a workspace: invite-only, so no self-serve workspace. */}
+        <Route path="/onboarding" element={<RequireAuth><NoWorkspaceWall /></RequireAuth>} />
         {/* Dev-only preview of the onboarding flow (no auth, all backend stubbed) */}
         <Route path="/__preview/onboarding" element={<OnboardingPreview />} />
 

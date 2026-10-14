@@ -84,9 +84,6 @@ export default function Login() {
             <Link to="/forgot-password" className="text-sm transition-colors" style={{ color: 'rgb(31, 116, 179)' }}>
               Forgot password?
             </Link>
-            <Link to="/signup" className="text-sm transition-colors" style={{ color: 'rgb(31, 116, 179)' }}>
-              Don't have an account? Sign up
-            </Link>
           </div>
         </div>
 
