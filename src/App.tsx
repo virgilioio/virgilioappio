@@ -268,8 +268,11 @@ function App() {
           maxAge: 24 * 60 * 60 * 1000,
           buster: CACHE_VERSION,
           dehydrateOptions: {
+            // Maps and Sets don't survive JSON: restored, they'd come back as
+            // plain objects and crash whatever calls .get / .has (2026-10-14).
             shouldDehydrateQuery: (query) =>
-              query.state.status === 'success' && shouldPersistQueryKey(query.queryKey),
+              query.state.status === 'success' && shouldPersistQueryKey(query.queryKey)
+              && !(query.state.data instanceof Map) && !(query.state.data instanceof Set),
           },
         }}
       >

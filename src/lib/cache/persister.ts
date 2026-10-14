@@ -7,7 +7,8 @@ import type { PersistedClient, Persister } from '@tanstack/react-query-persist-c
  * breaking schema changes). Persisted entries with a different version are
  * discarded on boot.
  */
-export const CACHE_VERSION = 'v1'
+// v2 (2026-10-14): v1 caches could hold Maps saved as plain objects.
+export const CACHE_VERSION = 'v2'
 const STORAGE_KEY = `virgilio.rq-cache.${CACHE_VERSION}`
 
 // localStorage can be missing (SSR, privacy mode, iframes).
@@ -22,6 +23,13 @@ const safeStorage: Storage | undefined = (() => {
     return undefined
   }
 })()
+
+// Older cache versions are dead weight in localStorage.
+try {
+  safeStorage?.removeItem('virgilio.rq-cache.v1')
+} catch {
+  /* ignore */
+}
 
 const syncPersister = safeStorage
   ? createSyncStoragePersister({
