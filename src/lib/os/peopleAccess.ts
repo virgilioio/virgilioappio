@@ -24,6 +24,7 @@ export const APPS: { key: AppKey; name: string; roles: { id: string; label: stri
     key: 'sales',
     name: 'Gio Sales',
     roles: [
+      { id: 'billing', label: 'Billing' },
       { id: 'read_only', label: 'Read-only' },
       { id: 'rep', label: 'Rep' },
       { id: 'admin', label: 'Admin' },
