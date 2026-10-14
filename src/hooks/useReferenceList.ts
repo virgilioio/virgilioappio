@@ -195,7 +195,7 @@ export function useTenantReferenceRequests() {
     },
   })
 
-  return { requests: query.data ?? [], isLoading: query.isLoading, refetch: query.refetch }
+  return { requests: query.data ?? [], isLoading: query.isLoading, isError: query.isError, refetch: query.refetch }
 }
 
 /** One request, resolved exactly like a list row (so both screens agree). */

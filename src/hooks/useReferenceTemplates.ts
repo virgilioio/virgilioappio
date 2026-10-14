@@ -119,6 +119,8 @@ export function useReferenceTemplates() {
   return {
     templates: query.data ?? [],
     isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
     tenantId,
     createTemplate,
     updateTemplate,
