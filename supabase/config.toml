@@ -336,3 +336,7 @@ verify_jwt = true
 [functions.os-sync]
 # Called by People & Access with the admin's token (checked with is_os_admin) and by pg_cron with x-internal-secret.
 verify_jwt = false
+
+[functions.os-offboard]
+# Called by People & Access with the admin's token; the database checks who may offboard whom.
+verify_jwt = false
