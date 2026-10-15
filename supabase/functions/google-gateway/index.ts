@@ -32,6 +32,8 @@
  *   get_message    { id } -> { gmail_id, gmail_thread_id, message_id, from,
  *                  from_name, to, cc, subject, body, sent_at, attachments, labels }
  *                  one message, parsed: plain-text body, attachment names only.
+ *   get_messages   { ids } -> { messages: [...] }  up to 25 at once, same shape
+ *                  (one call instead of many, so Supabase's per-trace limit holds).
  *
  * Keep this file ASCII only: the deploy tool rewrites escape sequences.
  */
@@ -548,6 +550,26 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
     if (res.status === 404) return { missing: true }
     if (!res.ok) await googleFailure(res, 'read the message')
     return parseMessage(await res.json())
+  }
+
+  if (action === 'get_messages') {
+    const ids = (Array.isArray(p.ids) ? p.ids : []).map(String).filter((x) => /^[A-Za-z0-9]{6,64}$/.test(x)).slice(0, 25)
+    if (!ids.length) return { messages: [] }
+    const { token } = await freshMailToken(db, userId)
+    const messages = []
+    for (const id of ids) {
+      const res = await fetch(`${GMAIL}/messages/${id}?format=full`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(20_000),
+      })
+      if (res.status === 404) {
+        messages.push({ gmail_id: id, missing: true })
+        continue
+      }
+      if (!res.ok) await googleFailure(res, 'read the message')
+      messages.push(parseMessage(await res.json()))
+    }
+    return { messages }
   }
 
   throw new Refusal('bad_request', 'Unknown action.')
