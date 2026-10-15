@@ -240,8 +240,8 @@ function useInvalidateAll(tenantId: string | undefined) {
   }
 }
 
-/** Apps that receive grants from People & Access today. Gio Docs joins later. */
-export const SYNCED_APPS: ReadonlySet<string> = new Set(['sales'])
+/** Apps that receive grants from People & Access (Gio Sales and Gio Docs). */
+export const SYNCED_APPS: ReadonlySet<string> = new Set(['sales', 'docs'])
 
 /**
  * Sends queued changes to the apps right away (os-sync). Failures are fine to
