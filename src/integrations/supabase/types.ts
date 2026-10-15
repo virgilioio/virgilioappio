@@ -6492,6 +6492,44 @@ export type Database = {
           },
         ]
       }
+      os_offboardings: {
+        Row: {
+          finished_at: string | null
+          id: string
+          started_at: string
+          started_by: string
+          steps: Json
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          started_by: string
+          steps?: Json
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          started_by?: string
+          steps?: Json
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_offboardings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_person_profile: {
         Row: {
           bundle_id: string | null
@@ -9625,6 +9663,18 @@ export type Database = {
       is_ats_admin: { Args: { _tenant_id: string }; Returns: boolean }
       job_access_enforced: { Args: { _tenant_id: string }; Returns: boolean }
       my_job_ids: { Args: never; Returns: string[] }
+      os_offboard_ats: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
+      os_offboard_guard: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: undefined
+      }
+      os_offboard_preview: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
       os_people: {
         Args: { _tenant_id: string }
         Returns: {
