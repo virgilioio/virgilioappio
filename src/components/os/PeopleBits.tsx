@@ -7,6 +7,7 @@ import {
   personInitials,
   personState,
   roleLabel,
+  SYNCED_APPS,
   type Grant,
   type Person,
 } from '@/lib/os/peopleAccess'
@@ -51,7 +52,10 @@ export function PersonStateBadge({ person }: { person: Person }) {
 
 function grantNote(g: Grant): string | null {
   if (g.app === 'ats') return null
-  if (g.status === 'pending') return 'Saved. It reaches the app once the app is connected to People & Access.'
+  if (g.status === 'pending')
+    return SYNCED_APPS.has(g.app)
+      ? g.sync_error ?? `Sending to ${appName(g.app)}.`
+      : `Saved. It reaches ${appName(g.app)} once ${appName(g.app)} is connected to People & Access.`
   if (g.status === 'error') return g.sync_error ?? "The app couldn't apply this."
   return null
 }
@@ -70,7 +74,10 @@ export function AccessChips({ person, className }: { person: Person; className?:
             className="whitespace-nowrap"
           >
             {appName(g.app)} · {roleLabel(g.app, g.role)}
-            {g.status === 'pending' && <span className="ml-1 opacity-70">· waiting</span>}
+            {g.status === 'pending' && (
+              <span className="ml-1 opacity-70">· {SYNCED_APPS.has(g.app) ? 'sending' : 'waiting'}</span>
+            )}
+            {g.status === 'error' && <span className="ml-1 opacity-80">· couldn't apply</span>}
           </Badge>
         )
         return note ? (

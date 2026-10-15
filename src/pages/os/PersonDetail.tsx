@@ -13,6 +13,7 @@ import { useTenant } from '@/hooks/useTenant'
 import { JOB_STATUS_TONE } from '@/lib/badge-tones'
 import {
   APPS,
+  SYNCED_APPS,
   accessErrorMessage,
   appName,
   describeAudit,
@@ -126,6 +127,20 @@ export default function PersonDetailPage() {
     }
   }
 
+  // Sends the same role again after the app refused or couldn't be reached.
+  const retryApp = async (app: AppKey, role: string) => {
+    if (!person.user_id) return
+    setSavingApp(app)
+    setError(null)
+    try {
+      await setRole.mutateAsync({ userId: person.user_id, app, role })
+    } catch (err) {
+      setError(accessErrorMessage(err))
+    } finally {
+      setSavingApp(null)
+    }
+  }
+
   const apply = async () => {
     if (!chosen) return
     setError(null)
@@ -226,13 +241,25 @@ export default function PersonDetailPage() {
                             ? 'Sees everything in the ATS.'
                             : 'Sees the jobs they are on.'
                           : grant?.status === 'pending'
-                            ? `Saved. It reaches ${app.name} once ${app.name} is connected to People & Access.`
+                            ? SYNCED_APPS.has(app.key)
+                              ? grant.sync_error ?? `Sending to ${app.name}.`
+                              : `Saved. It reaches ${app.name} once ${app.name} is connected to People & Access.`
                             : grant?.status === 'error'
-                              ? grant.sync_error ?? "The app couldn't apply this."
+                              ? `Couldn't apply: ${grant.sync_error ?? `${app.name} refused this change.`}`
                               : grant
                                 ? 'Active.'
                                 : 'No access.'}
                       </p>
+                      {grant?.status === 'error' && editable && (
+                        <button
+                          type="button"
+                          disabled={savingApp !== null}
+                          onClick={() => void retryApp(app.key, grant.role)}
+                          className="mt-1 font-inter text-[12px] font-medium text-virgilio-purple transition-colors duration-hover hover:text-text-primary disabled:opacity-50"
+                        >
+                          Retry
+                        </button>
+                      )}
                     </div>
                     <div className="w-[190px]">
                       <Select

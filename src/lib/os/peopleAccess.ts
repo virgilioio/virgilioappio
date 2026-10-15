@@ -240,6 +240,22 @@ function useInvalidateAll(tenantId: string | undefined) {
   }
 }
 
+/** Apps that receive grants from People & Access today. Gio Docs joins later. */
+export const SYNCED_APPS: ReadonlySet<string> = new Set(['sales'])
+
+/**
+ * Sends queued changes to the apps right away (os-sync). Failures are fine to
+ * ignore here: the change stays queued and the cron retries every few minutes.
+ */
+export async function syncNow(tenantId: string | undefined) {
+  if (!tenantId) return
+  try {
+    await supabase.functions.invoke('os-sync', { body: { tenant_id: tenantId } })
+  } catch {
+    /* retried by the cron */
+  }
+}
+
 export function useSetAppRole(tenantId: string | undefined) {
   const invalidate = useInvalidateAll(tenantId)
   return useMutation({
@@ -251,6 +267,7 @@ export function useSetAppRole(tenantId: string | undefined) {
         _role: role,
       })
       if (error) throw error
+      if (SYNCED_APPS.has(app)) await syncNow(tenantId)
     },
     onSettled: invalidate,
   })
@@ -287,6 +304,7 @@ export function useApplyBundle(tenantId: string | undefined) {
         })
         if (error) throw error
       }
+      await syncNow(tenantId)
     },
     onSettled: invalidate,
   })
