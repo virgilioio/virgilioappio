@@ -22,8 +22,16 @@
  *   create_event   { summary, description, start, end, time_zone, attendees,
  *                  meet, conference_data, event_id } -> { id, meet_link, conference_data }
  *   delete_event   { event_id } -> { ok }   (404 counts as removed)
- *   send_email     { to, subject, html, text, attachments } -> { id }
- *                  sent from the person's own Gmail.
+ *   send_email     { to, cc, bcc, subject, html, text, attachments, thread_id,
+ *                  in_reply_to, references } -> { id, thread_id, message_id, from }
+ *                  sent from the person's own Gmail; thread_id + in_reply_to
+ *                  keep a reply in its Gmail thread.
+ *   list_messages  { addresses, after, page_token } -> { messages: [{ id, thread_id }],
+ *                  next_page_token }  mail to, from or cc any of up to 40
+ *                  addresses since `after` (unix seconds); chats and drafts left out.
+ *   get_message    { id } -> { gmail_id, gmail_thread_id, message_id, from,
+ *                  from_name, to, cc, subject, body, sent_at, attachments, labels }
+ *                  one message, parsed: plain-text body, attachment names only.
  *
  * Keep this file ASCII only: the deploy tool rewrites escape sequences.
  */
@@ -43,6 +51,8 @@ const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
 ]
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MESSAGE_ID = /^<[^<>\s]{3,490}>$/
+const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me'
 // Google event ids: base32hex (a-v, 0-9), 5 to 1024 characters.
 const EVENT_ID = /^[a-v0-9]{5,1024}$/
 
@@ -184,12 +194,18 @@ async function googleFailure(res: Response, what: string): Promise<never> {
 
 type Attachment = { filename: string; content: string; content_type: string }
 
-function buildMime(from: string, to: string[], subject: string, html: string, text: string | null, attachments: Attachment[]) {
+type MimeExtra = { cc?: string[]; bcc?: string[]; inReplyTo?: string | null; references?: string | null }
+
+function buildMime(from: string, to: string[], subject: string, html: string, text: string | null, attachments: Attachment[], extra: MimeExtra = {}) {
   const boundary = `gio_${crypto.randomUUID().replace(/-/g, '')}`
   const alt = `alt_${boundary}`
   const lines = [
     `From: ${from}`,
     `To: ${to.join(', ')}`,
+    ...(extra.cc?.length ? [`Cc: ${extra.cc.join(', ')}`] : []),
+    ...(extra.bcc?.length ? [`Bcc: ${extra.bcc.join(', ')}`] : []),
+    ...(extra.inReplyTo ? [`In-Reply-To: ${extra.inReplyTo}`] : []),
+    ...(extra.references ? [`References: ${extra.references}`] : []),
     `Subject: ${encodeWord(subject)}`,
     'MIME-Version: 1.0',
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
@@ -217,6 +233,87 @@ function buildMime(from: string, to: string[], subject: string, html: string, te
   }
   lines.push(`--${boundary}--`, '')
   return lines.join('\r\n')
+}
+
+// ---------------------------------------------------------------------------
+// Reading Gmail messages
+
+type GmailHeader = { name: string; value: string }
+type GmailPart = {
+  mimeType?: string
+  filename?: string
+  headers?: GmailHeader[]
+  body?: { data?: string; size?: number; attachmentId?: string }
+  parts?: GmailPart[]
+}
+
+function header(headers: GmailHeader[] | undefined, name: string): string | null {
+  const h = (headers ?? []).find((x) => x.name.toLowerCase() === name.toLowerCase())
+  return h ? h.value : null
+}
+
+function fromB64url(data: string): string {
+  const b64 = data.replace(/-/g, '+').replace(/_/g, '/')
+  const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))
+}
+
+/** "Name <a@b.com>, c@d.com" -> [{ name, email }] */
+function addresses(value: string | null): { name: string | null; email: string }[] {
+  if (!value) return []
+  const out: { name: string | null; email: string }[] = []
+  for (const part of value.match(/("[^"]*"|[^,])+/g) ?? []) {
+    const m = part.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/)
+    const email = (m ? m[2] : part).trim().toLowerCase()
+    if (EMAIL.test(email)) out.push({ name: m && m[1].trim() ? m[1].trim() : null, email })
+  }
+  return out
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function walk(part: GmailPart, acc: { text: string | null; html: string | null; files: string[] }) {
+  if (part.filename) acc.files.push(part.filename.slice(0, 200))
+  else if (part.mimeType === 'text/plain' && part.body?.data && acc.text === null) acc.text = fromB64url(part.body.data)
+  else if (part.mimeType === 'text/html' && part.body?.data && acc.html === null) acc.html = fromB64url(part.body.data)
+  for (const child of part.parts ?? []) walk(child, acc)
+}
+
+function parseMessage(m: { id: string; threadId: string; internalDate?: string; labelIds?: string[]; payload?: GmailPart }) {
+  const h = m.payload?.headers
+  const acc = { text: null as string | null, html: null as string | null, files: [] as string[] }
+  if (m.payload) walk(m.payload, acc)
+  const from = addresses(header(h, 'From'))[0] ?? null
+  return {
+    gmail_id: m.id,
+    gmail_thread_id: m.threadId,
+    message_id: header(h, 'Message-ID'),
+    in_reply_to: header(h, 'In-Reply-To'),
+    references: header(h, 'References'),
+    from: from?.email ?? null,
+    from_name: from?.name ?? null,
+    to: addresses(header(h, 'To')).map((a) => a.email),
+    cc: addresses(header(h, 'Cc')).map((a) => a.email),
+    subject: header(h, 'Subject'),
+    body: (acc.text ?? (acc.html ? htmlToText(acc.html) : '')).slice(0, 60000),
+    sent_at: m.internalDate ? new Date(Number(m.internalDate)).toISOString() : null,
+    attachments: acc.files.slice(0, 20),
+    labels: m.labelIds ?? [],
+  }
 }
 
 async function handle(db: SupabaseClient, p: Record<string, unknown>) {
@@ -363,7 +460,16 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
   }
 
   if (action === 'send_email') {
-    const to = (Array.isArray(p.to) ? p.to : []).map(String).filter((e) => EMAIL.test(e)).slice(0, 20)
+    const list = (v: unknown) => (Array.isArray(v) ? v : []).map(String).map((e) => e.trim()).filter((e) => EMAIL.test(e)).slice(0, 20)
+    const to = list(p.to)
+    const cc = list(p.cc)
+    const bcc = list(p.bcc)
+    const msgId = (v: unknown) => (typeof v === 'string' && MESSAGE_ID.test(v.trim()) ? v.trim() : null)
+    const inReplyTo = msgId(p.in_reply_to)
+    const references = typeof p.references === 'string'
+      ? p.references.split(/\s+/).filter((r) => MESSAGE_ID.test(r)).slice(-20).join(' ') || null
+      : null
+    const threadId = typeof p.thread_id === 'string' && /^[A-Za-z0-9]{6,64}$/.test(p.thread_id) ? p.thread_id : null
     const subject = String(p.subject ?? '').replace(/[\r\n]+/g, ' ').slice(0, 300)
     const html = String(p.html ?? '')
     if (!to.length || !subject || !html) throw new Refusal('bad_request', 'to, subject and html are required.')
@@ -380,16 +486,68 @@ async function handle(db: SupabaseClient, p: Record<string, unknown>) {
     const { token, identity } = await freshMailToken(db, userId)
     const name = identity.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
     const from = name ? `${encodeWord(String(name).replace(/["\r\n]/g, ''))} <${identity.email_address}>` : identity.email_address
-    const mime = buildMime(from, to, subject, html, typeof p.text === 'string' ? p.text : null, attachments)
-    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    const mime = buildMime(from, to, subject, html, typeof p.text === 'string' ? p.text : null, attachments, {
+      cc,
+      bcc,
+      inReplyTo,
+      references: references ?? inReplyTo,
+    })
+    const res = await fetch(`${GMAIL}/messages/send`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw: b64url(new TextEncoder().encode(mime)) }),
+      body: JSON.stringify({ raw: b64url(new TextEncoder().encode(mime)), ...(threadId ? { threadId } : {}) }),
       signal: AbortSignal.timeout(20_000),
     })
     if (!res.ok) await googleFailure(res, 'send the email')
     const sent = await res.json()
-    return { id: sent.id ?? null, from: identity.email_address }
+    // The Message-ID Gmail gave it, so replies and the sync can find it.
+    let messageId: string | null = null
+    if (sent.id) {
+      const meta = await fetch(`${GMAIL}/messages/${sent.id}?format=metadata&metadataHeaders=Message-ID`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (meta.ok) messageId = header((await meta.json()).payload?.headers, 'Message-ID')
+    }
+    return { id: sent.id ?? null, thread_id: sent.threadId ?? null, message_id: messageId, from: identity.email_address }
+  }
+
+  if (action === 'list_messages') {
+    const addresses = (Array.isArray(p.addresses) ? p.addresses : [])
+      .map((a) => String(a).trim().toLowerCase())
+      .filter((a) => EMAIL.test(a) && !/["{}()\s]/.test(a))
+      .slice(0, 40)
+    if (!addresses.length) return { messages: [], next_page_token: null }
+    const after = Number(p.after)
+    if (!Number.isFinite(after) || after < 0) throw new Refusal('bad_request', 'after must be unix seconds.')
+    const who = addresses.map((a) => `from:${a} OR to:${a} OR cc:${a}`).join(' OR ')
+    const q = `(${who}) after:${Math.floor(after)} -in:chats -in:drafts`
+    const { token } = await freshMailToken(db, userId)
+    const url = new URL(`${GMAIL}/messages`)
+    url.searchParams.set('q', q)
+    url.searchParams.set('maxResults', '100')
+    url.searchParams.set('includeSpamTrash', 'false')
+    if (typeof p.page_token === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(p.page_token)) url.searchParams.set('pageToken', p.page_token)
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(20_000) })
+    if (!res.ok) await googleFailure(res, 'list messages')
+    const body = await res.json()
+    return {
+      messages: (body.messages ?? []).map((m: { id: string; threadId: string }) => ({ id: m.id, thread_id: m.threadId })),
+      next_page_token: body.nextPageToken ?? null,
+    }
+  }
+
+  if (action === 'get_message') {
+    const id = String(p.id ?? '')
+    if (!/^[A-Za-z0-9]{6,64}$/.test(id)) throw new Refusal('bad_request', 'id is required.')
+    const { token } = await freshMailToken(db, userId)
+    const res = await fetch(`${GMAIL}/messages/${id}?format=full`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (res.status === 404) return { missing: true }
+    if (!res.ok) await googleFailure(res, 'read the message')
+    return parseMessage(await res.json())
   }
 
   throw new Refusal('bad_request', 'Unknown action.')
