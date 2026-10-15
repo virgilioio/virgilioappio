@@ -30,6 +30,7 @@ import {
   type AppKey,
 } from '@/lib/os/peopleAccess'
 import { GoogleStatus, PersonAvatar, PersonStateBadge } from '@/components/os/PeopleBits'
+import { OffboardCard } from '@/components/os/OffboardCard'
 
 const NO_ACCESS = '__none__'
 const JOB_ROLE_LABEL: Record<string, string> = {
@@ -355,6 +356,8 @@ export default function PersonDetailPage() {
               {person.last_sign_in_at ? `Last signed in ${when(person.last_sign_in_at)}` : 'Has never signed in'}
             </p>
           </Card>
+
+          {tenant?.id && <OffboardCard person={person} tenantId={tenant.id} canOffboard={joined && !isSelf} />}
         </div>
       </div>
     </ListPage>
