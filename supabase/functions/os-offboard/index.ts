@@ -7,7 +7,14 @@
  *   apps    sends the queued removals now (os-sync) and checks they landed
  *   signout blocks their ATS sign-in, which also ends their sessions
  *   google  revokes their Google connection with Google and removes it
- * Running it again repeats only what isn't done. The guard (admins only, never
+ * Running it again repeats only what isn't done.
+ *
+ * POST { tenant_id, user_id, action: 'reactivate' } brings someone back:
+ * os_reactivate_ats() (ATS membership active, People & Access active) and
+ * their sign-in block is lifted. The page then applies the job role the admin
+ * picked, which restores Gio Sales and Gio Docs access through os-sync.
+ *
+ * The guard (admins only, never
  * yourself, platform admins by platform admins, one admin always left) is in
  * the database, under the admin's own token.
  * Keep this file ASCII only: the deploy tool rewrites escape sequences.
@@ -76,6 +83,14 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: auth } },
     auth: { persistSession: false },
   })
+
+  if (p.action === 'reactivate') {
+    const { error: backError } = await asAdmin.rpc('os_reactivate_ats', { _tenant_id: tenantId, _user_id: userId })
+    if (backError) return json({ error: backError.message, code: backError.code }, backError.code === '42501' ? 403 : 400)
+    const { error: unbanError } = await admin.auth.admin.updateUserById(userId, { ban_duration: 'none' } as never)
+    if (unbanError) return json({ error: 'They are active again, but their sign-in is still blocked. Try again.' }, 500)
+    return json({ ok: true })
+  }
 
   // 1. ATS, under the admin's own token (the database checks who may do this).
   const { data: ats, error: atsError } = await asAdmin.rpc('os_offboard_ats', { _tenant_id: tenantId, _user_id: userId })
