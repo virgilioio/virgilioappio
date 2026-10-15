@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { GioWordmark } from '@/components/icons/GioWordmark'
+import { GioAtsLogo } from '@/components/brand/GioAtsLogo'
 import { BookingLinkCard } from '@/components/chat/BookingLinkCard'
 
 // ---------- Types ----------------------------------------------------------
@@ -455,7 +455,7 @@ function DesktopBrandBar({ candidateName }: { candidateName?: string }) {
       className="flex items-center bg-white"
       style={{ borderBottom: '1px solid #E7E8EE', padding: '16px 26px' }}
     >
-      <GioWordmark height={96} />
+      <GioAtsLogo cropped height={44} />
       <span className="mx-4 h-6 w-px" style={{ backgroundColor: '#E7E8EE' }} />
       <ChatGlyph size={18} />
       <span className="ml-2 font-inter text-[13px]" style={{ color: '#5A6072' }}>
@@ -1112,7 +1112,7 @@ function Composer({
       </div>
 
       <div className="mt-[11px] flex items-center justify-center gap-1.5 font-inter" style={{ fontSize: 11, color: '#8B8F9E' }}>
-        <GioWordmark height={11} />
+        <GioAtsLogo cropped height={12} />
         <span>· Private to you and the hiring team ·</span>
         <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2" style={{ color: '#6B7080' }}>Privacy</a>
       </div>
