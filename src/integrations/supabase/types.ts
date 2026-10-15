@@ -6496,6 +6496,8 @@ export type Database = {
         Row: {
           finished_at: string | null
           id: string
+          reactivated_at: string | null
+          reactivated_by: string | null
           started_at: string
           started_by: string
           steps: Json
@@ -6505,6 +6507,8 @@ export type Database = {
         Insert: {
           finished_at?: string | null
           id?: string
+          reactivated_at?: string | null
+          reactivated_by?: string | null
           started_at?: string
           started_by: string
           steps?: Json
@@ -6514,6 +6518,8 @@ export type Database = {
         Update: {
           finished_at?: string | null
           id?: string
+          reactivated_at?: string | null
+          reactivated_by?: string | null
           started_at?: string
           started_by?: string
           steps?: Json
@@ -9696,6 +9702,10 @@ export type Database = {
           user_id: string | null
           user_type: string | null
         }[]
+      }
+      os_reactivate_ats: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Json
       }
       os_set_app_role: {
         Args: {
