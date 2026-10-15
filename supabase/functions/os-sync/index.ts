@@ -1,11 +1,13 @@
 /**
  * People & Access -> the apps that enforce access (design Part D, 2026-10-14).
  *
- * Sends queued changes (os_sync_queue) to Gio Sales' `os-provision` function,
- * signed with OS_PROVISION_SECRET_SALES over `${timestamp}.${body}`, and records
+ * Sends queued changes (os_sync_queue) to each app's `os-provision` function,
+ * signed over `${timestamp}.${body}` with that app's own secret, and records
  * each answer with os_sync_record(), which moves the grant to active or error.
  * The queue item id is the request id, so a retry is never applied twice.
- * Gio Docs items wait until its receiver exists.
+ *   Gio Sales: GIO_SALES_URL + OS_PROVISION_SECRET_SALES
+ *   Gio Docs:  GIO_DOCS_URL (defaults to its Supabase URL) + OS_PROVISION_SECRET_DOCS
+ * An app whose URL or secret isn't set yet is skipped; its items wait.
  *
  * Called by:
  *   - People & Access right after a change: POST { tenant_id } with the admin's token;
@@ -33,10 +35,23 @@ async function hmac(secret: string, message: string): Promise<string> {
 
 type Item = { id: string; tenant_id: string; user_id: string; app_key: string; role: string | null; actor_user_id: string; attempts: number }
 
-/** Plain words for what Gio Sales did, kept short for the person's page. */
-function refusalText(body: Record<string, unknown>): string {
+const APP_NAME: Record<string, string> = { sales: 'Gio Sales', docs: 'Gio Docs' }
+
+/** Where each app receives grants, or null while it isn't configured. */
+function target(app: string): { url: string; secret: string } | null {
+  const env = app === 'sales'
+    ? { url: Deno.env.get('GIO_SALES_URL'), secret: Deno.env.get('OS_PROVISION_SECRET_SALES') }
+    : app === 'docs'
+      ? { url: Deno.env.get('GIO_DOCS_URL') || 'https://fzbsautaxfuqnjkchske.supabase.co', secret: Deno.env.get('OS_PROVISION_SECRET_DOCS') }
+      : { url: undefined, secret: undefined }
+  if (!env.url || !env.secret) return null
+  return { url: env.url.replace(/\/+$/, ''), secret: env.secret }
+}
+
+/** Plain words for what the app did, kept short for the person's page. */
+function refusalText(app: string, body: Record<string, unknown>): string {
   const detail = typeof body.detail === 'string' ? body.detail : typeof body.error === 'string' ? body.error : ''
-  return (detail || 'Gio Sales refused this change.').slice(0, 480)
+  return (detail || `${APP_NAME[app] ?? 'The app'} refused this change.`).slice(0, 480)
 }
 
 Deno.serve(async (req) => {
@@ -65,15 +80,14 @@ Deno.serve(async (req) => {
     if (error || ok !== true) return json({ error: 'Only admins can change access.' }, 403)
   }
 
-  const salesUrl = (Deno.env.get('GIO_SALES_URL') || '').replace(/\/+$/, '')
-  const secret = Deno.env.get('OS_PROVISION_SECRET_SALES') || ''
-  if (!salesUrl || !secret) return json({ error: 'Gio Sales provisioning is not configured.' }, 503)
+  const apps = ['sales', 'docs'].filter((a) => target(a))
+  if (apps.length === 0) return json({ error: 'No app is configured to receive grants.' }, 503)
 
   let q = admin
     .from('os_sync_queue')
     .select('id, tenant_id, user_id, app_key, role, actor_user_id, attempts')
     .eq('status', 'pending')
-    .eq('app_key', 'sales')
+    .in('app_key', apps)
     .order('created_at')
     .limit(50)
   if (tenantId) q = q.eq('tenant_id', tenantId)
@@ -100,13 +114,14 @@ Deno.serve(async (req) => {
       continue
     }
 
+    const dest = target(item.app_key)!
     const body = JSON.stringify({ request_id: item.id, email, role: item.role, actor_email: actorEmail })
     const ts = String(Math.floor(Date.now() / 1000))
     let res: Response
     try {
-      res = await fetch(`${salesUrl}/functions/v1/os-provision`, {
+      res = await fetch(`${dest.url}/functions/v1/os-provision`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-gio-timestamp': ts, 'x-gio-signature': await hmac(secret, `${ts}.${body}`) },
+        headers: { 'Content-Type': 'application/json', 'x-gio-timestamp': ts, 'x-gio-signature': await hmac(dest.secret, `${ts}.${body}`) },
         body,
         signal: AbortSignal.timeout(20_000),
       })
@@ -124,12 +139,12 @@ Deno.serve(async (req) => {
       await admin.rpc('os_sync_record', { _id: item.id, _ok: true, _outcome: String(parsed.outcome ?? ''), _detail: null, _retry: false })
       results.push({ id: item.id, result: String(parsed.outcome ?? 'done') })
     } else if (res.ok || res.status === 400) {
-      // Gio Sales answered and said no (its own rules, or a bad request).
-      await admin.rpc('os_sync_record', { _id: item.id, _ok: false, _outcome: 'refused', _detail: refusalText(parsed), _retry: false })
+      // The app answered and said no (its own rules, or a bad request).
+      await admin.rpc('os_sync_record', { _id: item.id, _ok: false, _outcome: 'refused', _detail: refusalText(item.app_key, parsed), _retry: false })
       results.push({ id: item.id, result: 'refused' })
     } else {
       // Unreachable, not configured, or a signature/clock problem: keep it queued.
-      await admin.rpc('os_sync_record', { _id: item.id, _ok: false, _outcome: null, _detail: `HTTP ${res.status}: ${refusalText(parsed)}`.slice(0, 480), _retry: true })
+      await admin.rpc('os_sync_record', { _id: item.id, _ok: false, _outcome: null, _detail: `HTTP ${res.status}: ${refusalText(item.app_key, parsed)}`.slice(0, 480), _retry: true })
       results.push({ id: item.id, result: 'retry' })
     }
   }
