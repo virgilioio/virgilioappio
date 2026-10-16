@@ -8085,6 +8085,7 @@ export type Database = {
           declined_at: string | null
           deleted_at: string | null
           deleted_by: string | null
+          delivered_at: string | null
           dispatch_at: string | null
           expires_at: string | null
           expiry_days: number
@@ -8099,6 +8100,8 @@ export type Database = {
           sales_company_id: string | null
           sales_org_id: string | null
           scheduled_at: string | null
+          seal_attempts: number
+          seal_claimed_at: string | null
           seal_error: string | null
           sealed_path: string | null
           sealed_sha256: string | null
@@ -8132,6 +8135,7 @@ export type Database = {
           declined_at?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          delivered_at?: string | null
           dispatch_at?: string | null
           expires_at?: string | null
           expiry_days?: number
@@ -8146,6 +8150,8 @@ export type Database = {
           sales_company_id?: string | null
           sales_org_id?: string | null
           scheduled_at?: string | null
+          seal_attempts?: number
+          seal_claimed_at?: string | null
           seal_error?: string | null
           sealed_path?: string | null
           sealed_sha256?: string | null
@@ -8179,6 +8185,7 @@ export type Database = {
           declined_at?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          delivered_at?: string | null
           dispatch_at?: string | null
           expires_at?: string | null
           expiry_days?: number
@@ -8193,6 +8200,8 @@ export type Database = {
           sales_company_id?: string | null
           sales_org_id?: string | null
           scheduled_at?: string | null
+          seal_attempts?: number
+          seal_claimed_at?: string | null
           seal_error?: string | null
           sealed_path?: string | null
           sealed_sha256?: string | null
@@ -11580,6 +11589,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      sign_mark_delivered: {
+        Args: { _count: number; _envelope_id: string }
+        Returns: undefined
+      }
       sign_my_email: { Args: never; Returns: string }
       sign_new_public_id: { Args: never; Returns: string }
       sign_pending_invites: {
@@ -11630,6 +11643,36 @@ export type Database = {
         Args: { _at: string; _envelope_id: string }
         Returns: undefined
       }
+      sign_seal_claim: {
+        Args: { _envelope_id?: string; _limit?: number }
+        Returns: string[]
+      }
+      sign_seal_done: {
+        Args: {
+          _certificate_path: string
+          _detail?: Json
+          _envelope_id: string
+          _sealed_path: string
+          _sha256: string
+        }
+        Returns: undefined
+      }
+      sign_seal_failed: {
+        Args: { _envelope_id: string; _error: string }
+        Returns: number
+      }
+      sign_seal_identity: {
+        Args: never
+        Returns: {
+          cert_pem: string
+          key_pem: string
+        }[]
+      }
+      sign_seal_identity_save: {
+        Args: { _cert_pem: string; _key_pem: string }
+        Returns: boolean
+      }
+      sign_seal_retry: { Args: { _envelope_id: string }; Returns: undefined }
       sign_send: {
         Args: {
           _body?: string
