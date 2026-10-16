@@ -11638,6 +11638,18 @@ export type Database = {
         Args: { _recipient_id: string; _token_hash: string }
         Returns: boolean
       }
+      sign_sales_manage: {
+        Args: {
+          _action: string
+          _actor_email: string
+          _actor_name: string
+          _envelope_id: string
+          _reason: string
+          _sales_org_id: string
+        }
+        Returns: Json
+      }
+      sign_sales_snapshot: { Args: { _envelope_id: string }; Returns: Json }
       sign_save_template: { Args: { _t: Json }; Returns: string }
       sign_schedule: {
         Args: { _at: string; _envelope_id: string }
@@ -11695,6 +11707,24 @@ export type Database = {
           _template_id: string
         }
         Returns: Json
+      }
+      sign_send_sales: {
+        Args: {
+          _body?: string
+          _company_id: string
+          _deal_id: string
+          _label: string
+          _people: Json
+          _sales_org_id: string
+          _send_at?: string
+          _sender_email: string
+          _sender_name: string
+          _sender_sales_user_id: string
+          _subject?: string
+          _template_id: string
+          _values: Json
+        }
+        Returns: string
       }
       sign_set_draft_removed: {
         Args: { _envelope_id: string; _removed: boolean }
