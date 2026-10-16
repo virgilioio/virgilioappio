@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { Check, ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
 
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { UnsavedGuard } from '@/components/ui/unsaved-guard'
+import { IconTip } from '@/components/ui/tooltip'
 import { useStepSlide } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
@@ -95,11 +96,11 @@ export function WizardSheet({
         }}
       >
         <div className="flex h-full flex-col">
-          <div className="px-6 sm:px-10 pt-1 pb-6">
+          <div className={cn('px-6 sm:px-10 pt-1', wide ? 'pb-4' : 'pb-6')}>
             <p className="text-[11px] font-poppins font-semibold uppercase tracking-[0.14em] text-virgilio-purple">{eyebrow}</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <SheetTitle asChild>
-                <h1 className="font-poppins font-semibold tracking-[-0.04em] text-text-primary text-[28px] sm:text-[34px] leading-tight">
+                <h1 className={cn('font-poppins font-semibold tracking-[-0.04em] text-text-primary leading-tight', wide ? 'text-[24px] sm:text-[26px]' : 'text-[28px] sm:text-[34px]')}>
                   {title}
                   <span className="text-virgilio-purple">.</span>
                 </h1>
@@ -115,20 +116,24 @@ export function WizardSheet({
           </div>
 
           <div className="flex-1 min-h-0 flex overflow-hidden">
-            <aside className="hidden md:flex w-[260px] shrink-0 flex-col gap-2 px-6 lg:px-10 pb-6">
+            {/* A wide step (an editor) folds the rail to its step numbers, so the work gets the room. */}
+            <aside className={cn('hidden md:flex shrink-0 flex-col gap-2 pb-6', wide ? 'w-[68px] px-3' : 'w-[260px] px-6 lg:px-10')}>
               <ol className="space-y-1">
                 {steps.map((step, i) => {
                   const isActive = i === current
                   const locked = step.state === 'locked' && !isActive
                   return (
                     <li key={step.title}>
+                      <StepTip label={step.title} show={!!wide}>
                       <button
                         type="button"
                         onClick={() => !locked && i !== current && onStep(i)}
                         disabled={locked}
                         aria-current={isActive ? 'step' : undefined}
+                        aria-label={wide ? `Step ${i + 1}: ${step.title}` : undefined}
                         className={cn(
-                          'group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+                          'group flex w-full items-center gap-3 rounded-xl py-2.5 text-left transition-colors',
+                          wide ? 'justify-center px-0' : 'px-3',
                           isActive ? 'bg-white border border-virgilio-border shadow-sm' : 'hover:bg-white/60',
                           locked && 'opacity-50 cursor-not-allowed',
                         )}
@@ -145,15 +150,16 @@ export function WizardSheet({
                         >
                           {step.state === 'done' && !isActive ? <Check className="h-3.5 w-3.5" /> : i + 1}
                         </span>
-                        <span className={cn('text-[13px] font-poppins font-medium', isActive ? 'text-text-primary' : 'text-text-secondary')}>
+                        <span className={cn('text-[13px] font-poppins font-medium', isActive ? 'text-text-primary' : 'text-text-secondary', wide && 'sr-only')}>
                           {step.title}
                         </span>
                       </button>
+                      </StepTip>
                     </li>
                   )
                 })}
               </ol>
-              {railNote && (
+              {railNote && !wide && (
                 <div className="mt-4 rounded-xl bg-[#F2EBFF] p-4">
                   <p className="text-[10.5px] font-poppins font-semibold uppercase tracking-[0.12em] text-virgilio-purple">{railNote.title}</p>
                   <p className="mt-1.5 text-[12px] leading-relaxed text-text-secondary">{railNote.body}</p>
@@ -211,3 +217,14 @@ export function WizardSheet({
   )
 }
 
+
+/** On a folded rail, each step number keeps its name as a tooltip. */
+function StepTip({ label, show, children }: { label: string; show: boolean; children: ReactElement }) {
+  return show ? (
+    <IconTip label={label} side="right">
+      {children}
+    </IconTip>
+  ) : (
+    children
+  )
+}

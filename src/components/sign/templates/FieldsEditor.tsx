@@ -3,9 +3,13 @@ import {
   AtSign,
   Calendar,
   Check,
+  ChevronDown,
   Database,
   Info,
+  Minus,
+  PanelRight,
   PenLine,
+  Plus,
   SquareCheck,
   TextCursorInput,
   Trash2,
@@ -16,6 +20,8 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { IconTip } from '@/components/ui/tooltip'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -49,11 +55,89 @@ const PALETTE: SignerFieldType[] = ['signature', 'initials', 'date', 'name', 'em
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
-/** One PDF page drawn to a canvas once it scrolls near view, at the screen's pixel density. */
-function PdfPage({ doc, index, children }: { doc: TplDoc; index: number; children?: React.ReactNode }) {
+/** One PDF page drawn to a canvas once it scrolls near view, at the screen's pixel density.
+ *  It's drawn again when zooming makes it noticeably bigger, so text stays sharp. */
+function PdfPage({ doc, index, width, children }: { doc: TplDoc; index: number; width: number; children?: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [state, setState] = useState<'idle' | 'ready' | 'error'>('idle')
+  const size = doc.page_sizes[index] ?? { w: 612, h: 792 }
+  const bucket = Math.ceil(width / 240)
+
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    let task: { cancel: () => void; promise: Promise<unknown> } | null = null
+    let done = false
+    const io = new IntersectionObserver(
+      async ([entry]) => {
+        if (!entry.isIntersecting || done) return
+        done = true
+        io.disconnect()
+        try {
+          const pdf = await loadTemplatePdf(doc)
+          const page = await pdf.getPage(index + 1)
+          const c = canvas.current
+          if (!c) return
+          const base = page.getViewport({ scale: 1 })
+          const scale = (Math.max(el.clientWidth, bucket * 240) / base.width) * Math.min(2, window.devicePixelRatio || 1)
+          const vp = page.getViewport({ scale })
+          const off = document.createElement('canvas')
+          off.width = Math.floor(vp.width)
+          off.height = Math.floor(vp.height)
+          task = page.render({ canvasContext: off.getContext('2d')!, viewport: vp }) as unknown as typeof task
+          await task!.promise
+          // Swap in one step, so a zoom never flashes a blank page.
+          c.width = off.width
+          c.height = off.height
+          c.getContext('2d')!.drawImage(off, 0, 0)
+          setState('ready')
+        } catch (e) {
+          if ((e as { name?: string })?.name !== 'RenderingCancelledException') setState('error')
+        }
+      },
+      { rootMargin: '600px 0px' },
+    )
+    io.observe(el)
+    return () => {
+      io.disconnect()
+      task?.cancel()
+    }
+  }, [doc, index, bucket])
+
+  return (
+    <div ref={box} className="gio-sign-page" style={{ width, aspectRatio: `${size.w} / ${size.h}` }}>
+      {state === 'idle' && <Skeleton className="absolute inset-[7%] rounded-md opacity-60" />}
+      {state === 'error' && (
+        <p className="absolute inset-x-0 top-1/3 text-center font-inter text-[12.5px] text-virgilio-error">This page couldn’t be drawn. Close and open the template again.</p>
+      )}
+      <canvas ref={canvas} data-ready={state === 'ready' || undefined} aria-hidden />
+      {children}
+    </div>
+  )
+}
+
+/** A small page in the Documents panel, with a mark for every field in its role's colour. */
+function PageThumb({
+  doc,
+  index,
+  fields,
+  colorOf,
+  active,
+  label,
+  onOpen,
+}: {
+  doc: TplDoc
+  index: number
+  fields: TplField[]
+  colorOf: (f: TplField) => string
+  active: boolean
+  label: string
+  onOpen: () => void
+}) {
+  const box = useRef<HTMLButtonElement>(null)
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const [ready, setReady] = useState(false)
   const size = doc.page_sizes[index] ?? { w: 612, h: 792 }
 
   useEffect(() => {
@@ -72,18 +156,17 @@ function PdfPage({ doc, index, children }: { doc: TplDoc; index: number; childre
           const c = canvas.current
           if (!c) return
           const base = page.getViewport({ scale: 1 })
-          const scale = (el.clientWidth / base.width) * Math.min(2, window.devicePixelRatio || 1)
-          const vp = page.getViewport({ scale })
+          const vp = page.getViewport({ scale: (el.clientWidth / base.width) * Math.min(2, window.devicePixelRatio || 1) })
           c.width = Math.floor(vp.width)
           c.height = Math.floor(vp.height)
           task = page.render({ canvasContext: c.getContext('2d')!, viewport: vp }) as unknown as typeof task
           await task!.promise
-          setState('ready')
-        } catch (e) {
-          if ((e as { name?: string })?.name !== 'RenderingCancelledException') setState('error')
+          setReady(true)
+        } catch {
+          /* the big page shows the error */
         }
       },
-      { rootMargin: '600px 0px' },
+      { rootMargin: '300px 0px' },
     )
     io.observe(el)
     return () => {
@@ -93,16 +176,40 @@ function PdfPage({ doc, index, children }: { doc: TplDoc; index: number; childre
   }, [doc, index])
 
   return (
-    <div ref={box} className="gio-sign-page w-full max-w-[600px]" style={{ aspectRatio: `${size.w} / ${size.h}` }}>
-      {state === 'idle' && <Skeleton className="absolute inset-[7%] rounded-md opacity-60" />}
-      {state === 'error' && (
-        <p className="absolute inset-x-0 top-1/3 text-center font-inter text-[12.5px] text-virgilio-error">This page couldn’t be drawn. Close and open the template again.</p>
+    <button
+      ref={box}
+      type="button"
+      onClick={onOpen}
+      aria-label={label}
+      aria-current={active || undefined}
+      className={cn(
+        'gio-pressable gio-sign-thumb relative mx-auto block w-[164px] overflow-hidden rounded-[4px] bg-white ring-offset-2',
+        active ? 'ring-2 ring-virgilio-purple' : 'ring-1 ring-[#E7E8EE] hover:ring-[#C9C8C1]',
       )}
-      <canvas ref={canvas} data-ready={state === 'ready' || undefined} aria-hidden />
-      {children}
-    </div>
+      style={{ aspectRatio: `${size.w} / ${size.h}` }}
+    >
+      <canvas ref={canvas} data-ready={ready || undefined} aria-hidden className="absolute inset-0 h-full w-full" />
+      {fields.map((f) => (
+        <span
+          key={f.id}
+          aria-hidden
+          className="absolute rounded-[2px]"
+          style={{
+            left: `${f.x}%`,
+            top: `${f.y}%`,
+            width: `${f.w}%`,
+            height: `${Math.max(f.h, 2.2)}%`,
+            background: colorOf(f),
+            border: f.type === 'data' ? '1px dashed #8456F6' : '1px solid rgba(13,13,9,.25)',
+          }}
+        />
+      ))}
+    </button>
   )
 }
+
+const ZOOMS = [75, 100, 125, 150, 200] as const
+type Zoom = 'fit' | (typeof ZOOMS)[number]
 
 export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void }) {
   const people = d.roles.filter((r) => r.role !== 'cc')
@@ -114,6 +221,48 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   const scroller = useRef<HTMLDivElement>(null)
   const pages = pagesOf(d.docs)
   const tags = tagsFor(d.kind)
+  // Zoom: Fit fills the column; a percentage is of the page's printed size.
+  const [zoom, setZoom] = useState<Zoom>('fit')
+  const [avail, setAvail] = useState(800)
+  const [active, setActive] = useState(0)
+  const [panel, setPanel] = useState(true)
+  const [closedDocs, setClosedDocs] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const c = scroller.current
+    if (!c) return
+    const ro = new ResizeObserver(() => setAvail(Math.max(320, c.clientWidth - 64)))
+    ro.observe(c)
+    let raf = 0
+    const onScroll = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => setActive(visiblePage()))
+    }
+    c.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      ro.disconnect()
+      c.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(raf)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const pageWidth = (doc: TplDoc, i: number) => {
+    if (zoom === 'fit') return Math.min(avail, 1200)
+    const w = (doc.page_sizes[i] ?? { w: 612 }).w
+    return Math.round((w * 4) / 3 * (zoom / 100))
+  }
+  const zoomStep = (dir: 1 | -1) => {
+    const current = zoom === 'fit' ? Math.round((Math.min(avail, 1200) / 816) * 100) : zoom
+    const next = dir > 0 ? ZOOMS.find((z) => z > current) : [...ZOOMS].reverse().find((z) => z < current)
+    if (next) setZoom(next)
+  }
+  const goTo = (gi: number) => {
+    const el = scroller.current?.querySelector<HTMLElement>(`[data-gi="${gi}"]`)
+    if (!el || !scroller.current) return
+    scroller.current.scrollTo({ top: el.offsetTop - 16, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
+  const colorOf = (f: TplField) => (f.type === 'data' ? '#F3EDFE' : role(f.rid)?.color ?? '#E7E8EE')
 
   useEffect(() => {
     if (!people.some((p) => p.id === who)) setWho(people[0]?.id ?? null)
@@ -254,7 +403,12 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     'flex cursor-grab select-none items-center gap-2 rounded-lg border border-[#E7E8EE] bg-white px-2.5 py-[7px] font-inter text-[12.5px] font-medium text-text-primary [touch-action:none] transition-colors duration-hover hover:bg-[#FAFAF7] active:cursor-grabbing'
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[230px_minmax(0,1fr)_260px] border-t border-virgilio-border">
+    <div
+      className={cn(
+        'grid h-full min-h-0 border-t border-virgilio-border',
+        panel || sf ? 'grid-cols-[230px_minmax(0,1fr)_232px]' : 'grid-cols-[230px_minmax(0,1fr)]',
+      )}
+    >
       {/* Palette */}
       <aside className="flex flex-col gap-4 overflow-y-auto border-r border-virgilio-border bg-white p-4">
         <div className="flex flex-col gap-1.5">
@@ -304,15 +458,57 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
       </aside>
 
       {/* Pages */}
+      <div className="flex min-h-0 min-w-0 flex-col">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-virgilio-border bg-white px-3">
+        <span className="font-inter text-[12px] tabular-nums text-text-secondary">
+          Page {active + 1} of {pages.length}
+        </span>
+        <span className="flex-1" />
+        <IconTip label="Zoom out">
+          <button type="button" aria-label="Zoom out" onClick={() => zoomStep(-1)} className="gio-pressable inline-flex h-7 w-7 items-center justify-center rounded-md text-text-secondary hover:bg-[#F4F3EF]">
+            <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        </IconTip>
+        <Select value={String(zoom)} onValueChange={(v) => setZoom(v === 'fit' ? 'fit' : (Number(v) as Zoom))}>
+          <SelectTrigger className="h-7 w-[112px] text-[12px]" aria-label="Zoom">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="fit">Fit width</SelectItem>
+            {ZOOMS.map((z) => (
+              <SelectItem key={z} value={String(z)}>
+                {z}%
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <IconTip label="Zoom in">
+          <button type="button" aria-label="Zoom in" onClick={() => zoomStep(1)} className="gio-pressable inline-flex h-7 w-7 items-center justify-center rounded-md text-text-secondary hover:bg-[#F4F3EF]">
+            <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        </IconTip>
+        <span aria-hidden className="mx-1 h-5 w-px bg-virgilio-border" />
+        <IconTip label={panel ? 'Hide pages' : 'Show pages'}>
+          <button
+            type="button"
+            aria-label={panel ? 'Hide pages' : 'Show pages'}
+            aria-pressed={panel}
+            onClick={() => setPanel((v) => !v)}
+            className={cn('gio-pressable inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-[#F4F3EF]', panel ? 'bg-[#F4F3EF] text-text-primary' : 'text-text-secondary')}
+          >
+            <PanelRight className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        </IconTip>
+      </div>
       <div
         ref={scroller}
         tabIndex={-1}
-        className="flex flex-col items-center gap-[18px] overflow-y-auto bg-[#ECEAE2] p-6 outline-none"
+        className="relative flex min-h-0 flex-1 flex-col items-center gap-[18px] overflow-auto bg-[#ECEAE2] p-8 outline-none"
         onPointerDown={() => setSel(null)}
       >
         {pages.map((p) => (
-          <div key={`${p.doc.id}-${p.i}`} data-gi={p.gi} className="relative w-full max-w-[600px]">
-            <PdfPage doc={p.doc} index={p.i}>
+          <div key={`${p.doc.id}-${p.i}`} data-gi={p.gi} className="relative" style={{ width: pageWidth(p.doc, p.i) }}>
+            <PdfPage doc={p.doc} index={p.i} width={pageWidth(p.doc, p.i)}>
               {d.fields
                 .filter((f) => f.page === p.gi)
                 .map((f) => {
@@ -353,11 +549,13 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
           </div>
         ))}
       </div>
+      </div>
 
-      {/* Inspector */}
-      <aside className="flex flex-col gap-3 overflow-y-auto border-l border-virgilio-border bg-white p-4">
+      {/* Documents, and the selected field */}
+      {panel || sf ? (
+      <aside aria-label="Pages and fields" className="flex min-h-0 flex-col overflow-y-auto border-l border-virgilio-border bg-white">
         {sf ? (
-          <>
+          <div className="flex flex-col gap-3 border-b border-virgilio-border p-4">
             <h5 className={sideH}>{FIELD_LABEL[sf.type]}</h5>
             {sf.type === 'data' ? (
               <label className="flex flex-col gap-1.5 font-inter text-[12.5px] font-medium text-text-primary">
@@ -407,37 +605,78 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
               Remove field
             </Button>
             <p className="font-inter text-[11.5px] leading-snug text-text-tertiary">Arrow keys nudge it (Shift for bigger steps). Drag the corner to resize. Delete removes it.</p>
-          </>
-        ) : (
-          <>
-            <h5 className={sideH}>Summary</h5>
+          </div>
+        ) : null}
+        <div className="flex flex-col gap-2 border-b border-virgilio-border p-4">
+          <div className="flex flex-wrap gap-x-3 gap-y-1.5">
             {people.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-2 font-inter text-[12.5px]">
-                <span className="flex min-w-0 items-center gap-1.5 text-text-primary">
-                  <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: r.color }} />
-                  <span className="truncate">{r.label}</span>
-                </span>
-                <span className="tabular-nums text-text-secondary">{plural(d.fields.filter((f) => f.rid === r.id).length, 'field')}</span>
-              </div>
+              <span key={r.id} className="inline-flex items-center gap-1.5 font-inter text-[11.5px] text-text-secondary">
+                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: r.color }} />
+                {r.label} <span className="tabular-nums text-text-tertiary">{d.fields.filter((f) => f.rid === r.id).length}</span>
+              </span>
             ))}
-            <div className="flex items-center justify-between gap-2 font-inter text-[12.5px]">
-              <span className="text-text-secondary">Data fields</span>
-              <span className="tabular-nums text-text-secondary">{d.fields.filter((f) => f.type === 'data').length}</span>
-            </div>
-            {missing.length ? (
-              <p className="flex gap-2 rounded-lg bg-[#FCF1DC] p-2.5 font-inter text-[12px] leading-snug text-[#7A4A06]">
-                <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                {missing.map((m) => m.label).join(', ')} still need{missing.length === 1 ? 's' : ''} a signature field.
-              </p>
-            ) : (
-              <p className="flex gap-2 rounded-lg bg-[#E3F3EA] p-2.5 font-inter text-[12px] leading-snug text-[#16704A]">
-                <Check className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                Every signer has a signature field.
-              </p>
-            )}
-          </>
-        )}
+            <span className="inline-flex items-center gap-1.5 font-inter text-[11.5px] text-text-secondary">
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px] border border-dashed border-[#8456F6] bg-[#F3EDFE]" />
+              Data <span className="tabular-nums text-text-tertiary">{d.fields.filter((f) => f.type === 'data').length}</span>
+            </span>
+          </div>
+          {missing.length ? (
+            <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#7A4A06]">
+              <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              {missing.map((m) => m.label).join(', ')} still need{missing.length === 1 ? 's' : ''} a signature field.
+            </p>
+          ) : (
+            <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#16704A]">
+              <Check className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              Every signer has a signature field.
+            </p>
+          )}
+        </div>
+        {d.docs.map((doc) => {
+          const open = !closedDocs.has(doc.id)
+          const docPages = pages.filter((p) => p.doc.id === doc.id)
+          return (
+            <Collapsible
+              key={doc.id}
+              open={open}
+              onOpenChange={(o) =>
+                setClosedDocs((s) => {
+                  const n = new Set(s)
+                  if (o) n.delete(doc.id)
+                  else n.add(doc.id)
+                  return n
+                })
+              }
+              className="border-b border-virgilio-border last:border-b-0"
+            >
+              <CollapsibleTrigger className="flex w-full items-start gap-2 px-4 py-3 text-left hover:bg-[#FAFAF7] [&[data-state=open]>svg]:rotate-180">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-inter text-[12px] font-semibold uppercase tracking-[0.03em] text-text-primary">{doc.name}</span>
+                  <span className="font-inter text-[11.5px] tabular-nums text-text-tertiary">{plural(doc.page_count, 'page')}</span>
+                </span>
+                <ChevronDown className="gio-disclosure-chevron mt-0.5 h-4 w-4 shrink-0 text-text-secondary" strokeWidth={2} aria-hidden />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex flex-col gap-3 px-4 pb-4">
+                {docPages.map((p) => (
+                  <div key={p.gi} className="flex flex-col gap-1">
+                    <PageThumb
+                      doc={doc}
+                      index={p.i}
+                      fields={d.fields.filter((f) => f.page === p.gi)}
+                      colorOf={colorOf}
+                      active={active === p.gi}
+                      label={`Go to page ${p.i + 1} of ${doc.name}`}
+                      onOpen={() => goTo(p.gi)}
+                    />
+                    <span className={cn('text-center font-inter text-[11px] tabular-nums', active === p.gi ? 'font-semibold text-text-primary' : 'text-text-tertiary')}>{p.i + 1}</span>
+                  </div>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          )
+        })}
       </aside>
+      ) : null}
 
       {ghost && (
         <div
