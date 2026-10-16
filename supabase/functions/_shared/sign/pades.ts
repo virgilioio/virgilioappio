@@ -241,7 +241,7 @@ export async function sealPdf(
 /** An HTTP RFC 3161 timestamp authority. */
 export function httpTsa(url: string): Tsa {
   return async (request) => {
-    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/timestamp-query" }, body: request });
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/timestamp-query" }, body: buf(request) });
     if (!res.ok) throw new Error(`tsa_http_${res.status}`);
     return new Uint8Array(await res.arrayBuffer());
   };

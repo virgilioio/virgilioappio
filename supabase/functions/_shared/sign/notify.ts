@@ -17,7 +17,7 @@ import {
   type PersonRow,
 } from "./emails.ts";
 
-async function brandOf(supabase: SupabaseClient, tenantId: string) {
+export async function brandOf(supabase: SupabaseClient, tenantId: string) {
   const { data } = await supabase.from("tenants").select("name").eq("id", tenantId).maybeSingle();
   return (data?.name as string) || "Gio Sign";
 }
@@ -132,7 +132,7 @@ export function recordPath(e: Record<string, any>): string {
 }
 
 /** A row in the sender's bell (ATS senders only; Gio Sales senders are told in Sales). */
-async function bell(
+export async function bell(
   supabase: SupabaseClient,
   e: Record<string, any>,
   n: { title: string; subtitle?: string | null; preview?: string | null; actor?: string | null; event: string },
@@ -158,7 +158,7 @@ async function bell(
   if (error) console.error("sign bell", e.id, error.message);
 }
 
-async function people(supabase: SupabaseClient, envelopeId: string): Promise<PersonRow[]> {
+export async function people(supabase: SupabaseClient, envelopeId: string): Promise<PersonRow[]> {
   const { data } = await supabase
     .from("sign_recipients")
     .select("name, role, status, signed_at, approved_at, position, email")

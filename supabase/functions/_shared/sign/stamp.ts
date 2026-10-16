@@ -314,8 +314,8 @@ async function drawCertificate(
     y -= 11;
   }
 
-  need(60);
-  y -= 14;
+  need(44);
+  y -= 10;
   const note = [
     "This file is sealed by Gio Sign with a digital signature and an RFC 3161 timestamp.",
     "Any change to it after sealing breaks the seal; a PDF reader's signature panel shows whether it is intact.",

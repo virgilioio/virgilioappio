@@ -18,6 +18,17 @@ function later(work: Promise<unknown>) {
   if (rt?.waitUntil) rt.waitUntil(p);
 }
 
+/** Seal now rather than wait for the two-minute run (which retries if this fails). */
+async function startSeal(envelopeId: string) {
+  const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sign-seal`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-secret": Deno.env.get("INTERNAL_FUNCTION_SECRET") ?? "" },
+    body: JSON.stringify({ envelope_id: envelopeId }),
+  });
+  if (!res.ok) console.error("sign-submit seal", res.status);
+}
+
 const NF = () => json(404, { error: "not_found" }, corsHeaders);
 const MAX_IMAGE_BYTES = 400 * 1024;
 const FONTS = new Set(["Caveat", "Dancing Script", "Homemade Apple", "Mr Dafoe"]);
@@ -144,6 +155,7 @@ Deno.serve(async (req) => {
             }
           }
           await notifySenderSigned(supabase, e.id, r.id);
+          if ((data as any)?.status === "completed") await startSeal(e.id);
         })(),
       );
       return json(200, { status: (data as any)?.status ?? "sent", next: nextNames, signed_at: new Date().toISOString() }, corsHeaders);

@@ -102,12 +102,14 @@ export interface Mail {
   subject: string;
   html: string;
   text: string;
+  attachments?: { filename: string; content: string }[]; // base64
 }
 
 export async function sendMail(m: Mail) {
   const resend = new Resend(Deno.env.get("RESEND_API_KEY") || "");
   const payload: Record<string, unknown> = { from: m.from, to: [m.to], subject: m.subject.slice(0, 200), html: m.html, text: m.text };
   if (m.replyTo) payload.reply_to = m.replyTo;
+  if (m.attachments?.length) payload.attachments = m.attachments;
   const { error } = await resend.emails.send(payload as never);
   if (error) throw new Error(typeof error === "string" ? error : JSON.stringify(error));
 }
@@ -383,5 +385,47 @@ export function senderExpiryEmail(i: { brand: string; senderEmail: string; title
       brand: i.brand,
     }),
     text: i.expired ? `${i.title} expired before everyone signed.` : `${i.title} expires on ${longDate(i.expiresAt)} and isn't complete yet.`,
+  };
+}
+
+/** Everyone on the envelope, copies included: the sealed PDF and its certificate, attached. */
+export function signedCopyEmail(i: {
+  brand: string;
+  senderName: string;
+  senderEmail: string;
+  recipientName: string;
+  recipientEmail: string;
+  isSender: boolean;
+  title: string;
+  publicId: string;
+  people: PersonRow[];
+  files: { filename: string; content: string }[];
+  recordUrl: string | null;
+}): Mail {
+  const lead = i.isSender
+    ? `<b style="color:#0d0d09">${esc(i.title)}</b> is signed by everyone and sealed. The signed PDF and its certificate of completion are attached; they&rsquo;re also on the record.`
+    : `Everyone has signed <b style="color:#0d0d09">${esc(i.title)}</b>. Your copy is attached, with its certificate of completion. Keep them for your records.`;
+  return {
+    from: i.isSender ? fromSign() : fromVia(i.senderName),
+    to: i.recipientEmail,
+    replyTo: i.isSender ? null : i.senderEmail,
+    subject: `Signed: ${i.title}`,
+    attachments: i.files,
+    html: layout({
+      preheader: "Signed by everyone. Your copy is attached.",
+      kind: "Signed copy",
+      eyebrow: "Completed",
+      eyebrowColor: "#16704A",
+      title: i.isSender ? "Signed and sealed" : `${esc(firstName(i.recipientName))}, here&rsquo;s your signed copy`,
+      lead,
+      card: peopleSteps(i.people, i.senderEmail),
+      cta: i.isSender && i.recordUrl ? { label: "Open in Gio ATS", url: i.recordUrl } : undefined,
+      note: `Envelope ID ${esc(i.publicId)}. The PDF is sealed: any change to it breaks the seal, which a PDF reader&rsquo;s signature panel shows.`,
+      foot: i.isSender
+        ? "You&rsquo;re getting this because you sent this envelope."
+        : `You&rsquo;re getting this because you were on this document. Questions? Reply to reach ${esc(i.senderName)}.`,
+      brand: i.brand,
+    }),
+    text: `Everyone has signed ${i.title}. The sealed PDF and its certificate of completion are attached. Envelope ID ${i.publicId}.`,
   };
 }
