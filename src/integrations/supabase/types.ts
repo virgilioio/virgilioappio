@@ -8459,6 +8459,7 @@ export type Database = {
           session_hash: string | null
           token_expires_at: string | null
           token_hash: string | null
+          token_hash_prev: string | null
           token_issued_at: string | null
           updated_at: string
         }
@@ -8472,6 +8473,7 @@ export type Database = {
           session_hash?: string | null
           token_expires_at?: string | null
           token_hash?: string | null
+          token_hash_prev?: string | null
           token_issued_at?: string | null
           updated_at?: string
         }
@@ -8485,6 +8487,7 @@ export type Database = {
           session_hash?: string | null
           token_expires_at?: string | null
           token_hash?: string | null
+          token_hash_prev?: string | null
           token_issued_at?: string | null
           updated_at?: string
         }
@@ -11547,6 +11550,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      sign_correct: {
+        Args: { _envelope_id: string; _expires_at?: string; _people: Json }
+        Returns: number
+      }
+      sign_expire_due: {
+        Args: { _limit?: number }
+        Returns: {
+          envelope_id: string
+        }[]
+      }
+      sign_expiring_claim: {
+        Args: { _limit?: number }
+        Returns: {
+          envelope_id: string
+        }[]
+      }
       sign_fmt_amount: { Args: { _v: string }; Returns: string }
       sign_fmt_date: { Args: { _v: string }; Returns: string }
       sign_is_admin: { Args: { _tenant_id: string }; Returns: boolean }
@@ -11589,6 +11608,23 @@ export type Database = {
         Args: { _recipient_id: string }
         Returns: undefined
       }
+      sign_remind_request: {
+        Args: { _envelope_id: string }
+        Returns: {
+          recipient_id: string
+        }[]
+      }
+      sign_reminders_due: {
+        Args: { _limit?: number }
+        Returns: {
+          envelope_id: string
+          recipient_id: string
+        }[]
+      }
+      sign_rotate_link: {
+        Args: { _recipient_id: string; _token_hash: string }
+        Returns: boolean
+      }
       sign_save_template: { Args: { _t: Json }; Returns: string }
       sign_schedule: {
         Args: { _at: string; _envelope_id: string }
@@ -11607,6 +11643,7 @@ export type Database = {
         }
         Returns: string
       }
+      sign_send_now: { Args: { _envelope_id: string }; Returns: undefined }
       sign_send_preview: {
         Args: {
           _job_id?: string
@@ -11642,6 +11679,12 @@ export type Database = {
       sign_tag_label: { Args: { _key: string }; Returns: string }
       sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
       sign_unschedule: { Args: { _envelope_id: string }; Returns: undefined }
+      sign_void: {
+        Args: { _envelope_id: string; _reason: string }
+        Returns: {
+          recipient_id: string
+        }[]
+      }
       skill_priorities_valid: { Args: { p: Json }; Returns: boolean }
       soft_delete_job_stage: {
         Args: { stage_id_param: string }
