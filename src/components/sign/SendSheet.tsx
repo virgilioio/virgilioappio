@@ -179,7 +179,7 @@ export function SendSheet({
               toast.error('Couldn’t undo the send')
             }
           },
-          'You have 5 seconds to undo.',
+          'You have 5 seconds to undo. The email goes out within a minute.',
         )
       }
     } catch (e) {

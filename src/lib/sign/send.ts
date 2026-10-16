@@ -4,11 +4,10 @@ import { supabase } from '@/lib/supabaseClient'
 import type { EnvelopeRow, SignKind, SignRecipientRole } from './api'
 
 /**
- * Sending stays hidden until the emails step ships: a queued envelope would
- * otherwise wait and go out later, when nobody expects it. Set
- * VITE_SIGN_SENDING=on locally to try it; build step 8 turns it on for good.
+ * Sending is live (build step 8: the minute job sends what's due and emails
+ * every invitation). VITE_SIGN_SENDING=off hides the Send buttons again.
  */
-export const SIGN_SENDING_LIVE = import.meta.env.VITE_SIGN_SENDING === 'on'
+export const SIGN_SENDING_LIVE = import.meta.env.VITE_SIGN_SENDING !== 'off'
 
 export type SendSource =
   | { type: 'candidate'; id: string; jobId: string }
