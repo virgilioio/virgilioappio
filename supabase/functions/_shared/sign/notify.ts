@@ -27,6 +27,10 @@ export function recordUrl(e: Record<string, any>): string | null {
   const base = appBase();
   if (e.kind === "candidate" && e.ats_job_id && e.ats_candidate_id) return `${base}/jobs/${e.ats_job_id}/candidates/${e.ats_candidate_id}`;
   if (e.kind === "member" && e.source_id) return `${base}/os/people/${e.source_id}`;
+  if (e.origin === "sales" && e.source_type === "deal" && e.source_id) {
+    const sales = (Deno.env.get("GIO_SALES_APP_URL") ?? "https://sales.gogio.io").replace(/\/$/, "");
+    return `${sales}/deals/${e.source_id}`;
+  }
   return null;
 }
 

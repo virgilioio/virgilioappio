@@ -3,12 +3,15 @@ import { admin, json, linkCors, sign } from '../_shared/gioLink.ts'
 // Delivers due outbox rows to Gio Sales, signed. Backoff: 1m, 5m, 30m, 2h, 12h (then every 12h).
 const BACKOFF_MIN = [1, 5, 30, 120, 720]
 
+// Gio Sign events go to Sales' sign-event; everything else (openings, job team) to ats-opening-event.
+const endpointFor = (event: string | null) => (event?.startsWith('sign.') ? 'sign-event' : 'ats-opening-event')
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: linkCors })
   const base = (Deno.env.get('GIO_SALES_URL') || '').replace(/\/+$/, '')
   if (!base) return json({ error: 'GIO_SALES_URL not configured' }, 200)
   const db = admin()
-  const { data: rows } = await db.from('integration_outbox').select('id, payload, attempts')
+  const { data: rows } = await db.from('integration_outbox').select('id, event, payload, attempts')
     .is('delivered_at', null).lte('next_attempt_at', new Date().toISOString())
     .order('created_at').limit(50)
   let ok = 0, failed = 0
@@ -16,7 +19,7 @@ Deno.serve(async (req) => {
     const body = JSON.stringify(r.payload)
     let err: string | null = null
     try {
-      const res = await fetch(`${base}/functions/v1/ats-opening-event`, {
+      const res = await fetch(`${base}/functions/v1/${endpointFor(r.event)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-gio-signature': await sign(body) },
         body,

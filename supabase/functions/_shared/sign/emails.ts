@@ -25,6 +25,9 @@ export function dateTime(iso: string | Date) {
   }).format(new Date(iso));
 }
 
+/** The record's app, by its address. */
+export const openLabel = (url: string) => (url.includes("/deals/") ? "Open in Gio Sales" : "Open in Gio ATS");
+
 /** A middle dot, kept out of the source as a character code (this file is ASCII only). */
 export const DOT = String.fromCharCode(183);
 
@@ -244,7 +247,7 @@ export function senderSignedEmail(i: {
         ? `It&rsquo;s your turn to sign. Your personal signing link is in the invitation email from Gio Sign.`
         : `${left} ${left === 1 ? "person still signs" : "people still sign"} before it&rsquo;s complete. We&rsquo;ll email you when everyone has.`,
       card: peopleSteps(i.people, i.senderEmail),
-      cta: i.recordUrl ? { label: "Open in Gio ATS", url: i.recordUrl } : undefined,
+      cta: i.recordUrl ? { label: openLabel(i.recordUrl), url: i.recordUrl } : undefined,
       foot: "You&rsquo;re getting this because you sent this envelope.",
       brand: i.brand,
     }),
@@ -272,7 +275,7 @@ export function senderDeclinedEmail(i: {
       title: `${esc(i.signerName)} declined to sign`,
       lead: "The envelope has stopped, and its links no longer open. If something needs changing, send a new envelope from the right template.",
       card: `<div style="${F};font-size:12px;color:#6B7080;margin-bottom:6px">Their reason</div><div style="${F};font-size:14px;line-height:1.55;color:#0d0d09">&ldquo;${esc(i.reason)}&rdquo;</div>`,
-      cta: i.recordUrl ? { label: "Open in Gio ATS", url: i.recordUrl } : undefined,
+      cta: i.recordUrl ? { label: openLabel(i.recordUrl), url: i.recordUrl } : undefined,
       foot: "You&rsquo;re getting this because you sent this envelope.",
       brand: i.brand,
     }),
@@ -300,7 +303,7 @@ export function senderCompletedEmail(i: {
       title: "Everyone has signed",
       lead: `<b style="color:#0d0d09">${esc(i.title)}</b> is complete. We&rsquo;ll email the sealed PDF and its certificate of completion to everyone once it&rsquo;s sealed.`,
       card: peopleSteps(i.people, i.senderEmail),
-      cta: i.recordUrl ? { label: "Open in Gio ATS", url: i.recordUrl } : undefined,
+      cta: i.recordUrl ? { label: openLabel(i.recordUrl), url: i.recordUrl } : undefined,
       note: `Envelope ID ${esc(i.publicId)}`,
       foot: "You&rsquo;re getting this because you sent this envelope.",
       brand: i.brand,
@@ -380,7 +383,7 @@ export function senderExpiryEmail(i: { brand: string; senderEmail: string; title
         ? "Its links no longer open. To try again, send a new envelope from the record."
         : "Not everyone has signed yet. Send a reminder, or use Correct to give more time or change who signs.",
       card: peopleSteps(i.people, i.senderEmail),
-      cta: i.recordUrl ? { label: "Open in Gio ATS", url: i.recordUrl } : undefined,
+      cta: i.recordUrl ? { label: openLabel(i.recordUrl), url: i.recordUrl } : undefined,
       foot: "You&rsquo;re getting this because you sent this envelope.",
       brand: i.brand,
     }),
@@ -419,7 +422,7 @@ export function signedCopyEmail(i: {
       title: i.isSender ? "Signed and sealed" : `${esc(firstName(i.recipientName))}, here&rsquo;s your signed copy`,
       lead,
       card: peopleSteps(i.people, i.senderEmail),
-      cta: i.isSender && i.recordUrl ? { label: "Open in Gio ATS", url: i.recordUrl } : undefined,
+      cta: i.isSender && i.recordUrl ? { label: openLabel(i.recordUrl), url: i.recordUrl } : undefined,
       note: `Envelope ID ${esc(i.publicId)}. The PDF is sealed: any change to it breaks the seal, which a PDF reader&rsquo;s signature panel shows.`,
       foot: i.isSender
         ? "You&rsquo;re getting this because you sent this envelope."
