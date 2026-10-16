@@ -97,3 +97,20 @@ export function loadTemplatePdf(doc: { storage_path: string; file?: Blob }): Pro
   }
   return p
 }
+
+const byKey = new Map<string, Promise<PDFDocumentProxy>>()
+
+/** Open a PDF from a (short-lived) URL, once per key (the signing page's documents). */
+export function loadPdfFromUrl(key: string, url: string): Promise<PDFDocumentProxy> {
+  let p = byKey.get(key)
+  if (!p) {
+    p = (async () => {
+      const res = await fetch(url)
+      if (!res.ok) throw new PdfProblem('This document couldn’t be loaded.')
+      return open(await res.arrayBuffer())
+    })()
+    p.catch(() => byKey.delete(key))
+    byKey.set(key, p)
+  }
+  return p
+}

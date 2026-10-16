@@ -88,6 +88,7 @@ const OsJobRoles = lazy(() => import('./pages/os/JobRoles'))
 const OsHistory = lazy(() => import('./pages/os/History'))
 const SignEnvelopes = lazy(() => import('./pages/sign/Envelopes'))
 const SignTemplates = lazy(() => import('./pages/sign/Templates'))
+const SigningPage = lazy(() => import('./pages/sign/SigningPage'))
 const ReferenceTemplates = lazy(() => import('./pages/ReferenceTemplates'))
 const ReferenceTemplateEditor = lazy(() => import('./pages/ReferenceTemplateEditor'))
 
@@ -173,6 +174,8 @@ function AppContent() {
         <Route path="/reference-report/:token" element={<PublicReferenceReport />} />
         {/* Public candidate dossier — always client-ready, resolved server-side. */}
         <Route path="/d/:token" element={<PublicDossier />} />
+        {/* Gio Sign: a signer's own envelope. Token-resolved, no account. */}
+        <Route path="/s/:token" element={<SigningPage />} />
         <Route path="/cp/:token" element={<PublicPipeline />} />
         <Route path="/cp/:token/:slug" element={<PublicPipeline />} />
 
