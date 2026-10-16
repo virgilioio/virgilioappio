@@ -353,3 +353,9 @@ verify_jwt = false
 
 [functions.sign-dispatch]
 verify_jwt = false
+
+[functions.sign-remind]
+verify_jwt = false
+
+[functions.sign-manage]
+verify_jwt = true

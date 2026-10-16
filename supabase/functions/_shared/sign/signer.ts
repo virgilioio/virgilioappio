@@ -44,10 +44,12 @@ export interface LinkContext {
 export async function resolveLink(supabase: SupabaseClient, token: unknown): Promise<LinkContext | null> {
   if (typeof token !== "string" || token.length < 20 || token.length > 200) return null;
   const hash = await sha256Hex(token);
+  // The current link, or the one before it (a reminder sends a fresh link
+  // but the previous email keeps working).
   const { data: secret } = await supabase
     .from("sign_recipient_secrets")
     .select("*")
-    .eq("token_hash", hash)
+    .or(`token_hash.eq.${hash},token_hash_prev.eq.${hash}`)
     .maybeSingle();
   if (!secret) return null;
   if (secret.token_expires_at && new Date(secret.token_expires_at).getTime() < Date.now()) return null;

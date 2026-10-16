@@ -306,3 +306,82 @@ export function senderCompletedEmail(i: {
     text: `Everyone has signed ${i.title}. The sealed PDF follows once it's sealed. Envelope ID ${i.publicId}.${i.recordUrl ? `\n\n${i.recordUrl}` : ""}`,
   };
 }
+
+export function reminderEmail(i: {
+  brand: string;
+  senderName: string;
+  senderEmail: string;
+  recipientName: string;
+  recipientEmail: string;
+  role: string;
+  docName: string;
+  expiresAt: string;
+  link: string;
+}): Mail {
+  const verb = i.role === "approver" ? "approval" : "signature";
+  const days = Math.max(0, Math.ceil((new Date(i.expiresAt).getTime() - Date.now()) / 86_400_000));
+  return {
+    from: fromVia(i.senderName),
+    to: i.recipientEmail,
+    replyTo: i.senderEmail,
+    subject: `Reminder: ${i.docName} is waiting for your ${verb}`,
+    html: layout({
+      preheader: `${i.senderName} is waiting for your ${verb}.`,
+      kind: "Secure link",
+      eyebrow: `Reminder ${DOT} expires in ${days} day${days === 1 ? "" : "s"}`.replace(DOT, "&middot;"),
+      title: `Your document is still waiting for you`,
+      lead: `${esc(i.senderName)} at ${esc(i.brand)} is waiting for your ${verb} on <b style="color:#0d0d09">${esc(i.docName)}</b>. You can pick up where you left off.`,
+      card: person(i.senderName, i.brand, { text: "Waiting on you" }) + docRow(i.docName, `Link valid until ${longDate(i.expiresAt)}`),
+      cta: { label: "Continue", url: i.link },
+      note: "Not for you, or need changes? Open the link and choose Decline to sign, or reply to this email.",
+      foot: `You&rsquo;re getting this because a document is still waiting for you. Reminders stop as soon as you sign or decline. Don&rsquo;t forward this email: the link is personal to you.`,
+      brand: i.brand,
+    }),
+    text: `${i.senderName} at ${i.brand} is waiting for your ${verb} on ${i.docName}.\n\nContinue here: ${i.link}\n\nThe link is valid until ${longDate(i.expiresAt)}.`,
+  };
+}
+
+export function voidedEmail(i: { brand: string; senderName: string; senderEmail: string; recipientName: string; recipientEmail: string; docName: string; reason: string }): Mail {
+  return {
+    from: fromVia(i.senderName),
+    to: i.recipientEmail,
+    replyTo: i.senderEmail,
+    subject: `Cancelled: ${i.docName}`,
+    html: layout({
+      preheader: `${i.senderName} cancelled this document.`,
+      kind: "Gio Sign",
+      eyebrow: "Cancelled",
+      eyebrowColor: "#5A6072",
+      title: `${esc(firstName(i.recipientName))}, this document was cancelled`,
+      lead: `${esc(i.senderName)} at ${esc(i.brand)} cancelled <b style="color:#0d0d09">${esc(i.docName)}</b>, so there&rsquo;s nothing to sign. Its link no longer opens.`,
+      card: `<div style="${F};font-size:12px;color:#6B7080;margin-bottom:6px">Their reason</div><div style="${F};font-size:14px;line-height:1.55;color:#0d0d09">&ldquo;${esc(i.reason)}&rdquo;</div>`,
+      note: `Questions? Reply to reach ${esc(i.senderName)} directly.`,
+      foot: "You&rsquo;re getting this because you were asked to sign this document.",
+      brand: i.brand,
+    }),
+    text: `${i.senderName} at ${i.brand} cancelled ${i.docName}, so there's nothing to sign. Reason: "${i.reason}"`,
+  };
+}
+
+export function senderExpiryEmail(i: { brand: string; senderEmail: string; title: string; expiresAt: string; expired: boolean; people: PersonRow[]; recordUrl: string | null }): Mail {
+  return {
+    from: fromSign(),
+    to: i.senderEmail,
+    subject: i.expired ? `Expired: ${i.title}` : `Expires ${longDate(i.expiresAt)}: ${i.title}`,
+    html: layout({
+      preheader: i.expired ? "It expired before everyone signed." : "It expires soon and isn't complete.",
+      kind: "Gio Sign",
+      eyebrow: esc(i.title),
+      eyebrowColor: i.expired ? "#5A6072" : "#92580A",
+      title: i.expired ? "It expired before everyone signed" : `It expires on ${esc(longDate(i.expiresAt))}`,
+      lead: i.expired
+        ? "Its links no longer open. To try again, send a new envelope from the record."
+        : "Not everyone has signed yet. Send a reminder, or use Correct to give more time or change who signs.",
+      card: peopleSteps(i.people, i.senderEmail),
+      cta: i.recordUrl ? { label: "Open in Gio ATS", url: i.recordUrl } : undefined,
+      foot: "You&rsquo;re getting this because you sent this envelope.",
+      brand: i.brand,
+    }),
+    text: i.expired ? `${i.title} expired before everyone signed.` : `${i.title} expires on ${longDate(i.expiresAt)} and isn't complete yet.`,
+  };
+}

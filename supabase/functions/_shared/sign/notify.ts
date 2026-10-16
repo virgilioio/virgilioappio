@@ -11,6 +11,9 @@ import {
   senderCompletedEmail,
   senderDeclinedEmail,
   senderSignedEmail,
+  senderExpiryEmail,
+  reminderEmail,
+  voidedEmail,
   type PersonRow,
 } from "./emails.ts";
 
@@ -191,4 +194,80 @@ export async function logSent(supabase: SupabaseClient, envelopeId: string) {
     .neq("role", "cc")
     .is("removed_at", null);
   await event(supabase, e, null, "sent", `Sent to ${count ?? 0} ${count === 1 ? "person" : "people"}`, true);
+}
+
+async function docNameOf(supabase: SupabaseClient, e: Record<string, any>) {
+  const { data: docs } = await supabase
+    .from("sign_documents")
+    .select("name")
+    .eq("envelope_id", e.id)
+    .is("removed_at", null)
+    .order("position");
+  return String(docs?.[0]?.name ?? e.title).replace(/\.pdf$/i, "") + ((docs?.length ?? 0) > 1 ? ` + ${docs!.length - 1} more` : "");
+}
+
+/** A reminder: a fresh link (the previous one keeps working) by email. */
+export async function remindRecipient(supabase: SupabaseClient, recipientId: string): Promise<boolean> {
+  const { data: r } = await supabase.from("sign_recipients").select("*").eq("id", recipientId).maybeSingle();
+  if (!r || r.role === "cc" || !["sent", "viewed"].includes(r.status) || r.removed_at) return false;
+  const { data: e } = await supabase.from("sign_envelopes").select("*").eq("id", r.envelope_id).maybeSingle();
+  if (!e || e.status !== "sent") return false;
+  const token = randomToken();
+  const { data: rotated, error } = await supabase.rpc("sign_rotate_link", { _recipient_id: r.id, _token_hash: await sha256Hex(token) });
+  if (error) throw error;
+  if (!rotated) return false;
+  await sendMail(
+    reminderEmail({
+      brand: await brandOf(supabase, e.tenant_id),
+      senderName: e.sender_name,
+      senderEmail: e.sender_email,
+      recipientName: r.name,
+      recipientEmail: r.email,
+      role: r.role,
+      docName: await docNameOf(supabase, e),
+      expiresAt: e.expires_at ?? new Date(Date.now() + 7 * 86_400_000).toISOString(),
+      link: `${appBase()}/s/${token}`,
+    }),
+  );
+  await event(supabase, e, r.id, "reminded", `Reminder emailed to ${r.name}`);
+  return true;
+}
+
+/** After a void: tell everyone who had a link. */
+export async function notifyVoided(supabase: SupabaseClient, envelopeId: string, recipientIds: string[]) {
+  const { data: e } = await supabase.from("sign_envelopes").select("*").eq("id", envelopeId).maybeSingle();
+  if (!e || !recipientIds.length) return;
+  const brand = await brandOf(supabase, e.tenant_id);
+  const docName = await docNameOf(supabase, e);
+  const { data: rs } = await supabase.from("sign_recipients").select("*").in("id", recipientIds);
+  for (const r of rs ?? []) {
+    if (String(r.email).toLowerCase() === String(e.sender_email).toLowerCase()) continue;
+    try {
+      await sendMail(voidedEmail({ brand, senderName: e.sender_name, senderEmail: e.sender_email, recipientName: r.name, recipientEmail: r.email, docName, reason: e.void_reason ?? "" }));
+    } catch (err) {
+      console.error("sign void email", r.id, err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+/** Expiring soon (once) or expired: tell the sender. */
+export async function notifySenderExpiry(supabase: SupabaseClient, envelopeId: string, expired: boolean) {
+  const { data: e } = await supabase.from("sign_envelopes").select("*").eq("id", envelopeId).maybeSingle();
+  if (!e) return;
+  if (!expired) {
+    const { data } = await supabase.rpc("sign_pref", { _tenant_id: e.tenant_id, _email: e.sender_email, _event: "expiring" });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row?.by_email === false) return;
+  }
+  await sendMail(
+    senderExpiryEmail({
+      brand: await brandOf(supabase, e.tenant_id),
+      senderEmail: e.sender_email,
+      title: e.title,
+      expiresAt: e.expires_at,
+      expired,
+      people: await people(supabase, e.id),
+      recordUrl: recordUrl(e),
+    }),
+  );
 }
