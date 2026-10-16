@@ -3,76 +3,63 @@
 -- Step 0 plan (2026-10-16). The file is renamed to the version it is applied
 -- with.
 --
--- Shape
---   One shared backend for Sign, here in the Gio ATS project. Gio Sales never
---   reads these tables: it calls the sign-gateway Edge Function (HMAC, like
---   google-gateway) and keeps a read-only mirror of its own deals' agreements.
---   Signers are never users: they reach their envelope only through
---   sign-session / sign-submit with a hashed, single-use token.
+-- Decisions (Allan, 2026-10-16)
+--   Templates only. Every envelope comes from a template; special conditions
+--   get their own template. Only admins (workspace admins, platform admins)
+--   open the Sign module, and only they create or edit templates.
+--   Each template belongs to one app: Gio Sales (picked from a deal) or the
+--   ATS (picked from a candidate, or by admins for new members).
+--   People who send do it from the record: Sales reps from the deal (through
+--   sign-gateway), TAs from the candidate (through sign-send). They never edit
+--   documents or fields. Status shows on the deal and on the candidate.
 --
---   Templates and envelopes share the same child tables (documents,
---   recipients, fields). A child row belongs to exactly one of the two, so the
---   fields editor works on both. Template roles are recipient rows with a
---   label and no person.
+-- Shape
+--   One Sign backend, in the Gio ATS project. Gio Sales never reads these
+--   tables: it calls sign-gateway (HMAC, like google-gateway) and keeps a
+--   read-only mirror of its own deals' agreements. Signers are never users:
+--   they reach their envelope only through sign-session / sign-submit with a
+--   hashed token.
+--   Templates and envelopes share the child tables (documents, recipients,
+--   fields); a child row belongs to exactly one of the two. Template roles are
+--   recipient rows with a label and no person. Envelopes get frozen copies of
+--   their template's children when they're created.
 --
 -- Rules kept
---   Deny-by-default RLS on every table. Clients edit drafts (and scheduled
---   envelopes) only; every status change goes through a security-definer RPC
---   or an Edge Function. Token and code hashes live in a table with no
---   policies. Nothing is ever removed: drafts, documents, recipients, fields
---   and templates are soft-removed so Undo works. sign_events is append-only.
+--   Deny-by-default RLS on every table. Only admins write from the client
+--   (templates, and drafts in the Sign module). Envelopes are created, sent and
+--   changed by Edge Functions and security-definer RPCs. Token and code hashes
+--   live in a table with no policies. Nothing is ever removed: templates are
+--   archived, drafts and children soft-removed. sign_events is append-only.
 
 -- ---------------------------------------------------------------------------
 -- 1. Types
 -- ---------------------------------------------------------------------------
 create type public.sign_kind as enum ('customer', 'candidate', 'member');
 
--- queued = "Send now" was pressed; emails go out when dispatch_at passes
--- unless the sender pressed Undo (back to draft).
+-- queued = Send was pressed; emails go out when dispatch_at passes unless the
+-- sender pressed Undo (back to draft, or cancelled when it was never a draft).
 create type public.sign_status as enum
-  ('draft', 'scheduled', 'queued', 'sent', 'completed', 'declined', 'voided', 'expired');
+  ('draft', 'scheduled', 'queued', 'sent', 'completed', 'declined', 'voided', 'expired', 'cancelled');
 
 create type public.sign_recipient_role as enum ('signer', 'approver', 'cc');
 
 create type public.sign_recipient_status as enum
   ('waiting', 'sent', 'viewed', 'signed', 'approved', 'declined');
 
-create type public.sign_source as enum ('deal', 'company', 'ats_offer', 'member');
+create type public.sign_source as enum ('deal', 'company', 'ats_offer', 'candidate', 'member');
 
 -- ---------------------------------------------------------------------------
--- 2. Who can use Sign
+-- 2. Helpers
 -- ---------------------------------------------------------------------------
--- People & Access grants Sign like any other app (Allan, 2026-10-16: keep it
--- simple). sender = any type of envelope (Customer, Candidate, Member), from a
--- template or an uploaded PDF; sees their own envelopes and those they're a
--- recipient on; creates templates and edits their own. admin = also every
--- envelope and every template. Workspace admins and platform admins are always
--- Sign admins. A job role (TA, Sales) can carry the grant. Gio Sales reps don't
--- need an ATS grant to send from a deal: Gio Sales vouches for them through
--- sign-gateway, for Customer envelopes on its deals.
-insert into public.os_apps (key, name, roles, sort_order)
-values ('sign', 'Gio Sign', array['sender', 'admin'], 4);
-
-create or replace function public.sign_access(_tenant_id uuid)
-returns text
+-- Sign admins = workspace admins and platform admins. No separate grant.
+create or replace function public.sign_is_admin(_tenant_id uuid)
+returns boolean
 language sql
 stable
 security definer
 set search_path to 'public'
 as $function$
-  select case
-    when public.is_os_admin(_tenant_id) then 'admin'
-    else (
-      select g.role
-      from public.os_app_grants g
-      where g.tenant_id = _tenant_id
-        and g.user_id = auth.uid()
-        and g.app_key = 'sign'
-        and g.status = 'active'
-        and public.is_active_member(_tenant_id)
-      limit 1
-    )
-  end;
+  select public.is_os_admin(_tenant_id);
 $function$;
 
 create or replace function public.sign_my_email()
@@ -104,9 +91,7 @@ create table public.sign_templates (
   name text not null check (length(btrim(name)) between 1 and 120),
   description text check (description is null or length(description) <= 500),
   kind public.sign_kind not null,
-  -- Where people can pick it (Allan, 2026-10-16): 'sales' = only in Gio Sales
-  -- (Send agreement on a deal), 'ats' = only in the ATS Sign module. Every
-  -- template is managed in the ATS. The wizard defaults Customer to 'sales'.
+  -- Where people pick it: 'sales' = only on Gio Sales deals; 'ats' = only in the ATS.
   app text not null default 'ats' check (app in ('ats', 'sales')),
   ordered boolean not null default true,
   subject text not null default '' check (length(subject) <= 200),
@@ -133,32 +118,32 @@ create table public.sign_envelopes (
   title text not null check (length(btrim(title)) between 1 and 160),
   kind public.sign_kind not null,
   status public.sign_status not null default 'draft',
+  template_id uuid not null references public.sign_templates(id),
 
   -- The record the data comes from and the signed copy goes back to.
-  -- deal / company ids are Gio Sales ids (another project, so no FK);
-  -- ats_offer = offer_letters.id; member = auth.users.id.
-  source_type public.sign_source,
-  source_id uuid,
+  -- deal / company = Gio Sales ids (another project, so no FK);
+  -- ats_offer = offer_letters.id; candidate = candidates.id; member = auth.users.id.
+  source_type public.sign_source not null,
+  source_id uuid not null,
   source_label text check (source_label is null or length(source_label) <= 200),
   source_sub text check (source_sub is null or length(source_sub) <= 200),
   sales_org_id uuid,
   sales_company_id uuid,
-  template_id uuid references public.sign_templates(id),
+  -- Candidate envelopes: the job, so the job's team sees the status.
+  ats_job_id uuid references public.jobs(id),
+  ats_candidate_id uuid references public.candidates(id),
 
   ordered boolean not null default true,
   subject text not null default '' check (length(subject) <= 200),
   body text not null default '' check (length(body) <= 5000),
   reminder_days smallint not null default 2 check (reminder_days between 0 and 3),
   expiry_days smallint not null default 30 check (expiry_days in (7, 14, 30, 60)),
-
-  -- Values the sender typed for data tags the record doesn't hold (e.g. a
-  -- guarantee period). data_snapshot = every value, frozen at send.
-  data_overrides jsonb not null default '{}'::jsonb check (jsonb_typeof(data_overrides) = 'object'),
+  -- Every data-tag value, frozen at send.
   data_snapshot jsonb check (data_snapshot is null or jsonb_typeof(data_snapshot) = 'object'),
 
-  -- Who sends it. ATS senders have sender_user_id; envelopes sent from Gio
-  -- Sales carry the Sales user id instead.
-  origin text not null default 'ats' check (origin in ('ats', 'sales')),
+  -- Who sends it. ATS senders have sender_user_id; Gio Sales senders carry
+  -- their Sales user id instead.
+  origin text not null check (origin in ('ats', 'sales')),
   sender_user_id uuid references auth.users(id),
   sender_sales_user_id uuid,
   sender_name text not null check (length(btrim(sender_name)) between 1 and 120),
@@ -184,14 +169,14 @@ create table public.sign_envelopes (
   created_by uuid default auth.uid(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  -- Drafts only; Undo clears it.
+  -- Admin drafts only; Undo clears it.
   deleted_at timestamptz,
   deleted_by uuid,
 
-  check ((source_type is null) = (source_id is null)),
-  check (source_type is null or ((kind = 'customer') = (source_type in ('deal', 'company')))),
-  check (source_type is null or ((kind = 'candidate') = (source_type = 'ats_offer'))),
-  check (source_type is null or ((kind = 'member') = (source_type = 'member'))),
+  check ((kind = 'customer') = (source_type in ('deal', 'company'))),
+  check ((kind = 'candidate') = (source_type in ('ats_offer', 'candidate'))),
+  check ((kind = 'member') = (source_type = 'member')),
+  check (kind <> 'candidate' or ats_candidate_id is not null),
   check ((origin = 'ats') = (sender_user_id is not null)),
   check (origin = 'ats' or (kind = 'customer' and sender_sales_user_id is not null and sales_org_id is not null)),
   check (status <> 'scheduled' or scheduled_at is not null),
@@ -202,7 +187,10 @@ create table public.sign_envelopes (
 
 create index sign_envelopes_list on public.sign_envelopes (tenant_id, status, updated_at desc) where deleted_at is null;
 create index sign_envelopes_source on public.sign_envelopes (source_type, source_id);
+create index sign_envelopes_candidate on public.sign_envelopes (ats_candidate_id) where ats_candidate_id is not null;
+create index sign_envelopes_job on public.sign_envelopes (ats_job_id) where ats_job_id is not null;
 create index sign_envelopes_sales_company on public.sign_envelopes (sales_company_id) where sales_company_id is not null;
+create index sign_envelopes_template on public.sign_envelopes (template_id);
 create index sign_envelopes_due on public.sign_envelopes (scheduled_at) where status = 'scheduled';
 create index sign_envelopes_queue on public.sign_envelopes (dispatch_at) where status = 'queued';
 create index sign_envelopes_open on public.sign_envelopes (expires_at) where status = 'sent';
@@ -217,7 +205,7 @@ create table public.sign_documents (
   template_id uuid references public.sign_templates(id),
   position smallint not null default 0 check (position between 0 and 49),
   name text not null check (length(btrim(name)) between 1 and 200),
-  storage_path text not null unique,
+  storage_path text not null,
   page_count smallint not null check (page_count between 1 and 200),
   -- [{ "w": points, "h": points }] per page, so % positions map onto the PDF.
   page_sizes jsonb not null default '[]'::jsonb check (jsonb_typeof(page_sizes) = 'array'),
@@ -237,6 +225,8 @@ create table public.sign_recipients (
   tenant_id uuid not null references public.tenants(id),
   envelope_id uuid references public.sign_envelopes(id),
   template_id uuid references public.sign_templates(id),
+  -- On an envelope: the template role this person fills.
+  template_role_id uuid references public.sign_recipients(id),
   position smallint not null check (position between 1 and 20),
   role public.sign_recipient_role not null default 'signer',
   label text check (label is null or length(btrim(label)) between 1 and 60),
@@ -262,6 +252,7 @@ create table public.sign_recipients (
   removed_at timestamptz,
   check (num_nonnulls(envelope_id, template_id) = 1),
   check (template_id is null or label is not null),
+  check (envelope_id is null or (name is not null and email is not null)),
   check (status <> 'declined' or decline_reason is not null)
 );
 
@@ -291,7 +282,7 @@ create table public.sign_fields (
   template_id uuid references public.sign_templates(id),
   recipient_id uuid references public.sign_recipients(id),
   type text not null check (type in ('signature', 'initials', 'date', 'name', 'email', 'text', 'checkbox', 'data')),
-  -- Global page index across the envelope's documents, in order.
+  -- Global page index across the documents, in order.
   page smallint not null check (page between 0 and 999),
   x numeric(6, 3) not null check (x between 0 and 100),
   y numeric(6, 3) not null check (y between 0 and 100),
@@ -332,8 +323,8 @@ create table public.sign_signatures (
   check (kind = 'type' or image_path is not null)
 );
 
--- Append-only. Clients can read the trail of envelopes they can see; only
--- security-definer functions and Edge Functions write it.
+-- Append-only. Read with the envelope; only security-definer functions and
+-- Edge Functions write it.
 create table public.sign_events (
   id bigint generated always as identity primary key,
   tenant_id uuid not null references public.tenants(id),
@@ -358,8 +349,7 @@ create table public.sign_events (
 create index sign_events_envelope on public.sign_events (envelope_id, created_at desc);
 
 -- Per sender, per event: email and/or in-app. Keyed by email so Gio Sales
--- senders (who have no ATS account) share the same store. A missing row
--- means the default from sign_pref().
+-- senders (no ATS account) share the same store. A missing row = sign_pref() default.
 create table public.sign_notification_prefs (
   tenant_id uuid not null references public.tenants(id),
   email text not null check (email = lower(email)),
@@ -387,12 +377,14 @@ as $function$
   where d.event = _event;
 $function$;
 
--- In-app bell rows for Sign events (rows are written by Edge Functions).
+-- In-app bell rows for Sign events (written by Edge Functions).
 alter type public.notification_category add value if not exists 'sign';
 
 -- ---------------------------------------------------------------------------
 -- 7. Visibility helpers (security definer, so policies don't recurse)
 -- ---------------------------------------------------------------------------
+-- Admins see everything. Others see envelopes they sent, envelopes they're a
+-- recipient on, and candidate envelopes on jobs they're assigned to.
 create or replace function public.sign_can_view_envelope(_envelope_id uuid)
 returns boolean
 language sql
@@ -403,11 +395,12 @@ as $function$
   select exists (
     select 1 from public.sign_envelopes e
     where e.id = _envelope_id
-      and public.sign_access(e.tenant_id) is not null
+      and public.user_has_tenant_access(e.tenant_id)
       and (
-        public.sign_access(e.tenant_id) = 'admin'
+        public.sign_is_admin(e.tenant_id)
         or e.created_by = auth.uid()
         or e.sender_user_id = auth.uid()
+        or (e.ats_job_id is not null and e.ats_job_id in (select public.my_job_ids()))
         or exists (
           select 1 from public.sign_recipients r
           where r.envelope_id = e.id and r.removed_at is null
@@ -417,7 +410,24 @@ as $function$
   );
 $function$;
 
--- Drafts and scheduled envelopes are editable by their sender or a Sign admin.
+-- Sender or admin: may undo a send, cancel a schedule, remind, void, correct.
+create or replace function public.sign_can_manage_envelope(_envelope_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to 'public'
+as $function$
+  select exists (
+    select 1 from public.sign_envelopes e
+    where e.id = _envelope_id
+      and e.origin = 'ats'
+      and public.user_has_tenant_access(e.tenant_id)
+      and (public.sign_is_admin(e.tenant_id) or e.sender_user_id = auth.uid())
+  );
+$function$;
+
+-- Only admins edit drafts and scheduled envelopes in the Sign module.
 create or replace function public.sign_can_edit_envelope(_envelope_id uuid)
 returns boolean
 language sql
@@ -431,11 +441,12 @@ as $function$
       and e.status in ('draft', 'scheduled')
       and e.deleted_at is null
       and e.origin = 'ats'
-      and public.sign_access(e.tenant_id) is not null
-      and (public.sign_access(e.tenant_id) = 'admin' or e.created_by = auth.uid())
+      and public.sign_is_admin(e.tenant_id)
   );
 $function$;
 
+-- Admins see every template; other ATS members see live ATS templates (to
+-- pick one on a candidate). Gio Sales templates reach Sales through sign-gateway.
 create or replace function public.sign_can_view_template(_template_id uuid)
 returns boolean
 language sql
@@ -445,7 +456,11 @@ set search_path to 'public'
 as $function$
   select exists (
     select 1 from public.sign_templates t
-    where t.id = _template_id and public.sign_access(t.tenant_id) is not null
+    where t.id = _template_id
+      and (
+        public.sign_is_admin(t.tenant_id)
+        or (t.app = 'ats' and t.archived_at is null and public.is_active_member(t.tenant_id))
+      )
   );
 $function$;
 
@@ -458,17 +473,16 @@ set search_path to 'public'
 as $function$
   select exists (
     select 1 from public.sign_templates t
-    where t.id = _template_id and t.archived_at is null
-      and (public.sign_access(t.tenant_id) = 'admin'
-           or (public.sign_access(t.tenant_id) is not null and t.created_by = auth.uid()))
+    where t.id = _template_id and public.sign_is_admin(t.tenant_id)
   );
 $function$;
 
 -- ---------------------------------------------------------------------------
 -- 8. Invariants in triggers
 -- ---------------------------------------------------------------------------
--- Envelopes: clients can't change status, sending data or identity. Status
--- moves only through the RPCs below or Edge Functions (service role).
+-- Envelopes: from the client, only admins insert (as drafts) and edit drafts.
+-- Status, sending data and identity change only through the RPCs below or
+-- Edge Functions (service role).
 create or replace function public.sign_envelopes_guard()
 returns trigger
 language plpgsql
@@ -483,11 +497,11 @@ begin
   end if;
 
   if tg_op = 'INSERT' then
+    if not public.sign_is_admin(new.tenant_id) then
+      raise exception 'Send it from the deal or the candidate.' using errcode = 'GSN02';
+    end if;
     if new.status <> 'draft' or new.origin <> 'ats' then
       raise exception 'New envelopes start as drafts.' using errcode = 'GSN01';
-    end if;
-    if public.sign_access(new.tenant_id) is null then
-      raise exception 'You don''t have access to Sign.' using errcode = 'GSN02';
     end if;
     new.created_by := auth.uid();
     new.sender_user_id := auth.uid();
@@ -500,6 +514,7 @@ begin
   if new.status is distinct from old.status
      or new.tenant_id is distinct from old.tenant_id
      or new.public_id is distinct from old.public_id
+     or new.template_id is distinct from old.template_id
      or new.origin is distinct from old.origin
      or new.sender_user_id is distinct from old.sender_user_id
      or new.sender_email is distinct from old.sender_email
@@ -509,14 +524,12 @@ begin
      or new.dispatch_at is distinct from old.dispatch_at
      or new.sent_at is distinct from old.sent_at
      or new.sealed_path is distinct from old.sealed_path
-     or new.void_reason is distinct from old.void_reason then
+     or new.void_reason is distinct from old.void_reason
+     or new.deleted_at is distinct from old.deleted_at then
     raise exception 'That change goes through Send, Schedule or Void.' using errcode = 'GSN03';
   end if;
   if old.status not in ('draft', 'scheduled') then
     raise exception 'Only drafts and scheduled envelopes can be edited. Use Correct for one that''s out for signature.' using errcode = 'GSN04';
-  end if;
-  if new.deleted_at is distinct from old.deleted_at then
-    raise exception 'Use Remove draft or Undo.' using errcode = 'GSN03';
   end if;
   return new;
 end;
@@ -526,9 +539,8 @@ create trigger sign_envelopes_a_guard
   before insert or update on public.sign_envelopes
   for each row execute function public.sign_envelopes_guard();
 
--- Children: the tenant always matches the parent, and client writes only touch
--- editable parents (enforced again here, besides RLS, because recipients carry
--- signing state the client must never set).
+-- Children: the tenant matches the parent, rows never move between parents,
+-- and clients never set signing state or field values.
 create or replace function public.sign_children_guard()
 returns trigger
 language plpgsql
@@ -610,8 +622,8 @@ create trigger sign_fields_touch before update on public.sign_fields
   for each row execute function public.sign_touch();
 
 -- ---------------------------------------------------------------------------
--- 9. Status RPCs the client may call (everything that sends email is an
---    Edge Function: sign-send, sign-void, sign-correct, sign-remind)
+-- 9. Status RPCs the client may call (anything that emails is an Edge
+--    Function: sign-send, sign-void, sign-correct, sign-remind)
 -- ---------------------------------------------------------------------------
 create or replace function public.sign_log(
   _envelope_id uuid, _kind text, _label text, _key boolean default false, _detail jsonb default '{}'::jsonb)
@@ -627,7 +639,8 @@ as $function$
   from public.sign_envelopes e where e.id = _envelope_id;
 $function$;
 
--- Schedule a draft (the date must be in the future).
+-- Schedule an admin draft (the date must be in the future). Senders on a
+-- record schedule through sign-send.
 create or replace function public.sign_schedule(_envelope_id uuid, _at timestamptz)
 returns void
 language plpgsql
@@ -647,7 +660,7 @@ begin
 end;
 $function$;
 
--- Cancel schedule: back to Draft, no one emailed. Undo calls sign_schedule again.
+-- Cancel schedule: back to Draft, no one emailed. Undo schedules it again.
 create or replace function public.sign_unschedule(_envelope_id uuid)
 returns void
 language plpgsql
@@ -656,7 +669,7 @@ set search_path to 'public'
 as $function$
 begin
   if not exists (select 1 from public.sign_envelopes where id = _envelope_id and status = 'scheduled')
-     or not public.sign_can_edit_envelope(_envelope_id) then
+     or not public.sign_can_manage_envelope(_envelope_id) then
     raise exception 'Only a scheduled envelope can go back to Drafts.' using errcode = 'GSN07';
   end if;
   perform set_config('gio.sign_rpc', 'on', true);
@@ -673,13 +686,15 @@ security definer
 set search_path to 'public'
 as $function$
 begin
+  if not public.sign_can_manage_envelope(_envelope_id) then
+    return false;
+  end if;
   perform set_config('gio.sign_rpc', 'on', true);
   update public.sign_envelopes
      set status = 'draft', dispatch_at = null, data_snapshot = null
    where id = _envelope_id
      and status = 'queued'
-     and dispatch_at > now()
-     and (created_by = auth.uid() or public.sign_access(tenant_id) = 'admin');
+     and dispatch_at > now();
   if not found then
     return false;
   end if;
@@ -688,7 +703,7 @@ begin
 end;
 $function$;
 
--- Remove a draft (soft) and its Undo.
+-- Remove an admin draft (soft) and its Undo.
 create or replace function public.sign_set_draft_removed(_envelope_id uuid, _removed boolean)
 returns void
 language plpgsql
@@ -698,11 +713,11 @@ as $function$
 begin
   if not exists (
     select 1 from public.sign_envelopes e
-    where e.id = _envelope_id and e.status = 'draft' and e.origin = 'ats'
-      and public.sign_access(e.tenant_id) is not null
-      and (public.sign_access(e.tenant_id) = 'admin' or e.created_by = auth.uid())
+    where e.id = _envelope_id and e.status = 'draft'
+      and public.user_has_tenant_access(e.tenant_id)
+      and (public.sign_is_admin(e.tenant_id) or e.sender_user_id = auth.uid())
   ) then
-    raise exception 'Only your own drafts can be removed.' using errcode = 'GSN07';
+    raise exception 'Only drafts you can manage can be removed.' using errcode = 'GSN07';
   end if;
   perform set_config('gio.sign_rpc', 'on', true);
   update public.sign_envelopes
@@ -713,14 +728,15 @@ end;
 $function$;
 
 revoke execute on function
-  public.sign_access(uuid), public.sign_can_view_envelope(uuid), public.sign_can_edit_envelope(uuid),
-  public.sign_can_view_template(uuid), public.sign_can_edit_template(uuid), public.sign_pref(uuid, text, text),
-  public.sign_log(uuid, text, text, boolean, jsonb), public.sign_schedule(uuid, timestamptz),
-  public.sign_unschedule(uuid), public.sign_undo_send(uuid), public.sign_set_draft_removed(uuid, boolean)
+  public.sign_is_admin(uuid), public.sign_can_view_envelope(uuid), public.sign_can_manage_envelope(uuid),
+  public.sign_can_edit_envelope(uuid), public.sign_can_view_template(uuid), public.sign_can_edit_template(uuid),
+  public.sign_pref(uuid, text, text), public.sign_log(uuid, text, text, boolean, jsonb),
+  public.sign_schedule(uuid, timestamptz), public.sign_unschedule(uuid), public.sign_undo_send(uuid),
+  public.sign_set_draft_removed(uuid, boolean)
   from public, anon;
 grant execute on function
-  public.sign_access(uuid), public.sign_can_view_envelope(uuid), public.sign_can_edit_envelope(uuid),
-  public.sign_can_view_template(uuid), public.sign_can_edit_template(uuid),
+  public.sign_is_admin(uuid), public.sign_can_view_envelope(uuid), public.sign_can_manage_envelope(uuid),
+  public.sign_can_edit_envelope(uuid), public.sign_can_view_template(uuid), public.sign_can_edit_template(uuid),
   public.sign_schedule(uuid, timestamptz), public.sign_unschedule(uuid), public.sign_undo_send(uuid),
   public.sign_set_draft_removed(uuid, boolean)
   to authenticated;
@@ -740,28 +756,27 @@ alter table public.sign_signatures enable row level security;
 alter table public.sign_events enable row level security;
 alter table public.sign_notification_prefs enable row level security;
 
--- Templates: every Sign user reads and creates; the creator or a Sign admin edits and archives.
+-- Templates: admins read and write everything; members read live ATS templates.
 create policy sign_templates_read on public.sign_templates for select to authenticated
-  using (public.sign_access(tenant_id) is not null);
+  using (public.sign_can_view_template(id));
 create policy sign_templates_insert on public.sign_templates for insert to authenticated
-  with check (public.sign_access(tenant_id) is not null and created_by = auth.uid());
+  with check (public.sign_is_admin(tenant_id));
 create policy sign_templates_update on public.sign_templates for update to authenticated
-  using (public.sign_access(tenant_id) = 'admin' or (public.sign_access(tenant_id) is not null and created_by = auth.uid()))
-  with check (public.sign_access(tenant_id) is not null);
+  using (public.sign_is_admin(tenant_id)) with check (public.sign_is_admin(tenant_id));
 
--- Envelopes.
+-- Envelopes: read per sign_can_view_envelope; admins create and edit drafts.
 create policy sign_envelopes_read on public.sign_envelopes for select to authenticated
   using (public.sign_can_view_envelope(id));
 create policy sign_envelopes_insert on public.sign_envelopes for insert to authenticated
-  with check (public.sign_access(tenant_id) is not null);
+  with check (public.sign_is_admin(tenant_id));
 create policy sign_envelopes_update on public.sign_envelopes for update to authenticated
-  using (public.sign_can_edit_envelope(id)) with check (public.sign_access(tenant_id) is not null);
+  using (public.sign_can_edit_envelope(id)) with check (public.sign_is_admin(tenant_id));
 
 -- Documents, recipients, fields: follow the parent.
 create policy sign_documents_read on public.sign_documents for select to authenticated
   using ((envelope_id is not null and public.sign_can_view_envelope(envelope_id))
       or (template_id is not null and public.sign_can_view_template(template_id)));
-create policy sign_documents_write on public.sign_documents for insert to authenticated
+create policy sign_documents_insert on public.sign_documents for insert to authenticated
   with check ((envelope_id is not null and public.sign_can_edit_envelope(envelope_id))
            or (template_id is not null and public.sign_can_edit_template(template_id)));
 create policy sign_documents_update on public.sign_documents for update to authenticated
@@ -771,7 +786,7 @@ create policy sign_documents_update on public.sign_documents for update to authe
 create policy sign_recipients_read on public.sign_recipients for select to authenticated
   using ((envelope_id is not null and public.sign_can_view_envelope(envelope_id))
       or (template_id is not null and public.sign_can_view_template(template_id)));
-create policy sign_recipients_write on public.sign_recipients for insert to authenticated
+create policy sign_recipients_insert on public.sign_recipients for insert to authenticated
   with check ((envelope_id is not null and public.sign_can_edit_envelope(envelope_id))
            or (template_id is not null and public.sign_can_edit_template(template_id)));
 create policy sign_recipients_update on public.sign_recipients for update to authenticated
@@ -781,14 +796,14 @@ create policy sign_recipients_update on public.sign_recipients for update to aut
 create policy sign_fields_read on public.sign_fields for select to authenticated
   using ((envelope_id is not null and public.sign_can_view_envelope(envelope_id))
       or (template_id is not null and public.sign_can_view_template(template_id)));
-create policy sign_fields_write on public.sign_fields for insert to authenticated
+create policy sign_fields_insert on public.sign_fields for insert to authenticated
   with check ((envelope_id is not null and public.sign_can_edit_envelope(envelope_id))
            or (template_id is not null and public.sign_can_edit_template(template_id)));
 create policy sign_fields_update on public.sign_fields for update to authenticated
   using ((envelope_id is not null and public.sign_can_edit_envelope(envelope_id))
       or (template_id is not null and public.sign_can_edit_template(template_id)));
 
--- Audit trail: read with the envelope; written only by definer functions / Edge Functions.
+-- Audit trail: read with the envelope.
 create policy sign_events_read on public.sign_events for select to authenticated
   using (public.sign_can_view_envelope(envelope_id));
 
@@ -801,7 +816,6 @@ create policy sign_prefs_update on public.sign_notification_prefs for update to 
   using (email = public.sign_my_email()) with check (email = public.sign_my_email());
 
 -- sign_recipient_secrets and sign_signatures: no client policies at all.
-
 revoke all on public.sign_recipient_secrets, public.sign_signatures from anon, authenticated;
 revoke insert, update on public.sign_events from anon, authenticated;
 grant all on
@@ -810,46 +824,32 @@ grant all on
   public.sign_notification_prefs
   to service_role;
 
--- Live row updates on the Envelopes page (realtime respects RLS).
+-- Live status on the Sign module, the candidate card and the bell.
 alter publication supabase_realtime add table public.sign_envelopes, public.sign_recipients;
 
 -- ---------------------------------------------------------------------------
 -- 11. Storage: private bucket sign-files
 -- ---------------------------------------------------------------------------
 -- Paths
---   {tenant}/drafts/{user}/{uuid}.pdf      uploads while composing (the sender)
---   {tenant}/templates/{template}/{uuid}.pdf template documents (any Sign user)
---   {tenant}/envelopes/{envelope}/...       frozen copies, signatures, sealed PDF,
---                                           certificate: written by Edge Functions only
--- Reads of envelope files always go through short-lived signed URLs made by
--- Edge Functions.
+--   {tenant}/templates/{template}/{uuid}.pdf  template documents (admins upload)
+--   {tenant}/envelopes/{envelope}/...          frozen copies, signatures, sealed PDF,
+--                                              certificate: Edge Functions only
+-- Envelope files are read only through short-lived signed URLs made by Edge
+-- Functions. Members previewing an ATS template get signed URLs the same way.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('sign-files', 'sign-files', false, 26214400, array['application/pdf', 'image/png', 'image/jpeg']);
 
-create policy sign_files_draft_upload on storage.objects for insert to authenticated
-  with check (
-    bucket_id = 'sign-files'
-    and (storage.foldername(name))[2] = 'drafts'
-    and (storage.foldername(name))[3] = auth.uid()::text
-    and public.sign_access(((storage.foldername(name))[1])::uuid) is not null
-  );
-create policy sign_files_draft_read on storage.objects for select to authenticated
-  using (
-    bucket_id = 'sign-files'
-    and (storage.foldername(name))[2] = 'drafts'
-    and (storage.foldername(name))[3] = auth.uid()::text
-  );
 create policy sign_files_template_upload on storage.objects for insert to authenticated
   with check (
     bucket_id = 'sign-files'
     and (storage.foldername(name))[2] = 'templates'
-    and public.sign_access(((storage.foldername(name))[1])::uuid) is not null
+    and public.sign_is_admin(((storage.foldername(name))[1])::uuid)
   );
 create policy sign_files_template_read on storage.objects for select to authenticated
   using (
     bucket_id = 'sign-files'
     and (storage.foldername(name))[2] = 'templates'
-    and public.sign_access(((storage.foldername(name))[1])::uuid) is not null
+    and public.sign_is_admin(((storage.foldername(name))[1])::uuid)
   );
 
 -- ---------------------------------------------------------------------------
