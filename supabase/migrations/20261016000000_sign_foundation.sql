@@ -104,6 +104,10 @@ create table public.sign_templates (
   name text not null check (length(btrim(name)) between 1 and 120),
   description text check (description is null or length(description) <= 500),
   kind public.sign_kind not null,
+  -- Where people can pick it (Allan, 2026-10-16): 'sales' = only in Gio Sales
+  -- (Send agreement on a deal), 'ats' = only in the ATS Sign module. Every
+  -- template is managed in the ATS. The wizard defaults Customer to 'sales'.
+  app text not null default 'ats' check (app in ('ats', 'sales')),
   ordered boolean not null default true,
   subject text not null default '' check (length(subject) <= 200),
   body text not null default '' check (length(body) <= 5000),
@@ -117,7 +121,7 @@ create table public.sign_templates (
   archived_at timestamptz
 );
 
-create index sign_templates_tenant on public.sign_templates (tenant_id, kind) where archived_at is null;
+create index sign_templates_tenant on public.sign_templates (tenant_id, app, kind) where archived_at is null;
 
 -- ---------------------------------------------------------------------------
 -- 4. Envelopes
