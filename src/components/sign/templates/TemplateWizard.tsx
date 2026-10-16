@@ -35,7 +35,7 @@ export function TemplateWizard({
   mode: WizardMode
   onClose: () => void
 }) {
-  const { organizationId, userId, user } = useAuth()
+  const { organizationId, user } = useAuth()
   const { profile } = useUserProfile()
   const qc = useQueryClient()
   const [d, setD] = useState<TplDraft | null>(init)
@@ -75,7 +75,7 @@ export function TemplateWizard({
     setBusy(true)
     setSaveError(null)
     try {
-      await saveTemplate(d, organizationId, userId)
+      await saveTemplate(d, organizationId)
       await qc.invalidateQueries({ queryKey: ['sign'] })
       toast.success(isEdit ? `${d.name.trim()} saved` : `${d.name.trim()} is ready to use`, {
         description: isEdit
@@ -86,8 +86,10 @@ export function TemplateWizard({
       })
       setDirty(false)
       onClose()
-    } catch {
-      setSaveError('Couldn’t save the template. Nothing was lost; try again.')
+    } catch (e) {
+      // The database's own checks (GSN12) say exactly what's wrong; anything else is a connection problem.
+      const err = e as { code?: string; message?: string }
+      setSaveError(err?.code === 'GSN12' && err.message ? err.message : 'Couldn’t save the template. Nothing was lost; try again.')
     } finally {
       setBusy(false)
     }

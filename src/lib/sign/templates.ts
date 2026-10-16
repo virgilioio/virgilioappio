@@ -340,20 +340,18 @@ export function useTemplates() {
 /* Writes                                                                     */
 /* ------------------------------------------------------------------------- */
 
-const r3 = (n: number) => Math.round(n * 1000) / 1000
-
 /**
- * Save a template: the template, then its documents, roles and fields, by id
- * (upsert), then soft-remove anything the editor dropped. Every write is
- * idempotent, so a failed save can simply be retried. Envelopes already sent
- * keep their own frozen copies and aren't affected.
+ * Save a template: one database call (sign_save_template) that writes the
+ * template, its documents, roles and fields together, or nothing at all, and
+ * soft-removes whatever the editor dropped. Admins only. Envelopes already
+ * sent keep their own copies and aren't affected.
  */
-export async function saveTemplate(d: TplDraft, tenantId: string, userId: string | null) {
-  const { error: tErr } = await supabase.from('sign_templates').upsert({
+export async function saveTemplate(d: TplDraft, tenantId: string) {
+  const payload = {
     id: d.id,
     tenant_id: tenantId,
     name: d.name.trim(),
-    description: d.description.trim() || null,
+    description: d.description.trim(),
     kind: d.kind,
     app: d.app,
     ordered: d.ordered,
@@ -361,82 +359,35 @@ export async function saveTemplate(d: TplDraft, tenantId: string, userId: string
     body: d.body,
     reminder_days: d.reminder_days,
     expiry_days: d.expiry_days,
-    updated_by: userId,
-  })
-  if (tErr) throw tErr
-
-  if (d.docs.length) {
-    const { error } = await supabase.from('sign_documents').upsert(
-      d.docs.map((x, i) => ({
-        id: x.id,
-        tenant_id: tenantId,
-        template_id: d.id,
-        position: i,
-        name: x.name,
-        storage_path: x.storage_path,
-        page_count: x.page_count,
-        page_sizes: x.page_sizes,
-        size_bytes: x.size_bytes,
-        sha256: x.sha256,
-        removed_at: null,
-      })),
-    )
-    if (error) throw error
+    docs: d.docs.map((x) => ({
+      id: x.id,
+      name: x.name,
+      storage_path: x.storage_path,
+      page_count: x.page_count,
+      page_sizes: x.page_sizes,
+      size_bytes: x.size_bytes,
+      sha256: x.sha256,
+    })),
+    roles: d.roles.map((r) => ({ id: r.id, label: r.label.trim(), role: r.role, fixed: r.fixed, name: r.name, email: r.email, color: r.color })),
+    fields: d.fields.map((f) => {
+      const w = Math.min(f.w, 100)
+      const h = Math.min(f.h, 100)
+      return {
+        id: f.id,
+        type: f.type,
+        rid: f.type === 'data' ? null : f.rid,
+        page: f.page,
+        x: Math.max(0, Math.min(100 - w, f.x)),
+        y: Math.max(0, Math.min(100 - h, f.y)),
+        w,
+        h,
+        required: f.required,
+        data_key: f.type === 'data' ? f.data_key : null,
+      }
+    }),
   }
-  if (d.roles.length) {
-    const { error } = await supabase.from('sign_recipients').upsert(
-      d.roles.map((r, i) => ({
-        id: r.id,
-        tenant_id: tenantId,
-        template_id: d.id,
-        position: i + 1,
-        role: r.role,
-        label: r.label.trim(),
-        fixed: r.fixed,
-        name: r.fixed ? r.name.trim() : null,
-        email: r.fixed ? r.email.trim().toLowerCase() : null,
-        color: r.color,
-        removed_at: null,
-      })),
-    )
-    if (error) throw error
-  }
-  if (d.fields.length) {
-    const { error } = await supabase.from('sign_fields').upsert(
-      d.fields.map((f) => {
-        const w = r3(Math.min(f.w, 100))
-        const h = r3(Math.min(f.h, 100))
-        return {
-          id: f.id,
-          tenant_id: tenantId,
-          template_id: d.id,
-          recipient_id: f.type === 'data' ? null : f.rid,
-          type: f.type,
-          page: f.page,
-          x: r3(Math.max(0, Math.min(100 - w, f.x))),
-          y: r3(Math.max(0, Math.min(100 - h, f.y))),
-          w,
-          h,
-          required: f.type === 'data' ? true : f.required,
-          data_key: f.type === 'data' ? f.data_key : null,
-          removed_at: null,
-        }
-      }),
-    )
-    if (error) throw error
-  }
-
-  // Soft-remove what the editor dropped (fields first: they point at roles).
-  const now = new Date().toISOString()
-  const drop = async (table: 'sign_fields' | 'sign_recipients' | 'sign_documents', keep: string[]) => {
-    let q = supabase.from(table).update({ removed_at: now }).eq('template_id', d.id).is('removed_at', null)
-    if (keep.length) q = q.not('id', 'in', `(${keep.join(',')})`)
-    const { error } = await q
-    if (error) throw error
-  }
-  await drop('sign_fields', d.fields.map((f) => f.id))
-  await drop('sign_recipients', d.roles.map((r) => r.id))
-  await drop('sign_documents', d.docs.map((x) => x.id))
+  const { error } = await supabase.rpc('sign_save_template', { _t: payload as never })
+  if (error) throw error
 }
 
 /** Archive hides a template from senders; Undo (or Restore) brings it back. */
