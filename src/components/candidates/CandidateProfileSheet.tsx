@@ -66,6 +66,7 @@ import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { RequestReferencesSheet } from '@/components/references/RequestReferencesSheet'
 import { CandidateReferenceCheckSection } from '@/components/references/CandidateReferenceCheckSection'
+import { AgreementsCard } from '@/components/sign/AgreementsCard'
 import { useJobClient } from '@/hooks/useJobClient'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn, ensureAbsoluteUrl } from '@/lib/utils'
@@ -2119,6 +2120,12 @@ const stageHasAutomation = useMemo(() => {
                                 jobId={jobId}
                                 offeredAt={offerDetails?.offeredAt || null}
                               />
+                              {jobId && (
+                                <AgreementsCard
+                                  source={{ type: 'candidate', id: candidateId, jobId }}
+                                  recordLabel={[candidate?.candidate_name?.trim(), job?.title].filter(Boolean).join(' · ')}
+                                />
+                              )}
                             </>
                           )
                         }
@@ -2126,6 +2133,12 @@ const stageHasAutomation = useMemo(() => {
                           return (
                             <>
                               <HireSummaryCard candidateId={candidateId} jobId={jobId} />
+                              {jobId && (
+                                <AgreementsCard
+                                  source={{ type: 'candidate', id: candidateId, jobId }}
+                                  recordLabel={[candidate?.candidate_name?.trim(), job?.title].filter(Boolean).join(' · ')}
+                                />
+                              )}
                               <TimeToHireCard
                                 appliedAt={(jobCandidate as any)?.applied_at || (jobCandidate as any)?.created_at || null}
                                 hiredAt={hiredDetails?.hiredAt || null}
