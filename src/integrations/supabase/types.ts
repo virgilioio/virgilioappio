@@ -8333,6 +8333,7 @@ export type Database = {
           data_key: string | null
           envelope_id: string | null
           filled_at: string | null
+          font_size: number | null
           h: number
           id: string
           label: string | null
@@ -8354,6 +8355,7 @@ export type Database = {
           data_key?: string | null
           envelope_id?: string | null
           filled_at?: string | null
+          font_size?: number | null
           h: number
           id?: string
           label?: string | null
@@ -8375,6 +8377,7 @@ export type Database = {
           data_key?: string | null
           envelope_id?: string | null
           filled_at?: string | null
+          font_size?: number | null
           h?: number
           id?: string
           label?: string | null
