@@ -11,7 +11,8 @@ import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFSt
 import * as asn1js from "npm:asn1js@3.0.5";
 import * as pkijs from "npm:pkijs@3.2.4";
 
-pkijs.setEngine("gio", new pkijs.CryptoEngine({ name: "gio", crypto: globalThis.crypto }));
+// pkijs finds WebCrypto on its own (self.crypto). Its setEngine() writes to the
+// global object under process.pid, which the Edge Runtime refuses, so it isn't used.
 
 export interface Signer {
   /** The signing certificate first, then any intermediates (DER). */
