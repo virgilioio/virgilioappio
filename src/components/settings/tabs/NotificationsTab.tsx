@@ -39,13 +39,14 @@ function SignPrefsCard() {
       description="Envelopes you sent: when people sign, decline or open them, and when they’re about to expire."
       bodyClassName="px-0 pb-0"
     >
-      <div className="grid grid-cols-[1fr_72px_72px] items-center px-5 pb-2 pt-1">
+      <div className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 pb-2 pt-1">
         <div />
         {['In-app', 'Email'].map((l) => (
           <div key={l} className="text-center font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]">
             {l}
           </div>
         ))}
+        <div />
       </div>
       {q.isError ? (
         <div className="border-t border-[#EFEFEA] px-5 py-4 font-inter text-[12.5px] text-text-secondary">
@@ -59,7 +60,7 @@ function SignPrefsCard() {
           {SIGN_PREF_EVENTS.map((row) => {
             const p = q.data?.[row.event]
             return (
-              <li key={row.event} className="grid grid-cols-[1fr_72px_72px] items-center px-5 py-3.5">
+              <li key={row.event} className="grid grid-cols-[1fr_72px_72px_72px] items-center px-5 py-3.5">
                 <div className="min-w-0 pr-4">
                   <div className="font-inter text-[13px] text-[#0d0d09]">{row.label}</div>
                   <div className="mt-0.5 font-inter text-[12px] text-[#8B8F9E]">{row.description}</div>
@@ -86,6 +87,7 @@ function SignPrefsCard() {
                     </span>
                   )}
                 </div>
+                <div />
               </li>
             )
           })}
