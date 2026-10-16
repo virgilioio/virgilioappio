@@ -11536,6 +11536,7 @@ export type Database = {
       sign_fmt_amount: { Args: { _v: string }; Returns: string }
       sign_fmt_date: { Args: { _v: string }; Returns: string }
       sign_is_admin: { Args: { _tenant_id: string }; Returns: boolean }
+      sign_is_turn: { Args: { _recipient_id: string }; Returns: boolean }
       sign_log: {
         Args: {
           _detail?: Json
@@ -11593,6 +11594,25 @@ export type Database = {
       sign_set_draft_removed: {
         Args: { _envelope_id: string; _removed: boolean }
         Returns: undefined
+      }
+      sign_signer_decline: {
+        Args: {
+          _ip: unknown
+          _reason: string
+          _recipient_id: string
+          _ua: string
+        }
+        Returns: undefined
+      }
+      sign_signer_submit: {
+        Args: {
+          _ip: unknown
+          _recipient_id: string
+          _signature: Json
+          _ua: string
+          _values: Json
+        }
+        Returns: Json
       }
       sign_tag_label: { Args: { _key: string }; Returns: string }
       sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
