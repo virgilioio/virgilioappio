@@ -11517,6 +11517,14 @@ export type Database = {
         Args: { _envelope_id: string }
         Returns: boolean
       }
+      sign_can_send: {
+        Args: {
+          _job_id: string
+          _kind: Database["public"]["Enums"]["sign_kind"]
+          _tenant_id: string
+        }
+        Returns: boolean
+      }
       sign_can_view_envelope: {
         Args: { _envelope_id: string }
         Returns: boolean
@@ -11525,6 +11533,8 @@ export type Database = {
         Args: { _template_id: string }
         Returns: boolean
       }
+      sign_fmt_amount: { Args: { _v: string }; Returns: string }
+      sign_fmt_date: { Args: { _v: string }; Returns: string }
       sign_is_admin: { Args: { _tenant_id: string }; Returns: boolean }
       sign_log: {
         Args: {
@@ -11545,14 +11555,46 @@ export type Database = {
           in_app: boolean
         }[]
       }
+      sign_record_values: {
+        Args: {
+          _job_id: string
+          _source_id: string
+          _source_type: Database["public"]["Enums"]["sign_source"]
+        }
+        Returns: Json
+      }
+      sign_save_template: { Args: { _t: Json }; Returns: string }
       sign_schedule: {
         Args: { _at: string; _envelope_id: string }
         Returns: undefined
+      }
+      sign_send: {
+        Args: {
+          _body?: string
+          _job_id: string
+          _people: Json
+          _send_at?: string
+          _source_id: string
+          _source_type: Database["public"]["Enums"]["sign_source"]
+          _subject?: string
+          _template_id: string
+        }
+        Returns: string
+      }
+      sign_send_preview: {
+        Args: {
+          _job_id?: string
+          _source_id: string
+          _source_type: Database["public"]["Enums"]["sign_source"]
+          _template_id: string
+        }
+        Returns: Json
       }
       sign_set_draft_removed: {
         Args: { _envelope_id: string; _removed: boolean }
         Returns: undefined
       }
+      sign_tag_label: { Args: { _key: string }; Returns: string }
       sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
       sign_unschedule: { Args: { _envelope_id: string }; Returns: undefined }
       skill_priorities_valid: { Args: { p: Json }; Returns: boolean }
