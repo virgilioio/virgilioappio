@@ -1756,7 +1756,9 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   touch-action: none;
   transition: box-shadow var(--dur-hover) ease;
 }
-.gio-sign-field[data-type="data"] { background: #fff !important; border-style: dashed; border-color: #B9A3F4; color: #4C1D95; }
+.gio-sign-field[data-type="data"] { border-style: dashed; border-color: #8456F6; color: #4C1D95; }
+/* Fields are see-through (role colour at about a third), so the document shows under them; the label keeps a soft white halo to stay readable over text. */
+.gio-sign-field { text-shadow: 0 0 2px #fff, 0 0 2px #fff; }
 .gio-sign-field[data-selected] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0d0d09; z-index: 3; }
 .gio-sign-field[data-dragging] { box-shadow: var(--shadow-lift); z-index: 5; }
 .gio-sign-field[data-new] { animation: gio-sign-field-in var(--dur-press) var(--ease-out); }

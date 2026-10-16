@@ -49,6 +49,8 @@ export interface TplField {
   h: number
   required: boolean
   data_key: string | null
+  /** Text size in points; null prints at the automatic size (from the height, at most 11 pt). */
+  font_size: number | null
 }
 
 export interface TplDraft {
@@ -94,6 +96,13 @@ export const FIELD_LABEL: Record<FieldType, string> = {
   checkbox: 'Checkbox',
   data: 'Data field',
 }
+/** Fields that print text, so they have a text size. */
+export const TEXT_FIELDS = new Set<FieldType>(['date', 'name', 'email', 'text', 'data'])
+
+/** The size a field prints at when it has none set: from its height, 6 to 11 pt (as sign-seal does). */
+export const autoFontSize = (hPercent: number, pageHeightPt: number) =>
+  Math.min(11, Math.max(6, (hPercent / 100) * pageHeightPt * 0.62))
+
 export const SIGNER_FIELDS: SignerFieldType[] = ['signature', 'initials', 'date', 'name', 'text', 'checkbox']
 
 /** Default size in % of the page (w, h). */
@@ -280,7 +289,7 @@ const TEMPLATE_SELECT = `
   created_at, updated_at, archived_at,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
-  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, removed_at)
+  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, removed_at)
 `
 
 type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description'> & {
@@ -315,6 +324,7 @@ function fromRaw(t: Raw): TemplateRow {
         h: Number(f.h),
         required: f.required,
         data_key: f.data_key,
+        font_size: f.font_size == null ? null : Number(f.font_size),
       })),
   }
 }
@@ -383,6 +393,7 @@ export async function saveTemplate(d: TplDraft, tenantId: string) {
         h,
         required: f.required,
         data_key: f.type === 'data' ? f.data_key : null,
+        font_size: TEXT_FIELDS.has(f.type) ? f.font_size ?? null : null,
       }
     }),
   }

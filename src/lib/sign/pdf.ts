@@ -114,3 +114,40 @@ export function loadPdfFromUrl(key: string, url: string): Promise<PDFDocumentPro
   }
   return p
 }
+
+const textSizes = new Map<string, Promise<number | null>>()
+
+/**
+ * The size of most of the text on a page, in points (to the half point), so a
+ * new field can print like the document around it. Null when the page has
+ * no real text (a scan).
+ */
+export function pageTextSize(doc: { storage_path: string; file?: Blob }, index: number): Promise<number | null> {
+  const key = `${doc.storage_path}#${index}`
+  let p = textSizes.get(key)
+  if (!p) {
+    p = (async () => {
+      try {
+        const pdf = await loadTemplatePdf(doc)
+        const page = await pdf.getPage(index + 1)
+        const content = await page.getTextContent()
+        const weight = new Map<number, number>()
+        for (const item of content.items as { str?: string; transform?: number[] }[]) {
+          const str = (item.str ?? '').trim()
+          if (str.length < 3 || !item.transform) continue
+          const size = Math.round(Math.hypot(item.transform[2], item.transform[3]) * 2) / 2
+          if (size < 5 || size > 30) continue
+          weight.set(size, (weight.get(size) ?? 0) + str.length)
+        }
+        let best: number | null = null
+        let most = 0
+        for (const [size, n] of weight) if (n > most) [best, most] = [size, n]
+        return best
+      } catch {
+        return null
+      }
+    })()
+    textSizes.set(key, p)
+  }
+  return p
+}

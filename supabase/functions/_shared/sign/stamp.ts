@@ -20,6 +20,8 @@ export interface StampField {
   h: number;
   value: string | null;
   recipient_id: string | null;
+  /** Points; null prints at the automatic size (from the height, at most 11 pt). */
+  font_size?: number | null;
 }
 export interface StampPerson {
   id: string;
@@ -85,8 +87,8 @@ function safe(font: PDFFont, text: string) {
   return out;
 }
 
-function fitText(page: PDFPage, font: PDFFont, raw: string, x: number, y: number, w: number, h: number) {
-  let size = Math.min(11, Math.max(6, h * 0.62));
+function fitText(page: PDFPage, font: PDFFont, raw: string, x: number, y: number, w: number, h: number, chosen?: number | null) {
+  let size = chosen && chosen >= 6 ? chosen : Math.min(11, Math.max(6, h * 0.62));
   let text = safe(font, raw);
   while (size > 6 && font.widthOfTextAtSize(text, size) > w) size -= 0.5;
   while (text.length > 1 && font.widthOfTextAtSize(text, size) > w) text = text.slice(0, -2) + String.fromCharCode(8230);
@@ -161,7 +163,7 @@ export async function stampEnvelope(
     } else if (f.type === "checkbox") {
       if (f.value === "true") drawCheck(page, x, y, w, h);
     } else {
-      fitText(page, font, f.value, x, y, w, h);
+      fitText(page, font, f.value, x, y, w, h, f.font_size == null ? null : Number(f.font_size));
     }
   }
 

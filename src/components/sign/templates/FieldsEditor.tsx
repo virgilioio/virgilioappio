@@ -4,6 +4,7 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  Copy,
   Database,
   Info,
   Minus,
@@ -26,10 +27,12 @@ import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { loadTemplatePdf } from '@/lib/sign/pdf'
+import { loadTemplatePdf, pageTextSize } from '@/lib/sign/pdf'
 import {
   FIELD_LABEL,
   FIELD_SIZE,
+  TEXT_FIELDS,
+  autoFontSize,
   pagesOf,
   tagLabel,
   tagsFor,
@@ -54,6 +57,18 @@ const ICON: Record<FieldType, LucideIcon> = {
 const PALETTE: SignerFieldType[] = ['signature', 'initials', 'date', 'name', 'email', 'text', 'checkbox']
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+const SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18] as const
+const clampSize = (n: number | null | undefined) => (n == null ? null : clamp(Math.round(n * 2) / 2, 6, 24))
+const pt = (n: number) => `${Number.isInteger(n) ? n : n.toFixed(1)} pt`
+/** A role colour, see-through, so the document shows under the field. */
+function tint(hex: string, a: number) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex)
+  if (!m) return `rgba(255,255,255,${a})`
+  const n = parseInt(m[1], 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
+}
+/** The role colour, darker, for the field's outline. */
+const edge = (hex: string) => `color-mix(in srgb, ${hex} 55%, #0d0d09)`
 
 /** One PDF page drawn to a canvas once it scrolls near view, at the screen's pixel density.
  *  It's drawn again when zooming makes it noticeably bigger, so text stays sharp. */
@@ -227,6 +242,20 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   const [active, setActive] = useState(0)
   const [panel, setPanel] = useState(true)
   const [closedDocs, setClosedDocs] = useState<Set<string>>(new Set())
+  // The document's own text size on each page, so text fields print like it.
+  const [docSizes, setDocSizes] = useState<Record<number, number | null>>({})
+  const clip = useRef<TplField | null>(null)
+  const pagesKey = pages.map((p) => `${p.doc.storage_path}:${p.i}`).join('|')
+  useEffect(() => {
+    let live = true
+    for (const p of pages) {
+      void pageTextSize(p.doc, p.i).then((size) => live && setDocSizes((m) => (m[p.gi] === size ? m : { ...m, [p.gi]: size })))
+    }
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagesKey])
 
   useEffect(() => {
     const c = scroller.current
@@ -262,6 +291,12 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     if (!el || !scroller.current) return
     scroller.current.scrollTo({ top: el.offsetTop - 16, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   }
+  const pageSize = (gi: number) => {
+    const p = pages.find((x) => x.gi === gi)
+    return p?.doc.page_sizes[p.i] ?? { w: 612, h: 792 }
+  }
+  /** What sign-seal prints: the chosen size, or the automatic one from the height. */
+  const printSize = (f: TplField) => f.font_size ?? autoFontSize(f.h, pageSize(f.page).h)
   const colorOf = (f: TplField) => (f.type === 'data' ? '#F3EDFE' : role(f.rid)?.color ?? '#E7E8EE')
 
   useEffect(() => {
@@ -287,11 +322,49 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
       h,
       required: type !== 'text' && type !== 'checkbox',
       data_key: type === 'data' ? key ?? tags[0][0] : null,
+      font_size: TEXT_FIELDS.has(type) ? clampSize(docSizes[page]) : null,
     }
     setFields((fs) => [...fs, f])
     setSel(f.id)
     setFresh(f.id)
   }
+
+  /** Copy, paste and duplicate keep the field's size, role and settings. */
+  const paste = (src: TplField, page: number) => {
+    const same = page === src.page
+    const f: TplField = {
+      ...src,
+      id: uid(),
+      page,
+      x: same ? clamp(src.x + 2, 0, 100 - src.w) : src.x,
+      y: same ? clamp(src.y + 2, 0, 100 - src.h) : src.y,
+    }
+    setFields((fs) => [...fs, f])
+    setSel(f.id)
+    setFresh(f.id)
+  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.closest('input, textarea, [contenteditable="true"], [role="listbox"], [role="menu"]') || !scroller.current?.closest('[role="dialog"]')?.contains(t))) return
+      const k = e.key.toLowerCase()
+      const current = d.fields.find((f) => f.id === sel)
+      if (k === 'c' && current) {
+        if (window.getSelection()?.toString()) return
+        clip.current = current
+        e.preventDefault()
+      } else if (k === 'v' && clip.current) {
+        e.preventDefault()
+        paste(clip.current, visiblePage())
+      } else if (k === 'd' && current) {
+        e.preventDefault()
+        paste(current, current.page)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
   const visiblePage = () => {
     const c = scroller.current
@@ -349,6 +422,8 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     el.setPointerCapture(e.pointerId)
     setDragId(f.id)
     const mv = (m: PointerEvent) => {
+      // The button was let go somewhere we didn't hear about: stop, don't follow the cursor.
+      if (m.buttons === 0) return up()
       const dx = ((m.clientX - sx) / pg.width) * 100
       const dy = ((m.clientY - sy) / pg.height) * 100
       setFields((fs) =>
@@ -365,11 +440,13 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
       el.removeEventListener('pointermove', mv)
       el.removeEventListener('pointerup', up)
       el.removeEventListener('pointercancel', up)
+      el.removeEventListener('lostpointercapture', up)
       setDragId(null)
     }
     el.addEventListener('pointermove', mv)
     el.addEventListener('pointerup', up)
     el.addEventListener('pointercancel', up)
+    el.addEventListener('lostpointercapture', up)
   }
 
   const remove = (id: string) => {
@@ -530,7 +607,16 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                       onFocus={() => setSel(f.id)}
                       onKeyDown={(e) => onFieldKey(e, f)}
                       onPointerDown={(e) => startMove(e, f, false)}
-                      style={{ left: `${f.x}%`, top: `${f.y}%`, width: `${f.w}%`, height: `${f.h}%`, background: r?.color ?? '#fff' }}
+                      style={{
+                        left: `${f.x}%`,
+                        top: `${f.y}%`,
+                        width: `${f.w}%`,
+                        height: `${f.h}%`,
+                        background: f.type === 'data' ? 'rgba(255,255,255,.35)' : tint(r?.color ?? '#ffffff', 0.32),
+                        borderColor: f.type === 'data' ? undefined : edge(r?.color ?? '#9CA3AF'),
+                        // Text fields show their label at the size they'll print.
+                        ...(TEXT_FIELDS.has(f.type) ? { fontSize: `${(printSize(f) / (pageSize(f.page).w || 612)) * 100}cqw` } : {}),
+                      }}
                     >
                       <Icon className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
                       <span className="truncate">{fieldText(f)}</span>
@@ -601,10 +687,53 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                 <Switch checked={sf.required} onCheckedChange={(v) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, required: v } : x)))} aria-label="Required" />
               </label>
             )}
-            <Button variant="ghost" size="sm" icon={Trash2} className="self-start text-virgilio-error" onClick={() => remove(sf.id)}>
-              Remove field
-            </Button>
-            <p className="font-inter text-[11.5px] leading-snug text-text-tertiary">Arrow keys nudge it (Shift for bigger steps). Drag the corner to resize. Delete removes it.</p>
+            {TEXT_FIELDS.has(sf.type) && (() => {
+              const docSize = docSizes[sf.page] ?? null
+              const size = printSize(sf)
+              const off = docSize != null && Math.abs(size - docSize) >= 1.5
+              const setSize = (v: number | null) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, font_size: v } : x)))
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] font-medium text-text-primary">
+                    Text size
+                    <Select value={sf.font_size == null ? 'auto' : String(sf.font_size)} onValueChange={(v) => setSize(v === 'auto' ? null : Number(v))}>
+                      <SelectTrigger className="h-8 w-[156px] text-[12.5px]" aria-label="Text size">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto · {pt(autoFontSize(sf.h, pageSize(sf.page).h))}</SelectItem>
+                        {[...new Set([...SIZES, ...(sf.font_size != null ? [sf.font_size] : []), ...(docSize != null ? [docSize] : [])])]
+                          .sort((a, b) => a - b)
+                          .map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              {pt(n)}
+                              {n === docSize ? ' · document' : ''}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <p className={cn('font-inter text-[11.5px] leading-snug', off ? 'text-[#7A4A06]' : 'text-text-tertiary')}>
+                    {docSize == null
+                      ? `Prints at ${pt(size)}. The page’s own text size couldn’t be read.`
+                      : off
+                      ? <>Prints at {pt(size)}; the document’s text here is {pt(docSize)}. <button type="button" className="font-medium underline underline-offset-2" onClick={() => setSize(docSize)}>Match it</button></>
+                      : `Prints at ${pt(size)}, like the document’s text (${pt(docSize)}).`}
+                  </p>
+                </div>
+              )
+            })()}
+            <div className="flex flex-wrap gap-1">
+              <Button variant="ghost" size="sm" icon={Copy} onClick={() => paste(sf, sf.page)}>
+                Duplicate
+              </Button>
+              <Button variant="ghost" size="sm" icon={Trash2} className="text-virgilio-error" onClick={() => remove(sf.id)}>
+                Remove
+              </Button>
+            </div>
+            <p className="font-inter text-[11.5px] leading-snug text-text-tertiary">
+              Arrow keys nudge it (Shift for bigger steps). Drag the corner to resize. Copy and paste (⌘C, ⌘V; Ctrl on Windows) puts a same-size copy on the page in view; ⌘D duplicates it. Delete removes it.
+            </p>
           </div>
         ) : null}
         <div className="flex flex-col gap-2 border-b border-virgilio-border p-4">
