@@ -58,7 +58,7 @@ export function EnvelopeSheet({
   myEmail: string | null
 }) {
   const detail = useEnvelopeDetail(open && envelope ? envelope.id : null)
-  const actionsFor = useEnvelopeActions({ onRemoved: () => onOpenChange(false) })
+  const { actionsFor, dialogs } = useEnvelopeActions({ onRemoved: () => onOpenChange(false) })
   if (!envelope) return null
 
   const e = envelope
@@ -71,6 +71,7 @@ export function EnvelopeSheet({
   const mine = (myEmail ?? '').toLowerCase()
 
   return (
+    <>
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
@@ -282,5 +283,7 @@ export function EnvelopeSheet({
         </>
       )}
     </FormSheet>
+    {dialogs}
+    </>
   )
 }

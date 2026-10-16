@@ -12,6 +12,7 @@ export interface EnvelopeRecipient {
   id: string
   position: number
   role: SignRecipientRole
+  label?: string | null
   name: string | null
   email: string | null
   color: string
@@ -48,7 +49,7 @@ const ENVELOPE_SELECT = `
   id, public_id, title, kind, status, ordered, source_type, source_label, source_sub, origin,
   sender_name, sender_email, sender_user_id, scheduled_at, sent_at, expires_at, completed_at,
   updated_at, created_at,
-  recipients:sign_recipients!sign_recipients_envelope_id_fkey(id, position, role, name, email, color, status, user_id, removed_at),
+  recipients:sign_recipients!sign_recipients_envelope_id_fkey(id, position, role, label, name, email, color, status, user_id, removed_at),
   documents:sign_documents!sign_documents_envelope_id_fkey(id, page_count, removed_at)
 `
 
@@ -149,6 +150,28 @@ export function fillTags(text: string, values: Record<string, string> | null | u
   return text.replace(/\{\{(\w+)\}\}/g, (m, k: string) => values?.[k] ?? m)
 }
 
+async function manage(body: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke('sign-manage', { body })
+  if (error) {
+    const ctx = (error as { context?: Response }).context
+    let payload: { error?: string; message?: string } | null = null
+    try {
+      payload = ctx && typeof ctx.json === 'function' ? await ctx.json() : null
+    } catch {
+      payload = null
+    }
+    throw Object.assign(new Error(payload?.message || 'refused'), { code: payload?.error ?? 'server' })
+  }
+  return data
+}
+
+/** A readable reason when an action is refused; the database's messages are written for people. */
+export function signErrorMessage(e: unknown, fallback: string) {
+  const err = e as { code?: string; message?: string }
+  if (err?.code && /^GSN\d\d$/.test(err.code) && err.message && err.message !== 'refused') return err.message
+  return fallback
+}
+
 export const signActions = {
   /** Scheduled → Draft. No one has been emailed. */
   async unschedule(id: string) {
@@ -164,5 +187,24 @@ export const signActions = {
   async setDraftRemoved(id: string, removed: boolean) {
     const { error } = await supabase.rpc('sign_set_draft_removed', { _envelope_id: id, _removed: removed })
     if (error) throw error
+  },
+  /** Scheduled → goes out on the next minute run. */
+  async sendNow(id: string) {
+    const { error } = await supabase.rpc('sign_send_now', { _envelope_id: id })
+    if (error) throw error
+  },
+  /** Fresh links to whoever's turn it is (once an hour at most). */
+  async remind(id: string): Promise<{ reminded: number }> {
+    return manage({ action: 'remind', envelope_id: id })
+  },
+  /** Every link stops; people who had one are told the reason. */
+  async void(id: string, reason: string): Promise<{ told: number }> {
+    return manage({ action: 'void', envelope_id: id, reason })
+  },
+  /** Change who signs (people who haven't signed) and/or the expiry. */
+  async correct(id: string, people: { recipient_id: string; name: string; email: string }[], expiresAt: string | null) {
+    const { data, error } = await supabase.rpc('sign_correct', { _envelope_id: id, _people: people as never, _expires_at: expiresAt })
+    if (error) throw error
+    return data as number
   },
 }

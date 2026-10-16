@@ -43,7 +43,7 @@ export default function SignEnvelopes() {
       },
       { replace: true },
     )
-  const actionsFor = useEnvelopeActions()
+  const { actionsFor, dialogs } = useEnvelopeActions()
   const count = (s: string) => envelopes.filter((e) => e.status === s).length
   const out = count('sent') + count('queued')
 
@@ -90,6 +90,7 @@ export default function SignEnvelopes() {
         onOpenChange={(o) => !o && setSelected(null)}
         myEmail={user?.email ?? null}
       />
+      {dialogs}
     </ListPage>
   )
 }

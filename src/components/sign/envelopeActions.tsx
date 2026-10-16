@@ -1,10 +1,12 @@
-import { CalendarX, Trash2, type LucideIcon } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Ban, BellRing, CalendarX, PencilLine, Send, Trash2, type LucideIcon } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { undoToast } from '@/lib/undoToast'
-import { signActions, type EnvelopeRow } from '@/lib/sign/api'
+import { signActions, signErrorMessage, type EnvelopeRow } from '@/lib/sign/api'
+import { CorrectSheet, VoidDialog } from './ManageDialogs'
 
 export interface EnvelopeAction {
   id: string
@@ -18,21 +20,67 @@ export interface EnvelopeAction {
 }
 
 /**
- * The actions an envelope offers today, by status. Send reminder, Void, Correct,
- * Send now, Download and Duplicate join as their Edge Functions land (steps 7–9),
- * so nothing here is a button that can't do anything yet.
+ * What can be done to an envelope, by status. Render `dialogs` once next to
+ * whatever shows the actions (Void and Correct open from here).
+ *   module: the Sign module (admins). Cancel schedule leaves a draft.
+ *   record: an Agreements card. Cancel schedule takes it off the record;
+ *           Undo puts it back on schedule.
  */
-export function useEnvelopeActions(opts: { onRemoved?: (id: string) => void } = {}) {
+export function useEnvelopeActions(opts: { onRemoved?: (id: string) => void; context?: 'module' | 'record' } = {}): {
+  actionsFor: (e: EnvelopeRow) => EnvelopeAction[]
+  dialogs: ReactNode
+} {
   const qc = useQueryClient()
+  const [voiding, setVoiding] = useState<EnvelopeRow | null>(null)
+  const [correcting, setCorrecting] = useState<EnvelopeRow | null>(null)
   const refresh = () => qc.invalidateQueries({ queryKey: ['sign'] })
   const fail = (what: string) => (e: unknown) => {
-    toast.error(`Couldn't ${what}`, { description: e instanceof Error ? e.message : undefined })
+    toast.error(signErrorMessage(e, `Couldn’t ${what}. Try again.`))
   }
+  const record = opts.context === 'record'
 
-  return (e: EnvelopeRow): EnvelopeAction[] => {
+  const actionsFor = (e: EnvelopeRow): EnvelopeAction[] => {
     const out: EnvelopeAction[] = []
+    if (e.status === 'sent') {
+      out.push({
+        id: 'remind',
+        label: 'Send reminder',
+        icon: BellRing,
+        footer: true,
+        primary: true,
+        run: async () => {
+          try {
+            const r = await signActions.remind(e.id)
+            await refresh()
+            toast.success(r.reminded ? 'Reminder sent' : 'No one to remind right now', {
+              description: r.reminded ? 'They got a fresh link; the one in their earlier email still works.' : undefined,
+            })
+          } catch (err) {
+            fail('send the reminder')(err)
+          }
+        },
+      })
+      out.push({ id: 'correct', label: 'Correct', icon: PencilLine, footer: true, run: () => setCorrecting(e) })
+    }
     if (e.status === 'scheduled' && e.scheduled_at) {
       const at = e.scheduled_at
+      out.push({
+        id: 'send-now',
+        label: 'Send now',
+        icon: Send,
+        footer: true,
+        primary: true,
+        run: async () => {
+          try {
+            await signActions.sendNow(e.id)
+            await refresh()
+            toast.success('Sending now', { description: 'The email goes out within a minute.' })
+          } catch (err) {
+            fail('send it now')(err)
+          }
+        },
+      })
+      out.push({ id: 'correct', label: 'Correct', icon: PencilLine, run: () => setCorrecting(e) })
       out.push({
         id: 'unschedule',
         label: 'Cancel schedule',
@@ -41,20 +89,29 @@ export function useEnvelopeActions(opts: { onRemoved?: (id: string) => void } = 
         run: async () => {
           try {
             await signActions.unschedule(e.id)
+            if (record) await signActions.setDraftRemoved(e.id, true)
             await refresh()
-            undoToast('Schedule cancelled', async () => {
-              try {
-                await signActions.schedule(e.id, at)
-                await refresh()
-              } catch (err) {
-                fail('schedule it again')(err)
-              }
-            }, 'Moved to Drafts. No one was emailed.')
+            undoToast(
+              'Schedule cancelled',
+              async () => {
+                try {
+                  if (record) await signActions.setDraftRemoved(e.id, false)
+                  await signActions.schedule(e.id, at)
+                  await refresh()
+                } catch (err) {
+                  fail('schedule it again')(err)
+                }
+              },
+              record ? 'No one was emailed.' : 'Moved to Drafts. No one was emailed.',
+            )
           } catch (err) {
             fail('cancel the schedule')(err)
           }
         },
       })
+    }
+    if (e.status === 'sent' || e.status === 'scheduled' || e.status === 'queued') {
+      out.push({ id: 'void', label: 'Void envelope', icon: Ban, danger: true, run: () => setVoiding(e) })
     }
     if (e.status === 'draft') {
       out.push({
@@ -92,4 +149,12 @@ export function useEnvelopeActions(opts: { onRemoved?: (id: string) => void } = 
     }
     return out
   }
+
+  const dialogs = (
+    <>
+      <VoidDialog envelope={voiding} open={!!voiding} onOpenChange={(o) => !o && setVoiding(null)} />
+      <CorrectSheet envelope={correcting} open={!!correcting} onOpenChange={(o) => !o && setCorrecting(null)} />
+    </>
+  )
+  return { actionsFor, dialogs }
 }

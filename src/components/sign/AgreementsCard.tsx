@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PenLine } from 'lucide-react'
+import { MoreHorizontal, PenLine } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,10 @@ import { ENVELOPE_STATUS, ago, shortDateTime, signersOf } from '@/lib/sign/statu
 import { SIGN_SENDING_LIVE, useRecordEnvelopes, type SendSource } from '@/lib/sign/send'
 import type { EnvelopeRow } from '@/lib/sign/api'
 import { SendSheet, type SendDraft } from './SendSheet'
+import { useEnvelopeActions } from './envelopeActions'
+import { useAuth } from '@/contexts/AuthContext'
+import { IconTip } from '@/components/ui/tooltip'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 function Line({ e }: { e: EnvelopeRow }) {
   const st = ENVELOPE_STATUS[e.status]
@@ -53,7 +57,9 @@ export function AgreementsCard({
 }) {
   const { isPlatformAdmin, isAdmin: isWorkspaceAdmin } = usePermissions()
   const isAdmin = !!(isPlatformAdmin || isWorkspaceAdmin)
+  const { userId } = useAuth()
   const q = useRecordEnvelopes(SIGN_SENDING_LIVE ? source : null)
+  const { actionsFor, dialogs } = useEnvelopeActions({ context: 'record' })
   const [open, setOpen] = useState(false)
   const [restore, setRestore] = useState<SendDraft | null>(null)
 
@@ -109,23 +115,54 @@ export function AgreementsCard({
           </p>
         ) : (
           <div className="divide-y divide-[#F1F0EC]">
-            {rows.map((e) =>
-              isAdmin ? (
-                <Link
-                  key={e.id}
-                  to={`/sign?envelope=${e.id}`}
-                  className="-mx-2 block rounded-lg px-2 transition-colors duration-hover hover:bg-[#FAFAF7]"
-                >
-                  <Line e={e} />
-                </Link>
-              ) : (
-                <Line key={e.id} e={e} />
-              ),
-            )}
+            {rows.map((e) => {
+              // The sender and admins can act on it; everyone else on the job sees the status.
+              const actions = isAdmin || e.sender_user_id === userId ? actionsFor(e) : []
+              const safe = actions.filter((x) => !x.danger)
+              const danger = actions.filter((x) => x.danger)
+              return (
+                <div key={e.id} className="flex items-center gap-1">
+                  {isAdmin ? (
+                    <Link to={`/sign?envelope=${e.id}`} className="-mx-2 block min-w-0 flex-1 rounded-lg px-2 transition-colors duration-hover hover:bg-[#FAFAF7]">
+                      <Line e={e} />
+                    </Link>
+                  ) : (
+                    <div className="min-w-0 flex-1">
+                      <Line e={e} />
+                    </div>
+                  )}
+                  {actions.length > 0 && (
+                    <DropdownMenu>
+                      <IconTip label="Actions">
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="xs" iconOnly aria-label={`Actions for ${e.title}`}>
+                            <MoreHorizontal />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </IconTip>
+                      <DropdownMenuContent align="end" className="min-w-[190px]">
+                        {safe.map((a) => (
+                          <DropdownMenuItem key={a.id} onClick={() => void a.run()}>
+                            <a.icon className="h-3.5 w-3.5" aria-hidden /> {a.label}
+                          </DropdownMenuItem>
+                        ))}
+                        {danger.length > 0 && safe.length > 0 && <DropdownMenuSeparator />}
+                        {danger.map((a) => (
+                          <DropdownMenuItem key={a.id} onClick={() => void a.run()} className="text-destructive focus:text-destructive">
+                            <a.icon className="h-3.5 w-3.5" aria-hidden /> {a.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
       <SendSheet open={open} onOpenChange={setOpen} source={source} recordLabel={recordLabel} isAdmin={isAdmin} restore={restore} />
+      {dialogs}
     </section>
   )
 }
