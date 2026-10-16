@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
-import { Ban, BellRing, CalendarX, PencilLine, Send, Trash2, type LucideIcon } from 'lucide-react'
+import { Ban, BellRing, CalendarX, Download, FileCheck2, PencilLine, RotateCcw, Send, Trash2, type LucideIcon } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { undoToast } from '@/lib/undoToast'
-import { signActions, signErrorMessage, type EnvelopeRow } from '@/lib/sign/api'
+import { downloadSealed, sealStuck, sealedName, signActions, signErrorMessage, type EnvelopeRow } from '@/lib/sign/api'
+import { usePermissions } from '@/hooks/usePermissions'
 import { CorrectSheet, VoidDialog } from './ManageDialogs'
 
 export interface EnvelopeAction {
@@ -38,9 +39,41 @@ export function useEnvelopeActions(opts: { onRemoved?: (id: string) => void; con
     toast.error(signErrorMessage(e, `Couldn’t ${what}. Try again.`))
   }
   const record = opts.context === 'record'
+  const { isAdmin, isPlatformAdmin } = usePermissions()
+  const download = (path: string, name: string) => async () => {
+    try {
+      await downloadSealed(path, name)
+    } catch (err) {
+      fail('download it')(err)
+    }
+  }
 
   const actionsFor = (e: EnvelopeRow): EnvelopeAction[] => {
     const out: EnvelopeAction[] = []
+    if (e.status === 'completed' && e.sealed_path) {
+      out.push({ id: 'download', label: 'Download signed PDF', icon: Download, footer: true, primary: true, run: download(e.sealed_path, sealedName(e.title, 'signed')) })
+      if (e.certificate_path) {
+        out.push({ id: 'certificate', label: 'Download certificate', icon: FileCheck2, footer: true, run: download(e.certificate_path, sealedName(e.title, 'certificate')) })
+      }
+    }
+    if (sealStuck(e) && (isAdmin || isPlatformAdmin)) {
+      out.push({
+        id: 'retry-seal',
+        label: 'Retry sealing',
+        icon: RotateCcw,
+        footer: true,
+        primary: true,
+        run: async () => {
+          try {
+            await signActions.retrySeal(e.id)
+            await refresh()
+            toast.success('Sealing again', { description: 'It runs within two minutes; everyone gets the signed copy by email.' })
+          } catch (err) {
+            fail('restart sealing')(err)
+          }
+        },
+      })
+    }
     if (e.status === 'sent') {
       out.push({
         id: 'remind',

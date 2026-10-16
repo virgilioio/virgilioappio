@@ -150,7 +150,7 @@ export async function undoSend(envelopeId: string) {
 const RECORD_SELECT = `
   id, public_id, title, kind, status, ordered, source_type, source_label, source_sub, origin,
   sender_name, sender_email, sender_user_id, scheduled_at, sent_at, expires_at, completed_at,
-  updated_at, created_at,
+  sealed_path, certificate_path, seal_error, seal_attempts, updated_at, created_at,
   recipients:sign_recipients!sign_recipients_envelope_id_fkey(id, position, role, label, name, email, color, status, user_id, removed_at),
   documents:sign_documents!sign_documents_envelope_id_fkey(id, page_count, removed_at)
 `

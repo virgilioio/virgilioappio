@@ -39,6 +39,11 @@ export interface EnvelopeRow {
   sent_at: string | null
   expires_at: string | null
   completed_at: string | null
+  /** Set once sealed; readable by whoever can see the envelope. */
+  sealed_path: string | null
+  certificate_path: string | null
+  seal_error: string | null
+  seal_attempts: number
   updated_at: string
   created_at: string
   recipients: EnvelopeRecipient[]
@@ -48,7 +53,7 @@ export interface EnvelopeRow {
 const ENVELOPE_SELECT = `
   id, public_id, title, kind, status, ordered, source_type, source_label, source_sub, origin,
   sender_name, sender_email, sender_user_id, scheduled_at, sent_at, expires_at, completed_at,
-  updated_at, created_at,
+  sealed_path, certificate_path, seal_error, seal_attempts, updated_at, created_at,
   recipients:sign_recipients!sign_recipients_envelope_id_fkey(id, position, role, label, name, email, color, status, user_id, removed_at),
   documents:sign_documents!sign_documents_envelope_id_fkey(id, page_count, removed_at)
 `
@@ -172,7 +177,31 @@ export function signErrorMessage(e: unknown, fallback: string) {
   return fallback
 }
 
+/** Sealing gave up after five attempts; an admin can start again. */
+export const sealStuck = (e: Pick<EnvelopeRow, 'status' | 'sealed_path' | 'seal_attempts'>) =>
+  e.status === 'completed' && !e.sealed_path && e.seal_attempts >= 5
+
+/** Downloads a sealed file through a one-minute link (the storage policy checks the envelope). */
+export async function downloadSealed(path: string, filename: string) {
+  const { data, error } = await supabase.storage.from('sign-files').createSignedUrl(path, 60, { download: filename })
+  if (error || !data?.signedUrl) throw error ?? new Error('no_url')
+  const a = document.createElement('a')
+  a.href = data.signedUrl
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+export const sealedName = (title: string, what: 'signed' | 'certificate') =>
+  `${title.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90) || 'Agreement'} (${what}).pdf`
+
 export const signActions = {
+  /** Five fresh sealing attempts (admins); the two-minute run picks it up. */
+  async retrySeal(id: string) {
+    const { error } = await supabase.rpc('sign_seal_retry', { _envelope_id: id })
+    if (error) throw error
+  },
   /** Scheduled → Draft. No one has been emailed. */
   async unschedule(id: string) {
     const { error } = await supabase.rpc('sign_unschedule', { _envelope_id: id })

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ENVELOPE_STATUS, ago, shortDateTime, signersOf } from '@/lib/sign/status'
 import { SIGN_SENDING_LIVE, useRecordEnvelopes, type SendSource } from '@/lib/sign/send'
-import type { EnvelopeRow } from '@/lib/sign/api'
+import { sealStuck, type EnvelopeRow } from '@/lib/sign/api'
 import { SendSheet, type SendDraft } from './SendSheet'
 import { useEnvelopeActions } from './envelopeActions'
 import { useAuth } from '@/contexts/AuthContext'
@@ -26,7 +26,7 @@ function Line({ e }: { e: EnvelopeRow }) {
       : e.status === 'sent'
       ? `${done}/${signers.length} signed · ${ago(e.sent_at ?? e.updated_at)}`
       : e.status === 'completed' && e.completed_at
-      ? `Signed ${ago(e.completed_at).replace(/^[A-Z]/, (c) => c.toLowerCase())}`
+      ? `Signed ${ago(e.completed_at).replace(/^[A-Z]/, (c) => c.toLowerCase())}${e.sealed_path ? '' : sealStuck(e) ? ' · couldn’t seal' : ' · sealing…'}`
       : ago(e.updated_at)
   return (
     <div className="flex items-start gap-3 py-2.5">

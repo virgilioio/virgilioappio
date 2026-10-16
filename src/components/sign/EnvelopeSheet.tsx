@@ -1,4 +1,4 @@
-import { ArrowUpRight, Ban, CalendarClock, Check, CircleX, Clock, Eye, FileText, Hourglass, Mail, MoreHorizontal, ShieldCheck, X } from 'lucide-react'
+import { ArrowUpRight, Ban, CalendarClock, Check, CircleX, Clock, Eye, FileText, Hourglass, Mail, MoreHorizontal, ShieldAlert, ShieldCheck, X } from 'lucide-react'
 
 import { FormSheet } from '@/components/references/FormSheet'
 import { FormSection } from '@/components/references/FormSection'
@@ -9,7 +9,7 @@ import { IconTip } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { LoadError } from '@/components/empty/LoadError'
 import { cn } from '@/lib/utils'
-import { fillTags, useEnvelopeDetail, type EnvelopeRow, type SignRecipientStatus } from '@/lib/sign/api'
+import { fillTags, sealStuck, useEnvelopeDetail, type EnvelopeRow, type SignRecipientStatus } from '@/lib/sign/api'
 import { ENVELOPE_KIND, ENVELOPE_STATUS, ago, nextPending, shortDateTime } from '@/lib/sign/status'
 import { useEnvelopeActions } from './envelopeActions'
 
@@ -157,6 +157,18 @@ export function EnvelopeSheet({
           Voided{d?.void_reason ? `: "${d.void_reason}"` : '.'} Links no longer open.
         </Note>
       )}
+      {e.status === 'completed' && !e.sealed_path && (
+        sealStuck(e) ? (
+          <Note tone="bad" icon={ShieldAlert}>
+            Everyone signed, but the sealed copy couldn’t be made, so no one has received it yet. The signatures are safe.
+            {footerActions.some((a) => a.id === 'retry-seal') ? ' Retry sealing to try again.' : ' An admin can retry it.'}
+          </Note>
+        ) : (
+          <Note tone="info" icon={Hourglass}>
+            Everyone signed. Sealing the PDF now; everyone gets the signed copy and its certificate by email within a few minutes.
+          </Note>
+        )
+      )}
       {e.status === 'expired' && (
         <Note tone="info" icon={Clock}>
           Expired before everyone signed. Links no longer open.
@@ -178,7 +190,10 @@ export function EnvelopeSheet({
           {e.status === 'completed' && (
             <FormSection title="Evidence">
               <div className="flex flex-wrap gap-1.5">
-                {['Consent recorded', 'Email code verified', 'Sealed (PAdES)', 'RFC 3161 timestamp'].map((x) => (
+                {(e.sealed_path
+                  ? ['Consent recorded', 'Email code verified', 'Sealed (PAdES)', 'RFC 3161 timestamp']
+                  : ['Consent recorded', 'Email code verified']
+                ).map((x) => (
                   <span key={x} className="inline-flex items-center gap-1.5 rounded-full bg-[#F4F3EF] px-2.5 py-1 font-inter text-[11.5px] text-text-primary">
                     <ShieldCheck className="h-3 w-3" aria-hidden />
                     {x}
