@@ -95,6 +95,8 @@ interface AvatarStackPerson {
   name?: string
   src?: string | null
   fallback?: string
+  /** Optional fill for the initials circle (e.g. a Sign recipient's colour). */
+  color?: string
 }
 
 export function AvatarStack({ people, max = 4, size = 24, className }: {
@@ -123,7 +125,7 @@ export function AvatarStack({ people, max = 4, size = 24, className }: {
             style={{ width: size, height: size, marginLeft: i === 0 ? 0 : -8 }}
           >
             {p.src ? <AvatarImage src={p.src} alt="" /> : null}
-            <AvatarFallback className="text-[10px] font-medium">{initials || "—"}</AvatarFallback>
+            <AvatarFallback className="text-[10px] font-medium" style={p.color ? { background: p.color, color: '#0d0d09' } : undefined}>{initials || "—"}</AvatarFallback>
           </Avatar>
         )
       })}

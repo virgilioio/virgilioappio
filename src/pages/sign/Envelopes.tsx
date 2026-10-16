@@ -1,53 +1,68 @@
-import { ListPage, MetaDot } from '@/components/layout/ListPage'
-import { AnimatedEmpty, EmptyCard } from '@/components/empty/AnimatedEmpty'
-import { LoadError } from '@/components/empty/LoadError'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Loadable } from '@/components/ui/loadable'
-import { useLoadTimeout } from '@/hooks/useLoadTimeout'
-import { useEnvelopeCounts } from '@/lib/sign/api'
+import { useSearchParams } from 'react-router-dom'
 
-/**
- * Sign › Envelopes (admins only). Build step 2: the page frame and its counts.
- * The table, filters and details sheet arrive in step 3.
- */
+import { ListPage, MetaDot } from '@/components/layout/ListPage'
+import { EnvelopesTable } from '@/components/sign/EnvelopesTable'
+import { useAuth } from '@/contexts/AuthContext'
+import { useLoadTimeout } from '@/hooks/useLoadTimeout'
+import { useEnvelopes } from '@/lib/sign/api'
+import { ENVELOPE_FILTERS, type EnvelopeFilter } from '@/lib/sign/status'
+
+/** Sign › Envelopes (admins only): every envelope, filtered by status tab, type and "Waiting on me". */
 export default function SignEnvelopes() {
-  const q = useEnvelopeCounts()
+  const { user } = useAuth()
+  const q = useEnvelopes()
   const timedOut = useLoadTimeout(q.isLoading, q.dataUpdatedAt)
-  const c = q.data?.counts ?? {}
+  const [params, setParams] = useSearchParams()
+  const raw = params.get('status') as EnvelopeFilter | null
+  const filter: EnvelopeFilter = raw && ENVELOPE_FILTERS.some((f) => f.value === raw) ? raw : 'all'
+  const setFilter = (f: EnvelopeFilter) =>
+    setParams(
+      (p) => {
+        if (f === 'all') p.delete('status')
+        else p.set('status', f)
+        return p
+      },
+      { replace: true },
+    )
+
+  const envelopes = q.data ?? []
+  const count = (s: string) => envelopes.filter((e) => e.status === s).length
+  const out = count('sent') + count('queued')
 
   return (
     <ListPage
       title="Envelopes"
-      count={q.data?.total}
+      count={q.data ? envelopes.length : undefined}
       meta={
         q.data && (
           <>
-            <MetaDot color="#E0891A">{c.sent ?? 0} out for signature</MetaDot>
-            <MetaDot color="#8B5CF6">{c.scheduled ?? 0} scheduled</MetaDot>
-            <MetaDot color="#12B886">{c.completed ?? 0} completed</MetaDot>
-            <MetaDot color="#8B8F9E">
-              {c.draft ?? 0} draft{(c.draft ?? 0) === 1 ? '' : 's'}
-            </MetaDot>
+            <button type="button" onClick={() => setFilter('sent')} className="hover:text-text-primary transition-colors duration-hover">
+              <MetaDot color="#E0891A">{out} out for signature</MetaDot>
+            </button>
+            <button type="button" onClick={() => setFilter('scheduled')} className="hover:text-text-primary transition-colors duration-hover">
+              <MetaDot color="#8B5CF6">{count('scheduled')} scheduled</MetaDot>
+            </button>
+            <button type="button" onClick={() => setFilter('completed')} className="hover:text-text-primary transition-colors duration-hover">
+              <MetaDot color="#12B886">{count('completed')} completed</MetaDot>
+            </button>
+            <button type="button" onClick={() => setFilter('draft')} className="inline-flex items-center gap-1.5 hover:text-text-primary transition-colors duration-hover">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full border border-dashed border-[#8B8F9E]" />
+              {count('draft')} draft{count('draft') === 1 ? '' : 's'}
+            </button>
           </>
         )
       }
     >
-      {q.isError || timedOut ? (
-        <EmptyCard>
-          <LoadError what="envelopes" timedOut={timedOut && !q.isError} onRetry={() => q.refetch()} />
-        </EmptyCard>
-      ) : (
-        <Loadable loading={q.isLoading} skeleton={<EmptyCard><Skeleton className="h-6 w-48" /></EmptyCard>}>
-          <EmptyCard>
-            <AnimatedEmpty
-              scene="jobs"
-              onceKey="sign-envelopes-empty"
-              title="No envelopes yet"
-              body="Offers sent from a candidate, agreements sent from a deal in Gio Sales, and member agreements sent from here will show up in this list with their status."
-            />
-          </EmptyCard>
-        </Loadable>
-      )}
+      <EnvelopesTable
+        envelopes={envelopes}
+        isLoading={q.isLoading}
+        loadError={q.isError ? 'failed' : timedOut ? 'timeout' : null}
+        onRetry={() => q.refetch()}
+        filter={filter}
+        onFilterChange={setFilter}
+        myEmail={user?.email ?? null}
+        myId={user?.id ?? null}
+      />
     </ListPage>
   )
 }
