@@ -6,7 +6,6 @@
 // 2-hour session. Every auth-shaped failure is one indistinguishable
 // "not_found", so links can't be probed. ASCII only in this file.
 
-import { Resend } from "npm:resend@2.0.0";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 export { adminClient, ipFrom, rateLimitOk } from "../referenceTokens.ts";
@@ -134,34 +133,8 @@ export async function logEvent(
   });
 }
 
-const esc = (s: string) =>
-  String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-/** The verification code email. Plain and short; the full Gio Sign emails are build step 8. */
+/** The verification code email, in the Gio Sign layout. */
 export async function sendCodeEmail(input: { to: string; name: string; code: string; brand: string; title: string }) {
-  const resend = new Resend(Deno.env.get("RESEND_API_KEY") || "");
-  const relay = Deno.env.get("EMAIL_DEFAULT_FROM_ADDRESS") || "noreply@app.gogio.io";
-  const from = `${input.brand.replace(/[<>"]/g, "").trim() || "Gio Sign"} via Gio Sign <${relay}>`;
-  const first = (input.name || "").trim().split(/\s+/)[0] || "there";
-  const spaced = `${input.code.slice(0, 3)} ${input.code.slice(3)}`;
-  const html = `<!doctype html><html><body style="margin:0;background:#F6F5F1;font-family:Inter,Arial,sans-serif;color:#0d0d09">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F5F1;padding:32px 16px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border:1px solid #E7E8EE;border-radius:14px">
-<tr><td style="padding:28px 28px 8px;font-size:15px;line-height:1.55">
-<p style="margin:0 0 12px">Hi ${esc(first)},</p>
-<p style="margin:0 0 20px">Use this code to open <b>${esc(input.title)}</b> from ${esc(input.brand)}:</p>
-<p style="margin:0 0 20px;font-size:30px;font-weight:600;letter-spacing:6px;font-variant-numeric:tabular-nums">${esc(spaced)}</p>
-<p style="margin:0 0 8px;color:#5A6072;font-size:13px">It works for 10 minutes. If you didn&#39;t ask for it, you can ignore this email.</p>
-</td></tr>
-<tr><td style="padding:16px 28px 24px;color:#6B7080;font-size:12px;border-top:1px solid #F1F0EC">Sent by Gio Sign for ${esc(input.brand)}.</td></tr>
-</table></td></tr></table></body></html>`;
-  const text = `Hi ${first},\n\nUse this code to open ${input.title} from ${input.brand}: ${spaced}\n\nIt works for 10 minutes. If you didn't ask for it, you can ignore this email.\n\nSent by Gio Sign for ${input.brand}.`;
-  const { error } = await resend.emails.send({
-    from,
-    to: [input.to],
-    subject: `${spaced} is your code for ${input.title}`.slice(0, 200),
-    html,
-    text,
-  } as never);
-  if (error) throw new Error(typeof error === "string" ? error : JSON.stringify(error));
+  const { codeEmail, sendMail } = await import("./emails.ts");
+  await sendMail(codeEmail({ brand: input.brand, recipientName: input.name, recipientEmail: input.to, code: input.code, title: input.title }));
 }

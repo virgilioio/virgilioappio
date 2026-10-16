@@ -350,3 +350,6 @@ verify_jwt = false
 
 [functions.sign-submit]
 verify_jwt = false
+
+[functions.sign-dispatch]
+verify_jwt = false

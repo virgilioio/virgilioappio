@@ -4,10 +4,19 @@
 // signature: { kind: "type"|"draw"|"upload", full_name, initials, font,
 //              image: data:image/png;base64,..., initials_image?: same }
 // The images are stored in sign-files/{tenant}/envelopes/{envelope}/signatures/.
-// Emails to the next signer and the sender are build step 8. ASCII only.
+// The next signer's invitation and the sender's email go out right after. ASCII only.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { adminClient, ipFrom, json, rateLimitOk, resolveLink, sessionOk } from "../_shared/sign/signer.ts";
+import { inviteRecipient, notifySenderDeclined, notifySenderSigned } from "../_shared/sign/notify.ts";
+
+/** Emails go out after the response, so the signer isn't kept waiting; the minute job retries invitations. */
+function later(work: Promise<unknown>) {
+  const p = work.catch((err) => console.error("sign-submit followup", err instanceof Error ? err.message : err));
+  // deno-lint-ignore no-explicit-any
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(p);
+}
 
 const NF = () => json(404, { error: "not_found" }, corsHeaders);
 const MAX_IMAGE_BYTES = 400 * 1024;
@@ -64,6 +73,7 @@ Deno.serve(async (req) => {
         if (codeOf(error) === "GSN22") return json(409, { error: "not_your_turn" }, corsHeaders);
         throw error;
       }
+      later(notifySenderDeclined(supabase, e.id, r.id));
       return json(200, { ok: true }, corsHeaders);
     }
 
@@ -117,13 +127,25 @@ Deno.serve(async (req) => {
         if (c === "GSN21") return json(401, { error: "session" }, corsHeaders);
         throw error;
       }
-      // Who's next, for the done screen (names only).
+      // Who's next, for the done screen (names only), and their invitations.
       let nextNames: string[] = [];
-      const next = (data as any)?.next ?? [];
+      const next: string[] = (data as any)?.next ?? [];
       if (Array.isArray(next) && next.length) {
         const { data: ppl } = await supabase.from("sign_recipients").select("name").in("id", next);
         nextNames = (ppl ?? []).map((p: any) => p.name);
       }
+      later(
+        (async () => {
+          for (const id of next) {
+            try {
+              await inviteRecipient(supabase, id);
+            } catch (err) {
+              console.error("sign invite next", id, err instanceof Error ? err.message : err);
+            }
+          }
+          await notifySenderSigned(supabase, e.id, r.id);
+        })(),
+      );
       return json(200, { status: (data as any)?.status ?? "sent", next: nextNames, signed_at: new Date().toISOString() }, corsHeaders);
     }
 
