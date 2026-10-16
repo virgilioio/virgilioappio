@@ -1,7 +1,10 @@
+import { useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { ListPage, MetaDot } from '@/components/layout/ListPage'
 import { EnvelopesTable } from '@/components/sign/EnvelopesTable'
+import { EnvelopeSheet } from '@/components/sign/EnvelopeSheet'
+import { useEnvelopeActions } from '@/components/sign/envelopeActions'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLoadTimeout } from '@/hooks/useLoadTimeout'
 import { useEnvelopes } from '@/lib/sign/api'
@@ -26,6 +29,21 @@ export default function SignEnvelopes() {
     )
 
   const envelopes = q.data ?? []
+  const selectedId = params.get('envelope')
+  const selected = envelopes.find((e) => e.id === selectedId) ?? null
+  // Keep the last envelope on screen while the sheet slides out.
+  const lastShown = useRef(selected)
+  if (selected) lastShown.current = selected
+  const setSelected = (id: string | null) =>
+    setParams(
+      (p) => {
+        if (id) p.set('envelope', id)
+        else p.delete('envelope')
+        return p
+      },
+      { replace: true },
+    )
+  const actionsFor = useEnvelopeActions()
   const count = (s: string) => envelopes.filter((e) => e.status === s).length
   const out = count('sent') + count('queued')
 
@@ -62,6 +80,15 @@ export default function SignEnvelopes() {
         onFilterChange={setFilter}
         myEmail={user?.email ?? null}
         myId={user?.id ?? null}
+        selectedId={selectedId}
+        onOpen={setSelected}
+        actionsFor={actionsFor}
+      />
+      <EnvelopeSheet
+        envelope={selected ?? lastShown.current}
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+        myEmail={user?.email ?? null}
       />
     </ListPage>
   )

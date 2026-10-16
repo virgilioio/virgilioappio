@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, Building2, CalendarClock, IdCard, PenLine, RotateCcw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
+import { ArrowRight, MoreHorizontal, Building2, CalendarClock, IdCard, PenLine, RotateCcw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
 
 import { ListTabs } from '@/components/ui/list-tabs'
 import { FilterChipPopover } from '@/components/ui/filter-chip-popover'
@@ -12,6 +12,9 @@ import { TableSkeleton } from '@/components/ui/table-states'
 import { AnimatedEmpty } from '@/components/empty/AnimatedEmpty'
 import { LoadError } from '@/components/empty/LoadError'
 import { cn } from '@/lib/utils'
+import { IconTip } from '@/components/ui/tooltip'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import type { EnvelopeAction } from './envelopeActions'
 import type { EnvelopeRow, SignKind } from '@/lib/sign/api'
 import {
   ENVELOPE_FILTERS,
@@ -26,7 +29,7 @@ import {
 } from '@/lib/sign/status'
 
 const KIND_ICON: Record<SignKind, typeof Building2> = { customer: Building2, candidate: UserRound, member: IdCard }
-const COLS = 7
+const COLS = 8
 
 const TAB_EMPTY: Record<EnvelopeFilter, { title: string; body: string }> = {
   all: { title: 'No envelopes', body: 'Envelopes sent from a candidate, a deal or here show up in this list.' },
@@ -46,6 +49,9 @@ export function EnvelopesTable({
   onFilterChange,
   myEmail,
   myId,
+  selectedId,
+  onOpen,
+  actionsFor,
 }: {
   envelopes: EnvelopeRow[]
   isLoading: boolean
@@ -55,6 +61,9 @@ export function EnvelopesTable({
   onFilterChange: (f: EnvelopeFilter) => void
   myEmail: string | null
   myId: string | null
+  selectedId: string | null
+  onOpen: (id: string) => void
+  actionsFor: (e: EnvelopeRow) => EnvelopeAction[]
 }) {
   const [q, setQ] = useState('')
   const [kinds, setKinds] = useState<string[]>([])
@@ -208,6 +217,7 @@ export function EnvelopesTable({
               <TableHead className="w-[150px]">Signed</TableHead>
               <TableHead className="hidden xl:table-cell">Related record</TableHead>
               <TableHead className="w-[100px] text-right">Updated</TableHead>
+              <TableHead className="w-[44px] text-right" aria-label="Actions" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -226,7 +236,9 @@ export function EnvelopesTable({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((e) => <EnvelopeTableRow key={e.id} e={e} waitingOnMe={isWaitingOnMe(e, myEmail, myId)} />)
+              rows.map((e) => (
+                <EnvelopeTableRow key={e.id} e={e} waitingOnMe={isWaitingOnMe(e, myEmail, myId)} selected={e.id === selectedId} onOpen={onOpen} actions={actionsFor(e)} />
+              ))
             )}
           </TableBody>
         </Table>
@@ -241,14 +253,36 @@ export function EnvelopesTable({
   )
 }
 
-function EnvelopeTableRow({ e, waitingOnMe }: { e: EnvelopeRow; waitingOnMe: boolean }) {
+function EnvelopeTableRow({
+  e,
+  waitingOnMe,
+  selected,
+  onOpen,
+  actions,
+}: {
+  e: EnvelopeRow
+  waitingOnMe: boolean
+  selected: boolean
+  onOpen: (id: string) => void
+  actions: EnvelopeAction[]
+}) {
   const status = ENVELOPE_STATUS[e.status]
   const KindIcon = KIND_ICON[e.kind]
   const pages = e.documents.reduce((n, d) => n + d.page_count, 0)
   const docs = e.documents.length
   const first = e.recipients[0]
   return (
-    <TableRow data-row-id={e.id}>
+    <TableRow
+      data-row-id={e.id}
+      interactive
+      data-state={selected ? 'selected' : undefined}
+      tabIndex={0}
+      aria-label={`Open ${e.title}`}
+      onClick={() => onOpen(e.id)}
+      onKeyDown={(k) => {
+        if (k.key === 'Enter' && k.target === k.currentTarget) onOpen(e.id)
+      }}
+    >
       <TableCell>
         <StatusCell>
           <Badge key={e.status} tone={status.tone} dot size="sm">
@@ -259,7 +293,7 @@ function EnvelopeTableRow({ e, waitingOnMe }: { e: EnvelopeRow; waitingOnMe: boo
       <TableCell>
         <IdentityCell
           hideAvatar
-          name={<span className="block truncate max-w-[min(340px,24vw)]">{e.title}</span>}
+          name={<span className="block truncate max-w-[min(300px,21vw)]">{e.title}</span>}
           sub={`${docs} document${docs === 1 ? '' : 's'} · ${pages} page${pages === 1 ? '' : 's'}${waitingOnMe ? ' · your turn to sign' : ''}`}
           fallback={e.title}
         />
@@ -295,6 +329,26 @@ function EnvelopeTableRow({ e, waitingOnMe }: { e: EnvelopeRow; waitingOnMe: boo
       </TableCell>
       <TableCell className="text-right">
         <span className="tabular-nums text-text-tertiary">{ago(e.updated_at)}</span>
+      </TableCell>
+      <TableCell className="w-[44px] text-right" onClick={(x) => x.stopPropagation()}>
+        {actions.length > 0 && (
+          <DropdownMenu>
+            <IconTip label="Actions">
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" iconOnly aria-label={`Actions for ${e.title}`}>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+            </IconTip>
+            <DropdownMenuContent align="end" className="min-w-[200px]">
+              {actions.map((a) => (
+                <DropdownMenuItem key={a.id} onClick={() => void a.run()} className={a.danger ? 'text-destructive focus:text-destructive' : undefined}>
+                  <a.icon className="h-3.5 w-3.5" aria-hidden /> {a.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </TableCell>
     </TableRow>
   )

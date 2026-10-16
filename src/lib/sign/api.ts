@@ -106,3 +106,80 @@ export function useTemplateCounts() {
     staleTime: 30_000,
   })
 }
+
+export interface EnvelopeEvent {
+  id: number
+  kind: string
+  label: string
+  key: boolean
+  actor_name: string | null
+  ip: string | null
+  created_at: string
+  detail: Record<string, unknown>
+}
+
+export interface EnvelopeDetail {
+  id: string
+  subject: string
+  body: string
+  reminder_days: number
+  expiry_days: number
+  expires_at: string | null
+  void_reason: string | null
+  data_snapshot: Record<string, string> | null
+  recipients: (EnvelopeRecipient & { decline_reason: string | null; signed_at: string | null })[]
+  documents: { id: string; name: string; page_count: number; position: number; removed_at: string | null }[]
+  events: EnvelopeEvent[]
+}
+
+/** What the details sheet needs on top of the list row: message, documents, people and the audit trail. */
+export function useEnvelopeDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['sign', 'envelope', id],
+    enabled: !!id,
+    queryFn: async (): Promise<EnvelopeDetail> => {
+      const { data, error } = await supabase
+        .from('sign_envelopes')
+        .select(`
+          id, subject, body, reminder_days, expiry_days, expires_at, void_reason, data_snapshot,
+          recipients:sign_recipients!sign_recipients_envelope_id_fkey(id, position, role, name, email, color, status, user_id, removed_at, decline_reason, signed_at),
+          documents:sign_documents!sign_documents_envelope_id_fkey(id, name, page_count, position, removed_at),
+          events:sign_events(id, kind, label, key, actor_name, ip, created_at, detail)
+        `)
+        .eq('id', id!)
+        .single()
+      if (error) throw error
+      const d = data as unknown as EnvelopeDetail
+      return {
+        ...d,
+        recipients: (d.recipients ?? []).filter((r) => !r.removed_at).sort((a, b) => a.position - b.position),
+        documents: (d.documents ?? []).filter((x) => !x.removed_at).sort((a, b) => a.position - b.position),
+        events: (d.events ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at)),
+      }
+    },
+    staleTime: 10_000,
+  })
+}
+
+/** Fill {{tags}} with the envelope's frozen values; unknown tags stay as written. */
+export function fillTags(text: string, values: Record<string, string> | null | undefined) {
+  return text.replace(/\{\{(\w+)\}\}/g, (m, k: string) => values?.[k] ?? m)
+}
+
+export const signActions = {
+  /** Scheduled → Draft. No one has been emailed. */
+  async unschedule(id: string) {
+    const { error } = await supabase.rpc('sign_unschedule', { _envelope_id: id })
+    if (error) throw error
+  },
+  /** Draft → Scheduled again (Undo of Cancel schedule). */
+  async schedule(id: string, at: string) {
+    const { error } = await supabase.rpc('sign_schedule', { _envelope_id: id, _at: at })
+    if (error) throw error
+  },
+  /** Remove a draft (soft) or bring it back. */
+  async setDraftRemoved(id: string, removed: boolean) {
+    const { error } = await supabase.rpc('sign_set_draft_removed', { _envelope_id: id, _removed: removed })
+    if (error) throw error
+  },
+}

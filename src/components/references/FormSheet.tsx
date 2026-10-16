@@ -10,6 +10,8 @@ interface FormSheetProps {
   title: string
   subtitle?: ReactNode
   footer?: ReactNode
+  /** Extra controls in the header, before Close (e.g. a ⋯ menu). */
+  headerActions?: ReactNode
   children?: ReactNode
 }
 
@@ -28,6 +30,7 @@ export function FormSheet({
   title,
   subtitle,
   footer,
+  headerActions,
   children,
 }: FormSheetProps) {
   return (
@@ -38,6 +41,9 @@ export function FormSheet({
       <SheetContent
           side="right"
           showOverlay={false}
+          // With header actions, focus the panel itself on open so the first
+          // control's tooltip doesn't pop up over the title. Tab still starts inside.
+          onOpenAutoFocus={headerActions ? (ev) => { ev.preventDefault(); (ev.currentTarget as HTMLElement | null)?.focus() } : undefined}
           className="p-0 gap-0 border-0 sm:max-w-none flex flex-col [&>button:last-child]:hidden"
           style={{
             width,
@@ -100,6 +106,7 @@ export function FormSheet({
                 </p>
               )}
             </div>
+            {headerActions}
             <button
               type="button"
               aria-label="Close"
