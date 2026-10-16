@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { cn } from '@/lib/utils'
 import { ReferencesGlyph } from './ReferencesGlyph'
 
@@ -79,3 +80,63 @@ export function GlyphPeopleAccess({
 
 export const ReferencesModuleGlyph: ModuleGlyph = ({ className }) => <ReferencesGlyph className={className} />
 
+
+/**
+ * Sign ("Meet"): a soft square (the document) overlaps a disc (the signer);
+ * only the shared area is the signal. Exact geometry from the glyph prompt
+ * (Allan, 2026-10-16). Don't redraw.
+ *
+ * The rail's inactive colour is translucent (72% opaline), so drawing the
+ * square and the disc as two shapes would make their overlap brighter. Here the
+ * silhouette is one fill cut by a mask of both shapes, and the overlap is a
+ * separate accent layer that's invisible at rest and lilac on hover/active.
+ * Each copy gets its own ids, so the rail and a page header can show it at once.
+ */
+export const SignGlyph: ModuleGlyph = ({ className }) => {
+  const id = 'sign-' + useId().replace(/:/g, '')
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden className={cn('inline-block', className)}>
+      <mask id={`${id}-shape`} maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">
+        <rect x="8" y="15" width="25" height="25" rx="7.5" fill="#fff" />
+        <circle cx="31" cy="17" r="10" fill="#fff" />
+      </mask>
+      <clipPath id={`${id}-disc`}>
+        <circle cx="31" cy="17" r="10" />
+      </clipPath>
+      <rect width="48" height="48" fill="currentColor" mask={`url(#${id}-shape)`} />
+      <rect className="accent" x="8" y="15" width="25" height="25" rx="7.5" fill="none" clipPath={`url(#${id}-disc)`} />
+    </svg>
+  )
+}
+
+/** The Sign glyph with explicit colours, exactly as the glyph prompt gives it. */
+export function GlyphSign({
+  size = 24,
+  color = 'currentColor',
+  accent = '#D7C5FB',
+  ...props
+}: { size?: number; color?: string; accent?: string } & React.SVGProps<SVGSVGElement>) {
+  const clip = 'sign-' + useId().replace(/:/g, '')
+  return (
+    <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" {...props}>
+      <clipPath id={clip}>
+        <circle cx="31" cy="17" r="10" />
+      </clipPath>
+      <rect x="8" y="15" width="25" height="25" rx="7.5" fill={color} />
+      <circle cx="31" cy="17" r="10" fill={color} />
+      <rect x="8" y="15" width="25" height="25" rx="7.5" fill={accent} clipPath={`url(#${clip})`} />
+    </svg>
+  )
+}
+
+/** Every module glyph by key, so a new module is one line. */
+export const MODULE_GLYPHS = {
+  home: DashboardGlyph,
+  ats: AtsGlyph,
+  crm: CrmGlyph,
+  chat: ChatGlyph,
+  references: ReferencesModuleGlyph,
+  analytics: AnalyticsGlyph,
+  people: PeopleGlyph,
+  sign: SignGlyph,
+} satisfies Record<string, ModuleGlyph>

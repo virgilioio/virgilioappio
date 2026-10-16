@@ -86,6 +86,8 @@ const OsPeople = lazy(() => import('./pages/os/People'))
 const OsPersonDetail = lazy(() => import('./pages/os/PersonDetail'))
 const OsJobRoles = lazy(() => import('./pages/os/JobRoles'))
 const OsHistory = lazy(() => import('./pages/os/History'))
+const SignEnvelopes = lazy(() => import('./pages/sign/Envelopes'))
+const SignTemplates = lazy(() => import('./pages/sign/Templates'))
 const ReferenceTemplates = lazy(() => import('./pages/ReferenceTemplates'))
 const ReferenceTemplateEditor = lazy(() => import('./pages/ReferenceTemplateEditor'))
 
@@ -234,6 +236,8 @@ function AppContent() {
             <Route path="/os/people/:memberId" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsPersonDetail /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/os/job-roles" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsJobRoles /></OsAdminOnly></PhoneSwitch>} />
             <Route path="/os/history" element={<PhoneSwitch phone={<DesktopOnly what="People & Access" />}><OsAdminOnly><OsHistory /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/sign" element={<PhoneSwitch phone={<DesktopOnly what="Sign" />}><OsAdminOnly><SignEnvelopes /></OsAdminOnly></PhoneSwitch>} />
+            <Route path="/sign/templates" element={<PhoneSwitch phone={<DesktopOnly what="Sign" />}><OsAdminOnly><SignTemplates /></OsAdminOnly></PhoneSwitch>} />
 
           </Route>
         </Route>

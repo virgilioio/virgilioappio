@@ -7,11 +7,11 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions, useCanUseChat } from '@/hooks/usePermissions'
 import { useTalentPoolAccess } from '@/hooks/useTalentPoolAccess'
 import { useChatUnreadCount } from '@/hooks/chat/useChatUnreadCount'
-import { AnalyticsGlyph, AtsGlyph, ChatGlyph, DashboardGlyph, PeopleGlyph, ReferencesModuleGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
+import { AnalyticsGlyph, AtsGlyph, ChatGlyph, DashboardGlyph, PeopleGlyph, ReferencesModuleGlyph, SignGlyph, type ModuleGlyph } from '@/components/icons/ModuleGlyphs'
 import { SettingsGlyph } from '@/components/icons/SettingsGlyph'
 
 
-export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'people' | 'settings' | 'my-profile' | null
+export type AppSection = 'home' | 'ats' | 'crm' | 'chat' | 'references' | 'analytics' | 'people' | 'sign' | 'settings' | 'my-profile' | null
 
 const ATS_PREFIXES = ['/find', '/jobs', '/candidates', '/pipeline', '/calendar']
 const CRM_PREFIXES = ['/crm']
@@ -19,11 +19,13 @@ const CHAT_PREFIXES = ['/chat']
 const REFERENCES_PREFIXES = ['/references']
 const ANALYTICS_PREFIXES = ['/analytics', '/talent-intelligence', '/insights']
 const PEOPLE_PREFIXES = ['/os']
+const SIGN_PREFIXES = ['/sign']
 
 export function getActiveSection(pathname: string, search = ''): AppSection {
   if (pathname === '/' || pathname === '/dashboard') return 'home'
   if (ANALYTICS_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'analytics'
   if (PEOPLE_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'people'
+  if (SIGN_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'sign'
   if (REFERENCES_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'references'
   if (CHAT_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'chat'
   if (CRM_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))) return 'crm'
@@ -38,7 +40,7 @@ export function getActiveSection(pathname: string, search = ''): AppSection {
 type IconRenderer = ModuleGlyph
 const ReferencesGlyph = ReferencesModuleGlyph
 
-const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings'>; label: string; Icon: IconRenderer; href: string; show: (p: ReturnType<typeof usePermissions>) => boolean }> = [
+const allItems: Array<{ id: Exclude<AppSection, null | 'my-profile' | 'settings' | 'sign'>; label: string; Icon: IconRenderer; href: string; show: (p: ReturnType<typeof usePermissions>) => boolean }> = [
   { id: 'home', label: 'Dashboard', Icon: DashboardGlyph, href: '/dashboard', show: (p) => !p.isSalesUser },
   { id: 'ats', label: 'ATS', Icon: AtsGlyph, href: '/jobs', show: (p) => p.canViewJobs },
   { id: 'chat', label: 'Chat', Icon: ChatGlyph, href: '/chat', show: () => false }, // gated via useCanUseChat below
@@ -154,6 +156,22 @@ export function AppSidebar() {
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={12}>
                 People &amp; Access
+              </TooltipContent>
+            </Tooltip>
+            {/* Sign: envelopes and templates. Admins only, like People & Access. */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/sign"
+                  aria-current={active === 'sign' ? 'page' : undefined}
+                  aria-label="Sign"
+                  className={cn(tileBase, active === 'sign' ? tileActive : tileInactive)}
+                >
+                  <SignGlyph className="h-6 w-6" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                Sign
               </TooltipContent>
             </Tooltip>
           </>
