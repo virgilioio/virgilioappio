@@ -11533,6 +11533,20 @@ export type Database = {
         Args: { _template_id: string }
         Returns: boolean
       }
+      sign_claim_due: {
+        Args: { _limit?: number }
+        Returns: {
+          envelope_id: string
+        }[]
+      }
+      sign_claim_invite: {
+        Args: {
+          _expires_at: string
+          _recipient_id: string
+          _token_hash: string
+        }
+        Returns: boolean
+      }
       sign_fmt_amount: { Args: { _v: string }; Returns: string }
       sign_fmt_date: { Args: { _v: string }; Returns: string }
       sign_is_admin: { Args: { _tenant_id: string }; Returns: boolean }
@@ -11549,6 +11563,13 @@ export type Database = {
       }
       sign_my_email: { Args: never; Returns: string }
       sign_new_public_id: { Args: never; Returns: string }
+      sign_pending_invites: {
+        Args: { _limit?: number }
+        Returns: {
+          envelope_id: string
+          recipient_id: string
+        }[]
+      }
       sign_pref: {
         Args: { _email: string; _event: string; _tenant_id: string }
         Returns: {
@@ -11563,6 +11584,10 @@ export type Database = {
           _source_type: Database["public"]["Enums"]["sign_source"]
         }
         Returns: Json
+      }
+      sign_release_invite: {
+        Args: { _recipient_id: string }
+        Returns: undefined
       }
       sign_save_template: { Args: { _t: Json }; Returns: string }
       sign_schedule: {
