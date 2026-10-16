@@ -11,8 +11,9 @@ import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFSt
 import * as asn1js from "npm:asn1js@3.0.5";
 import * as pkijs from "npm:pkijs@3.2.4";
 
-// pkijs finds WebCrypto on its own (self.crypto). Its setEngine() writes to the
-// global object under process.pid, which the Edge Runtime refuses, so it isn't used.
+// pkijs' setEngine() writes to the global object under process.pid, which the
+// Edge Runtime refuses, so the engine is passed to each call that needs one.
+const ENGINE = new pkijs.CryptoEngine({ name: "webcrypto", crypto: globalThis.crypto });
 
 export interface Signer {
   /** The signing certificate first, then any intermediates (DER). */
@@ -292,8 +293,8 @@ export async function makeTestIdentity(): Promise<{ keyPem: string; certPem: str
       extnValue: new asn1js.BitString({ valueHex: new Uint8Array([0xc0]).buffer, unusedBits: 6 }).toBER(false),
     }),
   ];
-  await cert.subjectPublicKeyInfo.importKey(keys.publicKey);
-  await cert.sign(keys.privateKey, "SHA-256");
+  await cert.subjectPublicKeyInfo.importKey(keys.publicKey, ENGINE);
+  await cert.sign(keys.privateKey, "SHA-256", ENGINE);
   const certDer = new Uint8Array(cert.toSchema(true).toBER(false));
   const keyDer = new Uint8Array(await crypto.subtle.exportKey("pkcs8", keys.privateKey));
   return { keyPem: pem("PRIVATE KEY", keyDer), certPem: pem("CERTIFICATE", certDer) };
