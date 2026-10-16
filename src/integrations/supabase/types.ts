@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.3"
   }
   public: {
     Tables: {
@@ -320,7 +320,15 @@ export type Database = {
           tenant_id?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "apollo_credit_ledger_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       apollo_credit_plans: {
         Row: {
@@ -334,7 +342,7 @@ export type Database = {
         Insert: {
           cycle_day: number
           monthly_credits: number
-          refresh_cap_credits: number
+          refresh_cap_credits?: number
           reserve_credits?: number
           tenant_id: string
           updated_at?: string
@@ -347,7 +355,15 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "apollo_credit_plans_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       application_fields: {
         Row: {
@@ -1711,13 +1727,13 @@ export type Database = {
           email: string | null
           email_status: string | null
           enriched_at: string | null
-          field_provenance: Json
-          profile_refreshed_at: string | null
           enrichment_status: string | null
           external_application_id: string | null
+          field_provenance: Json
           functional_area: string | null
           id: string
           job_board_source: string | null
+          keep_until: string | null
           last_skills_generation: string | null
           linkedin_slug: string | null
           linkedin_url: string | null
@@ -1729,9 +1745,12 @@ export type Database = {
           merged_into: string | null
           organization_id: string | null
           phone: string | null
+          privacy_notice_at: string | null
+          profile_refreshed_at: string | null
           profile_summary: string | null
           resume_generated_url: string | null
           resume_url: string | null
+          retention_checked_at: string | null
           role_current: string | null
           salary_amount: number | null
           salary_currency: string | null
@@ -1750,9 +1769,6 @@ export type Database = {
           years_experience: number | null
           years_in_leadership: number | null
           years_in_specialization: number | null
-          keep_until: string | null
-          privacy_notice_at: string | null
-          retention_checked_at: string | null
         }
         Insert: {
           apollo_collected_at?: string | null
@@ -1774,13 +1790,13 @@ export type Database = {
           email?: string | null
           email_status?: string | null
           enriched_at?: string | null
-          field_provenance?: Json
-          profile_refreshed_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
+          field_provenance?: Json
           functional_area?: string | null
           id?: string
           job_board_source?: string | null
+          keep_until?: string | null
           last_skills_generation?: string | null
           linkedin_slug?: string | null
           linkedin_url?: string | null
@@ -1792,9 +1808,12 @@ export type Database = {
           merged_into?: string | null
           organization_id?: string | null
           phone?: string | null
+          privacy_notice_at?: string | null
+          profile_refreshed_at?: string | null
           profile_summary?: string | null
           resume_generated_url?: string | null
           resume_url?: string | null
+          retention_checked_at?: string | null
           role_current?: string | null
           salary_amount?: number | null
           salary_currency?: string | null
@@ -1813,9 +1832,6 @@ export type Database = {
           years_experience?: number | null
           years_in_leadership?: number | null
           years_in_specialization?: number | null
-          keep_until?: string | null
-          privacy_notice_at?: string | null
-          retention_checked_at?: string | null
         }
         Update: {
           apollo_collected_at?: string | null
@@ -1837,13 +1853,13 @@ export type Database = {
           email?: string | null
           email_status?: string | null
           enriched_at?: string | null
-          field_provenance?: Json
-          profile_refreshed_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
+          field_provenance?: Json
           functional_area?: string | null
           id?: string
           job_board_source?: string | null
+          keep_until?: string | null
           last_skills_generation?: string | null
           linkedin_slug?: string | null
           linkedin_url?: string | null
@@ -1855,9 +1871,12 @@ export type Database = {
           merged_into?: string | null
           organization_id?: string | null
           phone?: string | null
+          privacy_notice_at?: string | null
+          profile_refreshed_at?: string | null
           profile_summary?: string | null
           resume_generated_url?: string | null
           resume_url?: string | null
+          retention_checked_at?: string | null
           role_current?: string | null
           salary_amount?: number | null
           salary_currency?: string | null
@@ -1876,9 +1895,6 @@ export type Database = {
           years_experience?: number | null
           years_in_leadership?: number | null
           years_in_specialization?: number | null
-          keep_until?: string | null
-          privacy_notice_at?: string | null
-          retention_checked_at?: string | null
         }
         Relationships: [
           {
@@ -5043,7 +5059,6 @@ export type Database = {
           max_years_experience: number | null
           min_years_experience: number | null
           must_have_skills: string[]
-          skill_priorities: Json
           normalization_metadata: Json | null
           organization_id: string
           output_language: string | null
@@ -5059,6 +5074,7 @@ export type Database = {
           sales_deal_won_at: string | null
           sales_team: Json | null
           show_salary_public: boolean
+          skill_priorities: Json
           skills: string[] | null
           standardized_location: string | null
           standardized_skills: string[] | null
@@ -5103,7 +5119,6 @@ export type Database = {
           max_years_experience?: number | null
           min_years_experience?: number | null
           must_have_skills?: string[]
-          skill_priorities?: Json
           normalization_metadata?: Json | null
           organization_id: string
           output_language?: string | null
@@ -5119,6 +5134,7 @@ export type Database = {
           sales_deal_won_at?: string | null
           sales_team?: Json | null
           show_salary_public?: boolean
+          skill_priorities?: Json
           skills?: string[] | null
           standardized_location?: string | null
           standardized_skills?: string[] | null
@@ -5163,7 +5179,6 @@ export type Database = {
           max_years_experience?: number | null
           min_years_experience?: number | null
           must_have_skills?: string[]
-          skill_priorities?: Json
           normalization_metadata?: Json | null
           organization_id?: string
           output_language?: string | null
@@ -5179,6 +5194,7 @@ export type Database = {
           sales_deal_won_at?: string | null
           sales_team?: Json | null
           show_salary_public?: boolean
+          skill_priorities?: Json
           skills?: string[] | null
           standardized_location?: string | null
           standardized_skills?: string[] | null
@@ -6424,7 +6440,7 @@ export type Database = {
           app_key?: string | null
           created_at?: string
           detail?: Json
-          id?: number
+          id?: never
           subject_user_id?: string | null
           tenant_id: string
         }
@@ -6434,7 +6450,7 @@ export type Database = {
           app_key?: string | null
           created_at?: string
           detail?: Json
-          id?: number
+          id?: never
           subject_user_id?: string | null
           tenant_id?: string
         }
@@ -6835,7 +6851,15 @@ export type Database = {
           tenant_id?: string
           token_hash?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "privacy_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       privacy_suppressions: {
         Row: {
@@ -6862,7 +6886,15 @@ export type Database = {
           tenant_id?: string
           value_hash?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "privacy_suppressions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -7967,6 +7999,740 @@ export type Database = {
         }
         Relationships: []
       }
+      sign_documents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          envelope_id: string | null
+          id: string
+          name: string
+          page_count: number
+          page_sizes: Json
+          position: number
+          removed_at: string | null
+          sha256: string | null
+          size_bytes: number
+          storage_path: string
+          template_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          envelope_id?: string | null
+          id?: string
+          name: string
+          page_count: number
+          page_sizes?: Json
+          position?: number
+          removed_at?: string | null
+          sha256?: string | null
+          size_bytes: number
+          storage_path: string
+          template_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          envelope_id?: string | null
+          id?: string
+          name?: string
+          page_count?: number
+          page_sizes?: Json
+          position?: number
+          removed_at?: string | null
+          sha256?: string | null
+          size_bytes?: number
+          storage_path?: string
+          template_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_documents_envelope_id_fkey"
+            columns: ["envelope_id"]
+            isOneToOne: false
+            referencedRelation: "sign_envelopes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sign_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_envelopes: {
+        Row: {
+          ats_candidate_id: string | null
+          ats_job_id: string | null
+          body: string
+          certificate_path: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          data_snapshot: Json | null
+          declined_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          dispatch_at: string | null
+          expires_at: string | null
+          expiry_days: number
+          id: string
+          kind: Database["public"]["Enums"]["sign_kind"]
+          last_reminded_at: string | null
+          nom151_path: string | null
+          ordered: boolean
+          origin: string
+          public_id: string
+          reminder_days: number
+          sales_company_id: string | null
+          sales_org_id: string | null
+          scheduled_at: string | null
+          seal_error: string | null
+          sealed_path: string | null
+          sealed_sha256: string | null
+          sender_email: string
+          sender_name: string
+          sender_sales_user_id: string | null
+          sender_user_id: string | null
+          sent_at: string | null
+          source_id: string
+          source_label: string | null
+          source_sub: string | null
+          source_type: Database["public"]["Enums"]["sign_source"]
+          status: Database["public"]["Enums"]["sign_status"]
+          subject: string
+          template_id: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          ats_candidate_id?: string | null
+          ats_job_id?: string | null
+          body?: string
+          certificate_path?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_snapshot?: Json | null
+          declined_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          dispatch_at?: string | null
+          expires_at?: string | null
+          expiry_days?: number
+          id?: string
+          kind: Database["public"]["Enums"]["sign_kind"]
+          last_reminded_at?: string | null
+          nom151_path?: string | null
+          ordered?: boolean
+          origin: string
+          public_id?: string
+          reminder_days?: number
+          sales_company_id?: string | null
+          sales_org_id?: string | null
+          scheduled_at?: string | null
+          seal_error?: string | null
+          sealed_path?: string | null
+          sealed_sha256?: string | null
+          sender_email: string
+          sender_name: string
+          sender_sales_user_id?: string | null
+          sender_user_id?: string | null
+          sent_at?: string | null
+          source_id: string
+          source_label?: string | null
+          source_sub?: string | null
+          source_type: Database["public"]["Enums"]["sign_source"]
+          status?: Database["public"]["Enums"]["sign_status"]
+          subject?: string
+          template_id: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          ats_candidate_id?: string | null
+          ats_job_id?: string | null
+          body?: string
+          certificate_path?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_snapshot?: Json | null
+          declined_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          dispatch_at?: string | null
+          expires_at?: string | null
+          expiry_days?: number
+          id?: string
+          kind?: Database["public"]["Enums"]["sign_kind"]
+          last_reminded_at?: string | null
+          nom151_path?: string | null
+          ordered?: boolean
+          origin?: string
+          public_id?: string
+          reminder_days?: number
+          sales_company_id?: string | null
+          sales_org_id?: string | null
+          scheduled_at?: string | null
+          seal_error?: string | null
+          sealed_path?: string | null
+          sealed_sha256?: string | null
+          sender_email?: string
+          sender_name?: string
+          sender_sales_user_id?: string | null
+          sender_user_id?: string | null
+          sent_at?: string | null
+          source_id?: string
+          source_label?: string | null
+          source_sub?: string | null
+          source_type?: Database["public"]["Enums"]["sign_source"]
+          status?: Database["public"]["Enums"]["sign_status"]
+          subject?: string
+          template_id?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_envelopes_ats_candidate_id_fkey"
+            columns: ["ats_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_envelopes_ats_job_id_fkey"
+            columns: ["ats_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_envelopes_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sign_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_envelopes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_events: {
+        Row: {
+          actor_email: string | null
+          actor_name: string | null
+          actor_user_id: string | null
+          created_at: string
+          detail: Json
+          envelope_id: string
+          id: number
+          ip: unknown
+          key: boolean
+          kind: string
+          label: string
+          recipient_id: string | null
+          tenant_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          detail?: Json
+          envelope_id: string
+          id?: never
+          ip?: unknown
+          key?: boolean
+          kind: string
+          label: string
+          recipient_id?: string | null
+          tenant_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          detail?: Json
+          envelope_id?: string
+          id?: never
+          ip?: unknown
+          key?: boolean
+          kind?: string
+          label?: string
+          recipient_id?: string | null
+          tenant_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_events_envelope_id_fkey"
+            columns: ["envelope_id"]
+            isOneToOne: false
+            referencedRelation: "sign_envelopes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_events_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "sign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_fields: {
+        Row: {
+          created_at: string
+          data_key: string | null
+          envelope_id: string | null
+          filled_at: string | null
+          h: number
+          id: string
+          label: string | null
+          page: number
+          recipient_id: string | null
+          removed_at: string | null
+          required: boolean
+          template_id: string | null
+          tenant_id: string
+          type: string
+          updated_at: string
+          value: string | null
+          w: number
+          x: number
+          y: number
+        }
+        Insert: {
+          created_at?: string
+          data_key?: string | null
+          envelope_id?: string | null
+          filled_at?: string | null
+          h: number
+          id?: string
+          label?: string | null
+          page: number
+          recipient_id?: string | null
+          removed_at?: string | null
+          required?: boolean
+          template_id?: string | null
+          tenant_id: string
+          type: string
+          updated_at?: string
+          value?: string | null
+          w: number
+          x: number
+          y: number
+        }
+        Update: {
+          created_at?: string
+          data_key?: string | null
+          envelope_id?: string | null
+          filled_at?: string | null
+          h?: number
+          id?: string
+          label?: string | null
+          page?: number
+          recipient_id?: string | null
+          removed_at?: string | null
+          required?: boolean
+          template_id?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+          value?: string | null
+          w?: number
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_fields_envelope_id_fkey"
+            columns: ["envelope_id"]
+            isOneToOne: false
+            referencedRelation: "sign_envelopes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_fields_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "sign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sign_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_fields_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_notification_prefs: {
+        Row: {
+          by_email: boolean
+          email: string
+          event: string
+          in_app: boolean
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          by_email: boolean
+          email: string
+          event: string
+          in_app: boolean
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          by_email?: boolean
+          email?: string
+          event?: string
+          in_app?: boolean
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_notification_prefs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_recipient_secrets: {
+        Row: {
+          code_attempts: number
+          code_expires_at: string | null
+          code_hash: string | null
+          code_sent_at: string | null
+          recipient_id: string
+          session_expires_at: string | null
+          session_hash: string | null
+          token_expires_at: string | null
+          token_hash: string | null
+          token_issued_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          code_attempts?: number
+          code_expires_at?: string | null
+          code_hash?: string | null
+          code_sent_at?: string | null
+          recipient_id: string
+          session_expires_at?: string | null
+          session_hash?: string | null
+          token_expires_at?: string | null
+          token_hash?: string | null
+          token_issued_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code_attempts?: number
+          code_expires_at?: string | null
+          code_hash?: string | null
+          code_sent_at?: string | null
+          recipient_id?: string
+          session_expires_at?: string | null
+          session_hash?: string | null
+          token_expires_at?: string | null
+          token_hash?: string | null
+          token_issued_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_recipient_secrets_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: true
+            referencedRelation: "sign_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_recipients: {
+        Row: {
+          approved_at: string | null
+          color: string
+          consent_at: string | null
+          created_at: string
+          decline_reason: string | null
+          declined_at: string | null
+          email: string | null
+          envelope_id: string | null
+          fixed: boolean
+          id: string
+          label: string | null
+          name: string | null
+          position: number
+          removed_at: string | null
+          role: Database["public"]["Enums"]["sign_recipient_role"]
+          signed_at: string | null
+          signed_ip: unknown
+          signed_user_agent: string | null
+          status: Database["public"]["Enums"]["sign_recipient_status"]
+          template_id: string | null
+          template_role_id: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+          verified_at: string | null
+          viewed_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          color: string
+          consent_at?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
+          email?: string | null
+          envelope_id?: string | null
+          fixed?: boolean
+          id?: string
+          label?: string | null
+          name?: string | null
+          position: number
+          removed_at?: string | null
+          role?: Database["public"]["Enums"]["sign_recipient_role"]
+          signed_at?: string | null
+          signed_ip?: unknown
+          signed_user_agent?: string | null
+          status?: Database["public"]["Enums"]["sign_recipient_status"]
+          template_id?: string | null
+          template_role_id?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+          viewed_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          color?: string
+          consent_at?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          declined_at?: string | null
+          email?: string | null
+          envelope_id?: string | null
+          fixed?: boolean
+          id?: string
+          label?: string | null
+          name?: string | null
+          position?: number
+          removed_at?: string | null
+          role?: Database["public"]["Enums"]["sign_recipient_role"]
+          signed_at?: string | null
+          signed_ip?: unknown
+          signed_user_agent?: string | null
+          status?: Database["public"]["Enums"]["sign_recipient_status"]
+          template_id?: string | null
+          template_role_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+          verified_at?: string | null
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_recipients_envelope_id_fkey"
+            columns: ["envelope_id"]
+            isOneToOne: false
+            referencedRelation: "sign_envelopes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_recipients_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sign_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_recipients_template_role_id_fkey"
+            columns: ["template_role_id"]
+            isOneToOne: false
+            referencedRelation: "sign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_recipients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_signatures: {
+        Row: {
+          adopted_at: string
+          font: string | null
+          full_name: string
+          image_path: string | null
+          initials: string
+          initials_image_path: string | null
+          kind: string
+          recipient_id: string
+          tenant_id: string
+        }
+        Insert: {
+          adopted_at?: string
+          font?: string | null
+          full_name: string
+          image_path?: string | null
+          initials: string
+          initials_image_path?: string | null
+          kind: string
+          recipient_id: string
+          tenant_id: string
+        }
+        Update: {
+          adopted_at?: string
+          font?: string | null
+          full_name?: string
+          image_path?: string | null
+          initials?: string
+          initials_image_path?: string | null
+          kind?: string
+          recipient_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_signatures_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: true
+            referencedRelation: "sign_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_signatures_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sign_templates: {
+        Row: {
+          app: string
+          archived_at: string | null
+          body: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expiry_days: number
+          id: string
+          kind: Database["public"]["Enums"]["sign_kind"]
+          name: string
+          ordered: boolean
+          reminder_days: number
+          subject: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          uses: number
+        }
+        Insert: {
+          app?: string
+          archived_at?: string | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expiry_days?: number
+          id?: string
+          kind: Database["public"]["Enums"]["sign_kind"]
+          name: string
+          ordered?: boolean
+          reminder_days?: number
+          subject?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          uses?: number
+        }
+        Update: {
+          app?: string
+          archived_at?: string | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expiry_days?: number
+          id?: string
+          kind?: Database["public"]["Enums"]["sign_kind"]
+          name?: string
+          ordered?: boolean
+          reminder_days?: number
+          subject?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_credits_usage: {
         Row: {
           billing_cycle_start: string
@@ -8169,6 +8935,78 @@ export type Database = {
           },
         ]
       }
+      sourcing_project_candidates: {
+        Row: {
+          added_by_pool: boolean
+          ai_fit_at: string | null
+          ai_fit_basis: string | null
+          ai_fit_gaps: string[]
+          ai_fit_score: number | null
+          ai_fit_strengths: string[]
+          ai_fit_summary: string | null
+          apollo_id: string | null
+          candidate_id: string | null
+          collected_at: string | null
+          collected_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          snapshot: Json
+          sourcing_project_id: string
+          status: string
+          status_changed_at: string | null
+          status_changed_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_by_pool?: boolean
+          ai_fit_at?: string | null
+          ai_fit_basis?: string | null
+          ai_fit_gaps?: string[]
+          ai_fit_score?: number | null
+          ai_fit_strengths?: string[]
+          ai_fit_summary?: string | null
+          apollo_id?: string | null
+          candidate_id?: string | null
+          collected_at?: string | null
+          collected_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          snapshot?: Json
+          sourcing_project_id: string
+          status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_by_pool?: boolean
+          ai_fit_at?: string | null
+          ai_fit_basis?: string | null
+          ai_fit_gaps?: string[]
+          ai_fit_score?: number | null
+          ai_fit_strengths?: string[]
+          ai_fit_summary?: string | null
+          apollo_id?: string | null
+          candidate_id?: string | null
+          collected_at?: string | null
+          collected_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          snapshot?: Json
+          sourcing_project_id?: string
+          status?: string
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sourcing_project_collaborators: {
         Row: {
           added_by: string
@@ -8201,78 +9039,6 @@ export type Database = {
           },
         ]
       }
-      sourcing_project_candidates: {
-        Row: {
-          apollo_id: string | null
-          candidate_id: string | null
-          collected_at: string | null
-          collected_by: string | null
-          created_at: string
-          id: string
-          notes: string | null
-          sourcing_project_id: string
-          status: string
-          status_changed_at: string | null
-          status_changed_by: string | null
-          tenant_id: string
-          updated_at: string
-          added_by_pool: boolean
-          ai_fit_at: string | null
-          ai_fit_basis: string | null
-          ai_fit_gaps: string[]
-          ai_fit_score: number | null
-          ai_fit_strengths: string[]
-          ai_fit_summary: string | null
-          snapshot: Json
-        }
-        Insert: {
-          apollo_id?: string | null
-          candidate_id?: string | null
-          collected_at?: string | null
-          collected_by?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          sourcing_project_id: string
-          status?: string
-          status_changed_at?: string | null
-          status_changed_by?: string | null
-          tenant_id?: string
-          updated_at?: string
-          added_by_pool?: boolean
-          ai_fit_at?: string | null
-          ai_fit_basis?: string | null
-          ai_fit_gaps?: string[]
-          ai_fit_score?: number | null
-          ai_fit_strengths?: string[]
-          ai_fit_summary?: string | null
-          snapshot?: Json
-        }
-        Update: {
-          apollo_id?: string | null
-          candidate_id?: string | null
-          collected_at?: string | null
-          collected_by?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          sourcing_project_id?: string
-          status?: string
-          status_changed_at?: string | null
-          status_changed_by?: string | null
-          tenant_id?: string
-          updated_at?: string
-          added_by_pool?: boolean
-          ai_fit_at?: string | null
-          ai_fit_basis?: string | null
-          ai_fit_gaps?: string[]
-          ai_fit_score?: number | null
-          ai_fit_strengths?: string[]
-          ai_fit_summary?: string | null
-          snapshot?: Json
-        }
-        Relationships: []
-      }
       sourcing_projects: {
         Row: {
           created_at: string | null
@@ -8287,6 +9053,7 @@ export type Database = {
           name: string
           organization_id: string
           pdl_cache_expires_at: string | null
+          pool_enabled: boolean
           search_criteria: Json
           send_careers_link: boolean
           sourcing_cache_expires_at: string | null
@@ -8294,7 +9061,6 @@ export type Database = {
           status: string
           total_candidates: number | null
           updated_at: string | null
-          pool_enabled: boolean
         }
         Insert: {
           created_at?: string | null
@@ -8309,6 +9075,7 @@ export type Database = {
           name: string
           organization_id: string
           pdl_cache_expires_at?: string | null
+          pool_enabled?: boolean
           search_criteria?: Json
           send_careers_link?: boolean
           sourcing_cache_expires_at?: string | null
@@ -8316,7 +9083,6 @@ export type Database = {
           status?: string
           total_candidates?: number | null
           updated_at?: string | null
-          pool_enabled?: boolean
         }
         Update: {
           created_at?: string | null
@@ -8331,6 +9097,7 @@ export type Database = {
           name?: string
           organization_id?: string
           pdl_cache_expires_at?: string | null
+          pool_enabled?: boolean
           search_criteria?: Json
           send_careers_link?: boolean
           sourcing_cache_expires_at?: string | null
@@ -8338,7 +9105,6 @@ export type Database = {
           status?: string
           total_candidates?: number | null
           updated_at?: string | null
-          pool_enabled?: boolean
         }
         Relationships: [
           {
@@ -8982,6 +9748,77 @@ export type Database = {
         }
         Relationships: []
       }
+      talent_pool_runs: {
+        Row: {
+          budget_today: number
+          collected: number
+          credits_remaining: number
+          credits_used: number
+          cycle_end: string | null
+          details: Json
+          dry_run: boolean
+          id: string
+          merged: number
+          new_people: number
+          ran_at: string
+          reserve_applied: number
+          searched: number
+          skipped_company_cap: number
+          spent_before: number
+          stopped_reason: string | null
+          summary_sent: boolean
+          tenant_id: string
+        }
+        Insert: {
+          budget_today?: number
+          collected?: number
+          credits_remaining?: number
+          credits_used?: number
+          cycle_end?: string | null
+          details?: Json
+          dry_run?: boolean
+          id?: string
+          merged?: number
+          new_people?: number
+          ran_at?: string
+          reserve_applied?: number
+          searched?: number
+          skipped_company_cap?: number
+          spent_before?: number
+          stopped_reason?: string | null
+          summary_sent?: boolean
+          tenant_id: string
+        }
+        Update: {
+          budget_today?: number
+          collected?: number
+          credits_remaining?: number
+          credits_used?: number
+          cycle_end?: string | null
+          details?: Json
+          dry_run?: boolean
+          id?: string
+          merged?: number
+          new_people?: number
+          ran_at?: string
+          reserve_applied?: number
+          searched?: number
+          skipped_company_cap?: number
+          spent_before?: number
+          stopped_reason?: string | null
+          summary_sent?: boolean
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "talent_pool_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_access_grants: {
         Row: {
           created_at: string
@@ -9267,69 +10104,6 @@ export type Database = {
           trial_source?: string | null
           trial_started_at?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      talent_pool_runs: {
-        Row: {
-          budget_today: number
-          collected: number
-          credits_remaining: number
-          credits_used: number
-          cycle_end: string | null
-          details: Json
-          dry_run: boolean
-          id: string
-          merged: number
-          new_people: number
-          ran_at: string
-          reserve_applied: number
-          searched: number
-          skipped_company_cap: number
-          spent_before: number
-          stopped_reason: string | null
-          summary_sent: boolean
-          tenant_id: string
-        }
-        Insert: {
-          budget_today?: number
-          collected?: number
-          credits_remaining?: number
-          credits_used?: number
-          cycle_end?: string | null
-          details?: Json
-          dry_run?: boolean
-          id?: string
-          merged?: number
-          new_people?: number
-          ran_at?: string
-          reserve_applied?: number
-          searched?: number
-          skipped_company_cap?: number
-          spent_before?: number
-          stopped_reason?: string | null
-          summary_sent?: boolean
-          tenant_id: string
-        }
-        Update: {
-          budget_today?: number
-          collected?: number
-          credits_remaining?: number
-          credits_used?: number
-          cycle_end?: string | null
-          details?: Json
-          dry_run?: boolean
-          id?: string
-          merged?: number
-          new_people?: number
-          ran_at?: string
-          reserve_applied?: number
-          searched?: number
-          skipped_company_cap?: number
-          spent_before?: number
-          stopped_reason?: string | null
-          summary_sent?: boolean
-          tenant_id?: string
         }
         Relationships: []
       }
@@ -9656,114 +10430,6 @@ export type Database = {
       }
     }
     Functions: {
-      can_see_job: { Args: { _job_id: string }; Returns: boolean }
-      has_talent_pool_seat: {
-        Args: { _tenant_id: string; _user_id?: string }
-        Returns: boolean
-      }
-      has_workspace_wide_access: {
-        Args: { _tenant_id: string }
-        Returns: boolean
-      }
-      is_active_member: { Args: { _tenant_id: string }; Returns: boolean }
-      is_ats_admin: { Args: { _tenant_id: string }; Returns: boolean }
-      job_access_enforced: { Args: { _tenant_id: string }; Returns: boolean }
-      my_job_ids: { Args: never; Returns: string[] }
-      os_offboard_ats: {
-        Args: { _tenant_id: string; _user_id: string }
-        Returns: Json
-      }
-      os_offboard_guard: {
-        Args: { _tenant_id: string; _user_id: string }
-        Returns: undefined
-      }
-      os_offboard_preview: {
-        Args: { _tenant_id: string; _user_id: string }
-        Returns: Json
-      }
-      os_people: {
-        Args: { _tenant_id: string }
-        Returns: {
-          active_jobs: number
-          avatar_url: string | null
-          bundle_id: string | null
-          closed_jobs: number
-          email: string | null
-          first_name: string | null
-          google_email: string | null
-          google_status: string
-          grants: Json
-          last_name: string | null
-          last_sign_in_at: string | null
-          member_id: string
-          member_status: string
-          profile_status: string
-          system_role: string
-          user_id: string | null
-          user_type: string | null
-        }[]
-      }
-      os_reactivate_ats: {
-        Args: { _tenant_id: string; _user_id: string }
-        Returns: Json
-      }
-      os_set_app_role: {
-        Args: {
-          _app: string
-          _role: string | null
-          _tenant_id: string
-          _user_id: string
-        }
-        Returns: undefined
-      }
-      os_sync_enqueue: {
-        Args: {
-          _actor: string
-          _app: string
-          _role: string
-          _tenant_id: string
-          _user_id: string
-        }
-        Returns: string
-      }
-      os_sync_enqueue_existing: {
-        Args: { _app: string; _tenant_id: string }
-        Returns: number
-      }
-      os_sync_record: {
-        Args: {
-          _detail: string
-          _id: string
-          _ok: boolean
-          _outcome: string
-          _retry: boolean
-        }
-        Returns: undefined
-      }
-      privacy_hash: { Args: { p_kind: string; p_value: string }; Returns: string }
-      privacy_suppress_candidate: {
-        Args: { p_candidate_id: string; p_reason?: string }
-        Returns: number
-      }
-      candidates_due_for_notice: {
-        Args: { p_limit: number; p_tenant: string }
-        Returns: {
-          candidate_id: string
-          created_at: string
-          email: string
-          first_name: string
-          source: string
-        }[]
-      }
-      candidates_due_for_retention: {
-        Args: { p_limit: number; p_tenant: string }
-        Returns: {
-          candidate_id: string
-          email: string
-          first_name: string
-          last_contact: string
-        }[]
-      }
       _tenant_id_root: { Args: { _tenant_id: string }; Returns: string }
       accept_invitation: {
         Args: { new_user_id: string; token_input: string }
@@ -9805,7 +10471,6 @@ export type Database = {
         Args: { _count: number; _tenant_id: string }
         Returns: string[]
       }
-      ats_person: { Args: { p_user: string }; Returns: Json }
       apollo_credit_status: {
         Args: { p_tenant: string }
         Returns: {
@@ -9818,6 +10483,27 @@ export type Database = {
           used: number
         }[]
       }
+      apply_candidate_update: {
+        Args: {
+          p_actor?: string
+          p_candidate_id: string
+          p_fields: Json
+          p_mode?: string
+          p_source: string
+        }
+        Returns: Json
+      }
+      apply_candidate_update_internal: {
+        Args: {
+          p_actor: string
+          p_candidate_id: string
+          p_fields: Json
+          p_mode: string
+          p_source: string
+        }
+        Returns: Json
+      }
+      ats_person: { Args: { p_user: string }; Returns: Json }
       audit_platform_admin_access: {
         Args: never
         Returns: {
@@ -9835,10 +10521,7 @@ export type Database = {
         Args: { _job_id: string; _tenant_id: string }
         Returns: boolean
       }
-      can_access_job_pipeline: {
-        Args: { p_job_id: string }
-        Returns: boolean
-      }
+      can_access_job_pipeline: { Args: { p_job_id: string }; Returns: boolean }
       can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
       can_manage_job_team: {
         Args: {
@@ -9847,14 +10530,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      carry_stage_history: {
-        Args: { p_from: string; p_to: string }
-        Returns: Json
-      }
-      carry_stage_history_internal: {
-        Args: { p_from: string; p_to: string }
-        Returns: Json
-      }
+      can_see_job: { Args: { _job_id: string }; Returns: boolean }
       can_use_chat_module: { Args: never; Returns: boolean }
       can_view_eeo: {
         Args: { _tenant_id: string; _user_id: string }
@@ -9868,6 +10544,63 @@ export type Database = {
           p_reason: string
         }
         Returns: undefined
+      }
+      candidate_identity_keys: {
+        Args: { c: Database["public"]["Tables"]["candidates"]["Row"] }
+        Returns: {
+          kind: string
+          value: string
+        }[]
+      }
+      candidate_search_document: {
+        Args: {
+          p_bio: string
+          p_company: string
+          p_role: string
+          p_skills: string[]
+          p_standard: string
+          p_summary: string
+          p_title: string
+        }
+        Returns: unknown
+      }
+      candidate_title_document: {
+        Args: { p_role: string; p_standard: string; p_title: string }
+        Returns: unknown
+      }
+      candidate_tracked_fields: { Args: never; Returns: string[] }
+      candidates_due_for_notice: {
+        Args: { p_limit: number; p_tenant: string }
+        Returns: {
+          candidate_id: string
+          created_at: string
+          email: string
+          first_name: string
+          source: string
+        }[]
+      }
+      candidates_due_for_refresh: {
+        Args: { p_limit: number; p_tenant: string }
+        Returns: {
+          candidate_id: string
+        }[]
+      }
+      candidates_due_for_retention: {
+        Args: { p_limit: number; p_tenant: string }
+        Returns: {
+          candidate_id: string
+          email: string
+          first_name: string
+          last_contact: string
+        }[]
+      }
+      carry_stage_history: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      carry_stage_history_internal: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
       }
       categorize_skills: {
         Args: { generated_skills: Json; manual_skills: string[] }
@@ -10011,12 +10744,25 @@ export type Database = {
         Args: { required_role: string; tenant_id_param: string }
         Returns: boolean
       }
+      classify_job_title: {
+        Args: { p_title: string }
+        Returns: {
+          family: string
+          seniority: string
+          std_title: string
+        }[]
+      }
       cleanup_expired_cache_rows: { Args: never; Returns: Json }
       cleanup_expired_draft_conversations: { Args: never; Returns: undefined }
       cleanup_expired_invitations: { Args: never; Returns: number }
+      company_key: { Args: { p: string }; Returns: string }
       consume_bonus_credits: {
         Args: { p_credits_to_consume: number; p_tenant_id: string }
         Returns: number
+      }
+      contact_value: {
+        Args: { p_elem: string; p_key: string }
+        Returns: string
       }
       convert_to_base: {
         Args: {
@@ -10144,6 +10890,10 @@ export type Database = {
       execute_candidate_sync: { Args: never; Returns: undefined }
       extract_domain_from_email: { Args: { email: string }; Returns: string }
       extract_linkedin_slug: { Args: { raw_url: string }; Returns: string }
+      field_value_key: {
+        Args: { p_field: string; p_value: string }
+        Returns: string
+      }
       find_candidate_matches: {
         Args: { p_exclude?: string; p_payload: Json; p_tenant: string }
         Returns: {
@@ -10153,6 +10903,15 @@ export type Database = {
           reasons: string[]
           strength: string
         }[]
+      }
+      find_tenant_candidate: {
+        Args: {
+          p_apollo_id: string
+          p_email: string
+          p_linkedin: string
+          p_tenant: string
+        }
+        Returns: string
       }
       fit_queue_acquire_lease: { Args: { _seconds: number }; Returns: boolean }
       fit_queue_wake: { Args: never; Returns: undefined }
@@ -10210,13 +10969,13 @@ export type Database = {
           total: number
         }[]
       }
-      get_candidates_awaiting_outreach: {
-        Args: { _tenant_id: string }
-        Returns: string[]
-      }
       get_candidate_tenant_id: {
         Args: { candidate_id_param: string }
         Returns: string
+      }
+      get_candidates_awaiting_outreach: {
+        Args: { _tenant_id: string }
+        Returns: string[]
       }
       get_fallback_interviewer_id: {
         Args: { booking_id: string }
@@ -10293,15 +11052,6 @@ export type Database = {
         Args: { tenant_id_param: string }
         Returns: number
       }
-      find_tenant_candidate: {
-        Args: {
-          p_apollo_id: string
-          p_email: string
-          p_linkedin: string
-          p_tenant: string
-        }
-        Returns: string
-      }
       get_tenant_bonus_credits: {
         Args: { p_tenant_id: string }
         Returns: number
@@ -10336,8 +11086,16 @@ export type Database = {
       get_user_organization_id: { Args: never; Returns: string }
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_type: { Args: never; Returns: string }
-      google_token_key: { Args: never; Returns: string }
       get_user_type_secure: { Args: never; Returns: string }
+      google_token_key: { Args: never; Returns: string }
+      has_talent_pool_seat: {
+        Args: { _tenant_id: string; _user_id?: string }
+        Returns: boolean
+      }
+      has_workspace_wide_access: {
+        Args: { _tenant_id: string }
+        Returns: boolean
+      }
       identity_email: { Args: { p: string }; Returns: string }
       identity_phone: { Args: { p: string }; Returns: string }
       increment_sourcing_usage: {
@@ -10360,6 +11118,8 @@ export type Database = {
           state: string
         }[]
       }
+      is_active_member: { Args: { _tenant_id: string }; Returns: boolean }
+      is_ats_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_in_quiet_hours: { Args: { _user_id: string }; Returns: boolean }
       is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
@@ -10376,6 +11136,8 @@ export type Database = {
         Args: { job_id_param: string; user_id_param?: string }
         Returns: boolean
       }
+      job_access_enforced: { Args: { _tenant_id: string }; Returns: boolean }
+      job_entry_stage: { Args: { p_job: string }; Returns: string }
       job_has_active_posting: {
         Args: { job_id_param: string }
         Returns: boolean
@@ -10426,7 +11188,46 @@ export type Database = {
           req_id: string
         }[]
       }
+      market_past_companies: {
+        Args: { p_tenant: string }
+        Returns: {
+          candidate_id: string
+          company: string
+        }[]
+      }
+      market_talent_rows: {
+        Args: { p_tenant: string }
+        Returns: {
+          base_currency: string
+          city: string
+          company: string
+          country: string
+          created_at: string
+          id: string
+          in_pipeline: boolean
+          role_family: string
+          salary_month_base: number
+          seniority: string
+          skills: string[]
+          source: string
+          specialization: string
+          state: string
+          title: string
+          years_experience: number
+        }[]
+      }
       merge_candidate_payload: {
+        Args: {
+          p_actor?: string
+          p_incoming: Json
+          p_merged?: string
+          p_resolutions?: Json
+          p_resume?: Json
+          p_surviving: string
+        }
+        Returns: Json
+      }
+      merge_candidate_payload_tracked: {
         Args: {
           p_actor?: string
           p_incoming: Json
@@ -10441,6 +11242,7 @@ export type Database = {
         Args: { p_stage_id: string }
         Returns: number
       }
+      my_job_ids: { Args: never; Returns: string[] }
       next_req_ids: {
         Args: { _count: number; _tenant_id: string }
         Returns: string[]
@@ -10452,10 +11254,86 @@ export type Database = {
         Args: { org_id_param: string }
         Returns: boolean
       }
+      os_offboard_ats: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
+      os_offboard_guard: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: undefined
+      }
+      os_offboard_preview: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
+      os_people: {
+        Args: { _tenant_id: string }
+        Returns: {
+          active_jobs: number
+          avatar_url: string
+          bundle_id: string
+          closed_jobs: number
+          email: string
+          first_name: string
+          google_email: string
+          google_status: string
+          grants: Json
+          last_name: string
+          last_sign_in_at: string
+          member_id: string
+          member_status: string
+          profile_status: string
+          system_role: string
+          user_id: string
+          user_type: string
+        }[]
+      }
+      os_reactivate_ats: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Json
+      }
+      os_set_app_role: {
+        Args: {
+          _app: string
+          _role: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      os_sync_enqueue: {
+        Args: {
+          _actor: string
+          _app: string
+          _role: string
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      os_sync_enqueue_existing: {
+        Args: { _app: string; _tenant_id: string }
+        Returns: number
+      }
+      os_sync_record: {
+        Args: {
+          _detail: string
+          _id: string
+          _ok: boolean
+          _outcome: string
+          _retry: boolean
+        }
+        Returns: undefined
+      }
       person_name_key: { Args: { p: string }; Returns: string }
+      person_names_match: { Args: { a: string; b: string }; Returns: boolean }
       platform_remove_workspace: {
         Args: { p_actor: string; p_apply?: boolean; p_tenant_id: string }
         Returns: Json
+      }
+      pool_builder_secret_matches: {
+        Args: { p_secret: string }
+        Returns: boolean
       }
       possible_duplicate_pairs: {
         Args: { p_tenant: string }
@@ -10466,6 +11344,15 @@ export type Database = {
           strength: string
         }[]
       }
+      privacy_hash: {
+        Args: { p_kind: string; p_value: string }
+        Returns: string
+      }
+      privacy_suppress_candidate: {
+        Args: { p_candidate_id: string; p_reason?: string }
+        Returns: number
+      }
+      provenance_source_for: { Args: { p_source: string }; Returns: string }
       purge_expired_chat_threads: {
         Args: never
         Returns: {
@@ -10497,6 +11384,19 @@ export type Database = {
           organization_name: string
           success: boolean
         }[]
+      }
+      record_candidate_job_change: {
+        Args: {
+          p_actor: string
+          p_candidate_id: string
+          p_kind: string
+          p_new_company: string
+          p_new_title: string
+          p_old_company: string
+          p_old_title: string
+          p_source: string
+        }
+        Returns: undefined
       }
       record_dossier_decision: {
         Args: {
@@ -10556,6 +11456,10 @@ export type Database = {
           success: boolean
         }[]
       }
+      salary_per_month: {
+        Args: { p_amount: number; p_currency: string; p_period: string }
+        Returns: number
+      }
       sales_attribution_updated: {
         Args: { _attribution: Json; _deal_id: string; _tenant_id: string }
         Returns: Json
@@ -10571,57 +11475,7 @@ export type Database = {
         }
         Returns: Json
       }
-      apply_candidate_update: {
-        Args: {
-          p_actor?: string
-          p_candidate_id: string
-          p_fields: Json
-          p_mode?: string
-          p_source: string
-        }
-        Returns: Json
-      }
-      classify_job_title: {
-        Args: { p_title: string }
-        Returns: {
-          family: string
-          seniority: string
-          std_title: string
-        }[]
-      }
-      job_entry_stage: { Args: { p_job: string }; Returns: string }
-      market_past_companies: {
-        Args: { p_tenant: string }
-        Returns: {
-          candidate_id: string
-          company: string
-        }[]
-      }
-      market_talent_rows: {
-        Args: { p_tenant: string }
-        Returns: {
-          base_currency: string
-          city: string
-          company: string
-          country: string
-          created_at: string
-          id: string
-          in_pipeline: boolean
-          role_family: string
-          salary_month_base: number
-          seniority: string
-          skills: string[]
-          source: string
-          specialization: string
-          state: string
-          title: string
-          years_experience: number
-        }[]
-      }
-      pool_builder_secret_matches: {
-        Args: { p_secret: string }
-        Returns: boolean
-      }
+      same_company: { Args: { a: string; b: string }; Returns: boolean }
       search_candidates: {
         Args: {
           p_cities?: string[]
@@ -10633,7 +11487,11 @@ export type Database = {
           p_tenant: string
           p_titles?: string[]
         }
-        Returns: { candidate_id: string; matched: string[]; score: number }[]
+        Returns: {
+          candidate_id: string
+          matched: string[]
+          score: number
+        }[]
       }
       search_standard_terms: {
         Args: { p_limit?: number; p_query: string; p_table: string }
@@ -10647,6 +11505,57 @@ export type Database = {
         Args: { p_jca_id: string; p_job_id: string }
         Returns: boolean
       }
+      sign_can_edit_envelope: {
+        Args: { _envelope_id: string }
+        Returns: boolean
+      }
+      sign_can_edit_template: {
+        Args: { _template_id: string }
+        Returns: boolean
+      }
+      sign_can_manage_envelope: {
+        Args: { _envelope_id: string }
+        Returns: boolean
+      }
+      sign_can_view_envelope: {
+        Args: { _envelope_id: string }
+        Returns: boolean
+      }
+      sign_can_view_template: {
+        Args: { _template_id: string }
+        Returns: boolean
+      }
+      sign_is_admin: { Args: { _tenant_id: string }; Returns: boolean }
+      sign_log: {
+        Args: {
+          _detail?: Json
+          _envelope_id: string
+          _key?: boolean
+          _kind: string
+          _label: string
+        }
+        Returns: undefined
+      }
+      sign_my_email: { Args: never; Returns: string }
+      sign_new_public_id: { Args: never; Returns: string }
+      sign_pref: {
+        Args: { _email: string; _event: string; _tenant_id: string }
+        Returns: {
+          by_email: boolean
+          in_app: boolean
+        }[]
+      }
+      sign_schedule: {
+        Args: { _at: string; _envelope_id: string }
+        Returns: undefined
+      }
+      sign_set_draft_removed: {
+        Args: { _envelope_id: string; _removed: boolean }
+        Returns: undefined
+      }
+      sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
+      sign_unschedule: { Args: { _envelope_id: string }; Returns: undefined }
+      skill_priorities_valid: { Args: { p: Json }; Returns: boolean }
       soft_delete_job_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
@@ -10901,6 +11810,7 @@ export type Database = {
         | "chat_message"
         | "talent_pool"
         | "candidate_update"
+        | "sign"
       org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -10967,6 +11877,26 @@ export type Database = {
         | "director"
         | "vp"
         | "c_level"
+      sign_kind: "customer" | "candidate" | "member"
+      sign_recipient_role: "signer" | "approver" | "cc"
+      sign_recipient_status:
+        | "waiting"
+        | "sent"
+        | "viewed"
+        | "signed"
+        | "approved"
+        | "declined"
+      sign_source: "deal" | "company" | "ats_offer" | "candidate" | "member"
+      sign_status:
+        | "draft"
+        | "scheduled"
+        | "queued"
+        | "sent"
+        | "completed"
+        | "declined"
+        | "voided"
+        | "expired"
+        | "cancelled"
       stage_type_enum:
         | "application"
         | "screening"
@@ -11298,6 +12228,7 @@ export const Constants = {
         "chat_message",
         "talent_pool",
         "candidate_update",
+        "sign",
       ],
       org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
@@ -11370,6 +12301,28 @@ export const Constants = {
         "director",
         "vp",
         "c_level",
+      ],
+      sign_kind: ["customer", "candidate", "member"],
+      sign_recipient_role: ["signer", "approver", "cc"],
+      sign_recipient_status: [
+        "waiting",
+        "sent",
+        "viewed",
+        "signed",
+        "approved",
+        "declined",
+      ],
+      sign_source: ["deal", "company", "ats_offer", "candidate", "member"],
+      sign_status: [
+        "draft",
+        "scheduled",
+        "queued",
+        "sent",
+        "completed",
+        "declined",
+        "voided",
+        "expired",
+        "cancelled",
       ],
       stage_type_enum: [
         "application",
