@@ -1724,3 +1724,57 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 @media (hover: hover) and (pointer: fine) {
   .gio-rail-tile:hover .accent { fill: #D7C5FB; }
 }
+
+/* Gio Sign › template fields editor. Fields sit on the page in % of its size.
+   A new field grows in (scale .9 + opacity, --dur-press); a dragged one lifts
+   with --shadow-lift; the selected one gets a noir ring. Typing and arrow
+   nudges never animate. */
+.gio-sign-page {
+  position: relative;
+  background: #fff;
+  border-radius: 3px;
+  box-shadow: 0 2px 10px rgba(13, 13, 9, .08);
+  flex: none;
+  container-type: inline-size;
+}
+.gio-sign-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 3px; opacity: 0; transition: opacity 200ms ease; }
+.gio-sign-page canvas[data-ready] { opacity: 1; }
+.gio-sign-field {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(13, 13, 9, .25);
+  font: 600 max(10.5px, 1.8cqw)/1 Inter, sans-serif;
+  color: rgba(13, 13, 9, .78);
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  transition: box-shadow var(--dur-hover) ease;
+}
+.gio-sign-field[data-type="data"] { background: #fff !important; border-style: dashed; border-color: #B9A3F4; color: #4C1D95; }
+.gio-sign-field[data-selected] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0d0d09; z-index: 3; }
+.gio-sign-field[data-dragging] { box-shadow: var(--shadow-lift); z-index: 5; }
+.gio-sign-field[data-new] { animation: gio-sign-field-in var(--dur-press) var(--ease-out); }
+.gio-sign-field .gio-sign-resize {
+  position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, rgba(13, 13, 9, .45) 50%);
+  opacity: 0; transition: opacity var(--dur-hover) ease;
+}
+.gio-sign-field[data-selected] .gio-sign-resize { opacity: 1; }
+@keyframes gio-sign-field-in { from { opacity: 0; transform: scale(.9); } }
+.gio-sign-ghost {
+  position: fixed; z-index: 100; pointer-events: none;
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px;
+  font: 600 12px Inter, sans-serif; color: rgba(13, 13, 9, .8);
+  box-shadow: var(--shadow-lift);
+  transform: translate(-50%, -50%) scale(1.03);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gio-sign-field[data-new] { animation-name: gio-fade-only; }
+  .gio-sign-ghost { transform: translate(-50%, -50%); }
+}

@@ -5,7 +5,7 @@ let mammothLib: any | null = null;
 let pdfWorker: Worker | null = null;
 
 // Configure pdfjs worker using Vite-bundled worker to avoid CDN issues
-const ensurePdfJs = async () => {
+export const ensurePdfJs = async () => {
   if (pdfjsLib) return pdfjsLib;
   pdfjsLib = await import('pdfjs-dist/build/pdf');
   try {

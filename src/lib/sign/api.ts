@@ -90,23 +90,6 @@ export function useEnvelopes() {
   })
 }
 
-/** Template counts by app (Gio Sales or ATS), live templates only. */
-export function useTemplateCounts() {
-  return useQuery({
-    queryKey: ['sign', 'template-counts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sign_templates')
-        .select('app')
-        .is('archived_at', null)
-      if (error) throw error
-      const sales = (data ?? []).filter((t) => t.app === 'sales').length
-      return { total: data?.length ?? 0, sales, ats: (data?.length ?? 0) - sales }
-    },
-    staleTime: 30_000,
-  })
-}
-
 export interface EnvelopeEvent {
   id: number
   kind: string
