@@ -13,6 +13,7 @@ export type NotificationCategory =
   | 'chat_message'
   | 'talent_pool'
   | 'candidate_update'
+  | 'sign'
 
 export interface NotificationRow {
   id: string

@@ -2,6 +2,9 @@ import { SettingsCard } from '@/components/settings/shared/SettingsCard'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { usePermissions } from '@/hooks/usePermissions'
+import { SIGN_PREF_EVENTS, useSignPrefs, type SignPref, type SignPrefEvent } from '@/lib/sign/prefs'
 import {
   useNotificationPreferences,
   PREFS_CATEGORIES,
@@ -15,8 +18,86 @@ const CHANNELS: { key: NotificationChannel; label: string }[] = [
   { key: 'push',   label: 'Push'   },
 ]
 
+/** Gio Sign: what you hear about envelopes you sent. Admins only, like the Sign module. */
+function SignPrefsCard() {
+  const q = useSignPrefs()
+  const set = (event: SignPrefEvent, pref: SignPref) =>
+    q.save.mutate(
+      { event, pref },
+      {
+        onError: () =>
+          toast.error('Couldn’t save that change', {
+            description: 'It’s back to how it was.',
+            action: { label: 'Retry', onClick: () => set(event, pref) },
+          }),
+      },
+    )
+
+  return (
+    <SettingsCard
+      title="Gio Sign"
+      description="Envelopes you sent: when people sign, decline or open them, and when they’re about to expire."
+      bodyClassName="px-0 pb-0"
+    >
+      <div className="grid grid-cols-[1fr_72px_72px] items-center px-5 pb-2 pt-1">
+        <div />
+        {['In-app', 'Email'].map((l) => (
+          <div key={l} className="text-center font-poppins text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#8B8F9E]">
+            {l}
+          </div>
+        ))}
+      </div>
+      {q.isError ? (
+        <div className="border-t border-[#EFEFEA] px-5 py-4 font-inter text-[12.5px] text-text-secondary">
+          Couldn’t load your Sign preferences.{' '}
+          <button type="button" className="font-medium text-text-primary underline underline-offset-2" onClick={() => void q.refetch()}>
+            Retry
+          </button>
+        </div>
+      ) : (
+        <ul className="divide-y divide-[#EFEFEA] border-t border-[#EFEFEA]">
+          {SIGN_PREF_EVENTS.map((row) => {
+            const p = q.data?.[row.event]
+            return (
+              <li key={row.event} className="grid grid-cols-[1fr_72px_72px] items-center px-5 py-3.5">
+                <div className="min-w-0 pr-4">
+                  <div className="font-inter text-[13px] text-[#0d0d09]">{row.label}</div>
+                  <div className="mt-0.5 font-inter text-[12px] text-[#8B8F9E]">{row.description}</div>
+                </div>
+                <div className="flex justify-center">
+                  <Switch
+                    aria-label={`${row.label}: in-app`}
+                    checked={p?.in_app ?? row.defaults.in_app}
+                    disabled={!p}
+                    onCheckedChange={(v) => p && set(row.event, { ...p, in_app: v })}
+                  />
+                </div>
+                <div className="flex justify-center">
+                  {row.email ? (
+                    <Switch
+                      aria-label={`${row.label}: email`}
+                      checked={p?.by_email ?? row.defaults.by_email}
+                      disabled={!p}
+                      onCheckedChange={(v) => p && set(row.event, { ...p, by_email: v })}
+                    />
+                  ) : (
+                    <span className="font-inter text-[13px] text-[#B5B9C4]" aria-label="No email for this event">
+                      —
+                    </span>
+                  )}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </SettingsCard>
+  )
+}
+
 export function NotificationsTab() {
   const { prefs, loading, update } = useNotificationPreferences()
+  const { isAdmin, isPlatformAdmin } = usePermissions()
 
   if (loading || !prefs) {
     return (
@@ -79,6 +160,8 @@ export function NotificationsTab() {
           ))}
         </ul>
       </SettingsCard>
+
+      {(isAdmin || isPlatformAdmin) && <SignPrefsCard />}
 
       {/* Delivery preferences */}
       <SettingsCard

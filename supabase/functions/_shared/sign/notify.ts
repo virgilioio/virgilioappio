@@ -115,10 +115,47 @@ export async function invitePending(supabase: SupabaseClient, limit = 100) {
   return { sent, failed };
 }
 
-async function wants(supabase: SupabaseClient, tenantId: string, email: string, ev: "signed" | "declined" | "completed") {
-  const { data } = await supabase.rpc("sign_pref", { _tenant_id: tenantId, _email: email, _event: ev });
+type SignEvent = "signed" | "declined" | "completed" | "viewed" | "expiring";
+
+/** The sender's Sign preferences for one event (defaults when unset). */
+async function prefs(supabase: SupabaseClient, tenantId: string, email: string, ev: SignEvent) {
+  const { data } = await supabase.rpc("sign_pref", { _tenant_id: tenantId, _email: String(email || "").toLowerCase(), _event: ev });
   const row = Array.isArray(data) ? data[0] : data;
-  return row?.by_email !== false;
+  return { email: row?.by_email !== false, inApp: row?.in_app !== false };
+}
+
+/** The record's page inside the app (relative, for the bell). */
+export function recordPath(e: Record<string, any>): string {
+  if (e.kind === "candidate" && e.ats_job_id && e.ats_candidate_id) return `/jobs/${e.ats_job_id}/candidates/${e.ats_candidate_id}`;
+  if (e.kind === "member" && e.source_id) return `/os/people/${e.source_id}`;
+  return `/sign?envelope=${e.id}`;
+}
+
+/** A row in the sender's bell (ATS senders only; Gio Sales senders are told in Sales). */
+async function bell(
+  supabase: SupabaseClient,
+  e: Record<string, any>,
+  n: { title: string; subtitle?: string | null; preview?: string | null; actor?: string | null; event: string },
+) {
+  if (!e.sender_user_id) return;
+  const { error } = await supabase.rpc("emit_notification", {
+    _user_id: e.sender_user_id,
+    _tenant_id: e.tenant_id,
+    _category: "sign",
+    _actor_user_id: null,
+    _actor_name: n.actor ?? null,
+    _actor_avatar_url: null,
+    _title: n.title,
+    _subtitle: n.subtitle ?? e.title,
+    _preview: n.preview ?? null,
+    _entity_kind: "sign_envelope",
+    _entity_id: e.id,
+    _job_id: e.ats_job_id ?? null,
+    _candidate_id: e.ats_candidate_id ?? null,
+    _action_url: recordPath(e),
+    _metadata: { event: n.event, envelope_id: e.id, public_id: e.public_id },
+  });
+  if (error) console.error("sign bell", e.id, error.message);
 }
 
 async function people(supabase: SupabaseClient, envelopeId: string): Promise<PersonRow[]> {
@@ -142,14 +179,25 @@ export async function notifySenderSigned(supabase: SupabaseClient, envelopeId: s
   const signerIsSender = String(r.email).toLowerCase() === sender;
 
   if (e.status === "completed") {
-    if (await wants(supabase, e.tenant_id, sender, "completed")) {
+    const p = await prefs(supabase, e.tenant_id, sender, "completed");
+    if (p.inApp) await bell(supabase, e, { title: "Everyone has signed", event: "completed" });
+    if (p.email) {
       await sendMail(senderCompletedEmail({ brand, senderEmail: e.sender_email, title: e.title, people: list, publicId: e.public_id, recordUrl: recordUrl(e) }));
     }
     return;
   }
   if (signerIsSender) return;
-  if (!(await wants(supabase, e.tenant_id, sender, "signed"))) return;
-  const yourTurn = list.some((p) => p.email.toLowerCase() === sender && p.status === "sent");
+  const p = await prefs(supabase, e.tenant_id, sender, "signed");
+  const did = r.status === "approved" ? "approved" : "signed";
+  const yourTurn = list.some((x) => x.email.toLowerCase() === sender && x.status === "sent");
+  if (p.inApp) {
+    await bell(supabase, e, {
+      title: yourTurn ? `${r.name} ${did}. Your turn to sign` : `${r.name} ${did}`,
+      actor: r.name,
+      event: "signed",
+    });
+  }
+  if (!p.email) return;
   await sendMail(
     senderSignedEmail({
       brand,
@@ -170,7 +218,9 @@ export async function notifySenderDeclined(supabase: SupabaseClient, envelopeId:
   const { data: r } = await supabase.from("sign_recipients").select("*").eq("id", recipientId).maybeSingle();
   if (!e || !r) return;
   if (String(r.email).toLowerCase() === String(e.sender_email).toLowerCase()) return;
-  if (!(await wants(supabase, e.tenant_id, e.sender_email, "declined"))) return;
+  const p = await prefs(supabase, e.tenant_id, e.sender_email, "declined");
+  if (p.inApp) await bell(supabase, e, { title: `${r.name} declined to sign`, preview: r.decline_reason ?? null, actor: r.name, event: "declined" });
+  if (!p.email) return;
   await sendMail(
     senderDeclinedEmail({
       brand: await brandOf(supabase, e.tenant_id),
@@ -254,11 +304,15 @@ export async function notifyVoided(supabase: SupabaseClient, envelopeId: string,
 export async function notifySenderExpiry(supabase: SupabaseClient, envelopeId: string, expired: boolean) {
   const { data: e } = await supabase.from("sign_envelopes").select("*").eq("id", envelopeId).maybeSingle();
   if (!e) return;
-  if (!expired) {
-    const { data } = await supabase.rpc("sign_pref", { _tenant_id: e.tenant_id, _email: e.sender_email, _event: "expiring" });
-    const row = Array.isArray(data) ? data[0] : data;
-    if (row?.by_email === false) return;
+  // Expired always goes out; the 3-day warning follows the "expiring" preference.
+  const p = expired ? { email: true, inApp: true } : await prefs(supabase, e.tenant_id, e.sender_email, "expiring");
+  if (p.inApp) {
+    await bell(supabase, e, {
+      title: expired ? "Expired before everyone signed" : `Expires ${new Date(e.expires_at).toLocaleDateString("en-US", { timeZone: "America/Mexico_City", month: "short", day: "numeric" })}`,
+      event: expired ? "expired" : "expiring",
+    });
   }
+  if (!p.email) return;
   await sendMail(
     senderExpiryEmail({
       brand: await brandOf(supabase, e.tenant_id),
@@ -270,4 +324,14 @@ export async function notifySenderExpiry(supabase: SupabaseClient, envelopeId: s
       recordUrl: recordUrl(e),
     }),
   );
+}
+
+/** The first time a signer opens it (after their code): a bell row, if wanted. */
+export async function notifySenderViewed(supabase: SupabaseClient, envelopeId: string, recipientId: string) {
+  const { data: e } = await supabase.from("sign_envelopes").select("*").eq("id", envelopeId).maybeSingle();
+  const { data: r } = await supabase.from("sign_recipients").select("*").eq("id", recipientId).maybeSingle();
+  if (!e || !r) return;
+  if (String(r.email).toLowerCase() === String(e.sender_email).toLowerCase()) return;
+  const p = await prefs(supabase, e.tenant_id, e.sender_email, "viewed");
+  if (p.inApp) await bell(supabase, e, { title: `${r.name} opened it`, actor: r.name, event: "viewed" });
 }

@@ -23,6 +23,14 @@ import {
   sha256Hex,
   signerState,
 } from "../_shared/sign/signer.ts";
+import { notifySenderViewed } from "../_shared/sign/notify.ts";
+
+/** Runs after the response when the runtime allows it. */
+function later(work: Promise<unknown>) {
+  const guarded = work.catch((err) => console.error("sign-session later", String(err)));
+  const rt = (globalThis as any).EdgeRuntime;
+  if (rt?.waitUntil) rt.waitUntil(guarded);
+}
 
 const NF = () => json(404, { error: "not_found" }, corsHeaders);
 const CODE_MINUTES = 10;
@@ -152,6 +160,7 @@ Deno.serve(async (req) => {
       if (!r.viewed_at) patch.viewed_at = now.toISOString();
       if (r.status === "sent") patch.status = "viewed";
       if (Object.keys(patch).length) await supabase.from("sign_recipients").update(patch).eq("id", r.id);
+      if (!r.viewed_at) later(notifySenderViewed(supabase, e.id, r.id));
       await logEvent(supabase, ctx, "code_verified", `Code verified by ${r.name}`, req, ip);
       return json(200, { session, expires_at: new Date(now.getTime() + SESSION_HOURS * 3_600_000).toISOString() }, corsHeaders);
     }
