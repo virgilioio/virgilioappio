@@ -42,18 +42,16 @@ create type public.sign_source as enum ('deal', 'company', 'ats_offer', 'member'
 -- ---------------------------------------------------------------------------
 -- 2. Who can use Sign
 -- ---------------------------------------------------------------------------
--- People & Access grants Sign like any other app (Allan, 2026-10-16):
---   sales = Customer envelopes (agreements with clients); sees every Customer envelope.
---   ta    = Candidate envelopes (offers to external hires); sees their own and
---           those on jobs they're assigned to.
---   admin = every type, including Member envelopes (new internal members),
---           templates, and every envelope.
--- Workspace admins and platform admins are always Sign admins. A job-role
--- bundle can carry the Sign grant, so a TA or Sales job role gets it with
--- everything else. Gio Sales reps don't need an ATS grant to send from a deal:
--- Gio Sales vouches for them through sign-gateway, for Customer envelopes only.
+-- People & Access grants Sign like any other app (Allan, 2026-10-16: keep it
+-- simple). sender = any type of envelope (Customer, Candidate, Member), from a
+-- template or an uploaded PDF; sees their own envelopes and those they're a
+-- recipient on; creates templates and edits their own. admin = also every
+-- envelope and every template. Workspace admins and platform admins are always
+-- Sign admins. A job role (TA, Sales) can carry the grant. Gio Sales reps don't
+-- need an ATS grant to send from a deal: Gio Sales vouches for them through
+-- sign-gateway, for Customer envelopes on its deals.
 insert into public.os_apps (key, name, roles, sort_order)
-values ('sign', 'Gio Sign', array['sales', 'ta', 'admin'], 4);
+values ('sign', 'Gio Sign', array['sender', 'admin'], 4);
 
 create or replace function public.sign_access(_tenant_id uuid)
 returns text
@@ -74,22 +72,6 @@ as $function$
         and public.is_active_member(_tenant_id)
       limit 1
     )
-  end;
-$function$;
-
--- Which envelope types the caller may send.
-create or replace function public.sign_can_send(_tenant_id uuid, _kind public.sign_kind)
-returns boolean
-language sql
-stable
-security definer
-set search_path to 'public'
-as $function$
-  select case public.sign_access(_tenant_id)
-    when 'admin' then true
-    when 'sales' then _kind = 'customer'
-    when 'ta' then _kind = 'candidate'
-    else false
   end;
 $function$;
 
@@ -157,8 +139,6 @@ create table public.sign_envelopes (
   source_sub text check (source_sub is null or length(source_sub) <= 200),
   sales_org_id uuid,
   sales_company_id uuid,
-  -- Candidate envelopes: the offer's job, so the job's TAs see the envelope.
-  ats_job_id uuid references public.jobs(id),
   template_id uuid references public.sign_templates(id),
 
   ordered boolean not null default true,
@@ -424,9 +404,6 @@ as $function$
         public.sign_access(e.tenant_id) = 'admin'
         or e.created_by = auth.uid()
         or e.sender_user_id = auth.uid()
-        or (e.kind = 'customer' and public.sign_access(e.tenant_id) = 'sales')
-        or (e.kind = 'candidate' and public.sign_access(e.tenant_id) = 'ta'
-            and e.ats_job_id in (select public.my_job_ids()))
         or exists (
           select 1 from public.sign_recipients r
           where r.envelope_id = e.id and r.removed_at is null
@@ -450,12 +427,11 @@ as $function$
       and e.status in ('draft', 'scheduled')
       and e.deleted_at is null
       and e.origin = 'ats'
-      and public.sign_can_send(e.tenant_id, e.kind)
+      and public.sign_access(e.tenant_id) is not null
       and (public.sign_access(e.tenant_id) = 'admin' or e.created_by = auth.uid())
   );
 $function$;
 
--- Templates show to people who can send that type.
 create or replace function public.sign_can_view_template(_template_id uuid)
 returns boolean
 language sql
@@ -465,7 +441,7 @@ set search_path to 'public'
 as $function$
   select exists (
     select 1 from public.sign_templates t
-    where t.id = _template_id and public.sign_can_send(t.tenant_id, t.kind)
+    where t.id = _template_id and public.sign_access(t.tenant_id) is not null
   );
 $function$;
 
@@ -478,7 +454,9 @@ set search_path to 'public'
 as $function$
   select exists (
     select 1 from public.sign_templates t
-    where t.id = _template_id and public.sign_access(t.tenant_id) = 'admin'
+    where t.id = _template_id and t.archived_at is null
+      and (public.sign_access(t.tenant_id) = 'admin'
+           or (public.sign_access(t.tenant_id) is not null and t.created_by = auth.uid()))
   );
 $function$;
 
@@ -504,8 +482,8 @@ begin
     if new.status <> 'draft' or new.origin <> 'ats' then
       raise exception 'New envelopes start as drafts.' using errcode = 'GSN01';
     end if;
-    if not public.sign_can_send(new.tenant_id, new.kind) then
-      raise exception 'You can''t send this type of envelope.' using errcode = 'GSN02';
+    if public.sign_access(new.tenant_id) is null then
+      raise exception 'You don''t have access to Sign.' using errcode = 'GSN02';
     end if;
     new.created_by := auth.uid();
     new.sender_user_id := auth.uid();
@@ -529,9 +507,6 @@ begin
      or new.sealed_path is distinct from old.sealed_path
      or new.void_reason is distinct from old.void_reason then
     raise exception 'That change goes through Send, Schedule or Void.' using errcode = 'GSN03';
-  end if;
-  if new.kind is distinct from old.kind and not public.sign_can_send(new.tenant_id, new.kind) then
-    raise exception 'You can''t send this type of envelope.' using errcode = 'GSN02';
   end if;
   if old.status not in ('draft', 'scheduled') then
     raise exception 'Only drafts and scheduled envelopes can be edited. Use Correct for one that''s out for signature.' using errcode = 'GSN04';
@@ -734,15 +709,13 @@ end;
 $function$;
 
 revoke execute on function
-  public.sign_access(uuid), public.sign_can_send(uuid, public.sign_kind),
-  public.sign_can_view_envelope(uuid), public.sign_can_edit_envelope(uuid),
+  public.sign_access(uuid), public.sign_can_view_envelope(uuid), public.sign_can_edit_envelope(uuid),
   public.sign_can_view_template(uuid), public.sign_can_edit_template(uuid), public.sign_pref(uuid, text, text),
   public.sign_log(uuid, text, text, boolean, jsonb), public.sign_schedule(uuid, timestamptz),
   public.sign_unschedule(uuid), public.sign_undo_send(uuid), public.sign_set_draft_removed(uuid, boolean)
   from public, anon;
 grant execute on function
-  public.sign_access(uuid), public.sign_can_send(uuid, public.sign_kind),
-  public.sign_can_view_envelope(uuid), public.sign_can_edit_envelope(uuid),
+  public.sign_access(uuid), public.sign_can_view_envelope(uuid), public.sign_can_edit_envelope(uuid),
   public.sign_can_view_template(uuid), public.sign_can_edit_template(uuid),
   public.sign_schedule(uuid, timestamptz), public.sign_unschedule(uuid), public.sign_undo_send(uuid),
   public.sign_set_draft_removed(uuid, boolean)
@@ -763,19 +736,20 @@ alter table public.sign_signatures enable row level security;
 alter table public.sign_events enable row level security;
 alter table public.sign_notification_prefs enable row level security;
 
--- Templates: any Sign user reads; Sign admins write.
+-- Templates: every Sign user reads and creates; the creator or a Sign admin edits and archives.
 create policy sign_templates_read on public.sign_templates for select to authenticated
-  using (public.sign_can_send(tenant_id, kind));
+  using (public.sign_access(tenant_id) is not null);
 create policy sign_templates_insert on public.sign_templates for insert to authenticated
-  with check (public.sign_access(tenant_id) = 'admin');
+  with check (public.sign_access(tenant_id) is not null and created_by = auth.uid());
 create policy sign_templates_update on public.sign_templates for update to authenticated
-  using (public.sign_access(tenant_id) = 'admin') with check (public.sign_access(tenant_id) = 'admin');
+  using (public.sign_access(tenant_id) = 'admin' or (public.sign_access(tenant_id) is not null and created_by = auth.uid()))
+  with check (public.sign_access(tenant_id) is not null);
 
 -- Envelopes.
 create policy sign_envelopes_read on public.sign_envelopes for select to authenticated
   using (public.sign_can_view_envelope(id));
 create policy sign_envelopes_insert on public.sign_envelopes for insert to authenticated
-  with check (public.sign_can_send(tenant_id, kind));
+  with check (public.sign_access(tenant_id) is not null);
 create policy sign_envelopes_update on public.sign_envelopes for update to authenticated
   using (public.sign_can_edit_envelope(id)) with check (public.sign_access(tenant_id) is not null);
 
@@ -840,7 +814,7 @@ alter publication supabase_realtime add table public.sign_envelopes, public.sign
 -- ---------------------------------------------------------------------------
 -- Paths
 --   {tenant}/drafts/{user}/{uuid}.pdf      uploads while composing (the sender)
---   {tenant}/templates/{template}/{uuid}.pdf template documents (Sign admins)
+--   {tenant}/templates/{template}/{uuid}.pdf template documents (any Sign user)
 --   {tenant}/envelopes/{envelope}/...       frozen copies, signatures, sealed PDF,
 --                                           certificate: written by Edge Functions only
 -- Reads of envelope files always go through short-lived signed URLs made by
@@ -865,7 +839,7 @@ create policy sign_files_template_upload on storage.objects for insert to authen
   with check (
     bucket_id = 'sign-files'
     and (storage.foldername(name))[2] = 'templates'
-    and public.sign_access(((storage.foldername(name))[1])::uuid) = 'admin'
+    and public.sign_access(((storage.foldername(name))[1])::uuid) is not null
   );
 create policy sign_files_template_read on storage.objects for select to authenticated
   using (
