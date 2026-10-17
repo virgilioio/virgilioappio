@@ -511,6 +511,20 @@ export function isBlankWritten(content: LexicalJson | null | undefined): boolean
   return walk((content as { root?: never } | null)?.root)
 }
 
+/**
+ * Signers with no signature in what will be saved. A signature inside a
+ * conditional section might not print, so it doesn't count.
+ */
+export function signersWithoutSignature(draft: TplDraft): TplRole[] {
+  const d = effectiveDraft(draft)
+  return d.roles.filter(
+    (r) =>
+      r.role === 'signer' &&
+      !d.fields.some((f) => f.rid === r.id && f.type === 'signature') &&
+      !d.written.some((w) => signBlocks(w.content).some((b) => b.roleId === r.id && b.kind === 'signature' && !b.conditional)),
+  )
+}
+
 /** Everything that stops a template from saving, with the step that fixes it, in step order. */
 export function templateIssues(draft: TplDraft): TplIssue[] {
   const d = effectiveDraft(draft)
@@ -533,17 +547,8 @@ export function templateIssues(draft: TplDraft): TplIssue[] {
   const signing = new Set(d.roles.filter((r) => r.role !== 'cc').map((r) => r.id))
   const orphan = d.written.find((w) => signBlocks(w.content).some((b) => !signing.has(b.roleId)))
   if (orphan) add(1, `A signing block in “${orphan.name}” belongs to a role that isn’t on the template`)
-  // A signature inside a conditional section might not print, so it doesn't count. Roles come
-  // after the document, so a missing signature keeps Save off but not Continue.
-  for (const r of d.roles) {
-    if (
-      r.role === 'signer' &&
-      !d.fields.some((f) => f.rid === r.id && f.type === 'signature') &&
-      !d.written.some((w) => signBlocks(w.content).some((b) => b.roleId === r.id && b.kind === 'signature' && !b.conditional))
-    ) {
-      add(1, `${r.label || 'A signer'} needs a signature field`, false)
-    }
-  }
+  // Roles come after the document, so a missing signature keeps Save off but not Continue.
+  for (const r of signersWithoutSignature(d)) add(1, `${r.label || 'A signer'} needs a signature field`, false)
   // Signers
   if (!d.roles.some((r) => r.role === 'signer')) add(2, 'Add at least one signer')
   if (d.roles.some((r) => !r.label.trim())) add(2, 'Every role needs a name')

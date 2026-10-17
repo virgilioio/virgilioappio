@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef } from 'react'
-import { ArrowDown, ArrowUp, PenLine, Plus, X } from 'lucide-react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { ArrowDown, ArrowUp, PenLine, Plus, TriangleAlert, X } from 'lucide-react'
 
 import { FormSection } from '@/components/references/FormSection'
 import { Input } from '@/components/ui/input'
@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { IconTip } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ROLE_COLORS, uid, type FillFrom, type TplDraft, type TplRole } from '@/lib/sign/templates'
-import type { SignRecipientRole } from '@/lib/sign/api'
+import { cn } from '@/lib/utils'
+import { ROLE_COLORS, signersWithoutSignature, uid, type FillFrom, type TplDraft, type TplRole } from '@/lib/sign/templates'
+import type { SignKind, SignRecipientRole } from '@/lib/sign/api'
 import { prefersReducedMotion } from '@/lib/motion'
 
 const ROLE_KIND: { value: SignRecipientRole; label: string }[] = [
@@ -17,23 +18,34 @@ const ROLE_KIND: { value: SignRecipientRole; label: string }[] = [
   { value: 'cc', label: 'Gets a copy' },
 ]
 
-/** Where a role's person comes from, by template type (2026-10-17). Customer templates keep the on/off switch. */
-const SOURCES: Record<'candidate' | 'member', { value: FillFrom; label: string }[]> = {
+/** Where a role's person comes from, by template type (2026-10-17). */
+const SOURCES: Record<SignKind, { value: FillFrom; label: string }[]> = {
   candidate: [
-    { value: 'record', label: 'The candidate' },
-    { value: 'hiring_manager', label: 'The job’s hiring manager' },
+    { value: 'record', label: 'From the offer · candidate' },
+    { value: 'hiring_manager', label: 'From the job · hiring manager' },
+    { value: 'fixed', label: 'Always the same person' },
     { value: 'sender', label: 'Whoever sends it' },
-    { value: 'fixed', label: 'Same person every time' },
     { value: 'typed', label: 'Typed in when sending' },
   ],
   member: [
-    { value: 'record', label: 'The team member' },
+    { value: 'record', label: 'From the record · team member' },
+    { value: 'fixed', label: 'Always the same person' },
     { value: 'sender', label: 'Whoever sends it' },
-    { value: 'fixed', label: 'Same person every time' },
     { value: 'typed', label: 'Typed in when sending' },
+  ],
+  // Customer templates are sent from a deal in Gio Sales: the first signer is the deal's contact.
+  customer: [
+    { value: 'typed', label: 'From the deal, or typed in' },
+    { value: 'fixed', label: 'Always the same person' },
   ],
 }
 
+/**
+ * Signers (2026-10-17): one row per role, in signing order. Each row has its
+ * order number, colour, name, where the person comes from, what they do and
+ * a remove button (off for the last role). Rows FLIP when reordered and rise
+ * in when added. A signer with no signature block gets a warning.
+ */
 export function RolesStep({
   d,
   set,
@@ -45,6 +57,7 @@ export function RolesStep({
 }) {
   const list = useRef<HTMLDivElement>(null)
   const before = useRef<Map<string, number> | null>(null)
+  const [fresh, setFresh] = useState<Set<string>>(new Set())
 
   // Rows FLIP to their new places when reordered (240ms, --ease-in-out).
   useLayoutEffect(() => {
@@ -74,154 +87,183 @@ export function RolesStep({
   }
   const upd = (id: string, p: Partial<TplRole>) => set((x) => ({ ...x, roles: x.roles.map((r) => (r.id === id ? { ...r, ...p } : r)) }))
   const freeColor = () => ROLE_COLORS.find((c) => !d.roles.some((r) => r.color === c)) ?? ROLE_COLORS[d.roles.length % ROLE_COLORS.length]
-  const add = (p: Partial<TplRole>) =>
+  const add = (p: Partial<TplRole>) => {
+    const id = uid()
+    setFresh((s) => new Set(s).add(id))
     set((x) => ({
       ...x,
       roles: [
         ...x.roles,
-        { id: uid(), label: `Role ${x.roles.length + 1}`, role: 'signer', fixed: false, fill_from: x.kind === 'customer' ? null : 'typed', name: '', email: '', color: freeColor(), ...p },
+        { id, label: `Role ${x.roles.length + 1}`, role: 'signer', fixed: false, fill_from: x.kind === 'customer' ? null : 'typed', name: '', email: '', color: freeColor(), ...p },
       ],
     }))
+  }
+  const remove = (r: TplRole) =>
+    set((x) => ({
+      ...x,
+      roles: x.roles.filter((y) => y.id !== r.id),
+      fields: x.fields.filter((f) => f.rid !== r.id),
+    }))
+
   // Roles saved before sources existed: the first open signer is the record's person, the rest are typed.
   const firstOpen = d.roles.find((r) => r.role === 'signer' && !r.fixed)?.id
-  const sourceOf = (r: TplRole): FillFrom => (r.fixed ? 'fixed' : r.fill_from && r.fill_from !== 'fixed' ? r.fill_from : r.id === firstOpen ? 'record' : 'typed')
+  const sourceOf = (r: TplRole): FillFrom => {
+    if (r.fixed) return 'fixed'
+    if (d.kind === 'customer') return 'typed'
+    return r.fill_from && r.fill_from !== 'fixed' ? r.fill_from : r.id === firstOpen ? 'record' : 'typed'
+  }
   const setSource = (r: TplRole, v: FillFrom) =>
-    upd(r.id, v === 'fixed' ? { fixed: true, fill_from: 'fixed' } : { fixed: false, fill_from: v, name: '', email: '' })
-  const sources = d.kind === 'customer' ? null : SOURCES[d.kind]
+    upd(
+      r.id,
+      v === 'fixed'
+        ? { fixed: true, fill_from: 'fixed' }
+        : { fixed: false, fill_from: d.kind === 'customer' ? null : v, name: '', email: '' },
+    )
   const hasMe = d.roles.some((r) => r.fixed && r.email.toLowerCase() === me.email.toLowerCase())
   const full = d.roles.length >= 20
+  const unsigned = signersWithoutSignature(d)
 
   return (
-    <div className="max-w-[760px]">
+    <div className="max-w-[860px]">
       <FormSection
         title="Roles"
-        subtitle={d.kind === 'customer' ? 'Roles become people when the template is used. The first signer is usually filled from the record.' : 'Roles become people when the template is used. Choose where each person comes from; only people typed in when sending can be changed then.'}
+        subtitle="Roles become people when the template is sent. Name them by what they do, never by a person’s name."
         action={
           <label className="flex items-center gap-2 whitespace-nowrap font-inter text-[12.5px] font-medium text-text-primary">
             Signing order
             <Switch checked={d.ordered} onCheckedChange={(v) => set((x) => ({ ...x, ordered: v }))} aria-label="Signing order" />
           </label>
         }
+        cardPadding="6px 16px 14px"
       >
-        <div className="flex flex-col gap-3">
-          <p className="font-inter text-[12px] text-text-tertiary">
-            {d.ordered ? 'Each person gets the email after the one before them has signed.' : 'Everyone gets the email at the same time and can sign in any order.'}
-          </p>
-          <div ref={list} className="flex flex-col gap-2">
-            {d.roles.map((r, i) => (
-              <div key={r.id} data-role-id={r.id} className="rounded-xl border border-[#E7E8EE] bg-white p-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 shrink-0 text-center font-inter text-[12px] font-medium tabular-nums text-text-tertiary">{d.ordered ? i + 1 : ''}</span>
-                  <span aria-hidden className="h-7 w-2.5 shrink-0 rounded-[5px]" style={{ background: r.color }} />
-                  <Input
-                    value={r.label}
-                    maxLength={60}
-                    aria-label="Role name"
-                    placeholder="Role name, e.g. Candidate"
-                    className="h-9 flex-1"
-                    onChange={(e) => upd(r.id, { label: e.target.value })}
-                  />
-                  <Select
-                    value={r.role}
-                    onValueChange={(v) =>
-                      set((x) => ({
-                        ...x,
-                        roles: x.roles.map((y) => (y.id === r.id ? { ...y, role: v as SignRecipientRole } : y)),
-                        // Copy recipients don't fill anything.
-                        fields: v === 'cc' ? x.fields.filter((f) => f.rid !== r.id) : x.fields,
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="h-9 w-[140px]" aria-label="What this role does">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_KIND.map((k) => (
-                        <SelectItem key={k.value} value={k.value}>
-                          {k.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {sources ? (
-                    <Select value={sourceOf(r)} onValueChange={(v) => setSource(r, v as FillFrom)}>
-                      <SelectTrigger className="h-9 w-[208px]" aria-label={`Where ${r.label || 'this role'} comes from`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sources.map((k) => (
-                          <SelectItem key={k.value} value={k.value}>
-                            {k.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <label className="flex shrink-0 items-center gap-2 whitespace-nowrap pl-1 font-inter text-[12px] text-text-secondary">
-                      Same person every time
-                      <Switch checked={r.fixed} onCheckedChange={(v) => upd(r.id, { fixed: v, ...(v ? null : { name: '', email: '' }) })} aria-label={`${r.label || 'This role'} is the same person every time`} />
-                    </label>
+        <p className="py-2.5 font-inter text-[12px] text-text-tertiary">
+          {d.ordered ? 'Each person gets the email after the one before them has signed.' : 'Everyone gets the email at the same time and can sign in any order.'}
+        </p>
+        <div ref={list} className="flex flex-col" role="list" aria-label="Roles">
+          {d.roles.map((r, i) => (
+            <div
+              key={r.id}
+              role="listitem"
+              data-role-id={r.id}
+              className={cn('border-t border-[#F1F0EC] py-2.5', fresh.has(r.id) && 'gio-row-in')}
+              onAnimationEnd={() => fresh.has(r.id) && setFresh((s) => (s.delete(r.id) ? new Set(s) : s))}
+            >
+              <div className="gio-role-row">
+                <span className="text-center font-inter text-[12px] font-medium tabular-nums text-text-tertiary">{d.ordered ? i + 1 : ''}</span>
+                <span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: r.color }} />
+                <Input
+                  value={r.label}
+                  maxLength={60}
+                  aria-label="Role name"
+                  placeholder="e.g. Candidate"
+                  className="h-9 min-w-0"
+                  onChange={(e) => upd(r.id, { label: e.target.value })}
+                />
+                <Select value={sourceOf(r)} onValueChange={(v) => setSource(r, v as FillFrom)}>
+                  <SelectTrigger className="h-9 min-w-0" aria-label={`Where ${r.label || 'this role'} is filled from`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SOURCES[d.kind].map((k) => (
+                      <SelectItem key={k.value} value={k.value}>
+                        {k.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={r.role}
+                  onValueChange={(v) =>
+                    set((x) => ({
+                      ...x,
+                      roles: x.roles.map((y) => (y.id === r.id ? { ...y, role: v as SignRecipientRole } : y)),
+                      // Copy recipients don't fill anything.
+                      fields: v === 'cc' ? x.fields.filter((f) => f.rid !== r.id) : x.fields,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-9" aria-label={`What ${r.label || 'this role'} does`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_KIND.map((k) => (
+                      <SelectItem key={k.value} value={k.value}>
+                        {k.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center justify-end">
+                  {d.ordered && (
+                    <>
+                      <IconTip label="Move up">
+                        <Button variant="ghost" size="sm" iconOnly aria-label={`Move ${r.label || 'role'} up`} disabled={i === 0} onClick={() => move(i, i - 1)}>
+                          <ArrowUp />
+                        </Button>
+                      </IconTip>
+                      <IconTip label="Move down">
+                        <Button variant="ghost" size="sm" iconOnly aria-label={`Move ${r.label || 'role'} down`} disabled={i === d.roles.length - 1} onClick={() => move(i, i + 1)}>
+                          <ArrowDown />
+                        </Button>
+                      </IconTip>
+                    </>
                   )}
-                  <div className="flex shrink-0 items-center">
-                    <IconTip label="Move up">
-                      <Button variant="ghost" size="sm" iconOnly aria-label="Move up" disabled={i === 0} onClick={() => move(i, i - 1)}>
-                        <ArrowUp />
-                      </Button>
-                    </IconTip>
-                    <IconTip label="Move down">
-                      <Button variant="ghost" size="sm" iconOnly aria-label="Move down" disabled={i === d.roles.length - 1} onClick={() => move(i, i + 1)}>
-                        <ArrowDown />
-                      </Button>
-                    </IconTip>
-                    <IconTip label={`Remove ${r.label || 'role'}`}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        iconOnly
-                        aria-label={`Remove ${r.label || 'role'}`}
-                        onClick={() => set((x) => ({ ...x, roles: x.roles.filter((y) => y.id !== r.id), fields: x.fields.filter((f) => f.rid !== r.id) }))}
-                      >
+                  <IconTip label={d.roles.length === 1 ? 'A template needs at least one role' : `Remove ${r.label || 'role'}`}>
+                    <span>
+                      <Button variant="ghost" size="sm" iconOnly aria-label={`Remove ${r.label || 'role'}`} disabled={d.roles.length === 1} onClick={() => remove(r)}>
                         <X />
                       </Button>
-                    </IconTip>
-                  </div>
+                    </span>
+                  </IconTip>
                 </div>
-                {r.fixed && (
-                  <div className="mt-2 grid grid-cols-2 gap-2 pl-[52px] pr-[100px]">
-                    <Input value={r.name} maxLength={120} aria-label="Name" placeholder="Full name" className="h-9" onChange={(e) => upd(r.id, { name: e.target.value })} />
-                    <Input
-                      value={r.email}
-                      type="email"
-                      aria-label="Email"
-                      placeholder="Email"
-                      className="h-9"
-                      aria-invalid={!!r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)}
-                      onChange={(e) => upd(r.id, { email: e.target.value.trim() })}
-                    />
-                  </div>
-                )}
               </div>
-            ))}
-            {!d.roles.length && <p className="px-1 py-2 font-inter text-[12.5px] text-text-tertiary">No roles yet. Add at least one signer.</p>}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" size="sm" icon={Plus} disabled={full} onClick={() => add({})}>
-              Add role
+              {r.fixed && (
+                <div className="gio-role-sub mt-2 grid grid-cols-2 gap-2">
+                  <Input value={r.name} maxLength={120} aria-label={`${r.label || 'Role'} name`} placeholder="Full name" className="h-9" onChange={(e) => upd(r.id, { name: e.target.value })} />
+                  <Input
+                    value={r.email}
+                    type="email"
+                    aria-label={`${r.label || 'Role'} email`}
+                    placeholder="Email"
+                    className="h-9"
+                    aria-invalid={!!r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)}
+                    onChange={(e) => upd(r.id, { email: e.target.value.trim() })}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2 border-t border-[#F1F0EC] pt-3">
+          <Button variant="secondary" size="sm" icon={Plus} disabled={full} onClick={() => add({})}>
+            Add role
+          </Button>
+          {!hasMe && me.email && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={PenLine}
+              disabled={full}
+              onClick={() => add({ label: 'Countersigner', fixed: true, fill_from: 'fixed', name: me.name, email: me.email.toLowerCase() })}
+            >
+              Add me as countersigner
             </Button>
-            {!hasMe && me.email && (
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={PenLine}
-                disabled={full}
-                onClick={() => add({ label: 'Countersigner', fixed: true, fill_from: 'fixed', name: me.name, email: me.email.toLowerCase() })}
-              >
-                Add me as countersigner
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </FormSection>
+
+      {unsigned.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {unsigned.map((r) => (
+            <p key={r.id} className="gio-send-note" data-tone="warn">
+              <TriangleAlert className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              <span>
+                <span className="font-medium">{r.label || 'A signer'}</span> signs but has no signature block in the document. Add one in the Document step.
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

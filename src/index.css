@@ -1752,6 +1752,22 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   padding: 9px 0; border-bottom: 1px solid #F4F3EF;
 }
 .gio-who-row:last-child { border-bottom: 0; }
+/* A role on the Signers step: order · colour · name · filled from · action · controls. */
+.gio-role-row {
+  display: grid; align-items: center; gap: 10px;
+  grid-template-columns: 22px 10px minmax(0, 1fr) minmax(0, 220px) 132px auto;
+}
+.gio-role-sub { margin-left: 52px; }
+@media (max-width: 720px) {
+  .gio-role-row { grid-template-columns: 22px 10px minmax(0, 1fr) auto; }
+  .gio-role-row > :nth-child(4), .gio-role-row > :nth-child(5) { grid-column: 3 / -1; }
+  .gio-role-sub { margin-left: 0; }
+}
+
+/* A row added to a list (a new role): rises 6px in. */
+.gio-row-in { animation: gio-arrive-rise 240ms var(--ease-out) backwards; }
+@media (prefers-reduced-motion: reduce) { .gio-row-in { animation-name: gio-fade-only; } }
+
 /* Template info's Documents cards (2026-10-17): a big checkbox each. Ticked is a
    noir border and ring with a noir icon tile; the tick draws in over --dur-tick. */
 .gio-src-card {
