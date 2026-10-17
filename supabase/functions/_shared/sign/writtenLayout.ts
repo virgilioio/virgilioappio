@@ -1,0 +1,554 @@
+// Gio Sign: lays out a document written in Gio (2026-10-17). The input is the
+// editor's own JSON (Lexical): paragraphs, headings, lists, quotes, page
+// breaks, data tags ("placeholder"), conditional sections ("gio-if") and
+// signing blocks ("gio-sign"). The output is a list of pages of simple drawing
+// operations plus where each signing block landed, so the server can draw the
+// PDF with pdf-lib (written.ts) and add the blocks as fields. Pure, so the
+// app's preview and the sent PDF can never disagree. ASCII only.
+
+export type Style = "regular" | "bold" | "italic" | "boldItalic";
+export type Ink = "ink" | "muted" | "rule";
+
+export interface TextOp {
+  kind: "text";
+  /** Points from the page's left edge. */
+  x: number;
+  /** Baseline, points from the page's top edge. */
+  y: number;
+  text: string;
+  style: Style;
+  size: number;
+  color: Ink;
+  underline?: boolean;
+  strike?: boolean;
+}
+export interface LineOp {
+  kind: "line";
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  width: number;
+  color: Ink;
+}
+export type Op = TextOp | LineOp;
+
+export interface WrittenPage {
+  ops: Op[];
+}
+/** A signing block: where its field goes, in % of the page from the top-left. */
+export interface WrittenBlock {
+  role_id: string;
+  kind: string;
+  page: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+export interface WrittenLayout {
+  width: number;
+  height: number;
+  pages: WrittenPage[];
+  blocks: WrittenBlock[];
+}
+
+export interface LayoutOptions {
+  /** Values by tag key, already formatted for print. */
+  values: Record<string, string | null | undefined>;
+  /** Width of text in points. */
+  measure: (text: string, style: Style, size: number) => number;
+  /** Signing role labels by template role id. */
+  roles?: Record<string, string>;
+  /** Replaces characters the font can't print (default: none). */
+  sanitize?: (text: string) => string;
+  /** Template preview with no record: tags print as [Label], every section shows. */
+  tags?: Record<string, string> | null;
+  maxPages?: number;
+}
+
+export const PAGE_W = 612;
+export const PAGE_H = 792;
+const MARGIN_X = 72;
+const MARGIN_TOP = 72;
+const MARGIN_BOTTOM = 72;
+const CONTENT_W = PAGE_W - MARGIN_X * 2;
+const BODY = 11;
+const LEAD = 1.4;
+const PARA_AFTER = 6;
+const LIST_INDENT = 22;
+const BULLET = "\u2022";
+const MIDDOT = "\u00b7";
+
+const HEADING: Record<string, { size: number; before: number; after: number }> = {
+  h1: { size: 20, before: 8, after: 8 },
+  h2: { size: 15, before: 8, after: 6 },
+  h3: { size: 12.5, before: 6, after: 4 },
+  h4: { size: 11, before: 6, after: 4 },
+  h5: { size: 11, before: 6, after: 4 },
+  h6: { size: 11, before: 6, after: 4 },
+};
+
+/** Field size of a signing block, in points. */
+export const BLOCK_SIZE: Record<string, { w: number; h: number; label: string }> = {
+  signature: { w: 216, h: 40, label: "Signature" },
+  initials: { w: 72, h: 32, label: "Initials" },
+  date: { w: 144, h: 22, label: "Date signed" },
+  name: { w: 216, h: 22, label: "Full name" },
+};
+const BLOCK_LABEL = 8.5;
+const BLOCK_AFTER = 14;
+const BLOCK_GAP = 28;
+
+// Lexical text format bits.
+const IS_BOLD = 1;
+const IS_ITALIC = 2;
+const IS_STRIKE = 4;
+const IS_UNDERLINE = 8;
+
+// deno-lint-ignore no-explicit-any
+type Node = Record<string, any>;
+
+// ---- Conditions -------------------------------------------------------------
+const YES = new Set(["yes", "true", "1", "on", "y"]);
+
+/** Whether a conditional section prints, from the value it depends on. */
+export function conditionHolds(op: string | null | undefined, raw: string | null | undefined, expected?: string | null): boolean {
+  const v = String(raw ?? "").trim();
+  const low = v.toLowerCase();
+  switch (op) {
+    case "yes":
+      return YES.has(low);
+    case "no":
+      return !YES.has(low);
+    case "empty":
+      return v === "";
+    case "equals":
+      return low === String(expected ?? "").trim().toLowerCase();
+    case "not_equals":
+      return low !== String(expected ?? "").trim().toLowerCase();
+    case "filled":
+    default:
+      return v !== "";
+  }
+}
+
+// ---- Inline text --------------------------------------------------------------
+interface Piece {
+  text: string;
+  style: Style;
+  size: number;
+  w: number;
+  underline: boolean;
+  strike: boolean;
+  color: Ink;
+}
+/** A word (pieces with no space between them), a space, or a hard line break. */
+type Unit = { t: "word"; pieces: Piece[]; w: number } | { t: "space"; w: number } | { t: "break" };
+
+interface Line {
+  units: Unit[];
+  w: number;
+  /** Ends because the paragraph or a hard break ends it (never justified). */
+  hard: boolean;
+}
+
+function styleOf(format: number, base: Style): Style {
+  const bold = (format & IS_BOLD) !== 0 || base === "bold" || base === "boldItalic";
+  const italic = (format & IS_ITALIC) !== 0 || base === "italic" || base === "boldItalic";
+  return bold && italic ? "boldItalic" : bold ? "bold" : italic ? "italic" : "regular";
+}
+
+class Inline {
+  units: Unit[] = [];
+  private word: Piece[] | null = null;
+  constructor(private o: LayoutOptions, private size: number, private base: Style, private color: Ink) {}
+
+  private endWord() {
+    if (this.word && this.word.length) {
+      this.units.push({ t: "word", pieces: this.word, w: this.word.reduce((s, p) => s + p.w, 0) });
+    }
+    this.word = null;
+  }
+
+  text(raw: string, format = 0) {
+    const clean = (this.o.sanitize ?? ((s: string) => s))(String(raw ?? "").replace(/\r\n?/g, "\n").replace(/\t/g, " "));
+    const style = styleOf(format, this.base);
+    const underline = (format & IS_UNDERLINE) !== 0;
+    const strike = (format & IS_STRIKE) !== 0;
+    const parts = clean.split(/(\n| +)/);
+    for (const part of parts) {
+      if (part === "") continue;
+      if (part === "\n") {
+        this.endWord();
+        this.units.push({ t: "break" });
+      } else if (part[0] === " ") {
+        this.endWord();
+        this.units.push({ t: "space", w: this.o.measure(" ", style, this.size) });
+      } else {
+        if (!this.word) this.word = [];
+        this.word.push({ text: part, style, size: this.size, w: this.o.measure(part, style, this.size), underline, strike, color: this.color });
+      }
+    }
+  }
+
+  lineBreak() {
+    this.endWord();
+    this.units.push({ t: "break" });
+  }
+
+  done(): Unit[] {
+    this.endWord();
+    return this.units;
+  }
+}
+
+function tagText(o: LayoutOptions, key: string): string {
+  if (o.tags) return "[" + (o.tags[key] ?? key) + "]";
+  const v = o.values[key];
+  return v == null ? "" : String(v);
+}
+
+function collectInline(o: LayoutOptions, nodes: Node[] | undefined, into: Inline) {
+  for (const n of nodes ?? []) {
+    switch (n?.type) {
+      case "text":
+        into.text(n.text ?? "", Number(n.format) || 0);
+        break;
+      case "linebreak":
+        into.lineBreak();
+        break;
+      case "tab":
+        into.text(" ", Number(n.format) || 0);
+        break;
+      case "placeholder":
+        into.text(tagText(o, String(n.placeholderKey ?? "")), Number(n.format) || 0);
+        break;
+      default:
+        // Links, marks and anything else inline: their text.
+        if (Array.isArray(n?.children)) collectInline(o, n.children, into);
+        else if (typeof n?.text === "string") into.text(n.text, Number(n.format) || 0);
+    }
+  }
+}
+
+function breakLong(word: Unit & { t: "word" }, maxW: number, measure: LayoutOptions["measure"]): Unit[] {
+  const out: Unit[] = [];
+  let cur: Piece[] = [];
+  let curW = 0;
+  const flush = () => {
+    if (cur.length) out.push({ t: "word", pieces: cur, w: curW });
+    cur = [];
+    curW = 0;
+  };
+  for (const p of word.pieces) {
+    let chunk = "";
+    for (const ch of p.text) {
+      const next = chunk + ch;
+      if (curW + measure(next, p.style, p.size) > maxW && (chunk || cur.length)) {
+        if (chunk) {
+          const w = measure(chunk, p.style, p.size);
+          cur.push({ ...p, text: chunk, w });
+          curW += w;
+        }
+        flush();
+        chunk = ch;
+      } else {
+        chunk = next;
+      }
+    }
+    if (chunk) {
+      const w = measure(chunk, p.style, p.size);
+      cur.push({ ...p, text: chunk, w });
+      curW += w;
+    }
+  }
+  flush();
+  return out;
+}
+
+/** Greedy wrap at word boundaries; a word wider than the line is cut. */
+export function wrapUnits(units: Unit[], maxW: number, measure: LayoutOptions["measure"]): Line[] {
+  const lines: Line[] = [];
+  let cur: Unit[] = [];
+  let w = 0;
+  let pendingSpace = 0;
+  const push = (hard: boolean) => {
+    lines.push({ units: cur, w, hard });
+    cur = [];
+    w = 0;
+    pendingSpace = 0;
+  };
+  for (const u of units) {
+    if (u.t === "break") {
+      push(true);
+      continue;
+    }
+    if (u.t === "space") {
+      if (cur.length) pendingSpace += u.w;
+      continue;
+    }
+    if (u.w > maxW) {
+      if (cur.length) push(false);
+      const parts = breakLong(u, maxW, measure);
+      parts.forEach((part, k) => {
+        cur = [part];
+        w = (part as { w: number }).w;
+        if (k < parts.length - 1) push(false);
+      });
+      pendingSpace = 0;
+      continue;
+    }
+    if (cur.length && w + pendingSpace + u.w > maxW + 0.01) {
+      push(false);
+    }
+    if (cur.length && pendingSpace) {
+      cur.push({ t: "space", w: pendingSpace });
+      w += pendingSpace;
+    }
+    pendingSpace = 0;
+    cur.push(u);
+    w += u.w;
+  }
+  push(true);
+  return lines;
+}
+
+// ---- Pages --------------------------------------------------------------------
+class Flow {
+  pages: WrittenPage[] = [];
+  page!: WrittenPage;
+  y = MARGIN_TOP;
+  blocks: WrittenBlock[] = [];
+  constructor(private maxPages: number) {
+    this.newPage();
+  }
+  get atTop() {
+    return this.y <= MARGIN_TOP + 0.01;
+  }
+  newPage() {
+    if (this.pages.length >= this.maxPages) {
+      throw new Error("The document is longer than " + this.maxPages + " pages.");
+    }
+    this.page = { ops: [] };
+    this.pages.push(this.page);
+    this.y = MARGIN_TOP;
+  }
+  /** Starts a new page unless `h` more points fit (or nothing is on this page yet). */
+  ensure(h: number) {
+    if (this.y + h > PAGE_H - MARGIN_BOTTOM + 0.01 && !this.atTop) this.newPage();
+  }
+  space(h: number) {
+    if (!this.atTop) this.y += h;
+  }
+}
+
+type Align = "left" | "center" | "right" | "justify";
+
+function alignOf(format: unknown): Align {
+  if (format === "center" || format === 2) return "center";
+  if (format === "right" || format === "end" || format === 3) return "right";
+  if (format === "justify" || format === 4) return "justify";
+  return "left";
+}
+
+function drawLines(flow: Flow, lines: Line[], left: number, width: number, size: number, align: Align, gutter?: (y: number, lead: number) => void, marker?: { text: string; style: Style; w: number }) {
+  const lead = size * LEAD;
+  lines.forEach((line, i) => {
+    flow.ensure(lead);
+    const top = flow.y;
+    const baseline = top + (lead - size) / 2 + size * 0.8;
+    if (i === 0 && marker) {
+      flow.page.ops.push({ kind: "text", x: left - marker.w - 6, y: baseline, text: marker.text, style: marker.style, size, color: "ink" });
+    }
+    const spaces = line.units.filter((u) => u.t === "space").length;
+    const slack = Math.max(0, width - line.w);
+    let x = left;
+    let extra = 0;
+    if (align === "center") x += slack / 2;
+    else if (align === "right") x += slack;
+    else if (align === "justify" && !line.hard && spaces > 0) extra = slack / spaces;
+    for (const u of line.units) {
+      if (u.t === "space") {
+        x += u.w + extra;
+        continue;
+      }
+      if (u.t !== "word") continue;
+      for (const p of u.pieces) {
+        flow.page.ops.push({ kind: "text", x, y: baseline, text: p.text, style: p.style, size: p.size, color: p.color, underline: p.underline || undefined, strike: p.strike || undefined });
+        if (p.underline) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.12, x2: x + p.w, y2: baseline + size * 0.12, width: Math.max(0.5, size / 18), color: p.color });
+        if (p.strike) flow.page.ops.push({ kind: "line", x1: x, y1: baseline - size * 0.28, x2: x + p.w, y2: baseline - size * 0.28, width: Math.max(0.5, size / 18), color: p.color });
+        x += p.w;
+      }
+    }
+    if (gutter) gutter(top, lead);
+    flow.y += lead;
+  });
+}
+
+interface Ctx {
+  o: LayoutOptions;
+  flow: Flow;
+  left: number;
+  width: number;
+  italic: boolean;
+  color: Ink;
+  quoteBar: number | null;
+}
+
+function paragraph(c: Ctx, n: Node, size: number, base: Style, marker?: { text: string; style: Style; w: number }) {
+  const inline = new Inline(c.o, size, c.italic ? (base === "bold" ? "boldItalic" : "italic") : base, c.color);
+  collectInline(c.o, n.children, inline);
+  const units = inline.done();
+  const indent = Math.max(0, Math.min(6, Number(n.indent) || 0)) * 24;
+  const left = c.left + indent;
+  const width = Math.max(40, c.width - indent);
+  const lines = wrapUnits(units, width, c.o.measure);
+  const bar = c.quoteBar;
+  drawLines(c.flow, lines, left, width, size, alignOf(n.format), bar == null ? undefined : (top, lead) => {
+    c.flow.page.ops.push({ kind: "line", x1: bar, y1: top, x2: bar, y2: top + lead, width: 2, color: "rule" });
+  }, marker);
+}
+
+function listItems(c: Ctx, list: Node, depth: number) {
+  const numbered = list.listType === "number";
+  let n = Number(list.start) || 1;
+  for (const item of (list.children ?? []) as Node[]) {
+    if (item?.type !== "listitem") continue;
+    const kids = (item.children ?? []) as Node[];
+    const nested = kids.filter((k) => k?.type === "list");
+    const inline = kids.filter((k) => k?.type !== "list");
+    const inner: Ctx = { ...c, left: c.left + LIST_INDENT, width: c.width - LIST_INDENT };
+    if (inline.length || !nested.length) {
+      const text = numbered ? n + "." : list.listType === "check" ? (item.checked ? "[x]" : "[ ]") : BULLET;
+      const marker = { text, style: "regular" as Style, w: c.o.measure(text, "regular", BODY) };
+      paragraph(inner, { children: inline, format: item.format, indent: 0 }, BODY, "regular", marker);
+      c.flow.y += 2;
+      n++;
+    }
+    for (const sub of nested) listItems(inner, sub, depth + 1);
+  }
+}
+
+function signRow(c: Ctx, row: Node[]) {
+  const sizes = row.map((b) => BLOCK_SIZE[String(b.kind ?? "signature")] ?? BLOCK_SIZE.signature);
+  const tallest = Math.max(...sizes.map((s) => s.h));
+  const total = tallest + 4 + BLOCK_LABEL * 1.6 + BLOCK_AFTER;
+  c.flow.space(6);
+  c.flow.ensure(total);
+  let x = c.left;
+  const top = c.flow.y;
+  row.forEach((b, i) => {
+    const s = sizes[i];
+    const fieldTop = top + (tallest - s.h);
+    const lineY = top + tallest + 1;
+    c.flow.page.ops.push({ kind: "line", x1: x, y1: lineY, x2: x + s.w, y2: lineY, width: 0.75, color: "ink" });
+    const role = c.o.roles?.[String(b.roleId)] ?? "Signer";
+    const label = (c.o.sanitize ?? ((t: string) => t))(role + " " + MIDDOT + " " + s.label);
+    c.flow.page.ops.push({ kind: "text", x, y: lineY + 3 + BLOCK_LABEL, text: label, style: "regular", size: BLOCK_LABEL, color: "muted" });
+    c.flow.blocks.push({
+      role_id: String(b.roleId),
+      kind: String(b.kind ?? "signature"),
+      page: c.flow.pages.length - 1,
+      x: round3((x / PAGE_W) * 100),
+      y: round3((fieldTop / PAGE_H) * 100),
+      w: round3((s.w / PAGE_W) * 100),
+      h: round3((s.h / PAGE_H) * 100),
+    });
+    x += s.w + BLOCK_GAP;
+  });
+  c.flow.y = top + total;
+}
+
+function round3(n: number) {
+  return Math.round(n * 1000) / 1000;
+}
+
+function blocksOf(c: Ctx, nodes: Node[] | undefined) {
+  const list = (nodes ?? []) as Node[];
+  for (let i = 0; i < list.length; i++) {
+    const n = list[i];
+    switch (n?.type) {
+      case "heading": {
+        const h = HEADING[String(n.tag)] ?? HEADING.h2;
+        c.flow.space(h.before);
+        c.flow.ensure(h.size * LEAD * 2);
+        paragraph(c, n, h.size, "bold");
+        c.flow.y += h.after;
+        break;
+      }
+      case "quote": {
+        const inner: Ctx = { ...c, left: c.left + 18, width: c.width - 18, italic: true, color: "muted", quoteBar: c.left + 4 };
+        paragraph(inner, n, BODY, "regular");
+        c.flow.y += PARA_AFTER;
+        break;
+      }
+      case "list":
+        listItems(c, n, 0);
+        c.flow.y += PARA_AFTER - 2;
+        break;
+      case "horizontalrule":
+        c.flow.ensure(18);
+        c.flow.page.ops.push({ kind: "line", x1: c.left, y1: c.flow.y + 8, x2: c.left + c.width, y2: c.flow.y + 8, width: 0.75, color: "rule" });
+        c.flow.y += 18;
+        break;
+      case "gio-page-break":
+        if (!c.flow.atTop) c.flow.newPage();
+        break;
+      case "gio-if": {
+        const show = c.o.tags ? true : conditionHolds(n.op, c.o.values[String(n.key ?? "")], n.value);
+        if (show) blocksOf(c, n.children);
+        break;
+      }
+      case "gio-sign": {
+        // Consecutive blocks share a row while they fit.
+        const row: Node[] = [n];
+        let w = (BLOCK_SIZE[String(n.kind)] ?? BLOCK_SIZE.signature).w;
+        while (i + 1 < list.length && list[i + 1]?.type === "gio-sign") {
+          const next = BLOCK_SIZE[String(list[i + 1].kind)] ?? BLOCK_SIZE.signature;
+          if (w + BLOCK_GAP + next.w > c.width) break;
+          w += BLOCK_GAP + next.w;
+          row.push(list[++i]);
+        }
+        signRow(c, row);
+        break;
+      }
+      case "paragraph":
+      default:
+        if (Array.isArray(n?.children) && n.children.some((k: Node) => ["paragraph", "heading", "list", "quote", "gio-if", "gio-sign"].includes(k?.type))) {
+          blocksOf(c, n.children);
+          break;
+        }
+        paragraph(c, n ?? {}, BODY, "regular");
+        c.flow.y += PARA_AFTER;
+    }
+  }
+}
+
+/** Lays a written document out on US Letter pages. */
+export function layoutWritten(content: Node, o: LayoutOptions): WrittenLayout {
+  const flow = new Flow(o.maxPages ?? 200);
+  const c: Ctx = { o, flow, left: MARGIN_X, width: CONTENT_W, italic: false, color: "ink", quoteBar: null };
+  blocksOf(c, content?.root?.children);
+  const total = flow.pages.length;
+  flow.pages.forEach((p, i) => {
+    const text = "Page " + (i + 1) + " of " + total;
+    const size = 8;
+    p.ops.push({ kind: "text", x: (PAGE_W - o.measure(text, "regular", size)) / 2, y: PAGE_H - 36, text, style: "regular", size, color: "muted" });
+  });
+  return { width: PAGE_W, height: PAGE_H, pages: flow.pages, blocks: flow.blocks };
+}
+
+/** Every tag key and condition key a written document uses (for coverage). */
+export function writtenKeys(content: Node): { tags: string[]; conditions: string[] } {
+  const tags = new Set<string>();
+  const conditions = new Set<string>();
+  const walk = (n: Node | undefined) => {
+    if (!n) return;
+    if (n.type === "placeholder" && n.placeholderKey) tags.add(String(n.placeholderKey));
+    if (n.type === "gio-if" && n.key) conditions.add(String(n.key));
+    for (const k of (n.children ?? []) as Node[]) walk(k);
+  };
+  walk(content?.root);
+  return { tags: [...tags], conditions: [...conditions] };
+}
