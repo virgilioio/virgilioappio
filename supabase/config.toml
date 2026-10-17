@@ -368,3 +368,6 @@ verify_jwt = false
 
 [functions.sign-gateway]
 verify_jwt = false
+
+[functions.offer-approval-notify]
+verify_jwt = false
