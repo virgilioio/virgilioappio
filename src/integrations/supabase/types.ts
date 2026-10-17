@@ -11598,6 +11598,11 @@ export type Database = {
       }
       sign_my_email: { Args: never; Returns: string }
       sign_new_public_id: { Args: never; Returns: string }
+      sign_offer_display: {
+        Args: { _cfg: Json; _field_id: string; _raw: string; _type: string }
+        Returns: string
+      }
+      sign_offer_values: { Args: { _offer_id: string }; Returns: Json }
       sign_pending_invites: {
         Args: { _limit?: number }
         Returns: {
