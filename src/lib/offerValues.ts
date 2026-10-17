@@ -116,6 +116,27 @@ export function formatOfferValue(raw: unknown, type?: string | null, ctx: OfferV
       const list = Array.isArray(value) ? value : [value]
       return list.map((v) => ctx.optionLabel?.(String(v)) || String(v)).join(', ') || null
     }
+    case 'number': {
+      // 1250 -> 1,250; anything that isn't a plain number stays as typed.
+      const s = String(value).trim().replace(/,/g, '')
+      return /^[0-9]+(\.[0-9]+)?$/.test(s) ? formatMoney(s) : String(value).trim()
+    }
+    case 'url':
+    case 'linkedin':
+      return String(value).trim().replace(/^https?:\/\/(www\.)?/i, '').replace(/\/+$/, '') || null
+    case 'phone':
+      return String(value).trim().replace(/\s+/g, ' ')
+    case 'score': {
+      const s = String(value).trim()
+      const max = String(ctx.config?.max ?? '').trim() || '5'
+      return /^[0-9]+(\.[0-9]+)?$/.test(s) ? `${s} out of ${max}` : s
+    }
+    case 'file': {
+      if (Array.isArray(value)) break
+      // A storage path: the file's own name, without the upload's number prefix.
+      const name = String(value).trim().replace(/^.*\//, '')
+      return name.replace(/^([0-9]{10,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})[-_]/i, '') || null
+    }
   }
 
   // Unknown type: still never show JSON.
