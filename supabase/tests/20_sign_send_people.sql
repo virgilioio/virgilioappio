@@ -108,6 +108,10 @@ begin
     exists (select 1 from public.sign_recipients where envelope_id = v_env and label = 'Witness' and email = 'test2@example.com');
   insert into t_results select 'send: copy goes to the sender',
     exists (select 1 from public.sign_recipients where envelope_id = v_env and label = 'HR copy' and email = 'allan@virgilio.tech');
+  insert into t_results select 'send: email-only values saved',
+    (select data_snapshot ? 'first_name' and data_snapshot ? 'company' and data_snapshot ? 'sender_first'
+            and data_snapshot->>'first_name' = split_part(data_snapshot->>'name', ' ', 1)
+     from public.sign_envelopes where id = v_env);
 end $$;
 
 -- Templates without sources behave as before.

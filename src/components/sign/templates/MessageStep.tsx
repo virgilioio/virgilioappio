@@ -4,7 +4,7 @@ import { FormSection } from '@/components/references/FormSection'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { tagLabel, tagsFor, type TplDraft } from '@/lib/sign/templates'
+import { emailTagsFor, tagLabel, type TplDraft } from '@/lib/sign/templates'
 import { Field, TagText } from './parts'
 
 const REMINDERS = [
@@ -19,7 +19,7 @@ export function MessageStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) =
   const last = useRef<'subject' | 'body'>('body')
   const sRef = useRef<HTMLInputElement>(null)
   const bRef = useRef<HTMLTextAreaElement>(null)
-  const tags = tagsFor(d.kind)
+  const tags = emailTagsFor(d.kind)
   const first = d.roles.find((r) => r.role === 'signer')
 
   // Insert {{tag}} where the cursor was in the last field you were in.

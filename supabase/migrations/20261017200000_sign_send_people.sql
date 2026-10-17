@@ -12,6 +12,10 @@
 -- 4. sign_save_template stores both; sign_send_preview returns each role's
 --    source and person; sign_send fills roles with a source itself and only
 --    takes typed people from the sender.
+-- 5. Three values for the email only, saved with what was sent:
+--    {{first_name}} (the record's first name), {{company}} (the workspace)
+--    and {{sender_first}} (the sender's first name). The documents can't
+--    use them.
 
 alter table public.sign_recipients add column fill_from text
   check (fill_from is null or fill_from in ('record', 'hiring_manager', 'sender', 'fixed', 'typed'));
@@ -411,6 +415,9 @@ declare
   v_missing text;
   v_env uuid;
   v_sender text;
+  v_sender_first text;
+  v_company text;
+  v_snapshot jsonb;
   v_email text := public.sign_my_email();
   v_job uuid;
   v_cand uuid;
@@ -518,8 +525,15 @@ begin
     raise exception '% is on more than one signing role.', v_dup using errcode = 'GSN13';
   end if;
 
-  select nullif(btrim(concat_ws(' ', p.first_name, p.last_name)), '') into v_sender
+  select nullif(btrim(concat_ws(' ', p.first_name, p.last_name)), ''), nullif(btrim(p.first_name), '')
+    into v_sender, v_sender_first
   from public.profiles p where p.user_id = auth.uid();
+  select nullif(btrim(tn.name), '') into v_company from public.tenants tn where tn.id = t.tenant_id;
+  -- Values only the email uses (the documents can't).
+  v_snapshot := v_values || jsonb_strip_nulls(jsonb_build_object(
+    'first_name', nullif(split_part(btrim(coalesce(v_values->>'name', '')), ' ', 1), ''),
+    'company', v_company,
+    'sender_first', coalesce(v_sender_first, split_part(coalesce(v_sender, v_email, ''), ' ', 1))));
 
   perform set_config('gio.sign_rpc', 'on', true);
 
@@ -535,7 +549,7 @@ begin
     case when _send_at is null then 'queued' else 'scheduled' end::public.sign_status,
     t.id, _source_type, _source_id, rec->>'label',
     v_job, v_cand, t.ordered,
-    coalesce(btrim(_subject), t.subject), coalesce(_body, t.body), t.reminder_days, t.expiry_days, v_values,
+    coalesce(btrim(_subject), t.subject), coalesce(_body, t.body), t.reminder_days, t.expiry_days, v_snapshot,
     'ats', auth.uid(), coalesce(v_sender, v_email), v_email,
     _send_at, case when _send_at is null then now() + interval '5 seconds' end, auth.uid(),
     v_offer, case when v_offer is null then null else public.sign_offer_fingerprint(v_offer, t.id) end)

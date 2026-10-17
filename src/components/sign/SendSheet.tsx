@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, ChevronDown, Eye, Info, Lock, Send, SquarePen, TriangleAlert } from 'lucide-react'
+import { CalendarClock, Eye, Lock, Send, SquarePen } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -11,12 +11,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UnsavedGuard } from '@/components/ui/unsaved-guard'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio'
 import { cn } from '@/lib/utils'
 import { undoToast } from '@/lib/undoToast'
 import { shortDateTime } from '@/lib/sign/status'
-import { DATA_TAGS, okEmail, tagLabel, useOfferForms } from '@/lib/sign/templates'
+import { okEmail, tagLabel, useOfferForms } from '@/lib/sign/templates'
 import {
   offerSendRefusal,
   sendEnvelope,
@@ -38,7 +38,7 @@ import { CoverageRing } from './send/parts'
 import { WhoSigns } from './send/WhoSigns'
 import { isLocked, lockedProblem, personOf } from './send/people'
 import { EditTemplateSheet } from './templates/EditTemplateSheet'
-import { Field, Seg, TagText } from './templates/parts'
+import { Seg, TagText } from './templates/parts'
 
 const tomorrowAt9 = () => {
   const d = new Date(Date.now() + 86_400_000)
@@ -424,49 +424,44 @@ export function SendSheet({
 
               {/* Email */}
               {tpl && (
-                <FormSection title="Email">
-                  <Collapsible>
-                    <div className="flex items-start gap-3">
-                      <div className="min-w-0 flex-1 font-inter text-[12.5px] text-text-primary">
-                        <p className="truncate font-medium">
-                          <TagText text={d.subject ?? tpl.subject} label={label} />
-                        </p>
-                        <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-text-secondary">
-                          <TagText text={d.body ?? tpl.body} label={label} />
-                        </p>
-                      </div>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" iconRight={ChevronDown} className="[&[data-state=open]_svg]:rotate-180 [&_svg]:transition-transform [&_svg]:duration-200">
-                          Edit email
-                        </Button>
-                      </CollapsibleTrigger>
-                    </div>
-                    <CollapsibleContent className="flex flex-col gap-3 pt-3">
-                      <Field label="Subject" htmlFor="send-subject">
-                        <Input
-                          id="send-subject"
-                          maxLength={200}
-                          value={d.subject ?? tpl.subject}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            set((x) => ({ ...x, subject: v }))
-                          }}
-                        />
-                      </Field>
-                      <Field label="Message" htmlFor="send-body" help="Tags like {{name}} fill in from the record. The documents don’t change.">
-                        <Textarea
-                          id="send-body"
-                          rows={5}
-                          maxLength={5000}
-                          value={d.body ?? tpl.body}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            set((x) => ({ ...x, body: v }))
-                          }}
-                        />
-                      </Field>
-                    </CollapsibleContent>
-                  </Collapsible>
+                <FormSection
+                  title="Email"
+                  subtitle={
+                    roles.filter((r) => r.role !== 'cc').length > 1 && tpl.ordered
+                      ? `${firstName === 'them' ? 'The first signer' : firstName} gets this first. The others get it when it’s their turn.`
+                      : `Everyone gets this with their signing link.`
+                  }
+                >
+                  <div className="flex flex-col gap-3">
+                    <label className="flex flex-col gap-1.5" htmlFor="send-subject">
+                      <span className="font-inter text-[11.5px] font-medium text-text-primary">Subject</span>
+                      <Input
+                        id="send-subject"
+                        maxLength={200}
+                        value={d.subject ?? tpl.subject}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          set((x) => ({ ...x, subject: v }))
+                        }}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1.5" htmlFor="send-body">
+                      <span className="font-inter text-[11.5px] font-medium text-text-primary">Message</span>
+                      <Textarea
+                        id="send-body"
+                        rows={3}
+                        maxLength={5000}
+                        value={d.body ?? tpl.body}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          set((x) => ({ ...x, body: v }))
+                        }}
+                      />
+                    </label>
+                    <p className="font-inter text-[11.5px] text-text-tertiary">
+                      Tags like <TagText text="{{first_name}}" label={label} /> fill in when it’s sent. The documents don’t change.
+                    </p>
+                  </div>
                 </FormSection>
               )}
 

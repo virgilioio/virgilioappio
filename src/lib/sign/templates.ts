@@ -169,7 +169,22 @@ export const COMMON_TAGS: [string, string][] = [
   ['sender', 'Sender name'],
 ]
 export const tagsFor = (kind: SignKind) => [...DATA_TAGS[kind], ...COMMON_TAGS]
-export const tagLabel = (kind: SignKind, key: string) => tagsFor(kind).find(([k]) => k === key)?.[1] ?? key
+/** Values only the email can use; sign_send saves them with what was sent (2026-10-17). Not for documents. */
+const EMAIL_ONLY_TAGS: Record<SignKind, [string, string][]> = {
+  customer: [],
+  candidate: [
+    ['first_name', 'First name'],
+    ['company', 'Company'],
+    ['sender_first', 'Sender first name'],
+  ],
+  member: [
+    ['first_name', 'First name'],
+    ['company', 'Company'],
+    ['sender_first', 'Sender first name'],
+  ],
+}
+export const emailTagsFor = (kind: SignKind) => [...tagsFor(kind), ...EMAIL_ONLY_TAGS[kind]]
+export const tagLabel = (kind: SignKind, key: string) => emailTagsFor(kind).find(([k]) => k === key)?.[1] ?? key
 
 /** An offer form's fields as tags a linked template can fill in (2026-10-17). */
 export interface OfferFormTag {
@@ -304,9 +319,10 @@ const DEFAULT_MESSAGE: Record<SignKind, { subject: string; body: string }> = {
     subject: 'Agreement for {{company}} to sign',
     body: 'Hi {{contact}},\n\nHere is the agreement we discussed for {{company}}. Review it and sign where marked.\n\nThanks,\n{{sender}}',
   },
+  // The Send for signature design's copy (2026-10-17).
   candidate: {
-    subject: 'Your offer for {{job}}',
-    body: 'Hi {{name}},\n\nWe’re glad to offer you the {{job}} role. Review the offer and sign where marked.\n\nThanks,\n{{sender}}',
+    subject: 'Your offer from {{company}} · please review and sign',
+    body: 'Hi {{first_name}}, here’s your agreement for the {{job}} role. Have a look and sign when you’re ready. Reach out with any questions.\n\n{{sender_first}}',
   },
   member: {
     subject: 'Your member agreement',
