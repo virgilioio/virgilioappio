@@ -68,6 +68,8 @@ export interface TplDraft {
   roles: TplRole[]
   fields: TplField[]
   uses: number
+  /** The offer form this template fills in (candidate templates); null works with any candidate. */
+  offer_form_id: string | null
 }
 
 export interface TemplateRow extends TplDraft {
@@ -154,6 +156,47 @@ export const COMMON_TAGS: [string, string][] = [
 export const tagsFor = (kind: SignKind) => [...DATA_TAGS[kind], ...COMMON_TAGS]
 export const tagLabel = (kind: SignKind, key: string) => tagsFor(kind).find(([k]) => k === key)?.[1] ?? key
 
+/** An offer form's fields as tags a linked template can fill in (2026-10-17). */
+export interface OfferFormTag {
+  key: string
+  label: string
+  type: string
+}
+/** Field names a template can use (sign_fields.data_key): lowercase letters and underscores. */
+export const okDataKey = (k: string) => /^[a-z][a-z_]{0,39}$/.test(k)
+
+export function useOfferFormTags(formId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['sign', 'offer-form-tags', formId],
+    enabled: !!formId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<OfferFormTag[]> => {
+      const { data, error } = await supabase
+        .from('offer_form_fields')
+        .select('field_name, field_label, field_type, display_order')
+        .eq('form_id', formId!)
+        .order('display_order')
+      if (error) throw error
+      return (data ?? [])
+        .filter((f) => okDataKey(f.field_name))
+        .map((f) => ({ key: f.field_name, label: f.field_label || f.field_name, type: String(f.field_type) }))
+    },
+  })
+}
+
+/** Offer forms a candidate template can be linked to. */
+export function useOfferForms() {
+  return useQuery({
+    queryKey: ['sign', 'offer-forms'],
+    staleTime: 60_000,
+    queryFn: async (): Promise<{ id: string; name: string; is_active: boolean }[]> => {
+      const { data, error } = await supabase.from('offer_forms').select('id, name, is_active').order('name')
+      if (error) throw error
+      return data ?? []
+    },
+  })
+}
+
 const DEFAULT_MESSAGE: Record<SignKind, { subject: string; body: string }> = {
   customer: {
     subject: 'Agreement for {{company}} to sign',
@@ -188,6 +231,7 @@ export function newDraft(kind: SignKind = 'candidate'): TplDraft {
     roles: [{ id: uid(), label: FIRST_ROLE[kind], role: 'signer', fixed: false, name: '', email: '', color: ROLE_COLORS[0] }],
     fields: [],
     uses: 0,
+    offer_form_id: null,
   }
 }
 
@@ -195,6 +239,7 @@ export function newDraft(kind: SignKind = 'candidate'): TplDraft {
 export function withKind(d: TplDraft, kind: SignKind): TplDraft {
   if (d.kind === kind) return d
   const allowed = new Set(tagsFor(kind).map(([k]) => k))
+  const keepForm = kind === 'candidate'
   const untouched = d.subject === DEFAULT_MESSAGE[d.kind].subject && d.body === DEFAULT_MESSAGE[d.kind].body
   return {
     ...d,
@@ -202,7 +247,8 @@ export function withKind(d: TplDraft, kind: SignKind): TplDraft {
     app: kind === 'customer' ? 'sales' : d.app === 'sales' && d.kind === 'customer' ? 'ats' : d.app,
     ...(untouched ? DEFAULT_MESSAGE[kind] : null),
     roles: d.roles.map((r, i) => (i === 0 && r.label === FIRST_ROLE[d.kind] ? { ...r, label: FIRST_ROLE[kind] } : r)),
-    fields: d.fields.filter((f) => f.type !== 'data' || allowed.has(f.data_key ?? '')),
+    offer_form_id: keepForm ? d.offer_form_id : null,
+    fields: d.fields.filter((f) => f.type !== 'data' || allowed.has(f.data_key ?? '') || (keepForm && d.offer_form_id)),
   }
 }
 
@@ -285,7 +331,7 @@ export function stepIssue(step: number, d: TplDraft): string | null {
 /* ------------------------------------------------------------------------- */
 
 const TEMPLATE_SELECT = `
-  id, name, description, kind, app, ordered, subject, body, reminder_days, expiry_days, uses,
+  id, name, description, kind, app, ordered, subject, body, reminder_days, expiry_days, uses, offer_form_id,
   created_at, updated_at, archived_at,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
@@ -369,6 +415,7 @@ export async function saveTemplate(d: TplDraft, tenantId: string) {
     body: d.body,
     reminder_days: d.reminder_days,
     expiry_days: d.expiry_days,
+    offer_form_id: d.kind === 'candidate' ? d.offer_form_id : null,
     docs: d.docs.map((x) => ({
       id: x.id,
       name: x.name,

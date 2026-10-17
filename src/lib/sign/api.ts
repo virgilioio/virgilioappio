@@ -32,6 +32,10 @@ export interface EnvelopeRow {
   source_label: string | null
   source_sub: string | null
   origin: string
+  /** The offer this envelope was sent from (null for other agreements). */
+  offer_id?: string | null
+  /** The offer changed after this was sent (offer_letters_sign_out_of_date). */
+  out_of_date?: boolean
   sender_name: string
   sender_email: string
   sender_user_id: string | null

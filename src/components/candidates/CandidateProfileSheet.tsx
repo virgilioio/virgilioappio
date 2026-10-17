@@ -1668,6 +1668,14 @@ const stageHasAutomation = useMemo(() => {
                         onCreateOffer={() => setOfferFormOpen(true)}
                         onSendReminder={handleSendOfferReminder}
                         onMarkHired={handleHire}
+                        onSendOffer={
+                          offerApproval.offerLetter
+                            ? () => {
+                                setActiveTab('offer')
+                                window.dispatchEvent(new CustomEvent('gio-sign-send-offer', { detail: { offerId: offerApproval.offerLetter!.id } }))
+                              }
+                            : undefined
+                        }
                       />
                     ) : associationStatus === 'hired' && candidateId ? (
                       <HiredBannerSmart
@@ -2133,6 +2141,7 @@ const stageHasAutomation = useMemo(() => {
                                 <AgreementsCard
                                   source={{ type: 'candidate', id: candidateId, jobId }}
                                   recordLabel={[candidate?.candidate_name?.trim(), job?.title].filter(Boolean).join(' · ')}
+                                  offer={offerApproval.offerLetter ? { id: offerApproval.offerLetter.id, formId: offerApproval.offerLetter.form_id ?? null } : null}
                                 />
                               )}
                             </>

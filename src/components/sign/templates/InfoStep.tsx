@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { IconTip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { inspectPdf, PdfProblem, primePdf, uploadTemplatePdf } from '@/lib/sign/pdf'
-import { APP_LABEL, moveDoc, removeDoc, uid, withKind, type SignApp, type TplDraft } from '@/lib/sign/templates'
+import { APP_LABEL, moveDoc, removeDoc, uid, useOfferForms, withKind, type SignApp, type TplDraft } from '@/lib/sign/templates'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { SignKind } from '@/lib/sign/api'
 import { Field, Seg } from './parts'
 
@@ -24,6 +25,7 @@ export function InfoStep({
   tenantId: string
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const forms = useOfferForms()
   const [over, setOver] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
@@ -128,6 +130,41 @@ export function InfoStep({
               ]}
             />
           </Field>
+          {d.kind === 'candidate' && d.app === 'ats' && (
+            <Field
+              label="Offer form"
+              help={
+                d.offer_form_id
+                  ? 'Linked: it can fill in any field of this form, and is offered when an offer built from it is sent.'
+                  : 'Not linked: works with any candidate, using name, job title, salary and start date only.'
+              }
+            >
+              <Select
+                value={d.offer_form_id ?? 'none'}
+                onValueChange={(v) =>
+                  set((x) => ({
+                    ...x,
+                    offer_form_id: v === 'none' ? null : v,
+                    // Fields from the old form can't be filled any more.
+                    fields: v === 'none' ? x.fields.filter((f) => f.type !== 'data' || ['name', 'job', 'salary', 'start', 'today', 'sender'].includes(f.data_key ?? '')) : x.fields,
+                  }))
+                }
+              >
+                <SelectTrigger className="h-9" aria-label="Offer form">
+                  <SelectValue placeholder="Any candidate" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Any candidate (no offer form)</SelectItem>
+                  {(forms.data ?? []).map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
+                      {!f.is_active ? ' · inactive' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
           <Field label="Description" optional htmlFor="tpl-desc">
             <Textarea
               id="tpl-desc"

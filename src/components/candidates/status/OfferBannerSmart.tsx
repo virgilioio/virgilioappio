@@ -1,10 +1,13 @@
-import { Hourglass, Plus, Bell, CheckCircle2, Lock } from 'lucide-react';
+import { Hourglass, Plus, Bell, CheckCircle2, Lock, PenLine, TriangleAlert } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { StatusBanner } from './StatusBanner';
 import { formatMovedHere } from '../statusBannerUtils';
 import { useOfferFormFields } from '@/hooks/useOfferFormFields';
 import { useOfferApprovalSummary } from '@/hooks/useOfferApprovalSummary';
+import { formatOfferValue } from '@/lib/offerValues';
+import { offerSendRefusal } from '@/lib/sign/send';
+import { signersOf } from '@/lib/sign/status';
 
 interface OfferBannerSmartProps {
   candidateId: string;
@@ -14,20 +17,8 @@ interface OfferBannerSmartProps {
   onCreateOffer: () => void;
   onSendReminder?: () => void;
   onMarkHired?: () => void;
-}
-
-function fmtMoney(v: any): string | null {
-  if (v == null) return null;
-  let parsed: any = v;
-  if (typeof v === 'string') {
-    try { parsed = JSON.parse(v); } catch { return v; }
-  }
-  const amount = parsed?.amount ?? parsed;
-  const currency = parsed?.currency || 'USD';
-  if (typeof amount === 'number' || (!isNaN(Number(amount)) && amount !== '')) {
-    return `${currency} ${Number(amount).toLocaleString()}`;
-  }
-  return null;
+  /** Open the Send for signature sheet for this offer (Gio Sign). */
+  onSendOffer?: () => void;
 }
 
 export function OfferBannerSmart({
@@ -38,6 +29,7 @@ export function OfferBannerSmart({
   onCreateOffer,
   onSendReminder,
   onMarkHired,
+  onSendOffer,
 }: OfferBannerSmartProps) {
   const summary = useOfferApprovalSummary(candidateId, jobId);
   const offerLetter = summary.offerLetter;
@@ -115,8 +107,89 @@ export function OfferBannerSmart({
   const currencyFields = fields.filter((f) => f.field_type === 'salary');
   const compFragments: string[] = [];
   for (const f of currencyFields.slice(0, 3)) {
-    const money = fmtMoney(fv[f.field_name]);
+    const money = formatOfferValue(fv[f.field_name], 'salary', { config: f.field_config as Record<string, unknown> | null });
     if (money) compFragments.push(`${money} ${f.field_label?.toLowerCase() || ''}`.trim());
+  }
+
+  // Gio Sign: what the offer's envelope says, and whether it can go out.
+  const env = summary.offerEnvelope;
+  const lightBtn = { backgroundColor: '#fffcf9', color: '#0d0d09', border: 'none' } as const;
+  const ghostBtn = { backgroundColor: 'rgba(255,252,249,0.12)', color: '#fffcf9', border: '1px solid rgba(255,252,249,0.22)' } as const;
+  const openOfferButton = (
+    <Button variant="secondary" size="md" onClick={onCreateOffer} style={ghostBtn}>
+      Open offer
+    </Button>
+  );
+  const sendOfferButton = onSendOffer ? (
+    <Button
+      variant="secondary"
+      size="md"
+      icon={summary.canSend ? PenLine : Lock}
+      onClick={summary.canSend ? onSendOffer : undefined}
+      disabled={!summary.canSend}
+      title={summary.canSend ? undefined : offerSendRefusal(summary.gate?.reason)}
+      style={summary.canSend ? lightBtn : { ...lightBtn, opacity: 0.45, cursor: 'not-allowed', boxShadow: 'none' }}
+    >
+      Send for signature
+    </Button>
+  ) : null;
+
+  // Out for signature, or signed by everyone.
+  if (env && ['queued', 'scheduled', 'sent', 'completed'].includes(env.status)) {
+    const signers = signersOf(env);
+    const done = signers.filter((r) => r.status === 'signed').length;
+    const next = signers.find((r) => r.status !== 'signed');
+    const signedAll = env.status === 'completed';
+    const metaParts: string[] = [];
+    if (env.status === 'scheduled' && env.scheduled_at) metaParts.push(`Sends ${formatMovedHere(env.scheduled_at)}`);
+    else if (env.sent_at) {
+      const dd = differenceInDays(new Date(), new Date(env.sent_at));
+      metaParts.push(dd === 0 ? 'Sent today' : `Sent ${dd}d ago`);
+    } else if (signedAll && env.completed_at) metaParts.push(`Signed ${formatMovedHere(env.completed_at)}`);
+    metaParts.push(signedAll ? `${signers.length} of ${signers.length} signed` : `${done} of ${signers.length} signed`);
+    const subParts: string[] = [];
+    if (compFragments.length) subParts.push(compFragments.join(' · '));
+    subParts.push(env.title);
+    if (env.out_of_date) subParts.push('the offer changed after it went out');
+    return (
+      <StatusBanner
+        tone="offer"
+        icon={signedAll ? CheckCircle2 : env.out_of_date ? TriangleAlert : Hourglass}
+        eyebrow={signedAll ? 'Offer · signed' : env.out_of_date ? 'Offer · out of date' : 'Offer · out for signature'}
+        meta={metaParts.join(' · ')}
+        title={
+          signedAll ? (
+            <>Offer signed by everyone — <strong className="font-semibold">{candidateFirstName || 'the candidate'}</strong> is ready to hire</>
+          ) : env.out_of_date ? (
+            'The offer changed after it was sent — void it and send the new one'
+          ) : (
+            <>Offer is out for signature — waiting for <strong className="font-semibold">{next?.name || candidateFirstName || 'the candidate'}</strong></>
+          )
+        }
+        sub={subParts.join(' · ')}
+        actions={
+          <>
+            {openOfferButton}
+            {markHiredButton}
+          </>
+        }
+      />
+    );
+  }
+
+  // Declined by a signer.
+  if (env?.status === 'declined' || offerLetter.status === 'declined') {
+    return (
+      <StatusBanner
+        tone="offer"
+        icon={TriangleAlert}
+        eyebrow="Offer · declined"
+        meta={env ? `Declined ${formatMovedHere(env.updated_at)}` : undefined}
+        title={<><strong className="font-semibold">{candidateFirstName || 'The candidate'}</strong> declined the offer</>}
+        sub={compFragments.length ? `${compFragments.join(' · ')} · edit the offer and send it again, or create a new one` : 'Edit the offer and send it again, or create a new one'}
+        actions={openOfferButton}
+      />
+    );
   }
 
   // Approval progress
@@ -174,6 +247,28 @@ export function OfferBannerSmart({
   const compSub = compFragments.length
     ? `${compFragments.join(' · ')} · built from your Offer Form`
     : 'Built from your Offer Form';
+
+  // Ready: the database says it can go out (no chain, or every approver approved).
+  if (summary.canSend && onSendOffer) {
+    return (
+      <StatusBanner
+        tone="offer"
+        icon={Hourglass}
+        eyebrow={noApprovalChain ? 'Offer · ready' : 'Offer · approved'}
+        meta={noApprovalChain ? 'No approval needed on this job' : `All ${totalSteps} approvals in`}
+        title="Offer is ready — send it for signature"
+        sub={compSub}
+        actions={
+          <>
+            {sendOfferButton}
+            {openOfferButton}
+            {markHiredButton}
+          </>
+        }
+      />
+    );
+  }
+
   return (
     <StatusBanner
       tone="offer"
@@ -200,18 +295,8 @@ export function OfferBannerSmart({
       }
       actions={
         <>
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={onCreateOffer}
-            style={{
-              backgroundColor: 'rgba(255,252,249,0.12)',
-              color: '#fffcf9',
-              border: '1px solid rgba(255,252,249,0.22)',
-            }}
-          >
-            Open offer
-          </Button>
+          {openOfferButton}
+          {sendOfferButton}
           {markHiredButton}
         </>
       }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MoreHorizontal, PenLine } from 'lucide-react'
+import { ChevronDown, FileSignature, MoreHorizontal, PenLine } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ENVELOPE_STATUS, ago, shortDateTime, signersOf } from '@/lib/sign/status'
-import { SIGN_SENDING_LIVE, useRecordEnvelopes, type SendSource } from '@/lib/sign/send'
+import { SIGN_SENDING_LIVE, offerSendRefusal, useOfferGate, useRecordEnvelopes, type SendSource } from '@/lib/sign/send'
 import { sealStuck, type EnvelopeRow } from '@/lib/sign/api'
 import { SendSheet, type SendDraft } from './SendSheet'
 import { useEnvelopeActions } from './envelopeActions'
@@ -31,8 +31,18 @@ function Line({ e }: { e: EnvelopeRow }) {
   return (
     <div className="flex items-start gap-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-inter text-[12.5px] font-medium text-[#1F2230]">{e.title}</p>
-        <p className="mt-0.5 truncate font-inter text-[11.5px] tabular-nums text-[#6B7080]">{meta}</p>
+        <p className="flex min-w-0 items-center gap-1.5 font-inter text-[12.5px] font-medium text-[#1F2230]">
+          <span className="truncate">{e.title}</span>
+          {e.offer_id && (
+            <Badge tone="lilac" size="xs">
+              Offer
+            </Badge>
+          )}
+        </p>
+        <p className="mt-0.5 truncate font-inter text-[11.5px] tabular-nums text-[#6B7080]">
+          {meta}
+          {e.out_of_date && <span className="text-[#B45309]"> · the offer changed after this went out</span>}
+        </p>
       </div>
       <Badge tone={st.tone} size="xs" dot>
         {st.label}
@@ -46,14 +56,22 @@ function Line({ e }: { e: EnvelopeRow }) {
  * signature. On a candidate it's per job (the job's team sees it); in People &
  * Access it's per member. Admins can open an envelope in Sign.
  */
+export interface AgreementsOffer {
+  id: string
+  formId: string | null
+}
+
 export function AgreementsCard({
   source,
   recordLabel,
   className,
+  offer,
 }: {
   source: SendSource
   recordLabel: string
   className?: string
+  /** The candidate's offer on this job (if any): "Send for signature" sends it; other agreements stay available. */
+  offer?: AgreementsOffer | null
 }) {
   const { isPlatformAdmin, isAdmin: isWorkspaceAdmin } = usePermissions()
   const isAdmin = !!(isPlatformAdmin || isWorkspaceAdmin)
@@ -62,18 +80,39 @@ export function AgreementsCard({
   const { actionsFor, dialogs } = useEnvelopeActions({ context: 'record' })
   const [open, setOpen] = useState(false)
   const [restore, setRestore] = useState<SendDraft | null>(null)
+  // What the sheet sends: the offer, or another agreement for the record.
+  const [mode, setMode] = useState<'offer' | 'other'>('other')
+  const offerSource: SendSource | null =
+    offer && source.type === 'candidate' ? { type: 'ats_offer', id: offer.id, candidateId: source.id, jobId: source.jobId, formId: offer.formId } : null
+  const gate = useOfferGate(offerSource ? offer!.id : null)
+  const canSendOffer = !!gate.data?.ok
+  const sheetSource = mode === 'offer' && offerSource ? offerSource : source
+
+  const openSheet = (m: 'offer' | 'other', draft: SendDraft | null = null) => {
+    setMode(m)
+    setRestore(draft)
+    setOpen(true)
+  }
 
   // Undo after sending reopens the sheet with what was entered.
   useEffect(() => {
     const onReopen = (ev: Event) => {
       const { sourceId, draft } = (ev as CustomEvent<{ sourceId: string; draft: SendDraft }>).detail
-      if (sourceId !== source.id) return
-      setRestore(draft)
-      setOpen(true)
+      if (sourceId === source.id) openSheet('other', draft)
+      else if (offerSource && sourceId === offerSource.id) openSheet('offer', draft)
+    }
+    // The offer banner's "Send for signature" opens the same sheet.
+    const onSendOffer = (ev: Event) => {
+      const { offerId } = (ev as CustomEvent<{ offerId: string }>).detail
+      if (offerSource && offerId === offerSource.id) openSheet('offer')
     }
     window.addEventListener('gio-sign-reopen', onReopen)
-    return () => window.removeEventListener('gio-sign-reopen', onReopen)
-  }, [source.id])
+    window.addEventListener('gio-sign-send-offer', onSendOffer)
+    return () => {
+      window.removeEventListener('gio-sign-reopen', onReopen)
+      window.removeEventListener('gio-sign-send-offer', onSendOffer)
+    }
+  }, [source.id, offerSource?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = useMemo(() => (q.data ?? []).filter((e) => e.status !== 'draft'), [q.data])
 
@@ -85,17 +124,33 @@ export function AgreementsCard({
         <h3 className="flex-1 font-poppins font-semibold text-[#0d0d09]" style={{ fontSize: 13, letterSpacing: '-0.02em' }}>
           Agreements
         </h3>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={PenLine}
-          onClick={() => {
-            setRestore(null)
-            setOpen(true)
-          }}
-        >
-          Send for signature
-        </Button>
+        {offerSource ? (
+          <div className="flex items-center gap-1">
+            <IconTip label={canSendOffer ? 'Send the offer for signature' : offerSendRefusal(gate.data?.reason)}>
+              <Button variant="secondary" size="sm" icon={PenLine} onClick={() => openSheet('offer')} disabled={!canSendOffer} aria-label="Send the offer for signature">
+                Send for signature
+              </Button>
+            </IconTip>
+            <DropdownMenu>
+              <IconTip label="More">
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" iconOnly aria-label="More ways to send">
+                    <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+              </IconTip>
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <DropdownMenuItem onClick={() => openSheet('other')}>
+                  <FileSignature className="h-3.5 w-3.5" aria-hidden /> Other agreement…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : (
+          <Button variant="secondary" size="sm" icon={PenLine} onClick={() => openSheet('other')}>
+            Send for signature
+          </Button>
+        )}
       </header>
       <div className="px-5 pb-3">
         {q.isLoading ? (
@@ -161,7 +216,7 @@ export function AgreementsCard({
           </div>
         )}
       </div>
-      <SendSheet open={open} onOpenChange={setOpen} source={source} recordLabel={recordLabel} isAdmin={isAdmin} restore={restore} />
+      <SendSheet open={open} onOpenChange={setOpen} source={sheetSource} recordLabel={recordLabel} isAdmin={isAdmin} restore={restore} />
       {dialogs}
     </section>
   )
