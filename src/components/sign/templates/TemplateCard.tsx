@@ -7,7 +7,8 @@ import { IconTip } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { loadTemplatePdf } from '@/lib/sign/pdf'
 import { ago } from '@/lib/sign/status'
-import { APP_LABEL, KIND_LABEL, offerCoverage, pageCount, usedTags, useOfferFormTags, type TemplateRow, type TplDoc } from '@/lib/sign/templates'
+import { APP_LABEL, KIND_LABEL, draftCoverage, pageCount, useOfferForms, useOfferFormTags, type TemplateRow, type TplDoc } from '@/lib/sign/templates'
+import { cn } from '@/lib/utils'
 import { docItems } from '@/lib/sign/written'
 
 /** The first page of the first document, drawn once the card scrolls into view. */
@@ -64,17 +65,26 @@ function Thumb({ doc, accent }: { doc: TplDoc | undefined; accent: string }) {
   )
 }
 
-/** How many of the linked offer form's fields the template places (offer templates only). */
-function OfferCoverageLine({ t }: { t: TemplateRow }) {
-  const tags = useOfferFormTags(t.kind === 'candidate' ? t.offer_form_id : null)
-  if (!t.offer_form_id || !tags.data?.length) return null
-  const c = offerCoverage(usedTags(t), tags.data, t.not_needed)
+/**
+ * §8 meta line: "{Form or Any offer} · {Written in Gio / Uploaded / both} ·
+ * {N not mapped / All fields mapped}" (the last part only with a linked form).
+ */
+function MetaLine({ t }: { t: TemplateRow }) {
+  const linked = t.kind === 'candidate' && !!t.offer_form_id
+  const forms = useOfferForms()
+  const tags = useOfferFormTags(linked ? t.offer_form_id : null)
+  const form = linked ? forms.data?.find((f) => f.id === t.offer_form_id)?.name ?? 'Linked form' : t.kind === 'candidate' ? 'Any offer' : null
+  const source = t.written.length && t.docs.length ? `Written in Gio + ${t.docs.length} uploaded` : t.written.length ? 'Written in Gio' : 'Uploaded'
+  const c = linked && tags.data ? draftCoverage(t, tags.data) : null
   return (
-    <p className={c.missing.length ? 'font-inter text-[12px] text-[#7A4A06]' : 'font-inter text-[12px] text-text-tertiary'}>
-      <span className="tabular-nums">
-        {c.placed.length} of {c.total}
-      </span>{' '}
-      offer fields placed
+    <p className="flex min-w-0 flex-wrap gap-x-1.5 font-inter text-[12px] text-text-tertiary">
+      {form && <span className="min-w-0 truncate">{form} ·</span>}
+      <span className="whitespace-nowrap">{source}</span>
+      {c && (
+        <span className={c.missing.length ? 'whitespace-nowrap tabular-nums text-[#7A4A06]' : 'whitespace-nowrap'}>
+          · {c.missing.length ? `${c.missing.length} not mapped` : 'All fields mapped'}
+        </span>
+      )}
     </p>
   )
 }
@@ -90,8 +100,11 @@ export function TemplateCard({
   onDuplicate,
   onArchive,
   onRestore,
+  fx,
 }: {
   t: TemplateRow
+  /** Just saved (§6): a new card rises in; an edited one flashes. */
+  fx?: 'in' | 'flash' | null
   onEdit: () => void
   onDuplicate: () => void
   onArchive: () => void
@@ -102,7 +115,10 @@ export function TemplateCard({
   const first = docItems(t)[0]
   const docs = t.docs.length + t.written.length
   return (
-    <article className="flex flex-col overflow-hidden rounded-[14px] border border-[#E7E8EE] bg-white" data-row-id={t.id}>
+    <article
+      className={cn('relative flex flex-col overflow-hidden rounded-[14px] border border-[#E7E8EE] bg-white', fx === 'in' && 'gio-row-in', fx === 'flash' && 'gio-saved-flash')}
+      data-row-id={t.id}
+    >
       <Thumb doc={first?.kind === 'upload' ? first.doc : undefined} accent={t.roles[0]?.color ?? '#E4E3DD'} />
       <div className="flex flex-1 flex-col gap-1.5 px-3.5 pb-3.5 pt-3">
         <div className="flex items-center gap-1.5">
@@ -162,7 +178,7 @@ export function TemplateCard({
           <span className="whitespace-nowrap">Sent {t.uses}×</span>
           <span className="whitespace-nowrap">Edited {edited(t.updated_at)}</span>
         </p>
-        <OfferCoverageLine t={t} />
+        <MetaLine t={t} />
         <div className="mt-auto flex gap-1.5 pt-2">
           {archived ? (
             <Button variant="secondary" size="sm" icon={ArchiveRestore} onClick={onRestore}>

@@ -1766,6 +1766,12 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 
 /* A row added to a list (a new role): rises 6px in. */
 .gio-row-in { animation: gio-arrive-rise 240ms var(--ease-out) backwards; }
+/* A card just saved flashes the saved-row yellow, fading over --dur-flash (colour only, so reduced motion keeps it). */
+.gio-saved-flash::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: #FBEFC9; mix-blend-mode: multiply; opacity: 0;
+  animation: gio-arrive-flash var(--dur-flash) ease-out;
+}
 @media (prefers-reduced-motion: reduce) { .gio-row-in { animation-name: gio-fade-only; } }
 
 /* Template info's Documents cards (2026-10-17): a big checkbox each. Ticked is a
@@ -2058,6 +2064,7 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
 }
 .gio-ftile:active:not(:disabled) { transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) { .gio-ftile:active:not(:disabled) { transform: none; } }
 .gio-ftile:disabled { cursor: not-allowed; opacity: .55; }
 @media (hover: hover) and (pointer: fine) { .gio-ftile:hover:not(:disabled) { background: #FAFAF7; } }
 .gio-ftile-row[data-skipped] .gio-ftile { color: #6B7080; padding-right: 116px; }

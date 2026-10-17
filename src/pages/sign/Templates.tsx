@@ -67,6 +67,8 @@ export default function SignTemplates() {
   }
 
   const [wizard, setWizard] = useState<{ open: boolean; init: TplDraft | null; mode: WizardMode }>({ open: false, init: null, mode: 'new' })
+  // The card just saved: a new one rises in, an edited one flashes (§6).
+  const [justSaved, setJustSaved] = useState<{ id: string; fx: 'in' | 'flash'; n: number } | null>(null)
   const openWizard = (init: TplDraft, mode: WizardMode) => setWizard({ open: true, init, mode })
 
   const all = useMemo(() => q.data ?? [], [q.data])
@@ -206,8 +208,9 @@ export default function SignTemplates() {
               <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3.5">
                 {cards.map((t) => (
                   <TemplateCard
-                    key={t.id}
+                    key={justSaved?.id === t.id ? `${t.id}-${justSaved.n}` : t.id}
                     t={t}
+                    fx={justSaved?.id === t.id ? justSaved.fx : null}
                     onEdit={() => openWizard(t, 'edit')}
                     onDuplicate={() => openWizard(duplicateDraft(t), 'duplicate')}
                     onArchive={() => void archive(t, true)}
@@ -222,7 +225,13 @@ export default function SignTemplates() {
         )}
       </div>
 
-      <TemplateWizard open={wizard.open} init={wizard.init} mode={wizard.mode} onClose={() => setWizard((w) => ({ ...w, open: false }))} />
+      <TemplateWizard
+        open={wizard.open}
+        init={wizard.init}
+        mode={wizard.mode}
+        onClose={() => setWizard((w) => ({ ...w, open: false }))}
+        onSaved={(id, how) => setJustSaved({ id, fx: how === 'created' ? 'in' : 'flash', n: Date.now() })}
+      />
     </ListPage>
   )
 }
