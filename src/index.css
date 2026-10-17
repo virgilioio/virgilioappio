@@ -1743,6 +1743,11 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   font: 400 12.5px/1.45 Inter, sans-serif;
 }
 .gio-send-row:last-child { border-bottom: 0; }
+.gio-who-row {
+  display: grid; grid-template-columns: 18px 10px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid #F4F3EF;
+}
+.gio-who-row:last-child { border-bottom: 0; }
 
 /* Gio Sign › TemplateSelect in Send for signature (2026-10-17). The panel grows
    from the field like the other menus (--dur-menu-in/out, --ease-out); the

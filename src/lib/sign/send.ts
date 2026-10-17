@@ -65,6 +65,10 @@ export interface SendRole {
   color: string
   name: string
   email: string
+  /** Where the person comes from (2026-10-17); missing from older databases, which means the old rule. */
+  source?: 'record' | 'hiring_manager' | 'sender' | 'fixed' | 'typed'
+  /** The sender can't change this person. */
+  locked?: boolean
 }
 
 export interface SendPreview {
@@ -86,6 +90,8 @@ export interface SendTemplate {
   name: string
   description: string | null
   kind: SignKind
+  /** Each person signs after the one before. */
+  ordered: boolean
   subject: string
   body: string
   /** Uploaded and written documents. */
@@ -130,7 +136,7 @@ export function useSendTemplates(source: SendSource | null) {
       const { data, error } = await supabase
         .from('sign_templates')
         .select(`
-          id, name, description, kind, subject, body, offer_form_id,
+          id, name, description, kind, ordered, subject, body, offer_form_id, offer_fields_not_needed,
           docs:sign_documents!sign_documents_template_id_fkey(page_count, position, removed_at),
           written:sign_written_docs!sign_written_docs_template_id_fkey(content, removed_at),
           roles:sign_recipients!sign_recipients_template_id_fkey(label, role, position, removed_at),
@@ -141,7 +147,8 @@ export function useSendTemplates(source: SendSource | null) {
         .is('archived_at', null)
         .order('name')
       if (error) throw error
-      type Raw = Pick<SendTemplate, 'id' | 'name' | 'description' | 'kind' | 'subject' | 'body' | 'offer_form_id'> & {
+      type Raw = Pick<SendTemplate, 'id' | 'name' | 'description' | 'kind' | 'ordered' | 'subject' | 'body' | 'offer_form_id'> & {
+        offer_fields_not_needed: string[] | null
         docs: { page_count: number; position: number; removed_at: string | null }[]
         written: { content: LexicalJson; removed_at: string | null }[] | null
         roles: { label: string | null; role: string; position: number; removed_at: string | null }[]
@@ -163,6 +170,7 @@ export function useSendTemplates(source: SendSource | null) {
           name: t.name,
           description: t.description,
           kind: t.kind,
+          ordered: t.ordered,
           subject: t.subject,
           body: t.body,
           offer_form_id: t.offer_form_id,
@@ -176,7 +184,7 @@ export function useSendTemplates(source: SendSource | null) {
           written_pages: written.reduce((a, w) => a + writtenPageCount(w.content), 0),
           signing: roles.filter((r) => r.role !== 'cc').map((r) => r.label ?? ''),
           data_keys: [...keys],
-          not_needed: [],
+          not_needed: t.offer_fields_not_needed ?? [],
         }
       })
     },

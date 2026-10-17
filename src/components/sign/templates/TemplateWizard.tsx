@@ -154,7 +154,7 @@ export function TemplateWizard({
     >
       {step === 0 && organizationId && <InfoStep d={d} set={set} tenantId={organizationId} />}
       {step === 1 && <RolesStep d={d} set={set} me={me} />}
-      {step === 2 && (d.docs.length ? <FieldsEditor d={d} set={set} /> : <WrittenOnlyFields d={d} go={setStep} />)}
+      {step === 2 && (d.docs.length ? <FieldsEditor d={d} set={set} /> : <WrittenOnlyFields d={d} set={set} go={setStep} />)}
       {step === 3 && <MessageStep d={d} set={set} />}
       {step === 4 && <ReviewStep d={d} go={(i) => reachable(i) && setStep(i)} />}
     </WizardSheet>

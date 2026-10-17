@@ -29,12 +29,17 @@ export interface TplDoc {
   position?: number
 }
 
+/** Where a role's person comes from when it's sent (2026-10-17). */
+export type FillFrom = 'record' | 'hiring_manager' | 'sender' | 'fixed' | 'typed'
+
 export interface TplRole {
   id: string
   label: string
   role: SignRecipientRole
   /** A role fixed to one person (the countersigner); otherwise filled when sent. */
   fixed: boolean
+  /** Where the person comes from; null keeps the old rule (first open signer from the record, others typed). */
+  fill_from?: FillFrom | null
   name: string
   email: string
   color: string
@@ -78,6 +83,8 @@ export interface TplDraft {
   uses: number
   /** The offer form this template fills in (candidate templates); null works with any candidate. */
   offer_form_id: string | null
+  /** Offer form fields left out on purpose: they don't count as missing. */
+  not_needed: string[]
 }
 
 export interface TemplateRow extends TplDraft {
@@ -198,12 +205,15 @@ export function useOfferFormTags(formId: string | null | undefined) {
  * Which of the linked offer form's fields the template places somewhere, and
  * which it leaves out (the coverage line on the Fields step and the card).
  */
-export function offerCoverage(fields: Pick<TplField, 'type' | 'data_key'>[], tags: OfferFormTag[]) {
+export function offerCoverage(fields: Pick<TplField, 'type' | 'data_key'>[], tags: OfferFormTag[], notNeeded: string[] = []) {
   const placed = new Set(fields.filter((f) => f.type === 'data' && f.data_key).map((f) => f.data_key))
+  const skip = new Set(notNeeded)
+  const counted = tags.filter((t) => placed.has(t.key) || !skip.has(t.key))
   return {
-    total: tags.length,
-    placed: tags.filter((t) => placed.has(t.key)),
-    missing: tags.filter((t) => !placed.has(t.key)),
+    total: counted.length,
+    placed: counted.filter((t) => placed.has(t.key)),
+    missing: counted.filter((t) => !placed.has(t.key)),
+    skipped: tags.filter((t) => !placed.has(t.key) && skip.has(t.key)),
   }
 }
 
@@ -321,10 +331,11 @@ export function newDraft(kind: SignKind = 'candidate'): TplDraft {
     expiry_days: kind === 'candidate' ? 14 : 30,
     docs: [],
     written: [],
-    roles: [{ id: uid(), label: FIRST_ROLE[kind], role: 'signer', fixed: false, name: '', email: '', color: ROLE_COLORS[0] }],
+    roles: [{ id: uid(), label: FIRST_ROLE[kind], role: 'signer', fixed: false, fill_from: kind === 'customer' ? null : 'record', name: '', email: '', color: ROLE_COLORS[0] }],
     fields: [],
     uses: 0,
     offer_form_id: null,
+    not_needed: [],
   }
 }
 
@@ -468,16 +479,17 @@ export function stepIssue(step: number, d: TplDraft): string | null {
 /* ------------------------------------------------------------------------- */
 
 const TEMPLATE_SELECT = `
-  id, name, description, kind, app, ordered, subject, body, reminder_days, expiry_days, uses, offer_form_id,
+  id, name, description, kind, app, ordered, subject, body, reminder_days, expiry_days, uses, offer_form_id, offer_fields_not_needed,
   created_at, updated_at, archived_at,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
-  roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
+  roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, fill_from, name, email, color, position, removed_at),
   fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at),
   written:sign_written_docs!sign_written_docs_template_id_fkey(id, name, position, content, removed_at)
 `
 
-type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description' | 'written'> & {
+type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description' | 'written' | 'not_needed'> & {
   description: string | null
+  offer_fields_not_needed: string[] | null
   written: (TplWritten & { removed_at: string | null })[] | null
   docs: (TplDoc & { position: number; removed_at: string | null })[]
   roles: (Omit<TplRole, 'name' | 'email'> & { name: string | null; email: string | null; label: string | null; position: number; removed_at: string | null })[]
@@ -488,6 +500,7 @@ function fromRaw(t: Raw): TemplateRow {
   return {
     ...t,
     description: t.description ?? '',
+    not_needed: t.offer_fields_not_needed ?? [],
     docs: (t.docs ?? [])
       .filter((x) => !x.removed_at)
       .sort((a, b) => a.position - b.position)
@@ -498,7 +511,7 @@ function fromRaw(t: Raw): TemplateRow {
     roles: (t.roles ?? [])
       .filter((x) => !x.removed_at)
       .sort((a, b) => a.position - b.position)
-      .map((r) => ({ id: r.id, label: r.label ?? '', role: r.role, fixed: r.fixed, name: r.name ?? '', email: r.email ?? '', color: r.color })),
+      .map((r) => ({ id: r.id, label: r.label ?? '', role: r.role, fixed: r.fixed, fill_from: r.fill_from ?? null, name: r.name ?? '', email: r.email ?? '', color: r.color })),
     fields: (t.fields ?? [])
       .filter((x) => !x.removed_at)
       .map((f) => ({
@@ -560,6 +573,7 @@ export async function saveTemplate(draft: TplDraft, tenantId: string) {
     reminder_days: d.reminder_days,
     expiry_days: d.expiry_days,
     offer_form_id: d.kind === 'candidate' ? d.offer_form_id : null,
+    not_needed: d.kind === 'candidate' && d.offer_form_id ? d.not_needed : [],
     docs: d.docs.map((x) => ({
       id: x.id,
       name: x.name,
@@ -571,7 +585,7 @@ export async function saveTemplate(draft: TplDraft, tenantId: string) {
       position: x.position,
     })),
     written: d.written.map((w) => ({ id: w.id, name: w.name.trim(), position: w.position, content: w.content })),
-    roles: d.roles.map((r) => ({ id: r.id, label: r.label.trim(), role: r.role, fixed: r.fixed, name: r.name, email: r.email, color: r.color })),
+    roles: d.roles.map((r) => ({ id: r.id, label: r.label.trim(), role: r.role, fixed: r.fixed, fill_from: r.fixed ? 'fixed' : r.fill_from ?? null, name: r.name, email: r.email, color: r.color })),
     fields: d.fields.map((f) => {
       const w = Math.min(f.w, 100)
       const h = Math.min(f.h, 100)

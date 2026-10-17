@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { IconTip } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ROLE_COLORS, uid, type TplDraft, type TplRole } from '@/lib/sign/templates'
+import { ROLE_COLORS, uid, type FillFrom, type TplDraft, type TplRole } from '@/lib/sign/templates'
 import type { SignRecipientRole } from '@/lib/sign/api'
 import { prefersReducedMotion } from '@/lib/motion'
 
@@ -16,6 +16,23 @@ const ROLE_KIND: { value: SignRecipientRole; label: string }[] = [
   { value: 'approver', label: 'Approver' },
   { value: 'cc', label: 'Gets a copy' },
 ]
+
+/** Where a role's person comes from, by template type (2026-10-17). Customer templates keep the on/off switch. */
+const SOURCES: Record<'candidate' | 'member', { value: FillFrom; label: string }[]> = {
+  candidate: [
+    { value: 'record', label: 'The candidate' },
+    { value: 'hiring_manager', label: 'The job’s hiring manager' },
+    { value: 'sender', label: 'Whoever sends it' },
+    { value: 'fixed', label: 'Same person every time' },
+    { value: 'typed', label: 'Typed in when sending' },
+  ],
+  member: [
+    { value: 'record', label: 'The team member' },
+    { value: 'sender', label: 'Whoever sends it' },
+    { value: 'fixed', label: 'Same person every time' },
+    { value: 'typed', label: 'Typed in when sending' },
+  ],
+}
 
 export function RolesStep({
   d,
@@ -60,8 +77,17 @@ export function RolesStep({
   const add = (p: Partial<TplRole>) =>
     set((x) => ({
       ...x,
-      roles: [...x.roles, { id: uid(), label: `Role ${x.roles.length + 1}`, role: 'signer', fixed: false, name: '', email: '', color: freeColor(), ...p }],
+      roles: [
+        ...x.roles,
+        { id: uid(), label: `Role ${x.roles.length + 1}`, role: 'signer', fixed: false, fill_from: x.kind === 'customer' ? null : 'typed', name: '', email: '', color: freeColor(), ...p },
+      ],
     }))
+  // Roles saved before sources existed: the first open signer is the record's person, the rest are typed.
+  const firstOpen = d.roles.find((r) => r.role === 'signer' && !r.fixed)?.id
+  const sourceOf = (r: TplRole): FillFrom => (r.fixed ? 'fixed' : r.fill_from && r.fill_from !== 'fixed' ? r.fill_from : r.id === firstOpen ? 'record' : 'typed')
+  const setSource = (r: TplRole, v: FillFrom) =>
+    upd(r.id, v === 'fixed' ? { fixed: true, fill_from: 'fixed' } : { fixed: false, fill_from: v, name: '', email: '' })
+  const sources = d.kind === 'customer' ? null : SOURCES[d.kind]
   const hasMe = d.roles.some((r) => r.fixed && r.email.toLowerCase() === me.email.toLowerCase())
   const full = d.roles.length >= 20
 
@@ -69,7 +95,7 @@ export function RolesStep({
     <div className="max-w-[760px]">
       <FormSection
         title="Roles"
-        subtitle="Roles become people when the template is used. The first signer is usually filled from the record."
+        subtitle={d.kind === 'customer' ? 'Roles become people when the template is used. The first signer is usually filled from the record.' : 'Roles become people when the template is used. Choose where each person comes from; only people typed in when sending can be changed then.'}
         action={
           <label className="flex items-center gap-2 whitespace-nowrap font-inter text-[12.5px] font-medium text-text-primary">
             Signing order
@@ -117,10 +143,25 @@ export function RolesStep({
                       ))}
                     </SelectContent>
                   </Select>
-                  <label className="flex shrink-0 items-center gap-2 whitespace-nowrap pl-1 font-inter text-[12px] text-text-secondary">
-                    Same person every time
-                    <Switch checked={r.fixed} onCheckedChange={(v) => upd(r.id, { fixed: v, ...(v ? null : { name: '', email: '' }) })} aria-label={`${r.label || 'This role'} is the same person every time`} />
-                  </label>
+                  {sources ? (
+                    <Select value={sourceOf(r)} onValueChange={(v) => setSource(r, v as FillFrom)}>
+                      <SelectTrigger className="h-9 w-[208px]" aria-label={`Where ${r.label || 'this role'} comes from`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sources.map((k) => (
+                          <SelectItem key={k.value} value={k.value}>
+                            {k.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <label className="flex shrink-0 items-center gap-2 whitespace-nowrap pl-1 font-inter text-[12px] text-text-secondary">
+                      Same person every time
+                      <Switch checked={r.fixed} onCheckedChange={(v) => upd(r.id, { fixed: v, ...(v ? null : { name: '', email: '' }) })} aria-label={`${r.label || 'This role'} is the same person every time`} />
+                    </label>
+                  )}
                   <div className="flex shrink-0 items-center">
                     <IconTip label="Move up">
                       <Button variant="ghost" size="sm" iconOnly aria-label="Move up" disabled={i === 0} onClick={() => move(i, i - 1)}>
@@ -173,7 +214,7 @@ export function RolesStep({
                 size="sm"
                 icon={PenLine}
                 disabled={full}
-                onClick={() => add({ label: 'Countersigner', fixed: true, name: me.name, email: me.email.toLowerCase() })}
+                onClick={() => add({ label: 'Countersigner', fixed: true, fill_from: 'fixed', name: me.name, email: me.email.toLowerCase() })}
               >
                 Add me as countersigner
               </Button>

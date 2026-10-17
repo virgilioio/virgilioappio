@@ -35,6 +35,8 @@ import { TemplateSelect } from './TemplateSelect'
 import { FromOffer } from './send/FromOffer'
 import { useTemplateFit } from './send/fit'
 import { CoverageRing } from './send/parts'
+import { WhoSigns } from './send/WhoSigns'
+import { isLocked, lockedProblem, personOf } from './send/people'
 import { EditTemplateSheet } from './templates/EditTemplateSheet'
 import { Field, Seg, TagText } from './templates/parts'
 
@@ -137,7 +139,7 @@ export function SendSheet({
     setD((x) => {
       const people = { ...x.people }
       for (const r of preview.data!.roles) {
-        if (!r.fixed && !people[r.id]) people[r.id] = { name: r.name ?? '', email: r.email ?? '' }
+        if (!isLocked(r) && !people[r.id]) people[r.id] = { name: r.name ?? '', email: r.email ?? '' }
       }
       return { ...x, people }
     })
@@ -160,7 +162,9 @@ export function SendSheet({
     if (preview.data?.gate && !preview.data.gate.ok) return offerSendRefusal(preview.data.gate.reason)
     if (missing.length) return `Missing from the ${isOffer ? 'offer' : 'record'}: ${missing.join(', ')}`
     for (const r of roles) {
-      if (r.fixed) continue
+      const problem = lockedProblem(r, isOffer, kind)
+      if (problem) return problem
+      if (isLocked(r)) continue
       const p = d.people[r.id]
       if (!p?.name.trim()) return `Add a name for ${r.label}`
       if (!okEmail(p.email.trim())) return `Add a valid email for ${r.label}`
@@ -168,7 +172,7 @@ export function SendSheet({
     if (d.subject !== null && !d.subject.trim()) return 'Add a subject'
     if (d.when === 'schedule' && d.at.getTime() <= Date.now() + 60_000) return 'Pick a time in the future'
     return null
-  }, [d, preview.isLoading, preview.isError, preview.error, preview.data?.gate, missing, roles, blocked, isOffer, fit.blocked])
+  }, [d, preview.isLoading, preview.isError, preview.error, preview.data?.gate, missing, roles, blocked, isOffer, kind, fit.blocked])
 
   const close = () => {
     if (busy) return
@@ -177,8 +181,9 @@ export function SendSheet({
   }
 
   const firstName = (() => {
-    const r = roles.find((x) => x.role === 'signer' && !x.fixed)
-    return (r && d.people[r.id]?.name.trim()) || 'them'
+    const r = roles.find((x) => x.role === 'signer')
+    const name = r ? personOf(r, d.people).name.trim() : ''
+    return name.split(/\s+/)[0] || 'them'
   })()
 
   const send = async () => {
@@ -190,8 +195,9 @@ export function SendSheet({
       const id = await sendEnvelope({
         templateId: d.templateId,
         source,
+        // Locked people are worked out again on the server; only typed ones go up.
         people: roles
-          .filter((r) => !r.fixed)
+          .filter((r) => !isLocked(r))
           .map((r) => ({ role_id: r.id, name: d.people[r.id].name.trim(), email: d.people[r.id].email.trim().toLowerCase() })),
         sendAt: d.when === 'schedule' ? d.at : null,
         subject: d.subject !== null && d.subject.trim() !== tpl?.subject ? d.subject.trim() : null,
@@ -399,54 +405,20 @@ export function SendSheet({
 
               {/* People */}
               {!preview.isError && roles.length > 0 && (
-                <FormSection title="Who signs" subtitle={tpl && roles.length > 1 ? 'In this order; each person gets the email after the one before signs.' : undefined}>
-                  <div className="flex flex-col gap-3">
-                    {roles.map((r, i) => (
-                      <div key={r.id} className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2 font-inter text-[12.5px] font-medium text-text-primary">
-                          <span className="w-4 text-center text-[11.5px] tabular-nums text-text-tertiary">{i + 1}</span>
-                          <span aria-hidden className="h-3 w-3 rounded" style={{ background: r.color }} />
-                          {r.label}
-                          <span className="font-normal text-text-tertiary">
-                            · {r.role === 'cc' ? 'Gets a copy' : r.role === 'approver' ? 'Approves' : 'Signs'}
-                          </span>
-                        </div>
-                        {r.fixed ? (
-                          <p className="ml-6 flex items-center gap-1.5 font-inter text-[12.5px] text-text-secondary">
-                            <Lock className="h-3 w-3 text-text-tertiary" strokeWidth={2} aria-hidden />
-                            {r.name} · {r.email}
-                          </p>
-                        ) : (
-                          <div className="ml-6 grid grid-cols-2 gap-2">
-                            <Input
-                              aria-label={`${r.label} name`}
-                              placeholder="Full name"
-                              maxLength={120}
-                              className="h-9"
-                              value={d.people[r.id]?.name ?? ''}
-                              onChange={(e) => {
-                                const v = e.target.value
-                                set((x) => ({ ...x, people: { ...x.people, [r.id]: { ...(x.people[r.id] ?? { email: '' }), name: v } } }))
-                              }}
-                            />
-                            <Input
-                              aria-label={`${r.label} email`}
-                              placeholder="Email"
-                              type="email"
-                              className="h-9"
-                              value={d.people[r.id]?.email ?? ''}
-                              aria-invalid={!!touched[r.id] && !!d.people[r.id]?.email && !okEmail(d.people[r.id].email.trim())}
-                              onBlur={() => setTouched((t) => ({ ...t, [r.id]: true }))}
-                              onChange={(e) => {
-                                const v = e.target.value
-                                set((x) => ({ ...x, people: { ...x.people, [r.id]: { ...(x.people[r.id] ?? { name: '' }), email: v } } }))
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                <FormSection
+                  title="Who signs"
+                  subtitle={tpl && roles.length > 1 ? (!tpl.ordered ? 'Everyone gets the email at the same time.' : 'In this order. Each person gets the email after the one before signs.') : undefined}
+                  cardPadding="6px 16px"
+                >
+                  <WhoSigns
+                    roles={roles}
+                    people={d.people}
+                    isOffer={isOffer}
+                    kind={kind}
+                    touched={touched}
+                    onTouch={(id) => setTouched((t) => ({ ...t, [id]: true }))}
+                    onChange={(id, p) => set((x) => ({ ...x, people: { ...x.people, [id]: p } }))}
+                  />
                 </FormSection>
               )}
 

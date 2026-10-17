@@ -68,7 +68,7 @@ function Thumb({ doc, accent }: { doc: TplDoc | undefined; accent: string }) {
 function OfferCoverageLine({ t }: { t: TemplateRow }) {
   const tags = useOfferFormTags(t.kind === 'candidate' ? t.offer_form_id : null)
   if (!t.offer_form_id || !tags.data?.length) return null
-  const c = offerCoverage(usedTags(t), tags.data)
+  const c = offerCoverage(usedTags(t), tags.data, t.not_needed)
   return (
     <p className={c.missing.length ? 'font-inter text-[12px] text-[#7A4A06]' : 'font-inter text-[12px] text-text-tertiary'}>
       <span className="tabular-nums">

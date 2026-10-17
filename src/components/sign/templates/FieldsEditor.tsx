@@ -29,15 +29,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils'
 import { loadTemplatePdf, pageTextSize } from '@/lib/sign/pdf'
 import { PdfPage, edge, tint } from '@/components/sign/PdfPage'
+import { OfferCoverage } from './OfferCoverage'
 import {
   FIELD_LABEL,
   FIELD_SIZE,
   TEXT_FIELDS,
   autoFontSize,
-  listLabels,
-  offerCoverage,
   pagesOf,
-  usedTags,
   tagLabel,
   tagsFor,
   useOfferFormTags,
@@ -164,23 +162,16 @@ const ZOOMS = [75, 100, 125, 150, 200] as const
 type Zoom = 'fit' | (typeof ZOOMS)[number]
 
 /** The Fields step when every document is written in Gio: nothing to place by hand. */
-export function WrittenOnlyFields({ d, go }: { d: TplDraft; go: (step: number) => void }) {
-  const formTags = useOfferFormTags(d.kind === 'candidate' ? d.offer_form_id : null)
-  const coverage = d.kind === 'candidate' && d.offer_form_id && formTags.data?.length ? offerCoverage(usedTags(d), formTags.data) : null
+export function WrittenOnlyFields({ d, set, go }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void; go: (step: number) => void }) {
   return (
     <div className="max-w-[640px] rounded-xl border border-[#E7E8EE] bg-white p-5">
       <p className="font-poppins text-[15px] font-semibold text-text-primary">Nothing to place here</p>
       <p className="mt-1 font-inter text-[13px] leading-relaxed text-text-secondary">
         Written documents carry their own fields and signing blocks. Signing blocks become each person’s fields when the document is sent. To change them, edit the document on the first step.
       </p>
-      {coverage && (
-        <p className={cn('mt-3 font-inter text-[12.5px]', coverage.missing.length ? 'text-[#7A4A06]' : 'text-text-tertiary')}>
-          <span className="tabular-nums">
-            {coverage.placed.length} of {coverage.total}
-          </span>{' '}
-          offer fields used.{coverage.missing.length ? ` Not used: ${listLabels(coverage.missing.map((t) => t.label), 4)}.` : ''}
-        </p>
-      )}
+      <div className="mt-3">
+        <OfferCoverage d={d} set={set} verb="used" size="md" />
+      </div>
       <Button variant="secondary" size="sm" className="mt-4" onClick={() => go(0)}>
         Edit the documents
       </Button>
@@ -207,7 +198,6 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   }, [d.kind, formTags.data])
   const tagText = (k: string) => tags.find(([key]) => key === k)?.[1] ?? tagLabel(d.kind, k)
   const formTag = (k: string | null) => (formTags.data ?? []).find((t) => t.key === k) ?? null
-  const coverage = d.kind === 'candidate' && d.offer_form_id && formTags.data?.length ? offerCoverage(usedTags(d), formTags.data) : null
   // Zoom: Fit fills the column; a percentage is of the page's printed size.
   const [zoom, setZoom] = useState<Zoom>('fit')
   const [avail, setAvail] = useState(800)
@@ -752,23 +742,7 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
               Every signer has a signature field.
             </p>
           )}
-          {coverage &&
-            (coverage.missing.length ? (
-              <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#7A4A06]">
-                <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                <span>
-                  <span className="tabular-nums">
-                    {coverage.placed.length} of {coverage.total}
-                  </span>{' '}
-                  offer fields placed. Not placed: {listLabels(coverage.missing.map((t) => t.label), 4)}.
-                </span>
-              </p>
-            ) : (
-              <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#16704A]">
-                <Check className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                Every offer field is placed.
-              </p>
-            ))}
+          <OfferCoverage d={d} set={set} verb="placed" />
         </div>
         {d.docs.map((doc) => {
           const open = !closedDocs.has(doc.id)
