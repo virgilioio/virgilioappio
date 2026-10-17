@@ -8,10 +8,13 @@
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { json } from "../_shared/sign/signer.ts";
 import { renderWritten } from "../_shared/sign/written.ts";
 
 const MAX_BODY = 600_000;
+
+function json(status: number, body: unknown, cors: Record<string, string>) {
+  return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+}
 
 function strings(x: unknown): Record<string, string> {
   const out: Record<string, string> = {};
