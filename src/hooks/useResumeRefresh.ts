@@ -8,7 +8,8 @@ import { supabase } from '@/lib/supabaseClient'
  * the candidate is active in. One status the whole profile can show, so a
  * replace is visible wherever it was started (sidebar Files, Resume tab).
  */
-export type ResumePhase = 'uploading' | 'reading' | 'scoring' | 'done' | 'unreadable' | 'failed'
+/** 'other_person': the resume names someone else, so Gio left the profile as it was. */
+export type ResumePhase = 'uploading' | 'reading' | 'scoring' | 'done' | 'unreadable' | 'other_person' | 'failed'
 
 export interface ResumeRefreshStatus {
   phase: ResumePhase
@@ -97,11 +98,15 @@ export function useResumeRefresh(
         if (!alive()) return
         state = await readState(candidateId)
         const reread = !!state.enrichedAt && state.enrichedAt !== before.enrichedAt
-        if (reread || state.status === 'failed' || state.status === 'not_possible') break
+        if (reread || state.status === 'failed' || state.status === 'not_possible' || state.status === 'other_person') break
         if (Date.now() - t0 > READ_LIMIT_MS) break
         if (Date.now() - t0 > SLOW_MS) setStatus((s) => (s && s.phase === 'reading' ? { ...s, slow: true } : s))
       }
       if (!alive()) return
+      if (state.status === 'other_person') {
+        setStatus({ ...base, phase: 'other_person' })
+        return
+      }
       if (state.status === 'failed' || state.status === 'not_possible') {
         setStatus({ ...base, phase: 'unreadable' })
         return

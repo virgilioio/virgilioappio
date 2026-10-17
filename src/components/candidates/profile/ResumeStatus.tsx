@@ -13,6 +13,7 @@ function resumeStatusText(s: ResumeRefreshStatus, compact: boolean): string {
       case 'scoring': return `Re-scoring Gio Fit · ${s.scored} of ${s.jobs}`
       case 'done': return s.jobs ? 'Profile and Gio Fit updated' : 'Profile updated'
       case 'unreadable': return 'Couldn’t read this file'
+      case 'other_person': return 'Names someone else · not used'
       case 'failed': return 'Upload failed · try again'
     }
   }
@@ -30,6 +31,8 @@ function resumeStatusText(s: ResumeRefreshStatus, compact: boolean): string {
         : `Profile updated · Gio Fit re-scored on ${s.scored} of ${jobs(s.jobs)}`
     case 'unreadable':
       return 'Couldn’t read this resume. Upload a PDF or DOCX with selectable text.'
+    case 'other_person':
+      return 'This resume names someone else, so Gio left the profile as it was. Check you picked the right file.'
     case 'failed':
       return `Couldn’t upload ${s.fileName}. Try again.`
   }
@@ -42,7 +45,7 @@ function resumeStatusText(s: ResumeRefreshStatus, compact: boolean): string {
  */
 export function ResumeStatusLine({ status, compact = false, className }: { status: ResumeRefreshStatus; compact?: boolean; className?: string }) {
   const working = status.phase === 'uploading' || status.phase === 'reading' || status.phase === 'scoring'
-  const bad = status.phase === 'unreadable' || status.phase === 'failed'
+  const bad = status.phase === 'unreadable' || status.phase === 'other_person' || status.phase === 'failed'
   const text = resumeStatusText(status, compact)
   return (
     <span
