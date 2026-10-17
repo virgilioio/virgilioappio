@@ -32,6 +32,10 @@ export interface SignerField {
   label?: string | null
   value?: string | null
   owner_name?: string
+  /** Data fields: 'tick' prints a tick for Yes instead of the word. */
+  style?: 'tick' | null
+  /** Data fields: the chosen text size in points (null = automatic). */
+  font_size?: number | null
 }
 
 export interface SignerDocument {

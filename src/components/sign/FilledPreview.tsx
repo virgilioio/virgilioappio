@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PdfPage, edge, tint } from '@/components/sign/PdfPage'
 import { FIELD_LABEL, TEXT_FIELDS, autoFontSize, pagesOf, type TplDoc, type TplField, type TplRole } from '@/lib/sign/templates'
+import { DataFieldText } from '@/components/sign/DataFieldText'
 
 /**
  * What a template looks like filled in with a record's values: every page,
@@ -23,7 +24,7 @@ const SELECT = `
   id,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
-  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, removed_at)
+  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at)
 `
 
 export function usePreviewTemplate(templateId: string | null) {
@@ -37,7 +38,7 @@ export function usePreviewTemplate(templateId: string | null) {
       type Raw = {
         docs: (TplDoc & { position: number; removed_at: string | null })[]
         roles: { id: string; label: string | null; role: TplRole['role']; fixed: boolean; name: string | null; email: string | null; color: string; position: number; removed_at: string | null }[]
-        fields: { id: string; type: TplField['type']; recipient_id: string | null; page: number; x: number | string; y: number | string; w: number | string; h: number | string; required: boolean; data_key: string | null; font_size: number | string | null; removed_at: string | null }[]
+        fields: { id: string; type: TplField['type']; recipient_id: string | null; page: number; x: number | string; y: number | string; w: number | string; h: number | string; required: boolean; data_key: string | null; font_size: number | string | null; data_style: string | null; removed_at: string | null }[]
       }
       const t = data as unknown as Raw
       return {
@@ -63,6 +64,7 @@ export function usePreviewTemplate(templateId: string | null) {
             required: f.required,
             data_key: f.data_key,
             font_size: f.font_size == null ? null : Number(f.font_size),
+            data_style: f.data_style === 'tick' ? ('tick' as const) : null,
           })),
       }
     },
@@ -129,9 +131,13 @@ export function FilledPreview({
                         color: isData ? '#0d0d09' : undefined,
                         ...(TEXT_FIELDS.has(f.type) ? { fontSize: `${(size_pt / (size.w || 612)) * 100}cqw` } : {}),
                       }}
-                      title={isData ? text || undefined : `${who} · ${FIELD_LABEL[f.type]}`}
+                      title={isData ? undefined : `${who} · ${FIELD_LABEL[f.type]}`}
                     >
-                      <span className="truncate">{isData ? text || '—' : `${who} · ${FIELD_LABEL[f.type].toLowerCase()}`}</span>
+                      {isData ? (
+                        <DataFieldText value={text} tick={f.data_style === 'tick'} w={f.w} h={f.h} page={size} fontSize={f.font_size} empty="—" />
+                      ) : (
+                        <span className="truncate">{`${who} · ${FIELD_LABEL[f.type].toLowerCase()}`}</span>
+                      )}
                     </div>
                   )
                 })}

@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
         .order("position");
       const { data: fields } = await supabase
         .from("sign_fields")
-        .select("id, recipient_id, type, page, x, y, w, h, required, data_key, data_style, label, value")
+        .select("id, recipient_id, type, page, x, y, w, h, required, data_key, data_style, font_size, label, value")
         .eq("envelope_id", e.id)
         .is("removed_at", null);
       const names = new Map((people ?? []).map((p: any) => [p.id, p.name]));
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
         fields: (fields ?? []).map((f: any) => {
           const mine = f.recipient_id === r.id;
           const base = { id: f.id, type: f.type, page: f.page, x: Number(f.x), y: Number(f.y), w: Number(f.w), h: Number(f.h) };
-          if (f.type === "data") return { ...base, owner: "data", value: f.value, style: f.data_style ?? null };
+          if (f.type === "data") return { ...base, owner: "data", value: f.value, style: f.data_style ?? null, font_size: f.font_size == null ? null : Number(f.font_size) };
           if (mine) return { ...base, owner: "me", required: f.required, label: f.label };
           // Someone else's field: whose it is, and a value only once they've signed.
           return { ...base, owner: "other", owner_name: names.get(f.recipient_id) ?? "", value: f.type === "signature" || f.type === "initials" ? (f.value ? "signed" : null) : f.value };

@@ -37,6 +37,7 @@ import {
   type SignerOpen,
 } from '@/lib/sign/signer'
 import { AdoptSignature } from '@/components/sign/signer/AdoptSignature'
+import { DataFieldText } from '@/components/sign/DataFieldText'
 
 const FONTS_HREF =
   'https://fonts.googleapis.com/css2?family=Caveat&family=Dancing+Script&family=Homemade+Apple&family=Mr+Dafoe&display=swap'
@@ -485,6 +486,10 @@ function SignDocument({
 
   let gi = 0
   const pages = doc.documents.flatMap((d) => Array.from({ length: d.pages }, (_, i) => ({ d, i, gi: gi++ })))
+  const pageSizeOf = (g: number) => {
+    const p = pages.find((x) => x.gi === g)
+    return p?.d.page_sizes[p.i] ?? { w: 612, h: 792 }
+  }
   const firstDoc = doc.documents[0]?.name.replace(/\.pdf$/i, '') ?? doc.title
   const nextBtn =
     done === all ? (
@@ -515,7 +520,13 @@ function SignDocument({
     const cap = capText && f.owner === 'me' && f.type !== 'checkbox' ? <span className="gio-sf-cap">{capText}{f.required ? ' *' : ''}</span> : null
     const nx = isCur && !mobile ? <span className="gio-sf-next">{done === 0 ? 'Start' : 'Next'}</span> : null
 
-    if (f.owner === 'data') return <div key={f.id} className="gio-sf" data-kind="data" style={st}>{f.value}</div>
+    if (f.owner === 'data') {
+      return (
+        <div key={f.id} className="gio-sf" data-kind="data" style={st}>
+          <DataFieldText value={f.value} tick={f.style === 'tick'} w={f.w} h={f.h} page={pageSizeOf(f.page)} fontSize={f.font_size} />
+        </div>
+      )
+    }
     if (f.owner === 'other') {
       const signed = !!f.value
       return (
