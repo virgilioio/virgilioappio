@@ -1,24 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
-import {
-  AtSign,
-  Calendar,
-  Check,
-  ChevronDown,
-  Copy,
-  Database,
-  Info,
-  Minus,
-  PanelRight,
-  PenLine,
-  Plus,
-  SquareCheck,
-  TextCursorInput,
-  Trash2,
-  TriangleAlert,
-  Type,
-  User,
-  type LucideIcon,
-} from 'lucide-react'
+import { ChevronDown, Copy, Database, Info, Lock, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { IconTip } from '@/components/ui/tooltip'
@@ -30,6 +11,10 @@ import { cn } from '@/lib/utils'
 import { loadTemplatePdf, pageTextSize } from '@/lib/sign/pdf'
 import { PdfPage, edge, tint } from '@/components/sign/PdfPage'
 import { OfferCoverage } from './OfferCoverage'
+import { FieldList } from './FieldList'
+import { FIELD_ICON } from './fieldIcons'
+import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
+import { formatKind, offerCategory } from '@/lib/sign/formats'
 import {
   FIELD_LABEL,
   FIELD_SIZE,
@@ -47,17 +32,16 @@ import {
   type TplField,
 } from '@/lib/sign/templates'
 
-const ICON: Record<FieldType, LucideIcon> = {
-  signature: PenLine,
-  initials: Type,
-  date: Calendar,
-  name: User,
-  email: AtSign,
-  text: TextCursorInput,
-  checkbox: SquareCheck,
-  data: Database,
+/** How the signer fills each kind of field in (the right panel's note). */
+const SIGNER_NOTE: Record<SignerFieldType, string> = {
+  signature: 'They draw, type or upload their signature here when they sign.',
+  initials: 'They add their initials here; Gio offers the ones from their signature.',
+  date: 'Filled in for them with the day they sign.',
+  name: 'Filled in with their name; they can correct it before signing.',
+  email: 'Filled in with the email the agreement was sent to.',
+  text: 'They type a short answer here.',
+  checkbox: 'They tick it if it applies.',
 }
-const PALETTE: SignerFieldType[] = ['signature', 'initials', 'date', 'name', 'email', 'text', 'checkbox']
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18] as const
@@ -202,7 +186,6 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   const [zoom, setZoom] = useState<Zoom>('fit')
   const [avail, setAvail] = useState(800)
   const [active, setActive] = useState(0)
-  const [panel, setPanel] = useState(true)
   const [closedDocs, setClosedDocs] = useState<Set<string>>(new Set())
   // The document's own text size on each page, so text fields print like it.
   const [docSizes, setDocSizes] = useState<Record<number, number | null>>({})
@@ -435,67 +418,210 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     }
   }
 
-  const missing = d.roles.filter((r) => r.role === 'signer' && !d.fields.some((f) => f.rid === r.id && f.type === 'signature'))
+  const patch = (id: string, p: Partial<TplField>) => setFields((fs) => fs.map((x) => (x.id === id ? { ...x, ...p } : x)))
+
+  /** Text size, for fields that print text: the chosen size or the automatic one, matched to the page. */
+  const textSize = (sf: TplField) => {
+    const docSize = docSizes[sf.page] ?? null
+    const size = printSize(sf)
+    const off = docSize != null && Math.abs(size - docSize) >= 1.5
+    const setSize = (v: number | null) => patch(sf.id, { font_size: v })
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] font-medium text-text-primary">
+          Text size
+          <Select value={sf.font_size == null ? 'auto' : String(sf.font_size)} onValueChange={(v) => setSize(v === 'auto' ? null : Number(v))}>
+            <SelectTrigger className="h-8 w-[136px] text-[12.5px]" aria-label="Text size">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto · {pt(autoFontSize(sf.h, pageSize(sf.page).h))}</SelectItem>
+              {[...new Set([...SIZES, ...(sf.font_size != null ? [sf.font_size] : []), ...(docSize != null ? [docSize] : [])])]
+                .sort((a, b) => a - b)
+                .map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {pt(n)}
+                    {n === docSize ? ' · document' : ''}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <p className={cn('font-inter text-[11.5px] leading-snug', off ? 'text-[#7A4A06]' : 'text-text-tertiary')}>
+          {docSize == null ? (
+            `Prints at ${pt(size)}. The page’s own text size couldn’t be read.`
+          ) : off ? (
+            <>
+              Prints at {pt(size)}; the document’s text here is {pt(docSize)}.{' '}
+              <button type="button" className="font-medium underline underline-offset-2" onClick={() => setSize(docSize)}>
+                Match it
+              </button>
+            </>
+          ) : (
+            `Prints at ${pt(size)}, like the document’s text (${pt(docSize)}).`
+          )}
+        </p>
+      </div>
+    )
+  }
+
+  /** §3.4: what the right panel shows for the selected field. */
+  const settings = (sf: TplField) => {
+    const close = () => setSel(null)
+    const actions = (removeLabel: string) => (
+      <div className="flex flex-wrap gap-1">
+        <Button variant="ghost" size="sm" icon={Copy} onClick={() => paste(sf, sf.page)}>
+          Duplicate
+        </Button>
+        <Button variant="ghost" size="sm" icon={Trash2} className="text-virgilio-error" onClick={() => remove(sf.id)}>
+          {removeLabel}
+        </Button>
+      </div>
+    )
+    const help = (
+      <p className="font-inter text-[11.5px] leading-snug text-text-tertiary">
+        Arrow keys nudge it (Shift for bigger steps). Drag the corner to resize. Copy and paste (⌘C, ⌘V; Ctrl on Windows) puts a same-size copy on the page in view; ⌘D duplicates it. Delete removes it.
+      </p>
+    )
+
+    if (sf.type === 'data') {
+      const tag = formTag(sf.data_key)
+      const fk = sf.data_style === 'tick' ? null : formatKind(sf.data_key ?? '', tag?.type)
+      return (
+        <>
+          <PanelHead
+            icon={Database}
+            title={tagText(sf.data_key ?? '')}
+            sub={tag ? `From the offer · ${offerCategory(tag)}` : 'Filled by Gio when the agreement is sent'}
+            onClose={close}
+          />
+          <label className="flex flex-col gap-1.5 font-inter text-[12.5px] font-medium text-text-primary">
+            Fills from
+            <Select
+              value={sf.data_key ?? undefined}
+              onValueChange={(v) => {
+                const t = formTag(v)
+                // A new value keeps its format only if the format still fits it.
+                const keep = formatKind(v, t?.type) === formatKind(sf.data_key ?? '', tag?.type)
+                patch(sf.id, { data_key: v, data_style: t?.type === 'checkbox' ? sf.data_style : null, data_format: keep ? sf.data_format ?? null : null })
+              }}
+            >
+              <SelectTrigger className="h-9" aria-label="Fills from">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {tags.map(([k, l]) => (
+                  <SelectItem key={k} value={k}>
+                    {l}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          {tag?.type === 'checkbox' && (
+            <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] text-text-primary">
+              Show as a tick
+              <Switch checked={sf.data_style === 'tick'} onCheckedChange={(v) => patch(sf.id, { data_style: v ? 'tick' : null, data_format: null })} aria-label="Show as a tick" />
+            </label>
+          )}
+          {fk && (
+            <FormatPicker
+              fieldKey={sf.data_key ?? ''}
+              kind={fk}
+              value={sf.data_format}
+              onChange={(v) => patch(sf.id, { data_format: v })}
+              config={tag?.config}
+              formId={d.kind === 'candidate' ? d.offer_form_id : null}
+            />
+          )}
+          <div className="flex items-center justify-between gap-3 font-inter text-[12.5px]">
+            <span className="text-text-primary">Signer can edit</span>
+            <span className="inline-flex items-center gap-1 text-text-tertiary">
+              <Lock className="h-3 w-3" strokeWidth={2} aria-hidden />
+              No · locked
+            </span>
+          </div>
+          {(sf.data_style === 'tick' || (tag && !tag.required)) && (
+            <p className="gio-send-note" data-tone="info">
+              <Info className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              <span>
+                {sf.data_style === 'tick'
+                  ? 'Ticked when the offer says Yes, left empty for No.'
+                  : 'Optional on the form, so it prints blank when the offer leaves it empty.'}
+              </span>
+            </p>
+          )}
+          {tag?.type === 'textarea' && (
+            <p className="gio-send-note" data-tone="warn">
+              <TriangleAlert className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              <span>Long text wraps only inside this box on an uploaded page; it doesn’t flow on into the page. For job descriptions and plans, Write in Gio works better.</span>
+            </p>
+          )}
+          {sf.data_style !== 'tick' && textSize(sf)}
+          {actions('Remove from document')}
+          {help}
+        </>
+      )
+    }
+
+    const Icon = FIELD_ICON[sf.type]
+    return (
+      <>
+        <PanelHead icon={Icon} title={FIELD_LABEL[sf.type]} onClose={close} />
+        <label className="flex flex-col gap-1.5 font-inter text-[12.5px] font-medium text-text-primary">
+          {sf.type === 'signature' ? 'Signs' : 'Assigned to'}
+          <Select value={sf.rid ?? undefined} onValueChange={(v) => patch(sf.id, { rid: v })}>
+            <SelectTrigger className="h-9" aria-label={sf.type === 'signature' ? 'Signs' : 'Assigned to'}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {people.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  <span className="inline-flex items-center gap-2">
+                    <span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: r.color }} />
+                    {r.label || 'Unnamed role'}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <p className="gio-send-note" data-tone="info">
+          <Info className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+          <span>{SIGNER_NOTE[sf.type as SignerFieldType]}</span>
+        </p>
+        {sf.type !== 'date' && sf.type !== 'signature' && (
+          <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] text-text-primary">
+            Required
+            <Switch checked={sf.required} onCheckedChange={(v) => patch(sf.id, { required: v })} aria-label="Required" />
+          </label>
+        )}
+        {TEXT_FIELDS.has(sf.type) && textSize(sf)}
+        {actions(sf.type === 'signature' ? 'Remove' : 'Remove field')}
+        {help}
+      </>
+    )
+  }
+
   const fieldText = (f: TplField) =>
     f.type === 'data' ? tagText(f.data_key ?? '') + (f.data_style === 'tick' ? ' · tick' : '') : f.type === 'checkbox' ? '' : FIELD_LABEL[f.type]
-  const sideH = 'font-inter text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary'
-  const paletteItem =
-    'flex cursor-grab select-none items-center gap-2 rounded-lg border border-[#E7E8EE] bg-white px-2.5 py-[7px] font-inter text-[12.5px] font-medium text-text-primary [touch-action:none] transition-colors duration-hover hover:bg-[#FAFAF7] active:cursor-grabbing'
 
   return (
     <div
       className={cn(
         'grid h-full min-h-0 border-t border-virgilio-border',
-        panel || sf ? 'grid-cols-[230px_minmax(0,1fr)_232px]' : 'grid-cols-[230px_minmax(0,1fr)]',
+        'grid-cols-[210px_minmax(0,1fr)_240px] min-[1200px]:grid-cols-[230px_minmax(0,1fr)_280px]',
       )}
     >
-      {/* Palette */}
-      <aside className="flex flex-col gap-4 overflow-y-auto border-r border-virgilio-border bg-white p-4">
-        <div className="flex flex-col gap-1.5">
-          <h5 className={sideH}>Placing fields for</h5>
-          {people.map((r) => {
-            const n = d.fields.filter((f) => f.rid === r.id).length
-            return (
-              <button
-                key={r.id}
-                type="button"
-                aria-pressed={who === r.id}
-                onClick={() => setWho(r.id)}
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left font-inter text-[12.5px] transition-colors duration-hover',
-                  who === r.id ? 'border-[#E7E8EE] bg-[#F4F3EF]' : 'border-transparent hover:bg-[#FAFAF7]',
-                )}
-              >
-                <span aria-hidden className="h-3 w-3 shrink-0 rounded" style={{ background: r.color }} />
-                <span className="min-w-0 flex-1 truncate font-medium text-text-primary">{r.label}</span>
-                <span className="font-inter text-[11px] tabular-nums text-text-tertiary">{n}</span>
-              </button>
-            )
-          })}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <h5 className={sideH}>Signer fields</h5>
-          {PALETTE.map((t) => {
-            const Icon = ICON[t]
-            return (
-              <div key={t} className={paletteItem} style={{ borderLeft: `4px solid ${whoR?.color ?? '#E7E8EE'}` }} onPointerDown={(e) => startNew(e, t)} role="button" tabIndex={0} aria-label={`Add ${FIELD_LABEL[t]} for ${whoR?.label ?? 'the selected role'}`} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), add(t, undefined, visiblePage(), 50, 30))}>
-                <Icon className="h-3.5 w-3.5 text-text-secondary" strokeWidth={2} aria-hidden />
-                {FIELD_LABEL[t]}
-              </div>
-            )
-          })}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <h5 className={sideH}>{d.offer_form_id ? 'Data fields · from the offer' : 'Data fields · from the record'}</h5>
-          {tags.map(([k, l]) => (
-            <div key={k} className={paletteItem} onPointerDown={(e) => startNew(e, 'data', k)} role="button" tabIndex={0} aria-label={`Add data field ${l}`} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), add('data', k, visiblePage(), 50, 30))}>
-              <Database className="h-3.5 w-3.5 text-[#6F3FF5]" strokeWidth={2} aria-hidden />
-              {l}
-            </div>
-          ))}
-        </div>
-        <p className="font-inter text-[11.5px] leading-snug text-text-tertiary">Drag a field onto a page, or click it to drop it on the page in view.</p>
-      </aside>
+      <FieldList
+        d={d}
+        set={set}
+        mode="upload"
+        who={who}
+        setWho={setWho}
+        onTile={(type, key) => add(type, key, visiblePage(), 50, 30)}
+        onTilePointer={(e, type, key) => startNew(e, type, key)}
+      />
 
       {/* Pages */}
       <div className="flex min-h-0 min-w-0 flex-col">
@@ -527,18 +653,6 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
             <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
         </IconTip>
-        <span aria-hidden className="mx-1 h-5 w-px bg-virgilio-border" />
-        <IconTip label={panel ? 'Hide pages' : 'Show pages'}>
-          <button
-            type="button"
-            aria-label={panel ? 'Hide pages' : 'Show pages'}
-            aria-pressed={panel}
-            onClick={() => setPanel((v) => !v)}
-            className={cn('gio-pressable inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-[#F4F3EF]', panel ? 'bg-[#F4F3EF] text-text-primary' : 'text-text-secondary')}
-          >
-            <PanelRight className="h-3.5 w-3.5" strokeWidth={2} />
-          </button>
-        </IconTip>
       </div>
       <div
         ref={scroller}
@@ -553,7 +667,7 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                 .filter((f) => f.page === p.gi)
                 .map((f) => {
                   const r = role(f.rid)
-                  const Icon = ICON[f.type]
+                  const Icon = FIELD_ICON[f.type]
                   return (
                     <div
                       key={f.id}
@@ -600,149 +714,10 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
       </div>
       </div>
 
-      {/* Documents, and the selected field */}
-      {panel || sf ? (
-      <aside aria-label="Pages and fields" className="flex min-h-0 flex-col overflow-y-auto border-l border-virgilio-border bg-white">
-        {sf ? (
-          <div className="flex flex-col gap-3 border-b border-virgilio-border p-4">
-            <h5 className={sideH}>{FIELD_LABEL[sf.type]}</h5>
-            {sf.type === 'data' ? (
-              <label className="flex flex-col gap-1.5 font-inter text-[12.5px] font-medium text-text-primary">
-                Fills from
-                <Select
-                  value={sf.data_key ?? undefined}
-                  onValueChange={(v) =>
-                    setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, data_key: v, data_style: formTag(v)?.type === 'checkbox' ? x.data_style : null } : x)))
-                  }
-                >
-                  <SelectTrigger className="h-9" aria-label="Fills from">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tags.map(([k, l]) => (
-                      <SelectItem key={k} value={k}>
-                        {l}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
-            ) : (
-              <label className="flex flex-col gap-1.5 font-inter text-[12.5px] font-medium text-text-primary">
-                Filled by
-                <Select value={sf.rid ?? undefined} onValueChange={(v) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, rid: v } : x)))}>
-                  <SelectTrigger className="h-9" aria-label="Filled by">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {people.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
-            )}
-            {sf.type === 'data' && formTag(sf.data_key)?.type === 'checkbox' && (
-              <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] text-text-primary">
-                Show as a tick
-                <Switch
-                  checked={sf.data_style === 'tick'}
-                  onCheckedChange={(v) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, data_style: v ? 'tick' : null } : x)))}
-                  aria-label="Show as a tick"
-                />
-              </label>
-            )}
-            {sf.type === 'data' ? (
-              <p className="flex gap-2 rounded-lg bg-[#F6F1FE] p-2.5 font-inter text-[12px] leading-snug text-text-secondary">
-                <Info className="mt-px h-3.5 w-3.5 shrink-0 text-virgilio-purple" strokeWidth={2} aria-hidden />
-                {sf.data_style === 'tick'
-                  ? 'Ticked when the offer says Yes, left empty for No. Signers can’t change it.'
-                  : formTag(sf.data_key) && !formTag(sf.data_key)!.required
-                  ? 'Filled from the offer when it’s sent; optional on the form, so it prints blank when the offer leaves it empty.'
-                  : 'Filled from the record when it’s sent. Signers can’t change it.'}
-              </p>
-            ) : (
-              <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] text-text-primary">
-                Required
-                <Switch checked={sf.required} onCheckedChange={(v) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, required: v } : x)))} aria-label="Required" />
-              </label>
-            )}
-            {TEXT_FIELDS.has(sf.type) && sf.data_style !== 'tick' && (() => {
-              const docSize = docSizes[sf.page] ?? null
-              const size = printSize(sf)
-              const off = docSize != null && Math.abs(size - docSize) >= 1.5
-              const setSize = (v: number | null) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, font_size: v } : x)))
-              return (
-                <div className="flex flex-col gap-1.5">
-                  <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] font-medium text-text-primary">
-                    Text size
-                    <Select value={sf.font_size == null ? 'auto' : String(sf.font_size)} onValueChange={(v) => setSize(v === 'auto' ? null : Number(v))}>
-                      <SelectTrigger className="h-8 w-[156px] text-[12.5px]" aria-label="Text size">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">Auto · {pt(autoFontSize(sf.h, pageSize(sf.page).h))}</SelectItem>
-                        {[...new Set([...SIZES, ...(sf.font_size != null ? [sf.font_size] : []), ...(docSize != null ? [docSize] : [])])]
-                          .sort((a, b) => a - b)
-                          .map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {pt(n)}
-                              {n === docSize ? ' · document' : ''}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <p className={cn('font-inter text-[11.5px] leading-snug', off ? 'text-[#7A4A06]' : 'text-text-tertiary')}>
-                    {docSize == null
-                      ? `Prints at ${pt(size)}. The page’s own text size couldn’t be read.`
-                      : off
-                      ? <>Prints at {pt(size)}; the document’s text here is {pt(docSize)}. <button type="button" className="font-medium underline underline-offset-2" onClick={() => setSize(docSize)}>Match it</button></>
-                      : `Prints at ${pt(size)}, like the document’s text (${pt(docSize)}).`}
-                  </p>
-                </div>
-              )
-            })()}
-            <div className="flex flex-wrap gap-1">
-              <Button variant="ghost" size="sm" icon={Copy} onClick={() => paste(sf, sf.page)}>
-                Duplicate
-              </Button>
-              <Button variant="ghost" size="sm" icon={Trash2} className="text-virgilio-error" onClick={() => remove(sf.id)}>
-                Remove
-              </Button>
-            </div>
-            <p className="font-inter text-[11.5px] leading-snug text-text-tertiary">
-              Arrow keys nudge it (Shift for bigger steps). Drag the corner to resize. Copy and paste (⌘C, ⌘V; Ctrl on Windows) puts a same-size copy on the page in view; ⌘D duplicates it. Delete removes it.
-            </p>
-          </div>
-        ) : null}
-        <div className="flex flex-col gap-2 border-b border-virgilio-border p-4">
-          <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-            {people.map((r) => (
-              <span key={r.id} className="inline-flex items-center gap-1.5 font-inter text-[11.5px] text-text-secondary">
-                <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: r.color }} />
-                {r.label} <span className="tabular-nums text-text-tertiary">{d.fields.filter((f) => f.rid === r.id).length}</span>
-              </span>
-            ))}
-            <span className="inline-flex items-center gap-1.5 font-inter text-[11.5px] text-text-secondary">
-              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px] border border-dashed border-[#8456F6] bg-[#F3EDFE]" />
-              Data <span className="tabular-nums text-text-tertiary">{d.fields.filter((f) => f.type === 'data').length}</span>
-            </span>
-          </div>
-          {missing.length ? (
-            <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#7A4A06]">
-              <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-              {missing.map((m) => m.label).join(', ')} still need{missing.length === 1 ? 's' : ''} a signature field.
-            </p>
-          ) : (
-            <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#16704A]">
-              <Check className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-              Every signer has a signature field.
-            </p>
-          )}
-          <OfferCoverage d={d} set={set} verb="placed" />
+      {/* The Summary, or the selected field's settings; then the pages */}
+      <aside aria-label="Field settings and pages" className="flex min-h-0 flex-col overflow-y-auto border-l border-virgilio-border bg-white">
+        <div key={sf?.id ?? 'summary'} className="gio-swap-in flex flex-col gap-3.5 border-b border-virgilio-border p-4">
+          {sf ? settings(sf) : <FieldSummary d={d} />}
         </div>
         {d.docs.map((doc) => {
           const open = !closedDocs.has(doc.id)
@@ -788,7 +763,6 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
           )
         })}
       </aside>
-      ) : null}
 
       {ghost && (
         <div
@@ -801,7 +775,7 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
           }}
         >
           {(() => {
-            const Icon = ICON[ghost.type]
+            const Icon = FIELD_ICON[ghost.type]
             return <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           })()}
           {ghost.type === 'data' ? tagLabel(d.kind, ghost.key ?? '') : FIELD_LABEL[ghost.type]}

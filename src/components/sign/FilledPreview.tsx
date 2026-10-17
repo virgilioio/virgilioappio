@@ -26,7 +26,7 @@ const SELECT = `
   id,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
-  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at),
+  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, data_format, removed_at),
   written:sign_written_docs!sign_written_docs_template_id_fkey(id, name, position, content, removed_at)
 `
 
@@ -42,7 +42,7 @@ export function usePreviewTemplate(templateId: string | null) {
         docs: (TplDoc & { position: number; removed_at: string | null })[]
         written: (TplWritten & { removed_at: string | null })[] | null
         roles: { id: string; label: string | null; role: TplRole['role']; fixed: boolean; name: string | null; email: string | null; color: string; position: number; removed_at: string | null }[]
-        fields: { id: string; type: TplField['type']; recipient_id: string | null; page: number; x: number | string; y: number | string; w: number | string; h: number | string; required: boolean; data_key: string | null; font_size: number | string | null; data_style: string | null; removed_at: string | null }[]
+        fields: { id: string; type: TplField['type']; recipient_id: string | null; page: number; x: number | string; y: number | string; w: number | string; h: number | string; required: boolean; data_key: string | null; font_size: number | string | null; data_style: string | null; data_format: string | null; removed_at: string | null }[]
       }
       const t = data as unknown as Raw
       return {
@@ -70,6 +70,7 @@ export function usePreviewTemplate(templateId: string | null) {
             data_key: f.data_key,
             font_size: f.font_size == null ? null : Number(f.font_size),
             data_style: f.data_style === 'tick' ? ('tick' as const) : null,
+            data_format: f.data_format ?? null,
           })),
       }
     },
@@ -127,7 +128,8 @@ export function FilledPreview({
                       .map((f) => {
                         const r = role(f.rid)
                         const isData = f.type === 'data'
-                        const text = isData ? values[f.data_key ?? ''] ?? '' : ''
+                        // A formatted value travels as "key|format" (sign_send_preview).
+                        const text = isData ? (f.data_format ? values[`${f.data_key}|${f.data_format}`] : undefined) ?? values[f.data_key ?? ''] ?? '' : ''
                         const size_pt = f.font_size ?? autoFontSize(f.h, size.h)
                         const who = r ? people?.[r.id]?.name?.trim() || r.name || r.label : ''
                         return (

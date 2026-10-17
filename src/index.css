@@ -2010,6 +2010,50 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   .gio-sign-ghost { transform: translate(-50%, -50%); }
 }
 
+/* Template › Document step field list (§3.1, 2026-10-17). Tiles press to .98;
+   "Not needed" shows on hover or focus (always on touch) and never starts a
+   drag; the coverage ring moves its stroke over --dur-chart. */
+.gio-ftile-row { position: relative; }
+.gio-ftile {
+  display: flex; width: 100%; align-items: center; gap: 8px; padding: 7px 9px;
+  border: 1px solid #E7E8EE; border-radius: 8px; background: #fff; text-align: left;
+  font: 500 12.5px/1.25 Inter, sans-serif; color: #0d0d09;
+  cursor: pointer; user-select: none; touch-action: none;
+  transition: background-color var(--dur-hover) ease, transform var(--dur-press) var(--ease-out);
+}
+.gio-ftile:active:not(:disabled) { transform: scale(.98); }
+.gio-ftile:disabled { cursor: not-allowed; opacity: .55; }
+@media (hover: hover) and (pointer: fine) { .gio-ftile:hover:not(:disabled) { background: #FAFAF7; } }
+.gio-ftile-row[data-skipped] .gio-ftile { color: #6B7080; padding-right: 116px; }
+.gio-ftile-row[data-missing] .gio-ftile { padding-right: 26px; }
+.gio-ftile-dot { width: 8px; height: 8px; flex: none; border-radius: 999px; border: 1.5px dashed #C58A1A; transition: opacity var(--dur-hover) ease; }
+.gio-ftile-row .gio-ftile > .gio-ftile-dot { position: absolute; right: 10px; top: 50%; margin-top: -4px; }
+.gio-ftile-skip, .gio-ftile-undo {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  padding: 3px 6px; border-radius: 6px; background: #fff;
+  font: 500 11.5px/1.2 Inter, sans-serif; color: #6F3FF5; white-space: nowrap;
+}
+.gio-ftile-undo { color: #6B7080; font-weight: 400; }
+.gio-ftile-skip { opacity: 0; pointer-events: none; transition: opacity var(--dur-hover) ease; }
+.gio-ftile-row[data-missing]:hover .gio-ftile-skip,
+.gio-ftile-row[data-missing]:focus-within .gio-ftile-skip { opacity: 1; pointer-events: auto; }
+.gio-ftile-row[data-missing]:hover .gio-ftile > .gio-ftile-dot,
+.gio-ftile-row[data-missing]:focus-within .gio-ftile > .gio-ftile-dot { opacity: 0; }
+@media (hover: none) {
+  .gio-ftile-row[data-missing] .gio-ftile { padding-right: 84px; }
+  .gio-ftile-skip { opacity: 1; pointer-events: auto; }
+  .gio-ftile-row .gio-ftile > .gio-ftile-dot { right: 80px; }
+}
+@media (hover: hover) and (pointer: fine) { .gio-ftile-skip:hover, .gio-ftile-undo:hover { background: #F3EDFE; } }
+.gio-cov-card { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; background: #FCF6EA; }
+.gio-cov-card[data-done] { background: #EEF7F2; }
+.gio-cov-ring { stroke: #D9921C; transition: stroke-dashoffset var(--dur-chart) var(--ease-in-out), stroke var(--dur-hover) ease; }
+.gio-cov-card[data-done] .gio-cov-ring { stroke: #16A06A; }
+/* Format options in the right panel: the whole row is the choice. */
+.gio-fmt-opt { display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border: 1px solid #E7E8EE; border-radius: 8px; cursor: pointer; transition: background-color var(--dur-hover) ease, border-color var(--dur-hover) ease; }
+.gio-fmt-opt[data-checked] { border-color: #0d0d09; background: #FAFAF7; }
+@media (hover: hover) and (pointer: fine) { .gio-fmt-opt:hover { background: #FAFAF7; } }
+
 /* Gio Sign › public signing page (/s/:token). Fields sit on the page in % of
    its size; text inside scales with the page (cqw). The current field has a
    soft purple ring (no pulse loop: motion only on change). */

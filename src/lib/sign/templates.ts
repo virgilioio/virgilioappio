@@ -62,6 +62,8 @@ export interface TplField {
   font_size: number | null
   /** Data fields of a yes/no offer field: 'tick' prints a tick for Yes instead of the word. */
   data_style?: 'tick' | null
+  /** How the value prints (sign_format): money, date or number formats; null keeps the default wording. */
+  data_format?: string | null
 }
 
 export interface TplDraft {
@@ -200,6 +202,8 @@ export interface OfferFormTag {
   type: string
   /** Optional fields print blank when the offer leaves them empty; required ones block sending. */
   required: boolean
+  /** The form field's settings (salary currency and period), for format samples. */
+  config?: Record<string, unknown> | null
 }
 /** Field names a template can use (sign_fields.data_key): lowercase letters and underscores. */
 export const okDataKey = (k: string) => /^[a-z][a-z_]{0,39}$/.test(k)
@@ -212,13 +216,19 @@ export function useOfferFormTags(formId: string | null | undefined) {
     queryFn: async (): Promise<OfferFormTag[]> => {
       const { data, error } = await supabase
         .from('offer_form_fields')
-        .select('field_name, field_label, field_type, display_order, is_required')
+        .select('field_name, field_label, field_type, display_order, is_required, field_config')
         .eq('form_id', formId!)
         .order('display_order')
       if (error) throw error
       return (data ?? [])
         .filter((f) => okDataKey(f.field_name))
-        .map((f) => ({ key: f.field_name, label: f.field_label || f.field_name, type: String(f.field_type), required: f.is_required !== false }))
+        .map((f) => ({
+          key: f.field_name,
+          label: f.field_label || f.field_name,
+          type: String(f.field_type),
+          required: f.is_required !== false,
+          config: f.field_config && typeof f.field_config === 'object' && !Array.isArray(f.field_config) ? (f.field_config as Record<string, unknown>) : null,
+        }))
     },
   })
 }
@@ -237,6 +247,52 @@ export function offerCoverage(fields: Pick<TplField, 'type' | 'data_key'>[], tag
     missing: counted.filter((t) => !placed.has(t.key)),
     skipped: tags.filter((t) => !placed.has(t.key) && skip.has(t.key)),
   }
+}
+
+/** How many times the template uses each value, placed or written (the field list's ✓ counts). */
+export function fieldUses(d: Pick<TplDraft, 'fields' | 'written'>) {
+  const m = new Map<string, number>()
+  for (const f of usedTags(d)) if (f.type === 'data' && f.data_key) m.set(f.data_key, (m.get(f.data_key) ?? 0) + 1)
+  return m
+}
+
+/**
+ * §7 coverage for a draft against its linked form. mapped: form fields used
+ * in either document; missing: unused and not marked not needed; skipped:
+ * marked not needed; blocking: values used that the form doesn't have (and
+ * that aren't always available); total: the form's fields minus skipped.
+ * Signer fields never count.
+ */
+export function draftCoverage(d: Pick<TplDraft, 'fields' | 'written' | 'not_needed'>, form: OfferFormTag[]) {
+  const uses = fieldUses(d)
+  const skip = new Set(d.not_needed)
+  const inForm = new Set(form.map((f) => f.key))
+  const skipped = form.filter((f) => skip.has(f.key) && !uses.has(f.key))
+  const mapped = form.filter((f) => uses.has(f.key))
+  const missing = form.filter((f) => !uses.has(f.key) && !skip.has(f.key))
+  const blocking = [...uses.keys()].filter((k) => !inForm.has(k) && !ALWAYS_AVAILABLE.has(k))
+  return { uses, mapped, missing, skipped, blocking, total: form.length - skipped.length }
+}
+
+/**
+ * The latest real offer on a form, with the values the editor previews
+ * (sign_sample_values, admins only): every value, plus "key|format" for each
+ * [key, format] in `uses`. Null when there's no offer on the form yet.
+ */
+export function useSampleValues(formId: string | null | undefined, uses: [string, string][]) {
+  const key = uses.map((u) => u.join('|')).sort().join(',')
+  return useQuery({
+    queryKey: ['sign', 'sample-values', formId, key],
+    enabled: !!formId,
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('sign_sample_values', { _form_id: formId!, _uses: uses as never })
+      if (error) throw error
+      const r = (data ?? {}) as { label?: string | null; first_name?: string | null; offer_id?: string | null; values?: Record<string, string | null> }
+      return r.offer_id ? { label: r.label ?? null, firstName: r.first_name ?? null, values: r.values ?? {} } : null
+    },
+  })
 }
 
 /* ---- Picking a template to send (TemplateSelect, 2026-10-17) ------------ */
@@ -573,7 +629,7 @@ const TEMPLATE_SELECT = `
   created_at, updated_at, archived_at,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, fill_from, name, email, color, position, removed_at),
-  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at),
+  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, data_format, removed_at),
   written:sign_written_docs!sign_written_docs_template_id_fkey(id, name, position, content, removed_at)
 `
 
@@ -619,6 +675,7 @@ function fromRaw(t: Raw): TemplateRow {
         data_key: f.data_key,
         font_size: f.font_size == null ? null : Number(f.font_size),
         data_style: f.data_style === 'tick' ? 'tick' : null,
+        data_format: f.data_format ?? null,
       })),
   }
 }
@@ -695,6 +752,7 @@ export async function saveTemplate(draft: TplDraft, tenantId: string) {
         data_key: f.type === 'data' ? f.data_key : null,
         font_size: TEXT_FIELDS.has(f.type) ? f.font_size ?? null : null,
         data_style: f.type === 'data' && f.data_style === 'tick' ? 'tick' : null,
+        data_format: f.type === 'data' && f.data_style !== 'tick' ? f.data_format ?? null : null,
       }
     }),
   }
