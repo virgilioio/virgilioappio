@@ -7,6 +7,7 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { openaiFetch } from '../_shared/openaiFetch.ts';
 import { AI_MODELS } from '../_shared/aiModels.ts';
 import { applyCandidateUpdate } from '../_shared/candidateUpdate.ts';
+import { checkResumeJobs, sameResumeName } from '../_shared/resumeFacts.ts';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -40,6 +41,7 @@ const EXTRACTION_TOOL = {
           type: 'string',
           description: 'Executive candidate summary in Spanish with markdown formatting. Structure: 2 short paragraphs (3-5 sentences each) describing the candidate background and value proposition, followed by **Fortalezas Clave** with 3-5 bullet points, then **Áreas de Desarrollo** with 3-5 bullet points. Keep it concise and substantive — no fluff. Total length: 150-200 words max.'
         },
+        candidate_name: { type: ['string', 'null'], description: 'Full name of the person the resume belongs to, exactly as written at the top of the resume. Null if no name is written.' },
         current_job_title: { type: 'string', description: 'Most recent job title exactly as written on resume' },
         standardized_title: { type: 'string', description: 'Standardized English job title mapped to a common industry equivalent. Translate non-English titles, expand abbreviations. Examples: "Ingeniero de Calidad" → "Quality Engineer", "SDR" → "Sales Development Representative", "Gerente de Ventas" → "Sales Manager", "Jefe de Operaciones" → "Operations Manager"' },
         seniority_level: {
@@ -139,7 +141,8 @@ CRITICAL RULES:
 - **specialization**: Infer a specific sub-area ONLY if clearly stated. Examples: "Frontend Development", "Enterprise Sales", "Content Marketing", "Quality Assurance", "Process Engineering". Return null if not determinable.
 - **standardized_title**: Provide a standardized English job title ONLY if a title is explicitly mentioned. Translate non-English titles (e.g. "Ingeniero de Calidad" → "Quality Engineer"), expand abbreviations (e.g. "SDR" → "Sales Development Representative"), and normalize to common industry titles. Do the same for each work experience entry. Return null if no title is found.
 
-For work_experience: Extract ALL positions that are EXPLICITLY listed. Infer company_industry and company_size_category when possible. Always include standardized_title for each position.
+For candidate_name: The name written on the resume itself.
+For work_experience: Extract ALL positions that are EXPLICITLY listed. Write company_name as it appears in the resume. List each position once. Never add a position, company or date from your own knowledge of the person or the company: a job that isn't written in this resume must not appear. Infer company_industry and company_size_category when possible. Always include standardized_title for each position.
 For skills: Extract 10-20 skills that are EXPLICITLY mentioned. Mark core skills as is_primary=true (max 5-7 primary).
 For seniority_level: Infer from most recent title and years of experience, only if clearly determinable.
 For years_in_leadership: Count years where title contains Manager, Director, VP, Chief, Head, Lead.
@@ -259,7 +262,8 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     }
 
     // 1. AI Extraction via tool calling
-    const userPrompt = `Extract the full structured profile from this resume${candidateName ? ` for ${candidateName}` : ''}:\n\n${resumeText.slice(0, 14000)}`;
+    // No name in the prompt: the model must read the name off the resume for the name check.
+    const userPrompt = `Extract the full structured profile from this resume:\n\n${resumeText.slice(0, 14000)}`;
 
     const resp = await openaiFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -297,6 +301,18 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     }
 
     const extracted = JSON.parse(toolCall.function.arguments);
+
+    // A resume that names someone else is never written onto this candidate.
+    let knownName = candidateName || null;
+    if (!knownName) {
+      const { data: row } = await supabase.from('candidates').select('candidate_name').eq('id', candidateId).maybeSingle();
+      knownName = row?.candidate_name ?? null;
+    }
+    if (!sameResumeName(extracted.candidate_name, knownName)) {
+      console.warn(`[enrich] Resume names "${extracted.candidate_name}", not "${knownName}", for ${candidateId}; profile left as it was`);
+      await supabase.from('candidates').update({ enrichment_status: 'other_person' }).eq('id', candidateId);
+      return;
+    }
     console.log(`[enrich] Extracted: ${extracted.work_experience?.length || 0} jobs, ${extracted.education?.length || 0} edu, ${extracted.certifications?.length || 0} certs, ${extracted.skills?.length || 0} skills`);
 
     // 2. Standardize title: prefer AI-generated, fallback to DB lookup
@@ -311,8 +327,12 @@ async function enrichCandidateProfile(candidateId: string, resumeText: string, c
     const standardizedSkills = await standardizeSkills(supabase, rawSkillNames);
     const primarySkills = (extracted.skills || []).filter((s: any) => s.is_primary).map((s: any) => s.name);
 
-    // 4. Process work experience with durations
-    const workExperience = (extracted.work_experience || []).map((w: any) => ({
+    // 4. Keep only jobs the resume backs (each once), with durations
+    const { kept: backedJobs, dropped } = checkResumeJobs(extracted.work_experience || [], resumeText);
+    if (dropped.length) {
+      console.warn(`[enrich] Dropped ${dropped.length} job(s) not in the resume for ${candidateId}: ${dropped.map((w: any) => `${w.job_title} @ ${w.company_name}`).join('; ')}`);
+    }
+    const workExperience = backedJobs.map((w: any) => ({
       ...w,
       duration_months: calculateDurationMonths(w.start_date, w.end_date),
     }));
