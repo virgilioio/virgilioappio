@@ -5566,6 +5566,51 @@ export type Database = {
           },
         ]
       }
+      offer_approval_notices: {
+        Row: {
+          approver_user_id: string
+          attempts: number
+          cancelled_at: string | null
+          claimed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          request_id: string
+          sent_at: string | null
+          step_id: string
+          tenant_id: string
+        }
+        Insert: {
+          approver_user_id: string
+          attempts?: number
+          cancelled_at?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          request_id: string
+          sent_at?: string | null
+          step_id: string
+          tenant_id: string
+        }
+        Update: {
+          approver_user_id?: string
+          attempts?: number
+          cancelled_at?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          request_id?: string
+          sent_at?: string | null
+          step_id?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       offer_approval_request_steps: {
         Row: {
           approver_user_id: string
@@ -8542,6 +8587,7 @@ export type Database = {
           declined_at: string | null
           email: string | null
           envelope_id: string | null
+          fill_from: string | null
           fixed: boolean
           id: string
           label: string | null
@@ -8570,6 +8616,7 @@ export type Database = {
           declined_at?: string | null
           email?: string | null
           envelope_id?: string | null
+          fill_from?: string | null
           fixed?: boolean
           id?: string
           label?: string | null
@@ -8598,6 +8645,7 @@ export type Database = {
           declined_at?: string | null
           email?: string | null
           envelope_id?: string | null
+          fill_from?: string | null
           fixed?: boolean
           id?: string
           label?: string | null
@@ -8711,6 +8759,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["sign_kind"]
           name: string
+          offer_fields_not_needed: string[]
           offer_form_id: string | null
           ordered: boolean
           reminder_days: number
@@ -8731,6 +8780,7 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["sign_kind"]
           name: string
+          offer_fields_not_needed?: string[]
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
@@ -8751,6 +8801,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["sign_kind"]
           name?: string
+          offer_fields_not_needed?: string[]
           offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
@@ -11373,6 +11424,28 @@ export type Database = {
       }
       nightly_storage_cleanup: { Args: never; Returns: undefined }
       normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
+      offer_approval_claim_notices: {
+        Args: { _limit?: number }
+        Returns: {
+          approver_email: string
+          approver_name: string
+          candidate_id: string
+          candidate_name: string
+          company: string
+          job_id: string
+          job_title: string
+          kind: string
+          notice_id: string
+          requested_by_name: string
+          wants_email: boolean
+        }[]
+      }
+      offer_approval_finish_notice: {
+        Args: { _error?: string; _id: string; _ok: boolean }
+        Returns: undefined
+      }
+      offer_approval_queue_reminders: { Args: never; Returns: number }
+      offer_approval_sync: { Args: { _request_id: string }; Returns: undefined }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
       offer_can_send: { Args: { _offer_id: string }; Returns: Json }
       offer_send_refusal: { Args: { _reason: string }; Returns: string }
@@ -11776,6 +11849,14 @@ export type Database = {
       sign_render_failed: {
         Args: { _error: string; _written_id: string }
         Returns: undefined
+      }
+      sign_role_person: {
+        Args: {
+          _first_open: string
+          _r: Database["public"]["Tables"]["sign_recipients"]["Row"]
+          _rec: Json
+        }
+        Returns: Json
       }
       sign_rotate_link: {
         Args: { _recipient_id: string; _token_hash: string }

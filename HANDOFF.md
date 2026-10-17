@@ -76,15 +76,14 @@ Hard limits:
 - Fixed 2026-10-17: renaming an offer form field's label no longer renames its stored name (`OfferFormFieldsManager.handleUpdateField`).
 
 **Send for signature sheet, full redesign (Allan, 2026-10-17; Claude Design prompt in chat)**
-- Built on `claude/vibrant-galileo-wjbdxd`, not on main. It needs the two unapplied migrations below first, because the app now reads their columns.
+- **Parts 1–5 are on main (2026-10-17).**
   - Part 1: `TemplateSelect`.
   - Part 2: shell + From the offer (`src/components/sign/send/`).
   - Part 3: Who signs, locked (`WhoSigns`, `people.ts`), the Roles step's "Comes from" choice and "Not needed" offer fields (`OfferCoverage`).
   - Part 4: the Email section is always open, and new candidate templates get the design's default message with the email-only tags `{{first_name}}`, `{{company}}` and `{{sender_first}}`.
-  - Part 5: Preview as a stacked sheet (`send/PreviewSheet.tsx`). The renderer has a preview-only `highlight` option: values underlined in lilac, empty ones as [Label]. **`sign-written-preview` needs a redeploy** for the underline.
-- Waiting for "Apply!":
-  - `20261017200000_sign_send_people`: role sources, not-needed fields, email-only values (test 20, 16/16 dry run).
-  - `20261017200100_offer_approval_notices`: approver emails, bell and reminders (test 21, 16/16). Also deploy `offer-approval-notify` by hand.
+  - Part 5: Preview as a stacked sheet (`send/PreviewSheet.tsx`), with the renderer's preview-only `highlight` option.
+- Database: `20261017201301_sign_send_people` is applied (test 20, 16/16 on the live schema). It adds `sign_recipients.fill_from`, `sign_templates.offer_fields_not_needed`, `sign_role_person()`, and the email-only values in `data_snapshot`.
+- `sign-written-preview` v4 is deployed. `sign-dispatch` still runs the older copy of `writtenLayout.ts`. That's fine: the only change is the preview-only option, so the next dispatch deploy can pick it up.
 - Folded into the template workflow below: part 6 (Edit template round trip, "Back to {name}") and part 7 (value formats per field). Part 8, Void & resend, is still separate and applied from the desktop.
 - Mappings (existing primitives win): Sheet/stacking/backdrop/Esc = ATS `SheetContent` (already 360/240ms, step-back, 12% dim); `Pill` = `Badge`; `Icon` = Lucide; buttons = ATS `Button` (sizes, press, `loading` keeps width); focus = the global 2px purple outline, not the design's noir ring; tertiary text stays `#6B7080` (contrast), not `#8B8F9E`; the collapsible = `CollapsibleContent` (`gio-accordion-content`).
 - Preview: written documents shown as the real PDF from `sign-written-preview` (it's what's sent), with a preview-only option to underline values in lilac and print empty values as [Label]; uploaded pages as today's `FilledPreview`. The design's HTML "paper" (Poppins/Inter) would not match the Helvetica PDF; matching it means embedding Inter/Poppins in the PDF (fontkit), which also fixes accents.
@@ -108,14 +107,14 @@ Hard limits:
   9. Templates page.
   10. Motion and accessibility pass.
 
-**Offer approvals: tell the approvers (Allan, 2026-10-17)**
-- When an offer is sent for approval, each approver whose turn it is gets an email and a bell notification ("needs your approval"), and the request shows on the Dashboard's Your queue card under Decisions.
-- What exists today:
-  - Nothing notifies approvers. The chain's `rules.notifyChain` and `rules.remind24h` are UI-only switches.
-  - The requester's browser creates requests and approves steps with direct table writes (`useOfferApprovalRequest.ts`); no database function owns the flow.
-  - `usePendingActivities.fetchPendingOfferApprovals` already returns `offer_approval` items, but `buildQueue` in `Dashboard.tsx` drops them.
-  - In parallel chains it only picks up approvers at `current_step_order`.
-- Plan: a database trigger on `offer_approval_request_steps` / `offer_approval_requests` queues "your turn" notifications when a step becomes active (sequential: the next step; parallel: all pending steps). An Edge Function (or the existing outbox) sends the email (`_shared/emailTemplate.ts` layout, Resend) and the bell (`emit_notification`, category `offer_event`), honouring `notifyChain`; then the Dashboard shows `offer_approval` items as Decisions ("Approve offer · Candidate · Job"), and parallel chains include every awaiting approver. Optional: `remind24h` reminders from the same job.
+**Offer approvals: tell the approvers (Allan, 2026-10-17). Built and live.**
+- `20261017201333_offer_approval_notices` (test 21, 16/16 on the live schema):
+  - triggers on requests and steps call `offer_approval_sync()`, which queues a notice and rings the bell (`emit_notification`, `offer_event`) for whoever's turn it is (sequential: the next pending step; parallel: every pending step);
+  - it honours `rules.notifyChain`, and `rules.remind24h` sends one reminder a day later;
+  - the outbox `offer_approval_notices` is service-role only.
+- The minute job `offer-approval-notify` calls the Edge Function of the same name (v1, `x-internal-secret`) only when there's mail. It sends through Resend and skips approvers who turned offer emails off.
+- Dashboard: `buildQueue` shows `offer_approval` items as Decisions ("Approve offer"). `fetchPendingOfferApprovals` includes every pending step of a parallel chain.
+- Still to do: a real test, where Allan sends an offer for approval to someone else and checks the email, the bell and Your queue.
 
 **Speed and robustness plan (steps 1–3 done)**
 - **Step 4 — database cleanup.**

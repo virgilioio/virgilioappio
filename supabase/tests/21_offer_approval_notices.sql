@@ -1,4 +1,4 @@
--- Run after 20261017200100_offer_approval_notices inside a transaction that is rolled back.
+-- Run after 20261017201333_offer_approval_notices inside a transaction that is rolled back.
 -- Fake approval requests on a real offer; Allan is every approver (his push is off).
 create temp table t_results (check_name text, ok boolean);
 create temp table t_ids (k text primary key, v uuid);
