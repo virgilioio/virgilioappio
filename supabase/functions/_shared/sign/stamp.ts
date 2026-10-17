@@ -4,6 +4,7 @@
 // rasterised. ASCII only.
 
 import { PDFDocument, PDFFont, PDFImage, PDFPage, rgb, StandardFonts } from "npm:pdf-lib@1.17.1";
+import { layoutText, LINE_HEIGHT } from "./wrap.ts";
 
 export interface StampDoc {
   name: string;
@@ -22,6 +23,8 @@ export interface StampField {
   recipient_id: string | null;
   /** Points; null prints at the automatic size (from the height, at most 11 pt). */
   font_size?: number | null;
+  /** Data fields: "tick" prints a tick for Yes and nothing otherwise. */
+  data_style?: string | null;
 }
 export interface StampPerson {
   id: string;
@@ -74,9 +77,16 @@ export function when(iso: string | null | undefined) {
 }
 
 /** Keeps only what the standard font can draw; anything else becomes "?". */
-function safe(font: PDFFont, text: string) {
+function safe(font: PDFFont, text: string, keepLines = false) {
   let out = "";
-  for (const ch of String(text ?? "").replace(/[\r\n\t]+/g, " ")) {
+  const src = keepLines
+    ? String(text ?? "").replace(/\r\n?/g, "\n").replace(/\t/g, " ")
+    : String(text ?? "").replace(/[\r\n\t]+/g, " ");
+  for (const ch of src) {
+    if (ch === "\n") {
+      out += ch;
+      continue;
+    }
     try {
       font.encodeText(ch);
       out += ch;
@@ -87,12 +97,21 @@ function safe(font: PDFFont, text: string) {
   return out;
 }
 
+/**
+ * Writes a value inside its box: one line centred as before, or wrapped over
+ * as many lines as fit, from the top (layout shared with the app's previews).
+ */
 function fitText(page: PDFPage, font: PDFFont, raw: string, x: number, y: number, w: number, h: number, chosen?: number | null) {
-  let size = chosen && chosen >= 6 ? chosen : Math.min(11, Math.max(6, h * 0.62));
-  let text = safe(font, raw);
-  while (size > 6 && font.widthOfTextAtSize(text, size) > w) size -= 0.5;
-  while (text.length > 1 && font.widthOfTextAtSize(text, size) > w) text = text.slice(0, -2) + String.fromCharCode(8230);
-  page.drawText(text, { x: x + 1, y: y + (h - size * 0.72) / 2, size, font, color: INK });
+  const text = safe(font, raw, true);
+  const { size, lines } = layoutText(text, w - 2, h, (s, z) => font.widthOfTextAtSize(s, z), chosen);
+  if (lines.length === 1) {
+    page.drawText(lines[0], { x: x + 1, y: y + (h - size * 0.72) / 2, size, font, color: INK });
+    return;
+  }
+  const lead = size * LINE_HEIGHT;
+  lines.forEach((line, i) => {
+    if (line) page.drawText(line, { x: x + 1, y: y + h - (lead - size) / 2 - size * 0.8 - i * lead, size, font, color: INK });
+  });
 }
 
 function drawCheck(page: PDFPage, x: number, y: number, w: number, h: number) {
@@ -162,6 +181,8 @@ export async function stampEnvelope(
       }
     } else if (f.type === "checkbox") {
       if (f.value === "true") drawCheck(page, x, y, w, h);
+    } else if (f.type === "data" && f.data_style === "tick") {
+      if (f.value === "Yes") drawCheck(page, x, y, w, h);
     } else {
       fitText(page, font, f.value, x, y, w, h, f.font_size == null ? null : Number(f.font_size));
     }

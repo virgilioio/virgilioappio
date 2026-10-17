@@ -83,7 +83,7 @@ async function sealOne(supabase: SupabaseClient, id: string, sign: Signer, logoP
 
   const [{ data: docs }, { data: fields }, { data: recips }, { data: events }] = await Promise.all([
     supabase.from("sign_documents").select("name, storage_path, page_count, sha256, position").eq("envelope_id", id).is("removed_at", null).order("position"),
-    supabase.from("sign_fields").select("type, page, x, y, w, h, value, recipient_id, font_size").eq("envelope_id", id).is("removed_at", null),
+    supabase.from("sign_fields").select("type, page, x, y, w, h, value, recipient_id, font_size, data_style").eq("envelope_id", id).is("removed_at", null),
     supabase.from("sign_recipients").select("*").eq("envelope_id", id).is("removed_at", null).order("position"),
     supabase.from("sign_events").select("created_at, label, actor_name, ip").eq("envelope_id", id).order("created_at"),
   ]);
