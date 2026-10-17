@@ -15,6 +15,7 @@ export function DataFieldText({
   page,
   fontSize,
   empty,
+  mark,
 }: {
   value: string | null | undefined
   tick?: boolean
@@ -26,6 +27,8 @@ export function DataFieldText({
   fontSize?: number | null
   /** What to show when nothing will print (the sender's preview); nothing by default. */
   empty?: string
+  /** The send sheet's preview: the value gets a lilac underline (2026-10-17). */
+  mark?: boolean
 }) {
   const pageW = page.w || 612
   const pageH = page.h || 792
@@ -63,7 +66,7 @@ export function DataFieldText({
     >
       {layout.lines.map((line, i) => (
         <span key={i} className="block whitespace-pre">
-          {line || ' '}
+          {mark && line ? <span className="gio-value-mark">{line}</span> : line || ' '}
         </span>
       ))}
     </span>

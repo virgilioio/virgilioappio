@@ -12,6 +12,14 @@ interface FormSheetProps {
   footer?: ReactNode
   /** Extra controls in the header, before Close (e.g. a ⋯ menu). */
   headerActions?: ReactNode
+  /** A control before the title (e.g. a Back button on a sheet stacked on another). */
+  headerLead?: ReactNode
+  /** The body has no padding or background of its own (a canvas fills it). */
+  flush?: boolean
+  /** Names the sheet for assistive tech when the title alone isn't enough. */
+  ariaLabel?: string
+  /** Opens on top of another sheet: a lighter 12% dim (§13). */
+  stacked?: boolean
   children?: ReactNode
 }
 
@@ -31,19 +39,25 @@ export function FormSheet({
   subtitle,
   footer,
   headerActions,
+  headerLead,
+  flush,
+  ariaLabel,
+  stacked,
   children,
 }: FormSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetPortal>
-        <SheetOverlay style={{ background: 'rgba(13,13,9,0.18)' }} />
+        <SheetOverlay style={{ background: stacked ? 'rgba(13,13,9,0.12)' : 'rgba(13,13,9,0.18)' }} />
       </SheetPortal>
       <SheetContent
           side="right"
           showOverlay={false}
-          // With header actions, focus the panel itself on open so the first
+          // An explicit name replaces the title as the sheet's name.
+          {...(ariaLabel ? { 'aria-label': ariaLabel, 'aria-labelledby': undefined } : null)}
+          // With header controls, focus the panel itself on open so the first
           // control's tooltip doesn't pop up over the title. Tab still starts inside.
-          onOpenAutoFocus={headerActions ? (ev) => { ev.preventDefault(); (ev.currentTarget as HTMLElement | null)?.focus() } : undefined}
+          onOpenAutoFocus={headerActions || headerLead ? (ev) => { ev.preventDefault(); (ev.currentTarget as HTMLElement | null)?.focus() } : undefined}
           // A control marked data-escape-local (an open dropdown) uses Esc for itself first.
           onEscapeKeyDown={(ev) => {
             const local = document.activeElement instanceof Element && document.activeElement.closest('[data-escape-local]')
@@ -67,6 +81,7 @@ export function FormSheet({
             className="flex items-start gap-3 shrink-0"
             style={{ padding: '16px 24px 14px', borderBottom: '1px solid #F1F0EC' }}
           >
+            {headerLead}
             <div className="min-w-0 flex-1">
               <SheetTitle className="sr-only">{title}</SheetTitle>
               {eyebrow && (
@@ -132,7 +147,7 @@ export function FormSheet({
 
           <div
             className="flex-1 overflow-auto"
-            style={{ padding: '20px 24px 24px', background: '#FAFAF7' }}
+            style={flush ? undefined : { padding: '20px 24px 24px', background: '#FAFAF7' }}
           >
             {children}
           </div>

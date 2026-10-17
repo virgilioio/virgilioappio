@@ -7,7 +7,7 @@
 // app's preview and the sent PDF can never disagree. ASCII only.
 
 export type Style = "regular" | "bold" | "italic" | "boldItalic";
-export type Ink = "ink" | "muted" | "rule";
+export type Ink = "ink" | "muted" | "rule" | "lilac";
 
 export interface TextOp {
   kind: "text";
@@ -64,6 +64,12 @@ export interface LayoutOptions {
   sanitize?: (text: string) => string;
   /** Template preview with no record: tags print as [Label], every section shows. */
   tags?: Record<string, string> | null;
+  /**
+   * The send sheet's preview (2026-10-17): each value gets a lilac underline
+   * and an empty one prints as [Label] in muted, labels by key. Never used
+   * for the PDF that is sent.
+   */
+  highlight?: Record<string, string> | null;
   maxPages?: number;
 }
 
@@ -142,6 +148,8 @@ interface Piece {
   underline: boolean;
   strike: boolean;
   color: Ink;
+  /** A filled-in value in a highlighted preview. */
+  mark?: boolean;
 }
 /** A word (pieces with no space between them), a space, or a hard line break. */
 type Unit = { t: "word"; pieces: Piece[]; w: number } | { t: "space"; w: number } | { t: "break" };
@@ -171,7 +179,7 @@ class Inline {
     this.word = null;
   }
 
-  text(raw: string, format = 0) {
+  text(raw: string, format = 0, mark = false, color?: Ink) {
     const clean = (this.o.sanitize ?? ((s: string) => s))(String(raw ?? "").replace(/\r\n?/g, "\n").replace(/\t/g, " "));
     const style = styleOf(format, this.base);
     const underline = (format & IS_UNDERLINE) !== 0;
@@ -187,7 +195,7 @@ class Inline {
         this.units.push({ t: "space", w: this.o.measure(" ", style, this.size) });
       } else {
         if (!this.word) this.word = [];
-        this.word.push({ text: part, style, size: this.size, w: this.o.measure(part, style, this.size), underline, strike, color: this.color });
+        this.word.push({ text: part, style, size: this.size, w: this.o.measure(part, style, this.size), underline, strike, color: color ?? this.color, mark: mark || undefined });
       }
     }
   }
@@ -221,9 +229,15 @@ function collectInline(o: LayoutOptions, nodes: Node[] | undefined, into: Inline
       case "tab":
         into.text(" ", Number(n.format) || 0);
         break;
-      case "placeholder":
-        into.text(tagText(o, String(n.placeholderKey ?? "")), Number(n.format) || 0);
+      case "placeholder": {
+        const key = String(n.placeholderKey ?? "");
+        const text = tagText(o, key);
+        if (o.highlight && !o.tags) {
+          if (text.trim()) into.text(text, Number(n.format) || 0, true);
+          else into.text("[" + (o.highlight[key] ?? key) + "]", Number(n.format) || 0, false, "muted");
+        } else into.text(text, Number(n.format) || 0);
         break;
+      }
       default:
         // Links, marks and anything else inline: their text.
         if (Array.isArray(n?.children)) collectInline(o, n.children, into);
@@ -376,6 +390,7 @@ function drawLines(flow: Flow, lines: Line[], left: number, width: number, size:
       if (u.t !== "word") continue;
       for (const p of u.pieces) {
         flow.page.ops.push({ kind: "text", x, y: baseline, text: p.text, style: p.style, size: p.size, color: p.color, underline: p.underline || undefined, strike: p.strike || undefined });
+        if (p.mark) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.22, x2: x + p.w, y2: baseline + size * 0.22, width: Math.max(1.2, size / 8), color: "lilac" });
         if (p.underline) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.12, x2: x + p.w, y2: baseline + size * 0.12, width: Math.max(0.5, size / 18), color: p.color });
         if (p.strike) flow.page.ops.push({ kind: "line", x1: x, y1: baseline - size * 0.28, x2: x + p.w, y2: baseline - size * 0.28, width: Math.max(0.5, size / 18), color: p.color });
         x += p.w;

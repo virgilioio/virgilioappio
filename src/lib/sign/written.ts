@@ -165,6 +165,8 @@ export async function renderPreview(input: {
   values?: Record<string, string | null | undefined>
   tags?: Record<string, string>
   roles?: Record<string, string>
+  /** The send sheet's preview: values underlined in lilac, empty ones as [Label] (labels by key). */
+  highlight?: Record<string, string>
 }): Promise<TplDoc> {
   const body = JSON.stringify({
     name: input.name,
@@ -172,6 +174,7 @@ export async function renderPreview(input: {
     values: input.values ?? {},
     tags: input.tags ?? null,
     roles: input.roles ?? {},
+    ...(input.highlight ? { highlight: input.highlight } : null),
   })
   const key = `written:${await hash(body)}`
   const { data: s } = await supabase.auth.getSession()

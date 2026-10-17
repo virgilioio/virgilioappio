@@ -1748,6 +1748,8 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   padding: 9px 0; border-bottom: 1px solid #F4F3EF;
 }
 .gio-who-row:last-child { border-bottom: 0; }
+/* A filled-in value in the send sheet's Preview: underlined in lilac. */
+.gio-value-mark { box-shadow: inset 0 -2px 0 #D7C5FB; }
 
 /* Gio Sign › TemplateSelect in Send for signature (2026-10-17). The panel grows
    from the field like the other menus (--dur-menu-in/out, --ease-out); the

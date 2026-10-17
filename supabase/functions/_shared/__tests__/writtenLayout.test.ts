@@ -31,6 +31,17 @@ describe('layoutWritten', () => {
     expect(texts(l).map((o) => o.text).join(' ')).toBe('[Base salary]');
   });
 
+  it('highlights values for the send preview and shows empty ones as [Label]', () => {
+    const content = doc(para({ type: 'placeholder', placeholderKey: 'name' }, text(' '), { type: 'placeholder', placeholderKey: 'bonus' }));
+    const l = layoutWritten(content, { values: { name: 'Priya' }, highlight: { name: 'Name', bonus: 'Bonus' }, measure });
+    expect(texts(l).map((o) => [o.text, o.color])).toEqual([['Priya', 'ink'], ['[Bonus]', 'muted']]);
+    const marks = l.pages[0].ops.filter((o) => o.kind === 'line' && o.color === 'lilac');
+    expect(marks).toHaveLength(1);
+    // The PDF that is sent never carries the highlight.
+    const plain = layoutWritten(content, { values: { name: 'Priya' }, measure });
+    expect(plain.pages[0].ops.some((o) => o.kind === 'line' && o.color === 'lilac')).toBe(false);
+  });
+
   it('shows a conditional section only when its condition holds', () => {
     const content = doc(para(text('Always')), { type: 'gio-if', key: 'relocation_bonus', op: 'yes', children: [para(text('Relocation'))] });
     const yes = layoutWritten(content, { values: { relocation_bonus: 'Yes' }, measure });

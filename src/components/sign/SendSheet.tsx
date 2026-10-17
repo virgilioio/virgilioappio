@@ -30,12 +30,12 @@ import {
   type SendTemplate,
   type TemplateFit,
 } from '@/lib/sign/send'
-import { FilledPreview } from './FilledPreview'
 import { TemplateSelect } from './TemplateSelect'
 import { FromOffer } from './send/FromOffer'
 import { useTemplateFit } from './send/fit'
 import { CoverageRing } from './send/parts'
 import { WhoSigns } from './send/WhoSigns'
+import { PreviewSheet } from './send/PreviewSheet'
 import { isLocked, lockedProblem, personOf } from './send/people'
 import { EditTemplateSheet } from './templates/EditTemplateSheet'
 import { Seg, TagText } from './templates/parts'
@@ -205,6 +205,7 @@ export function SendSheet({
       })
       await qc.invalidateQueries({ queryKey: ['sign'] })
       setDirty(false)
+      setShowPreview(false)
       onOpenChange(false)
       if (sent.when === 'schedule') {
         toast.success(`Scheduled for ${shortDateTime(sent.at.toISOString())}`, {
@@ -212,7 +213,7 @@ export function SendSheet({
         })
       } else {
         undoToast(
-          `Sending to ${firstName}`,
+          `Sent for signature · ${tpl?.name ?? 'Agreement'} · ${firstName} signs first`,
           async () => {
             try {
               const ok = await undoSend(id)
@@ -267,7 +268,10 @@ export function SendSheet({
           >
             {error ?? issue ?? `${roles.length} ${roles.length === 1 ? 'person' : 'people'} · ${tpl?.docs ?? 0} document${tpl?.docs === 1 ? '' : 's'}`}
           </p>
-          <Button icon={d.when === 'schedule' ? CalendarClock : Send} onClick={send} disabled={!!issue} loading={busy}>
+          <Button variant="secondary" icon={Eye} onClick={() => setShowPreview(true)} disabled={!tpl || fit.blocked || busy || !preview.data}>
+            Preview
+          </Button>
+          <Button icon={d.when === 'schedule' ? CalendarClock : Send} onClick={send} disabled={!!issue} loading={busy} className="min-w-[168px]">
             {primaryLabel}
           </Button>
           <UnsavedGuard
@@ -373,36 +377,6 @@ export function SendSheet({
 
           {tpl && !fit.blocked && (
             <>
-              {/* The documents, filled in */}
-              {!preview.isError && preview.data && (
-                <FormSection
-                  title="Preview"
-                  subtitle="Every page, in order, with the values filled in and where each person signs."
-                  action={
-                    <Button variant="ghost" size="sm" icon={Eye} onClick={() => setShowPreview((v) => !v)} aria-expanded={showPreview}>
-                      {showPreview ? 'Hide preview' : 'Show preview'}
-                    </Button>
-                  }
-                >
-                  {showPreview ? (
-                    <div className="rounded-xl border border-[#E7E8EE] bg-[#F4F3EF] p-4">
-                      <FilledPreview
-                        templateId={d.templateId}
-                        values={preview.data.values}
-                        people={Object.fromEntries(Object.entries(d.people).map(([k, v]) => [k, { name: v.name }]))}
-                        width={480}
-                      />
-                    </div>
-                  ) : (
-                    <p className="font-inter text-[12.5px] text-text-tertiary">
-                      {tpl?.written
-                        ? `${tpl.docs} document${tpl.docs === 1 ? '' : 's'}, ${tpl.written} written in Gio and filled in when sent.`
-                        : `${tpl?.pages ?? 0} page${tpl?.pages === 1 ? '' : 's'} across ${tpl?.docs ?? 0} document${tpl?.docs === 1 ? '' : 's'}.`}
-                    </p>
-                  )}
-                </FormSection>
-              )}
-
               {/* People */}
               {!preview.isError && roles.length > 0 && (
                 <FormSection
@@ -497,6 +471,21 @@ export function SendSheet({
           )}
         </CollapsibleContent>
       </Collapsible>
+      {tpl && preview.data && (
+        <PreviewSheet
+          open={open && showPreview}
+          onOpenChange={setShowPreview}
+          tpl={tpl}
+          firstName={firstName}
+          isOffer={isOffer}
+          values={preview.data.values}
+          labels={Object.fromEntries(preview.data.used.map((u) => [u.key, u.label || label(u.key)]))}
+          people={Object.fromEntries(roles.map((r) => [r.id, { name: personOf(r, d.people).name }]))}
+          issue={issue}
+          busy={busy}
+          onSend={send}
+        />
+      )}
       {editing && <EditTemplateSheet templateId={editing} onClose={() => setEditing(null)} />}
     </FormSheet>
   )

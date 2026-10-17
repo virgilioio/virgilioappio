@@ -81,6 +81,7 @@ export function FilledPreview({
   values,
   people,
   width = 480,
+  highlight,
 }: {
   templateId: string | null
   /** Data values by key (the send preview's values). */
@@ -88,6 +89,11 @@ export function FilledPreview({
   /** Names typed for each role, to label signer fields ("Priya signs here"). */
   people?: Record<string, { name: string }>
   width?: number
+  /**
+   * The send sheet's Preview (2026-10-17): labels by key. Values get a lilac
+   * underline, empty ones show [Label], signer fields read "{Role} signs here".
+   */
+  highlight?: Record<string, string>
 }) {
   const tpl = usePreviewTemplate(templateId)
   const pages = useMemo(() => (tpl.data ? pagesOf(tpl.data.docs) : []), [tpl.data])
@@ -110,7 +116,7 @@ export function FilledPreview({
     <div className="flex flex-col items-center gap-4" aria-label="Preview of the documents, filled in">
       {docItems(tpl.data).flatMap((item) =>
         item.kind === 'written'
-          ? [<WrittenPages key={item.doc.id} w={item.doc} values={values} roles={roleLabels} width={width} />]
+          ? [<WrittenPages key={item.doc.id} w={item.doc} values={values} roles={roleLabels} width={width} highlight={highlight} />]
           : pages.filter((p) => p.doc.id === item.doc.id).map((p) => {
               const size = p.doc.page_sizes[p.i] ?? { w: 612, h: 792 }
               return (
@@ -143,7 +149,18 @@ export function FilledPreview({
                             title={isData ? undefined : `${who} · ${FIELD_LABEL[f.type]}`}
                           >
                             {isData ? (
-                              <DataFieldText value={text} tick={f.data_style === 'tick'} w={f.w} h={f.h} page={size} fontSize={f.font_size} empty="—" />
+                              <DataFieldText
+                                value={text}
+                                tick={f.data_style === 'tick'}
+                                w={f.w}
+                                h={f.h}
+                                page={size}
+                                fontSize={f.font_size}
+                                empty={highlight ? `[${highlight[f.data_key ?? ''] ?? f.data_key ?? ''}]` : '—'}
+                                mark={!!highlight}
+                              />
+                            ) : highlight && f.type === 'signature' ? (
+                              <span className="truncate">{`${r?.label || 'Signer'} signs here`}</span>
                             ) : (
                               <span className="truncate">{`${who} · ${FIELD_LABEL[f.type].toLowerCase()}`}</span>
                             )}
@@ -171,13 +188,15 @@ function WrittenPages({
   values,
   roles,
   width,
+  highlight,
 }: {
   w: TplWritten
   values: Record<string, string | null | undefined>
   roles: Record<string, string>
   width: number
+  highlight?: Record<string, string>
 }) {
-  const preview = useWrittenPreview({ name: w.name, content: w.content, values, roles })
+  const preview = useWrittenPreview({ name: w.name, content: w.content, values, roles, ...(highlight ? { highlight } : null) })
   if (preview.isLoading) return <Skeleton className="rounded-md" style={{ width, aspectRatio: '612 / 792' }} />
   if (preview.isError || !preview.data) {
     return <p className="font-inter text-[12.5px] text-virgilio-error">{w.name} couldn’t be drawn for the preview.</p>
