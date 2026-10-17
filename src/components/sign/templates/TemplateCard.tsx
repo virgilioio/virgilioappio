@@ -7,7 +7,7 @@ import { IconTip } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { loadTemplatePdf } from '@/lib/sign/pdf'
 import { ago } from '@/lib/sign/status'
-import { APP_LABEL, KIND_LABEL, pageCount, type TemplateRow, type TplDoc } from '@/lib/sign/templates'
+import { APP_LABEL, KIND_LABEL, offerCoverage, pageCount, useOfferFormTags, type TemplateRow, type TplDoc } from '@/lib/sign/templates'
 
 /** The first page of the first document, drawn once the card scrolls into view. */
 function Thumb({ doc, accent }: { doc: TplDoc | undefined; accent: string }) {
@@ -60,6 +60,21 @@ function Thumb({ doc, accent }: { doc: TplDoc | undefined; accent: string }) {
         <canvas ref={canvas} className="absolute inset-0 h-full w-full bg-white transition-opacity duration-200" style={{ opacity: ready ? 1 : 0 }} />
       </div>
     </div>
+  )
+}
+
+/** How many of the linked offer form's fields the template places (offer templates only). */
+function OfferCoverageLine({ t }: { t: TemplateRow }) {
+  const tags = useOfferFormTags(t.kind === 'candidate' ? t.offer_form_id : null)
+  if (!t.offer_form_id || !tags.data?.length) return null
+  const c = offerCoverage(t.fields, tags.data)
+  return (
+    <p className={c.missing.length ? 'font-inter text-[12px] text-[#7A4A06]' : 'font-inter text-[12px] text-text-tertiary'}>
+      <span className="tabular-nums">
+        {c.placed.length} of {c.total}
+      </span>{' '}
+      offer fields placed
+    </p>
   )
 }
 
@@ -142,6 +157,7 @@ export function TemplateCard({
           <span className="whitespace-nowrap">Sent {t.uses}×</span>
           <span className="whitespace-nowrap">Edited {edited(t.updated_at)}</span>
         </p>
+        <OfferCoverageLine t={t} />
         <div className="mt-auto flex gap-1.5 pt-2">
           {archived ? (
             <Button variant="secondary" size="sm" icon={ArchiveRestore} onClick={onRestore}>

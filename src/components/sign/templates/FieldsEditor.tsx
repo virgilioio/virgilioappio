@@ -34,6 +34,8 @@ import {
   FIELD_SIZE,
   TEXT_FIELDS,
   autoFontSize,
+  listLabels,
+  offerCoverage,
   pagesOf,
   tagLabel,
   tagsFor,
@@ -178,6 +180,8 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     return [...std, ...extra]
   }, [d.kind, formTags.data])
   const tagText = (k: string) => tags.find(([key]) => key === k)?.[1] ?? tagLabel(d.kind, k)
+  const formTag = (k: string | null) => (formTags.data ?? []).find((t) => t.key === k) ?? null
+  const coverage = d.kind === 'candidate' && d.offer_form_id && formTags.data?.length ? offerCoverage(d.fields, formTags.data) : null
   // Zoom: Fit fills the column; a percentage is of the page's printed size.
   const [zoom, setZoom] = useState<Zoom>('fit')
   const [avail, setAvail] = useState(800)
@@ -416,7 +420,8 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   }
 
   const missing = d.roles.filter((r) => r.role === 'signer' && !d.fields.some((f) => f.rid === r.id && f.type === 'signature'))
-  const fieldText = (f: TplField) => (f.type === 'data' ? tagText(f.data_key ?? '') : f.type === 'checkbox' ? '' : FIELD_LABEL[f.type])
+  const fieldText = (f: TplField) =>
+    f.type === 'data' ? tagText(f.data_key ?? '') + (f.data_style === 'tick' ? ' · tick' : '') : f.type === 'checkbox' ? '' : FIELD_LABEL[f.type]
   const sideH = 'font-inter text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary'
   const paletteItem =
     'flex cursor-grab select-none items-center gap-2 rounded-lg border border-[#E7E8EE] bg-white px-2.5 py-[7px] font-inter text-[12.5px] font-medium text-text-primary [touch-action:none] transition-colors duration-hover hover:bg-[#FAFAF7] active:cursor-grabbing'
@@ -588,7 +593,12 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
             {sf.type === 'data' ? (
               <label className="flex flex-col gap-1.5 font-inter text-[12.5px] font-medium text-text-primary">
                 Fills from
-                <Select value={sf.data_key ?? undefined} onValueChange={(v) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, data_key: v } : x)))}>
+                <Select
+                  value={sf.data_key ?? undefined}
+                  onValueChange={(v) =>
+                    setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, data_key: v, data_style: formTag(v)?.type === 'checkbox' ? x.data_style : null } : x)))
+                  }
+                >
                   <SelectTrigger className="h-9" aria-label="Fills from">
                     <SelectValue />
                   </SelectTrigger>
@@ -618,10 +628,24 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                 </Select>
               </label>
             )}
+            {sf.type === 'data' && formTag(sf.data_key)?.type === 'checkbox' && (
+              <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] text-text-primary">
+                Show as a tick
+                <Switch
+                  checked={sf.data_style === 'tick'}
+                  onCheckedChange={(v) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, data_style: v ? 'tick' : null } : x)))}
+                  aria-label="Show as a tick"
+                />
+              </label>
+            )}
             {sf.type === 'data' ? (
               <p className="flex gap-2 rounded-lg bg-[#F6F1FE] p-2.5 font-inter text-[12px] leading-snug text-text-secondary">
                 <Info className="mt-px h-3.5 w-3.5 shrink-0 text-virgilio-purple" strokeWidth={2} aria-hidden />
-                Filled from the record when it’s sent. Signers can’t change it.
+                {sf.data_style === 'tick'
+                  ? 'Ticked when the offer says Yes, left empty for No. Signers can’t change it.'
+                  : formTag(sf.data_key) && !formTag(sf.data_key)!.required
+                  ? 'Filled from the offer when it’s sent; optional on the form, so it prints blank when the offer leaves it empty.'
+                  : 'Filled from the record when it’s sent. Signers can’t change it.'}
               </p>
             ) : (
               <label className="flex items-center justify-between gap-3 font-inter text-[12.5px] text-text-primary">
@@ -629,7 +653,7 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                 <Switch checked={sf.required} onCheckedChange={(v) => setFields((fs) => fs.map((x) => (x.id === sf.id ? { ...x, required: v } : x)))} aria-label="Required" />
               </label>
             )}
-            {TEXT_FIELDS.has(sf.type) && (() => {
+            {TEXT_FIELDS.has(sf.type) && sf.data_style !== 'tick' && (() => {
               const docSize = docSizes[sf.page] ?? null
               const size = printSize(sf)
               const off = docSize != null && Math.abs(size - docSize) >= 1.5
@@ -702,6 +726,23 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
               Every signer has a signature field.
             </p>
           )}
+          {coverage &&
+            (coverage.missing.length ? (
+              <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#7A4A06]">
+                <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                <span>
+                  <span className="tabular-nums">
+                    {coverage.placed.length} of {coverage.total}
+                  </span>{' '}
+                  offer fields placed. Not placed: {listLabels(coverage.missing.map((t) => t.label), 4)}.
+                </span>
+              </p>
+            ) : (
+              <p className="flex gap-1.5 font-inter text-[11.5px] leading-snug text-[#16704A]">
+                <Check className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                Every offer field is placed.
+              </p>
+            ))}
         </div>
         {d.docs.map((doc) => {
           const open = !closedDocs.has(doc.id)

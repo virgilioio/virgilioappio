@@ -51,6 +51,8 @@ export interface TplField {
   data_key: string | null
   /** Text size in points; null prints at the automatic size (from the height, at most 11 pt). */
   font_size: number | null
+  /** Data fields of a yes/no offer field: 'tick' prints a tick for Yes instead of the word. */
+  data_style?: 'tick' | null
 }
 
 export interface TplDraft {
@@ -161,6 +163,8 @@ export interface OfferFormTag {
   key: string
   label: string
   type: string
+  /** Optional fields print blank when the offer leaves them empty; required ones block sending. */
+  required: boolean
 }
 /** Field names a template can use (sign_fields.data_key): lowercase letters and underscores. */
 export const okDataKey = (k: string) => /^[a-z][a-z_]{0,39}$/.test(k)
@@ -173,15 +177,35 @@ export function useOfferFormTags(formId: string | null | undefined) {
     queryFn: async (): Promise<OfferFormTag[]> => {
       const { data, error } = await supabase
         .from('offer_form_fields')
-        .select('field_name, field_label, field_type, display_order')
+        .select('field_name, field_label, field_type, display_order, is_required')
         .eq('form_id', formId!)
         .order('display_order')
       if (error) throw error
       return (data ?? [])
         .filter((f) => okDataKey(f.field_name))
-        .map((f) => ({ key: f.field_name, label: f.field_label || f.field_name, type: String(f.field_type) }))
+        .map((f) => ({ key: f.field_name, label: f.field_label || f.field_name, type: String(f.field_type), required: f.is_required !== false }))
     },
   })
+}
+
+/**
+ * Which of the linked offer form's fields the template places somewhere, and
+ * which it leaves out (the coverage line on the Fields step and the card).
+ */
+export function offerCoverage(fields: Pick<TplField, 'type' | 'data_key'>[], tags: OfferFormTag[]) {
+  const placed = new Set(fields.filter((f) => f.type === 'data' && f.data_key).map((f) => f.data_key))
+  return {
+    total: tags.length,
+    placed: tags.filter((t) => placed.has(t.key)),
+    missing: tags.filter((t) => !placed.has(t.key)),
+  }
+}
+
+/** "Bonus, Equity and Notice period" / "Bonus, Equity and 3 more". */
+export function listLabels(labels: string[], max = 3) {
+  if (labels.length <= 1) return labels.join('')
+  if (labels.length <= max) return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+  return `${labels.slice(0, max - 1).join(', ')} and ${labels.length - (max - 1)} more`
 }
 
 /** Offer forms a candidate template can be linked to. */
@@ -335,7 +359,7 @@ const TEMPLATE_SELECT = `
   created_at, updated_at, archived_at,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
-  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, removed_at)
+  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at)
 `
 
 type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description'> & {
@@ -371,6 +395,7 @@ function fromRaw(t: Raw): TemplateRow {
         required: f.required,
         data_key: f.data_key,
         font_size: f.font_size == null ? null : Number(f.font_size),
+        data_style: f.data_style === 'tick' ? 'tick' : null,
       })),
   }
 }
@@ -441,6 +466,7 @@ export async function saveTemplate(d: TplDraft, tenantId: string) {
         required: f.required,
         data_key: f.type === 'data' ? f.data_key : null,
         font_size: TEXT_FIELDS.has(f.type) ? f.font_size ?? null : null,
+        data_style: f.type === 'data' && f.data_style === 'tick' ? 'tick' : null,
       }
     }),
   }
