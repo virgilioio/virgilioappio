@@ -8777,6 +8777,86 @@ export type Database = {
           },
         ]
       }
+      sign_written_docs: {
+        Row: {
+          content: Json
+          created_at: string
+          created_by: string | null
+          envelope_id: string | null
+          id: string
+          name: string
+          position: number
+          removed_at: string | null
+          render_attempts: number
+          render_error: string | null
+          rendered_document_id: string | null
+          template_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          created_by?: string | null
+          envelope_id?: string | null
+          id?: string
+          name: string
+          position?: number
+          removed_at?: string | null
+          render_attempts?: number
+          render_error?: string | null
+          rendered_document_id?: string | null
+          template_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          envelope_id?: string | null
+          id?: string
+          name?: string
+          position?: number
+          removed_at?: string | null
+          render_attempts?: number
+          render_error?: string | null
+          rendered_document_id?: string | null
+          template_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sign_written_docs_envelope_id_fkey"
+            columns: ["envelope_id"]
+            isOneToOne: false
+            referencedRelation: "sign_envelopes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_written_docs_rendered_document_id_fkey"
+            columns: ["rendered_document_id"]
+            isOneToOne: false
+            referencedRelation: "sign_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_written_docs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sign_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_written_docs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_credits_usage: {
         Row: {
           billing_cycle_start: string
@@ -11551,6 +11631,18 @@ export type Database = {
         Args: { p_jca_id: string; p_job_id: string }
         Returns: boolean
       }
+      sign_attach_render: {
+        Args: {
+          _blocks: Json
+          _page_count: number
+          _page_sizes: Json
+          _sha256: string
+          _size_bytes: number
+          _storage_path: string
+          _written_id: string
+        }
+        Returns: string
+      }
       sign_can_edit_envelope: {
         Args: { _envelope_id: string }
         Returns: boolean
@@ -11681,6 +11773,10 @@ export type Database = {
           recipient_id: string
         }[]
       }
+      sign_render_failed: {
+        Args: { _error: string; _written_id: string }
+        Returns: undefined
+      }
       sign_rotate_link: {
         Args: { _recipient_id: string; _token_hash: string }
         Returns: boolean
@@ -11797,12 +11893,26 @@ export type Database = {
         Returns: Json
       }
       sign_tag_label: { Args: { _key: string }; Returns: string }
+      sign_template_keys: {
+        Args: { _template_id: string }
+        Returns: {
+          key: string
+          needed: boolean
+        }[]
+      }
       sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
       sign_unschedule: { Args: { _envelope_id: string }; Returns: undefined }
       sign_void: {
         Args: { _envelope_id: string; _reason: string }
         Returns: {
           recipient_id: string
+        }[]
+      }
+      sign_written_nodes: {
+        Args: { _content: Json }
+        Returns: {
+          conditional: boolean
+          node: Json
         }[]
       }
       skill_priorities_valid: { Args: { p: Json }; Returns: boolean }
