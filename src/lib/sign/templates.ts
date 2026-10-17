@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { SignKind, SignRecipientRole } from './api'
+import { docItems, normalizePositions, remapRoles, signBlocks, writtenKeys, type TplWritten } from './written'
 
 /* ------------------------------------------------------------------------- */
 /* Model                                                                      */
@@ -23,6 +24,8 @@ export interface TplDoc {
   uploading?: number
   /** Kept locally after an upload so the fields editor doesn't download it again. */
   file?: Blob
+  /** Place among all the template's documents, uploaded and written. */
+  position?: number
 }
 
 export interface TplRole {
@@ -67,6 +70,8 @@ export interface TplDraft {
   reminder_days: number
   expiry_days: number
   docs: TplDoc[]
+  /** Documents written in Gio, in the same order as `docs` (by position). */
+  written: TplWritten[]
   roles: TplRole[]
   fields: TplField[]
   uses: number
@@ -252,6 +257,7 @@ export function newDraft(kind: SignKind = 'candidate'): TplDraft {
     reminder_days: 2,
     expiry_days: kind === 'candidate' ? 14 : 30,
     docs: [],
+    written: [],
     roles: [{ id: uid(), label: FIRST_ROLE[kind], role: 'signer', fixed: false, name: '', email: '', color: ROLE_COLORS[0] }],
     fields: [],
     uses: 0,
@@ -285,6 +291,7 @@ export function duplicateDraft(t: TplDraft): TplDraft {
     name: `${t.name} (copy)`.slice(0, 120),
     uses: 0,
     docs: t.docs.map((d) => ({ ...d, id: uid() })),
+    written: (t.written ?? []).map((w) => ({ ...w, id: uid(), content: remapRoles(w.content, roleIds) })),
     roles: t.roles.map((r) => ({ ...r, id: roleIds.get(r.id)! })),
     fields: t.fields.map((f) => ({ ...f, id: uid(), rid: f.rid ? roleIds.get(f.rid) ?? null : null })),
   }
@@ -320,6 +327,38 @@ export function moveDoc(d: TplDraft, from: number, to: number): TplDraft {
   return { ...d, docs, fields: d.fields.map((f) => ({ ...f, page: map.get(f.page) ?? f.page })) }
 }
 
+/**
+ * Moves a document (uploaded or written) one place in the combined order.
+ * Two uploaded documents swapping carry their fields with them.
+ */
+export function moveItem(d: TplDraft, from: number, to: number): TplDraft {
+  const items = docItems(d)
+  if (to < 0 || to >= items.length || from === to) return d
+  const a = items[from]
+  const b = items[to]
+  let next = d
+  if (a.kind === 'upload' && b.kind === 'upload') {
+    next = moveDoc(d, d.docs.indexOf(a.doc), d.docs.indexOf(b.doc))
+  }
+  const pa = a.position
+  const pb = b.position
+  const swap = (id: string, p: number) => (id === a.doc.id ? pb : id === b.doc.id ? pa : p)
+  return normalizePositions({
+    ...next,
+    docs: next.docs.map((x, i) => ({ ...x, position: swap(x.id, x.position ?? i) })),
+    written: next.written.map((x) => ({ ...x, position: swap(x.id, x.position) })),
+  })
+}
+
+/** Data tags a template fills in, placed or written (for coverage). */
+export function usedTags(d: Pick<TplDraft, 'fields' | 'written'>): Pick<TplField, 'type' | 'data_key'>[] {
+  const fromText = (d.written ?? []).flatMap((w) => {
+    const k = writtenKeys(w.content)
+    return [...k.tags, ...k.conditions]
+  })
+  return [...d.fields, ...fromText.map((key) => ({ type: 'data' as const, data_key: key }))]
+}
+
 /* ------------------------------------------------------------------------- */
 /* Validation (one message per step, shown in the footer)                     */
 /* ------------------------------------------------------------------------- */
@@ -327,9 +366,11 @@ export function moveDoc(d: TplDraft, from: number, to: number): TplDraft {
 export function stepIssue(step: number, d: TplDraft): string | null {
   if (step === 0) {
     if (!d.name.trim()) return 'Name the template'
-    if (!d.docs.length) return 'Add at least one PDF'
+    if (!d.docs.length && !d.written.length) return 'Add at least one document'
     if (d.docs.some((x) => x.uploading != null)) return 'Waiting for the upload to finish'
     if (pageCount(d) > 200) return 'A template can hold up to 200 pages'
+    if (d.docs.length + d.written.length > 50) return 'A template can hold up to 50 documents'
+    if (d.written.some((w) => !w.name.trim())) return 'Every written document needs a name'
   }
   if (step === 1) {
     if (!d.roles.some((r) => r.role === 'signer')) return 'Add at least one signer'
@@ -340,7 +381,16 @@ export function stepIssue(step: number, d: TplDraft): string | null {
     if (new Set(labels).size !== labels.length) return 'Two roles have the same name'
   }
   if (step === 2) {
-    const m = d.roles.find((r) => r.role === 'signer' && !d.fields.some((f) => f.rid === r.id && f.type === 'signature'))
+    const signing = new Set(d.roles.filter((r) => r.role !== 'cc').map((r) => r.id))
+    const orphan = d.written.find((w) => signBlocks(w.content).some((b) => !signing.has(b.roleId)))
+    if (orphan) return `A signing block in “${orphan.name}” belongs to a role that isn’t on the template`
+    // A signature inside a conditional section might not print, so it doesn't count.
+    const m = d.roles.find(
+      (r) =>
+        r.role === 'signer' &&
+        !d.fields.some((f) => f.rid === r.id && f.type === 'signature') &&
+        !d.written.some((w) => signBlocks(w.content).some((b) => b.roleId === r.id && b.kind === 'signature' && !b.conditional)),
+    )
     if (m) return `${m.label} needs a signature field`
   }
   if (step === 3) {
@@ -359,11 +409,13 @@ const TEMPLATE_SELECT = `
   created_at, updated_at, archived_at,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
-  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at)
+  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at),
+  written:sign_written_docs!sign_written_docs_template_id_fkey(id, name, position, content, removed_at)
 `
 
-type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description'> & {
+type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description' | 'written'> & {
   description: string | null
+  written: (TplWritten & { removed_at: string | null })[] | null
   docs: (TplDoc & { position: number; removed_at: string | null })[]
   roles: (Omit<TplRole, 'name' | 'email'> & { name: string | null; email: string | null; label: string | null; position: number; removed_at: string | null })[]
   fields: (Omit<TplField, 'rid' | 'x' | 'y' | 'w' | 'h'> & { recipient_id: string | null; x: number | string; y: number | string; w: number | string; h: number | string; removed_at: string | null })[]
@@ -376,7 +428,10 @@ function fromRaw(t: Raw): TemplateRow {
     docs: (t.docs ?? [])
       .filter((x) => !x.removed_at)
       .sort((a, b) => a.position - b.position)
-      .map(({ position: _p, removed_at: _r, ...x }) => ({ ...x, page_sizes: Array.isArray(x.page_sizes) ? x.page_sizes : [] })),
+      .map(({ removed_at: _r, ...x }) => ({ ...x, page_sizes: Array.isArray(x.page_sizes) ? x.page_sizes : [] })),
+    written: (t.written ?? [])
+      .filter((x) => !x.removed_at)
+      .map(({ removed_at: _r, ...x }) => x),
     roles: (t.roles ?? [])
       .filter((x) => !x.removed_at)
       .sort((a, b) => a.position - b.position)
@@ -427,7 +482,8 @@ export function useTemplates() {
  * soft-removes whatever the editor dropped. Admins only. Envelopes already
  * sent keep their own copies and aren't affected.
  */
-export async function saveTemplate(d: TplDraft, tenantId: string) {
+export async function saveTemplate(draft: TplDraft, tenantId: string) {
+  const d = normalizePositions(draft)
   const payload = {
     id: d.id,
     tenant_id: tenantId,
@@ -449,7 +505,9 @@ export async function saveTemplate(d: TplDraft, tenantId: string) {
       page_sizes: x.page_sizes,
       size_bytes: x.size_bytes,
       sha256: x.sha256,
+      position: x.position,
     })),
+    written: d.written.map((w) => ({ id: w.id, name: w.name.trim(), position: w.position, content: w.content })),
     roles: d.roles.map((r) => ({ id: r.id, label: r.label.trim(), role: r.role, fixed: r.fixed, name: r.name, email: r.email, color: r.color })),
     fields: d.fields.map((f) => {
       const w = Math.min(f.w, 100)

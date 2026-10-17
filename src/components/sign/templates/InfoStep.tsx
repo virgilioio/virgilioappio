@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Building2, FileText, IdCard, Upload, UserRound, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Building2, FilePen, FileText, IdCard, PenLine, Upload, UserRound, X } from 'lucide-react'
 
 import { FormSection } from '@/components/references/FormSection'
 import { Input } from '@/components/ui/input'
@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button'
 import { IconTip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { inspectPdf, PdfProblem, primePdf, uploadTemplatePdf } from '@/lib/sign/pdf'
-import { APP_LABEL, moveDoc, removeDoc, uid, useOfferForms, withKind, type SignApp, type TplDraft } from '@/lib/sign/templates'
+import { APP_LABEL, moveItem, removeDoc, uid, useOfferForms, withKind, type SignApp, type TplDraft } from '@/lib/sign/templates'
+import { docItems, emptyContent, nextPosition, removeWritten, signBlocks, writtenKeys, type TplWritten } from '@/lib/sign/written'
+import { WrittenEditor } from '@/components/sign/written/WrittenEditor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { SignKind } from '@/lib/sign/api'
 import { Field, Seg } from './parts'
@@ -28,6 +30,13 @@ export function InfoStep({
   const forms = useOfferForms()
   const [over, setOver] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [editing, setEditing] = useState<TplWritten | null>(null)
+  const items = docItems(d)
+
+  const writeNew = () => {
+    const w: TplWritten = { id: uid(), name: d.written.length ? `Document ${d.written.length + 1}` : 'Offer letter', position: nextPosition(d), content: emptyContent() }
+    setEditing(w)
+  }
 
   const addFiles = async (files: FileList | File[]) => {
     setProblem(null)
@@ -46,6 +55,7 @@ export function InfoStep({
           ...x.docs,
           {
             id,
+            position: nextPosition(x),
             name: file.name.slice(0, 200),
             storage_path: '',
             page_count: info.page_count,
@@ -181,11 +191,55 @@ export function InfoStep({
         </div>
       </FormSection>
 
-      <FormSection title="Documents" subtitle="PDF only, up to 25 MB each. They’re signed in this order.">
+      <FormSection title="Documents" subtitle="Upload PDFs (up to 25 MB each) or write documents in Gio. They’re signed in this order.">
         <div className="flex flex-col gap-3">
-          {d.docs.length > 0 && (
+          {items.length > 0 && (
             <ul className="flex flex-col divide-y divide-[#F0EFEA] rounded-xl border border-[#E7E8EE]">
-              {d.docs.map((doc, i) => {
+              {items.map((item, i) => {
+                const move = (
+                  <>
+                    <IconTip label="Move up">
+                      <Button variant="ghost" size="sm" iconOnly aria-label="Move up" disabled={i === 0} onClick={() => set((x) => moveItem(x, i, i - 1))}>
+                        <ArrowUp />
+                      </Button>
+                    </IconTip>
+                    <IconTip label="Move down">
+                      <Button variant="ghost" size="sm" iconOnly aria-label="Move down" disabled={i === items.length - 1} onClick={() => set((x) => moveItem(x, i, i + 1))}>
+                        <ArrowDown />
+                      </Button>
+                    </IconTip>
+                  </>
+                )
+                if (item.kind === 'written') {
+                  const w = item.doc
+                  const tags = writtenKeys(w.content).tags.length
+                  const blocks = signBlocks(w.content).length
+                  return (
+                    <li key={w.id} className="flex items-center gap-3 px-3 py-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F2EBFF] text-virgilio-purple">
+                        <FilePen className="h-4 w-4" strokeWidth={2} aria-hidden />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-inter text-[13px] font-medium text-text-primary">{w.name}</p>
+                        <p className="font-inter text-[11.5px] tabular-nums text-text-tertiary">
+                          Written in Gio · {tags} field{tags === 1 ? '' : 's'} · {blocks} signing block{blocks === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <Button variant="secondary" size="sm" icon={PenLine} onClick={() => setEditing(w)}>
+                          Edit
+                        </Button>
+                        {move}
+                        <IconTip label={`Remove ${w.name}`}>
+                          <Button variant="ghost" size="sm" iconOnly aria-label={`Remove ${w.name}`} onClick={() => set((x) => removeWritten(x, w.id))}>
+                            <X />
+                          </Button>
+                        </IconTip>
+                      </div>
+                    </li>
+                  )
+                }
+                const doc = item.doc
                 const n = fieldsOn(doc.id)
                 return (
                   <li key={doc.id} className="flex items-center gap-3 px-3 py-2.5">
@@ -209,16 +263,7 @@ export function InfoStep({
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-0.5">
-                      <IconTip label="Move up">
-                        <Button variant="ghost" size="sm" iconOnly aria-label="Move up" disabled={i === 0} onClick={() => set((x) => moveDoc(x, i, i - 1))}>
-                          <ArrowUp />
-                        </Button>
-                      </IconTip>
-                      <IconTip label="Move down">
-                        <Button variant="ghost" size="sm" iconOnly aria-label="Move down" disabled={i === d.docs.length - 1} onClick={() => set((x) => moveDoc(x, i, i + 1))}>
-                          <ArrowDown />
-                        </Button>
-                      </IconTip>
+                      {move}
                       <IconTip label={`Remove ${doc.name}`}>
                         <Button variant="ghost" size="sm" iconOnly aria-label={`Remove ${doc.name}`} disabled={doc.uploading != null} onClick={() => set((x) => removeDoc(x, doc.id))}>
                           <X />
@@ -271,8 +316,29 @@ export function InfoStep({
           <p className="gio-field-message min-h-[18px] font-inter text-[12px] text-virgilio-error" role={problem ? 'alert' : undefined}>
             {problem}
           </p>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#E7E8EE] bg-white px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-inter text-[13px] font-medium text-text-primary">Or write it in Gio</p>
+              <p className="font-inter text-[11.5px] text-text-tertiary">Fields fill in, sections print only when they apply, and signing blocks place themselves.</p>
+            </div>
+            <Button variant="secondary" icon={FilePen} onClick={writeNew}>
+              Write a document
+            </Button>
+          </div>
         </div>
       </FormSection>
+      <WrittenEditor
+        open={!!editing}
+        doc={editing}
+        kind={d.kind}
+        formId={d.offer_form_id}
+        roles={d.roles}
+        onClose={() => setEditing(null)}
+        onDone={(w) => {
+          set((x) => ({ ...x, written: x.written.some((y) => y.id === w.id) ? x.written.map((y) => (y.id === w.id ? w : y)) : [...x.written, w] }))
+          setEditing(null)
+        }}
+      />
     </div>
   )
 }

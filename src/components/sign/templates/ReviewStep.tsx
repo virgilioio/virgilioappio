@@ -1,9 +1,10 @@
-import { FileText, LayoutTemplate, Pencil, TriangleAlert } from 'lucide-react'
+import { FilePen, FileText, LayoutTemplate, Pencil, TriangleAlert } from 'lucide-react'
 
 import { FormSection } from '@/components/references/FormSection'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { APP_LABEL, FIELD_LABEL, KIND_LABEL, SIGNER_FIELDS, pageCount, stepIssue, tagLabel, type TplDraft } from '@/lib/sign/templates'
+import { docItems, writtenKeys } from '@/lib/sign/written'
 import { TagText } from './parts'
 
 const ROLE_WORD = { signer: 'Signer', approver: 'Approver', cc: 'Gets a copy' } as const
@@ -11,7 +12,8 @@ const ROLE_WORD = { signer: 'Signer', approver: 'Approver', cc: 'Gets a copy' } 
 export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void }) {
   const issues = [0, 1, 2, 3].map((i) => stepIssue(i, d)).filter(Boolean) as string[]
   const pages = pageCount(d)
-  const dataKeys = [...new Set(d.fields.filter((f) => f.type === 'data').map((f) => f.data_key ?? ''))]
+  const dataKeys = [...new Set([...d.fields.filter((f) => f.type === 'data').map((f) => f.data_key ?? ''), ...d.written.flatMap((w) => writtenKeys(w.content).tags)])]
+  const docs = d.docs.length + d.written.length
   const edit = (i: number) => (
     <Button variant="ghost" size="sm" icon={Pencil} onClick={() => go(i)}>
       Edit
@@ -38,7 +40,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
             <span className="text-virgilio-purple">.</span>
           </h2>
           <p className="font-inter text-[12.5px] tabular-nums text-text-secondary">
-            {d.docs.length} document{d.docs.length === 1 ? '' : 's'} · {pages} page{pages === 1 ? '' : 's'} · {d.roles.length} role{d.roles.length === 1 ? '' : 's'} · {d.fields.length} field
+            {docs} document{docs === 1 ? '' : 's'} · {pages} page{pages === 1 ? '' : 's'}{d.written.length ? ' + written' : ''} · {d.roles.length} role{d.roles.length === 1 ? '' : 's'} · {d.fields.length} field
             {d.fields.length === 1 ? '' : 's'}
           </p>
         </div>
@@ -54,15 +56,23 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
 
       <FormSection title="Documents" action={edit(0)}>
         <ul className="flex flex-col gap-2">
-          {d.docs.map((x) => (
-            <li key={x.id} className="flex items-center gap-2.5 font-inter text-[13px]">
-              <FileText className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={2} aria-hidden />
-              <span className="min-w-0 flex-1 truncate font-medium text-text-primary">{x.name}</span>
-              <span className="shrink-0 tabular-nums text-[12px] text-text-tertiary">
-                {x.page_count} page{x.page_count === 1 ? '' : 's'}
-              </span>
-            </li>
-          ))}
+          {docItems(d).map((item) =>
+            item.kind === 'upload' ? (
+              <li key={item.doc.id} className="flex items-center gap-2.5 font-inter text-[13px]">
+                <FileText className="h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={2} aria-hidden />
+                <span className="min-w-0 flex-1 truncate font-medium text-text-primary">{item.doc.name}</span>
+                <span className="shrink-0 tabular-nums text-[12px] text-text-tertiary">
+                  {item.doc.page_count} page{item.doc.page_count === 1 ? '' : 's'}
+                </span>
+              </li>
+            ) : (
+              <li key={item.doc.id} className="flex items-center gap-2.5 font-inter text-[13px]">
+                <FilePen className="h-4 w-4 shrink-0 text-virgilio-purple" strokeWidth={2} aria-hidden />
+                <span className="min-w-0 flex-1 truncate font-medium text-text-primary">{item.doc.name}</span>
+                <span className="shrink-0 text-[12px] text-text-tertiary">Written in Gio</span>
+              </li>
+            ),
+          )}
         </ul>
       </FormSection>
 

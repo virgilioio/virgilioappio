@@ -138,7 +138,7 @@ export function MessageStep({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) =
             </div>
             <span className="mt-4 inline-flex h-9 items-center rounded-lg bg-[#0d0d09] px-4 font-poppins text-[13px] font-medium text-[#fffcf9]">Review and sign</span>
             <p className="mt-3 text-[11.5px] text-text-tertiary">
-              {d.docs.length} document{d.docs.length === 1 ? '' : 's'} · the link expires in {d.expiry_days} days · they confirm with a code sent to their email
+              {d.docs.length + d.written.length} document{d.docs.length + d.written.length === 1 ? '' : 's'} · the link expires in {d.expiry_days} days · they confirm with a code sent to their email
             </p>
           </div>
         </FormSection>

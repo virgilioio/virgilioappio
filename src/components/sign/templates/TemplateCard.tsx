@@ -7,7 +7,8 @@ import { IconTip } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { loadTemplatePdf } from '@/lib/sign/pdf'
 import { ago } from '@/lib/sign/status'
-import { APP_LABEL, KIND_LABEL, offerCoverage, pageCount, useOfferFormTags, type TemplateRow, type TplDoc } from '@/lib/sign/templates'
+import { APP_LABEL, KIND_LABEL, offerCoverage, pageCount, usedTags, useOfferFormTags, type TemplateRow, type TplDoc } from '@/lib/sign/templates'
+import { docItems } from '@/lib/sign/written'
 
 /** The first page of the first document, drawn once the card scrolls into view. */
 function Thumb({ doc, accent }: { doc: TplDoc | undefined; accent: string }) {
@@ -67,7 +68,7 @@ function Thumb({ doc, accent }: { doc: TplDoc | undefined; accent: string }) {
 function OfferCoverageLine({ t }: { t: TemplateRow }) {
   const tags = useOfferFormTags(t.kind === 'candidate' ? t.offer_form_id : null)
   if (!t.offer_form_id || !tags.data?.length) return null
-  const c = offerCoverage(t.fields, tags.data)
+  const c = offerCoverage(usedTags(t), tags.data)
   return (
     <p className={c.missing.length ? 'font-inter text-[12px] text-[#7A4A06]' : 'font-inter text-[12px] text-text-tertiary'}>
       <span className="tabular-nums">
@@ -98,9 +99,11 @@ export function TemplateCard({
 }) {
   const archived = !!t.archived_at
   const pages = pageCount(t)
+  const first = docItems(t)[0]
+  const docs = t.docs.length + t.written.length
   return (
     <article className="flex flex-col overflow-hidden rounded-[14px] border border-[#E7E8EE] bg-white" data-row-id={t.id}>
-      <Thumb doc={t.docs[0]} accent={t.roles[0]?.color ?? '#E4E3DD'} />
+      <Thumb doc={first?.kind === 'upload' ? first.doc : undefined} accent={t.roles[0]?.color ?? '#E4E3DD'} />
       <div className="flex flex-1 flex-col gap-1.5 px-3.5 pb-3.5 pt-3">
         <div className="flex items-center gap-1.5">
           <Badge tone="lilac" size="xs">
@@ -148,7 +151,9 @@ export function TemplateCard({
         <h3 className="line-clamp-2 font-poppins text-[14px] font-semibold leading-snug tracking-[-0.01em] text-text-primary">{t.name}</h3>
         <p className="flex flex-wrap gap-x-2.5 gap-y-0.5 font-inter text-[12px] text-text-tertiary">
           <span className="whitespace-nowrap tabular-nums">
-            {t.docs.length} doc{t.docs.length === 1 ? '' : 's'} · {pages} page{pages === 1 ? '' : 's'}
+            {docs} doc{docs === 1 ? '' : 's'}
+            {pages > 0 && ` · ${pages} page${pages === 1 ? '' : 's'}`}
+            {t.written.length > 0 && ` · ${t.written.length} written`}
           </span>
           <span className="min-w-0 truncate">{t.roles.map((r) => r.label).join(' → ')}</span>
         </p>

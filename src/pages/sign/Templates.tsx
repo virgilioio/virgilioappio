@@ -76,7 +76,7 @@ export default function SignTemplates() {
     return all.filter(
       (t) =>
         (!kinds.length || kinds.includes(t.kind)) &&
-        (!needle || [t.name, t.description, ...t.docs.map((d) => d.name)].join(' ').toLowerCase().includes(needle)),
+        (!needle || [t.name, t.description, ...t.docs.map((d) => d.name), ...t.written.map((w) => w.name)].join(' ').toLowerCase().includes(needle)),
     )
   }, [all, search, kinds])
   const cards = base.filter((t) => inTab(tab, t))

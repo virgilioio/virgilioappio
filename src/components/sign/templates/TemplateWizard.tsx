@@ -10,12 +10,12 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { saveTemplate, stepIssue, type TplDraft } from '@/lib/sign/templates'
 import { InfoStep } from './InfoStep'
 import { RolesStep } from './RolesStep'
-import { FieldsEditor } from './FieldsEditor'
+import { FieldsEditor, WrittenOnlyFields } from './FieldsEditor'
 import { MessageStep } from './MessageStep'
 import { ReviewStep } from './ReviewStep'
 
 const STEPS: [string, string][] = [
-  ['Template info', 'Name, type, where it’s used and the PDFs people will sign.'],
+  ['Template info', 'Name, type, where it’s used and the documents people will sign: uploaded PDFs or written in Gio.'],
   ['Roles', 'Who signs, in what order. Roles become people when the template is used.'],
   ['Fields', 'Drag signer and data fields onto the pages. Each role has its own colour.'],
   ['Message', 'The email people get, with data tags that fill in from the record.'],
@@ -110,7 +110,7 @@ export function TemplateWizard({
       <span className="font-medium text-text-primary">
         {d.roles.length} role{d.roles.length === 1 ? '' : 's'}
       </span>{' '}
-      · {d.fields.length} field{d.fields.length === 1 ? '' : 's'} · {d.docs.length} document{d.docs.length === 1 ? '' : 's'}
+      · {d.fields.length} field{d.fields.length === 1 ? '' : 's'} · {d.docs.length + d.written.length} document{d.docs.length + d.written.length === 1 ? '' : 's'}
     </span>
   )
 
@@ -137,8 +137,8 @@ export function TemplateWizard({
       }
       hint={hint}
       dirty={dirty}
-      flush={step === 2}
-      wide={step === 2}
+      flush={step === 2 && d.docs.length > 0}
+      wide={step === 2 && d.docs.length > 0}
       secondary={
         isEdit && step < 4 ? (
           <Button variant="secondary" onClick={save} disabled={anyIssue || busy}>
@@ -154,7 +154,7 @@ export function TemplateWizard({
     >
       {step === 0 && organizationId && <InfoStep d={d} set={set} tenantId={organizationId} />}
       {step === 1 && <RolesStep d={d} set={set} me={me} />}
-      {step === 2 && <FieldsEditor d={d} set={set} />}
+      {step === 2 && (d.docs.length ? <FieldsEditor d={d} set={set} /> : <WrittenOnlyFields d={d} go={setStep} />)}
       {step === 3 && <MessageStep d={d} set={set} />}
       {step === 4 && <ReviewStep d={d} go={(i) => reachable(i) && setStep(i)} />}
     </WizardSheet>
