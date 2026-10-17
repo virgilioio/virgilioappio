@@ -88,13 +88,26 @@ Hard limits:
 - Mappings (existing primitives win): Sheet/stacking/backdrop/Esc = ATS `SheetContent` (already 360/240ms, step-back, 12% dim); `Pill` = `Badge`; `Icon` = Lucide; buttons = ATS `Button` (sizes, press, `loading` keeps width); focus = the global 2px purple outline, not the design's noir ring; tertiary text stays `#6B7080` (contrast), not `#8B8F9E`; the collapsible = `CollapsibleContent` (`gio-accordion-content`).
 - Preview: written documents shown as the real PDF from `sign-written-preview` (it's what's sent), with a preview-only option to underline values in lilac and print empty values as [Label]; uploaded pages as today's `FilledPreview`. The design's HTML "paper" (Poppins/Inter) would not match the Helvetica PDF; matching it means embedding Inter/Poppins in the PDF (fontkit), which also fixes accents.
 
-**New / Edit template workflow (Allan, 2026-10-17; full prompt in chat). Step 0 plan shown, waiting for approval.**
+**New / Edit template workflow (Allan, 2026-10-17; full prompt in chat).**
 - Four steps: Template info, Document (full width), Signers, Review & save. Today's wizard has five: Info, Roles, Fields, Message, Review.
 - What it builds on:
   - `WizardSheet`;
   - `InfoStep`, `RolesStep`, `FieldsEditor` (uploaded pages), `WrittenEditor` + `written/nodes.tsx` (Lexical), `ReviewStep` and `TemplateCard`;
   - `coverage()` in `src/lib/sign/templates.ts`;
   - `sign_save_template`.
+- Approved 2026-10-17 with every recommendation from the Step 0 plan:
+  - keep the existing field selector;
+  - use the design's new offer form selector, Documents choice, writing experience and Review & save;
+  - no new tables; roles keep all five sources and Approves;
+  - one written document per template;
+  - unsaved changes use the inline `UnsavedGuard`.
+- Part 1, the database, is written and waiting for "Apply!": `20261017210000_sign_template_workflow` (test 22, 22/22 dry run, rolled back).
+  - `sign_fields.data_format` and the placeholder node's `format`: money as code / symbol / words, dates three ways, numbers as a figure or in words.
+  - `sign_format()`, `sign_value_variant()`, `sign_variants()` and `sign_template_uses()`. Formatted values travel as `key|format` in `values` and `data_snapshot`; placed fields freeze their own format.
+  - `gio-field` nodes (inline signer fields: initials, date, name, text or checkbox, with `required` and `label`), checked on save; `sign_attach_render` keeps their kind, required flag and label.
+  - A signing block inside a conditional section no longer counts as a signature (closes gap 1).
+  - `sign_sample_values(form, uses)`: the editor's Preview with the latest offer on the form, for admins only.
+  - Needs, in later parts: the renderer reads `key|format` and lays out `gio-field` chips (then redeploy `sign-dispatch` and `sign-written-preview`); the app sends `data_format`.
 - Build order, one part each, with a diff after every part:
   1. Migrations and tests.
   2. Shell.
