@@ -62,6 +62,8 @@ Hard limits:
 
 **Gio Sign × offers**
 - **Phase 3 — write documents in Gio.** A Lexical editor for templates; the server makes the PDF with pdf-lib; written and uploaded documents in one envelope; conditional sections; a coverage check (every offer field placed somewhere); a line about it on the templates page.
+  - Database applied 2026-10-17 (`20261017180441_sign_written_docs`, test 19, 28/28). `sign_written_docs` holds Lexical JSON for templates and frozen copies on envelopes. Node types: `placeholder` (placeholderKey), `gio-if` (key, op, value; values used only inside never block a send), `gio-sign` (roleId, kind; counts as the signer's signature). `sign_template_keys()` is the one list of values a template fills in. `sign_claim_due` holds an envelope until every written copy has its PDF; sign-dispatch must render them in order and call `sign_attach_render` (service role: shifts later pages, turns blocks into fields) or `sign_render_failed`.
+  - Still to build: the render module (Lexical JSON -> pdf-lib, ASCII), sign-dispatch render-before-claim, a preview, the editor (tags, sections, signing blocks, page breaks), saving `written` from the template editor, coverage counting written tags. Until sign-dispatch renders, don't let the editor save written documents: an envelope with one would wait forever.
 - **Phase 4.**
   - Void & resend for out-of-date offers. This needs `'offer_changed'` added to the `sign_events_kind_check` constraint, which takes a `drop`, so it is a desktop-applied migration.
   - Import from Word into the Gio editor, rather than keeping Word layout.
@@ -69,7 +71,7 @@ Hard limits:
   - Retire the old offer letter generator.
   - Wrap long text on uploaded PDFs in `_shared/sign/stamp.ts`.
 - Allan's choice: build with the existing ATS design; he'll say if he wants changes.
-- Found during step 1: renaming an offer form field's label also renames its stored name (`OfferFormFieldsManager.handleUpdateField`). Offers already made keep their values under the old name, and templates that place it lose the link. Proposed fix (not built): keep the stored name when only the label changes.
+- Fixed 2026-10-17: renaming an offer form field's label no longer renames its stored name (`OfferFormFieldsManager.handleUpdateField`).
 
 **Offer approvals: tell the approvers (Allan, 2026-10-17)**
 - When an offer is sent for approval, each approver whose turn it is gets an email and a bell notification ("needs your approval"), and the request shows on the Dashboard's Your queue card under Decisions.
