@@ -15,9 +15,8 @@ import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSe
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { OfferFieldEditor } from './OfferFieldEditor'
+import { offerFieldName } from '@/lib/offerFieldName'
 
-const toSnakeCase = (str: string) =>
-  str.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 
 type OfferFieldType = OfferFormField['field_type']
 
@@ -100,7 +99,7 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
     try {
       await createField({
         form_id: formId,
-        field_name: toSnakeCase(label),
+        field_name: offerFieldName(label, fields.map((f) => f.field_name)),
         field_label: label.trim(),
         field_type: type,
         is_required: required,
@@ -127,7 +126,9 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
 
   const handleUpdateField = async (id: string, updates: Partial<OfferFormField>) => {
     try {
-      const fieldName = updates.field_label ? toSnakeCase(updates.field_label) : undefined
+      const fieldName = updates.field_label
+        ? offerFieldName(updates.field_label, fields.filter((f) => f.id !== id).map((f) => f.field_name))
+        : undefined
       await updateField(id, { ...updates, ...(fieldName ? { field_name: fieldName } : {}) })
     } catch {
       // handled by hook
