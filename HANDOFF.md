@@ -75,6 +75,15 @@ Hard limits:
 - Allan's choice: build with the existing ATS design; he'll say if he wants changes.
 - Fixed 2026-10-17: renaming an offer form field's label no longer renames its stored name (`OfferFormFieldsManager.handleUpdateField`).
 
+**Send for signature: `TemplateSelect` (Allan, 2026-10-17, design attached in chat; plan shown, waiting for go)**
+- Replaces only the template list in `SendSheet`'s Template section with a searchable dropdown; everything else in the sheet stays.
+- Files: `src/components/sign/TemplateSelect.tsx` (field, panel, `TemplateStatus`); helpers `sourceLabel`, `sourceIcon`, `templatePages`, `subline`, `coverage` next to `offerCoverage` in `src/lib/sign/templates.ts`; CSS under `.tsel-*` in `src/index.css`; `useSendTemplates` (`src/lib/sign/send.ts`) also loads each template's data fields, written content and role kinds so the helpers can work.
+- Mapped onto the ATS (design values → existing rules): `Pill` → `Badge` (red / neutral); `Icon` → Lucide imports; `--muted` → `text-text-secondary`, `--tertiary` → `text-text-tertiary`, `--noir` → `#0d0d09`, `--ok` → the existing success green, `--line2` → `#F0EFEA`; panel motion uses `--dur-menu-in/out` + `--ease-out` (same 180/120ms); the text swap uses the existing blur-swap timing (220ms `--ease-out`).
+- Written pages are counted with the shared layout (`writtenLayout.ts`) measured in Helvetica in the browser, so the estimate matches the sent PDF.
+- Esc: there's no general layer stack in the ATS; the dropdown uses the existing `data-escape-local` rule (as in `WizardSheet`), added to `FormSheet`, so Esc closes the list first and the sheet second.
+- Edit template (admins only): opens the existing `TemplateWizard` stacked on its first step (where the documents are); saving refreshes the list.
+- Open questions for Allan: (1) templates linked to another offer form can't be sent from an offer today (the database refuses it); the design shows them pickable. Proposed: pickable so the reason shows, Send/Preview disabled with "Linked to another offer form" when nothing else blocks. (2) "Not needed" offer fields (`skipped`) don't exist yet; it needs a column on `sign_templates` and a switch in the template editor. Proposed: build the selector with `skipped = []` now and add "not needed" as its own small database change.
+
 **Offer approvals: tell the approvers (Allan, 2026-10-17)**
 - When an offer is sent for approval, each approver whose turn it is gets an email and a bell notification ("needs your approval"), and the request shows on the Dashboard's Your queue card under Decisions.
 - What exists today:
