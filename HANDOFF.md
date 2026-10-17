@@ -70,7 +70,7 @@ Hard limits:
 - **Step 5 — public links.** Rate limits, timeouts and retries on booking, careers, reference and signing pages, and on the Edge Functions they call.
 
 **Data and security**
-- Cleanup of existing profiles (the parser fix is live, see above): 27 profiles have 33 doubled jobs (fixable from the database alone); about 112 have work history that isn't in their resume, which needs a read-only pass over the resume files since the text isn't stored. Give Allan both lists first; never change profiles without his OK. Watch the `[enrich] Dropped` logs for real jobs dropped by a company name the model rewrote.
+- Cleanup of existing profiles: the doubled jobs are done (`20261017170617_dedupe_work_history`, 21 profiles, 21 rows; Apollo collect now saves each job once, `enrich-apollo-profile` v374). Left as they are: 6 Coresignal profiles whose repeated jobs have an unknown company (probably different jobs). Still open: about 112 profiles with work history that isn't in their resume; it needs a read-only pass over the resume files, since the text isn't stored. Give Allan the list first; never change profiles without his OK. Watch the `[enrich] Dropped` logs for real jobs dropped because the model rewrote a company name. `enrich-by-linkedin` and `refresh-candidate-profiles` pick up the Apollo dedupe on their next deploy.
 - Rotate the internal function secret, which is stored in plain text in one place. Allan does the rotation.
 - Run a real end-to-end Gio Sign test (Allan as signer).
 - NOM-151 (Mexican e-signature certificate), phase 2.

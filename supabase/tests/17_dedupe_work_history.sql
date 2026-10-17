@@ -1,4 +1,4 @@
--- Run after 20261017170000_dedupe_work_history inside a transaction that is rolled back.
+-- Run after 20261017170617_dedupe_work_history inside a transaction that is rolled back.
 -- Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 
