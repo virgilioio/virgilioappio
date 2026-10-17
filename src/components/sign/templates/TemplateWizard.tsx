@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import {
   WIZARD_STEPS,
+  effectiveDraft,
   offerCoverage,
   saveTemplate,
   stepIssue,
@@ -80,6 +81,8 @@ export function TemplateWizard({
     setDirty(true)
     setSaveError(null)
   }
+  // What will be saved: only the ticked sources (Template info's cards).
+  const e = effectiveDraft(d)
   const issues = templateIssues(d)
   const issue = step < 3 ? stepIssue(step, d) : null
   const anyIssue = issues.length > 0
@@ -123,9 +126,9 @@ export function TemplateWizard({
 
   const title = WIZARD_STEPS[step]
   const eyebrow = `${isEdit ? 'Edit template' : mode === 'duplicate' ? 'Duplicate template' : 'New template'} · step ${step + 1} of ${WIZARD_STEPS.length}`
-  const docs = d.docs.length + d.written.length
+  const docs = e.docs.length + e.written.length
   const formName = forms.data?.find((f) => f.id === d.offer_form_id)?.name
-  const cov = d.kind === 'candidate' && d.offer_form_id && formTags.data?.length ? offerCoverage(usedTags(d), formTags.data, d.not_needed) : null
+  const cov = d.kind === 'candidate' && d.offer_form_id && formTags.data?.length ? offerCoverage(usedTags(e), formTags.data, d.not_needed) : null
   // The footer's status: the first that applies.
   const status = saveError ? (
     <span className="text-virgilio-error">{saveError}</span>
@@ -145,7 +148,7 @@ export function TemplateWizard({
     </span>
   ) : (
     <span className="tabular-nums">
-      {d.roles.length} role{d.roles.length === 1 ? '' : 's'} · {d.fields.length} field{d.fields.length === 1 ? '' : 's'} · {docs} document
+      {d.roles.length} role{d.roles.length === 1 ? '' : 's'} · {e.fields.length} field{e.fields.length === 1 ? '' : 's'} · {docs} document
       {docs === 1 ? '' : 's'}
     </span>
   )
@@ -200,8 +203,8 @@ export function TemplateWizard({
           ? { title: `Discard your changes to ${d.name.trim() || 'this template'}?`, detail: 'The saved version stays as it is.' }
           : { title: 'Discard this template?', detail: 'Nothing has been saved, so it won’t appear in Templates.' }
       }
-      flush={step === 1 && d.docs.length > 0}
-      wide={step === 1 && d.docs.length > 0}
+      flush={step === 1 && e.docs.length > 0}
+      wide={step === 1 && e.docs.length > 0}
       secondary={
         isEdit && step < 3 ? (
           <Button variant="secondary" onClick={save} disabled={anyIssue || busy}>
@@ -221,9 +224,9 @@ export function TemplateWizard({
           <DefaultEmail d={d} set={set} />
         </>
       )}
-      {step === 1 && (d.docs.length ? <FieldsEditor d={d} set={set} /> : <WrittenOnlyFields d={d} set={set} go={go} />)}
+      {step === 1 && (e.docs.length ? <FieldsEditor d={e} set={set} /> : <WrittenOnlyFields d={e} set={set} go={go} />)}
       {step === 2 && <RolesStep d={d} set={set} me={me} />}
-      {step === 3 && <ReviewStep d={d} go={go} />}
+      {step === 3 && <ReviewStep d={e} go={go} />}
     </WizardSheet>
   )
 }

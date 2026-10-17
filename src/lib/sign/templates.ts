@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { FilePenLine, FileUp, Files, type LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import type { SignKind, SignRecipientRole } from './api'
-import { docItems, normalizePositions, remapRoles, signBlocks, writtenKeys, type TplWritten } from './written'
+import { docItems, normalizePositions, remapRoles, signBlocks, writtenKeys, type LexicalJson, type TplWritten } from './written'
 
 /* ------------------------------------------------------------------------- */
 /* Model                                                                      */
@@ -85,6 +85,13 @@ export interface TplDraft {
   offer_form_id: string | null
   /** Offer form fields left out on purpose: they don't count as missing. */
   not_needed: string[]
+  /**
+   * Which sources the template uses (Template info's two cards). An unticked
+   * source keeps its content as a draft until the template is saved; only the
+   * ticked ones are saved (effectiveDraft).
+   */
+  use_written: boolean
+  use_uploads: boolean
 }
 
 export interface TemplateRow extends TplDraft {
@@ -301,6 +308,21 @@ export function listLabels(labels: string[], max = 3) {
   return `${labels.slice(0, max - 1).join(', ')} and ${labels.length - (max - 1)} more`
 }
 
+/** How many fields each offer form has, by form id (for the offer form picker). */
+export function useOfferFormFieldCounts() {
+  return useQuery({
+    queryKey: ['sign', 'offer-form-counts'],
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const { data, error } = await supabase.from('offer_form_fields').select('form_id')
+      if (error) throw error
+      const out: Record<string, number> = {}
+      for (const r of (data ?? []) as { form_id: string | null }[]) if (r.form_id) out[r.form_id] = (out[r.form_id] ?? 0) + 1
+      return out
+    },
+  })
+}
+
 /** Offer forms a candidate template can be linked to. */
 export function useOfferForms() {
   return useQuery({
@@ -352,6 +374,8 @@ export function newDraft(kind: SignKind = 'candidate'): TplDraft {
     uses: 0,
     offer_form_id: null,
     not_needed: [],
+    use_written: true,
+    use_uploads: false,
   }
 }
 
@@ -464,13 +488,38 @@ export interface TplIssue {
   blocks: boolean
 }
 
+/**
+ * The template as it will be saved: only the ticked sources, the written
+ * document first and the uploads after it, in one order. Placed fields all
+ * sit on uploaded pages, so they go with the uploads.
+ */
+export function effectiveDraft(d: TplDraft): TplDraft {
+  const byPos = <T extends { position?: number }>(a: T, b: T) => (a.position ?? 0) - (b.position ?? 0)
+  const written = d.use_written ? [...d.written].sort(byPos).map((w, i) => ({ ...w, position: i })) : []
+  const docs = d.use_uploads ? [...d.docs].sort(byPos).map((x, i) => ({ ...x, position: written.length + i })) : []
+  return { ...d, written, docs, fields: d.use_uploads ? d.fields : [] }
+}
+
+/** A written document with nothing in it yet (no text, fields or signing blocks). */
+export function isBlankWritten(content: LexicalJson | null | undefined): boolean {
+  const walk = (n: { type?: string; text?: string; children?: unknown[] } | null | undefined): boolean => {
+    if (!n) return true
+    if (n.type === 'text') return !String(n.text ?? '').trim()
+    if (n.type && !['root', 'paragraph', 'linebreak', 'heading', 'list', 'listitem', 'quote'].includes(n.type)) return false
+    return (n.children ?? []).every((c) => walk(c as never))
+  }
+  return walk((content as { root?: never } | null)?.root)
+}
+
 /** Everything that stops a template from saving, with the step that fixes it, in step order. */
-export function templateIssues(d: TplDraft): TplIssue[] {
+export function templateIssues(draft: TplDraft): TplIssue[] {
+  const d = effectiveDraft(draft)
   const out: TplIssue[] = []
   const add = (step: WizardStepIndex, text: string, blocks = true) => out.push({ step, text, blocks })
   // Template info
   if (!d.name.trim()) add(0, 'Name the template')
-  if (!d.docs.length && !d.written.length) add(0, 'Add at least one document')
+  if (draft.use_uploads && !draft.docs.length) add(0, 'Upload a document, or untick Upload a document')
+  if (!draft.use_written && !draft.use_uploads) add(0, 'Add at least one document')
   if (d.docs.some((x) => x.uploading != null)) add(0, 'Waiting for the upload to finish')
   if (pageCount(d) > 200) add(0, 'A template can hold up to 200 pages')
   if (d.docs.length + d.written.length > 50) add(0, 'A template can hold up to 50 documents')
@@ -478,6 +527,9 @@ export function templateIssues(d: TplDraft): TplIssue[] {
   if (!d.subject.trim()) add(0, 'Add an email subject')
   if (!d.body.trim()) add(0, 'Add an email message')
   // Document
+  if (draft.use_written && (!d.written.length || d.written.every((w) => isBlankWritten(w.content)))) {
+    add(1, 'Write the document, or untick Write in Gio')
+  }
   const signing = new Set(d.roles.filter((r) => r.role !== 'cc').map((r) => r.id))
   const orphan = d.written.find((w) => signBlocks(w.content).some((b) => !signing.has(b.roleId)))
   if (orphan) add(1, `A signing block in “${orphan.name}” belongs to a role that isn’t on the template`)
@@ -520,7 +572,7 @@ const TEMPLATE_SELECT = `
   written:sign_written_docs!sign_written_docs_template_id_fkey(id, name, position, content, removed_at)
 `
 
-type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description' | 'written' | 'not_needed'> & {
+type Raw = Omit<TemplateRow, 'docs' | 'roles' | 'fields' | 'description' | 'written' | 'not_needed' | 'use_written' | 'use_uploads'> & {
   description: string | null
   offer_fields_not_needed: string[] | null
   written: (TplWritten & { removed_at: string | null })[] | null
@@ -534,6 +586,8 @@ function fromRaw(t: Raw): TemplateRow {
     ...t,
     description: t.description ?? '',
     not_needed: t.offer_fields_not_needed ?? [],
+    use_written: (t.written ?? []).some((x) => !x.removed_at),
+    use_uploads: (t.docs ?? []).some((x) => !x.removed_at),
     docs: (t.docs ?? [])
       .filter((x) => !x.removed_at)
       .sort((a, b) => a.position - b.position)
@@ -592,7 +646,8 @@ export function useTemplates() {
  * sent keep their own copies and aren't affected.
  */
 export async function saveTemplate(draft: TplDraft, tenantId: string) {
-  const d = normalizePositions(draft)
+  // Only the ticked sources are saved; the written document goes first.
+  const d = normalizePositions(effectiveDraft(draft))
   const payload = {
     id: d.id,
     tenant_id: tenantId,

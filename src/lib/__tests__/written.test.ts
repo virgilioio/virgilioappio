@@ -4,7 +4,7 @@ vi.mock('@/lib/supabaseClient', () => ({ supabase: {}, supabaseUrl: '', supabase
 vi.mock('@/lib/sign/pdf', () => ({ loadTemplatePdf: vi.fn() }))
 
 import { docItems, emptyContent, remapRoles, signBlocks, type TplWritten } from '@/lib/sign/written'
-import { duplicateDraft, moveItem, newDraft, stepIssue, templateIssues, usedTags, type TplDoc, type TplDraft } from '@/lib/sign/templates'
+import { duplicateDraft, effectiveDraft, isBlankWritten, moveItem, newDraft, stepIssue, templateIssues, usedTags, type TplDoc, type TplDraft } from '@/lib/sign/templates'
 
 const pdf = (id: string, pages: number, position: number): TplDoc => ({
   id,
@@ -53,6 +53,26 @@ describe('documents in one order', () => {
   })
 })
 
+describe('sources (Template info cards)', () => {
+  const sig = { id: 'f', type: 'signature' as const, rid: 'r1', page: 0, x: 1, y: 1, w: 10, h: 5, required: true, data_key: null, font_size: null }
+  it('saves only the ticked sources, the written document first', () => {
+    const d = draft({ docs: [pdf('a', 1, 0)], written: [written('w', 1)], fields: [sig], use_written: true, use_uploads: true })
+    const e = effectiveDraft(d)
+    expect(docItems(e).map((x) => x.doc.id)).toEqual(['w', 'a'])
+    const off = effectiveDraft({ ...d, use_uploads: false })
+    expect(off.docs).toEqual([])
+    expect(off.fields).toEqual([])
+    // The unticked upload is still in the draft, so ticking it again brings it back.
+    expect(d.docs).toHaveLength(1)
+  })
+  it('knows a blank written document', () => {
+    expect(isBlankWritten(emptyContent())).toBe(true)
+    expect(isBlankWritten(content({ type: 'paragraph', children: [{ type: 'text', text: '  ' }] }))).toBe(true)
+    expect(isBlankWritten(content({ type: 'paragraph', children: [{ type: 'text', text: 'Hello' }] }))).toBe(false)
+    expect(isBlankWritten(content({ type: 'gio-sign', roleId: 'r1' }))).toBe(false)
+  })
+})
+
 describe('signing blocks and checks', () => {
   const block = (roleId: string, kind = 'signature') => ({ type: 'gio-sign', roleId, kind })
 
@@ -72,7 +92,9 @@ describe('signing blocks and checks', () => {
   })
 
   it('needs a document of either kind', () => {
-    expect(stepIssue(0, draft())).toBe('Add at least one document')
+    expect(stepIssue(0, draft({ use_written: false, use_uploads: false }))).toBe('Add at least one document')
+    expect(stepIssue(0, draft({ use_written: false, use_uploads: true }))).toBe('Upload a document, or untick Upload a document')
+    expect(stepIssue(1, draft())).toBe('Write the document, or untick Write in Gio')
   })
 
   it('lists blocks with whether they are conditional', () => {
