@@ -360,6 +360,9 @@ verify_jwt = false
 [functions.sign-manage]
 verify_jwt = true
 
+[functions.sign-written-preview]
+verify_jwt = true
+
 [functions.sign-seal]
 verify_jwt = false
 
