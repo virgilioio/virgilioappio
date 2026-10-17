@@ -47,6 +47,8 @@ Hard limits:
 - **Resume replace status:** `useResumeRefresh` + `ResumeStatusLine` show upload → Gio reading → Gio Fit re-scoring in the Resume card and the sidebar file row.
 - **Gio Sign × offers, phases 1–2** (`sign_offer_values`, `sign_offer_send`). Agreements are filled from the offer form, never showing raw JSON. One send rule, `offer_can_send()`: with no approval chain an offer is sendable at once; with a chain, only once every step is approved. Templates link to an offer form (`sign_templates.offer_form_id`). The send sheet groups templates, offers "From the offer" and shows a filled-in preview (`FilledPreview`). Each envelope records its offer and a fingerprint of the values it used, and is flagged `out_of_date` when those values change. The offer's status follows its envelope. Mark hired waits for a sent offer to be signed. Test 16: 20/20 on the live database.
 
+- **Resume reading checks** (`_shared/resumeFacts.ts`, `enrich-candidate-profile` v315 deployed): Gio reads the name off the resume and leaves the profile untouched when it names someone else (`enrichment_status = 'other_person'`, shown in the Resume status line); a job is kept only when its company appears in the resume text (dropped ones are logged as `[enrich] Dropped`); the same job listed twice is saved once. The 33 doubled jobs (27 profiles) were all written in one insert, i.e. the model repeated them, not a race.
+
 ## Open work, in Allan's order
 
 **Gio Sign × offers**
@@ -68,7 +70,7 @@ Hard limits:
 - **Step 5 — public links.** Rate limits, timeouts and retries on booking, careers, reference and signing pages, and on the Edge Functions they call.
 
 **Data and security**
-- About 112 live candidate profiles have work history that isn't in their resume (Gio wrote it), and 26 have doubled jobs. Plan: a name check in the resume parser plus a block on made-up history, then a cleanup. Give Allan the list first; never change profiles without his OK.
+- Cleanup of existing profiles (the parser fix is live, see above): 27 profiles have 33 doubled jobs (fixable from the database alone); about 112 have work history that isn't in their resume, which needs a read-only pass over the resume files since the text isn't stored. Give Allan both lists first; never change profiles without his OK. Watch the `[enrich] Dropped` logs for real jobs dropped by a company name the model rewrote.
 - Rotate the internal function secret, which is stored in plain text in one place. Allan does the rotation.
 - Run a real end-to-end Gio Sign test (Allan as signer).
 - NOM-151 (Mexican e-signature certificate), phase 2.
