@@ -1725,6 +1725,25 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   .gio-rail-tile:hover .accent { fill: #D7C5FB; }
 }
 
+/* Gio Sign › Send for signature sheet (2026-10-17): notes, the coverage ring
+   and the From the offer list. Text that changes in place plays gio-swap-in. */
+.gio-swap-in { animation: tsel-swap 220ms var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .gio-swap-in { animation-name: tsel-swap-fade; } }
+.gio-send-note {
+  display: flex; gap: 9px; padding: 10px 12px; border-radius: 10px;
+  font: 400 12.5px/1.5 Inter, sans-serif;
+}
+.gio-send-note[data-tone="warn"] { background: #FCF1DC; color: #7A4A08; }
+.gio-send-note[data-tone="bad"] { background: #FBEAE8; color: #8E2A20; }
+.gio-send-note[data-tone="info"] { background: #F4F3EF; color: #5A6072; }
+.gio-send-ring { transition: stroke-dashoffset var(--dur-chart) var(--ease-in-out); }
+.gio-send-row {
+  display: grid; grid-template-columns: 20px minmax(0, 190px) minmax(0, 1fr); gap: 10px; align-items: start;
+  padding: 8px 0; border-bottom: 1px solid #F4F3EF;
+  font: 400 12.5px/1.45 Inter, sans-serif;
+}
+.gio-send-row:last-child { border-bottom: 0; }
+
 /* Gio Sign › TemplateSelect in Send for signature (2026-10-17). The panel grows
    from the field like the other menus (--dur-menu-in/out, --ease-out); the
    picked template's text swaps in with a short blur rise. */

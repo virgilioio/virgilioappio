@@ -48,7 +48,7 @@ export function TemplateStatus({ status }: { status: Status | null }) {
     case 'blocking':
       return (
         <Badge tone="red" size="sm">
-          Missing <span className="tabular-nums">{status.n}</span> offer field{status.n === 1 ? '' : 's'}
+          <span className="tabular-nums">{`Missing ${status.n} offer field${status.n === 1 ? '' : 's'}`}</span>
         </Badge>
       )
     case 'any':

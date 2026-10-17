@@ -16,7 +16,7 @@ import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio
 import { cn } from '@/lib/utils'
 import { undoToast } from '@/lib/undoToast'
 import { shortDateTime } from '@/lib/sign/status'
-import { DATA_TAGS, listLabels, okEmail, tagLabel } from '@/lib/sign/templates'
+import { DATA_TAGS, okEmail, tagLabel, useOfferForms } from '@/lib/sign/templates'
 import {
   offerSendRefusal,
   sendEnvelope,
@@ -32,6 +32,9 @@ import {
 } from '@/lib/sign/send'
 import { FilledPreview } from './FilledPreview'
 import { TemplateSelect } from './TemplateSelect'
+import { FromOffer } from './send/FromOffer'
+import { useTemplateFit } from './send/fit'
+import { CoverageRing } from './send/parts'
 import { EditTemplateSheet } from './templates/EditTemplateSheet'
 import { Field, Seg, TagText } from './templates/parts'
 
@@ -90,6 +93,9 @@ export function SendSheet({
   const gate = useOfferGate(open && isOffer ? source.id : null)
   const blocked = isOffer && gate.data && !gate.data.ok ? offerSendRefusal(gate.data.reason) : null
   const [editing, setEditing] = useState<string | null>(null)
+  const offerFormId = isOffer ? source.formId : null
+  const fit = useTemplateFit(tpl, isOffer, offerFormId)
+  const offerForm = useOfferForms().data?.find((f) => f.id === offerFormId)?.name ?? null
   const [showPreview, setShowPreview] = useState(false)
 
   // Templates in three groups: linked to this offer's form, any offer, other forms (not sendable).
@@ -147,7 +153,8 @@ export function SendSheet({
   const missing = useMemo(() => preview.data?.missing ?? [], [preview.data])
   const issue = useMemo(() => {
     if (blocked) return blocked
-    if (!d.templateId) return 'Pick a template'
+    if (!d.templateId) return 'Pick a template to continue'
+    if (fit.blocked) return 'This template can’t be sent with this offer'
     if (preview.isLoading) return 'Loading the record…'
     if (preview.isError) return sendErrorMessage(preview.error)
     if (preview.data?.gate && !preview.data.gate.ok) return offerSendRefusal(preview.data.gate.reason)
@@ -161,7 +168,7 @@ export function SendSheet({
     if (d.subject !== null && !d.subject.trim()) return 'Add a subject'
     if (d.when === 'schedule' && d.at.getTime() <= Date.now() + 60_000) return 'Pick a time in the future'
     return null
-  }, [d, preview.isLoading, preview.isError, preview.error, preview.data?.gate, missing, roles, blocked, isOffer])
+  }, [d, preview.isLoading, preview.isError, preview.error, preview.data?.gate, missing, roles, blocked, isOffer, fit.blocked])
 
   const close = () => {
     if (busy) return
@@ -231,16 +238,27 @@ export function SendSheet({
     <FormSheet
       open={open}
       onOpenChange={(o) => (o ? onOpenChange(true) : close())}
-      width={560}
-      eyebrow={kind === 'member' ? 'Member agreement' : isOffer ? 'Offer' : 'Send for signature'}
-      title={kind === 'member' ? 'Send agreement' : isOffer ? 'Send offer for signature' : 'Send for signature'}
-      subtitle={recordLabel}
+      width={660}
+      eyebrow={kind === 'member' ? 'Member agreement' : 'Send for signature'}
+      title={kind === 'member' ? 'Send agreement' : isOffer ? 'Send offer for signature' : 'Send an agreement'}
+      subtitle={
+        isOffer && offerForm ? (
+          <>
+            {recordLabel} · offer form <span className="font-semibold text-text-primary">{offerForm}</span>
+          </>
+        ) : (
+          recordLabel
+        )
+      }
       footer={
         <div className="relative flex w-full items-center gap-2.5">
           <Button variant="ghost" onClick={close} disabled={busy}>
             Cancel
           </Button>
-          <p className={cn('min-w-0 flex-1 truncate font-inter text-[12px]', error ? 'text-virgilio-error' : 'text-text-tertiary')}>
+          <p
+            key={error ?? issue ?? 'ready'}
+            className={cn('gio-swap-in min-w-0 flex-1 truncate font-inter text-[11.5px]', error ? 'text-virgilio-error' : 'text-text-tertiary')}
+          >
             {error ?? issue ?? `${roles.length} ${roles.length === 1 ? 'person' : 'people'} · ${tpl?.docs ?? 0} document${tpl?.docs === 1 ? '' : 's'}`}
           </p>
           <Button icon={d.when === 'schedule' ? CalendarClock : Send} onClick={send} disabled={!!issue} loading={busy}>
@@ -283,6 +301,7 @@ export function SendSheet({
             </Button>
           ) : undefined
         }
+        bare
       >
         {templates.isLoading ? (
           <div className="flex flex-col gap-2">
@@ -319,213 +338,198 @@ export function SendSheet({
         )}
       </FormSection>
 
-      {d.templateId && (
-        <>
-          {/* From the record / the offer */}
-          <FormSection
-            title={isOffer ? 'From the offer' : 'From the record'}
-            subtitle={isOffer ? 'Filled into the documents when it’s sent. To change one, edit the offer.' : 'Filled into the documents when it’s sent. To change one, change the record.'}
-          >
-            {preview.isLoading ? (
-              <Skeleton className="h-20 rounded-lg" />
-            ) : preview.isError ? (
-              <p className="font-inter text-[12.5px] text-virgilio-error">{sendErrorMessage(preview.error)}</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {/* The values this template uses (2026-10-17), not a fixed list. */}
-                {(preview.data?.used ?? []).length === 0 ? (
-                  <p className="font-inter text-[12.5px] text-text-tertiary">This template doesn’t fill in anything from the {isOffer ? 'offer' : 'record'}.</p>
-                ) : (
-                  <dl className="grid grid-cols-[minmax(120px,max-content)_minmax(0,1fr)] gap-x-4 gap-y-1.5 font-inter text-[12.5px]">
-                    {(preview.data?.used ?? []).map((u) => [
-                      <dt key={`${u.key}-t`} className="text-text-secondary">
-                        {u.label || label(u.key)}
-                      </dt>,
-                      <dd key={`${u.key}-d`} className={cn('truncate', u.value ? 'text-text-primary' : 'text-text-tertiary')}>
-                        {u.value || (u.optional ? 'Prints blank (optional)' : 'Not on the record')}
-                      </dd>,
-                    ])}
-                  </dl>
-                )}
-                {missing.length > 0 && (
-                  <p className="flex gap-2 rounded-lg bg-[#FCF1DC] p-2.5 font-inter text-[12px] leading-snug text-[#7A4A06]">
-                    <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                    {kind === 'member'
-                      ? `This template fills in ${missing.join(', ')}, which ${missing.length === 1 ? 'isn’t' : 'aren’t'} set for this person yet. Set it on their People page, then come back.`
-                      : `This template fills in ${missing.join(', ')}, which ${missing.length === 1 ? 'isn’t' : 'aren’t'} on the ${isOffer ? 'offer' : 'candidate’s offer'} yet. Add ${missing.length === 1 ? 'it' : 'them'} to the offer, then come back.`}
-                  </p>
-                )}
-                {(preview.data?.blank ?? []).length > 0 && (
-                  <p className="flex gap-2 rounded-lg bg-[#F4F3EF] p-2.5 font-inter text-[12px] leading-snug text-text-secondary">
-                    <Info className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                    {`${listLabels(preview.data!.blank!)} ${preview.data!.blank!.length === 1 ? 'is' : 'are'} optional on the offer form and empty on this offer, so ${preview.data!.blank!.length === 1 ? 'it prints' : 'they print'} blank.`}
-                  </p>
-                )}
-              </div>
-            )}
-          </FormSection>
-
-          {/* The documents, filled in */}
-          {!preview.isError && preview.data && (
+      <Collapsible open={!!tpl}>
+        <CollapsibleContent>
+          {tpl && (
             <FormSection
-              title="Preview"
-              subtitle="Every page, in order, with the values filled in and where each person signs."
-              action={
-                <Button variant="ghost" size="sm" icon={Eye} onClick={() => setShowPreview((v) => !v)} aria-expanded={showPreview}>
-                  {showPreview ? 'Hide preview' : 'Show preview'}
-                </Button>
+              title={isOffer ? 'From the offer' : 'From the record'}
+              subtitle={
+                isOffer
+                  ? 'Filled into the document when it’s sent. To change a value, edit the offer.'
+                  : 'Filled into the document when it’s sent. To change a value, change the record.'
               }
+              action={fit.linked && !fit.blocked && fit.cov && fit.cov.total > 0 ? <CoverageRing mapped={fit.cov.mapped.length} total={fit.cov.total} /> : undefined}
             >
-              {showPreview ? (
-                <div className="rounded-xl border border-[#E7E8EE] bg-[#F4F3EF] p-4">
-                  <FilledPreview
-                    templateId={d.templateId}
-                    values={preview.data.values}
-                    people={Object.fromEntries(Object.entries(d.people).map(([k, v]) => [k, { name: v.name }]))}
-                    width={480}
-                  />
-                </div>
-              ) : (
-                <p className="font-inter text-[12.5px] text-text-tertiary">
-                  {tpl?.written
-                    ? `${tpl.docs} document${tpl.docs === 1 ? '' : 's'}, ${tpl.written} written in Gio and filled in when sent.`
-                    : `${tpl?.pages ?? 0} page${tpl?.pages === 1 ? '' : 's'} across ${tpl?.docs ?? 0} document${tpl?.docs === 1 ? '' : 's'}.`}
-                </p>
-              )}
-            </FormSection>
-          )}
-
-          {/* People */}
-          {!preview.isError && roles.length > 0 && (
-            <FormSection title="Who signs" subtitle={tpl && roles.length > 1 ? 'In this order; each person gets the email after the one before signs.' : undefined}>
-              <div className="flex flex-col gap-3">
-                {roles.map((r, i) => (
-                  <div key={r.id} className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2 font-inter text-[12.5px] font-medium text-text-primary">
-                      <span className="w-4 text-center text-[11.5px] tabular-nums text-text-tertiary">{i + 1}</span>
-                      <span aria-hidden className="h-3 w-3 rounded" style={{ background: r.color }} />
-                      {r.label}
-                      <span className="font-normal text-text-tertiary">
-                        · {r.role === 'cc' ? 'Gets a copy' : r.role === 'approver' ? 'Approves' : 'Signs'}
-                      </span>
-                    </div>
-                    {r.fixed ? (
-                      <p className="ml-6 flex items-center gap-1.5 font-inter text-[12.5px] text-text-secondary">
-                        <Lock className="h-3 w-3 text-text-tertiary" strokeWidth={2} aria-hidden />
-                        {r.name} · {r.email}
-                      </p>
-                    ) : (
-                      <div className="ml-6 grid grid-cols-2 gap-2">
-                        <Input
-                          aria-label={`${r.label} name`}
-                          placeholder="Full name"
-                          maxLength={120}
-                          className="h-9"
-                          value={d.people[r.id]?.name ?? ''}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            set((x) => ({ ...x, people: { ...x.people, [r.id]: { ...(x.people[r.id] ?? { email: '' }), name: v } } }))
-                          }}
-                        />
-                        <Input
-                          aria-label={`${r.label} email`}
-                          placeholder="Email"
-                          type="email"
-                          className="h-9"
-                          value={d.people[r.id]?.email ?? ''}
-                          aria-invalid={!!touched[r.id] && !!d.people[r.id]?.email && !okEmail(d.people[r.id].email.trim())}
-                          onBlur={() => setTouched((t) => ({ ...t, [r.id]: true }))}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            set((x) => ({ ...x, people: { ...x.people, [r.id]: { ...(x.people[r.id] ?? { name: '' }), email: v } } }))
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </FormSection>
-          )}
-
-          {/* Email */}
-          {tpl && (
-            <FormSection title="Email">
-              <Collapsible>
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1 font-inter text-[12.5px] text-text-primary">
-                    <p className="truncate font-medium">
-                      <TagText text={d.subject ?? tpl.subject} label={label} />
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-text-secondary">
-                      <TagText text={d.body ?? tpl.body} label={label} />
-                    </p>
-                  </div>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" iconRight={ChevronDown} className="[&[data-state=open]_svg]:rotate-180 [&_svg]:transition-transform [&_svg]:duration-200">
-                      Edit email
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent className="flex flex-col gap-3 pt-3">
-                  <Field label="Subject" htmlFor="send-subject">
-                    <Input
-                      id="send-subject"
-                      maxLength={200}
-                      value={d.subject ?? tpl.subject}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        set((x) => ({ ...x, subject: v }))
-                      }}
-                    />
-                  </Field>
-                  <Field label="Message" htmlFor="send-body" help="Tags like {{name}} fill in from the record. The documents don’t change.">
-                    <Textarea
-                      id="send-body"
-                      rows={5}
-                      maxLength={5000}
-                      value={d.body ?? tpl.body}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        set((x) => ({ ...x, body: v }))
-                      }}
-                    />
-                  </Field>
-                </CollapsibleContent>
-              </Collapsible>
-            </FormSection>
-          )}
-
-          {/* When */}
-          {tpl && (
-            <FormSection title="When">
-              <div className="flex flex-col gap-3">
-                <Seg
-                  label="When to send"
-                  value={d.when}
-                  onChange={(v) => set((x) => ({ ...x, when: v as SendDraft['when'] }))}
-                  options={[
-                    { value: 'now', label: 'Send now', icon: Send },
-                    { value: 'schedule', label: 'Schedule', icon: CalendarClock },
-                  ]}
+              <div className="flex flex-col gap-2">
+                <FromOffer
+                  tpl={tpl}
+                  kind={kind}
+                  isOffer={isOffer}
+                  offerFormId={offerFormId}
+                  preview={preview.data}
+                  previewLoading={preview.isLoading}
+                  previewError={preview.isError ? preview.error : null}
+                  onEditTemplate={isAdmin ? () => setEditing(tpl.id) : undefined}
                 />
-                {d.when === 'schedule' && (
-                  <DateTimePickerVirgilio
-                    value={d.at}
-                    minDate={new Date()}
-                    onChange={(at) => set((x) => ({ ...x, at }))}
-                  />
-                )}
-                <p className="font-inter text-[11.5px] text-text-tertiary">
-                  {d.when === 'schedule'
-                    ? 'Sends at that time, your time.'
-                    : 'Sends right away, with 5 seconds to undo.'}
-                </p>
               </div>
             </FormSection>
           )}
-        </>
-      )}
+
+          {tpl && !fit.blocked && (
+            <>
+              {/* The documents, filled in */}
+              {!preview.isError && preview.data && (
+                <FormSection
+                  title="Preview"
+                  subtitle="Every page, in order, with the values filled in and where each person signs."
+                  action={
+                    <Button variant="ghost" size="sm" icon={Eye} onClick={() => setShowPreview((v) => !v)} aria-expanded={showPreview}>
+                      {showPreview ? 'Hide preview' : 'Show preview'}
+                    </Button>
+                  }
+                >
+                  {showPreview ? (
+                    <div className="rounded-xl border border-[#E7E8EE] bg-[#F4F3EF] p-4">
+                      <FilledPreview
+                        templateId={d.templateId}
+                        values={preview.data.values}
+                        people={Object.fromEntries(Object.entries(d.people).map(([k, v]) => [k, { name: v.name }]))}
+                        width={480}
+                      />
+                    </div>
+                  ) : (
+                    <p className="font-inter text-[12.5px] text-text-tertiary">
+                      {tpl?.written
+                        ? `${tpl.docs} document${tpl.docs === 1 ? '' : 's'}, ${tpl.written} written in Gio and filled in when sent.`
+                        : `${tpl?.pages ?? 0} page${tpl?.pages === 1 ? '' : 's'} across ${tpl?.docs ?? 0} document${tpl?.docs === 1 ? '' : 's'}.`}
+                    </p>
+                  )}
+                </FormSection>
+              )}
+
+              {/* People */}
+              {!preview.isError && roles.length > 0 && (
+                <FormSection title="Who signs" subtitle={tpl && roles.length > 1 ? 'In this order; each person gets the email after the one before signs.' : undefined}>
+                  <div className="flex flex-col gap-3">
+                    {roles.map((r, i) => (
+                      <div key={r.id} className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 font-inter text-[12.5px] font-medium text-text-primary">
+                          <span className="w-4 text-center text-[11.5px] tabular-nums text-text-tertiary">{i + 1}</span>
+                          <span aria-hidden className="h-3 w-3 rounded" style={{ background: r.color }} />
+                          {r.label}
+                          <span className="font-normal text-text-tertiary">
+                            · {r.role === 'cc' ? 'Gets a copy' : r.role === 'approver' ? 'Approves' : 'Signs'}
+                          </span>
+                        </div>
+                        {r.fixed ? (
+                          <p className="ml-6 flex items-center gap-1.5 font-inter text-[12.5px] text-text-secondary">
+                            <Lock className="h-3 w-3 text-text-tertiary" strokeWidth={2} aria-hidden />
+                            {r.name} · {r.email}
+                          </p>
+                        ) : (
+                          <div className="ml-6 grid grid-cols-2 gap-2">
+                            <Input
+                              aria-label={`${r.label} name`}
+                              placeholder="Full name"
+                              maxLength={120}
+                              className="h-9"
+                              value={d.people[r.id]?.name ?? ''}
+                              onChange={(e) => {
+                                const v = e.target.value
+                                set((x) => ({ ...x, people: { ...x.people, [r.id]: { ...(x.people[r.id] ?? { email: '' }), name: v } } }))
+                              }}
+                            />
+                            <Input
+                              aria-label={`${r.label} email`}
+                              placeholder="Email"
+                              type="email"
+                              className="h-9"
+                              value={d.people[r.id]?.email ?? ''}
+                              aria-invalid={!!touched[r.id] && !!d.people[r.id]?.email && !okEmail(d.people[r.id].email.trim())}
+                              onBlur={() => setTouched((t) => ({ ...t, [r.id]: true }))}
+                              onChange={(e) => {
+                                const v = e.target.value
+                                set((x) => ({ ...x, people: { ...x.people, [r.id]: { ...(x.people[r.id] ?? { name: '' }), email: v } } }))
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </FormSection>
+              )}
+
+              {/* Email */}
+              {tpl && (
+                <FormSection title="Email">
+                  <Collapsible>
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1 font-inter text-[12.5px] text-text-primary">
+                        <p className="truncate font-medium">
+                          <TagText text={d.subject ?? tpl.subject} label={label} />
+                        </p>
+                        <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-text-secondary">
+                          <TagText text={d.body ?? tpl.body} label={label} />
+                        </p>
+                      </div>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" iconRight={ChevronDown} className="[&[data-state=open]_svg]:rotate-180 [&_svg]:transition-transform [&_svg]:duration-200">
+                          Edit email
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
+                    <CollapsibleContent className="flex flex-col gap-3 pt-3">
+                      <Field label="Subject" htmlFor="send-subject">
+                        <Input
+                          id="send-subject"
+                          maxLength={200}
+                          value={d.subject ?? tpl.subject}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            set((x) => ({ ...x, subject: v }))
+                          }}
+                        />
+                      </Field>
+                      <Field label="Message" htmlFor="send-body" help="Tags like {{name}} fill in from the record. The documents don’t change.">
+                        <Textarea
+                          id="send-body"
+                          rows={5}
+                          maxLength={5000}
+                          value={d.body ?? tpl.body}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            set((x) => ({ ...x, body: v }))
+                          }}
+                        />
+                      </Field>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </FormSection>
+              )}
+
+              {/* When */}
+              {tpl && (
+                <FormSection title="When">
+                  <div className="flex flex-col gap-3">
+                    <Seg
+                      label="When to send"
+                      value={d.when}
+                      onChange={(v) => set((x) => ({ ...x, when: v as SendDraft['when'] }))}
+                      options={[
+                        { value: 'now', label: 'Send now', icon: Send },
+                        { value: 'schedule', label: 'Schedule', icon: CalendarClock },
+                      ]}
+                    />
+                    {d.when === 'schedule' && (
+                      <DateTimePickerVirgilio
+                        value={d.at}
+                        minDate={new Date()}
+                        onChange={(at) => set((x) => ({ ...x, at }))}
+                      />
+                    )}
+                    <p className="font-inter text-[11.5px] text-text-tertiary">
+                      {d.when === 'schedule'
+                        ? 'Sends at that time, your time.'
+                        : 'Sends right away, with 5 seconds to undo.'}
+                    </p>
+                  </div>
+                </FormSection>
+              )}
+            </>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
       {editing && <EditTemplateSheet templateId={editing} onClose={() => setEditing(null)} />}
     </FormSheet>
   )

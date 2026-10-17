@@ -5,13 +5,17 @@ interface FormSectionProps {
   subtitle?: ReactNode
   action?: ReactNode
   children?: ReactNode
+  /** No card around the children (a control that brings its own frame). */
+  bare?: boolean
+  /** Card padding, when the content needs its own (e.g. a divided list). */
+  cardPadding?: string | number
 }
 
 /**
  * Section shell inside FormSheet. Titles are UPPERCASE with POSITIVE tracking —
  * the opposite of page titles.
  */
-export function FormSection({ title, subtitle, action, children }: FormSectionProps) {
+export function FormSection({ title, subtitle, action, children, bare, cardPadding = 16 }: FormSectionProps) {
   return (
     <section style={{ marginBottom: 18 }}>
       <div
@@ -41,16 +45,20 @@ export function FormSection({ title, subtitle, action, children }: FormSectionPr
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #E7E8EE',
-          borderRadius: 12,
-          padding: 16,
-        }}
-      >
-        {children}
-      </div>
+      {bare ? (
+        children
+      ) : (
+        <div
+          style={{
+            background: '#fff',
+            border: '1px solid #E7E8EE',
+            borderRadius: 12,
+            padding: cardPadding,
+          }}
+        >
+          {children}
+        </div>
+      )}
     </section>
   )
 }
