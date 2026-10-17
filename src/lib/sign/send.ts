@@ -28,6 +28,8 @@ export interface SendPreview {
   values: Record<string, string>
   /** Labels of data fields the record has no value for. Sending is refused until they're filled. */
   missing: string[]
+  /** The values this template fills in, with labels (empty when it has no data fields). */
+  used?: { key: string; label: string; value: string | null }[]
   roles: SendRole[]
 }
 

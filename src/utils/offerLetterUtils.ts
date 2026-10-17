@@ -1,4 +1,5 @@
 import { Candidate } from '@/hooks/useCandidates'
+import { formatOfferValue } from '@/lib/offerValues'
 
 export interface OfferLetterData {
   candidate: Candidate
@@ -9,23 +10,6 @@ export interface OfferLetterData {
   fieldTypes?: Record<string, string>
   /** Optional: recruiter name lookup keyed by user_id */
   recruiterLookup?: Record<string, string>
-}
-
-// Label maps for enum-style fields
-const employmentTypeLabels: Record<string, string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  temporary: 'Temporary',
-  internship: 'Internship',
-  freelance: 'Freelance',
-}
-
-const workLocationLabels: Record<string, string> = {
-  remote: 'Remote',
-  hybrid: 'Hybrid',
-  onsite: 'On-site',
-  on_site: 'On-site',
 }
 
 /**
@@ -91,81 +75,11 @@ export function processOfferLetterTemplate(
 }
 
 /**
- * Format field values for display in the template, with smart type handling
+ * Format field values for display in the template (shared rules in
+ * src/lib/offerValues.ts, so salary and location never show as JSON).
  */
 function formatFieldValue(value: any, fieldType?: string, recruiterLookup?: Record<string, string>): string {
-  if (value == null) return ''
-
-  // Smart field type formatting
-  if (fieldType) {
-    switch (fieldType) {
-      case 'salary': {
-        if (typeof value === 'object' && value !== null) {
-          const { amount, currency, period } = value
-          const formattedAmount = amount ? Number(amount).toLocaleString() : ''
-          const parts = [currency, formattedAmount].filter(Boolean).join(' ')
-          return period ? `${parts} per ${period}` : parts
-        }
-        break
-      }
-      case 'location': {
-        if (typeof value === 'object' && value !== null) {
-          const { city, state, country } = value
-          return [city, state, country].filter(Boolean).join(', ')
-        }
-        break
-      }
-      case 'recruiter': {
-        if (typeof value === 'string' && recruiterLookup) {
-          return recruiterLookup[value] || value
-        }
-        break
-      }
-      case 'employment_type': {
-        if (typeof value === 'string') {
-          return employmentTypeLabels[value] || value
-        }
-        break
-      }
-      case 'work_location': {
-        if (typeof value === 'string') {
-          return workLocationLabels[value] || value
-        }
-        break
-      }
-      case 'date': {
-        if (typeof value === 'string') {
-          try {
-            const date = new Date(value + 'T00:00:00')
-            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-          } catch {
-            return value
-          }
-        }
-        break
-      }
-    }
-  }
-
-  // Generic fallback formatting
-  if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No'
-  }
-  
-  if (value instanceof Date) {
-    return value.toLocaleDateString()
-  }
-  
-  if (typeof value === 'number') {
-    return value.toString()
-  }
-
-  if (typeof value === 'object') {
-    // Last resort for unrecognized objects
-    return JSON.stringify(value)
-  }
-  
-  return String(value)
+  return formatOfferValue(value, fieldType, { recruiterName: (id) => recruiterLookup?.[id] }) ?? ''
 }
 
 /**

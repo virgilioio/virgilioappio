@@ -1,3 +1,4 @@
+import { formatOfferValue } from '@/lib/offerValues'
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
@@ -30,8 +31,11 @@ function offerFigure(fieldValues: any): string | null {
   const salary = salaryKey ? fieldValues[salaryKey] : null
   const equity = equityKey ? fieldValues[equityKey] : null
   const parts: string[] = []
-  if (salary !== null && salary !== undefined && `${salary}`.trim() !== '') parts.push(`${salary}`)
-  if (equity !== null && equity !== undefined && `${equity}`.trim() !== '') parts.push(`${equity}`)
+  // Stored values can be JSON text ({"amount","currency"}); never show it raw.
+  const salaryText = salaryKey ? formatOfferValue(salary, /salary/i.test(salaryKey) ? 'salary' : null) : null
+  const equityText = equityKey ? formatOfferValue(equity, null) : null
+  if (salaryText) parts.push(salaryText)
+  if (equityText) parts.push(equityText)
   return parts.length ? parts.join(' + ') : null
 }
 

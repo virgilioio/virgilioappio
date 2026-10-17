@@ -1,3 +1,4 @@
+import { formatOfferValue } from '@/lib/offerValues'
 import { useState, useEffect, useCallback } from 'react'
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { useOfferFormFields } from '@/hooks/useOfferFormFields'
@@ -36,14 +37,6 @@ function LongTextField({ label, value }: { label: string; value: string }) {
 }
 
 
-const employmentTypeLabels: Record<string, string> = {
-  full_time: 'Full-time', part_time: 'Part-time',
-  temporary: 'Temporary', internship: 'Internship'
-}
-const workLocationLabels: Record<string, string> = {
-  remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site'
-}
-
 interface CandidateOfferDetailsProps {
   candidateId: string
   jobId: string
@@ -53,29 +46,6 @@ interface CandidateOfferDetailsProps {
   organization?: any
   onEdit?: (offer: { id: string; form_id: string; field_values: Record<string, any>; opening_id?: string | null }) => void
   associationStatus?: string | null
-}
-
-function formatLocationValue(value: any): string {
-  if (!value) return '—'
-  if (typeof value === 'string') {
-    try { value = JSON.parse(value) } catch { return value }
-  }
-  const parts = [value.city, value.state, value.country].filter(Boolean)
-  return parts.length > 0 ? parts.join(', ') : '—'
-}
-
-function formatSalaryValue(value: any, config?: any): string {
-  if (!value) return '—'
-  if (typeof value === 'string') {
-    try { value = JSON.parse(value) } catch { return value }
-  }
-  const amount = value.amount || value
-  const currency = value.currency || config?.default_currency || 'USD'
-  const period = value.period || config?.default_period || 'yearly'
-  if (typeof amount === 'number' || !isNaN(Number(amount))) {
-    return `${currency} ${Number(amount).toLocaleString()} / ${period}`
-  }
-  return String(amount)
 }
 
 function getStatusTone(status: string): BadgeTone {
@@ -391,23 +361,15 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
             : t === 'checkbox' ? BadgeCheck
             : FileText
 
-          const renderValue = (field: any) => {
-            const value = fieldValues[field.field_name]
-            const t = field.field_type
-            if (t === 'location') return formatLocationValue(value)
-            if (t === 'salary') return formatSalaryValue(value, field.field_config)
-            if (t === 'checkbox') return value ? 'Yes' : 'No'
-            if (t === 'date' && value) {
-              try { return new Date(String(value) + 'T00:00:00').toLocaleDateString() } catch { return String(value) }
-            }
-            if (t === 'recruiter') {
-              const match = recruiterOptions.find(r => r.value === value)
-              return match?.label || String(value)
-            }
-            if (t === 'employment_type') return employmentTypeLabels[String(value)] || String(value)
-            if (t === 'work_location') return workLocationLabels[String(value)] || String(value)
-            return value != null && value !== '' ? String(value) : '—'
-          }
+          const renderValue = (field: any) =>
+            formatOfferValue(fieldValues[field.field_name], field.field_type, {
+              config: field.field_config,
+              withPeriod: true,
+              recruiterName: (id) => recruiterOptions.find(r => r.value === id)?.label,
+            }) ?? '—'
+
+          // The form's own Job title field replaces the fixed tile, so it isn't shown twice.
+          const formHasJobTitle = shortFields.some(f => f.field_name === 'job_title' || /^job title$/i.test(String(f.field_label ?? '').trim()))
 
           return (
             <div className="space-y-5">
@@ -440,13 +402,13 @@ export function CandidateOfferDetails({ candidateId, jobId, organizationId, cand
               {/* Short fields — 2-col icon+label+value */}
               {(shortFields.length > 0 || offerOpening) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                  <div className="flex items-start gap-2.5">
+                  {!formHasJobTitle && <div className="flex items-start gap-2.5">
                     <span className="text-text-tertiary mt-0.5"><Briefcase className="h-3.5 w-3.5" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="font-inter text-[11.5px] text-text-tertiary">Job title</p>
                       <p className="font-poppins text-[13px] text-text-primary truncate">{job?.title || offerLetter.title}</p>
                     </div>
-                  </div>
+                  </div>}
                   {offerOpening && (
                     <div className="flex items-start gap-2.5">
                       <span className="text-text-tertiary mt-0.5"><Briefcase className="h-3.5 w-3.5" /></span>

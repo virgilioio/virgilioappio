@@ -299,16 +299,21 @@ export function SendSheet({
               <p className="font-inter text-[12.5px] text-virgilio-error">{sendErrorMessage(preview.error)}</p>
             ) : (
               <div className="flex flex-col gap-3">
-                <dl className="grid grid-cols-[120px_minmax(0,1fr)] gap-x-4 gap-y-1.5 font-inter text-[12.5px]">
-                  {DATA_TAGS[kind].map(([k]) => [
-                    <dt key={`${k}-t`} className="text-text-secondary">
-                      {label(k)}
-                    </dt>,
-                    <dd key={`${k}-d`} className={cn('truncate', preview.data?.values[k] ? 'text-text-primary' : 'text-text-tertiary')}>
-                      {preview.data?.values[k] || 'Not on the record'}
-                    </dd>,
-                  ])}
-                </dl>
+                {/* The values this template uses (2026-10-17), not a fixed list. */}
+                {(preview.data?.used ?? []).length === 0 ? (
+                  <p className="font-inter text-[12.5px] text-text-tertiary">This template doesn’t fill in anything from the record.</p>
+                ) : (
+                  <dl className="grid grid-cols-[minmax(120px,max-content)_minmax(0,1fr)] gap-x-4 gap-y-1.5 font-inter text-[12.5px]">
+                    {(preview.data?.used ?? []).map((u) => [
+                      <dt key={`${u.key}-t`} className="text-text-secondary">
+                        {u.label || label(u.key)}
+                      </dt>,
+                      <dd key={`${u.key}-d`} className={cn('truncate', u.value ? 'text-text-primary' : 'text-text-tertiary')}>
+                        {u.value || 'Not on the record'}
+                      </dd>,
+                    ])}
+                  </dl>
+                )}
                 {missing.length > 0 && (
                   <p className="flex gap-2 rounded-lg bg-[#FCF1DC] p-2.5 font-inter text-[12px] leading-snug text-[#7A4A06]">
                     <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
