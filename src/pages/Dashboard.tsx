@@ -166,6 +166,25 @@ function buildQueue(
         urgencyLabel: d >= 7 ? `stuck ${d}d` : d > 0 ? `waiting ${d}d` : 'today',
         sortRank: urgency === 'overdue' ? -0.5 - d * 0.01 : urgency === 'today' ? 1.5 : 2.5,
       })
+    } else if (a.type === 'offer_approval') {
+      // An offer waiting on this person's approval (2026-10-17): nothing goes
+      // to the candidate until they decide, so a day's wait is overdue.
+      const h = hoursSince(a.timestamp)
+      const d = Math.floor(h / 24)
+      const urgency: Urgency = d >= 1 ? 'overdue' : 'today'
+      out.push({
+        id: `o-${a.id}`,
+        dismissKey: `offer_approval:${a.id}`,
+        type: 'decision',
+        label: 'Approve offer',
+        candidateName: a.candidateName,
+        candidateId: a.candidateId,
+        context: `${jobTitle} — sent for approval ${d === 0 ? (h === 0 ? 'just now' : `${h}h ago`) : d === 1 ? 'yesterday' : `${d} days ago`}`,
+        href: `/jobs/${a.jobId}?candidate=${a.candidateId}&tab=offer`,
+        urgency,
+        urgencyLabel: d >= 1 ? `waiting ${d}d` : 'today',
+        sortRank: urgency === 'overdue' ? -0.6 - d * 0.01 : 0.9,
+      })
     } else if (a.type === 'email') {
       const h = hoursSince(a.timestamp)
       const d = Math.floor(h / 24)

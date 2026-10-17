@@ -433,11 +433,17 @@ async function fetchPendingOfferApprovals(userId: string): Promise<PendingActivi
 
   if (!requests || requests.length === 0) return [];
 
-  // Only include steps where it's actually their turn (current_step_order matches)
+  // Only steps where it's their turn: in a parallel chain every pending step,
+  // in a sequential one the step at current_step_order.
   const requestMap = new Map(requests.map(r => [r.id, r]));
+  const { data: chains } = await supabase
+    .from('offer_approval_chains')
+    .select('job_id, mode')
+    .in('job_id', [...new Set(requests.map(r => r.job_id))]);
+  const parallel = new Set((chains || []).filter(c => c.mode === 'parallel').map(c => c.job_id));
   const activeSteps = steps.filter(s => {
     const req = requestMap.get(s.request_id);
-    return req && s.step_order === req.current_step_order;
+    return req && (parallel.has(req.job_id) || s.step_order === req.current_step_order);
   });
 
   if (activeSteps.length === 0) return [];
