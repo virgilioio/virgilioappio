@@ -31,7 +31,7 @@ All three are merged to `main` as of this note. Lovable syncs from GitHub.
    - Regenerate `src/integrations/supabase/types.ts` in the same commit.
    - Run the test again the rolled-back way.
 5. **Merge:** feature branch → push → fast-forward `main` → push.
-6. **Edge Functions deploy from `main`.** A push to `main` that changes `supabase/functions/` redeploys them all a few minutes later (seen 2026-10-16 20:43 and 2026-10-17 16:51 and 17:31, 165 functions each time). So a function change ships by merging; deploying by hand first is only for checking before merge. After it lands, compare the live files with the commit (`get_edge_function`, then diff), as done for sign-seal v9.
+6. **Edge Functions: verify after merging, deploy by hand when needed.** A push to `main` sometimes redeploys every function a few minutes later (2026-10-16 20:43; 2026-10-17 16:51 and 17:31), but not always (the 17:38 push didn't). After merging, compare the live files with `main` (`get_edge_function`, then diff); if they differ, deploy with `deploy_edge_function` (all the function's files plus `deno.json`, same `verify_jwt` as `config.toml`) and compare again. Done this way for sign-session v12.
 
 Hard limits:
 - Migrations and tests must not contain the whole words `delete`, `drop` or `truncate`. The connector cancels those from a cloud chat. When one is needed, write the file and give Allan a one-paragraph message to apply it from a desktop chat with a folder added.
@@ -70,6 +70,15 @@ Hard limits:
   - Wrap long text on uploaded PDFs in `_shared/sign/stamp.ts`.
 - Allan's choice: build with the existing ATS design; he'll say if he wants changes.
 - Found during step 1: renaming an offer form field's label also renames its stored name (`OfferFormFieldsManager.handleUpdateField`). Offers already made keep their values under the old name, and templates that place it lose the link. Proposed fix (not built): keep the stored name when only the label changes.
+
+**Offer approvals: tell the approvers (Allan, 2026-10-17)**
+- When an offer is sent for approval, each approver whose turn it is gets an email and a bell notification ("needs your approval"), and the request shows on the Dashboard's Your queue card under Decisions.
+- What exists today:
+  - Nothing notifies approvers. The chain's `rules.notifyChain` and `rules.remind24h` are UI-only switches.
+  - The requester's browser creates requests and approves steps with direct table writes (`useOfferApprovalRequest.ts`); no database function owns the flow.
+  - `usePendingActivities.fetchPendingOfferApprovals` already returns `offer_approval` items, but `buildQueue` in `Dashboard.tsx` drops them.
+  - In parallel chains it only picks up approvers at `current_step_order`.
+- Plan: a database trigger on `offer_approval_request_steps` / `offer_approval_requests` queues "your turn" notifications when a step becomes active (sequential: the next step; parallel: all pending steps). An Edge Function (or the existing outbox) sends the email (`_shared/emailTemplate.ts` layout, Resend) and the bell (`emit_notification`, category `offer_event`), honouring `notifyChain`; then the Dashboard shows `offer_approval` items as Decisions ("Approve offer · Candidate · Job"), and parallel chains include every awaiting approver. Optional: `remind24h` reminders from the same job.
 
 **Speed and robustness plan (steps 1–3 done)**
 - **Step 4 — database cleanup.**
