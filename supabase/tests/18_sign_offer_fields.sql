@@ -1,4 +1,4 @@
--- Run after 20261017180000_sign_offer_fields inside a transaction that is rolled back.
+-- Run after 20261017171933_sign_offer_fields inside a transaction that is rolled back.
 -- Uses live rows read-only except inside this transaction. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 grant insert, select on t_results to authenticated;

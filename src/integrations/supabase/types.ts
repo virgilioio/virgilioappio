@@ -8347,6 +8347,7 @@ export type Database = {
         Row: {
           created_at: string
           data_key: string | null
+          data_style: string | null
           envelope_id: string | null
           filled_at: string | null
           font_size: number | null
@@ -8369,6 +8370,7 @@ export type Database = {
         Insert: {
           created_at?: string
           data_key?: string | null
+          data_style?: string | null
           envelope_id?: string | null
           filled_at?: string | null
           font_size?: number | null
@@ -8391,6 +8393,7 @@ export type Database = {
         Update: {
           created_at?: string
           data_key?: string | null
+          data_style?: string | null
           envelope_id?: string | null
           filled_at?: string | null
           font_size?: number | null
@@ -11635,6 +11638,10 @@ export type Database = {
         Returns: string
       }
       sign_offer_values: { Args: { _offer_id: string }; Returns: Json }
+      sign_optional_keys: {
+        Args: { _form_id: string; _template_id: string }
+        Returns: string[]
+      }
       sign_pending_invites: {
         Args: { _limit?: number }
         Returns: {
