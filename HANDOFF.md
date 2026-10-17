@@ -101,7 +101,7 @@ Hard limits:
   - no new tables; roles keep all five sources and Approves;
   - one written document per template;
   - unsaved changes use the inline `UnsavedGuard`.
-- Part 1, the database, is written and waiting for "Apply!": `20261017210000_sign_template_workflow` (test 22, 22/22 dry run, rolled back).
+- Part 1, the database, is applied (2026-10-17): `20261017214923_sign_template_workflow` (test 22, 22/22 on the live schema).
   - `sign_fields.data_format` and the placeholder node's `format`: money as code / symbol / words, dates three ways, numbers as a figure or in words.
   - `sign_format()`, `sign_value_variant()`, `sign_variants()` and `sign_template_uses()`. Formatted values travel as `key|format` in `values` and `data_snapshot`; placed fields freeze their own format.
   - `gio-field` nodes (inline signer fields: initials, date, name, text or checkbox, with `required` and `label`), checked on save; `sign_attach_render` keeps their kind, required flag and label.

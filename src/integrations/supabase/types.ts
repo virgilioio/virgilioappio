@@ -8391,6 +8391,7 @@ export type Database = {
       sign_fields: {
         Row: {
           created_at: string
+          data_format: string | null
           data_key: string | null
           data_style: string | null
           envelope_id: string | null
@@ -8414,6 +8415,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_format?: string | null
           data_key?: string | null
           data_style?: string | null
           envelope_id?: string | null
@@ -8437,6 +8439,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_format?: string | null
           data_key?: string | null
           data_style?: string | null
           envelope_id?: string | null
@@ -11776,6 +11779,10 @@ export type Database = {
       }
       sign_fmt_amount: { Args: { _v: string }; Returns: string }
       sign_fmt_date: { Args: { _v: string }; Returns: string }
+      sign_format: {
+        Args: { _cfg: Json; _format: string; _raw: string; _type: string }
+        Returns: string
+      }
       sign_is_admin: { Args: { _tenant_id: string }; Returns: boolean }
       sign_is_turn: { Args: { _recipient_id: string }; Returns: boolean }
       sign_log: {
@@ -11794,6 +11801,7 @@ export type Database = {
       }
       sign_my_email: { Args: never; Returns: string }
       sign_new_public_id: { Args: never; Returns: string }
+      sign_num_words: { Args: { _n: number }; Returns: string }
       sign_offer_display: {
         Args: { _cfg: Json; _field_id: string; _raw: string; _type: string }
         Returns: string
@@ -11874,6 +11882,10 @@ export type Database = {
         Returns: Json
       }
       sign_sales_snapshot: { Args: { _envelope_id: string }; Returns: Json }
+      sign_sample_values: {
+        Args: { _form_id: string; _uses?: Json }
+        Returns: Json
+      }
       sign_save_template: { Args: { _t: Json }; Returns: string }
       sign_schedule: {
         Args: { _at: string; _envelope_id: string }
@@ -11981,8 +11993,14 @@ export type Database = {
           needed: boolean
         }[]
       }
+      sign_template_uses: { Args: { _template_id: string }; Returns: Json }
       sign_undo_send: { Args: { _envelope_id: string }; Returns: boolean }
       sign_unschedule: { Args: { _envelope_id: string }; Returns: undefined }
+      sign_value_variant: {
+        Args: { _format: string; _key: string; _rec: Json }
+        Returns: string
+      }
+      sign_variants: { Args: { _rec: Json; _uses: Json }; Returns: Json }
       sign_void: {
         Args: { _envelope_id: string; _reason: string }
         Returns: {

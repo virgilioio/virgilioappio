@@ -1,4 +1,4 @@
--- Run after 20261017210000_sign_template_workflow inside a transaction that is rolled back.
+-- Run after 20261017214923_sign_template_workflow inside a transaction that is rolled back.
 -- Fake templates on real records; Allan is the sender. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 grant insert, select on t_results to authenticated;
