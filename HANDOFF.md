@@ -31,6 +31,7 @@ All three are merged to `main` as of this note. Lovable syncs from GitHub.
    - Regenerate `src/integrations/supabase/types.ts` in the same commit.
    - Run the test again the rolled-back way.
 5. **Merge:** feature branch → push → fast-forward `main` → push.
+6. **Edge Functions deploy from `main`.** A push to `main` that changes `supabase/functions/` redeploys them all a few minutes later (seen 2026-10-16 20:43 and 2026-10-17 16:51 and 17:31, 165 functions each time). So a function change ships by merging; deploying by hand first is only for checking before merge. After it lands, compare the live files with the commit (`get_edge_function`, then diff), as done for sign-seal v9.
 
 Hard limits:
 - Migrations and tests must not contain the whole words `delete`, `drop` or `truncate`. The connector cancels those from a cloud chat. When one is needed, write the file and give Allan a one-paragraph message to apply it from a desktop chat with a folder added.
@@ -49,6 +50,14 @@ Hard limits:
 
 - **Resume reading checks** (`_shared/resumeFacts.ts`, `enrich-candidate-profile` v315 deployed): Gio reads the name off the resume and leaves the profile untouched when it names someone else (`enrichment_status = 'other_person'`, shown in the Resume status line); a job is kept only when its company appears in the resume text (dropped ones are logged as `[enrich] Dropped`); the same job listed twice is saved once. The 33 doubled jobs (27 profiles) were all written in one insert, i.e. the model repeated them, not a race.
 
+- **Gio Sign x offers, step 1: every offer field usable** (`20261017171933_sign_offer_fields`, test 18: 21/21; test 16 still 20/20):
+  - Values print as words for every field type (number, link, phone, score, file), in SQL (`sign_offer_display`) and the app (`offerValues.ts`).
+  - Optional offer fields print blank instead of blocking a send (`sign_optional_keys`; preview `missing` vs `blank`).
+  - A yes/no field can print a tick (`sign_fields.data_style = 'tick'`, Show as a tick on the Fields step).
+  - Long values wrap in their box with their own line breaks (`_shared/sign/wrap.ts`, used by `stamp.ts` and, imported as is, by `DataFieldText` in the send preview and the signing page).
+  - Coverage: "N of M offer fields placed. Not placed: ..." on the Fields step and the template card.
+  - New offer form field names always fit agreements (`offerFieldName`).
+
 ## Open work, in Allan's order
 
 **Gio Sign × offers**
@@ -60,6 +69,7 @@ Hard limits:
   - Retire the old offer letter generator.
   - Wrap long text on uploaded PDFs in `_shared/sign/stamp.ts`.
 - Allan's choice: build with the existing ATS design; he'll say if he wants changes.
+- Found during step 1: renaming an offer form field's label also renames its stored name (`OfferFormFieldsManager.handleUpdateField`). Offers already made keep their values under the old name, and templates that place it lose the link. Proposed fix (not built): keep the stored name when only the label changes.
 
 **Speed and robustness plan (steps 1–3 done)**
 - **Step 4 — database cleanup.**
