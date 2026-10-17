@@ -126,10 +126,11 @@ export function OfferFormFieldsManager({ formId }: OfferFormFieldsManagerProps) 
 
   const handleUpdateField = async (id: string, updates: Partial<OfferFormField>) => {
     try {
-      const fieldName = updates.field_label
-        ? offerFieldName(updates.field_label, fields.filter((f) => f.id !== id).map((f) => f.field_name))
-        : undefined
-      await updateField(id, { ...updates, ...(fieldName ? { field_name: fieldName } : {}) })
+      // The stored name never changes after the field is made: offers keep
+      // their values under it and agreement templates place it by it, so a
+      // new label is only a new label.
+      const { field_name: _keep, ...rest } = updates
+      await updateField(id, rest)
     } catch {
       // handled by hook
     }
