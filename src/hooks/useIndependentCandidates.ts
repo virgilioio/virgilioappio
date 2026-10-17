@@ -8,6 +8,7 @@ import { log } from '@/lib/logger'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { autoMergeIntoExisting, checkForDuplicateCandidate, createCandidate, DuplicateCheckResult } from '@/lib/candidateHelpers'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { mapLimit } from '@/lib/parallel'
 
 export interface ContactPhone {
   type: 'work' | 'mobile' | 'other'
@@ -105,23 +106,53 @@ async function fetchIndependentCandidates(organizationId: string): Promise<Indep
     orgTreeCache.set(organizationId, orgIds)
   }
 
-  // The API returns at most 1,000 rows per request, so page until a short page.
-  // Newest first, with id as a tiebreaker so pages never overlap or skip rows.
+  // The API returns at most 1,000 rows per request. The first page also brings
+  // the total, so the remaining pages load side by side instead of one after
+  // another (2026-10-17). Newest first, with id as a tiebreaker so pages never
+  // overlap or skip rows.
   const PAGE = 1000
-  const data: any[] = []
-  for (let from = 0; ; from += PAGE) {
-    const { data: rows, error } = await withAuthRetry(async () =>
+  const COLUMNS = 'id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current'
+  const page = (from: number, withCount: boolean) =>
+    withAuthRetry(async () =>
       await supabase
         .from('candidates')
-        .select('id,candidate_name,email,phone,contact_phones,contact_emails,location_country,location_state,location_city,salary_amount,salary_currency,salary_period,profile_summary,linkedin_url,resume_url,skills,standardized_skills,auto_generated_skills,status,source,created_at,updated_at,created_by,organization_id,seniority_level,functional_area,specialization,standardized_title,years_experience,enrichment_status,current_job_title,company_current')
+        .select(COLUMNS, withCount ? { count: 'exact' } : undefined)
         .in('organization_id', orgIds!)
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .range(from, from + PAGE - 1)
     )
-    if (error) throw error
-    data.push(...(rows || []))
-    if (!rows || rows.length < PAGE) break
+
+  const first = await page(0, true)
+  if (first.error) throw first.error
+  const data: any[] = [...(first.data || [])]
+  const total = first.count ?? data.length
+  if (data.length === PAGE && total > PAGE) {
+    const starts: number[] = []
+    for (let from = PAGE; from < total; from += PAGE) starts.push(from)
+    const rest = await mapLimit(starts, 4, async (from) => {
+      const { data: rows, error } = await page(from, false)
+      if (error) throw error
+      return rows || []
+    })
+    for (const rows of rest) data.push(...rows)
+    // Rows added while the pages loaded can push older ones past the count;
+    // keep going one page at a time until a short page, as before.
+    let last = rest[rest.length - 1]
+    let from = starts[starts.length - 1] + PAGE
+    while (last && last.length === PAGE) {
+      const { data: rows, error } = await page(from, false)
+      if (error) throw error
+      last = rows || []
+      data.push(...last)
+      from += PAGE
+    }
+    // A row added mid-load shifts the pages by one, so a row can appear twice.
+    const seen = new Set<string>()
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (seen.has(data[i].id)) data.splice(i, 1)
+      else seen.add(data[i].id)
+    }
   }
 
   return data.map(candidate => ({
