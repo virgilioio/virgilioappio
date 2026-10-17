@@ -8093,8 +8093,11 @@ export type Database = {
           kind: Database["public"]["Enums"]["sign_kind"]
           last_reminded_at: string | null
           nom151_path: string | null
+          offer_fingerprint: string | null
+          offer_id: string | null
           ordered: boolean
           origin: string
+          out_of_date: boolean
           public_id: string
           reminder_days: number
           sales_company_id: string | null
@@ -8143,8 +8146,11 @@ export type Database = {
           kind: Database["public"]["Enums"]["sign_kind"]
           last_reminded_at?: string | null
           nom151_path?: string | null
+          offer_fingerprint?: string | null
+          offer_id?: string | null
           ordered?: boolean
           origin: string
+          out_of_date?: boolean
           public_id?: string
           reminder_days?: number
           sales_company_id?: string | null
@@ -8193,8 +8199,11 @@ export type Database = {
           kind?: Database["public"]["Enums"]["sign_kind"]
           last_reminded_at?: string | null
           nom151_path?: string | null
+          offer_fingerprint?: string | null
+          offer_id?: string | null
           ordered?: boolean
           origin?: string
+          out_of_date?: boolean
           public_id?: string
           reminder_days?: number
           sales_company_id?: string | null
@@ -8236,6 +8245,13 @@ export type Database = {
             columns: ["ats_job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sign_envelopes_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offer_letters"
             referencedColumns: ["id"]
           },
           {
@@ -8692,6 +8708,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["sign_kind"]
           name: string
+          offer_form_id: string | null
           ordered: boolean
           reminder_days: number
           subject: string
@@ -8711,6 +8728,7 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["sign_kind"]
           name: string
+          offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
           subject?: string
@@ -8730,6 +8748,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["sign_kind"]
           name?: string
+          offer_form_id?: string | null
           ordered?: boolean
           reminder_days?: number
           subject?: string
@@ -8739,6 +8758,13 @@ export type Database = {
           uses?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sign_templates_offer_form_id_fkey"
+            columns: ["offer_form_id"]
+            isOneToOne: false
+            referencedRelation: "offer_forms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sign_templates_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -11265,6 +11291,8 @@ export type Database = {
       nightly_storage_cleanup: { Args: never; Returns: undefined }
       normalize_linkedin_slug: { Args: { raw_url: string }; Returns: string }
       offer_base_salary: { Args: { _fv: Json }; Returns: Json }
+      offer_can_send: { Args: { _offer_id: string }; Returns: Json }
+      offer_send_refusal: { Args: { _reason: string }; Returns: string }
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean
@@ -11600,6 +11628,10 @@ export type Database = {
       sign_new_public_id: { Args: never; Returns: string }
       sign_offer_display: {
         Args: { _cfg: Json; _field_id: string; _raw: string; _type: string }
+        Returns: string
+      }
+      sign_offer_fingerprint: {
+        Args: { _offer_id: string; _template_id: string }
         Returns: string
       }
       sign_offer_values: { Args: { _offer_id: string }; Returns: Json }

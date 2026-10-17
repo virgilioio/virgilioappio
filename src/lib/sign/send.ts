@@ -48,8 +48,7 @@ export function useOfferGate(offerId: string | null | undefined) {
     queryKey: ['sign', 'offer-gate', offerId],
     enabled: !!offerId,
     queryFn: async (): Promise<OfferGate> => {
-      // Typed once the sign_offer_send migration is applied and types regenerate.
-      const { data, error } = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)('offer_can_send', { _offer_id: offerId! })
+      const { data, error } = await supabase.rpc('offer_can_send', { _offer_id: offerId! })
       if (error) throw error
       return data as unknown as OfferGate
     },
