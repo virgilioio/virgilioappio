@@ -83,13 +83,13 @@ Hard limits:
   - Part 4: the Email section is always open, and new candidate templates get the design's default message with the email-only tags `{{first_name}}`, `{{company}}` and `{{sender_first}}`.
   - Part 5: Preview as a stacked sheet (`send/PreviewSheet.tsx`), with the renderer's preview-only `highlight` option.
 - Database: `20261017201301_sign_send_people` is applied (test 20, 16/16 on the live schema). It adds `sign_recipients.fill_from`, `sign_templates.offer_fields_not_needed`, `sign_role_person()`, and the email-only values in `data_snapshot`.
-- `sign-written-preview` v4 is deployed. `sign-dispatch` still runs the older copy of `writtenLayout.ts`. That's fine: the only change is the preview-only option, so the next dispatch deploy can pick it up.
+- `sign-written-preview` v5 and `sign-dispatch` v13 are deployed (2026-10-17) with the same `writtenLayout.ts`: formats, inline signer fields, the `gt0` rule, red empties in the editor's preview.
 - Folded into the template workflow below: part 6 (Edit template round trip, "Back to {name}") and part 7 (value formats per field). Part 8, Void & resend, is still separate and applied from the desktop.
 - Mappings (existing primitives win): Sheet/stacking/backdrop/Esc = ATS `SheetContent` (already 360/240ms, step-back, 12% dim); `Pill` = `Badge`; `Icon` = Lucide; buttons = ATS `Button` (sizes, press, `loading` keeps width); focus = the global 2px purple outline, not the design's noir ring; tertiary text stays `#6B7080` (contrast), not `#8B8F9E`; the collapsible = `CollapsibleContent` (`gio-accordion-content`).
 - Preview: written documents shown as the real PDF from `sign-written-preview` (it's what's sent), with a preview-only option to underline values in lilac and print empty values as [Label]; uploaded pages as today's `FilledPreview`. The design's HTML "paper" (Poppins/Inter) would not match the Helvetica PDF; matching it means embedding Inter/Poppins in the PDF (fontkit), which also fixes accents.
 
 **New / Edit template workflow (Allan, 2026-10-17; full prompt in chat).**
-- Four steps: Template info, Document (full width), Signers, Review & save. Today's wizard has five: Info, Roles, Fields, Message, Review.
+- Four steps: Template info, Document (full width), Signers, Review & save. **All ten parts are built and on main (2026-10-17).**
 - What it builds on:
   - `WizardSheet`;
   - `InfoStep`, `RolesStep`, `FieldsEditor` (uploaded pages), `WrittenEditor` + `written/nodes.tsx` (Lexical), `ReviewStep` and `TemplateCard`;
@@ -107,18 +107,11 @@ Hard limits:
   - `gio-field` nodes (inline signer fields: initials, date, name, text or checkbox, with `required` and `label`), checked on save; `sign_attach_render` keeps their kind, required flag and label.
   - A signing block inside a conditional section no longer counts as a signature (closes gap 1).
   - `sign_sample_values(form, uses)`: the editor's Preview with the latest offer on the form, for admins only.
-  - Needs, in later parts: the renderer reads `key|format` and lays out `gio-field` chips (then redeploy `sign-dispatch` and `sign-written-preview`); the app sends `data_format`.
-- Build order, one part each, with a diff after every part:
-  1. Migrations and tests.
-  2. Shell.
-  3. Step 1.
-  4. Signers.
-  5. Field list, right panel and coverage.
-  6. Write in Gio.
-  7. Uploaded documents.
-  8. Review & save, and saving.
-  9. Templates page.
-  10. Motion and accessibility pass.
+- Where it lives: `TemplateWizard` → `InfoStep` (+ folded Default email), `DocumentStep` (tabs when both sources; `WrittenPane` for Write in Gio, `FieldsEditor` for uploaded pages; both use `FieldList` on the left and `FieldPanel` pieces on the right), `RolesStep`, `ReviewStep`. Formats: `src/lib/sign/formats.ts` (mirrors `sign_format`). Coverage: `draftCoverage()` in `templates.ts` (§7: mapped, missing, skipped, blocking, total). The old `WrittenEditor` sheet and `OfferCoverage` are gone.
+- Write in Gio: toolbar (style incl. Quote, B/I/U, lists, indent, alignment, undo/redo, Insert field), "/" menu (no animation, §12; Line and Page break live there), offer chips with formats, signer field chips (`gio-field`), signature blocks (signature + date), conditional sections (rule `gt0` = "is more than 0" for money/numbers; no database check on rules), click-to-select + Delete, Preview with the latest offer on the form (`sign_sample_values`), empty values red.
+- Allan's rulings (2026-10-17): click places on the page in view (not page 1), stacked; Email tile stays on uploaded pages; Signature on uploaded pages is one box; "Fills from" stays; toolbar extras (alignment, Quote) stay; no strikethrough button; the "/" menu appears instantly. From the Send sheet the editor is stacked on the sheet, so saving returns to it; no "Back to {candidate}" toast.
+- **Waiting for Apply!:** `20261017230000_sign_client_company` (test 23, 8/8 in a rolled-back dry run). New value `{{client}}` = the job's client organization (fed from Gio Sales; Virgilio for its own jobs) for candidate templates, documents and email. After it's applied: rename the file to its recorded version, regenerate types, then ship the app half (Always available "Client company", email-only "Company" relabelled "Your company", new candidate default subject "Your offer from {{client}} · please review and sign").
+- Not built: Word {{placeholder}} mapping (needs a converter Edge Functions can't run; scope separately).
 
 **Offer approvals: tell the approvers (Allan, 2026-10-17). Built and live.**
 - `20261017201333_offer_approval_notices` (test 21, 16/16 on the live schema):
