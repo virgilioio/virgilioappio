@@ -314,6 +314,36 @@ export interface PickTemplate {
   not_needed: string[]
 }
 
+/** Where a role's person comes from, by template type (2026-10-17). */
+export const ROLE_SOURCES: Record<SignKind, { value: FillFrom; label: string }[]> = {
+  candidate: [
+    { value: 'record', label: 'From the offer · candidate' },
+    { value: 'hiring_manager', label: 'From the job · hiring manager' },
+    { value: 'fixed', label: 'Always the same person' },
+    { value: 'sender', label: 'Whoever sends it' },
+    { value: 'typed', label: 'Typed in when sending' },
+  ],
+  member: [
+    { value: 'record', label: 'From the record · team member' },
+    { value: 'fixed', label: 'Always the same person' },
+    { value: 'sender', label: 'Whoever sends it' },
+    { value: 'typed', label: 'Typed in when sending' },
+  ],
+  // Customer templates are sent from a deal in Gio Sales: the first signer is the deal's contact.
+  customer: [
+    { value: 'typed', label: 'From the deal, or typed in' },
+    { value: 'fixed', label: 'Always the same person' },
+  ],
+}
+
+/** A role's source; roles saved before sources existed: the first open signer is the record's person, the rest are typed. */
+export function roleSource(d: Pick<TplDraft, 'kind' | 'roles'>, r: TplRole): FillFrom {
+  if (r.fixed) return 'fixed'
+  if (d.kind === 'customer') return 'typed'
+  const firstOpen = d.roles.find((x) => x.role === 'signer' && !x.fixed)?.id
+  return r.fill_from && r.fill_from !== 'fixed' ? r.fill_from : r.id === firstOpen ? 'record' : 'typed'
+}
+
 /** Values every candidate template can use without an offer form field. */
 export const ALWAYS_AVAILABLE = new Set(['name', 'job', 'salary', 'start', 'today', 'sender'])
 

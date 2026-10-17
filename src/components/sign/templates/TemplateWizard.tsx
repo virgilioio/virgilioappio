@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import {
   WIZARD_STEPS,
+  draftCoverage,
   effectiveDraft,
   offerCoverage,
   saveTemplate,
@@ -44,11 +45,14 @@ export function TemplateWizard({
   init,
   mode,
   onClose,
+  onSaved,
 }: {
   open: boolean
   init: TplDraft | null
   mode: WizardMode
   onClose: () => void
+  /** After a successful save (the Templates page brings the card in, or flashes it). */
+  onSaved?: (id: string, how: 'created' | 'saved') => void
 }) {
   const { organizationId, user } = useAuth()
   const { profile } = useUserProfile()
@@ -85,7 +89,9 @@ export function TemplateWizard({
   const e = effectiveDraft(d)
   const issues = templateIssues(d)
   const issue = step < 3 ? stepIssue(step, d) : null
-  const anyIssue = issues.length > 0
+  // Values the linked form doesn't have: the database refuses them, so Save waits (Review lists them).
+  const offForm = d.kind === 'candidate' && d.offer_form_id && formTags.data ? draftCoverage(e, formTags.data).blocking : []
+  const anyIssue = issues.length > 0 || offForm.length > 0
   // Steps after Template info open once it's valid.
   const reachable = (i: number) => i === 0 || !stepIssue(0, d)
   const go = (i: number) => {
@@ -114,6 +120,7 @@ export function TemplateWizard({
           : 'It shows in the ATS when someone sends an agreement.',
       })
       setDirty(false)
+      onSaved?.(d.id, isEdit ? 'saved' : 'created')
       onClose()
     } catch (e) {
       // The database's own checks (GSN12) say exactly what's wrong; anything else is a connection problem.

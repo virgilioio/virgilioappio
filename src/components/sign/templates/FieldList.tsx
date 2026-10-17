@@ -289,7 +289,7 @@ export function FieldList({
 }
 
 /** "X of Y mapped" with a 36px ring: amber while anything is missing, green when it's all there. */
-function CoverageCard({ placed, total, missing }: { placed: number; total: number; missing: number }) {
+export function CoverageCard({ placed, total, missing }: { placed: number; total: number; missing: number }) {
   const C = 2 * Math.PI * 15
   const p = total ? placed / total : 1
   const done = missing === 0

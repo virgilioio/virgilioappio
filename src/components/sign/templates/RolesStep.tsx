@@ -8,8 +8,8 @@ import { Switch } from '@/components/ui/switch'
 import { IconTip } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { ROLE_COLORS, signersWithoutSignature, uid, type FillFrom, type TplDraft, type TplRole } from '@/lib/sign/templates'
-import type { SignKind, SignRecipientRole } from '@/lib/sign/api'
+import { ROLE_COLORS, ROLE_SOURCES, roleSource, signersWithoutSignature, uid, type FillFrom, type TplDraft, type TplRole } from '@/lib/sign/templates'
+import type { SignRecipientRole } from '@/lib/sign/api'
 import { prefersReducedMotion } from '@/lib/motion'
 
 const ROLE_KIND: { value: SignRecipientRole; label: string }[] = [
@@ -17,28 +17,6 @@ const ROLE_KIND: { value: SignRecipientRole; label: string }[] = [
   { value: 'approver', label: 'Approver' },
   { value: 'cc', label: 'Gets a copy' },
 ]
-
-/** Where a role's person comes from, by template type (2026-10-17). */
-const SOURCES: Record<SignKind, { value: FillFrom; label: string }[]> = {
-  candidate: [
-    { value: 'record', label: 'From the offer · candidate' },
-    { value: 'hiring_manager', label: 'From the job · hiring manager' },
-    { value: 'fixed', label: 'Always the same person' },
-    { value: 'sender', label: 'Whoever sends it' },
-    { value: 'typed', label: 'Typed in when sending' },
-  ],
-  member: [
-    { value: 'record', label: 'From the record · team member' },
-    { value: 'fixed', label: 'Always the same person' },
-    { value: 'sender', label: 'Whoever sends it' },
-    { value: 'typed', label: 'Typed in when sending' },
-  ],
-  // Customer templates are sent from a deal in Gio Sales: the first signer is the deal's contact.
-  customer: [
-    { value: 'typed', label: 'From the deal, or typed in' },
-    { value: 'fixed', label: 'Always the same person' },
-  ],
-}
 
 /**
  * Signers (2026-10-17): one row per role, in signing order. Each row has its
@@ -105,13 +83,7 @@ export function RolesStep({
       fields: x.fields.filter((f) => f.rid !== r.id),
     }))
 
-  // Roles saved before sources existed: the first open signer is the record's person, the rest are typed.
-  const firstOpen = d.roles.find((r) => r.role === 'signer' && !r.fixed)?.id
-  const sourceOf = (r: TplRole): FillFrom => {
-    if (r.fixed) return 'fixed'
-    if (d.kind === 'customer') return 'typed'
-    return r.fill_from && r.fill_from !== 'fixed' ? r.fill_from : r.id === firstOpen ? 'record' : 'typed'
-  }
+  const sourceOf = (r: TplRole) => roleSource(d, r)
   const setSource = (r: TplRole, v: FillFrom) =>
     upd(
       r.id,
@@ -164,7 +136,7 @@ export function RolesStep({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SOURCES[d.kind].map((k) => (
+                    {ROLE_SOURCES[d.kind].map((k) => (
                       <SelectItem key={k.value} value={k.value}>
                         {k.label}
                       </SelectItem>
