@@ -13,7 +13,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { OrgContextProvider } from './contexts/OrgContext'
 import { QueryClient } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
-import { persister, shouldPersistQueryKey, CACHE_VERSION } from '@/lib/cache/persister'
+import { persister, shouldPersistQueryKey, isLargeForStorage, CACHE_VERSION } from '@/lib/cache/persister'
 import { useStartupDiagnostics } from './hooks/useStartupDiagnostics'
 import { Layout } from './components/layout/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -291,7 +291,8 @@ function App() {
             // plain objects and crash whatever calls .get / .has (2026-10-14).
             shouldDehydrateQuery: (query) =>
               query.state.status === 'success' && shouldPersistQueryKey(query.queryKey)
-              && !(query.state.data instanceof Map) && !(query.state.data instanceof Set),
+              && !(query.state.data instanceof Map) && !(query.state.data instanceof Set)
+              && !isLargeForStorage(query.state.data),
           },
         }}
       >

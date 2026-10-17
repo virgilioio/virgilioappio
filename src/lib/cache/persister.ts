@@ -70,7 +70,27 @@ export function clearPersistedCache(queryClient?: QueryClient) {
  * Sensitive query keys we never persist to localStorage.
  * Anything in this list still benefits from the in-memory cache.
  */
-const NEVER_PERSIST_PREFIXES = ['auth', 'secret', 'chrome-extension', 'session']
+const NEVER_PERSIST_PREFIXES = [
+  'auth', 'secret', 'chrome-extension', 'session',
+  // Whole candidate lists: too big for the browser's 5 MB storage, and
+  // personal data that shouldn't sit on the device (2026-10-17).
+  'independent-candidates', 'candidate-associations-map',
+]
+
+/**
+ * Lists too long to save. The whole cache is saved as one value of at most
+ * ~5 MB, written about once a second; one long list made every write fail and
+ * re-serialise megabytes on the main thread (2026-10-17).
+ */
+export function isLargeForStorage(data: unknown): boolean {
+  if (Array.isArray(data)) return data.length > 300
+  if (data && typeof data === 'object') {
+    for (const v of Object.values(data as Record<string, unknown>)) {
+      if (Array.isArray(v) && v.length > 300) return true
+    }
+  }
+  return false
+}
 
 export function shouldPersistQueryKey(queryKey: readonly unknown[]): boolean {
   const head = queryKey[0]

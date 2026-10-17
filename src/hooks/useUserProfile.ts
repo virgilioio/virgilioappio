@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -18,101 +18,97 @@ export interface UserProfile {
   updated_at: string
 }
 
-export function useUserProfile() {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { user, userId } = useAuth()
+/**
+ * The signed-in person's profile. One shared query (2026-10-17): the header,
+ * sidebar, account menu and pages all read it, and before each fetched its own
+ * copy on every page load.
+ */
+async function fetchProfile(user: NonNullable<ReturnType<typeof useAuth>['user']>, retryCount = 0): Promise<UserProfile> {
+  try {
+    const { data, error: fetchError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
 
-  const getProfile = async (retryCount = 0) => {
-    if (!user) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Fetching profile for user:', user.id, retryCount > 0 ? `(retry ${retryCount}/3)` : '')
-      
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-
-      if (fetchError) {
-        // Retry on PGRST116 (RLS auth failure) up to 3 times
-        if (fetchError.code === 'PGRST116' && retryCount < 3) {
-          const backoffMs = 500 * (retryCount + 1) // 500ms, 1000ms, 1500ms
-          console.log(`[Profile] 406/PGRST116 error, retrying after ${backoffMs}ms...`)
-          await new Promise(resolve => setTimeout(resolve, backoffMs))
-          return getProfile(retryCount + 1)
-        }
-        
-        console.error('Error fetching profile:', fetchError)
-        throw fetchError
+    if (fetchError) {
+      // Retry on PGRST116 (RLS auth failure) up to 3 times
+      if (fetchError.code === 'PGRST116' && retryCount < 3) {
+        const backoffMs = 500 * (retryCount + 1) // 500ms, 1000ms, 1500ms
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        return fetchProfile(user, retryCount + 1)
       }
-
-      console.log('Fetched profile:', data)
-      
-      // Auto-populate timezone from browser if missing (Calendly-style)
-      if (!data.timezone) {
-        try {
-          const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
-          if (browserTz) {
-            console.log('[Profile] Auto-populating timezone:', browserTz)
-            await supabase
-              .from('profiles')
-              .update({ timezone: browserTz, updated_at: new Date().toISOString() })
-              .eq('user_id', user.id)
-            data.timezone = browserTz
-          }
-        } catch (tzErr) {
-          console.warn('[Profile] Failed to auto-populate timezone:', tzErr)
-        }
-      }
-      
-      // Enhanced profile data with Google OAuth fallbacks
-      const profileData: UserProfile = {
-        ...data,
-        id: data.user_id,
-        // Fallback to Google OAuth data if profile fields are empty
-        first_name: data.first_name || user.user_metadata?.first_name || 
-                   (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : data.first_name),
-        last_name: data.last_name || user.user_metadata?.last_name || 
-                  (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ').slice(1).join(' ') : data.last_name),
-        avatar_url: data.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || data.avatar_url,
-        email: data.email || user.email || data.email
-      }
-      setProfile(profileData)
-    } catch (err) {
-      // If all retries exhausted, fall back to auth metadata
-      if (retryCount >= 3) {
-        console.warn('[Profile] All retries failed, using auth metadata fallback')
-        const fallbackProfile: UserProfile = {
-          id: user.id,
-          user_id: user.id,
-          first_name: user.user_metadata?.first_name || 
-                     (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : ''),
-          last_name: user.user_metadata?.last_name || 
-                    (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ').slice(1).join(' ') : ''),
-          email: user.email || '',
-          avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
-          created_at: user.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          timezone: user.user_metadata?.timezone,
-          organization_id: user.user_metadata?.organization_id
-        }
-        setProfile(fallbackProfile)
-        setError('Using cached profile data')
-        return
-      }
-      
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile'
-      console.error('Profile fetch error:', err)
-      setError(errorMessage)
-    } finally {
-      setIsLoading(false)
+      throw fetchError
     }
+
+    // Auto-populate timezone from browser if missing (Calendly-style)
+    if (!data.timezone) {
+      try {
+        const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (browserTz) {
+          await supabase
+            .from('profiles')
+            .update({ timezone: browserTz, updated_at: new Date().toISOString() })
+            .eq('user_id', user.id)
+          data.timezone = browserTz
+        }
+      } catch (tzErr) {
+        console.warn('[Profile] Failed to auto-populate timezone:', tzErr)
+      }
+    }
+
+    // Enhanced profile data with Google OAuth fallbacks
+    return {
+      ...data,
+      id: data.user_id,
+      first_name: data.first_name || user.user_metadata?.first_name ||
+                 (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : data.first_name),
+      last_name: data.last_name || user.user_metadata?.last_name ||
+                (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ').slice(1).join(' ') : data.last_name),
+      avatar_url: data.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || data.avatar_url,
+      email: data.email || user.email || data.email
+    }
+  } catch (err) {
+    // If all retries are used up, fall back to auth metadata
+    if (retryCount >= 3) {
+      console.warn('[Profile] All retries failed, using auth metadata fallback')
+      return {
+        id: user.id,
+        user_id: user.id,
+        first_name: user.user_metadata?.first_name ||
+                   (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : ''),
+        last_name: user.user_metadata?.last_name ||
+                  (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ').slice(1).join(' ') : ''),
+        email: user.email || '',
+        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+        created_at: user.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        timezone: user.user_metadata?.timezone,
+        organization_id: user.user_metadata?.organization_id
+      }
+    }
+    console.error('Profile fetch error:', err)
+    throw err
+  }
+}
+
+export function useUserProfile() {
+  const { user, userId } = useAuth()
+  const queryClient = useQueryClient()
+  const queryKey = ['user-profile', userId] as const
+  const query = useQuery({
+    queryKey,
+    queryFn: () => fetchProfile(user!),
+    enabled: !!user && !!userId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
+  const profile = query.data ?? null
+  const isLoading = query.isLoading && !!user
+  const error = query.error ? (query.error instanceof Error ? query.error.message : 'Failed to fetch profile') : null
+  const setProfile = (next: UserProfile) => queryClient.setQueryData(queryKey, next)
+  const getProfile = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['user-profile', userId] })
   }
 
   const updateProfile = async (updates: Partial<UserProfile>): Promise<UserProfile> => {
@@ -185,17 +181,6 @@ export function useUserProfile() {
       throw new Error(errorMessage)
     }
   }
-
-  useEffect(() => {
-    if (userId) {
-      // Debounce profile fetch to avoid rapid re-fetches during auth state changes
-      const timer = setTimeout(() => {
-        getProfile()
-      }, 300) // 300ms debounce
-
-      return () => clearTimeout(timer)
-    }
-  }, [userId])
 
   return {
     profile,

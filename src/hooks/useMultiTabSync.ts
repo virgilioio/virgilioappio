@@ -115,3 +115,65 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
     tabId: tabId.current
   }
 }
+
+
+/**
+ * The same cross-tab sync without React, started once per tab by the shared
+ * auth bootstrap (2026-10-17). Returns a function that stops it.
+ */
+export function startMultiTabSync(onSessionUpdate: (session: Session | null) => void): () => void {
+  const tabId = Math.random().toString(36).substring(7)
+  let lastMessageTime = 0
+  let lastTokenValue: string | null = null
+  let channel: BroadcastChannel | null = null
+  try {
+    channel = new BroadcastChannel('supabase-auth')
+  } catch (error) {
+    log.warn('BroadcastChannel not supported:', error)
+  }
+
+  const broadcast = (session: Session | null, type: AuthSyncMessage['type']) => {
+    if (!channel) return
+    try {
+      channel.postMessage({ type, session, timestamp: Date.now(), tabId } satisfies AuthSyncMessage)
+      log.debug('📡 Broadcast to other tabs:', type)
+    } catch (error) {
+      log.error('Failed to broadcast session update:', error)
+    }
+  }
+
+  const handleMessage = (event: MessageEvent<AuthSyncMessage>) => {
+    const message = event.data
+    if (message.tabId === tabId) return
+    if (Date.now() - lastMessageTime < 100) return
+    lastMessageTime = Date.now()
+    log.debug('📥 Received from other tab:', message.type)
+    if (message.type === 'signout') onSessionUpdate(null)
+    else if (message.session) onSessionUpdate(message.session)
+  }
+  channel?.addEventListener('message', handleMessage)
+
+  const handleStorageChange = (e: StorageEvent) => {
+    if (!e.key?.includes('supabase.auth.token')) return
+    if (e.newValue === lastTokenValue) return
+    lastTokenValue = e.newValue
+    log.debug('💾 Storage change detected from another tab')
+    if (Date.now() - lastMessageTime < 500) return
+    lastMessageTime = Date.now()
+    setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => onSessionUpdate(session))
+    }, 0)
+  }
+  window.addEventListener('storage', handleStorageChange)
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') broadcast(null, 'signout')
+    else if (event === 'TOKEN_REFRESHED') broadcast(session, 'session_refresh')
+  })
+
+  return () => {
+    subscription.unsubscribe()
+    channel?.close()
+    window.removeEventListener('storage', handleStorageChange)
+  }
+}

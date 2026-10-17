@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
-import { useMultiTabSync } from './useMultiTabSync';
+import { startMultiTabSync } from './useMultiTabSync';
 import { resolveOrgContextWithRetry } from '@/lib/authUtils';
 import { readOrgCache, writeOrgCache, clearOrgCache } from '@/lib/orgContextCache';
 import { log } from '@/lib/logger';
@@ -27,54 +27,62 @@ interface AuthBootstrapReturn extends AuthBootstrapState {
   forceRefresh: () => Promise<void>;
 }
 
-export function useAuthBootstrap(): AuthBootstrapReturn {
-  const [state, setState] = useState<AuthBootstrapState>({
-    ready: false,
-    session: null,
-    orgContext: null,
-  });
+/*
+ * One bootstrap per tab (2026-10-17). AuthProvider, OrgContextProvider and
+ * AppBootstrap all read it; before, each ran its own copy, so every page load
+ * reconciled invitations and resolved the org context three times and kept
+ * three cross-tab channels that woke each other up.
+ */
+let state: AuthBootstrapState = { ready: false, session: null, orgContext: null };
+const listeners = new Set<() => void>();
+let abortController: AbortController | null = null;
+let lastUserId: string | null = null;
+let isBootstrapping = false;
+let mounts = 0;
+let stop: (() => void) | null = null;
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const lastUserIdRef = useRef<string | null>(null);
-  const isBootstrappingRef = useRef<boolean>(false);
+function setState(next: AuthBootstrapState) {
+  state = next;
+  listeners.forEach((l) => l());
+}
 
-  // Handle session updates from other tabs
-  const handleSessionUpdate = (session: Session | null) => {
-    if (!session) {
-      clearOrgCache();
-      setState({ ready: true, session: null, orgContext: null });
-      return;
-    }
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
-    // Use debounced bootstrap for tab sync
-    debouncedBootstrap(session);
-  };
+// Handle session updates from other tabs
+function handleSessionUpdate(session: Session | null) {
+  if (!session) {
+    clearOrgCache();
+    setState({ ready: true, session: null, orgContext: null });
+    return;
+  }
+  debouncedBootstrap(session);
+}
 
-  // Enable multi-tab synchronization
-  useMultiTabSync(handleSessionUpdate);
-
-  /**
-   * Force refresh org context (bypasses cache)
-   */
-  const forceRefresh = async (): Promise<void> => {
+/**
+ * Force refresh org context (bypasses cache)
+ */
+async function forceRefresh(): Promise<void> {
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     if (currentSession?.user) {
       clearOrgCache();
       await resolveOrgContext(currentSession);
     }
-  };
+}
 
-  /**
-   * Resolve org context with cache-first approach
-   */
-  const resolveOrgContext = async (session: Session): Promise<void> => {
+/**
+ * Resolve org context with cache-first approach
+ */
+async function resolveOrgContext(session: Session): Promise<void> {
     // Prevent concurrent bootstrap attempts
-    if (isBootstrappingRef.current) {
+    if (isBootstrapping) {
       log.info('⏭️ Bootstrap already in progress, skipping...');
       return;
     }
 
-    isBootstrappingRef.current = true;
+    isBootstrapping = true;
     const userId = session.user.id;
     
     // 1. Try cache first for instant UI
@@ -104,10 +112,10 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
 
     // 2. Verify/fetch in background
     // Abort any previous resolution
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+    if (abortController) {
+      abortController.abort();
     }
-    abortControllerRef.current = new AbortController();
+    abortController = new AbortController();
 
     try {
       // 🎯 Enterprise invitation reconciliation: Check for pending invitations first
@@ -131,7 +139,7 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
 
       const startTime = Date.now();
       const resolved = await resolveOrgContextWithRetry(supabase, {
-        signal: abortControllerRef.current.signal,
+        signal: abortController.signal,
       });
 
       const duration = Date.now() - startTime;
@@ -200,19 +208,20 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
         setState({ ready: true, session, orgContext: null });
       }
     } finally {
-      isBootstrappingRef.current = false;
+      isBootstrapping = false;
     }
   };
 
-  /**
-   * Debounced bootstrap to prevent rapid re-runs
-   */
-  const debouncedBootstrap = debounce((session: Session) => {
-    resolveOrgContext(session);
-  }, 1000); // Increased from 150ms to 1000ms to batch tab switches
+/**
+ * Debounced bootstrap to prevent rapid re-runs
+ */
+const debouncedBootstrap = debounce((session: Session) => {
+  resolveOrgContext(session);
+}, 1000); // Increased from 150ms to 1000ms to batch tab switches
 
-  useEffect(() => {
+function start(): () => void {
     let mounted = true;
+    const stopTabSync = startMultiTabSync(handleSessionUpdate);
 
     async function bootstrap() {
       // Get initial session
@@ -227,7 +236,7 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
       }
 
       log.info('🔐 Bootstrap start (initial mount)');
-      lastUserIdRef.current = session.user.id;
+      lastUserId = session.user.id;
       await resolveOrgContext(session);
     }
 
@@ -246,14 +255,14 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
       }
 
       if (event === 'SIGNED_OUT') {
-        lastUserIdRef.current = null;
+        lastUserId = null;
         clearOrgCache();
         setState({ ready: true, session: null, orgContext: null });
         return;
       }
 
       if (!session) {
-        lastUserIdRef.current = null;
+        lastUserId = null;
         clearOrgCache();
         setState({ ready: true, session: null, orgContext: null });
         return;
@@ -261,20 +270,20 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
 
       // Filter out redundant SIGNED_IN events from tab visibility
       const currentUserId = session.user.id;
-      const userChanged = lastUserIdRef.current !== currentUserId;
+      const userChanged = lastUserId !== currentUserId;
       
       if (event === 'SIGNED_IN') {
         // Only bootstrap on SIGNED_IN if this is a different user
         if (userChanged) {
           log.info('🔐 New user signed in, bootstrapping...');
-          lastUserIdRef.current = currentUserId;
+          lastUserId = currentUserId;
           debouncedBootstrap(session);
         } else {
           log.info('⏭️ Ignoring redundant SIGNED_IN event for same user');
         }
       } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         // Always update on token refresh or user updates
-        lastUserIdRef.current = currentUserId;
+        lastUserId = currentUserId;
         debouncedBootstrap(session);
       }
     });
@@ -282,14 +291,27 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      stopTabSync();
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+}
+
+export function useAuthBootstrap(): AuthBootstrapReturn {
+  const snapshot = useSyncExternalStore(subscribe, () => state);
+
+  useEffect(() => {
+    mounts += 1;
+    if (!stop) stop = start();
+    return () => {
+      mounts -= 1;
+      if (mounts === 0 && stop) {
+        stop();
+        stop = null;
       }
     };
   }, []);
 
-  return {
-    ...state,
-    forceRefresh,
-  };
+  return { ...snapshot, forceRefresh };
 }
