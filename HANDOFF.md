@@ -75,11 +75,38 @@ Hard limits:
 - Allan's choice: build with the existing ATS design; he'll say if he wants changes.
 - Fixed 2026-10-17: renaming an offer form field's label no longer renames its stored name (`OfferFormFieldsManager.handleUpdateField`).
 
-**Send for signature sheet, full redesign (Allan, 2026-10-17; Claude Design prompt in chat; plan shown, waiting for go)**
-- Part 1 done on the branch (not on main yet): `TemplateSelect` (`src/components/sign/TemplateSelect.tsx`), helpers `sourceLabel`, `sourceIcon`, `templatePages`, `subline`, `coverage` in `src/lib/sign/templates.ts`, `.tsel-*` CSS, Esc via `data-escape-local` (honoured by `FormSheet`). Templates linked to another form are pickable and show "Other offer form"; the database refuses sending them (GSN16), so Send stays off.
-- Parts still to build, each shown as a diff: 2 sheet shell + From the offer (coverage ring, notes, field list); 3 Who signs, locked (needs a role source on template roles: from the offer, the job's hiring manager, fixed; database change); 4 Email defaults; 5 Preview sheet stacked on top; 6 Edit template round trip (Sign › Templates, toast "Back to {name}"); 7 value formats per field (money/date/words; database + editor); 8 Void & resend (needs `offer_changed` in `sign_events_kind_check`, a desktop-applied migration). Plus "not needed" offer fields (`skipped`, database change).
+**Send for signature sheet, full redesign (Allan, 2026-10-17; Claude Design prompt in chat)**
+- Built on `claude/vibrant-galileo-wjbdxd`, not on main. It needs the two unapplied migrations below first, because the app now reads their columns.
+  - Part 1: `TemplateSelect`.
+  - Part 2: shell + From the offer (`src/components/sign/send/`).
+  - Part 3: Who signs, locked (`WhoSigns`, `people.ts`), the Roles step's "Comes from" choice and "Not needed" offer fields (`OfferCoverage`).
+  - Part 4: the Email section is always open, and new candidate templates get the design's default message with the email-only tags `{{first_name}}`, `{{company}}` and `{{sender_first}}`.
+  - Part 5: Preview as a stacked sheet (`send/PreviewSheet.tsx`). The renderer has a preview-only `highlight` option: values underlined in lilac, empty ones as [Label]. **`sign-written-preview` needs a redeploy** for the underline.
+- Waiting for "Apply!":
+  - `20261017200000_sign_send_people`: role sources, not-needed fields, email-only values (test 20, 16/16 dry run).
+  - `20261017200100_offer_approval_notices`: approver emails, bell and reminders (test 21, 16/16). Also deploy `offer-approval-notify` by hand.
+- Folded into the template workflow below: part 6 (Edit template round trip, "Back to {name}") and part 7 (value formats per field). Part 8, Void & resend, is still separate and applied from the desktop.
 - Mappings (existing primitives win): Sheet/stacking/backdrop/Esc = ATS `SheetContent` (already 360/240ms, step-back, 12% dim); `Pill` = `Badge`; `Icon` = Lucide; buttons = ATS `Button` (sizes, press, `loading` keeps width); focus = the global 2px purple outline, not the design's noir ring; tertiary text stays `#6B7080` (contrast), not `#8B8F9E`; the collapsible = `CollapsibleContent` (`gio-accordion-content`).
 - Preview: written documents shown as the real PDF from `sign-written-preview` (it's what's sent), with a preview-only option to underline values in lilac and print empty values as [Label]; uploaded pages as today's `FilledPreview`. The design's HTML "paper" (Poppins/Inter) would not match the Helvetica PDF; matching it means embedding Inter/Poppins in the PDF (fontkit), which also fixes accents.
+
+**New / Edit template workflow (Allan, 2026-10-17; full prompt in chat). Step 0 plan shown, waiting for approval.**
+- Four steps: Template info, Document (full width), Signers, Review & save. Today's wizard has five: Info, Roles, Fields, Message, Review.
+- What it builds on:
+  - `WizardSheet`;
+  - `InfoStep`, `RolesStep`, `FieldsEditor` (uploaded pages), `WrittenEditor` + `written/nodes.tsx` (Lexical), `ReviewStep` and `TemplateCard`;
+  - `coverage()` in `src/lib/sign/templates.ts`;
+  - `sign_save_template`.
+- Build order, one part each, with a diff after every part:
+  1. Migrations and tests.
+  2. Shell.
+  3. Step 1.
+  4. Signers.
+  5. Field list, right panel and coverage.
+  6. Write in Gio.
+  7. Uploaded documents.
+  8. Review & save, and saving.
+  9. Templates page.
+  10. Motion and accessibility pass.
 
 **Offer approvals: tell the approvers (Allan, 2026-10-17)**
 - When an offer is sent for approval, each approver whose turn it is gets an email and a bell notification ("needs your approval"), and the request shows on the Dashboard's Your queue card under Decisions.
