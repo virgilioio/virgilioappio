@@ -44,6 +44,11 @@ export function FormSheet({
           // With header actions, focus the panel itself on open so the first
           // control's tooltip doesn't pop up over the title. Tab still starts inside.
           onOpenAutoFocus={headerActions ? (ev) => { ev.preventDefault(); (ev.currentTarget as HTMLElement | null)?.focus() } : undefined}
+          // A control marked data-escape-local (an open dropdown) uses Esc for itself first.
+          onEscapeKeyDown={(ev) => {
+            const local = document.activeElement instanceof Element && document.activeElement.closest('[data-escape-local]')
+            if (local) ev.preventDefault()
+          }}
           className="p-0 gap-0 border-0 sm:max-w-none flex flex-col [&>button:last-child]:hidden"
           style={{
             width,

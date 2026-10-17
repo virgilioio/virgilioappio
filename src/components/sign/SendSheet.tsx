@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, ChevronDown, Eye, FileText, Info, Lock, Search, Send, TriangleAlert } from 'lucide-react'
+import { CalendarClock, ChevronDown, Eye, Info, Lock, Send, SquarePen, TriangleAlert } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -31,13 +31,9 @@ import {
   type TemplateFit,
 } from '@/lib/sign/send'
 import { FilledPreview } from './FilledPreview'
+import { TemplateSelect } from './TemplateSelect'
+import { EditTemplateSheet } from './templates/EditTemplateSheet'
 import { Field, Seg, TagText } from './templates/parts'
-
-const FIT_TITLE: Record<TemplateFit, string> = {
-  linked: 'For this offer form',
-  any: 'Works with any offer',
-  other_form: 'For other offer forms',
-}
 
 const tomorrowAt9 = () => {
   const d = new Date(Date.now() + 86_400_000)
@@ -93,19 +89,17 @@ export function SendSheet({
   // The offer gate, before a template is even picked (the preview carries it too).
   const gate = useOfferGate(open && isOffer ? source.id : null)
   const blocked = isOffer && gate.data && !gate.data.ok ? offerSendRefusal(gate.data.reason) : null
-  const [query, setQuery] = useState('')
+  const [editing, setEditing] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
 
   // Templates in three groups: linked to this offer's form, any offer, other forms (not sendable).
   // From a candidate (another agreement), only unlinked templates show.
   const groups = useMemo(() => {
     const all = (templates.data ?? []).filter((t) => (isOffer ? true : !t.offer_form_id))
-    const q = query.trim().toLowerCase()
-    const list = q ? all.filter((t) => t.name.toLowerCase().includes(q) || (t.description ?? '').toLowerCase().includes(q)) : all
     const by: Record<TemplateFit, SendTemplate[]> = { linked: [], any: [], other_form: [] }
-    for (const t of list) by[templateFit(t, source)].push(t)
+    for (const t of all) by[templateFit(t, source)].push(t)
     return by
-  }, [templates.data, isOffer, query, source])
+  }, [templates.data, isOffer, source])
   const sendable = useMemo(() => [...groups.linked, ...groups.any], [groups])
 
   useEffect(() => {
@@ -126,7 +120,7 @@ export function SendSheet({
   }, [open, groups.linked, sendable, d.templateId])
   useEffect(() => {
     if (!open) {
-      setQuery('')
+      setEditing(null)
       setShowPreview(false)
     }
   }, [open])
@@ -273,7 +267,23 @@ export function SendSheet({
       )}
 
       {/* Template */}
-      <FormSection title="Template" subtitle="The documents, fields and who signs come from the template.">
+      <FormSection
+        title="Template"
+        subtitle={
+          isOffer
+            ? 'Templates linked to this offer’s form are listed first.'
+            : kind === 'member'
+            ? 'The documents, fields and who signs come from the template.'
+            : 'Agreements that work with any candidate. They don’t need offer approval.'
+        }
+        action={
+          isAdmin && d.templateId ? (
+            <Button variant="ghost" size="sm" icon={SquarePen} onClick={() => setEditing(d.templateId)}>
+              Edit template
+            </Button>
+          ) : undefined
+        }
+      >
         {templates.isLoading ? (
           <div className="flex flex-col gap-2">
             <Skeleton className="h-14 rounded-xl" />
@@ -286,7 +296,7 @@ export function SendSheet({
               Retry
             </button>
           </p>
-        ) : !sendable.length && !groups.other_form.length && !query ? (
+        ) : !sendable.length && !groups.other_form.length ? (
           <p className="font-inter text-[12.5px] leading-relaxed text-text-secondary">
             There are no {kind} templates yet.{' '}
             {isAdmin ? (
@@ -298,72 +308,14 @@ export function SendSheet({
             )}
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {(templates.data?.length ?? 0) > 6 && (
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" strokeWidth={2} aria-hidden />
-                <Input aria-label="Search templates" placeholder="Search templates" className="h-9 pl-8" value={query} onChange={(e) => setQuery(e.target.value)} />
-              </div>
-            )}
-            {!sendable.length && !groups.other_form.length && (
-              <p className="font-inter text-[12.5px] text-text-tertiary">No templates match “{query}”.</p>
-            )}
-            <div role="radiogroup" aria-label="Template" className="flex flex-col gap-3">
-              {(['linked', 'any', 'other_form'] as TemplateFit[]).map((fit) => {
-                const list = groups[fit]
-                if (!list.length) return null
-                const off = fit === 'other_form'
-                return (
-                  <div key={fit} className="flex flex-col gap-1.5">
-                    {isOffer && (
-                      <h5 className="font-inter text-[11px] font-semibold uppercase tracking-[0.06em] text-text-tertiary">
-                        {FIT_TITLE[fit]}
-                        {off && <span className="ml-1.5 normal-case tracking-normal font-normal">· can’t be sent from this offer</span>}
-                      </h5>
-                    )}
-                    {list.map((t) => {
-                      const on = t.id === d.templateId
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={on}
-                          disabled={off}
-                          onClick={() => set((x) => ({ ...x, templateId: t.id, subject: null, body: null }))}
-                          className={cn(
-                            'gio-pressable flex items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors duration-hover',
-                            on ? 'border-[#0d0d09] bg-white' : 'border-[#E7E8EE] bg-white hover:bg-[#FAFAF7]',
-                            off && 'cursor-not-allowed opacity-60 hover:bg-white',
-                          )}
-                        >
-                          <span
-                            aria-hidden
-                            className={cn(
-                              'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
-                              on ? 'border-[#0d0d09]' : 'border-[#C9C8C1]',
-                            )}
-                          >
-                            {on && <span className="gio-radio-dot h-2 w-2 rounded-full bg-[#0d0d09]" />}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-inter text-[13px] font-medium text-text-primary">{t.name}</span>
-                            <span className="block truncate font-inter text-[11.5px] tabular-nums text-text-tertiary">
-                              {t.docs} doc{t.docs === 1 ? '' : 's'}
-                              {t.pages > 0 && ` · ${t.pages} page${t.pages === 1 ? '' : 's'}`}
-                              {t.written > 0 && ` · ${t.written} written`} · {t.roles.join(' → ')}
-                            </span>
-                            {t.description && <span className="mt-0.5 block font-inter text-[11.5px] text-text-secondary">{t.description}</span>}
-                          </span>
-                          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={2} aria-hidden />
-                        </button>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          <TemplateSelect
+            templates={templates.data ?? []}
+            offerFormId={isOffer ? source.formId : null}
+            mode={isOffer ? 'offer' : 'other'}
+            kind={kind}
+            value={d.templateId}
+            onChange={(id) => id !== d.templateId && set((x) => ({ ...x, templateId: id, subject: null, body: null }))}
+          />
         )}
       </FormSection>
 
@@ -574,6 +526,7 @@ export function SendSheet({
           )}
         </>
       )}
+      {editing && <EditTemplateSheet templateId={editing} onClose={() => setEditing(null)} />}
     </FormSheet>
   )
 }

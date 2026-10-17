@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import type { EnvelopeRow, SignKind, SignRecipientRole } from './api'
+import { writtenKeys, writtenPageCount, type LexicalJson } from './written'
 
 /**
  * Sending is live (build step 8: the minute job sends what's due and emails
@@ -95,6 +96,17 @@ export interface SendTemplate {
   roles: string[]
   /** The offer form this template fills in; null works with any candidate. */
   offer_form_id: string | null
+  has_written: boolean
+  has_uploads: boolean
+  uploaded_docs: { page_count: number }[]
+  /** Pages the written documents come to (laid out like the sent PDF, tags as labels). */
+  written_pages: number
+  /** Roles that sign or approve, in order (copies left out). */
+  signing: string[]
+  /** Every value the template fills in: placed fields, written tags and section conditions. */
+  data_keys: string[]
+  /** Offer form fields the template leaves out on purpose ("not needed"). */
+  not_needed: string[]
 }
 
 /** How a template relates to the offer being sent (the sheet groups by this). */
@@ -119,33 +131,52 @@ export function useSendTemplates(source: SendSource | null) {
         .from('sign_templates')
         .select(`
           id, name, description, kind, subject, body, offer_form_id,
-          docs:sign_documents!sign_documents_template_id_fkey(page_count, removed_at),
-          written:sign_written_docs!sign_written_docs_template_id_fkey(removed_at),
-          roles:sign_recipients!sign_recipients_template_id_fkey(label, position, removed_at)
+          docs:sign_documents!sign_documents_template_id_fkey(page_count, position, removed_at),
+          written:sign_written_docs!sign_written_docs_template_id_fkey(content, removed_at),
+          roles:sign_recipients!sign_recipients_template_id_fkey(label, role, position, removed_at),
+          fields:sign_fields!sign_fields_template_id_fkey(type, data_key, removed_at)
         `)
         .eq('app', 'ats')
         .eq('kind', kind!)
         .is('archived_at', null)
         .order('name')
       if (error) throw error
-      type Raw = Omit<SendTemplate, 'docs' | 'pages' | 'roles' | 'written'> & {
-        docs: { page_count: number; removed_at: string | null }[]
-        written: { removed_at: string | null }[] | null
-        roles: { label: string | null; position: number; removed_at: string | null }[]
+      type Raw = Pick<SendTemplate, 'id' | 'name' | 'description' | 'kind' | 'subject' | 'body' | 'offer_form_id'> & {
+        docs: { page_count: number; position: number; removed_at: string | null }[]
+        written: { content: LexicalJson; removed_at: string | null }[] | null
+        roles: { label: string | null; role: string; position: number; removed_at: string | null }[]
+        fields: { type: string; data_key: string | null; removed_at: string | null }[] | null
       }
       return ((data ?? []) as unknown as Raw[]).map((t) => {
-        const docs = (t.docs ?? []).filter((d) => !d.removed_at)
-        const { written, ...rest } = t
-        const writtenCount = (written ?? []).filter((w) => !w.removed_at).length
+        const docs = (t.docs ?? []).filter((d) => !d.removed_at).sort((a, b) => a.position - b.position)
+        const written = (t.written ?? []).filter((w) => !w.removed_at)
+        const roles = (t.roles ?? []).filter((r) => !r.removed_at).sort((a, b) => a.position - b.position)
+        const keys = new Set<string>()
+        for (const f of t.fields ?? []) if (!f.removed_at && f.type === 'data' && f.data_key) keys.add(f.data_key)
+        for (const w of written) {
+          const k = writtenKeys(w.content)
+          k.tags.forEach((x) => keys.add(x))
+          k.conditions.forEach((x) => keys.add(x))
+        }
         return {
-          ...rest,
-          docs: docs.length + writtenCount,
-          written: writtenCount,
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          kind: t.kind,
+          subject: t.subject,
+          body: t.body,
+          offer_form_id: t.offer_form_id,
+          docs: docs.length + written.length,
+          written: written.length,
           pages: docs.reduce((a, d) => a + d.page_count, 0),
-          roles: (t.roles ?? [])
-            .filter((r) => !r.removed_at)
-            .sort((a, b) => a.position - b.position)
-            .map((r) => r.label ?? ''),
+          roles: roles.map((r) => r.label ?? ''),
+          has_written: written.length > 0,
+          has_uploads: docs.length > 0,
+          uploaded_docs: docs.map((d) => ({ page_count: d.page_count })),
+          written_pages: written.reduce((a, w) => a + writtenPageCount(w.content), 0),
+          signing: roles.filter((r) => r.role !== 'cc').map((r) => r.label ?? ''),
+          data_keys: [...keys],
+          not_needed: [],
         }
       })
     },

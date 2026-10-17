@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { FilePenLine, FileUp, Files, type LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import type { SignKind, SignRecipientRole } from './api'
 import { docItems, normalizePositions, remapRoles, signBlocks, writtenKeys, type TplWritten } from './written'
@@ -204,6 +205,68 @@ export function offerCoverage(fields: Pick<TplField, 'type' | 'data_key'>[], tag
     placed: tags.filter((t) => placed.has(t.key)),
     missing: tags.filter((t) => !placed.has(t.key)),
   }
+}
+
+/* ---- Picking a template to send (TemplateSelect, 2026-10-17) ------------ */
+
+/** What the template picker needs to know about a template (useSendTemplates fills it). */
+export interface PickTemplate {
+  id: string
+  name: string
+  offer_form_id: string | null
+  has_written: boolean
+  has_uploads: boolean
+  uploaded_docs: { page_count: number }[]
+  written_pages: number
+  /** Roles that sign or approve, in order. */
+  signing: string[]
+  /** Every value the template fills in, placed or written. */
+  data_keys: string[]
+  /** Offer form fields marked "not needed" for this template. */
+  not_needed: string[]
+}
+
+/** Values every candidate template can use without an offer form field. */
+export const ALWAYS_AVAILABLE = new Set(['name', 'job', 'salary', 'start', 'today', 'sender'])
+
+export function sourceLabel(t: PickTemplate) {
+  if (t.has_written && t.has_uploads) return `Written in Gio + ${t.uploaded_docs.length} uploaded`
+  return t.has_written ? 'Written in Gio' : 'Uploaded'
+}
+
+export function sourceIcon(t: PickTemplate): LucideIcon {
+  if (t.has_written && t.has_uploads) return Files
+  return t.has_written ? FilePenLine : FileUp
+}
+
+/** Written pages (estimated) plus every uploaded document's pages. */
+export function templatePages(t: PickTemplate) {
+  return t.written_pages + t.uploaded_docs.reduce((a, d) => a + d.page_count, 0)
+}
+
+/** "Written in Gio + 1 uploaded · 4 pages · Candidate → Hiring manager". */
+export function subline(t: PickTemplate) {
+  const n = templatePages(t)
+  return [sourceLabel(t), `${n} page${n === 1 ? '' : 's'}`, t.signing.filter(Boolean).join(' → ')].filter(Boolean).join(' · ')
+}
+
+/**
+ * How a template covers the offer's form. mapped: form fields it uses;
+ * missing: form fields it doesn't use and that aren't marked "not needed";
+ * skipped: the "not needed" ones; blocking: values it uses that the offer's
+ * form doesn't have (always-available values don't count); total: the
+ * form's fields minus the skipped ones.
+ */
+export function coverage(t: PickTemplate, formFields: OfferFormTag[] | null | undefined) {
+  const form = formFields ?? []
+  const used = new Set(t.data_keys)
+  const skip = new Set(t.not_needed)
+  const inForm = new Set(form.map((f) => f.key))
+  const skipped = form.filter((f) => skip.has(f.key) && !used.has(f.key))
+  const mapped = form.filter((f) => used.has(f.key))
+  const missing = form.filter((f) => !used.has(f.key) && !skip.has(f.key))
+  const blocking = t.data_keys.filter((k) => !inForm.has(k) && !ALWAYS_AVAILABLE.has(k))
+  return { mapped, missing, skipped, blocking, total: form.length - skipped.length }
 }
 
 /** "Bonus, Equity and Notice period" / "Bonus, Equity and 3 more". */

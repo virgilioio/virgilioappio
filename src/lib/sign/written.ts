@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase, supabaseAnonKey, supabaseUrl } from '@/lib/supabaseClient'
 import { loadTemplatePdf } from './pdf'
-import { writtenKeys } from '../../../supabase/functions/_shared/sign/writtenLayout.ts'
+import { layoutWritten, writtenKeys } from '../../../supabase/functions/_shared/sign/writtenLayout.ts'
+import { measurePt } from './textLayout'
 import type { TplDoc, TplDraft } from './templates'
 
 /**
@@ -92,6 +93,19 @@ export function hasText(content: LexicalJson | null | undefined) {
     if ((n.type === 'text' && String(n.text ?? '').trim()) || ['placeholder', 'gio-sign', 'horizontalrule'].includes(n.type)) found = true
   })
   return found
+}
+
+/**
+ * How many pages a written document comes to, laid out like the sent PDF
+ * (tags as their labels, every section shown). An estimate: real values can
+ * be longer or shorter, and sections may not print.
+ */
+export function writtenPageCount(content: LexicalJson): number {
+  try {
+    return layoutWritten(content, { values: {}, tags: {}, measure: (text, _style, size) => measurePt(text, size) }).pages.length
+  } catch {
+    return 1
+  }
 }
 
 /* ------------------------------------------------------------------------- */
