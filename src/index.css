@@ -2020,7 +2020,11 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 /* Fields are see-through (role colour at about a third), so the document shows under them; the label keeps a soft white halo to stay readable over text. */
 .gio-sign-field { text-shadow: 0 0 2px #fff, 0 0 2px #fff; }
 .gio-sign-field[data-selected] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0d0d09; z-index: 3; }
-.gio-sign-field[data-dragging] { box-shadow: var(--shadow-lift); z-index: 5; }
+/* A placed field lifts while it's dragged and settles with --ease-spring (280ms) when let go. */
+.gio-sign-field { transition: box-shadow var(--dur-hover) ease, transform var(--dur-board-drop) var(--ease-spring); }
+.gio-sign-field[data-dragging] { box-shadow: var(--shadow-lift); z-index: 5; transform: scale(1.02); transition: box-shadow var(--dur-hover) ease, transform var(--dur-press) var(--ease-out); }
+/* The page a new field would drop on. */
+[data-gi][data-drop] .gio-sign-page { box-shadow: 0 0 0 2px #0d0d09, 0 2px 10px rgba(13, 13, 9, .08); }
 .gio-sign-field[data-new] { animation: gio-sign-field-in var(--dur-press) var(--ease-out); }
 .gio-sign-field .gio-sign-resize {
   position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; cursor: nwse-resize;
@@ -2034,11 +2038,12 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
   display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px;
   font: 600 12px Inter, sans-serif; color: rgba(13, 13, 9, .8);
   box-shadow: var(--shadow-lift);
-  transform: translate(-50%, -50%) scale(1.03);
+  transform: translate(-50%, -50%) rotate(1.5deg) scale(1.03);
 }
 @media (prefers-reduced-motion: reduce) {
   .gio-sign-field[data-new] { animation-name: gio-fade-only; }
   .gio-sign-ghost { transform: translate(-50%, -50%); }
+  .gio-sign-field, .gio-sign-field[data-dragging] { transform: none; }
 }
 
 /* Template › Document step field list (§3.1, 2026-10-17). Tiles press to .98;

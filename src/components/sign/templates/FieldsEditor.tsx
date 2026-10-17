@@ -151,6 +151,9 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
   const [fresh, setFresh] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [ghost, setGhost] = useState<{ x: number; y: number; type: FieldType; key?: string } | null>(null)
+  // The page under a field being dragged in (a noir ring), and where the last clicked-in field went.
+  const [dropOn, setDropOn] = useState<number | null>(null)
+  const stack = useRef<{ page: number; y: number } | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const pages = pagesOf(d.docs)
   // Standard values, plus every field of the linked offer form (2026-10-17).
@@ -308,32 +311,65 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     return best
   }
 
-  // Drag a new field from the palette onto a page, or click it to drop it on the page in view.
+  /**
+   * A click (or Enter) places one field on the page in view; clicking again
+   * puts the next one a little below the last, so they don't pile up.
+   */
+  const placeByClick = (type: FieldType, key?: string) => {
+    const page = visiblePage()
+    const h = FIELD_SIZE[type][1]
+    const last = stack.current
+    let cy = last && last.page === page ? last.y + h + 1.5 : 30
+    if (cy > 92) cy = 30
+    stack.current = { page, y: cy }
+    add(type, key, page, 50, cy)
+  }
+
+  const pageAt = (x: number, y: number) =>
+    document
+      .elementsFromPoint(x, y)
+      .map((el) => el.closest<HTMLElement>('[data-gi]'))
+      .find(Boolean) ?? null
+
+  // Drag a new field from the field list onto a page (it starts after 4px; Esc cancels), or click it.
   const startNew = (e: RPointerEvent, type: FieldType, key?: string) => {
     if (e.button !== 0) return
     e.preventDefault()
     const sx = e.clientX
     const sy = e.clientY
     let moved = false
-    const mv = (m: PointerEvent) => {
-      if (!moved && Math.hypot(m.clientX - sx, m.clientY - sy) > 4) moved = true
-      if (moved) setGhost({ x: m.clientX, y: m.clientY, type, key })
-    }
-    const up = (u: PointerEvent) => {
+    const end = () => {
       window.removeEventListener('pointermove', mv)
       window.removeEventListener('pointerup', up)
+      window.removeEventListener('keydown', esc, true)
       setGhost(null)
-      if (!moved) return add(type, key, visiblePage(), 50, 30)
-      const pg = document
-        .elementsFromPoint(u.clientX, u.clientY)
-        .map((el) => el.closest<HTMLElement>('[data-gi]'))
-        .find(Boolean)
+      setDropOn(null)
+    }
+    const mv = (m: PointerEvent) => {
+      if (!moved && Math.hypot(m.clientX - sx, m.clientY - sy) > 4) moved = true
+      if (!moved) return
+      setGhost({ x: m.clientX, y: m.clientY, type, key })
+      const pg = pageAt(m.clientX, m.clientY)
+      setDropOn(pg ? Number(pg.dataset.gi) : null)
+    }
+    const up = (u: PointerEvent) => {
+      end()
+      if (!moved) return placeByClick(type, key)
+      const pg = pageAt(u.clientX, u.clientY)
       if (!pg) return
       const r = pg.getBoundingClientRect()
       add(type, key, Number(pg.dataset.gi), ((u.clientX - r.left) / r.width) * 100, ((u.clientY - r.top) / r.height) * 100)
     }
+    // Esc drops nothing (and doesn't close the sheet).
+    const esc = (k: KeyboardEvent) => {
+      if (k.key !== 'Escape' || !moved) return
+      k.preventDefault()
+      k.stopPropagation()
+      end()
+    }
     window.addEventListener('pointermove', mv)
     window.addEventListener('pointerup', up)
+    window.addEventListener('keydown', esc, true)
   }
 
   // Move (or, from the corner, resize) a placed field. Follows the pointer exactly.
@@ -347,6 +383,15 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
     const sy = e.clientY
     el.setPointerCapture(e.pointerId)
     setDragId(f.id)
+    // Esc while dragging puts the field back where it was.
+    const esc = (k: KeyboardEvent) => {
+      if (k.key !== 'Escape') return
+      k.preventDefault()
+      k.stopPropagation()
+      setFields((fs) => fs.map((x) => (x.id === f.id ? { ...x, x: f.x, y: f.y, w: f.w, h: f.h } : x)))
+      up()
+    }
+    window.addEventListener('keydown', esc, true)
     const mv = (m: PointerEvent) => {
       // The button was let go somewhere we didn't hear about: stop, don't follow the cursor.
       if (m.buttons === 0) return up()
@@ -367,6 +412,8 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
       el.removeEventListener('pointerup', up)
       el.removeEventListener('pointercancel', up)
       el.removeEventListener('lostpointercapture', up)
+      window.removeEventListener('keydown', esc, true)
+      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId)
       setDragId(null)
     }
     el.addEventListener('pointermove', mv)
@@ -600,7 +647,7 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
         mode="upload"
         who={who}
         setWho={setWho}
-        onTile={(type, key) => add(type, key, visiblePage(), 50, 30)}
+        onTile={(type, key) => placeByClick(type, key)}
         onTilePointer={(e, type, key) => startNew(e, type, key)}
       />
 
@@ -642,7 +689,9 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
         onPointerDown={() => setSel(null)}
       >
         {pages.map((p) => (
-          <div key={`${p.doc.id}-${p.i}`} data-gi={p.gi} className="relative" style={{ width: pageWidth(p.doc, p.i) }}>
+          <div key={`${p.doc.id}-${p.i}`} data-gi={p.gi} data-drop={dropOn === p.gi || undefined} className="relative" style={{ width: pageWidth(p.doc, p.i) }}>
+            {/* §3.3: the file's name at the top left of its pages, the page number at the bottom right. */}
+            <p className="mb-1.5 truncate font-inter text-[11px] text-text-tertiary">{p.doc.name}</p>
             <PdfPage doc={p.doc} index={p.i} width={pageWidth(p.doc, p.i)}>
               {d.fields
                 .filter((f) => f.page === p.gi)
@@ -684,11 +733,8 @@ export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) 
                   )
                 })}
             </PdfPage>
-            <p className="mt-1.5 flex justify-between font-inter text-[11px] text-text-tertiary">
-              <span className="truncate">{p.doc.name}</span>
-              <span className="tabular-nums">
-                {p.i + 1} / {p.doc.page_count}
-              </span>
+            <p className="mt-1.5 text-right font-inter text-[11px] tabular-nums text-text-tertiary">
+              {p.i + 1} / {p.doc.page_count}
             </p>
           </div>
         ))}
