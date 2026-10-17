@@ -2,6 +2,8 @@
 
 Gio ATS is Virgilio's applicant tracking system (Vite, React 18, React Router 6, Tailwind 3, shadcn/ui on Radix, Supabase project `etrxjxstjfcozdjumfsj`). These rules govern **motion, feel and robustness**. They were adopted from Gio Sales on 2026-10-09 (Block B §1–§15, approved by Allan 2026-10-08). The architecture notes in `AGENTS.md` still apply and win on behaviour.
 
+**New session? Read `HANDOFF.md` first:** how Allan works, how a database change ships, and the open work across Gio ATS, Gio Sales and Gio Docs.
+
 ## Scope and precedence
 - **The ATS keeps its own visual identity.** Colours, fonts, sizes, spacing, radii, borders, layout and copy don't change. Gio Sales' visual amendments (its fonts, colour tokens, the three-shadows rule) don't carry over. Only timing, easing, transform origins, press states, state handling and edge cases change. The one visual exception is the Block B one: menus, popovers and hover cards swap a solid border for `--shadow-pop`.
 - **Behaviour contracts stay.** Gio Sales ↔ ATS sync, Mark hired / unhire, openings and Req IDs, the draft→open publish gate, draft auto-save and role assignment keep working exactly as they do. Motion changes are presentational, except where §5 changes when the UI updates (optimistic updates and Undo).
