@@ -1,4 +1,4 @@
--- Run after 20261017230000_sign_client_company inside a transaction that is rolled back.
+-- Run after 20261017235206_sign_client_company inside a transaction that is rolled back.
 -- Real records, fake templates; Allan is the sender. Every row's ok is true.
 create temp table t_results (check_name text, ok boolean);
 grant insert, select on t_results to authenticated;

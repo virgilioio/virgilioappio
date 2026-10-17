@@ -166,6 +166,8 @@ export const DATA_TAGS: Record<SignKind, [string, string][]> = {
     ['job', 'Job title'],
     ['salary', 'Salary'],
     ['start', 'Start date'],
+    // The job's client organization (fed from Gio Sales; Virgilio for its own jobs), 2026-10-17.
+    ['client', 'Client company'],
   ],
   member: [
     ['name', 'Member name'],
@@ -183,12 +185,12 @@ const EMAIL_ONLY_TAGS: Record<SignKind, [string, string][]> = {
   customer: [],
   candidate: [
     ['first_name', 'First name'],
-    ['company', 'Company'],
+    ['company', 'Your company'],
     ['sender_first', 'Sender first name'],
   ],
   member: [
     ['first_name', 'First name'],
-    ['company', 'Company'],
+    ['company', 'Your company'],
     ['sender_first', 'Sender first name'],
   ],
 }
@@ -345,7 +347,7 @@ export function roleSource(d: Pick<TplDraft, 'kind' | 'roles'>, r: TplRole): Fil
 }
 
 /** Values every candidate template can use without an offer form field. */
-export const ALWAYS_AVAILABLE = new Set(['name', 'job', 'salary', 'start', 'today', 'sender'])
+export const ALWAYS_AVAILABLE = new Set(['name', 'job', 'salary', 'start', 'client', 'today', 'sender'])
 
 export function sourceLabel(t: PickTemplate) {
   if (t.has_written && t.has_uploads) return `Written in Gio + ${t.uploaded_docs.length} uploaded`
@@ -429,7 +431,7 @@ const DEFAULT_MESSAGE: Record<SignKind, { subject: string; body: string }> = {
   },
   // The Send for signature design's copy (2026-10-17).
   candidate: {
-    subject: 'Your offer from {{company}} · please review and sign',
+    subject: 'Your offer from {{client}} · please review and sign',
     body: 'Hi {{first_name}}, here’s your agreement for the {{job}} role. Have a look and sign when you’re ready. Reach out with any questions.\n\n{{sender_first}}',
   },
   member: {
