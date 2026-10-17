@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, ChevronDown, Eye, FileText, Lock, Search, Send, TriangleAlert } from 'lucide-react'
+import { CalendarClock, ChevronDown, Eye, FileText, Info, Lock, Search, Send, TriangleAlert } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -16,7 +16,7 @@ import { DateTimePickerVirgilio } from '@/components/ui/datetime-picker-virgilio
 import { cn } from '@/lib/utils'
 import { undoToast } from '@/lib/undoToast'
 import { shortDateTime } from '@/lib/sign/status'
-import { DATA_TAGS, okEmail, tagLabel } from '@/lib/sign/templates'
+import { DATA_TAGS, listLabels, okEmail, tagLabel } from '@/lib/sign/templates'
 import {
   offerSendRefusal,
   sendEnvelope,
@@ -388,7 +388,7 @@ export function SendSheet({
                         {u.label || label(u.key)}
                       </dt>,
                       <dd key={`${u.key}-d`} className={cn('truncate', u.value ? 'text-text-primary' : 'text-text-tertiary')}>
-                        {u.value || 'Not on the record'}
+                        {u.value || (u.optional ? 'Prints blank (optional)' : 'Not on the record')}
                       </dd>,
                     ])}
                   </dl>
@@ -399,6 +399,12 @@ export function SendSheet({
                     {kind === 'member'
                       ? `This template fills in ${missing.join(', ')}, which ${missing.length === 1 ? 'isn’t' : 'aren’t'} set for this person yet. Set it on their People page, then come back.`
                       : `This template fills in ${missing.join(', ')}, which ${missing.length === 1 ? 'isn’t' : 'aren’t'} on the ${isOffer ? 'offer' : 'candidate’s offer'} yet. Add ${missing.length === 1 ? 'it' : 'them'} to the offer, then come back.`}
+                  </p>
+                )}
+                {(preview.data?.blank ?? []).length > 0 && (
+                  <p className="flex gap-2 rounded-lg bg-[#F4F3EF] p-2.5 font-inter text-[12px] leading-snug text-text-secondary">
+                    <Info className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                    {`${listLabels(preview.data!.blank!)} ${preview.data!.blank!.length === 1 ? 'is' : 'are'} optional on the offer form and empty on this offer, so ${preview.data!.blank!.length === 1 ? 'it prints' : 'they print'} blank.`}
                   </p>
                 )}
               </div>

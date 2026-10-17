@@ -69,12 +69,14 @@ export interface SendRole {
 export interface SendPreview {
   label: string
   values: Record<string, string>
-  /** Labels of data fields the record has no value for. Sending is refused until they're filled. */
+  /** Labels of required data fields the record has no value for. Sending is refused until they're filled. */
   missing: string[]
+  /** Labels of optional offer fields with no value: they print blank and don't block sending. */
+  blank?: string[]
   /** For an offer: the gate as the database sees it right now. */
   gate?: OfferGate | null
   /** The values this template fills in, with labels (empty when it has no data fields). */
-  used?: { key: string; label: string; value: string | null }[]
+  used?: { key: string; label: string; value: string | null; optional?: boolean }[]
   roles: SendRole[]
 }
 
