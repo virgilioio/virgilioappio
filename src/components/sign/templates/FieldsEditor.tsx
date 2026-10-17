@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils'
 import { loadTemplatePdf, pageTextSize } from '@/lib/sign/pdf'
 import { PdfPage, edge, tint } from '@/components/sign/PdfPage'
-import { OfferCoverage } from './OfferCoverage'
 import { FieldList } from './FieldList'
 import { FIELD_ICON } from './fieldIcons'
 import { FieldSummary, FormatPicker, PanelHead } from './FieldPanel'
@@ -144,24 +143,6 @@ function PageThumb({
 
 const ZOOMS = [75, 100, 125, 150, 200] as const
 type Zoom = 'fit' | (typeof ZOOMS)[number]
-
-/** The Fields step when every document is written in Gio: nothing to place by hand. */
-export function WrittenOnlyFields({ d, set, go }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void; go: (step: number) => void }) {
-  return (
-    <div className="max-w-[640px] rounded-xl border border-[#E7E8EE] bg-white p-5">
-      <p className="font-poppins text-[15px] font-semibold text-text-primary">Nothing to place here</p>
-      <p className="mt-1 font-inter text-[13px] leading-relaxed text-text-secondary">
-        Written documents carry their own fields and signing blocks. Signing blocks become each person’s fields when the document is sent. To change them, edit the document on the first step.
-      </p>
-      <div className="mt-3">
-        <OfferCoverage d={d} set={set} verb="used" size="md" />
-      </div>
-      <Button variant="secondary" size="sm" className="mt-4" onClick={() => go(0)}>
-        Edit the documents
-      </Button>
-    </div>
-  )
-}
 
 export function FieldsEditor({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void }) {
   const people = d.roles.filter((r) => r.role !== 'cc')

@@ -2,11 +2,12 @@
 // the template editor and the send sheet. Signed-in users only (JWT). It only
 // draws what it is given, with the same code sign-dispatch uses when the
 // envelope goes out, so the preview is the document.
-//   { name, content, values?, tags?, roles?, highlight? } -> application/pdf
+//   { name, content, values?, tags?, roles?, highlight?, empty? } -> application/pdf
 // values: the record's values (from sign_send_preview); tags: { key: label }
 // to print [Label] in a template preview with no record; highlight: { key:
 // label } for the send sheet's preview (values underlined in lilac, empty
-// ones as [Label]). ASCII only.
+// ones as [Label]; empty: "red" prints those in red, for the template
+// editor). Formatted values come as values["key|format"]. ASCII only.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -63,6 +64,7 @@ Deno.serve(async (req) => {
       roles: strings(body.roles),
       tags,
       highlight,
+      emptyRed: body.empty === "red",
     });
     return new Response(new Uint8Array(pdf.bytes), {
       status: 200,

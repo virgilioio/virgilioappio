@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { FilePenLine, FileUp, Files, type LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import type { SignKind, SignRecipientRole } from './api'
-import { docItems, normalizePositions, remapRoles, signBlocks, writtenKeys, type LexicalJson, type TplWritten } from './written'
+import { docItems, normalizePositions, remapRoles, signBlocks, walkWritten, writtenKeys, type LexicalJson, type TplWritten } from './written'
 
 /* ------------------------------------------------------------------------- */
 /* Model                                                                      */
@@ -593,7 +593,6 @@ export function templateIssues(draft: TplDraft): TplIssue[] {
   if (d.docs.some((x) => x.uploading != null)) add(0, 'Waiting for the upload to finish')
   if (pageCount(d) > 200) add(0, 'A template can hold up to 200 pages')
   if (d.docs.length + d.written.length > 50) add(0, 'A template can hold up to 50 documents')
-  if (d.written.some((w) => !w.name.trim())) add(0, 'Every written document needs a name')
   if (!d.subject.trim()) add(0, 'Add an email subject')
   if (!d.body.trim()) add(0, 'Add an email message')
   // Document
@@ -601,8 +600,16 @@ export function templateIssues(draft: TplDraft): TplIssue[] {
     add(1, 'Write the document, or untick Write in Gio')
   }
   const signing = new Set(d.roles.filter((r) => r.role !== 'cc').map((r) => r.id))
-  const orphan = d.written.find((w) => signBlocks(w.content).some((b) => !signing.has(b.roleId)))
-  if (orphan) add(1, `A signing block in “${orphan.name}” belongs to a role that isn’t on the template`)
+  // The document is named on the Document step, where it's written.
+  if (d.written.some((w) => !w.name.trim())) add(1, 'Name the written document')
+  const orphan = d.written.find((w) => {
+    let bad = false
+    walkWritten(w.content, (n) => {
+      if ((n.type === 'gio-sign' || n.type === 'gio-field') && !signing.has(String(n.roleId))) bad = true
+    })
+    return bad
+  })
+  if (orphan) add(1, `A signer field in “${orphan.name}” belongs to a role that isn’t on the template, or only gets a copy`)
   // Roles come after the document, so a missing signature keeps Save off but not Continue.
   for (const r of signersWithoutSignature(d)) add(1, `${r.label || 'A signer'} needs a signature field`, false)
   // Signers

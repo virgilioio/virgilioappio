@@ -25,7 +25,7 @@ import {
 import { TagText } from './parts'
 import { InfoStep } from './InfoStep'
 import { RolesStep } from './RolesStep'
-import { FieldsEditor, WrittenOnlyFields } from './FieldsEditor'
+import { DocumentStep } from './DocumentStep'
 import { MessageStep } from './MessageStep'
 import { ReviewStep } from './ReviewStep'
 
@@ -175,7 +175,7 @@ export function TemplateWizard({
           </Badge>
         ) : undefined
       }
-      subtitle={STEP_SUB[step]}
+      subtitle={step === 1 ? documentSub(e) : STEP_SUB[step]}
       steps={WIZARD_STEPS.map((t, i) => {
         const mine = issues.filter((x) => x.step === i)
         return {
@@ -203,8 +203,8 @@ export function TemplateWizard({
           ? { title: `Discard your changes to ${d.name.trim() || 'this template'}?`, detail: 'The saved version stays as it is.' }
           : { title: 'Discard this template?', detail: 'Nothing has been saved, so it won’t appear in Templates.' }
       }
-      flush={step === 1 && e.docs.length > 0}
-      wide={step === 1 && e.docs.length > 0}
+      flush={step === 1}
+      wide={step === 1}
       secondary={
         isEdit && step < 3 ? (
           <Button variant="secondary" onClick={save} disabled={anyIssue || busy}>
@@ -220,15 +220,22 @@ export function TemplateWizard({
     >
       {step === 0 && organizationId && (
         <>
-          <InfoStep d={d} set={set} tenantId={organizationId} />
+          <InfoStep d={d} set={set} tenantId={organizationId} onWrite={reachable(1) ? () => go(1) : undefined} />
           <DefaultEmail d={d} set={set} />
         </>
       )}
-      {step === 1 && (e.docs.length ? <FieldsEditor d={e} set={set} /> : <WrittenOnlyFields d={e} set={set} go={go} />)}
+      {step === 1 && <DocumentStep d={e} set={set} />}
       {step === 2 && <RolesStep d={d} set={set} me={me} />}
       {step === 3 && <ReviewStep d={e} go={go} />}
     </WizardSheet>
   )
+}
+
+/** The Document step's sentence, by which sources the template uses (§3). */
+function documentSub(e: TplDraft) {
+  if (e.use_written && e.use_uploads) return STEP_SUB[1]
+  if (e.use_uploads) return 'Drag offer fields onto the pages where the values should go, or click one to place it.'
+  return 'Write the agreement. Type / to add offer fields, signer fields, signature blocks and conditional sections.'
 }
 
 /**

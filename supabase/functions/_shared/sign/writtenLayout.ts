@@ -1,13 +1,14 @@
 // Gio Sign: lays out a document written in Gio (2026-10-17). The input is the
 // editor's own JSON (Lexical): paragraphs, headings, lists, quotes, page
-// breaks, data tags ("placeholder"), conditional sections ("gio-if") and
-// signing blocks ("gio-sign"). The output is a list of pages of simple drawing
+// breaks, data tags ("placeholder", with an optional print "format"),
+// conditional sections ("gio-if"), signing blocks ("gio-sign") and signer
+// fields inside the text ("gio-field": roleId, fieldType, required, label). The output is a list of pages of simple drawing
 // operations plus where each signing block landed, so the server can draw the
 // PDF with pdf-lib (written.ts) and add the blocks as fields. Pure, so the
 // app's preview and the sent PDF can never disagree. ASCII only.
 
 export type Style = "regular" | "bold" | "italic" | "boldItalic";
-export type Ink = "ink" | "muted" | "rule" | "lilac";
+export type Ink = "ink" | "muted" | "rule" | "lilac" | "danger";
 
 export interface TextOp {
   kind: "text";
@@ -36,7 +37,7 @@ export type Op = TextOp | LineOp;
 export interface WrittenPage {
   ops: Op[];
 }
-/** A signing block: where its field goes, in % of the page from the top-left. */
+/** A signing block or a signer field in the text: where its field goes, in % of the page from the top-left. */
 export interface WrittenBlock {
   role_id: string;
   kind: string;
@@ -45,6 +46,9 @@ export interface WrittenBlock {
   y: number;
   w: number;
   h: number;
+  /** Signer fields in the text only (sign_attach_render keeps them). */
+  required?: boolean;
+  label?: string;
 }
 export interface WrittenLayout {
   width: number;
@@ -70,6 +74,8 @@ export interface LayoutOptions {
    * for the PDF that is sent.
    */
   highlight?: Record<string, string> | null;
+  /** With highlight: the colour of an empty value's [Label] (the template editor uses danger). */
+  emptyInk?: Ink;
   maxPages?: number;
 }
 
@@ -102,6 +108,8 @@ export const BLOCK_SIZE: Record<string, { w: number; h: number; label: string }>
   date: { w: 144, h: 22, label: "Date signed" },
   name: { w: 216, h: 22, label: "Full name" },
 };
+/** Width of a signer field inside the text, in points (checkbox: a square the size of the text). */
+const INLINE_FIELD_W: Record<string, number> = { initials: 48, date: 96, name: 150, text: 150 };
 const BLOCK_LABEL = 8.5;
 const BLOCK_AFTER = 14;
 const BLOCK_GAP = 28;
@@ -133,6 +141,11 @@ export function conditionHolds(op: string | null | undefined, raw: string | null
       return low === String(expected ?? "").trim().toLowerCase();
     case "not_equals":
       return low !== String(expected ?? "").trim().toLowerCase();
+    case "gt0": {
+      // Money and numbers print with their currency and separators: read the figure.
+      const n = parseFloat(v.replace(/[^0-9.-]/g, ""));
+      return Number.isFinite(n) && n > 0;
+    }
     case "filled":
     default:
       return v !== "";
@@ -150,6 +163,8 @@ interface Piece {
   color: Ink;
   /** A filled-in value in a highlighted preview. */
   mark?: boolean;
+  /** A signer field inside the text: drawn as a line (or a square) and kept as a field. */
+  field?: { roleId: string; kind: string; required: boolean; label: string };
 }
 /** A word (pieces with no space between them), a space, or a hard line break. */
 type Unit = { t: "word"; pieces: Piece[]; w: number } | { t: "space"; w: number } | { t: "break" };
@@ -205,17 +220,32 @@ class Inline {
     this.units.push({ t: "break" });
   }
 
+  /** A signer field: its own word, a fixed width wide. */
+  field(f: NonNullable<Piece["field"]>) {
+    this.endWord();
+    const w = f.kind === "checkbox" ? this.size * 0.9 : INLINE_FIELD_W[f.kind] ?? INLINE_FIELD_W.text;
+    const piece: Piece = { text: "", style: this.base, size: this.size, w, underline: false, strike: false, color: "rule", field: f };
+    this.units.push({ t: "word", pieces: [piece], w });
+  }
+
   done(): Unit[] {
     this.endWord();
     return this.units;
   }
 }
 
-function tagText(o: LayoutOptions, key: string): string {
+/** Print formats a value can take (sign_format); anything else prints the default wording. */
+const FORMATS = new Set(["money_code", "money_symbol", "money_words", "date_long", "date_numeric", "date_dmy", "number", "number_words"]);
+
+function tagText(o: LayoutOptions, key: string, format?: unknown): string {
   if (o.tags) return "[" + (o.tags[key] ?? key) + "]";
-  const v = o.values[key];
+  // A value in its format travels as "key|format" (sign_send freezes them).
+  const f = typeof format === "string" && FORMATS.has(format) ? format : null;
+  const v = (f ? o.values[key + "|" + f] : null) ?? o.values[key];
   return v == null ? "" : String(v);
 }
+
+const FIELD_KINDS = new Set(["initials", "date", "name", "text", "checkbox"]);
 
 function collectInline(o: LayoutOptions, nodes: Node[] | undefined, into: Inline) {
   for (const n of nodes ?? []) {
@@ -230,12 +260,19 @@ function collectInline(o: LayoutOptions, nodes: Node[] | undefined, into: Inline
         into.text(" ", Number(n.format) || 0);
         break;
       case "placeholder": {
+        // "format" on a tag is its print format, not text formatting.
         const key = String(n.placeholderKey ?? "");
-        const text = tagText(o, key);
+        const text = tagText(o, key, n.format);
         if (o.highlight && !o.tags) {
-          if (text.trim()) into.text(text, Number(n.format) || 0, true);
-          else into.text("[" + (o.highlight[key] ?? key) + "]", Number(n.format) || 0, false, "muted");
-        } else into.text(text, Number(n.format) || 0);
+          if (text.trim()) into.text(text, 0, true);
+          else into.text("[" + (o.highlight[key] ?? key) + "]", 0, false, o.emptyInk ?? "muted");
+        } else into.text(text, 0);
+        break;
+      }
+      case "gio-field": {
+        const kind = String(n.fieldType ?? "");
+        if (!FIELD_KINDS.has(kind) || !n.roleId) break;
+        into.field({ roleId: String(n.roleId), kind, required: n.required !== false, label: String(n.label ?? "").slice(0, 80) });
         break;
       }
       default:
@@ -389,6 +426,11 @@ function drawLines(flow: Flow, lines: Line[], left: number, width: number, size:
       }
       if (u.t !== "word") continue;
       for (const p of u.pieces) {
+        if (p.field) {
+          inlineField(flow, p, x, baseline);
+          x += p.w;
+          continue;
+        }
         flow.page.ops.push({ kind: "text", x, y: baseline, text: p.text, style: p.style, size: p.size, color: p.color, underline: p.underline || undefined, strike: p.strike || undefined });
         if (p.mark) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.22, x2: x + p.w, y2: baseline + size * 0.22, width: Math.max(1.2, size / 8), color: "lilac" });
         if (p.underline) flow.page.ops.push({ kind: "line", x1: x, y1: baseline + size * 0.12, x2: x + p.w, y2: baseline + size * 0.12, width: Math.max(0.5, size / 18), color: p.color });
@@ -398,6 +440,41 @@ function drawLines(flow: Flow, lines: Line[], left: number, width: number, size:
     }
     if (gutter) gutter(top, lead);
     flow.y += lead;
+  });
+}
+
+/** Draws a signer field in the text (a line to write on, or a square) and keeps where it is. */
+function inlineField(flow: Flow, p: Piece, x: number, baseline: number) {
+  const f = p.field!;
+  const size = p.size;
+  const ops = flow.page.ops;
+  let top: number;
+  let h: number;
+  if (f.kind === "checkbox") {
+    const s = p.w;
+    top = baseline - s * 0.92;
+    h = s;
+    const r = x + s;
+    const b = top + s;
+    ops.push({ kind: "line", x1: x, y1: top, x2: r, y2: top, width: 0.75, color: "ink" });
+    ops.push({ kind: "line", x1: r, y1: top, x2: r, y2: b, width: 0.75, color: "ink" });
+    ops.push({ kind: "line", x1: r, y1: b, x2: x, y2: b, width: 0.75, color: "ink" });
+    ops.push({ kind: "line", x1: x, y1: b, x2: x, y2: top, width: 0.75, color: "ink" });
+  } else {
+    h = size * 1.3;
+    top = baseline + size * 0.22 - h;
+    ops.push({ kind: "line", x1: x, y1: baseline + size * 0.22, x2: x + p.w, y2: baseline + size * 0.22, width: 0.6, color: "muted" });
+  }
+  flow.blocks.push({
+    role_id: f.roleId,
+    kind: f.kind,
+    page: flow.pages.length - 1,
+    x: round3((x / PAGE_W) * 100),
+    y: round3((top / PAGE_H) * 100),
+    w: round3((p.w / PAGE_W) * 100),
+    h: round3((h / PAGE_H) * 100),
+    required: f.required,
+    ...(f.label ? { label: f.label } : {}),
   });
 }
 

@@ -1,9 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import {
   $applyNodeReplacement,
   $getNodeByKey,
+  $getSelection,
+  $isNodeSelection,
+  CLICK_COMMAND,
+  COMMAND_PRIORITY_LOW,
   DecoratorNode,
+  KEY_BACKSPACE_COMMAND,
+  KEY_DELETE_COMMAND,
   ElementNode,
   type LexicalEditor,
   type LexicalNode,
@@ -13,17 +19,32 @@ import {
   type Spread,
 } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
 import { X } from 'lucide-react'
 
 import { tint, edge } from '@/components/sign/PdfPage'
 import { BLOCK_LABEL, type IfOp, type SignBlockKind } from '@/lib/sign/written'
+import type { ValueFormat } from '@/lib/sign/formats'
 
 /**
  * The written-document editor's own pieces (2026-10-17). Their JSON is what
  * the server lays out (_shared/sign/writtenLayout.ts), so the types and keys
- * here are a contract: "placeholder" { placeholderKey }, "gio-if" { key, op,
- * value } around blocks, "gio-sign" { roleId, kind }, "gio-page-break".
+ * here are a contract: "placeholder" { placeholderKey, format? }, "gio-if"
+ * { key, op, value } around blocks, "gio-sign" { roleId, kind }, "gio-field"
+ * { roleId, fieldType, required, label } inside the text, "gio-page-break".
+ * Chips, fields and blocks are selected with a click (a 2px noir ring);
+ * Delete or Backspace removes the selection.
  */
+
+/** Signer fields that can sit inside the text (sign_save_template checks the same list). */
+export type InlineFieldType = 'initials' | 'date' | 'name' | 'text' | 'checkbox'
+export const INLINE_FIELD_LABEL: Record<InlineFieldType, string> = {
+  initials: 'Initials',
+  date: 'Date signed',
+  name: 'Full name',
+  text: 'Text',
+  checkbox: 'Checkbox',
+}
 
 export interface WrittenLabels {
   tag: (key: string) => string
@@ -39,14 +60,38 @@ function useRemove(nodeKey: NodeKey) {
     })
 }
 
+/** Click selects the node (Shift adds to the selection), through Lexical's own click handling. */
+function useSelect(nodeKey: NodeKey) {
+  const [editor] = useLexicalComposerContext()
+  const [selected, setSelected, clear] = useLexicalNodeSelection(nodeKey)
+  const ref = useRef<HTMLElement | null>(null)
+  useEffect(
+    () =>
+      editor.registerCommand(
+        CLICK_COMMAND,
+        (e: MouseEvent) => {
+          const t = e.target as HTMLElement
+          if (!ref.current || !ref.current.contains(t) || t.closest('button')) return false
+          if (!e.shiftKey) clear()
+          setSelected(true)
+          return true
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    [editor, clear, setSelected],
+  )
+  return { selected, ref }
+}
+
 /* ---- Data tag ----------------------------------------------------------- */
 
-export type SerializedSignTagNode = Spread<{ placeholderKey: string }, SerializedLexicalNode>
+export type SerializedSignTagNode = Spread<{ placeholderKey: string; format?: ValueFormat }, SerializedLexicalNode>
 
-function TagChip({ k }: { k: string }) {
+function TagChip({ k, nodeKey }: { k: string; nodeKey: NodeKey }) {
   const labels = useContext(WrittenLabelsContext)
+  const { selected, ref } = useSelect(nodeKey)
   return (
-    <span className="gio-written-tag" contentEditable={false} data-key={k}>
+    <span ref={ref} className="gio-written-tag" contentEditable={false} data-key={k} data-selected={selected || undefined}>
       {labels.tag(k)}
     </span>
   )
@@ -54,22 +99,33 @@ function TagChip({ k }: { k: string }) {
 
 export class SignTagNode extends DecoratorNode<ReactNode> {
   __placeholderKey: string
+  __format: ValueFormat | null
 
   static getType() {
     return 'placeholder'
   }
   static clone(node: SignTagNode) {
-    return new SignTagNode(node.__placeholderKey, node.__key)
+    return new SignTagNode(node.__placeholderKey, node.__format, node.__key)
   }
-  constructor(placeholderKey: string, key?: NodeKey) {
+  constructor(placeholderKey: string, format: ValueFormat | null = null, key?: NodeKey) {
     super(key)
     this.__placeholderKey = placeholderKey
+    this.__format = format
   }
   static importJSON(json: SerializedSignTagNode) {
-    return $createSignTagNode(json.placeholderKey)
+    return $createSignTagNode(json.placeholderKey, typeof json.format === 'string' ? json.format : null)
   }
   exportJSON(): SerializedSignTagNode {
-    return { type: 'placeholder', version: 1, placeholderKey: this.__placeholderKey }
+    // "format" is the print format (sign_format); left out when it's the default wording.
+    return { type: 'placeholder', version: 1, placeholderKey: this.__placeholderKey, ...(this.__format ? { format: this.__format } : null) }
+  }
+  getFormat() {
+    return this.getLatest().__format
+  }
+  setFormat(f: ValueFormat | null) {
+    const w = this.getWritable()
+    w.__format = f
+    return w
   }
   createDOM() {
     const span = document.createElement('span')
@@ -89,11 +145,11 @@ export class SignTagNode extends DecoratorNode<ReactNode> {
     return this.__placeholderKey
   }
   decorate() {
-    return <TagChip k={this.__placeholderKey} />
+    return <TagChip k={this.__placeholderKey} nodeKey={this.__key} />
   }
 }
 
-export const $createSignTagNode = (key: string) => $applyNodeReplacement(new SignTagNode(key))
+export const $createSignTagNode = (key: string, format: ValueFormat | null = null) => $applyNodeReplacement(new SignTagNode(key, format))
 export const $isSignTagNode = (n: LexicalNode | null | undefined): n is SignTagNode => n instanceof SignTagNode
 
 /* ---- Conditional section ------------------------------------------------ */
@@ -170,6 +226,7 @@ function SignBlockView({ roleId, kind, nodeKey }: { roleId: string; kind: SignBl
   const labels = useContext(WrittenLabelsContext)
   const role = labels.role(roleId)
   const remove = useRemove(nodeKey)
+  const { selected, ref } = useSelect(nodeKey)
   const color = role?.color ?? '#E4E3DD'
   const label = `${role?.label ?? 'Removed role'} · ${BLOCK_LABEL[kind]}`
   return (
@@ -178,6 +235,8 @@ function SignBlockView({ roleId, kind, nodeKey }: { roleId: string; kind: SignBl
         className="gio-written-sign-box"
         style={{ background: tint(color, 0.28), borderColor: edge(color) }}
         data-missing={role ? undefined : true}
+        data-selected={selected || undefined}
+        ref={ref as React.Ref<HTMLDivElement>}
       >
         <span className="truncate">{label}</span>
         <button type="button" className="gio-written-x" aria-label={`Remove ${label}`} onClick={remove}>
@@ -223,6 +282,17 @@ export class GioSignNode extends DecoratorNode<ReactNode> {
   getTextContent() {
     return '\n'
   }
+  getRoleId() {
+    return this.getLatest().__roleId
+  }
+  getKind() {
+    return this.getLatest().__kind
+  }
+  setRoleId(id: string) {
+    const w = this.getWritable()
+    w.__roleId = id
+    return w
+  }
   decorate() {
     return <SignBlockView roleId={this.__roleId} kind={this.__kind} nodeKey={this.__key} />
   }
@@ -230,6 +300,90 @@ export class GioSignNode extends DecoratorNode<ReactNode> {
 
 export const $createGioSignNode = (roleId: string, kind: SignBlockKind) => $applyNodeReplacement(new GioSignNode(roleId, kind))
 export const $isGioSignNode = (n: LexicalNode | null | undefined): n is GioSignNode => n instanceof GioSignNode
+
+/* ---- Signer field inside the text --------------------------------------- */
+
+export type SerializedGioFieldNode = Spread<{ roleId: string; fieldType: InlineFieldType; required: boolean; label: string }, SerializedLexicalNode>
+
+function FieldChip({ roleId, fieldType, nodeKey }: { roleId: string; fieldType: InlineFieldType; nodeKey: NodeKey }) {
+  const labels = useContext(WrittenLabelsContext)
+  const role = labels.role(roleId)
+  const { selected, ref } = useSelect(nodeKey)
+  const color = role?.color ?? '#E4E3DD'
+  return (
+    <span
+      ref={ref}
+      className="gio-written-field"
+      contentEditable={false}
+      data-type={fieldType}
+      data-missing={role ? undefined : true}
+      data-selected={selected || undefined}
+      style={{ background: tint(color, 0.45), borderColor: edge(color) }}
+    >
+      {fieldType === 'checkbox' && <span className="gio-written-field-box" aria-hidden />}
+      {role?.label ?? 'Removed role'} · {INLINE_FIELD_LABEL[fieldType]}
+    </span>
+  )
+}
+
+export class GioFieldNode extends DecoratorNode<ReactNode> {
+  __roleId: string
+  __fieldType: InlineFieldType
+  __required: boolean
+  __label: string
+
+  static getType() {
+    return 'gio-field'
+  }
+  static clone(node: GioFieldNode) {
+    return new GioFieldNode(node.__roleId, node.__fieldType, node.__required, node.__label, node.__key)
+  }
+  constructor(roleId: string, fieldType: InlineFieldType = 'text', required = true, label = '', key?: NodeKey) {
+    super(key)
+    this.__roleId = roleId
+    this.__fieldType = fieldType
+    this.__required = required
+    this.__label = label
+  }
+  static importJSON(json: SerializedGioFieldNode) {
+    return $createGioFieldNode(json.roleId, json.fieldType, json.required !== false, json.label ?? '')
+  }
+  exportJSON(): SerializedGioFieldNode {
+    return { type: 'gio-field', version: 1, roleId: this.__roleId, fieldType: this.__fieldType, required: this.__required, label: this.__label }
+  }
+  createDOM() {
+    const span = document.createElement('span')
+    span.className = 'gio-written-tag-wrap'
+    return span
+  }
+  updateDOM() {
+    return false
+  }
+  isInline() {
+    return true
+  }
+  getTextContent() {
+    return ` [${INLINE_FIELD_LABEL[this.__fieldType]}] `
+  }
+  getField() {
+    const s = this.getLatest()
+    return { roleId: s.__roleId, fieldType: s.__fieldType, required: s.__required, label: s.__label }
+  }
+  setField(p: { roleId?: string; required?: boolean; label?: string }) {
+    const w = this.getWritable()
+    if (p.roleId !== undefined) w.__roleId = p.roleId
+    if (p.required !== undefined) w.__required = p.required
+    if (p.label !== undefined) w.__label = p.label
+    return w
+  }
+  decorate() {
+    return <FieldChip roleId={this.__roleId} fieldType={this.__fieldType} nodeKey={this.__key} />
+  }
+}
+
+export const $createGioFieldNode = (roleId: string, fieldType: InlineFieldType, required = true, label = '') =>
+  $applyNodeReplacement(new GioFieldNode(roleId, fieldType, required, label))
+export const $isGioFieldNode = (n: LexicalNode | null | undefined): n is GioFieldNode => n instanceof GioFieldNode
 
 /* ---- Page break --------------------------------------------------------- */
 
@@ -297,8 +451,20 @@ export function registerWrittenRules(editor: LexicalEditor) {
       node.remove()
     }
   })
+  // Delete or Backspace removes selected chips, fields and blocks.
+  const removeSelected = (e: KeyboardEvent | null) => {
+    const sel = $getSelection()
+    if (!$isNodeSelection(sel)) return false
+    e?.preventDefault()
+    sel.getNodes().forEach((n) => n.remove())
+    return true
+  }
+  const c = editor.registerCommand(KEY_DELETE_COMMAND, removeSelected, COMMAND_PRIORITY_LOW)
+  const d = editor.registerCommand(KEY_BACKSPACE_COMMAND, removeSelected, COMMAND_PRIORITY_LOW)
   return () => {
     a()
     b()
+    c()
+    d()
   }
 }

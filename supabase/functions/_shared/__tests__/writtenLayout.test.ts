@@ -154,4 +154,37 @@ describe('writtenKeys', () => {
     expect(k.tags.sort()).toEqual(['bonus', 'name']);
     expect(k.conditions).toEqual(['bonus']);
   });
+
+  it('prints a tag in its format, falling back to the default wording', () => {
+    const content = doc(para({ type: 'placeholder', placeholderKey: 'start_date', format: 'date_numeric' }, text(' / '), { type: 'placeholder', placeholderKey: 'job', format: 'date_numeric' }));
+    const l = layoutWritten(content, { values: { start_date: 'October 26, 2026', 'start_date|date_numeric': '26/10/2026', job: 'Designer' }, measure });
+    expect(texts(l).map((o) => o.text).join(' ')).toBe('26/10/2026 / Designer');
+  });
+
+  it('turns signer fields in the text into fields, with their required flag and label', () => {
+    const content = doc(para(text('Bank account '), { type: 'gio-field', roleId: 'r1', fieldType: 'text', required: false, label: 'Bank account' }, text(' I agree '), { type: 'gio-field', roleId: 'r1', fieldType: 'checkbox', required: true }, { type: 'gio-field', roleId: 'r1', fieldType: 'signature' }));
+    const l = layoutWritten(content, { values: {}, measure });
+    expect(l.blocks.map((b) => [b.kind, b.required, b.label ?? null])).toEqual([
+      ['text', false, 'Bank account'],
+      ['checkbox', true, null],
+    ]);
+    const [field, box] = l.blocks;
+    expect(field.page).toBe(0);
+    expect(box.x).toBeGreaterThan(field.x + field.w);
+    // The field sits on its line, inside the page.
+    expect(field.y).toBeGreaterThan(0);
+    expect(field.y + field.h).toBeLessThan(100);
+  });
+
+  it('keeps a "more than 0" section only for a positive figure', () => {
+    expect(conditionHolds('gt0', 'MXN 12,000')).toBe(true);
+    expect(conditionHolds('gt0', '$0 MXN')).toBe(false);
+    expect(conditionHolds('gt0', '')).toBe(false);
+  });
+
+  it('prints an empty value as [Label] in red for the template editor', () => {
+    const content = doc(para({ type: 'placeholder', placeholderKey: 'bonus' }));
+    const l = layoutWritten(content, { values: {}, highlight: { bonus: 'Bonus' }, emptyInk: 'danger', measure });
+    expect(texts(l)[0]).toMatchObject({ text: '[Bonus]', color: 'danger' });
+  });
 });

@@ -22,6 +22,8 @@ export interface WrittenInput {
   tags?: Record<string, string> | null;
   /** Send-sheet preview: values underlined in lilac, empty ones as [Label] (labels by key). */
   highlight?: Record<string, string> | null;
+  /** With highlight: empty values' [Label] in red (the template editor's preview). */
+  emptyRed?: boolean;
 }
 
 const COLORS = {
@@ -29,6 +31,7 @@ const COLORS = {
   muted: rgb(0.42, 0.44, 0.5),
   rule: rgb(0.8, 0.8, 0.78),
   lilac: rgb(0.843, 0.773, 0.984),
+  danger: rgb(0.761, 0.216, 0.169),
 };
 
 // Characters the standard fonts can't print, mapped to ones they can.
@@ -93,6 +96,7 @@ export async function renderWritten(input: WrittenInput): Promise<WrittenPdf> {
     roles: input.roles,
     tags: input.tags ?? null,
     highlight: input.highlight ?? null,
+    emptyInk: input.emptyRed ? "danger" : "muted",
     sanitize,
     measure: (text, style, size) => fonts[style].widthOfTextAtSize(text, size),
   });

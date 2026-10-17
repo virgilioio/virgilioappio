@@ -4,6 +4,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { IconTip } from '@/components/ui/tooltip'
 import { FORMAT_OPTIONS, formatSample, type FormatKind, type ValueFormat } from '@/lib/sign/formats'
 import { listLabels, signersWithoutSignature, useSampleValues, type TplDraft } from '@/lib/sign/templates'
+import { writtenCounts } from '@/lib/sign/written'
 import { sideH } from './fieldIcons'
 
 /**
@@ -35,16 +36,18 @@ export function PanelHead({ icon: Icon, title, sub, onClose }: { icon: LucideIco
   )
 }
 
+/** Nothing selected: what each signer has to fill in, the values, and who still can't sign. Counts placed and written fields. */
 export function FieldSummary({ d }: { d: TplDraft }) {
   const people = d.roles.filter((r) => r.role !== 'cc')
   const unsigned = signersWithoutSignature(d)
-  const data = d.fields.filter((f) => f.type === 'data').length
+  const written = d.written.map((w) => writtenCounts(w.content))
+  const data = d.fields.filter((f) => f.type === 'data').length + written.reduce((a, c) => a + c.data, 0)
   return (
     <div className="flex flex-col gap-2.5">
       <h5 className={sideH}>Summary</h5>
       <ul className="flex flex-col gap-1.5">
         {people.map((r) => {
-          const n = d.fields.filter((f) => f.rid === r.id).length
+          const n = d.fields.filter((f) => f.rid === r.id).length + written.reduce((a, c) => a + (c.byRole.get(r.id) ?? 0), 0)
           return (
             <li key={r.id} className="flex items-center gap-2 font-inter text-[12.5px]">
               <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: r.color }} />
@@ -103,9 +106,9 @@ export function FormatPicker({
   const sample = useSampleValues(formId, uses)
   const real = sample.data?.values
   const realOf = (v: ValueFormat | null) => (real ? (v ? real[`${fieldKey}|${v}`] : real[fieldKey]) : null) || null
-  const textOf = (v: ValueFormat | null) => realOf(v) ?? formatSample(kind, v, config)
-  // Say where the samples come from only when every one of them is the offer's.
+  // The offer's own values only when it has every format, so the samples never mix two amounts.
   const fromOffer = opts.every((o) => realOf(o.value))
+  const textOf = (v: ValueFormat | null) => (fromOffer ? realOf(v)! : formatSample(kind, v, config))
   const current = opts.some((o) => o.value === (value ?? null)) ? value ?? null : null
   return (
     <div className="flex flex-col gap-1.5">

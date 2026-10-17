@@ -31,7 +31,7 @@ export const BLOCK_LABEL: Record<SignBlockKind, string> = {
   name: 'Full name',
 }
 
-export type IfOp = 'yes' | 'no' | 'filled' | 'empty' | 'equals' | 'not_equals'
+export type IfOp = 'yes' | 'no' | 'filled' | 'empty' | 'equals' | 'not_equals' | 'gt0'
 export const IF_LABEL: Record<IfOp, string> = {
   yes: 'is Yes',
   no: 'is No',
@@ -39,6 +39,7 @@ export const IF_LABEL: Record<IfOp, string> = {
   empty: 'is empty',
   equals: 'is',
   not_equals: 'is not',
+  gt0: 'is more than 0',
 }
 
 export { writtenKeys }
@@ -75,22 +76,36 @@ export function signBlocks(content: LexicalJson | null | undefined) {
   return out
 }
 
-/** A copy with signing blocks pointed at new role ids (duplicating a template). */
+/** A copy with signing blocks and signer fields pointed at new role ids (duplicating a template). */
 export function remapRoles(content: LexicalJson, map: Map<string, string>): LexicalJson {
   const copy = (n: any): any => {
     if (!n || typeof n !== 'object') return n
     const next: any = Array.isArray(n) ? n.map(copy) : Object.fromEntries(Object.entries(n).map(([k, v]) => [k, copy(v)]))
-    if (!Array.isArray(n) && n.type === 'gio-sign' && map.has(n.roleId)) next.roleId = map.get(n.roleId)
+    if (!Array.isArray(n) && (n.type === 'gio-sign' || n.type === 'gio-field') && map.has(n.roleId)) next.roleId = map.get(n.roleId)
     return next
   }
   return copy(content)
+}
+
+/**
+ * What a written document asks of each role (signing blocks and signer fields,
+ * by role id) and how many values it fills in (the Document step's Summary).
+ */
+export function writtenCounts(content: LexicalJson | null | undefined) {
+  const byRole = new Map<string, number>()
+  let data = 0
+  walkWritten(content, (n) => {
+    if ((n.type === 'gio-sign' || n.type === 'gio-field') && n.roleId) byRole.set(String(n.roleId), (byRole.get(String(n.roleId)) ?? 0) + 1)
+    if (n.type === 'placeholder') data++
+  })
+  return { byRole, data }
 }
 
 /** Is there anything in it besides empty paragraphs? */
 export function hasText(content: LexicalJson | null | undefined) {
   let found = false
   walkWritten(content, (n) => {
-    if ((n.type === 'text' && String(n.text ?? '').trim()) || ['placeholder', 'gio-sign', 'horizontalrule'].includes(n.type)) found = true
+    if ((n.type === 'text' && String(n.text ?? '').trim()) || ['placeholder', 'gio-sign', 'gio-field', 'horizontalrule'].includes(n.type)) found = true
   })
   return found
 }
@@ -167,6 +182,8 @@ export async function renderPreview(input: {
   roles?: Record<string, string>
   /** The send sheet's preview: values underlined in lilac, empty ones as [Label] (labels by key). */
   highlight?: Record<string, string>
+  /** With highlight: empty values' [Label] in red (the template editor's preview). */
+  empty?: 'red'
 }): Promise<TplDoc> {
   const body = JSON.stringify({
     name: input.name,
@@ -175,6 +192,7 @@ export async function renderPreview(input: {
     tags: input.tags ?? null,
     roles: input.roles ?? {},
     ...(input.highlight ? { highlight: input.highlight } : null),
+    ...(input.empty ? { empty: input.empty } : null),
   })
   const key = `written:${await hash(body)}`
   const { data: s } = await supabase.auth.getSession()

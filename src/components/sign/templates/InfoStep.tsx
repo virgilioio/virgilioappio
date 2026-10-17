@@ -13,7 +13,6 @@ import { prefersReducedMotion } from '@/lib/motion'
 import { inspectPdf, PdfProblem, primePdf, uploadTemplatePdf } from '@/lib/sign/pdf'
 import { APP_LABEL, removeDoc, uid, useOfferFormFieldCounts, useOfferForms, withKind, type SignApp, type TplDraft } from '@/lib/sign/templates'
 import { emptyContent, nextPosition, removeWritten, signBlocks, writtenKeys, type TplWritten } from '@/lib/sign/written'
-import { WrittenEditor } from '@/components/sign/written/WrittenEditor'
 import type { SignKind } from '@/lib/sign/api'
 import { Field, Seg } from './parts'
 
@@ -44,10 +43,13 @@ export function InfoStep({
   d,
   set,
   tenantId,
+  onWrite,
 }: {
   d: TplDraft
   set: (fn: (d: TplDraft) => TplDraft) => void
   tenantId: string
+  /** Opens the Document step, where the document is written; undefined while this step has a problem. */
+  onWrite?: () => void
 }) {
   const input = useRef<HTMLInputElement>(null)
   const cards = useRef<Record<'written' | 'uploads', HTMLButtonElement | null>>({ written: null, uploads: null })
@@ -55,7 +57,6 @@ export function InfoStep({
   const counts = useOfferFormFieldCounts()
   const [over, setOver] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [editing, setEditing] = useState<TplWritten | null>(null)
 
   const toggle = (which: 'written' | 'uploads') => {
     const on = which === 'written' ? d.use_written : d.use_uploads
@@ -67,7 +68,8 @@ export function InfoStep({
 
   const writeNew = () => {
     const w: TplWritten = { id: uid(), name: d.kind === 'candidate' ? 'Offer letter' : 'Agreement', position: nextPosition(d), content: emptyContent() }
-    setEditing(w)
+    set((x) => (x.written.length ? x : { ...x, written: [w] }))
+    onWrite?.()
   }
 
   const addFiles = async (files: FileList | File[]) => {
@@ -262,7 +264,7 @@ export function InfoStep({
                       meta={`Written in Gio · ${tags} field${tags === 1 ? '' : 's'} · ${blocks} signing block${blocks === 1 ? '' : 's'}`}
                       actions={
                         <>
-                          <Button variant="secondary" size="sm" icon={PenLine} onClick={() => setEditing(w)}>
+                          <Button variant="secondary" size="sm" icon={PenLine} disabled={!onWrite} onClick={onWrite}>
                             Edit
                           </Button>
                           {d.written.length > 1 && (
@@ -280,7 +282,7 @@ export function InfoStep({
                 {!d.written.length && (
                   <li className="flex flex-wrap items-center gap-3 px-3 py-2.5">
                     <p className="min-w-0 flex-1 font-inter text-[12.5px] text-text-secondary">Nothing written yet.</p>
-                    <Button variant="secondary" size="sm" icon={FilePen} onClick={writeNew}>
+                    <Button variant="secondary" size="sm" icon={FilePen} disabled={!onWrite} onClick={writeNew}>
                       Start writing
                     </Button>
                   </li>
@@ -364,18 +366,6 @@ export function InfoStep({
           </Collapsible>
         </div>
       </FormSection>
-      <WrittenEditor
-        open={!!editing}
-        doc={editing}
-        kind={d.kind}
-        formId={d.offer_form_id}
-        roles={d.roles}
-        onClose={() => setEditing(null)}
-        onDone={(w) => {
-          set((x) => ({ ...x, written: x.written.some((y) => y.id === w.id) ? x.written.map((y) => (y.id === w.id ? w : y)) : [...x.written, w] }))
-          setEditing(null)
-        }}
-      />
     </div>
   )
 }

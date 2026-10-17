@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { signBlocks, writtenCounts } from '@/lib/sign/written'
 import { FIELD_ICON, SIGNER_TILES, sideH } from './fieldIcons'
 import { OFFER_CATEGORIES, offerCategory } from '@/lib/sign/formats'
 import {
@@ -24,6 +25,7 @@ import {
   useOfferForms,
   type FieldType,
   type OfferFormTag,
+  type SignerFieldType,
   type TplDraft,
 } from '@/lib/sign/templates'
 
@@ -45,6 +47,7 @@ export function FieldList({
   onTile,
   onTilePointer,
   onBlock,
+  signerTypes = SIGNER_TILES,
 }: {
   /** The template as it will be saved (effectiveDraft). */
   d: TplDraft
@@ -57,6 +60,8 @@ export function FieldList({
   /** Pointer down on a tile, for drag-to-place (uploads). A plain click still lands here. */
   onTilePointer?: (e: RPointerEvent, type: FieldType, key?: string) => void
   onBlock?: (block: 'conditional') => void
+  /** Which signer field tiles to show (written text has no Email field). */
+  signerTypes?: SignerFieldType[]
 }) {
   const [q, setQ] = useState('')
   const people = d.roles.filter((r) => r.role !== 'cc')
@@ -78,7 +83,15 @@ export function FieldList({
   const setNotNeeded = (key: string, on: boolean) =>
     set((x) => ({ ...x, not_needed: on ? [...new Set([...x.not_needed, key])] : x.not_needed.filter((k) => k !== key) }))
 
+  const written = d.written.map((w) => writtenCounts(w.content))
+  const countFor = (rid: string) => d.fields.filter((f) => f.rid === rid).length + written.reduce((a, c) => a + (c.byRole.get(rid) ?? 0), 0)
+  const signs = (rid: string) =>
+    d.fields.some((f) => f.rid === rid && f.type === 'signature') ||
+    d.written.some((w) => signBlocks(w.content).some((b) => b.roleId === rid && b.kind === 'signature' && !b.conditional))
+
   const tileProps = (type: FieldType, key?: string) => ({
+    // Writing: the editor keeps its caret, so the field lands where you were typing.
+    onMouseDown: onTilePointer ? undefined : (e: React.MouseEvent) => e.preventDefault(),
     onPointerDown: onTilePointer ? (e: RPointerEvent) => onTilePointer(e, type, key) : undefined,
     // With drag-to-place the pointer handles clicks; keyboard clicks (detail 0) land here.
     onClick: (e: React.MouseEvent) => (!onTilePointer || e.detail === 0) && onTile(type, key),
@@ -156,7 +169,7 @@ export function FieldList({
           <section className="flex flex-col gap-1">
             <h5 className={sideH}>Placing fields for</h5>
             {people.map((r) => {
-              const n = d.fields.filter((f) => f.rid === r.id).length
+              const n = countFor(r.id)
               return (
                 <button
                   key={r.id}
@@ -178,9 +191,9 @@ export function FieldList({
 
           <section className="flex flex-col gap-1.5">
             <h5 className={sideH}>Signer fields</h5>
-            {SIGNER_TILES.map((t) => {
+            {signerTypes.map((t) => {
               const Icon = FIELD_ICON[t]
-              const has = t === 'signature' && !!who && d.fields.some((f) => f.rid === who && f.type === 'signature')
+              const has = t === 'signature' && !!who && signs(who)
               return (
                 <div key={t} className="gio-ftile-row">
                   <button
@@ -252,7 +265,7 @@ export function FieldList({
         <section className="flex flex-col gap-1.5">
           <h5 className={sideH}>Blocks</h5>
           <div className="gio-ftile-row">
-            <button type="button" className="gio-ftile" onClick={() => onBlock('conditional')}>
+            <button type="button" className="gio-ftile" onMouseDown={(e) => e.preventDefault()} onClick={() => onBlock('conditional')}>
               <Brackets className="h-3.5 w-3.5 shrink-0 text-text-secondary" strokeWidth={2} aria-hidden />
               <span className="min-w-0 flex-1 truncate">Conditional section</span>
             </button>
