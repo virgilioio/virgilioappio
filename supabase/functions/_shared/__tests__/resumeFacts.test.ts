@@ -88,3 +88,12 @@ describe('checkResumeJobs', () => {
     expect(dropped.map((j) => j.company_name)).toEqual(['Salesforce', 'Bimbo']);
   });
 });
+
+describe('apolloWorkHistory', () => {
+  it('saves a job Apollo lists twice once', async () => {
+    const { apolloWorkHistory } = await import('../candidateUpdate');
+    const job = { organization_name: 'Keyence Corporation', title: 'Sales engineer', start_date: '2017-01-01', current: false };
+    const rows = apolloWorkHistory('c1', { employment_history: [job, { ...job }, { ...job, title: 'Account Manager' }] });
+    expect(rows.map((r) => r.job_title)).toEqual(['Sales engineer', 'Account Manager']);
+  });
+});

@@ -11,6 +11,7 @@
  */
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { apolloCompany } from './apolloPerson.ts'
+import { dedupeJobs } from './resumeFacts.ts'
 
 export type UpdateSource = 'apollo' | 'apollo_preview' | 'resume' | 'application' | 'extension' | 'pdl' | 'import'
 
@@ -96,12 +97,12 @@ export function apolloPersonFields(person: any): Record<string, unknown> {
   }
 }
 
-/** Apollo's work history as candidate_work_experience rows. */
+/** Apollo's work history as candidate_work_experience rows, each job once (Apollo sometimes lists one twice). */
 // deno-lint-ignore no-explicit-any
 export function apolloWorkHistory(candidateId: string, person: any) {
   const list = Array.isArray(person?.employment_history) ? person.employment_history : []
   // deno-lint-ignore no-explicit-any
-  return list.map((exp: any) => ({
+  return dedupeJobs(list.map((exp: any) => ({
     candidate_id: candidateId,
     company_name: exp?.organization_name || exp?.organization?.name || 'Unknown company',
     job_title: exp?.title || 'Unknown title',
@@ -109,7 +110,7 @@ export function apolloWorkHistory(candidateId: string, person: any) {
     end_date: exp?.end_date ? new Date(exp.end_date).toISOString().split('T')[0] : null,
     is_current: exp?.current || false,
     description: exp?.description || null,
-  }))
+  })))
 }
 
 /** Adds Apollo's work history only when the candidate has none yet. */

@@ -20,7 +20,7 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 import { callerFromRequest, isServiceCall } from "../_shared/caller.ts";
 import { findExistingCandidate } from "../_shared/matchCandidate.ts";
 import { apolloCompany } from "../_shared/apolloPerson.ts";
-import { applyCandidateUpdate, apolloPersonFields, addHistoryIfEmpty } from "../_shared/candidateUpdate.ts";
+import { applyCandidateUpdate, apolloPersonFields, addHistoryIfEmpty, apolloWorkHistory } from "../_shared/candidateUpdate.ts";
 import {
   creditStatus, creditsFromResponse, recordCredits, phoneWebhookUrl,
   PERSON_CREDITS, PHONE_CREDITS,
@@ -373,17 +373,9 @@ serve(async (req) => {
           } else {
             candidateId = created.id;
             enriched++;
-            const history = Array.isArray(person.employment_history) ? person.employment_history : [];
+            const history = apolloWorkHistory(candidateId!, person);
             if (history.length > 0) {
-              const { error: expError } = await supabase.from('candidate_work_experience').insert(history.map((exp: any) => ({
-                candidate_id: candidateId,
-                company_name: exp.organization_name || 'Unknown Company',
-                job_title: exp.title || 'Unknown Title',
-                start_date: exp.start_date ? new Date(exp.start_date).toISOString().split('T')[0] : null,
-                end_date: exp.end_date ? new Date(exp.end_date).toISOString().split('T')[0] : null,
-                is_current: exp.current || false,
-                description: exp.description,
-              })));
+              const { error: expError } = await supabase.from('candidate_work_experience').insert(history);
               if (expError) console.warn('Saving work history failed:', expError.message);
             }
           }
