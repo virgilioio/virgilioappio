@@ -1728,6 +1728,10 @@ button[aria-label="Clear search"] { animation: gio-fade-only 120ms ease; }
 /* Gio Sign › Send for signature sheet (2026-10-17): notes, the coverage ring
    and the From the offer list. Text that changes in place plays gio-swap-in. */
 .gio-swap-in { animation: tsel-swap 220ms var(--ease-out); }
+/* A step title as the wizard moves between steps: blur, fade and grow from .96 (220ms). */
+.gio-title-swap { animation: gio-title-swap 220ms var(--ease-out); transform-origin: left center; }
+@keyframes gio-title-swap { from { opacity: 0; filter: blur(2px); transform: scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .gio-title-swap { animation-name: tsel-swap-fade; } }
 @media (prefers-reduced-motion: reduce) { .gio-swap-in { animation-name: tsel-swap-fade; } }
 .gio-send-note {
   display: flex; gap: 9px; padding: 10px 12px; border-radius: 10px;

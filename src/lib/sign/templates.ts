@@ -453,41 +453,58 @@ export function usedTags(d: Pick<TplDraft, 'fields' | 'written'>): Pick<TplField
 /* Validation (one message per step, shown in the footer)                     */
 /* ------------------------------------------------------------------------- */
 
+/** The template workflow's steps (2026-10-17): Template info · Document · Signers · Review & save. */
+export const WIZARD_STEPS = ['Template info', 'Document', 'Signers', 'Review & save'] as const
+export type WizardStepIndex = 0 | 1 | 2
+
+export interface TplIssue {
+  step: WizardStepIndex
+  text: string
+  /** Keeps Continue off on its own step. Every issue keeps Save off. */
+  blocks: boolean
+}
+
+/** Everything that stops a template from saving, with the step that fixes it, in step order. */
+export function templateIssues(d: TplDraft): TplIssue[] {
+  const out: TplIssue[] = []
+  const add = (step: WizardStepIndex, text: string, blocks = true) => out.push({ step, text, blocks })
+  // Template info
+  if (!d.name.trim()) add(0, 'Name the template')
+  if (!d.docs.length && !d.written.length) add(0, 'Add at least one document')
+  if (d.docs.some((x) => x.uploading != null)) add(0, 'Waiting for the upload to finish')
+  if (pageCount(d) > 200) add(0, 'A template can hold up to 200 pages')
+  if (d.docs.length + d.written.length > 50) add(0, 'A template can hold up to 50 documents')
+  if (d.written.some((w) => !w.name.trim())) add(0, 'Every written document needs a name')
+  if (!d.subject.trim()) add(0, 'Add an email subject')
+  if (!d.body.trim()) add(0, 'Add an email message')
+  // Document
+  const signing = new Set(d.roles.filter((r) => r.role !== 'cc').map((r) => r.id))
+  const orphan = d.written.find((w) => signBlocks(w.content).some((b) => !signing.has(b.roleId)))
+  if (orphan) add(1, `A signing block in “${orphan.name}” belongs to a role that isn’t on the template`)
+  // A signature inside a conditional section might not print, so it doesn't count. Roles come
+  // after the document, so a missing signature keeps Save off but not Continue.
+  for (const r of d.roles) {
+    if (
+      r.role === 'signer' &&
+      !d.fields.some((f) => f.rid === r.id && f.type === 'signature') &&
+      !d.written.some((w) => signBlocks(w.content).some((b) => b.roleId === r.id && b.kind === 'signature' && !b.conditional))
+    ) {
+      add(1, `${r.label || 'A signer'} needs a signature field`, false)
+    }
+  }
+  // Signers
+  if (!d.roles.some((r) => r.role === 'signer')) add(2, 'Add at least one signer')
+  if (d.roles.some((r) => !r.label.trim())) add(2, 'Every role needs a name')
+  const bad = d.roles.find((r) => r.fixed && (!r.name.trim() || !okEmail(r.email)))
+  if (bad) add(2, `${bad.label || 'A fixed role'} needs a name and a valid email`)
+  const labels = d.roles.map((r) => r.label.trim().toLowerCase())
+  if (new Set(labels).size !== labels.length) add(2, 'Two roles have the same name')
+  return out
+}
+
+/** The first problem that keeps Continue off on a step, or null. */
 export function stepIssue(step: number, d: TplDraft): string | null {
-  if (step === 0) {
-    if (!d.name.trim()) return 'Name the template'
-    if (!d.docs.length && !d.written.length) return 'Add at least one document'
-    if (d.docs.some((x) => x.uploading != null)) return 'Waiting for the upload to finish'
-    if (pageCount(d) > 200) return 'A template can hold up to 200 pages'
-    if (d.docs.length + d.written.length > 50) return 'A template can hold up to 50 documents'
-    if (d.written.some((w) => !w.name.trim())) return 'Every written document needs a name'
-  }
-  if (step === 1) {
-    if (!d.roles.some((r) => r.role === 'signer')) return 'Add at least one signer'
-    if (d.roles.some((r) => !r.label.trim())) return 'Every role needs a name'
-    const bad = d.roles.find((r) => r.fixed && (!r.name.trim() || !okEmail(r.email)))
-    if (bad) return `${bad.label || 'A fixed role'} needs a name and a valid email`
-    const labels = d.roles.map((r) => r.label.trim().toLowerCase())
-    if (new Set(labels).size !== labels.length) return 'Two roles have the same name'
-  }
-  if (step === 2) {
-    const signing = new Set(d.roles.filter((r) => r.role !== 'cc').map((r) => r.id))
-    const orphan = d.written.find((w) => signBlocks(w.content).some((b) => !signing.has(b.roleId)))
-    if (orphan) return `A signing block in “${orphan.name}” belongs to a role that isn’t on the template`
-    // A signature inside a conditional section might not print, so it doesn't count.
-    const m = d.roles.find(
-      (r) =>
-        r.role === 'signer' &&
-        !d.fields.some((f) => f.rid === r.id && f.type === 'signature') &&
-        !d.written.some((w) => signBlocks(w.content).some((b) => b.roleId === r.id && b.kind === 'signature' && !b.conditional)),
-    )
-    if (m) return `${m.label} needs a signature field`
-  }
-  if (step === 3) {
-    if (!d.subject.trim()) return 'Add a subject'
-    if (!d.body.trim()) return 'Add a message'
-  }
-  return null
+  return templateIssues(d).find((i) => i.step === step && i.blocks)?.text ?? null
 }
 
 /* ------------------------------------------------------------------------- */

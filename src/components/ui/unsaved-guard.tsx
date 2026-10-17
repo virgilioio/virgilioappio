@@ -17,12 +17,15 @@ export function UnsavedGuard({
   onKeep,
   onDiscard,
   detail,
+  title = 'Discard unsaved changes?',
   className,
 }: {
   open: boolean
   onKeep: () => void
   onDiscard: () => void
   detail?: ReactNode
+  /** The question, when "Discard unsaved changes?" isn't specific enough. */
+  title?: string
   className?: string
 }) {
   const root = useRef<HTMLDivElement | null>(null)
@@ -71,7 +74,7 @@ export function UnsavedGuard({
     >
       <div className="min-w-0 flex-1">
         <p id={titleId} className="truncate text-[13px] font-medium text-text-primary">
-          Discard unsaved changes?
+          {title}
         </p>
         {detail ? <p className="truncate text-[11.5px] text-text-tertiary">{detail}</p> : null}
       </div>

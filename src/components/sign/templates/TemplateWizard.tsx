@@ -1,25 +1,39 @@
 import { useEffect, useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, ChevronDown, CircleAlert } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { WizardSheet } from '@/components/ui/wizard-sheet'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { saveTemplate, stepIssue, type TplDraft } from '@/lib/sign/templates'
+import {
+  WIZARD_STEPS,
+  offerCoverage,
+  saveTemplate,
+  stepIssue,
+  tagLabel,
+  templateIssues,
+  usedTags,
+  useOfferForms,
+  useOfferFormTags,
+  type TplDraft,
+} from '@/lib/sign/templates'
+import { TagText } from './parts'
 import { InfoStep } from './InfoStep'
 import { RolesStep } from './RolesStep'
 import { FieldsEditor, WrittenOnlyFields } from './FieldsEditor'
 import { MessageStep } from './MessageStep'
 import { ReviewStep } from './ReviewStep'
 
-const STEPS: [string, string][] = [
-  ['Template info', 'Name, type, where it’s used and the documents people will sign: uploaded PDFs or written in Gio.'],
-  ['Roles', 'Who signs, in what order. Roles become people when the template is used.'],
-  ['Fields', 'Drag signer and data fields onto the pages. Each role has its own colour.'],
-  ['Message', 'The email people get, with data tags that fill in from the record.'],
-  ['Review & save', 'One last look. Jump back to any step to change it.'],
+// One sentence under each step's title (the order is WIZARD_STEPS).
+const STEP_SUB = [
+  'The name and type people see when picking a template, and the documents they sign.',
+  'Write the agreement or place offer fields on the uploaded pages. Each signer has their own colour.',
+  'Who signs, in what order, and where each person comes from when the template is sent.',
+  'One last look. Jump back to any step to change it.',
 ]
 
 export type WizardMode = 'new' | 'edit' | 'duplicate'
@@ -40,6 +54,8 @@ export function TemplateWizard({
   const qc = useQueryClient()
   const [d, setD] = useState<TplDraft | null>(init)
   const [step, setStep] = useState(0)
+  // Steps opened so far: their problems show on the rail.
+  const [seen, setSeen] = useState<Set<number>>(new Set([0]))
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -48,12 +64,15 @@ export function TemplateWizard({
     if (open && init) {
       setD(init)
       setStep(0)
+      setSeen(new Set([0]))
       setDirty(mode === 'duplicate')
       setBusy(false)
       setSaveError(null)
     }
   }, [open, init, mode])
 
+  const forms = useOfferForms()
+  const formTags = useOfferFormTags(d?.kind === 'candidate' ? d.offer_form_id : null)
   if (!d) return null
 
   const set = (fn: (d: TplDraft) => TplDraft) => {
@@ -61,9 +80,16 @@ export function TemplateWizard({
     setDirty(true)
     setSaveError(null)
   }
-  const issue = step < 4 ? stepIssue(step, d) : null
-  const anyIssue = [0, 1, 2, 3].some((i) => stepIssue(i, d))
-  const reachable = (i: number) => [...Array(i).keys()].every((k) => !stepIssue(k, d))
+  const issues = templateIssues(d)
+  const issue = step < 3 ? stepIssue(step, d) : null
+  const anyIssue = issues.length > 0
+  // Steps after Template info open once it's valid.
+  const reachable = (i: number) => i === 0 || !stepIssue(0, d)
+  const go = (i: number) => {
+    if (!reachable(i)) return
+    setStep(i)
+    setSeen((x) => new Set(x).add(i))
+  }
   const isEdit = mode === 'edit'
   const me = {
     name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || user?.email?.split('@')[0] || '',
@@ -77,7 +103,7 @@ export function TemplateWizard({
     try {
       await saveTemplate(d, organizationId)
       await qc.invalidateQueries({ queryKey: ['sign'] })
-      toast.success(isEdit ? `${d.name.trim()} saved` : `${d.name.trim()} is ready to use`, {
+      toast.success(isEdit ? `Template saved · ${d.name.trim()}` : `Template created · ${d.name.trim()}`, {
         description: isEdit
           ? 'New envelopes use the changes. Envelopes already sent keep their own copy.'
           : d.app === 'sales'
@@ -95,22 +121,37 @@ export function TemplateWizard({
     }
   }
 
-  const [title, sub] = STEPS[step]
-  const eyebrow = `${isEdit ? 'Edit template' : mode === 'duplicate' ? 'Duplicate template' : 'New template'} · step ${step + 1} of ${STEPS.length}`
-  const hint = saveError ? (
+  const title = WIZARD_STEPS[step]
+  const eyebrow = `${isEdit ? 'Edit template' : mode === 'duplicate' ? 'Duplicate template' : 'New template'} · step ${step + 1} of ${WIZARD_STEPS.length}`
+  const docs = d.docs.length + d.written.length
+  const formName = forms.data?.find((f) => f.id === d.offer_form_id)?.name
+  const cov = d.kind === 'candidate' && d.offer_form_id && formTags.data?.length ? offerCoverage(usedTags(d), formTags.data, d.not_needed) : null
+  // The footer's status: the first that applies.
+  const status = saveError ? (
     <span className="text-virgilio-error">{saveError}</span>
   ) : issue ? (
-    issue
+    <span className="inline-flex items-center gap-1.5 text-[#A82E23]">
+      <CircleAlert className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} aria-hidden />
+      {issue}
+    </span>
   ) : step === 0 ? (
     <>
-      Required fields are marked with <span className="text-virgilio-error">*</span>
+      Required fields marked with <span className="text-virgilio-error">*</span>
     </>
+  ) : cov ? (
+    <span className="tabular-nums">
+      {cov.placed.length} of {cov.total} {formName ?? 'offer form'} fields mapped
+      {cov.missing.length ? ` · ${cov.missing.length} not in the document` : ''}
+    </span>
   ) : (
     <span className="tabular-nums">
-      <span className="font-medium text-text-primary">
-        {d.roles.length} role{d.roles.length === 1 ? '' : 's'}
-      </span>{' '}
-      · {d.fields.length} field{d.fields.length === 1 ? '' : 's'} · {d.docs.length + d.written.length} document{d.docs.length + d.written.length === 1 ? '' : 's'}
+      {d.roles.length} role{d.roles.length === 1 ? '' : 's'} · {d.fields.length} field{d.fields.length === 1 ? '' : 's'} · {docs} document
+      {docs === 1 ? '' : 's'}
+    </span>
+  )
+  const hint = (
+    <span key={typeof issue === 'string' ? issue : saveError ?? `s${step}`} className="gio-swap-in inline-block max-w-full truncate align-bottom">
+      {status}
     </span>
   )
 
@@ -123,40 +164,96 @@ export function TemplateWizard({
       }}
       eyebrow={eyebrow}
       title={title}
-      subtitle={sub}
-      steps={STEPS.map(([t], i) => ({
-        title: t,
-        state: !reachable(i) ? 'locked' : i < 4 && !stepIssue(i, d) && (i < step || isEdit) ? 'done' : 'todo',
-      }))}
+      swapTitle
+      titleAside={
+        isEdit && d.uses > 0 ? (
+          <Badge tone="neutral" size="sm">
+            <span className="tabular-nums">{`Used ${d.uses}×`}</span>
+          </Badge>
+        ) : undefined
+      }
+      subtitle={STEP_SUB[step]}
+      steps={WIZARD_STEPS.map((t, i) => {
+        const mine = issues.filter((x) => x.step === i)
+        return {
+          title: t,
+          state: !reachable(i)
+            ? 'locked'
+            : i < 3 && mine.length && (seen.has(i) || isEdit) && i !== step
+            ? 'error'
+            : i < 3 && !mine.length && (i < step || seen.has(i + 1) || isEdit)
+            ? 'done'
+            : 'todo',
+        }
+      })}
       current={step}
-      onStep={(i) => reachable(i) && setStep(i)}
+      onStep={go}
       railNote={
         isEdit
-          ? { title: 'Live template', body: 'Changes apply to new envelopes only. Envelopes already sent keep their own copy.' }
-          : { title: 'Not saved yet', body: 'Close any time; you’ll be asked before anything is discarded. Uploaded PDFs stay private.' }
+          ? { title: 'Live template', body: 'Changes apply to new envelopes only. Envelopes already sent aren’t affected.' }
+          : { title: 'Not saved yet', body: 'Close any time. You’ll be asked before anything is discarded.' }
       }
       hint={hint}
       dirty={dirty}
-      flush={step === 2 && d.docs.length > 0}
-      wide={step === 2 && d.docs.length > 0}
+      guard={
+        isEdit
+          ? { title: `Discard your changes to ${d.name.trim() || 'this template'}?`, detail: 'The saved version stays as it is.' }
+          : { title: 'Discard this template?', detail: 'Nothing has been saved, so it won’t appear in Templates.' }
+      }
+      flush={step === 1 && d.docs.length > 0}
+      wide={step === 1 && d.docs.length > 0}
       secondary={
-        isEdit && step < 4 ? (
+        isEdit && step < 3 ? (
           <Button variant="secondary" onClick={save} disabled={anyIssue || busy}>
             Save and exit
           </Button>
         ) : undefined
       }
       primary={
-        step < 4
-          ? { label: step === 3 ? 'Review' : 'Continue', onClick: () => setStep(step + 1), disabled: !!issue || busy }
-          : { label: isEdit ? 'Save changes' : 'Save template', icon: Check, onClick: save, disabled: anyIssue, loading: busy }
+        step < 3
+          ? { label: step === 2 ? 'Review & save' : 'Continue', onClick: () => go(step + 1), disabled: !!issue || busy }
+          : { label: isEdit ? 'Save changes' : 'Save template', icon: Check, onClick: save, disabled: anyIssue, loading: busy, className: 'min-w-[140px]' }
       }
     >
-      {step === 0 && organizationId && <InfoStep d={d} set={set} tenantId={organizationId} />}
-      {step === 1 && <RolesStep d={d} set={set} me={me} />}
-      {step === 2 && (d.docs.length ? <FieldsEditor d={d} set={set} /> : <WrittenOnlyFields d={d} set={set} go={setStep} />)}
-      {step === 3 && <MessageStep d={d} set={set} />}
-      {step === 4 && <ReviewStep d={d} go={(i) => reachable(i) && setStep(i)} />}
+      {step === 0 && organizationId && (
+        <>
+          <InfoStep d={d} set={set} tenantId={organizationId} />
+          <DefaultEmail d={d} set={set} />
+        </>
+      )}
+      {step === 1 && (d.docs.length ? <FieldsEditor d={d} set={set} /> : <WrittenOnlyFields d={d} set={set} go={go} />)}
+      {step === 2 && <RolesStep d={d} set={set} me={me} />}
+      {step === 3 && <ReviewStep d={d} go={go} />}
     </WizardSheet>
+  )
+}
+
+/**
+ * The email each person gets with their link, folded under Template info (the
+ * Message step's content). Open when it needs attention.
+ */
+function DefaultEmail({ d, set }: { d: TplDraft; set: (fn: (d: TplDraft) => TplDraft) => void }) {
+  const empty = !d.subject.trim() || !d.body.trim()
+  const [open, setOpen] = useState(empty)
+  useEffect(() => {
+    if (empty) setOpen(true)
+  }, [empty])
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-2 max-w-[1000px] border-t border-virgilio-border pt-5">
+      <CollapsibleTrigger className="flex w-full items-start gap-3 text-left [&[data-state=open]_svg.gio-disclosure-chevron]:rotate-180">
+        <div className="min-w-0 flex-1">
+          <p className="font-poppins text-[12.5px] font-semibold uppercase tracking-[0.06em] text-[#1F2230]">Default email</p>
+          <p className="mt-[3px] truncate font-inter text-[11.5px] text-text-tertiary">
+            {d.subject.trim() ? <TagText text={d.subject} label={(k) => tagLabel(d.kind, k)} /> : 'No subject yet'} · the sender can change it when sending
+          </p>
+        </div>
+        <ChevronDown className="gio-disclosure-chevron mt-1 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={2} aria-hidden />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="pt-4">
+          <MessageStep d={d} set={set} />
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }

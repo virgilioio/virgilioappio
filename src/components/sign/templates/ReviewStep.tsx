@@ -3,14 +3,14 @@ import { FilePen, FileText, LayoutTemplate, Pencil, TriangleAlert } from 'lucide
 import { FormSection } from '@/components/references/FormSection'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { APP_LABEL, FIELD_LABEL, KIND_LABEL, SIGNER_FIELDS, pageCount, stepIssue, tagLabel, type TplDraft } from '@/lib/sign/templates'
+import { APP_LABEL, FIELD_LABEL, KIND_LABEL, SIGNER_FIELDS, pageCount, tagLabel, templateIssues, type TplDraft } from '@/lib/sign/templates'
 import { docItems, writtenKeys } from '@/lib/sign/written'
 import { TagText } from './parts'
 
 const ROLE_WORD = { signer: 'Signer', approver: 'Approver', cc: 'Gets a copy' } as const
 
 export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void }) {
-  const issues = [0, 1, 2, 3].map((i) => stepIssue(i, d)).filter(Boolean) as string[]
+  const issues = templateIssues(d).map((i) => i.text)
   const pages = pageCount(d)
   const dataKeys = [...new Set([...d.fields.filter((f) => f.type === 'data').map((f) => f.data_key ?? ''), ...d.written.flatMap((w) => writtenKeys(w.content).tags)])]
   const docs = d.docs.length + d.written.length
@@ -76,7 +76,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
         </ul>
       </FormSection>
 
-      <FormSection title={`Roles · ${d.roles.length}`} action={edit(1)}>
+      <FormSection title={`Roles · ${d.roles.length}`} action={edit(2)}>
         <ul className="flex flex-col gap-2.5">
           {d.roles.map((r, i) => (
             <li key={r.id} className="flex items-center gap-2.5 font-inter text-[13px]">
@@ -94,7 +94,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
         </ul>
       </FormSection>
 
-      <FormSection title={`Fields · ${d.fields.length}`} action={edit(2)}>
+      <FormSection title={`Fields · ${d.fields.length}`} action={edit(1)}>
         <dl className="grid grid-cols-[160px_minmax(0,1fr)] gap-x-4 gap-y-2 font-inter text-[12.5px]">
           {d.roles
             .filter((r) => r.role !== 'cc')
@@ -117,7 +117,7 @@ export function ReviewStep({ d, go }: { d: TplDraft; go: (step: number) => void 
         </dl>
       </FormSection>
 
-      <FormSection title="Message" action={edit(3)}>
+      <FormSection title="Message" action={edit(0)}>
         <p className="font-inter text-[13px] font-medium text-text-primary">
           <TagText text={d.subject || 'No subject yet'} label={(k) => tagLabel(d.kind, k)} />
         </p>

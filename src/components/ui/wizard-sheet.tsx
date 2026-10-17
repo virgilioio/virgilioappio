@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
-import { Check, ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, CircleAlert, type LucideIcon } from 'lucide-react'
 
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -10,8 +10,8 @@ import { cn } from '@/lib/utils'
 
 export interface WizardStep {
   title: string
-  /** done: a check; locked: can't be reached until earlier steps are valid. */
-  state: 'todo' | 'done' | 'locked'
+  /** done: a check; error: something on it needs fixing; locked: can't be reached until earlier steps are valid. */
+  state: 'todo' | 'done' | 'error' | 'locked'
 }
 
 /**
@@ -35,6 +35,9 @@ export function WizardSheet({
   secondary,
   primary,
   dirty,
+  guard,
+  titleAside,
+  swapTitle,
   flush,
   wide,
   children,
@@ -52,8 +55,14 @@ export function WizardSheet({
   /** Short text in the footer: the first problem, or a summary. */
   hint?: ReactNode
   secondary?: ReactNode
-  primary: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean; icon?: LucideIcon; iconRight?: LucideIcon }
+  primary: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean; icon?: LucideIcon; iconRight?: LucideIcon; className?: string }
   dirty?: boolean
+  /** The unsaved-changes question and what discarding means, when the default wording is too vague. */
+  guard?: { title: string; detail?: ReactNode }
+  /** Next to the title (e.g. a "Used 12×" badge). */
+  titleAside?: ReactNode
+  /** The title blends in when it changes (a step name). */
+  swapTitle?: boolean
   /** The step body fills the space edge to edge (e.g. an editor). */
   flush?: boolean
   /** Everything right of the rail instead of 1080px (e.g. the fields editor). */
@@ -100,11 +109,15 @@ export function WizardSheet({
             <p className="text-[11px] font-poppins font-semibold uppercase tracking-[0.14em] text-virgilio-purple">{eyebrow}</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <SheetTitle asChild>
-                <h1 className={cn('font-poppins font-semibold tracking-[-0.04em] text-text-primary leading-tight', wide ? 'text-[24px] sm:text-[26px]' : 'text-[28px] sm:text-[34px]')}>
+                <h1
+                  key={swapTitle ? title : undefined}
+                  className={cn('font-poppins font-semibold tracking-[-0.04em] text-text-primary leading-tight', wide ? 'text-[24px] sm:text-[26px]' : 'text-[28px] sm:text-[34px]', swapTitle && 'gio-title-swap')}
+                >
                   {title}
                   <span className="text-virgilio-purple">.</span>
                 </h1>
               </SheetTitle>
+              {titleAside}
             </div>
             {subtitle ? (
               <SheetDescription asChild>
@@ -143,12 +156,20 @@ export function WizardSheet({
                             'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-poppins font-semibold transition-colors',
                             step.state === 'done' && !isActive
                               ? 'bg-virgilio-purple text-white'
+                              : step.state === 'error' && !isActive
+                              ? 'bg-[#FBEAE8] text-[#A82E23]'
                               : isActive
                               ? 'bg-[#0d0d09] text-white'
                               : 'bg-virgilio-border text-text-tertiary',
                           )}
                         >
-                          {step.state === 'done' && !isActive ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                          {step.state === 'done' && !isActive ? (
+                            <Check className="h-3.5 w-3.5" />
+                          ) : step.state === 'error' && !isActive ? (
+                            <CircleAlert className="h-3.5 w-3.5" strokeWidth={2.2} aria-label="Needs fixing" />
+                          ) : (
+                            i + 1
+                          )}
                         </span>
                         <span className={cn('text-[13px] font-poppins font-medium', isActive ? 'text-text-primary' : 'text-text-secondary', wide && 'sr-only')}>
                           {step.title}
@@ -197,6 +218,7 @@ export function WizardSheet({
                   iconRight={primary.iconRight ?? (primary.icon ? undefined : ChevronRight)}
                   disabled={primary.disabled}
                   loading={primary.loading}
+                  className={primary.className}
                 >
                   {primary.label}
                 </Button>
@@ -204,6 +226,8 @@ export function WizardSheet({
             </div>
             <UnsavedGuard
               open={asking}
+              title={guard?.title}
+              detail={guard?.detail}
               onKeep={() => setAsking(false)}
               onDiscard={() => {
                 setAsking(false)

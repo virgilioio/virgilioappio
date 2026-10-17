@@ -4,7 +4,7 @@ vi.mock('@/lib/supabaseClient', () => ({ supabase: {}, supabaseUrl: '', supabase
 vi.mock('@/lib/sign/pdf', () => ({ loadTemplatePdf: vi.fn() }))
 
 import { docItems, emptyContent, remapRoles, signBlocks, type TplWritten } from '@/lib/sign/written'
-import { duplicateDraft, moveItem, newDraft, stepIssue, usedTags, type TplDoc, type TplDraft } from '@/lib/sign/templates'
+import { duplicateDraft, moveItem, newDraft, stepIssue, templateIssues, usedTags, type TplDoc, type TplDraft } from '@/lib/sign/templates'
 
 const pdf = (id: string, pages: number, position: number): TplDoc => ({
   id,
@@ -58,15 +58,17 @@ describe('signing blocks and checks', () => {
 
   it('a written signature block satisfies the signer, unless it is inside a section', () => {
     const ok = draft({ written: [written('w', 0, content(block('r1')))] })
-    expect(stepIssue(0, ok)).toBeNull()
-    expect(stepIssue(2, ok)).toBeNull()
+    expect(templateIssues(ok)).toEqual([])
     const inSection = draft({ written: [written('w', 0, content({ type: 'gio-if', key: 'x', op: 'yes', children: [block('r1')] }))] })
-    expect(stepIssue(2, inSection)).toMatch(/needs a signature field/)
+    const issue = templateIssues(inSection).find((i) => /needs a signature field/.test(i.text))
+    // Flagged on the Document step; it keeps Save off but not Continue (roles come after).
+    expect(issue).toMatchObject({ step: 1, blocks: false })
+    expect(stepIssue(1, inSection)).toBeNull()
   })
 
   it('flags a block for a removed role', () => {
     const d = draft({ written: [written('Offer', 0, content(block('gone')))] })
-    expect(stepIssue(2, d)).toMatch(/belongs to a role/)
+    expect(stepIssue(1, d)).toMatch(/belongs to a role/)
   })
 
   it('needs a document of either kind', () => {
