@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { FileText, FileAudio, FileVideo, FileImage, FileArchive, File as FileIcon, MoreHorizontal, Eye, Download, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -35,9 +36,11 @@ interface Props {
   canDelete: boolean
   onDownload: (id: string, name: string) => void
   onDelete: (id: string, url: string) => Promise<void>
+  /** Shown instead of the resume row's meta while a new resume goes in (ResumeStatusLine). */
+  resumeStatus?: ReactNode
 }
 
-export function SidebarFileList({ attachments, uploading, canDelete, onDownload, onDelete }: Props) {
+export function SidebarFileList({ attachments, uploading, canDelete, onDownload, onDelete, resumeStatus }: Props) {
   const [preview, setPreview] = useState<CandidateAttachment | null>(null)
   const sorted = [...attachments].sort((a, b) =>
     a.is_resume === b.is_resume ? b.created_at.localeCompare(a.created_at) : a.is_resume ? -1 : 1,
@@ -89,7 +92,11 @@ export function SidebarFileList({ attachments, uploading, canDelete, onDownload,
                 <span className="truncate font-inter text-[12px] font-medium text-[#1F2230]">{a.file_name}</span>
                 {a.is_resume && <Badge tone="lilac" size="xs">Resume</Badge>}
               </div>
-              <div className="mt-px font-inter text-[10.5px] text-[#8B8F9E]">{meta}</div>
+              {a.is_resume && resumeStatus ? (
+                <div className="mt-px min-w-0">{resumeStatus}</div>
+              ) : (
+                <div className="mt-px font-inter text-[10.5px] text-[#8B8F9E]">{meta}</div>
+              )}
             </button>
             <DropdownMenu>
               <IconTip label="File actions">

@@ -44,6 +44,8 @@ import { triggerBackgroundEnrichment } from '@/hooks/useCandidateEnrichment'
 import { SimpleScheduleInterviewSheet } from './SimpleScheduleInterviewSheet'
 import { EeoResponseCard } from './EeoResponseCard'
 import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
+import { useResumeRefresh } from '@/hooks/useResumeRefresh'
+import { ResumeStatusLine } from '@/components/candidates/profile/ResumeStatus'
 
 interface IndependentCandidateProfileSheetProps {
   open: boolean
@@ -90,6 +92,8 @@ export function IndependentCandidateProfileSheet({
 
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
+  // Upload → Gio re-reads → Gio Fit re-scores, shown under the Resume buttons.
+  const resumeRefresh = useResumeRefresh(candidateId)
   
   // C17: a new résumé deletes the old one, so ask first when one is on file.
   const handleReplaceResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +106,7 @@ export function IndependentCandidateProfileSheet({
       newFileName: file.name,
       hasResume: !!resumeAttachment,
     })
-    if (ok) void uploadResume(file, true).catch(() => {})
+    if (ok) void resumeRefresh.run(file, () => uploadResume(file, true))
   }
   
   const handleDeleteResume = async () => {
@@ -397,12 +401,15 @@ export function IndependentCandidateProfileSheet({
                                     onChange={handleReplaceResumeChange}
                                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
                                   />
-                                  <Button variant="outline" onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                                  <Button variant="outline" onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading || resumeRefresh.busy} loading={resumeRefresh.status?.phase === 'uploading'}>
                                     Replace Resume
                                   </Button>
-                                  <Button variant="destructive" onClick={handleDeleteResume}>
+                                  <Button variant="destructive" onClick={handleDeleteResume} disabled={resumeRefresh.busy}>
                                     Delete Resume
                                   </Button>
+                                </div>
+                                <div className="min-h-[16px]">
+                                  {resumeRefresh.status && <ResumeStatusLine status={resumeRefresh.status} />}
                                 </div>
                                 <CandidateResumeViewer candidateId={candidateId} />
                               </>

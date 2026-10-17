@@ -138,6 +138,8 @@ import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { checkScorecardGate } from '@/utils/scorecardGate'
 import { confirmDestructive } from '@/components/ui/confirm-dialog'
 import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
+import { useResumeRefresh } from '@/hooks/useResumeRefresh'
+import { ResumeStatusLine } from '@/components/candidates/profile/ResumeStatus'
 import { closeJob } from '@/components/jobs/jobStatusActions'
 
 interface StageScorecardProps {
@@ -616,6 +618,9 @@ const stageHasAutomation = useMemo(() => {
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
+  // Upload → Gio re-reads → Gio Fit re-scores, shown on the Resume tab and the sidebar file row.
+  const resumeRefresh = useResumeRefresh(independentCandidateId || candidateId)
+  const resumeStatusLine = resumeRefresh.status ? <ResumeStatusLine status={resumeRefresh.status} compact /> : undefined
   // C17: a new résumé deletes the old one, so ask first when one is on file.
   const replaceResume = async (file: File) => {
     const ok = await confirmReplaceResume({
@@ -625,14 +630,17 @@ const stageHasAutomation = useMemo(() => {
       hasResume: !!resumeAttachment,
     })
     if (!ok) return false
-    try { await uploadResume(file, true) } catch { return false /* toast shown by hook */ }
+    // The upload re-reads the resume and then re-scores Gio Fit on every
+    // active job (this one included); scoring here first would score the old
+    // profile (2026-10-17).
+    void resumeRefresh.run(file, () => uploadResume(file, true))
     return true
   }
   const handleReplaceResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget
     const file = e.target.files?.[0]
     input.value = ''
-    if (file && (await replaceResume(file)) && candidateId) triggerFitAnalysis(candidateId, jobId)
+    if (file) await replaceResume(file)
   }
   const handleDeleteResume = async () => {
     if (!resumeAttachment) return
@@ -1837,7 +1845,8 @@ const stageHasAutomation = useMemo(() => {
                           resumeOnFile={!!resumeAttachment}
                           fileName={resumeAttachment?.file_name ?? null}
                           uploadedDate={resumeAttachment?.created_at ? new Date(resumeAttachment.created_at).toLocaleDateString() : null}
-                          parsing={isResumeUploading}
+                          parsing={isResumeUploading || resumeRefresh.busy}
+                          status={resumeRefresh.status}
                           onFile={(file) => { void replaceResume(file) }}
                           viewerActions={
                             <>
@@ -1848,10 +1857,10 @@ const stageHasAutomation = useMemo(() => {
                                 onChange={handleReplaceResumeChange}
                                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
                               />
-                              <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                              <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading || resumeRefresh.busy} loading={resumeRefresh.status?.phase === 'uploading'}>
                                 Replace
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={handleDeleteResume}>
+                              <Button variant="ghost" size="sm" onClick={handleDeleteResume} disabled={resumeRefresh.busy}>
                                 Delete
                               </Button>
                             </>
@@ -2243,7 +2252,7 @@ const stageHasAutomation = useMemo(() => {
                                 urls={urls}
                                 filesCount={attachments.length}
                                 onFilesSelected={canEditCandidates ? handleSidebarFiles : undefined}
-                                fileSlots={<SidebarFileList attachments={attachments} uploading={uploadingFiles} canDelete={!!canEditCandidates} onDownload={downloadAttachment} onDelete={deleteAttachment} />}
+                                fileSlots={<SidebarFileList attachments={attachments} uploading={uploadingFiles} canDelete={!!canEditCandidates} onDownload={downloadAttachment} onDelete={deleteAttachment} resumeStatus={resumeStatusLine} />}
                                 location={[(candidate as any)?.location_city, (candidate as any)?.location_state, (candidate as any)?.location_country].filter(Boolean).join(', ') || (candidate as any)?.location || null}
                                 email={candidate?.email || null}
                                 phone={candidate?.phone || null}

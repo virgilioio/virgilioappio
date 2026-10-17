@@ -5,6 +5,8 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { ResumeRefreshStatus } from '@/hooks/useResumeRefresh'
+import { ResumeStatusLine } from './ResumeStatus'
 
 /**
  * Shared Resume tab card — identical on the independent and in-job profiles.
@@ -113,6 +115,8 @@ export interface ResumeTabCardProps {
   fallbackResumeUrl?: string | null
   /** File is uploading or Gio is reading it. */
   parsing?: boolean
+  /** Where a new upload is (useResumeRefresh); shown as the card's subtitle. */
+  status?: ResumeRefreshStatus | null
   onFile: (file: File) => void
   /** Ghost action shown in the empty-state header. */
   onAskCandidate?: () => void
@@ -128,15 +132,17 @@ export function ResumeTabCard({
   uploadedDate,
   fallbackResumeUrl,
   parsing,
+  status,
   onFile,
   onAskCandidate,
   viewerActions,
 }: ResumeTabCardProps) {
+  const statusLine = status ? <ResumeStatusLine status={status} /> : null
   if (!resumeOnFile) {
     return (
       <ProfileCard
         title="Resume"
-        subtitle={parsing ? 'Uploading · Gio is reading the file' : 'No resume on file'}
+        subtitle={statusLine ?? (parsing ? 'Uploading · Gio is reading the file' : 'No resume on file')}
         action={
           !parsing && onAskCandidate ? (
             <Button variant="ghost" size="sm" icon={Mail} onClick={onAskCandidate}>
@@ -164,12 +170,13 @@ export function ResumeTabCard({
     <ProfileCard
       title="Resume"
       subtitle={
-        subtitleParts.length > 1
+        statusLine ??
+        (subtitleParts.length > 1
           ? `${subtitleParts[0]} · ${subtitleParts.slice(1).join(' on ')}`
-          : subtitleParts[0]
+          : subtitleParts[0])
       }
       badge={
-        parsing ? (
+        (status ? status.phase === 'uploading' || status.phase === 'reading' : parsing) ? (
           <Badge tone="lilac" size="xs" icon={Sparkles} pulse>Gio is reading this resume</Badge>
         ) : (
           <Badge tone="lilac" size="xs" icon={Sparkles}>Parsed by Gio</Badge>

@@ -47,6 +47,7 @@ import { formatSalaryExpectation } from '@/lib/candidateHelpers'
 import type { CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import type { CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { confirmDeleteResume, confirmReplaceResume } from '@/lib/removeOldResumes'
+import { useResumeRefresh } from '@/hooks/useResumeRefresh'
 
 const ordinal = (n: number) => {
   const rest = n % 100
@@ -137,6 +138,10 @@ function SuggestedCandidateProfileInner() {
   const { attachments, uploadAttachment, isUploading: isResumeUploading, deleteAttachment } =
     useCandidateAttachments(candidateId)
   const resume = attachments.find((a) => a.is_resume) || null
+  // Upload → Gio re-reads → Gio Fit re-scores, shown in the Resume card's subtitle.
+  const resumeRefresh = useResumeRefresh(candidateId, {
+    onProfileUpdated: () => void queryClient.invalidateQueries({ queryKey: ['suggested-profile-detail', candidateId] }),
+  })
   // C17: a new résumé deletes the old one, so ask first when one is on file.
   const replaceResume = async (file: File) => {
     const ok = await confirmReplaceResume({
@@ -145,7 +150,7 @@ function SuggestedCandidateProfileInner() {
       newFileName: file.name,
       hasResume: !!resume,
     })
-    if (ok) void uploadAttachment(file, true).catch(() => {})
+    if (ok) void resumeRefresh.run(file, () => uploadAttachment(file, true))
   }
 
   // The suggestion list gives the match score, the reasons and the list order.
@@ -445,7 +450,8 @@ function SuggestedCandidateProfileInner() {
                 uploadedBy={null}
                 uploadedDate={fmtDate(resume?.created_at)}
                 fallbackResumeUrl={(candidate as any)?.resume_url ?? null}
-                parsing={isResumeUploading}
+                parsing={isResumeUploading || resumeRefresh.busy}
+                status={resumeRefresh.status}
                 onFile={(file) => { void replaceResume(file) }}
                 viewerActions={
                   <>
@@ -460,7 +466,7 @@ function SuggestedCandidateProfileInner() {
                         if (file) void replaceResume(file)
                       }}
                     />
-                    <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                    <Button variant="ghost" size="sm" icon={Upload} onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading || resumeRefresh.busy} loading={resumeRefresh.status?.phase === 'uploading'}>
                       Replace
                     </Button>
                   </>

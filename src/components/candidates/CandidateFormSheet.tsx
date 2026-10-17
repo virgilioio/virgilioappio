@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { shakeFirstInvalid } from '@/lib/motion'
 import { removeOldResumes, currentResumeIds } from '@/lib/removeOldResumes'
 import { useForm } from 'react-hook-form'
@@ -108,6 +109,7 @@ export function CandidateFormSheet({
   const [skills, setSkills] = useState<string[]>([])
   const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
   const { user, organizationId } = useAuth()
+  const queryClient = useQueryClient()
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [isUploadingResume, setIsUploadingResume] = useState(false)
   const isMountedRef = useRef(true)
@@ -420,6 +422,8 @@ export function CandidateFormSheet({
           .update({ resume_url: storagePath })
           .eq('id', jobCandidateId)
       }
+      // Every open view of this candidate's files shows the new one.
+      void queryClient.invalidateQueries({ queryKey: ['candidate-attachments', jobCandidateId] })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to upload resume'
       toast({ title: 'Error', description: msg, variant: 'destructive' })

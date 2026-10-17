@@ -1,5 +1,6 @@
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
@@ -23,50 +24,59 @@ export interface CandidateAttachment {
   converted_at?: string | null
 }
 
+async function fetchAttachments(candidateId: string): Promise<CandidateAttachment[]> {
+  const { data, error } = await supabase
+    .from('candidate_attachments')
+    .select(`
+      *,
+      converted_pdf_url,
+      conversion_status,
+      conversion_error,
+      converted_at
+    `)
+    .eq('candidate_id', candidateId)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('Error fetching attachments:', error)
+    throw error
+  }
+  return (data || []) as CandidateAttachment[]
+}
+
+/**
+ * A candidate's files. One shared list per candidate (2026-10-17): the profile,
+ * its sidebar and the resume viewer each kept their own copy, so a replaced
+ * resume stayed on screen in the viewer until the page was reopened.
+ */
 export function useCandidateAttachments(candidateId: string) {
-  const [attachments, setAttachments] = useState<CandidateAttachment[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const queryClient = useQueryClient()
+  const queryKey = ['candidate-attachments', candidateId] as const
+  const query = useQuery({
+    queryKey,
+    queryFn: () => fetchAttachments(candidateId),
+    enabled: !!candidateId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  })
+  const attachments = query.data ?? []
+  const [isBusy, setIsLoading] = useState(false)
+  const isLoading = (query.isLoading && !!candidateId) || isBusy
   const [isUploading, setIsUploading] = useState(false)
-  const [lastRefetch, setLastRefetch] = useState(0)
   const { user } = useAuth()
+
+  // A failed load says so, as before (once per failure).
+  useEffect(() => {
+    if (!query.error) return
+    toast({
+      title: 'Error',
+      description: query.error instanceof Error ? query.error.message : 'Failed to fetch attachments',
+      variant: 'destructive',
+    })
+  }, [query.error])
 
   const getAttachments = async () => {
     if (!candidateId) return
-
-    setIsLoading(true)
-    try {
-      console.log('Fetching attachments for candidate:', candidateId)
-      
-      const { data, error } = await supabase
-        .from('candidate_attachments')
-        .select(`
-          *,
-          converted_pdf_url,
-          conversion_status,
-          conversion_error,
-          converted_at
-        `)
-        .eq('candidate_id', candidateId)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching attachments:', error)
-        throw error
-      }
-
-      console.log('Fetched attachments:', data)
-      setAttachments(data || [])
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch attachments'
-      console.error('Attachments fetch error:', err)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    await queryClient.invalidateQueries({ queryKey: ['candidate-attachments', candidateId] })
   }
 
   const uploadAttachment = async (file: File, isResume: boolean = false) => {
@@ -130,10 +140,10 @@ export function useCandidateAttachments(candidateId: string) {
       }
 
       toast({
-        title: 'Success',
+        title: isResume ? 'Resume uploaded' : 'File uploaded',
         description: isResume
-          ? 'Resume saved. Gio is re-reading it and will refresh the Gio Fit score.'
-          : 'Attachment uploaded successfully'
+          ? `${file.name} ${previousResumeIds.length ? 'replaces the old resume' : 'is saved'}. Gio is reading it now; the profile shows when it's done.`
+          : file.name,
       })
 
       await getAttachments()
@@ -285,14 +295,8 @@ export function useCandidateAttachments(candidateId: string) {
   }
 
   const refetch = () => {
-    setLastRefetch(Date.now())
+    void getAttachments()
   }
-
-  useEffect(() => {
-    if (candidateId) {
-      getAttachments()
-    }
-  }, [candidateId, lastRefetch])
 
   return {
     attachments,

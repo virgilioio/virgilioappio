@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { confirmReplaceResume } from '@/lib/removeOldResumes'
+import { useResumeRefresh } from '@/hooks/useResumeRefresh'
+import { ResumeStatusLine } from '@/components/candidates/profile/ResumeStatus'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon,
@@ -194,11 +196,19 @@ export default function IndependentCandidateProfile() {
   const { attachments, uploadAttachment, isUploading: isResumeUploading, refetch: refetchAttachments } =
     useCandidateAttachments(candidateId || '')
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
-  const [isEnriching, setIsEnriching] = useState(false)
-  const enrichBaselineRef = useRef<string | null>(null)
+  // Upload → Gio re-reads → Gio Fit re-scores, shown in the sidebar file row
+  // and on the Resume tab wherever the replace was started.
+  const resumeRefresh = useResumeRefresh(candidateId, {
+    onProfileUpdated: () => {
+      setProfileDataKey(k => k + 1)
+      void refetchAttachments()
+    },
+  })
+  const isEnriching = resumeRefresh.status?.phase === 'reading'
+  const resumeBusy = resumeRefresh.busy || isResumeUploading
 
   const handleResumeUpload = async (file: File) => {
-    if (!candidateId) return
+    if (!candidateId || resumeRefresh.busy) return
     // C17: a new résumé deletes the old one, so ask first when one is on file.
     const current = attachments.find((a) => a.is_resume)
     const ok = await confirmReplaceResume({
@@ -208,61 +218,9 @@ export default function IndependentCandidateProfile() {
       hasResume: !!current,
     })
     if (!ok) return
-    try {
-      await uploadAttachment(file, true)
-      enrichBaselineRef.current = (candidate as any)?.enriched_at ?? null
-      setIsEnriching(true)
-    } catch {
-      // uploadAttachment already surfaces the error
-    }
+    // uploadAttachment surfaces its own error; the status line says it too.
+    void resumeRefresh.run(file, () => uploadAttachment(file, true))
   }
-
-  // Poll until the re-read finishes, then refresh the profile in place.
-  useEffect(() => {
-    if (!isEnriching || !candidateId) return
-    let cancelled = false
-    let attempts = 0
-
-    const poll = async () => {
-      attempts += 1
-      const { data } = await supabase
-        .from('candidates')
-        .select('enrichment_status, enriched_at')
-        .eq('id', candidateId)
-        .maybeSingle()
-
-      if (cancelled) return
-
-      const status = (data as any)?.enrichment_status as string | undefined
-      const enrichedAt = (data as any)?.enriched_at ?? null
-      const finished =
-        (enrichedAt && enrichedAt !== enrichBaselineRef.current) ||
-        status === 'failed' ||
-        status === 'not_possible'
-
-      if (finished || attempts >= 40) {
-        setIsEnriching(false)
-        queryClient.invalidateQueries({ queryKey: ['independent-candidate', candidateId] })
-        queryClient.invalidateQueries({ queryKey: ['independent-candidates'] })
-        setProfileDataKey(k => k + 1)
-        void refetchAttachments()
-        if (status === 'failed' || status === 'not_possible') {
-          toast({
-            title: 'Could not read this resume',
-            description: 'The file was saved, but Gio could not extract enough text from it.',
-            variant: 'destructive',
-          })
-        } else if (finished) {
-          toast({ title: 'Profile updated', description: 'Summary, skills, experience and education were refreshed.' })
-        }
-        return
-      }
-      timer = setTimeout(poll, 4000)
-    }
-
-    let timer = setTimeout(poll, 5000)
-    return () => { cancelled = true; clearTimeout(timer) }
-  }, [isEnriching, candidateId, queryClient, refetchAttachments])
 
   const onReplaceResume = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -425,8 +383,9 @@ export default function IndependentCandidateProfile() {
         {resumeOnFile ? (
           <FileRow
             icon={FileIcon}
-            name={resumeFileName}
+            name={resumeRefresh.status?.phase === 'uploading' ? resumeRefresh.status.fileName : resumeFileName}
             meta={resumeUploadedDate ? `Uploaded ${resumeUploadedDate}` : undefined}
+            status={resumeRefresh.status ? <ResumeStatusLine status={resumeRefresh.status} compact /> : undefined}
             isResume
             downloadIcon={Download}
             onDownload={() => setTab('resume')}
@@ -671,7 +630,8 @@ export default function IndependentCandidateProfile() {
                     fileName={resumeFileName}
                     uploadedDate={resumeUploadedDate}
                     fallbackResumeUrl={candidate.resume_url}
-                    parsing={isResumeUploading || isEnriching}
+                    parsing={resumeBusy}
+                    status={resumeRefresh.status}
                     onFile={(file) => void handleResumeUpload(file)}
                     onAskCandidate={onSendEmail}
                     viewerActions={
@@ -682,8 +642,8 @@ export default function IndependentCandidateProfile() {
                           size="sm"
                           icon={Upload}
                           onClick={() => replaceResumeInputRef.current?.click()}
-                          disabled={isResumeUploading || isEnriching}
-                          loading={isResumeUploading}
+                          disabled={resumeBusy}
+                          loading={resumeRefresh.status?.phase === 'uploading'}
                         >
                           Replace
                         </Button>

@@ -113,12 +113,14 @@ interface FileRowProps {
   icon: LucideIcon
   name: string
   meta?: string
+  /** Replaces the meta line while something is happening to the file (e.g. ResumeStatusLine). */
+  status?: ReactNode
   isResume?: boolean
   onDownload?: () => void
   downloadIcon?: LucideIcon
 }
 /** File row: bordered (radius 10), 32px tile, name + meta, download icon-button. */
-export function FileRow({ icon: Icon, name, meta, isResume, onDownload, downloadIcon: DownloadIcon }: FileRowProps) {
+export function FileRow({ icon: Icon, name, meta, status, isResume, onDownload, downloadIcon: DownloadIcon }: FileRowProps) {
   return (
     <div className="flex items-center gap-2.5 rounded-[10px] border border-[#E7E8EE] p-2.5">
       <div
@@ -138,7 +140,7 @@ export function FileRow({ icon: Icon, name, meta, isResume, onDownload, download
             </span>
           )}
         </div>
-        {meta && <div className="font-inter text-[11px] text-[#8B8F9E] truncate">{meta}</div>}
+        {status ? <div className="min-w-0">{status}</div> : meta && <div className="font-inter text-[11px] text-[#8B8F9E] truncate">{meta}</div>}
       </div>
       {onDownload && DownloadIcon && (
         <button
