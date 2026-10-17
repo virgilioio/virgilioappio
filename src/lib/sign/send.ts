@@ -87,7 +87,10 @@ export interface SendTemplate {
   kind: SignKind
   subject: string
   body: string
+  /** Uploaded and written documents. */
   docs: number
+  /** Of which written in Gio (their pages are counted when sent). */
+  written: number
   pages: number
   roles: string[]
   /** The offer form this template fills in; null works with any candidate. */
@@ -117,6 +120,7 @@ export function useSendTemplates(source: SendSource | null) {
         .select(`
           id, name, description, kind, subject, body, offer_form_id,
           docs:sign_documents!sign_documents_template_id_fkey(page_count, removed_at),
+          written:sign_written_docs!sign_written_docs_template_id_fkey(removed_at),
           roles:sign_recipients!sign_recipients_template_id_fkey(label, position, removed_at)
         `)
         .eq('app', 'ats')
@@ -124,15 +128,19 @@ export function useSendTemplates(source: SendSource | null) {
         .is('archived_at', null)
         .order('name')
       if (error) throw error
-      type Raw = Omit<SendTemplate, 'docs' | 'pages' | 'roles'> & {
+      type Raw = Omit<SendTemplate, 'docs' | 'pages' | 'roles' | 'written'> & {
         docs: { page_count: number; removed_at: string | null }[]
+        written: { removed_at: string | null }[] | null
         roles: { label: string | null; position: number; removed_at: string | null }[]
       }
       return ((data ?? []) as unknown as Raw[]).map((t) => {
         const docs = (t.docs ?? []).filter((d) => !d.removed_at)
+        const { written, ...rest } = t
+        const writtenCount = (written ?? []).filter((w) => !w.removed_at).length
         return {
-          ...t,
-          docs: docs.length,
+          ...rest,
+          docs: docs.length + writtenCount,
+          written: writtenCount,
           pages: docs.reduce((a, d) => a + d.page_count, 0),
           roles: (t.roles ?? [])
             .filter((r) => !r.removed_at)

@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PdfPage, edge, tint } from '@/components/sign/PdfPage'
 import { FIELD_LABEL, TEXT_FIELDS, autoFontSize, pagesOf, type TplDoc, type TplField, type TplRole } from '@/lib/sign/templates'
 import { DataFieldText } from '@/components/sign/DataFieldText'
+import { docItems, useWrittenPreview, type TplWritten } from '@/lib/sign/written'
 
 /**
  * What a template looks like filled in with a record's values: every page,
@@ -16,6 +17,7 @@ import { DataFieldText } from '@/components/sign/DataFieldText'
 
 interface PreviewTemplate {
   docs: TplDoc[]
+  written: TplWritten[]
   roles: TplRole[]
   fields: TplField[]
 }
@@ -24,7 +26,8 @@ const SELECT = `
   id,
   docs:sign_documents!sign_documents_template_id_fkey(id, name, storage_path, page_count, page_sizes, size_bytes, sha256, position, removed_at),
   roles:sign_recipients!sign_recipients_template_id_fkey(id, label, role, fixed, name, email, color, position, removed_at),
-  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at)
+  fields:sign_fields!sign_fields_template_id_fkey(id, type, recipient_id, page, x, y, w, h, required, data_key, font_size, data_style, removed_at),
+  written:sign_written_docs!sign_written_docs_template_id_fkey(id, name, position, content, removed_at)
 `
 
 export function usePreviewTemplate(templateId: string | null) {
@@ -37,6 +40,7 @@ export function usePreviewTemplate(templateId: string | null) {
       if (error) throw error
       type Raw = {
         docs: (TplDoc & { position: number; removed_at: string | null })[]
+        written: (TplWritten & { removed_at: string | null })[] | null
         roles: { id: string; label: string | null; role: TplRole['role']; fixed: boolean; name: string | null; email: string | null; color: string; position: number; removed_at: string | null }[]
         fields: { id: string; type: TplField['type']; recipient_id: string | null; page: number; x: number | string; y: number | string; w: number | string; h: number | string; required: boolean; data_key: string | null; font_size: number | string | null; data_style: string | null; removed_at: string | null }[]
       }
@@ -45,7 +49,8 @@ export function usePreviewTemplate(templateId: string | null) {
         docs: (t.docs ?? [])
           .filter((x) => !x.removed_at)
           .sort((a, b) => a.position - b.position)
-          .map(({ position: _p, removed_at: _r, ...x }) => ({ ...x, page_sizes: Array.isArray(x.page_sizes) ? x.page_sizes : [] })),
+          .map(({ removed_at: _r, ...x }) => ({ ...x, page_sizes: Array.isArray(x.page_sizes) ? x.page_sizes : [] })),
+        written: (t.written ?? []).filter((x) => !x.removed_at).map(({ removed_at: _r, ...x }) => x),
         roles: (t.roles ?? [])
           .filter((x) => !x.removed_at)
           .sort((a, b) => a.position - b.position)
@@ -100,57 +105,97 @@ export function FilledPreview({
     return <p className="font-inter text-[12.5px] text-virgilio-error">The documents couldn’t be loaded for the preview.</p>
   }
 
+  const roleLabels = Object.fromEntries(tpl.data.roles.map((r) => [r.id, r.label || 'Signer']))
   return (
     <div className="flex flex-col items-center gap-4" aria-label="Preview of the documents, filled in">
-      {pages.map((p) => {
-        const size = p.doc.page_sizes[p.i] ?? { w: 612, h: 792 }
-        return (
-          <div key={`${p.doc.id}-${p.i}`} className="flex flex-col" style={{ width }}>
-            <PdfPage doc={p.doc} index={p.i} width={width}>
-              {tpl.data!.fields
-                .filter((f) => f.page === p.gi)
-                .map((f) => {
-                  const r = role(f.rid)
-                  const isData = f.type === 'data'
-                  const text = isData ? values[f.data_key ?? ''] ?? '' : ''
-                  const size_pt = f.font_size ?? autoFontSize(f.h, size.h)
-                  const who = r ? people?.[r.id]?.name?.trim() || r.name || r.label : ''
-                  return (
-                    <div
-                      key={f.id}
-                      className="gio-sign-field"
-                      data-type={f.type}
-                      data-preview
-                      style={{
-                        left: `${f.x}%`,
-                        top: `${f.y}%`,
-                        width: `${f.w}%`,
-                        height: `${f.h}%`,
-                        background: isData ? 'transparent' : tint(r?.color ?? '#ffffff', 0.28),
-                        borderColor: isData ? 'transparent' : edge(r?.color ?? '#9CA3AF'),
-                        color: isData ? '#0d0d09' : undefined,
-                        ...(TEXT_FIELDS.has(f.type) ? { fontSize: `${(size_pt / (size.w || 612)) * 100}cqw` } : {}),
-                      }}
-                      title={isData ? undefined : `${who} · ${FIELD_LABEL[f.type]}`}
-                    >
-                      {isData ? (
-                        <DataFieldText value={text} tick={f.data_style === 'tick'} w={f.w} h={f.h} page={size} fontSize={f.font_size} empty="—" />
-                      ) : (
-                        <span className="truncate">{`${who} · ${FIELD_LABEL[f.type].toLowerCase()}`}</span>
-                      )}
-                    </div>
-                  )
-                })}
-            </PdfPage>
-            <p className="mt-1.5 flex justify-between font-inter text-[11px] text-text-tertiary">
-              <span className="truncate">{p.doc.name}</span>
-              <span className="tabular-nums">
-                {p.i + 1} / {p.doc.page_count}
-              </span>
-            </p>
-          </div>
-        )
-      })}
+      {docItems(tpl.data).flatMap((item) =>
+        item.kind === 'written'
+          ? [<WrittenPages key={item.doc.id} w={item.doc} values={values} roles={roleLabels} width={width} />]
+          : pages.filter((p) => p.doc.id === item.doc.id).map((p) => {
+              const size = p.doc.page_sizes[p.i] ?? { w: 612, h: 792 }
+              return (
+                <div key={`${p.doc.id}-${p.i}`} className="flex flex-col" style={{ width }}>
+                  <PdfPage doc={p.doc} index={p.i} width={width}>
+                    {tpl.data!.fields
+                      .filter((f) => f.page === p.gi)
+                      .map((f) => {
+                        const r = role(f.rid)
+                        const isData = f.type === 'data'
+                        const text = isData ? values[f.data_key ?? ''] ?? '' : ''
+                        const size_pt = f.font_size ?? autoFontSize(f.h, size.h)
+                        const who = r ? people?.[r.id]?.name?.trim() || r.name || r.label : ''
+                        return (
+                          <div
+                            key={f.id}
+                            className="gio-sign-field"
+                            data-type={f.type}
+                            data-preview
+                            style={{
+                              left: `${f.x}%`,
+                              top: `${f.y}%`,
+                              width: `${f.w}%`,
+                              height: `${f.h}%`,
+                              background: isData ? 'transparent' : tint(r?.color ?? '#ffffff', 0.28),
+                              borderColor: isData ? 'transparent' : edge(r?.color ?? '#9CA3AF'),
+                              color: isData ? '#0d0d09' : undefined,
+                              ...(TEXT_FIELDS.has(f.type) ? { fontSize: `${(size_pt / (size.w || 612)) * 100}cqw` } : {}),
+                            }}
+                            title={isData ? undefined : `${who} · ${FIELD_LABEL[f.type]}`}
+                          >
+                            {isData ? (
+                              <DataFieldText value={text} tick={f.data_style === 'tick'} w={f.w} h={f.h} page={size} fontSize={f.font_size} empty="—" />
+                            ) : (
+                              <span className="truncate">{`${who} · ${FIELD_LABEL[f.type].toLowerCase()}`}</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                  </PdfPage>
+                  <p className="mt-1.5 flex justify-between font-inter text-[11px] text-text-tertiary">
+                    <span className="truncate">{p.doc.name}</span>
+                    <span className="tabular-nums">
+                      {p.i + 1} / {p.doc.page_count}
+                    </span>
+                  </p>
+                </div>
+              )
+            }),
+      )}
     </div>
+  )
+}
+
+/** A written document, made into its PDF with this record's values (the same code that sends it). */
+function WrittenPages({
+  w,
+  values,
+  roles,
+  width,
+}: {
+  w: TplWritten
+  values: Record<string, string | null | undefined>
+  roles: Record<string, string>
+  width: number
+}) {
+  const preview = useWrittenPreview({ name: w.name, content: w.content, values, roles })
+  if (preview.isLoading) return <Skeleton className="rounded-md" style={{ width, aspectRatio: '612 / 792' }} />
+  if (preview.isError || !preview.data) {
+    return <p className="font-inter text-[12.5px] text-virgilio-error">{w.name} couldn’t be drawn for the preview.</p>
+  }
+  const doc = preview.data
+  return (
+    <>
+      {Array.from({ length: doc.page_count }, (_, i) => (
+        <div key={`${w.id}-${i}`} className="flex flex-col" style={{ width }}>
+          <PdfPage doc={doc} index={i} width={width} />
+          <p className="mt-1.5 flex justify-between font-inter text-[11px] text-text-tertiary">
+            <span className="truncate">{w.name}</span>
+            <span className="tabular-nums">
+              {i + 1} / {doc.page_count}
+            </span>
+          </p>
+        </div>
+      ))}
+    </>
   )
 }

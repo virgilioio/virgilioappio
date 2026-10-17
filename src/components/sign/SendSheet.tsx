@@ -349,7 +349,9 @@ export function SendSheet({
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-inter text-[13px] font-medium text-text-primary">{t.name}</span>
                             <span className="block truncate font-inter text-[11.5px] tabular-nums text-text-tertiary">
-                              {t.docs} doc{t.docs === 1 ? '' : 's'} · {t.pages} page{t.pages === 1 ? '' : 's'} · {t.roles.join(' → ')}
+                              {t.docs} doc{t.docs === 1 ? '' : 's'}
+                              {t.pages > 0 && ` · ${t.pages} page${t.pages === 1 ? '' : 's'}`}
+                              {t.written > 0 && ` · ${t.written} written`} · {t.roles.join(' → ')}
                             </span>
                             {t.description && <span className="mt-0.5 block font-inter text-[11.5px] text-text-secondary">{t.description}</span>}
                           </span>
@@ -433,7 +435,9 @@ export function SendSheet({
                 </div>
               ) : (
                 <p className="font-inter text-[12.5px] text-text-tertiary">
-                  {tpl?.pages ?? 0} page{tpl?.pages === 1 ? '' : 's'} across {tpl?.docs ?? 0} document{tpl?.docs === 1 ? '' : 's'}.
+                  {tpl?.written
+                    ? `${tpl.docs} document${tpl.docs === 1 ? '' : 's'}, ${tpl.written} written in Gio and filled in when sent.`
+                    : `${tpl?.pages ?? 0} page${tpl?.pages === 1 ? '' : 's'} across ${tpl?.docs ?? 0} document${tpl?.docs === 1 ? '' : 's'}.`}
                 </p>
               )}
             </FormSection>
